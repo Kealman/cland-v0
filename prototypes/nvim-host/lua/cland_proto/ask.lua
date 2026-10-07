@@ -1,106 +1,137 @@
--- PROTOTYPE (ticket #11): a fake "ask" dialog with options, opened as an
--- editor-relative float over the session column (the case in neovim#40915).
+-- PROTOTYPE (ticket #15): asks (#7), grown from the engine prototype's ask
+-- float (#11). An ask is a message kind with options and a free answer; the
+-- answer is a message carrying answer_to. Variants A-C draw asks inline in
+-- the thread (chat.lua); variant D shows them as this float.
 local api = vim.api
+local state = require('cland_proto.state')
 local M = { ns = api.nvim_create_namespace('cland_proto_ask') }
 
-local OPTIONS = {
-  { key = '1', label = 'Approve once' },
-  { key = '2', label = 'Approve for this session' },
-  { key = '3', label = 'Deny and tell the agent why' },
-}
+local function finish(a, answer_text, choice)
+  a.state, a.answer, a.choice, a.answered_at = 'answered', answer_text, choice, state.now_min()
+  local chat = require('cland_proto.chat')
+  local reply = choice and {
+    ('Going with %d: %s.'):format(choice, a.options[choice].label:gsub('^%u', string.lower)),
+    'I will update ' .. (state.topic(a.topic).item or 'the plan') .. ' and report back here.',
+  } or { 'Thanks, I will take your answer from here and report back in this topic.' }
+  chat.send(a.topic, answer_text, { to = a.from, answer_to = a.id, reply = reply })
+  M.close_float()
+end
+
+function M.answer(id, i)
+  local a = state.ask(id)
+  if not a or a.state ~= 'open' then
+    return
+  end
+  finish(a, ('%d. %s'):format(i, a.options[i].label), i)
+end
+
+function M.answer_free(id, text)
+  local a = state.ask(id)
+  if not a or a.state ~= 'open' then
+    return
+  end
+  finish(a, text, nil)
+end
+
+-- Free answer: the composer of the ask's topic sends the next message as the answer.
+function M.start_free(id)
+  local a = state.ask(id)
+  if not a then
+    return
+  end
+  M.close_float()
+  require('cland_proto.chat').answering[a.topic] = a.id
+  state.changed('free answer to ask #' .. a.id .. ' started')
+  require('cland_proto.app').focus_composer(a.topic, nil, true)
+end
+
+function M.withdraw(id)
+  local a = state.ask(id)
+  if a and a.state == 'open' then
+    a.state = 'withdrawn'
+    local t = state.topic(a.topic)
+    t.messages[#t.messages + 1] = { kind = 'system', at = state.now_min(), text = a.from .. ' withdrew the ask (resolve)' }
+    require('cland_proto.chat').recompute(t, 'replied')
+    state.changed('ask #' .. id .. ' withdrawn')
+  end
+end
 
 function M.is_open()
   return M.win ~= nil and api.nvim_win_is_valid(M.win)
 end
 
-function M.toggle()
+function M.close_float()
   if M.is_open() then
-    M.close()
-  else
-    M.open()
+    pcall(api.nvim_win_close, M.win, true)
   end
+  M.win = nil
 end
 
-function M.open()
-  local app = require('cland_proto.app')
-  local sessions = require('cland_proto.sessions')
-  local tw = app.term_win()
-  local pos = api.nvim_win_get_position(tw)
-  local tw_w, tw_h = api.nvim_win_get_width(tw), api.nvim_win_get_height(tw)
-  local s = sessions.current()
-  local who = s and ('%s (session %d)'):format(s.name, s.id) or 'an agent'
-  M.prev_win = api.nvim_get_current_win()
-  M.prev_mode = api.nvim_get_mode().mode
-  M.buf = api.nvim_create_buf(false, true)
-  local lines = {
-    ' ' .. who .. ' asks:',
-    '',
-    '   Run  git worktree add ../wt-impl-3 impl/topic-3 ?',
-    '',
-  }
-  for _, o in ipairs(OPTIONS) do
-    lines[#lines + 1] = ('   %s  %s'):format(o.key, o.label)
+-- The ask as a float with numbered options over window `anchor` (variant D).
+function M.float(id, anchor)
+  local a = state.ask(id)
+  if not a or a.state ~= 'open' then
+    return
+  end
+  M.close_float()
+  anchor = (anchor and api.nvim_win_is_valid(anchor)) and anchor or api.nvim_get_current_win()
+  local t = state.topic(a.topic)
+  local lines = { ' ' .. a.question, '' }
+  for i, o in ipairs(a.options) do
+    lines[#lines + 1] = ('  %d  %s'):format(i, o.label)
+  end
+  if a.free then
+    lines[#lines + 1] = '  4  ✎ your own answer (goes to the composer)'
   end
   lines[#lines + 1] = ''
-  lines[#lines + 1] = '   q  close, answer later'
+  lines[#lines + 1] = ('  q  later: the topic stays "waiting for you"')
+  M.buf = M.buf and api.nvim_buf_is_valid(M.buf) and M.buf or api.nvim_create_buf(false, true)
+  vim.bo[M.buf].modifiable = true
   api.nvim_buf_set_lines(M.buf, 0, -1, false, lines)
   vim.bo[M.buf].modifiable = false
-  api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, { end_col = #lines[1], hl_group = 'ClandAskTitle' })
-  for i = 5, 5 + #OPTIONS - 1 do
-    api.nvim_buf_set_extmark(M.buf, M.ns, i - 1, 3, { end_col = 4, hl_group = 'ClandAskKey' })
+  api.nvim_buf_clear_namespace(M.buf, M.ns, 0, -1)
+  api.nvim_buf_set_extmark(M.buf, M.ns, 0, 0, { end_col = #lines[1], hl_group = 'ClandAskQuestion' })
+  for i = 3, 3 + #a.options - (a.free and 0 or 1) do
+    api.nvim_buf_set_extmark(M.buf, M.ns, i - 1, 1, { end_col = 4, hl_group = 'ClandAskKey' })
   end
-  local width = math.max(30, math.min(64, tw_w - 6))
-  local height = #lines
+  api.nvim_buf_set_extmark(M.buf, M.ns, #lines - 1, 0, { end_col = #lines[#lines], hl_group = 'ClandDim' })
+  local aw, ah = api.nvim_win_get_width(anchor), api.nvim_win_get_height(anchor)
+  local width = 4
+  for _, l in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(l) + 2)
+  end
+  width = math.min(width, aw - 4)
   M.win = api.nvim_open_win(M.buf, true, {
-    relative = 'editor',
-    row = pos[1] + math.max(1, math.floor((tw_h - height) / 3)),
-    col = pos[2] + math.max(1, math.floor((tw_w - width) / 2)),
+    relative = 'win',
+    win = anchor,
+    row = math.max(0, math.floor((ah - #lines) / 2) - 1),
+    col = math.max(0, math.floor((aw - width) / 2)),
     width = width,
-    height = height,
+    height = #lines,
     border = 'rounded',
-    title = ' Ask · needs you ',
+    title = { { ' Ask · ' .. a.from .. ' [' .. a.role .. '] · ' .. (t.item or 'needs you') .. ' ', 'ClandAskTitle' } },
     title_pos = 'center',
-    footer = ' 1/2/3 answer · q close ',
+    footer = { { ' 1-3 answer · 4 own answer · q later ', 'ClandDim' } },
     footer_pos = 'center',
     style = 'minimal',
     zindex = 60,
   })
-  for _, o in ipairs(OPTIONS) do
-    vim.keymap.set('n', o.key, function()
-      M.close(o.label)
+  vim.wo[M.win].winbar = ''
+  vim.wo[M.win].cursorline = false
+  for i = 1, #a.options do
+    vim.keymap.set('n', tostring(i), function()
+      M.answer(a.id, i)
     end, { buffer = M.buf, nowait = true })
   end
+  vim.keymap.set('n', '4', function()
+    M.start_free(a.id)
+  end, { buffer = M.buf, nowait = true })
   for _, k in ipairs({ 'q', '<Esc>' }) do
     vim.keymap.set('n', k, function()
-      M.close()
+      M.close_float()
+      require('cland_proto.app').focus_composer(a.topic, nil, false)
     end, { buffer = M.buf, nowait = true })
   end
-  app.refresh()
-end
-
-function M.close(answer)
-  if M.is_open() then
-    api.nvim_win_close(M.win, true)
-  end
-  M.win = nil
-  if answer then
-    require('cland_proto.chat').add({
-      from = 'you',
-      role = 'Human',
-      harness = 'cland',
-      text = { 'answered the ask: ' .. answer },
-    })
-  end
-  if M.prev_win and api.nvim_win_is_valid(M.prev_win) then
-    api.nvim_set_current_win(M.prev_win)
-    local prev_mode = M.prev_mode
-    vim.schedule(function()
-      if prev_mode == 't' or (prev_mode == 'i' and vim.bo.buftype == 'prompt') then
-        vim.cmd('startinsert!')
-      end
-    end)
-  end
-  require('cland_proto.app').refresh()
 end
 
 return M

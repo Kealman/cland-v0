@@ -1,439 +1,547 @@
--- PROTOTYPE (ticket #11): layout, keymaps, statusline/winbar, commands.
---
---   +-----------+------------------------+-------------------+
---   | topics    | thread                 | session column    |
---   |           |                        | (terminal buffers)|
---   |           +------------------------+                   |
---   |           | composer (prompt buf)  |                   |
---   +-----------+------------------------+-------------------+
---   global statusline: focus, topic, sessions, loop lag
+-- PROTOTYPE (ticket #15): the chat-screen prototype on top of the engine
+-- prototype (#11). Global keys, commands, highlights, the statusline and
+-- winbar dispatch, :ClandState, :ClandSim and the render loop. Each variant
+-- (lua/cland_proto/variants/*.lua) owns its own layout.
 local api = vim.api
+local state = require('cland_proto.state')
 local chat = require('cland_proto.chat')
 local sessions = require('cland_proto.sessions')
-local ask = require('cland_proto.ask')
-local probe = require('cland_proto.probe')
+local switcher = require('cland_proto.switcher')
 
-local M = { win = {}, term_wins = {} }
+local M = {}
 
-local HELP = {
-  'cland-proto keys (PROTOTYPE, ticket #11)   <leader> = Space',
-  '',
-  ' Normal mode                     Terminal mode / composer insert mode',
-  '  <leader>1  claude              <C-\\>c   go to the composer',
-  '  <leader>2  codex               <C-\\>j   go to the focused session',
-  '  <leader>3  opencode            <C-\\>n   next session   <C-\\>p previous',
-  '  <leader>s  new $SHELL          <C-\\>a   toggle the ask dialog',
-  '  <leader>t1/t2/t3  harness in   <C-\\>T   tile / untile sessions',
-  '             a tmux-owned session <C-\\>s   new $SHELL session',
-  '  <leader>ts $SHELL in tmux      <C-\\>l   go to topics',
-  '  <leader>n / <leader>p  next / previous session',
-  '  <leader>j  focused session     <C-\\><C-n>  leave terminal mode',
-  '  <leader>c  composer            topics: <CR> opens a topic',
-  '  <leader>l  topics              composer: Enter sends, Shift+Enter newline',
-  '  <leader>a  ask dialog',
-  '  <leader>T  tile sessions       :ClandShiftEnter off|csi-u|esc-cr|lf',
-  '  <leader>?  this help           :ClandAttach <tmux-session> [socket]',
-  '                                 :ClandRun <cmd>   :ClandTerms <n>',
-  '                                 :ClandTmux <name> <cmd>  (tmux-owned)',
-  '',
-  ' q closes this window',
-}
+local BAR_BG = '#262a33'
 
-local function placeholder()
-  if not (M.placeholder_buf and api.nvim_buf_is_valid(M.placeholder_buf)) then
-    M.placeholder_buf = api.nvim_create_buf(false, true)
-    api.nvim_buf_set_lines(M.placeholder_buf, 0, -1, false, { '', '  no sessions yet: <leader>s for a shell' })
-    vim.b[M.placeholder_buf].cland_role = 'placeholder'
+function M.highlights()
+  local function set(name, val)
+    api.nvim_set_hl(0, name, val)
   end
-  return M.placeholder_buf
-end
-
-local function set_wo(win, opts)
-  for k, v in pairs(opts) do
-    vim.wo[win][k] = v
-  end
-end
-
-function M.term_win()
-  local w = M.term_wins[1]
-  if w and api.nvim_win_is_valid(w) then
-    return w
-  end
-  M.build_layout()
-  return M.term_wins[1]
-end
-
-function M.build_layout()
-  if ask.is_open() then
-    pcall(api.nvim_win_close, ask.win, true)
-    ask.win = nil
-  end
-  local w = api.nvim_get_current_win()
-  if api.nvim_win_get_config(w).relative ~= '' then
-    w = vim.fn.win_getid(1)
-    api.nvim_set_current_win(w)
-  end
-  pcall(vim.cmd, 'silent only!')
-  api.nvim_win_set_buf(w, chat.thread_buf)
-  M.win.thread = w
-  M.win.topics = api.nvim_open_win(chat.topics_buf, false, { split = 'left', win = w, width = 34 })
-  local first = sessions.current()
-  M.term_wins = {
-    api.nvim_open_win(first and first.buf or placeholder(), false, {
-      split = 'right',
-      win = w,
-      width = math.floor(vim.o.columns * 0.45),
-    }),
-  }
-  M.win.composer = api.nvim_open_win(chat.composer_buf, false, { split = 'below', win = w, height = 6 })
-  set_wo(M.win.topics, { winfixwidth = true, wrap = false, number = false, signcolumn = 'no', cursorline = false })
-  set_wo(M.win.thread, { wrap = true, linebreak = true, number = false, signcolumn = 'no' })
-  set_wo(M.win.composer, { winfixheight = true, wrap = true, number = false, signcolumn = 'no' })
-  set_wo(M.term_wins[1], { number = false, signcolumn = 'no' })
-  chat.render_thread()
-  if sessions.tiled then
-    M.tile(true)
-  end
-  M.refresh()
-end
-
--- Equal heights for the stacked session windows. Never below 3 rows: a
--- terminal one row high keeps no scrollback at all (checks/one-row-scrollback.lua).
-function M.equalize_sessions()
-  local wins = vim.tbl_filter(api.nvim_win_is_valid, M.term_wins)
-  if #wins < 2 then
-    return
-  end
-  local total = 0
-  for _, w in ipairs(wins) do
-    total = total + api.nvim_win_get_height(w)
-  end
-  local each = math.max(3, math.floor(total / #wins))
-  for i = 1, #wins - 1 do
-    pcall(api.nvim_win_set_height, wins[i], each)
+  set('ClandWaitYou', { fg = '#ff6b6b', bold = true })
+  set('ClandWaitAgent', { fg = '#56ccf2' })
+  set('ClandWaitApproval', { fg = '#f2c94c', bold = true })
+  set('ClandBusy', { fg = '#56ccf2' })
+  set('ClandIdle', { fg = '#6fcf97' })
+  set('ClandOpen', { fg = '#6fcf97' })
+  set('ClandClosed', { fg = '#828282' })
+  set('ClandReadOnly', { fg = '#9b9bd1' })
+  set('ClandDim', { fg = '#7c8391' })
+  set('ClandSel', { bg = '#2d3340' })
+  set('ClandGroup', { fg = '#9aa0aa', bold = true })
+  set('ClandGroupYou', { fg = '#ff6b6b', bold = true })
+  set('ClandUnread', { fg = '#111111', bg = '#56ccf2', bold = true })
+  set('ClandBadgeC', { fg = '#111111', bg = '#bb86fc', bold = true })
+  set('ClandBadgeI', { fg = '#111111', bg = '#6fcf97', bold = true })
+  set('ClandBadgeR', { fg = '#111111', bg = '#f2994a', bold = true })
+  set('ClandBadgeQ', { fg = '#111111', bg = '#56ccf2', bold = true })
+  set('ClandBadgeH', { fg = '#111111', bg = '#e0e0e0', bold = true })
+  set('ClandBadgeS', { fg = '#dddddd', bg = '#4a4f5b' })
+  set('ClandRoleCoord', { fg = '#bb86fc', bold = true })
+  set('ClandRoleReview', { fg = '#f2994a', bold = true })
+  set('ClandRoleQA', { fg = '#56ccf2', bold = true })
+  set('ClandRoleImpl', { fg = '#6fcf97', bold = true })
+  set('ClandRoleHuman', { fg = '#ffffff', bold = true })
+  set('ClandStageQueued', { fg = '#f2c94c' })
+  set('ClandStageDelivered', { fg = '#56ccf2' })
+  set('ClandStageInjected', { fg = '#6fcf97' })
+  set('ClandStagePending', { fg = '#555b66' })
+  set('ClandArtifact', { fg = '#f2c94c', underline = true })
+  set('ClandItem', { fg = '#c3a6ff' })
+  set('ClandMention', { fg = '#56ccf2', bold = true })
+  set('ClandEvent', { fg = '#9b9bd1', bold = true })
+  set('ClandAskTitle', { fg = '#f2c94c', bold = true })
+  set('ClandAskQuestion', { fg = '#ffffff', bold = true })
+  set('ClandAskKey', { fg = '#111111', bg = '#f2c94c', bold = true })
+  set('ClandBrand', { fg = '#111111', bg = '#bb86fc', bold = true })
+  set('ClandBar', { fg = '#dddddd', bg = '#3a3f4b' })
+  set('ClandBarFocus', { fg = '#111111', bg = '#f2c94c', bold = true })
+  set('ClandPill', { fg = '#ffffff', bg = '#d6336c', bold = true })
+  set('ClandWarn', { fg = '#111111', bg = '#ff6b6b', bold = true })
+  set('ClandPickSel', { bg = '#3a3f4b', bold = true })
+  set('ClandPickMatch', { fg = '#f2c94c', bold = true })
+  set('ClandQueueSel', { bg = '#2d3340' })
+  set('StatusLine', { fg = '#dddddd', bg = BAR_BG })
+  set('StatusLineNC', { fg = '#9aa0aa', bg = BAR_BG })
+  set('WinBar', { fg = '#dddddd', bg = '#1e2129', bold = true })
+  set('WinBarNC', { fg = '#9aa0aa', bg = '#1e2129' })
+  set('TabLine', { fg = '#9aa0aa', bg = BAR_BG })
+  set('TabLineSel', { fg = '#ffffff', bg = '#3a3f4b', bold = true })
+  set('TabLineFill', { fg = '#9aa0aa', bg = '#1b1e24' })
+  set('WinSeparator', { fg = '#3a3f4b' })
+  -- fg-only groups get a "<name>Bar" twin with the bar background
+  for _, name in ipairs({ 'ClandWaitYou', 'ClandWaitAgent', 'ClandWaitApproval', 'ClandBusy', 'ClandIdle', 'ClandOpen',
+    'ClandClosed', 'ClandReadOnly', 'ClandDim', 'ClandStageQueued', 'ClandStageDelivered', 'ClandStageInjected',
+    'ClandStagePending', 'ClandItem', 'ClandAskTitle', 'ClandRoleCoord', 'ClandRoleImpl', 'ClandRoleReview', 'ClandRoleQA' }) do
+    local h = api.nvim_get_hl(0, { name = name })
+    h.bg = BAR_BG
+    set(name .. 'Bar', h)
+    -- and a "<name>Sel" twin for the selected tab of variant D
+    local s = api.nvim_get_hl(0, { name = name })
+    s.bg = '#3a3f4b'
+    set(name .. 'Sel', s)
   end
 end
 
--- Show every session stacked in the session column (or only the focused one).
-function M.tile(on)
-  sessions.tiled = on
-  local anchor = M.term_win()
-  for i = #M.term_wins, 2, -1 do
-    if api.nvim_win_is_valid(M.term_wins[i]) then
-      api.nvim_win_close(M.term_wins[i], true)
-    end
-    M.term_wins[i] = nil
+-- {text, hl} chunks -> statusline string
+function M.stl(chunks)
+  local out = {}
+  for _, c in ipairs(chunks) do
+    out[#out + 1] = '%#' .. (c[2] or 'StatusLine') .. '#' .. tostring(c[1]):gsub('%%', '%%%%')
   end
-  local list = sessions.list
-  if on and #list > 1 then
-    api.nvim_win_set_buf(anchor, list[1].buf)
-    -- carve the column top to bottom: each split takes the rows still free
-    local remaining = api.nvim_win_get_height(anchor)
-    local each = math.max(3, math.floor((remaining - (#list - 1)) / #list))
-    local prev = anchor
-    for i = 2, #list do
-      local h = remaining - each - 1
-      if h < 3 then
-        break -- no room: the remaining sessions stay hidden
-      end
-      local ok, win = pcall(api.nvim_open_win, list[i].buf, false, { split = 'below', win = prev, height = h })
-      if not ok then
-        break
-      end
-      set_wo(win, { number = false, signcolumn = 'no' })
-      M.term_wins[#M.term_wins + 1] = win
-      remaining, prev = h, win
-    end
-    M.equalize_sessions()
-  else
-    local s = sessions.current()
-    if s then
-      api.nvim_win_set_buf(anchor, s.buf)
-    end
-  end
-  M.refresh()
-end
-
-function M.focus_composer()
-  if not (M.win.composer and api.nvim_win_is_valid(M.win.composer)) then
-    M.build_layout()
-  end
-  api.nvim_set_current_win(M.win.composer)
-  -- scheduled: leaving a prompt or terminal window resets the mode after us
-  vim.schedule(function()
-    if api.nvim_get_current_win() == M.win.composer then
-      vim.cmd('startinsert!')
-    end
-  end)
-  M.refresh()
-end
-
-function M.focus_topics()
-  if not (M.win.topics and api.nvim_win_is_valid(M.win.topics)) then
-    M.build_layout()
-  end
-  vim.cmd.stopinsert()
-  api.nvim_set_current_win(M.win.topics)
-  api.nvim_win_set_cursor(M.win.topics, { chat.current, 0 })
-  M.refresh()
-end
-
-function M.focus_session()
-  local s = sessions.current()
-  if s then
-    sessions.show(s.id, true)
-  else
-    sessions.shell()
-    sessions.show(sessions.focused, true)
-  end
-end
-
-local function enter_new(s)
-  if s then
-    sessions.show(s.id, true)
-  end
-end
-
-function M.help()
-  local buf = api.nvim_create_buf(false, true)
-  api.nvim_buf_set_lines(buf, 0, -1, false, HELP)
-  vim.bo[buf].modifiable = false
-  local width, height = 80, #HELP
-  local win = api.nvim_open_win(buf, true, {
-    relative = 'editor',
-    row = math.floor((vim.o.lines - height) / 2),
-    col = math.floor((vim.o.columns - width) / 2),
-    width = width,
-    height = height,
-    border = 'rounded',
-    title = ' keys ',
-    style = 'minimal',
-    zindex = 70,
-  })
-  vim.wo[win].winbar = ''
-  for _, k in ipairs({ 'q', '<Esc>' }) do
-    vim.keymap.set('n', k, function()
-      api.nvim_win_close(win, true)
-    end, { buffer = buf, nowait = true })
-  end
+  return table.concat(out) .. '%#StatusLine#'
 end
 
 function M.mode_label()
   local m = api.nvim_get_mode().mode
-  return ({ t = 'TERMINAL', nt = 'NORMAL(term)', i = 'INSERT', n = 'NORMAL', c = 'CMDLINE' })[m] or m
+  return ({ t = 'TERMINAL', nt = 'NORMAL', i = 'INSERT', n = 'NORMAL', c = 'CMD', v = 'VISUAL', V = 'V-LINE' })[m] or m
 end
 
 function M.focus_label()
-  local win = api.nvim_get_current_win()
-  if ask.is_open() and win == ask.win then
-    return 'ask dialog'
-  end
-  local buf = api.nvim_win_get_buf(win)
-  if vim.b[buf].cland_role then
-    return vim.b[buf].cland_role
-  end
-  local s = sessions.by_buf(buf)
-  if s then
-    return ('session %d %s (%s-owned, %s)'):format(s.id, s.name, s.owner, sessions.state(s))
-  end
-  return vim.bo[buf].buftype ~= '' and vim.bo[buf].buftype or 'other'
-end
-
-local function status_line()
-  local t = chat.topics[chat.current]
-  return table.concat({
-    '%#ClandBrand# cland-proto %* ',
-    '%#ClandBarFocus# ' .. M.focus_label():gsub('%%', '%%%%') .. ' %* ',
-    M.mode_label(),
-    ' │ topic: ' .. t.title:sub(1, 28),
-    ' │ ' .. sessions.summary():gsub('%%', '%%%%'),
-    '%=',
-    ('S-Enter:%s │ loop lag %dms (max %dms) │ nvim %s '):format(
-      sessions.shift_enter, probe.lag.recent, probe.lag.max, tostring(vim.version())),
-  })
-end
-
-local function winbar()
-  local win = vim.g.statusline_winid
-  local buf = api.nvim_win_get_buf(win)
+  local buf = api.nvim_get_current_buf()
   local role = vim.b[buf].cland_role
-  local t = chat.topics[chat.current]
-  if role == 'topics' then
-    return '%#ClandBar# TOPICS (' .. #chat.topics .. ') %*'
-  elseif role == 'thread' then
-    local st = chat.STATUS[t.status]
-    return '%#ClandBar# THREAD %* ' .. t.title .. '  %#' .. st.hl .. '#' .. st.icon .. ' ' .. t.status .. '%*'
+  if role == 'session' then
+    return 'session ' .. (vim.b[buf].cland_session or '?')
+  end
+  return role or vim.bo[buf].buftype
+end
+
+-- Common left part of a statusline: brand, focus, mode.
+function M.stl_left()
+  return {
+    { ' cland ', 'ClandBrand' },
+    { ' ' .. M.focus_label() .. ' ', 'ClandBar' },
+    { ' ' .. M.mode_label() .. ' ', 'ClandDimBar' },
+  }
+end
+
+function _G.ClandStatus()
+  local ok, res = pcall(function()
+    local v = switcher.mod()
+    local left, right = v.statusline()
+    return M.stl(left) .. '%=' .. M.stl(right or {})
+  end)
+  return ok and res or (' cland statusline error: ' .. tostring(res):gsub('%%', '%%%%'))
+end
+
+-- Winbars: the variant may answer first, otherwise by buffer role.
+function M.winbar_default(win, buf, role)
+  local focused = win == api.nvim_get_current_win()
+  local lab = function(s)
+    return '%#' .. (focused and 'ClandBarFocus' or 'ClandBar') .. '# ' .. s .. ' %* '
+  end
+  if role == 'thread' then
+    local t = state.topic(vim.b[buf].cland_topic)
+    local st = chat.status(t)
+    local s = lab('THREAD') .. '%<%#' .. st.hl .. '#' .. st.icon .. ' ' .. st.label .. '%*  ' .. t.title:gsub('%%', '%%%%')
+    if t.item then
+      s = s .. '  %#ClandItem#' .. t.item .. '%*'
+    elseif t.standing then
+      s = s .. '  %#ClandDim#standing topic%*'
+    end
+    return s
   elseif role == 'composer' then
-    return '%#ClandBar# COMPOSER %* Enter sends · Shift+Enter newline · to: ' .. t.title:sub(1, 30)
+    local id = vim.b[buf].cland_topic
+    local t = state.topic(id)
+    if chat.answering[id] then
+      return lab('ANSWER') .. '%#ClandAskTitle#↳ free answer to the ask%*  Enter sends · C-c cancels'
+    end
+    local to = chat.addressee(t, '')
+    local s = to and sessions.label(state.session(to)) or 'Coordinator (vacant: the hub queues it)'
+    return lab(t.readonly and 'REPLY' or 'COMPOSE') .. '%<→ ' .. s:gsub('%%', '%%%%')
+      .. '  %#ClandDim#Enter send · Shift+Enter newline · @impl-1 / @reviewer address others%*'
+  elseif role == 'session' then
+    local s = state.session(vim.b[buf].cland_session)
+    if not s then
+      return lab('SESSION')
+    end
+    local st = sessions.st(s)
+    return lab('SESSION ' .. s.name) .. '%<' .. s.role .. ' · ' .. s.harness .. ' · ' .. s.model .. '  %#' .. st.hl .. '#'
+      .. st.icon .. ' ' .. s.state .. '%*  ' .. (s.item and ('%#ClandItem#' .. s.item .. '%*') or '')
+      .. '  %#ClandDim#stand-in · i types · C-\\ C-n leaves%*'
   end
-  local s = sessions.by_buf(buf)
-  if not s then
-    return '%#ClandBar# SESSIONS %*'
-  end
-  local focused = s.id == sessions.focused
-  return ('%%#%s# SESSION %d/%d %%* %s · %s-owned · %s · pid %s · %dx%d'):format(
-    focused and 'ClandBarFocus' or 'ClandBar', s.id, #sessions.list, s.name, s.owner,
-    sessions.state(s), tostring(s.pid), api.nvim_win_get_width(win), api.nvim_win_get_height(win))
+  return ''
 end
 
--- Errors inside these expressions make Nvim clear the option, so never throw.
-function _G.ClandProtoStatus()
-  local ok, res = pcall(status_line)
-  return ok and res or ' cland-proto (statusline error: ' .. tostring(res):gsub('%%', '%%%%') .. ')'
-end
-
-function _G.ClandProtoWinbar()
-  local ok, res = pcall(winbar)
+function _G.ClandWinbar()
+  local ok, res = pcall(function()
+    local win = vim.g.statusline_winid
+    local buf = api.nvim_win_get_buf(win)
+    local role = vim.b[buf].cland_role
+    local v = switcher.mod()
+    local s = v.winbar and v.winbar(win, buf, role)
+    return s or M.winbar_default(win, buf, role)
+  end)
   return ok and res or (' winbar error: ' .. tostring(res):gsub('%%', '%%%%'))
 end
 
-function M.refresh()
-  pcall(vim.cmd.redrawstatus, { bang = true })
+function _G.ClandTabline()
+  local ok, res = pcall(function()
+    local v = switcher.mod()
+    return v.tabline and v.tabline() or ''
+  end)
+  return ok and res or (' tabline error: ' .. tostring(res):gsub('%%', '%%%%'))
 end
 
--- After :restart the session file re-creates windows and re-runs term://
--- commands. Adopt those terminals and rebuild the cland layout around them.
-function M.rebuild_after_session()
-  local log = { restarted_by_session_file = {}, started_by_cland_glue = {}, unlisted_left_alone = {} }
-  for _, buf in ipairs(api.nvim_list_bufs()) do
-    local name = api.nvim_buf_get_name(buf)
-    if name:match('^term://') then
-      local bucket = api.nvim_buf_is_loaded(buf) and 'restarted_by_session_file'
-        or (vim.bo[buf].buflisted and 'started_by_cland_glue' or 'unlisted_left_alone')
-      table.insert(log[bucket], name)
-    end
+-- Re-render everything after a state change.
+function M.render()
+  chat.render_all()
+  local v = switcher.current and switcher.mod()
+  if v and v.render then
+    v.render()
   end
-  probe.restore_log = log
-  for _, buf in ipairs(api.nvim_list_bufs()) do
-    local name = api.nvim_buf_get_name(buf)
-    -- hidden terminals are only badd'ed (listed, unloaded) by the session file;
-    -- loading one starts its command again. Unlisted ones are alternate names
-    -- left by the session's `:file` renames: loading those would start duplicates.
-    if name:match('^term://') and vim.bo[buf].buflisted and not api.nvim_buf_is_loaded(buf) then
-      pcall(api.nvim_win_set_buf, api.nvim_get_current_win(), buf)
-    end
-  end
-  sessions.adopt_terminals()
-  M.build_layout()
-  for _, buf in ipairs(api.nvim_list_bufs()) do
-    local unused = api.nvim_buf_is_loaded(buf) and vim.bo[buf].buftype == '' and api.nvim_buf_get_name(buf) == ''
-      and #vim.fn.win_findbuf(buf) == 0 and not vim.bo[buf].modified
-    if unused then
-      pcall(api.nvim_buf_delete, buf, {})
-    end
-  end
-  M.refresh()
+  switcher.place_pill()
+  pcall(vim.cmd, 'redrawstatus!')
+  pcall(vim.cmd, 'redrawtabline')
 end
+
+-- Generic dispatch to the current variant ------------------------------------
+
+function M.open_topic(id)
+  local v = switcher.mod()
+  v.open_topic(id)
+end
+
+function M.open_session(name)
+  local v = switcher.mod()
+  v.open_session(name)
+end
+
+-- Focus the composer of topic `id` (the variant decides where it lives).
+function M.focus_composer(id, prefill, insert)
+  id = id or state.S.current_topic
+  local v = switcher.mod()
+  local win = v.composer_win and v.composer_win(id)
+  if not (win and api.nvim_win_is_valid(win)) then
+    return
+  end
+  api.nvim_win_set_buf(win, chat.composer(id))
+  api.nvim_set_current_win(win)
+  vim.schedule(function()
+    if api.nvim_get_current_win() ~= win then
+      return
+    end
+    if prefill or insert ~= false then
+      vim.cmd('startinsert!')
+    end
+    if prefill then
+      api.nvim_feedkeys(prefill, 'n', false)
+    end
+  end)
+end
+
+function M.jump_ask()
+  local a = state.open_asks()[1]
+  if not a then
+    vim.notify('cland-proto: no open ask', vim.log.levels.INFO)
+    return
+  end
+  local v = switcher.mod()
+  if v.jump_ask then
+    v.jump_ask(a)
+    return
+  end
+  v.open_topic(a.topic)
+  local buf = chat.thread_buf(a.topic)
+  local win = vim.fn.win_findbuf(buf)[1]
+  if not win then
+    return
+  end
+  api.nvim_set_current_win(win)
+  -- after the re-render that open_topic scheduled (it recomputes the padding)
+  vim.schedule(function()
+    local row = chat.find_row(buf, function(inf)
+      return inf.header and inf.ask == a.id
+    end)
+    if row and api.nvim_win_is_valid(win) and api.nvim_win_get_buf(win) == buf then
+      api.nvim_win_set_cursor(win, { row, 0 })
+    end
+  end)
+end
+
+-- Pickers --------------------------------------------------------------------
+
+function M.topic_picker()
+  local items = {}
+  for _, t in ipairs(state.sorted_topics()) do
+    local st = chat.status(t)
+    local unread = (t.unread or 0) > 0 and ('  ' .. t.unread .. ' new') or ''
+    local text = ('%s %-22s %s%s'):format(st.icon, st.label, chat.label(t), unread)
+    items[#items + 1] = {
+      text = text, value = t.id,
+      hl = { { 0, #st.icon, st.hl }, { #st.icon + 1, #st.icon + 23, 'ClandDim' }, unread ~= '' and { #text - #unread, #text, 'ClandUnread' } or nil },
+    }
+  end
+  require('cland_proto.picker').open({ title = 'Topics', items = items, on_choose = M.open_topic })
+end
+
+function M.session_picker()
+  local items = {}
+  for _, s in ipairs(state.S.sessions) do
+    local role, st = sessions.ROLE[s.role], sessions.st(s)
+    local text = ('%s  %-9s %-12s %-12s %-12s %s %-21s %s'):format(role.badge, s.name, s.role, s.harness, s.model, st.icon,
+      s.state, s.item or '-')
+    items[#items + 1] = { text = text, value = s.name, hl = { { 0, #role.badge, role.fg } } }
+  end
+  require('cland_proto.picker').open({ title = 'Sessions', items = items, on_choose = M.open_session, width = 96 })
+end
+
+-- Floats for help and state ----------------------------------------------------
+
+function M.text_float(title, lines, ft)
+  local buf = api.nvim_create_buf(false, true)
+  lines = vim.tbl_map(function(l)
+    return ' ' .. l
+  end, lines)
+  api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  if ft then
+    vim.bo[buf].filetype = ft
+  end
+  local width = 20
+  for _, l in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(l) + 2)
+  end
+  width = math.min(width, vim.o.columns - 4)
+  local height = math.min(#lines, vim.o.lines - 6)
+  local win = api.nvim_open_win(buf, true, {
+    relative = 'editor', row = math.floor((vim.o.lines - height) / 2) - 1, col = math.floor((vim.o.columns - width) / 2),
+    width = width, height = height, border = 'rounded', style = 'minimal', zindex = 90,
+    title = { { ' ' .. title .. ' ', 'ClandAskTitle' } }, title_pos = 'center',
+    footer = { { ' q closes ', 'ClandDim' } }, footer_pos = 'center',
+  })
+  vim.wo[win].winbar = ''
+  for _, k in ipairs({ 'q', '<Esc>' }) do
+    vim.keymap.set('n', k, function()
+      pcall(api.nvim_win_close, win, true)
+    end, { buffer = buf, nowait = true })
+  end
+  return win, buf
+end
+
+local HELP = {
+  'Global (Space is <leader>)',
+  '  <Space>v / <C-\\>v  next variant          <Space>V  previous variant',
+  '  :ClandVariant slack|inbox|session|tabs   (or A, B, C, D)',
+  '  <Space>t  topics picker                  <Space>s  sessions picker',
+  '  <Space>c / <C-\\>c  composer              <Space>a  the open ask',
+  '  <Space>x  simulate the next event        :ClandSim reply|ask|approval|vacant',
+  '  :ClandState  the fake state (q closes)   <Space>?  this help',
+  '',
+  'In a thread         1-3 answer the open ask · 4 own answer · <CR> or gf opens A-7 / A-9',
+  '                    r replies to the sender of the message under the cursor',
+  'In a composer       Enter sends · Shift+Enter (or Alt+Enter) newline · @impl-1, @reviewer…',
+  '                    Esc leaves Insert mode · i / A start typing again',
+  'In a terminal       C-\\ C-n leaves Terminal mode; the session is a stand-in ($SHELL)',
+}
+
+function M.help()
+  local v = switcher.mod()
+  local info = switcher.info()
+  local lines = { ('Variant %s · %s: %s'):format(info.key, info.name, v.tagline or ''), '' }
+  vim.list_extend(lines, v.help or {})
+  lines[#lines + 1] = ''
+  vim.list_extend(lines, HELP)
+  M.text_float('cland chat-screen prototype (#15) keys', lines)
+end
+
+function M.show_state(arg)
+  if arg == 'json' then
+    M.text_float('ClandState json', vim.split(vim.json.encode(state.plain()), '\n'), 'json')
+  else
+    M.text_float('ClandState', state.dump_lines())
+  end
+end
+
+-- Simulated events (to watch where each layout puts a new signal) ---------------
+
+M.SIM_ORDER = { 'reply', 'ask', 'approval', 'vacant' }
+M.SIM = {
+  -- the Coordinator answers the message in T-15 that waited for it
+  reply = function()
+    local t = state.topic('t15')
+    local m = state.last_human_message(t)
+    if m and m.stage ~= 'injected' then
+      m.stage = 'injected'
+    end
+    t.messages[#t.messages + 1] = { kind = 'text', from = 'coord', role = 'Coordinator', at = state.now_min(), text = {
+      'A timer is fine for v0 if the adapter reports it as "heuristic". impl-1: key it on',
+      'permission.updated first and keep the 20 s timer as the fallback.',
+    } }
+    chat.recompute(t, 'replied')
+    if state.S.current_topic ~= 't15' then
+      t.unread = (t.unread or 0) + 1
+    end
+    return 'coord replied in T-15'
+  end,
+  -- the Coordinator opens a new (unbound) topic with an ask
+  ask = function()
+    local n = #state.S.asks + 1
+    local asks = {
+      { title = 'Implementer model', question = "impl-1's free model keeps hitting its quota. What should impl-1 run on?",
+        options = {
+          { label = 'Keep the free model and accept the retries', short = 'keep free' },
+          { label = 'Switch impl-1 to a paid model for T-15 only', short = 'paid for T-15' },
+          { label = 'Pause impl-1 until the quota resets', short = 'pause' },
+        } },
+      { title = 'QA lane for the UI', question = 'Which lane should qa-1 use for the chat screen?',
+        options = {
+          { label = 'Headless Neovim driven by nvim_input', short = 'headless nvim' },
+          { label = 'tmux with capture-pane', short = 'tmux' },
+          { label = 'ttyd in Chrome', short = 'ttyd' },
+        } },
+    }
+    local spec = asks[(n % #asks) + 1]
+    local id = 'sim' .. n
+    local t = { id = id, title = spec.title .. (n > 3 and (' #' .. n) or ''), status = 'waiting for human', unread = 1,
+      created_by = 'coord', messages = {} }
+    local a = { id = n, topic = id, from = 'coord', role = 'Coordinator', at = state.now_min(), state = 'open',
+      question = spec.question, options = spec.options, free = true }
+    t.messages[1] = { kind = 'ask', ask = a.id, at = a.at, from = 'coord', role = 'Coordinator' }
+    table.insert(state.S.topics, t)
+    table.insert(state.S.asks, a)
+    return 'coord opened "' .. t.title .. '" with an ask'
+  end,
+  -- QA waits for an approval in its harness TUI
+  approval = function()
+    local s = state.session('qa-1')
+    s.state, s.since, s.approval, s.item = 'waiting for approval', state.now_min(), 'npx playwright test --project=ttyd', 'T-12'
+    return 'qa-1 waits for approval'
+  end,
+  -- the Coordinator session stops (role vacant), or comes back
+  vacant = function()
+    local s = state.session('coord')
+    local agents = state.topic('agents')
+    if s.state ~= 'stopped' then
+      s.prev_state, s.state, s.since = nil, 'stopped', state.now_min()
+      agents.messages[#agents.messages + 1] = { kind = 'event', at = state.now_min(), event = 'session stop', text = 'coord · Claude Code (role Coordinator vacant)' }
+      agents.unread = (agents.unread or 0) + 1
+      return 'coord stopped: no coordinator'
+    end
+    s.state, s.since = 'idle', state.now_min()
+    agents.messages[#agents.messages + 1] = { kind = 'event', at = state.now_min(), event = 'session start', text = 'coord · Claude Code · fable (role Coordinator restored)' }
+    agents.unread = (agents.unread or 0) + 1
+    -- store-and-forward: queued messages to the Coordinator go out now
+    for _, t in ipairs(state.S.topics) do
+      for _, m in ipairs(t.messages) do
+        if m.from == 'you' and m.stage == 'queued' then
+          m.to = 'coord'
+          chat.deliver(t, m)
+        end
+      end
+    end
+    return 'coord is back: queued messages delivered'
+  end,
+}
+
+function M.sim(name)
+  if not name or name == '' then
+    M.sim_i = (M.sim_i or 0) % #M.SIM_ORDER + 1
+    name = M.SIM_ORDER[M.sim_i]
+  end
+  local fn = M.SIM[name]
+  if not fn then
+    vim.notify('cland-proto: :ClandSim ' .. table.concat(M.SIM_ORDER, '|'), vim.log.levels.ERROR)
+    return
+  end
+  local what = fn()
+  state.changed('sim: ' .. what)
+  api.nvim_echo({ { 'simulated: ' .. what, 'ClandAskTitle' } }, false, {})
+end
+
+-- Keys and commands --------------------------------------------------------------
 
 function M.keymaps()
   local function map(modes, lhs, rhs, desc)
     vim.keymap.set(modes, lhs, rhs, { desc = 'cland-proto: ' .. desc, silent = true })
   end
-  map('n', '<leader>1', function() enter_new(sessions.harness('claude')) end, 'launch claude')
-  map('n', '<leader>2', function() enter_new(sessions.harness('codex')) end, 'launch codex')
-  map('n', '<leader>3', function() enter_new(sessions.harness('opencode')) end, 'launch opencode')
-  map('n', '<leader>s', function() enter_new(sessions.shell()) end, 'new $SHELL session')
-  map('n', '<leader>t1', function() enter_new(sessions.tmux_harness('claude')) end, 'claude, tmux-owned')
-  map('n', '<leader>t2', function() enter_new(sessions.tmux_harness('codex')) end, 'codex, tmux-owned')
-  map('n', '<leader>t3', function() enter_new(sessions.tmux_harness('opencode')) end, 'opencode, tmux-owned')
-  map('n', '<leader>ts', function() enter_new(sessions.tmux_owned('cland-shell', { vim.o.shell })) end, '$SHELL, tmux-owned')
-  map('n', '<leader>n', function() sessions.cycle(1, true) end, 'next session')
-  map('n', '<leader>p', function() sessions.cycle(-1, true) end, 'previous session')
-  map('n', '<leader>j', M.focus_session, 'focused session')
-  map('n', '<leader>c', M.focus_composer, 'composer')
-  map('n', '<leader>l', M.focus_topics, 'topics')
-  map('n', '<leader>a', ask.toggle, 'ask dialog')
-  map('n', '<leader>T', function() M.tile(not sessions.tiled) end, 'tile sessions')
+  map('n', '<leader>v', function() switcher.cycle(1) end, 'next variant')
+  map('n', '<leader>V', function() switcher.cycle(-1) end, 'previous variant')
+  map('n', '<leader>t', M.topic_picker, 'topics picker')
+  map('n', '<leader>s', M.session_picker, 'sessions picker')
+  map('n', '<leader>c', function() M.focus_composer() end, 'composer')
+  map('n', '<leader>a', M.jump_ask, 'the open ask')
+  map('n', '<leader>x', function() M.sim() end, 'simulate the next event')
+  map('n', '<leader>b', function()
+    local v = switcher.mod()
+    if v.back then
+      v.back()
+    end
+  end, 'back to the thread')
   map('n', '<leader>?', M.help, 'help')
-  for _, mode in ipairs({ 'n', 't', 'i' }) do
-    map(mode, '<C-\\>c', M.focus_composer, 'composer')
-    map(mode, '<C-\\>j', M.focus_session, 'focused session')
-    map(mode, '<C-\\>n', function() sessions.cycle(1, true) end, 'next session')
-    map(mode, '<C-\\>p', function() sessions.cycle(-1, true) end, 'previous session')
-    map(mode, '<C-\\>a', ask.toggle, 'ask dialog')
-    map(mode, '<C-\\>T', function() M.tile(not sessions.tiled) end, 'tile sessions')
-    map(mode, '<C-\\>s', function() enter_new(sessions.shell()) end, 'new $SHELL session')
-    map(mode, '<C-\\>l', M.focus_topics, 'topics')
+  for _, mode in ipairs({ 'n', 'i', 't' }) do
+    map(mode, '<C-\\>v', function() switcher.cycle(1) end, 'next variant')
+    map(mode, '<C-\\>c', function() M.focus_composer() end, 'composer')
   end
 end
 
 function M.commands()
   local cmd = api.nvim_create_user_command
-  cmd('ClandTerms', function(o)
-    for _ = 1, tonumber(o.args) or 1 do
-      sessions.shell()
-    end
-  end, { nargs = '?' })
-  cmd('ClandRun', function(o) enter_new(sessions.new({ name = o.args:sub(1, 20), cmd = o.args })) end, { nargs = '+' })
-  cmd('ClandAttach', function(o)
-    enter_new(sessions.attach(o.fargs[1], o.fargs[2]))
-  end, { nargs = '+' })
-  cmd('ClandTmux', function(o)
-    -- :ClandTmux <name> <shell command...>  (tmux runs the command through its shell)
-    enter_new(sessions.tmux_owned(o.fargs[1], { table.concat(vim.list_slice(o.fargs, 2), ' ') }))
-  end, { nargs = '+' })
-  cmd('ClandTile', function() M.tile(not sessions.tiled) end, {})
-  cmd('ClandFocus', function(o) sessions.show(tonumber(o.args), true) end, { nargs = 1 })
-  cmd('ClandShiftEnter', function(o) sessions.set_shift_enter(o.args) end, { nargs = 1 })
-  cmd('ClandRebuild', function() M.build_layout() end, {})
+  cmd('ClandVariant', function(o)
+    switcher.switch(o.args)
+  end, { nargs = 1, complete = function()
+    return switcher.order
+  end })
+  cmd('ClandState', function(o)
+    M.show_state(o.args)
+  end, { nargs = '?', complete = function()
+    return { 'json' }
+  end })
+  cmd('ClandSim', function(o)
+    M.sim(o.args)
+  end, { nargs = '?', complete = function()
+    return M.SIM_ORDER
+  end })
 end
 
 function M.autocmds()
   local group = api.nvim_create_augroup('cland_proto', { clear = true })
-  local au = function(ev, cb, opts)
-    api.nvim_create_autocmd(ev, vim.tbl_extend('force', { group = group, callback = cb }, opts or {}))
-  end
-  au('TermOpen', function()
-    vim.wo.number = false
-    vim.wo.signcolumn = 'no'
-  end)
-  au('TermClose', function(a)
-    local s = sessions.by_buf(a.buf)
-    if s then
-      s.exit_code = vim.v.event.status
-    end
-    M.refresh()
-  end)
-  au('BufWipeout', function(a)
-    if sessions.by_buf(a.buf) then
-      sessions.forget(a.buf)
-      vim.schedule(function()
-        local s = sessions.current()
-        local w = M.term_wins[1]
-        if w and api.nvim_win_is_valid(w) then
-          api.nvim_win_set_buf(w, s and s.buf or placeholder())
-        end
-        M.refresh()
-      end)
-    end
-  end)
-  au('VimResized', function()
-    if sessions.tiled then
-      M.equalize_sessions()
-    end
-  end)
-  au('SessionLoadPost', function()
-    vim.schedule(M.rebuild_after_session)
-  end)
-  au({ 'ModeChanged', 'WinEnter', 'BufWinEnter', 'TermEnter', 'TermLeave' }, M.refresh)
+  api.nvim_create_autocmd({ 'ModeChanged', 'WinEnter', 'BufWinEnter', 'TermEnter', 'TermLeave' }, {
+    group = group, callback = function()
+      if switcher.current then
+        switcher.place_pill()
+      end
+      pcall(vim.cmd, 'redrawstatus!')
+    end,
+  })
+  api.nvim_create_autocmd('VimResized', {
+    group = group, callback = function()
+      if not switcher.current then
+        return
+      end
+      switcher.pill()
+      M.render()
+      local v = switcher.mod()
+      if v.resized then
+        pcall(v.resized)
+      end
+    end,
+  })
+  api.nvim_create_autocmd('TermOpen', {
+    group = group, callback = function()
+      vim.wo.number = false
+      vim.wo.signcolumn = 'no'
+    end,
+  })
+  api.nvim_create_autocmd('TermClose', {
+    group = group, callback = function()
+      pcall(vim.cmd, 'redrawstatus!')
+    end,
+  })
 end
 
 function M.setup(here)
   M.here = here
-  vim.o.statusline = '%!v:lua.ClandProtoStatus()'
-  vim.o.winbar = '%!v:lua.ClandProtoWinbar()'
+  state.reset()
+  state.on_change(M.render)
+  vim.o.statusline = '%!v:lua.ClandStatus()'
+  vim.o.winbar = '%!v:lua.ClandWinbar()'
+  vim.o.tabline = '%!v:lua.ClandTabline()'
   M.keymaps()
   M.commands()
   M.autocmds()
   local function start()
-    chat.highlights()
-    chat.create()
-    M.build_layout()
-    if vim.v.startreason ~= 'restart' then
-      sessions.shell()
-    end
-    M.focus_composer()
-    api.nvim_echo({ { 'cland-proto (PROTOTYPE): <Space>? lists the keys. startreason=' .. vim.v.startreason, 'Comment' } }, false, {})
+    M.highlights()
+    switcher.switch(switcher.resolve(vim.env.CLAND_VARIANT or '') or 'slack', true)
+    api.nvim_echo({ { 'cland chat-screen prototype (#15, PROTOTYPE): <Space>v cycles the 4 layouts · <Space>? keys · :ClandState', 'ClandDim' } }, false, {})
   end
   if vim.v.vim_did_enter == 1 then
     start()

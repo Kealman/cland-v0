@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# PROTOTYPE stand-in (ticket #15): prints a canned harness screen for one fake
+# session of the chat-screen prototype, then hands the terminal to your $SHELL
+# (without rc files, so nothing clears the printout). No harness is started.
+#   fake-harness <session> <role> <harness> <model>
+name="${1:-session}" role="${2:-}" harness="${3:-}" model="${4:-}"
+B=$'\033[1m' D=$'\033[2m' R=$'\033[0m'
+P=$'\033[38;5;141m' G=$'\033[38;5;114m' Y=$'\033[38;5;221m' C=$'\033[38;5;81m' O=$'\033[38;5;215m'
+
+case "$name" in
+coord)
+  cat <<EOF
+${O}✻${R} ${B}Claude Code${R} ${D}(fake)${R} · session ${B}coord${R} · Coordinator · fable · max
+${D}  cwd: the project root · hub: connected (spoke ok)${R}
+
+${D}>${R} [hub] from you in "OpenCode waiting heuristic" (T-15, topic t15):
+  Is a timer heuristic acceptable for v0, or should impl-1 wait for an
+  upstream event?   ${D}(delivered: it enters my next turn)${R}
+
+${G}●${R} Read(docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md)
+  ${D}⎿  Read 182 lines${R}
+${G}●${R} Bash(cland task view T-12)
+  ${D}⎿  T-12 task open · Hub: replay UI-socket frames after a hub restart
+     verdict review: not clear (review-1 [Reviewer], run r-0412)${R}
+${G}●${R} cland.ask(topic: T-12, "How should I proceed with T-12?", 3 options)
+  ${D}⎿  ask open · the topic waits for the human${R}
+${G}●${R} cland.send(review-1, "Run the ui-socket tests on the branch and report.")
+  ${D}⎿  injected${R}
+
+${O}✻ Drafting the T-12 follow-up…${R} ${D}(3m 12s · esc to interrupt)${R}
+EOF
+  ;;
+impl-1)
+  cat <<EOF
+${G}┃${R} ${B}opencode${R} ${D}(fake)${R} · session ${B}impl-1${R} · Implementer · free-model
+${G}┃${R} T-15 · branch t/T-15-opencode-waiting · worktree .cland/worktrees/T-15
+
+${D}▣ build${R}  npm test -- adapters/opencode   ${G}✓ 14 passed${R}
+${D}▣ edit${R}   hub/adapters/opencode/state.ts  ${D}+48 -3${R}
+
+Heuristic: no SSE event for 20 s while a tool call is pending means
+waiting. False positives on long builds. Posted to the T-15 topic.
+
+${G}>${R} ${D}(idle: waiting for a delivery from the hub)${R}
+EOF
+  ;;
+review-1)
+  cat <<EOF
+${C}>_${R} ${B}Codex${R} ${D}(fake)${R} · session ${B}review-1${R} · Reviewer · gpt-6.1-sol · high
+
+${D}•${R} Reviewing t/T-12-ui-socket-replay against dev (round 2)
+${D}•${R} Ran git diff dev...t/T-12-ui-socket-replay --stat
+  ${D}└ 4 files changed, 212 insertions(+), 31 deletions(-)${R}
+
+${Y}▌ Allow Codex to run this command?${R}
+${Y}▌${R}   ${B}node --test hub/test/ui-socket.test.ts${R}
+${Y}▌${R} ${B}› 1. Yes, run it${R}
+${Y}▌${R}   2. Yes, and don't ask again for this command
+${Y}▌${R}   3. No, tell Codex what to do differently
+${D}  (approvals stay in the harness TUI in v0; this is a printout)${R}
+EOF
+  ;;
+qa-1)
+  cat <<EOF
+${C}>_${R} ${B}Codex${R} ${D}(fake)${R} · session ${B}qa-1${R} · QA · gpt-6-astra · high
+
+${D}•${R} Role changed: Implementer → QA ${D}(clause delivered by the hub)${R}
+${D}•${R} Lanes: headless Neovim (nvim_input + screenstring), tmux capture-pane
+${D}•${R} Waiting for a QA request.
+
+${C}›${R} ${D}(idle)${R}
+EOF
+  ;;
+*)
+  printf '%s fake session %s (%s · %s · %s)\n' "$B" "$name" "$role" "$harness" "$model$R"
+  ;;
+esac
+
+sh_name="${SHELL##*/}"
+printf '\n%s── PROTOTYPE stand-in: the screen above is canned; below is %s (no rc files), not %s ──%s\n\n' \
+  "$D" "${sh_name:-sh}" "${harness:-a harness}" "$R"
+export PS1="${name}\$ " PROMPT="${name}%# "
+case "$sh_name" in
+zsh) exec "$SHELL" -f ;;
+bash) exec "$SHELL" --norc --noprofile ;;
+*) exec "${SHELL:-/bin/sh}" ;;
+esac

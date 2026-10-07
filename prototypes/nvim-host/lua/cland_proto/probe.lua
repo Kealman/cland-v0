@@ -1,8 +1,9 @@
--- PROTOTYPE (ticket #11): instrumentation that surfaces state.
+-- PROTOTYPE (ticket #11, reused by #15): instrumentation that surfaces state.
 --  * writes the server address and start facts to .run/ (for scripted checks)
 --  * event-loop lag probe: a 50 ms timer measures how late it fires
 --  * optional key log: CLAND_PROTO_KEYLOG=<file> logs every key Nvim decodes
---  * _G.CP: small read-only helpers the check driver calls over RPC
+--  * _G.CP: small read-only helpers a driver calls over RPC
+--    (#15: CP.state() is the fake chat state, CP.layout() the windows)
 local api, uv = vim.api, vim.uv
 local M = { lag = { last = 0, max = 0, recent = 0 } }
 
@@ -41,26 +42,7 @@ function M.start_lag_probe()
     window_max = math.max(window_max, lag)
     if t - window_start >= 2000 then
       M.lag.recent, window_max, window_start = window_max, 0, t
-      vim.schedule(function()
-        pcall(vim.cmd.redrawstatus)
-      end)
     end
-  end)
-end
-
--- How long does work queued with vim.schedule() (the way a host would render
--- hub events) wait? A 100 ms libuv timer queues a callback; we record the
--- largest gap between two runs of that callback.
-M.sched = { max_gap = 0, last_run = 0 }
-function M.start_sched_probe()
-  M.sched.last_run = now_ms()
-  M.sched_timer = uv.new_timer()
-  M.sched_timer:start(100, 100, function()
-    vim.schedule(function()
-      local t = now_ms()
-      M.sched.max_gap = math.max(M.sched.max_gap, t - M.sched.last_run)
-      M.sched.last_run = t
-    end)
   end)
 end
 
@@ -76,76 +58,34 @@ function M.start_key_log(path)
   end)
 end
 
--- Helpers for the check driver (checks/driver.sh), all return JSON strings.
+-- Helpers for a driver over RPC, all return JSON strings.
 local CP = {}
 
 function CP.state()
-  local sessions = require('cland_proto.sessions')
-  local out = { mode = api.nvim_get_mode().mode, focused = sessions.focused, tiled = sessions.tiled,
-    lag = M.lag, sessions = {}, current_win_buf_role = vim.b.cland_role or vim.bo.buftype }
-  for _, s in ipairs(sessions.list) do
-    local win = vim.fn.win_findbuf(s.buf)[1]
-    out.sessions[#out.sessions + 1] = {
-      id = s.id, name = s.name, owner = s.owner, buf = s.buf, job = s.job, pid = s.pid,
-      exit_code = s.exit_code, win = win,
-      win_size = win and { api.nvim_win_get_height(win), api.nvim_win_get_width(win) } or vim.NIL,
-      lines = api.nvim_buf_line_count(s.buf),
+  return vim.json.encode(require('cland_proto.state').plain())
+end
+
+-- Windows of the current tab page: role, size, position, buffer name.
+function CP.layout()
+  local out = { mode = api.nvim_get_mode().mode, tabs = #api.nvim_list_tabpages(), current = api.nvim_get_current_win(), wins = {} }
+  for _, w in ipairs(api.nvim_tabpage_list_wins(0)) do
+    local b = api.nvim_win_get_buf(w)
+    local pos = api.nvim_win_get_position(w)
+    out.wins[#out.wins + 1] = {
+      win = w, role = vim.b[b].cland_role or vim.bo[b].buftype, topic = vim.b[b].cland_topic,
+      session = vim.b[b].cland_session, float = api.nvim_win_get_config(w).relative ~= '',
+      row = pos[1], col = pos[2], height = api.nvim_win_get_height(w), width = api.nvim_win_get_width(w),
     }
   end
   return vim.json.encode(out)
 end
 
--- Non-empty lines of session `id` (last `n` of them).
-function CP.text(id, n)
-  local s = require('cland_proto.sessions').list[id]
-  local lines = api.nvim_buf_get_lines(s.buf, 0, -1, false)
-  local keep = {}
-  for _, l in ipairs(lines) do
-    if l:match('%S') then
-      keep[#keep + 1] = l
-    end
-  end
-  return vim.json.encode(vim.list_slice(keep, math.max(1, #keep - (n or 20) + 1), #keep))
-end
-
--- The rows of session `id` that its window currently shows.
-function CP.visible(id)
-  local s = require('cland_proto.sessions').list[id]
-  local win = vim.fn.win_findbuf(s.buf)[1]
-  if not win then
-    return vim.json.encode({ error = 'not visible' })
-  end
-  local top = vim.fn.line('w0', win)
-  local bot = vim.fn.line('w$', win)
-  local pos = api.nvim_win_get_position(win)
-  return vim.json.encode({
-    top = top, bottom = bot, row = pos[1], col = pos[2],
-    height = api.nvim_win_get_height(win), width = api.nvim_win_get_width(win),
-    lines = api.nvim_buf_get_lines(s.buf, top - 1, bot, false),
-  })
-end
-
-function CP.lag_reset()
-  M.lag.max = 0
-  M.sched.max_gap = 0
-  return vim.json.encode({ lag = M.lag, sched = M.sched })
+function CP.messages()
+  return vim.json.encode(vim.split(api.nvim_exec2('messages', { output = true }).output, '\n'))
 end
 
 function CP.lag()
-  return vim.json.encode({ lag = M.lag, sched = M.sched })
-end
-
-function CP.restore_log()
-  return vim.json.encode(M.restore_log or vim.NIL)
-end
-
-function CP.composer()
-  return vim.json.encode(api.nvim_buf_get_lines(require('cland_proto.chat').composer_buf, 0, -1, false))
-end
-
-function CP.thread_tail(n)
-  local lines = api.nvim_buf_get_lines(require('cland_proto.chat').thread_buf, 0, -1, false)
-  return vim.json.encode(vim.list_slice(lines, math.max(1, #lines - (n or 8) + 1), #lines))
+  return vim.json.encode({ lag = M.lag })
 end
 
 M.CP = CP
@@ -153,7 +93,6 @@ M.CP = CP
 function M.setup(here)
   M.write_start_facts(here .. '/.run')
   M.start_lag_probe()
-  M.start_sched_probe()
   if vim.env.CLAND_PROTO_KEYLOG and vim.env.CLAND_PROTO_KEYLOG ~= '' then
     M.start_key_log(vim.env.CLAND_PROTO_KEYLOG)
   end
