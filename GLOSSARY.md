@@ -1,6 +1,6 @@
 # cland
 
-A terminal IDE, built on Neovim as the engine, for running and coordinating AI coding-agent harnesses. It is a single-user tool, one instance per project: one person drives many agent sessions from one place.
+A terminal IDE for running and coordinating AI coding-agent harnesses. It is a single-user tool, one instance per project: one person drives many agent sessions from one place.
 
 ## Language
 
