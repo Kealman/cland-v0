@@ -90,6 +90,18 @@ _Avoid_: lock, checkout, assignment
 A structured comment on an item that records the result of a review or a QA run: clear or not clear, by which session and role, from which run.
 _Avoid_: review result, report, approval
 
+**Territory**:
+The local bare git repository that is the project's `origin`: where agents branch, push, get reviewed and merge, out of sight of GitHub.
+_Avoid_: forge, local remote, agents' repo, mirror
+
+**Task branch**:
+The branch `t/<id>-<slug>` where one item's work happens, from `dev`, in its own worktree.
+_Avoid_: feature branch, PR branch, topic branch
+
+**Release**:
+A fast-forward of `main` to `dev`, tagged and pushed to GitHub as one deployable version.
+_Avoid_: deploy, publish, sync, push
+
 **Artifact**:
 A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note.
 _Avoid_: scratch file, attachment, tmp file, output
