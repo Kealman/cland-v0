@@ -1,0 +1,44 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/6  zsh · nvim-owned · running · pid 78798 · 70x42
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │term-1 start size=6 90
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │term-1 SIGWINCH #1 size=4 50
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │term-1 SIGWINCH #2 size=6 90
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │term-1 SIGWINCH #3 size=47 90
+ ◐  QA round 3: composer paste wit│client                                                                    │term-1 SIGWINCH #4 size=41 70
+    busy  2 msgs                  │                                                                          │
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │
+    waiting-for-approval  1 msgs  │                                                                          │
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │
+~                                 │                                                                          │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 ├──────────────────────────────────────────────────────────────────────────┤
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│
+~                                 │you>                                                                      │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+<ssion 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh 2:zsh 3:zsh 4:zsh 5:zsh 6:zshS-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

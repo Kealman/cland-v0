@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 82714 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │static row 01 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │static row 02 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │static row 03 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │static row 04 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+ ◐  QA round 3: composer paste wit│client                                                                    │static row 05 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+    busy  2 msgs                  │                                                                          │static row 06 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │static row 07 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │static row 08 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │static row 09 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+    waiting-for-approval  1 msgs  │                                                                          │static row 10 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │static row 11 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │static row 12 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │                                                                          │static row 13╭─────────────────────── Ask · needs you ────────────────────────╮fghijabcde
+~                                 │~                                                                         │static row 14│ zsh (session 1) asks:                                          │fghijabcde
+~                                 │~                                                                         │static row 15│                                                                │fghijabcde
+~                                 │~                                                                         │static row 16│   Run  git worktree add ../wt-impl-3 impl/topic-3 ?            │fghijabcde
+~                                 │~                                                                         │static row 17│                                                                │fghijabcde
+~                                 │~                                                                         │static row 18│   1  Approve once                                              │fghijabcde
+~                                 │~                                                                         │static row 19│   2  Approve for this session                                  │fghijabcde
+~                                 │~                                                                         │static row 20│   3  Deny and tell the agent why                               │fghijabcde
+~                                 │~                                                                         │static row 21│                                                                │fghijabcde
+~                                 │~                                                                         │static row 22│   q  close, answer later                                       │fghijabcde
+~                                 │~                                                                         │static row 23╰──────────────────── 1/2/3 answer · q close ────────────────────╯fghijabcde
+~                                 │~                                                                         │static row 24 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 25 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 26 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 27 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 28 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 29 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 30 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 31 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 32 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 33 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 34 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 35 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 36 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 37 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 38 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 39 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 40 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 ├──────────────────────────────────────────────────────────────────────────┤static row 41 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│static row 42 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │you>                                                                      │static row 43 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 44 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │static row 45 abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde
+~                                 │~                                                                         │spinner - tick 54
+~                                 │~                                                                         │
+ cland-proto   ask dialog  NORMAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                                             S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+

@@ -1,0 +1,7 @@
+A 5 rows               window height 5 -> -   buffer lines: { "start", "after1", "after2", "after3", "" }
+B 1 row                window height 1 -> -   buffer lines: { "" }
+C 5 rows, then 1       window height 5 -> 1   buffer lines: { "start", "" }
+D 5 rows, then 2       window height 5 -> 2   buffer lines: { "start", "after1", "after2", "after3", "" }
+E 5 rows, then 3       window height 5 -> 3   buffer lines: { "start", "after1", "after2", "after3", "" }
+F 1 row, seq 1 8       window height 1 -> -   buffer lines: { "" }
+G 2 rows, seq 1 8      window height 2 -> -   buffer lines: { "1", "2", "3", "4", "5", "6", "7", "8", "" }

@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+# PROTOTYPE stand-in (ticket #11): shows exactly which bytes a terminal program
+# receives. Puts the tty in raw mode and prints one line per read(): chunk
+# number, byte count, hex, and caret notation (ESC = ^[, CR = ^M, TAB = ^I).
+#
+#   keylog [-k] [-p] [label]
+#     -k  push kitty keyboard "disambiguate" (CSI > 1 u) and query it (CSI ? u);
+#         the reply shows up as the first chunk. Popped again on exit.
+#     -p  enable bracketed paste (CSI ? 2004 h), as the harnesses do.
+#   Quit: Ctrl+D (a chunk that is exactly 0x04).
+#
+# od -c / cat -v are not used directly: in a cooked tty the line discipline
+# turns CR into LF and Ctrl+C into SIGINT, and both tools buffer their output.
+use strict;
+use warnings;
+
+my ($kitty, $paste, $label) = (0, 0, 'keylog');
+for (@ARGV) {
+  if ($_ eq '-k') { $kitty = 1 } elsif ($_ eq '-p') { $paste = 1 } else { $label = $_ }
+}
+$| = 1;
+chomp(my $saved = `stty -g`);
+system('stty raw -echo');
+print "\e[>1u\e[?u" if $kitty;
+print "\e[?2004h" if $paste;
+printf "%s ready: kitty-disambiguate=%s bracketed-paste=%s. Ctrl+D quits.\r\n",
+  $label, $kitty ? 'requested' : 'off', $paste ? 'on' : 'off';
+
+my $n = 0;
+while (1) {
+  my $r = sysread(STDIN, my $buf, 65536);
+  last unless $r;
+  $n++;
+  my $hex = join ' ', map { sprintf '%02x', ord } split //, $buf;
+  (my $vis = $buf) =~ s/([\x00-\x1f\x7f])/$1 eq "\x7f" ? '^?' : '^' . chr(ord($1) + 64)/ge;
+  printf "%s #%d [%d] %s  |%s|\r\n", $label, $n, length $buf, $hex, $vis;
+  last if $buf eq "\x04";
+}
+print "\e[<u" if $kitty;
+print "\e[?2004l" if $paste;
+system("stty $saved");
+print "$label done\n";

@@ -1,0 +1,31 @@
+### --clean -u NONE, no NVIM_APPNAME:
+/etc/xdg/nvim
+/usr/local/share/nvim/site
+/usr/share/nvim/site
+/Applications/Ghostty.app/Contents/Resources/ghostty/../nvim/site
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/share/nvim/runtime
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/share/nvim/runtime/pack/dist/opt/netrw
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/share/nvim/runtime/pack/dist/opt/matchit
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/lib/nvim
+/Applications/Ghostty.app/Contents/Resources/ghostty/../nvim/site/after
+/usr/share/nvim/site/after
+/usr/local/share/nvim/site/after
+/etc/xdg/nvim/after11
+### NVIM_APPNAME=cland-proto --clean -u NONE:
+/etc/xdg/cland-proto
+/usr/local/share/cland-proto/site
+/usr/share/cland-proto/site
+/Applications/Ghostty.app/Contents/Resources/ghostty/../cland-proto/site
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/share/nvim/runtime
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/share/nvim/runtime/pack/dist/opt/netrw
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/share/nvim/runtime/pack/dist/opt/matchit
+/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/lib/nvim
+/Applications/Ghostty.app/Contents/Resources/ghostty/../cland-proto/site/after
+/usr/share/cland-proto/site/after
+/usr/local/share/cland-proto/site/after
+/etc/xdg/cland-proto/after11
+### what the Ghostty entry provides:
+/Applications/Ghostty.app/Contents/Resources/nvim/site/ftplugin/ghostty.vim
+/Applications/Ghostty.app/Contents/Resources/nvim/site/ftdetect/ghostty.vim
+/Applications/Ghostty.app/Contents/Resources/nvim/site/syntax/ghostty.vim
+/Applications/Ghostty.app/Contents/Resources/nvim/site/compiler/ghostty.vim

@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 81913 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │paste-filter-BS-ESC-DEL ready: kitty-disambiguate=off bracketed-paste=on. Ctrl+D quits.
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │paste-filter-BS-ESC-DEL #1 [1] 69  |i|
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │paste-filter-BS-ESC-DEL #2 [2] 6e 6a  |nj|
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │paste-filter-BS-ESC-DEL #3 [1] 65  |e|
+ ◐  QA round 3: composer paste wit│client                                                                    │paste-filter-BS-ESC-DEL #4 [1] 63  |c|
+    busy  2 msgs                  │                                                                          │paste-filter-BS-ESC-DEL #5 [1] 74  |t|
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │paste-filter-BS-ESC-DEL #6 [1] 65  |e|
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │paste-filter-BS-ESC-DEL #7 [1] 64  |d|
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │paste-filter-BS-ESC-DEL #8 [6] 1b 5b 32 30 30 7e  |^[[200~|
+    waiting-for-approval  1 msgs  │                                                                          │paste-filter-BS-ESC-DEL #9 [18] 74 61 62 09 68 65 72 65 0a 65 73 63 1b 5b 32 30 31 7e  |ta
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │b^Ihere^Jesc^[[201~|
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │
+~                                 │                                                                          │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 ├──────────────────────────────────────────────────────────────────────────┤
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│
+~                                 │you>                                                                      │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                  S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

@@ -1,0 +1,25 @@
+#!/usr/bin/perl
+# PROTOTYPE stand-in (ticket #11): behaves like an inline harness TUI. Draws a
+# static frame once, then rewrites only one status row ("spinner") for N
+# seconds, so rows a float covered are never repainted by the program itself.
+#   tui-sim [seconds]
+use strict;
+use warnings;
+$| = 1;
+my $secs = shift // 15;
+my ($rows, $cols) = split ' ', `stty size`;
+print "\e[2J\e[H";
+for my $r (1 .. $rows - 2) {
+  my $text = sprintf 'static row %02d ', $r;
+  $text .= ('abcdefghij' x 40);
+  printf "\e[%d;1H%s", $r, substr($text, 0, $cols - 1);
+}
+my $end = time + $secs;
+my $i = 0;
+my @spin = ('|', '/', '-', '\\');
+while (time < $end) {
+  $i++;
+  printf "\e[%d;1H\e[2Kspinner %s tick %d", $rows - 1, $spin[$i % 4], $i;
+  select(undef, undef, undef, 0.05);
+}
+printf "\e[%d;1H\e[2Ktui-sim done after %d ticks\r\n", $rows - 1, $i;

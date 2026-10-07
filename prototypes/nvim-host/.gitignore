@@ -1,0 +1,3 @@
+# PROTOTYPE: downloaded Neovim build and per-run state, never committed
+.nvim/
+.run/

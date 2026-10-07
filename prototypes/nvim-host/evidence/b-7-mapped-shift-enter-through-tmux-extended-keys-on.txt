@@ -1,0 +1,47 @@
+mapped-ext-on ready: kitty-disambiguate=requested bracketed-paste=off. Ctrl+D quits.
+mapped-ext-on #1 [1] 42  |B|
+mapped-ext-on #2 [1] 0d  |^M|
+mapped-ext-on #3 [1] 41  |A|
+mapped-ext-on #4 [1] 0d  |^M|
+mapped-ext-on #5 [1] 4a  |J|
+mapped-ext-on #6 [2] 1b 0d  |^[^M|
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

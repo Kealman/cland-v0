@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 80840 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │kitty ready: kitty-disambiguate=requested bracketed-paste=off. Ctrl+D quits.
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │kitty #1 [5] 1b 5b 3f 31 75  |^[[?1u|
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │kitty #2 [1] 41  |A|
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │kitty #3 [1] 0d  |^M|
+ ◐  QA round 3: composer paste wit│client                                                                    │kitty #4 [1] 42  |B|
+    busy  2 msgs                  │                                                                          │kitty #5 [7] 1b 5b 31 33 3b 32 75  |^[[13;2u|
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │kitty #6 [1] 43  |C|
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │kitty #7 [7] 1b 5b 31 33 3b 32 75  |^[[13;2u|
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │kitty #8 [1] 44  |D|
+    waiting-for-approval  1 msgs  │                                                                          │kitty #9 [1] 03  |^C|
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │kitty #10 [1] 45  |E|
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │kitty #11 [7] 1b 5b 32 37 3b 31 75  |^[[27;1u|
+~                                 │                                                                          │kitty #12 [1] 46  |F|
+~                                 │~                                                                         │kitty #13 [3] 1b 5b 41  |^[[A|
+~                                 │~                                                                         │kitty #14 [1] 47  |G|
+~                                 │~                                                                         │kitty #15 [3] 1b 5b 42  |^[[B|
+~                                 │~                                                                         │kitty #16 [1] 48  |H|
+~                                 │~                                                                         │kitty #17 [3] 1b 5b 43  |^[[C|
+~                                 │~                                                                         │kitty #18 [1] 49  |I|
+~                                 │~                                                                         │kitty #19 [3] 1b 5b 44  |^[[D|
+~                                 │~                                                                         │kitty #20 [1] 4a  |J|
+~                                 │~                                                                         │kitty #21 [7] 1b 5b 31 33 3b 33 75  |^[[13;3u|
+~                                 │~                                                                         │kitty #22 [1] 4b  |K|
+~                                 │~                                                                         │kitty #23 [7] 1b 5b 31 33 3b 33 75  |^[[13;3u|
+~                                 │~                                                                         │kitty #24 [1] 4c  |L|
+~                                 │~                                                                         │kitty #25 [1] 0a  |^J|
+~                                 │~                                                                         │kitty #26 [1] 4d  |M|
+~                                 │~                                                                         │kitty #27 [1] 09  |^I|
+~                                 │~                                                                         │kitty #28 [1] 4e  |N|
+~                                 │~                                                                         │kitty #29 [6] 1b 5b 39 3b 32 75  |^[[9;2u|
+~                                 │~                                                                         │kitty #30 [1] 4f  |O|
+~                                 │~                                                                         │kitty #31 [7] 1b 5b 31 33 3b 35 75  |^[[13;5u|
+~                                 │~                                                                         │kitty #32 [1] 50  |P|
+~                                 │~                                                                         │kitty #33 [1] 51  |Q|
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 ├──────────────────────────────────────────────────────────────────────────┤
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│
+~                                 │you>                                                                      │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                  S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

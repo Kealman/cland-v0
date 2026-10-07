@@ -1,0 +1,8 @@
+old session pids (Neovim children before :restart):
+  84767 gone
+  84977 gone
+  84988 gone
+tmux panes after restart:
+  outside-cat pane_pid=84375 cat
+tmux clients after restart:
+  /dev/ttys006 session=outside-cat pid=85006

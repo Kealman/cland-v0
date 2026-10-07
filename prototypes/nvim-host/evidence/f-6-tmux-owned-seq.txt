@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 3/3  f-seq · tmux-owned · running · pid 87708 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │tmux-line-455
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │tmux-line-456
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │tmux-line-457
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │tmux-line-458
+ ◐  QA round 3: composer paste wit│client                                                                    │tmux-line-459
+    busy  2 msgs                  │                                                                          │tmux-line-460
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │tmux-line-461
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │tmux-line-462
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │tmux-line-463
+    waiting-for-approval  1 msgs  │                                                                          │tmux-line-464
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │tmux-line-465
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │tmux-line-466
+~                                 │                                                                          │tmux-line-467
+~                                 │~                                                                         │tmux-line-468
+~                                 │~                                                                         │tmux-line-469
+~                                 │~                                                                         │tmux-line-470
+~                                 │~                                                                         │tmux-line-471
+~                                 │~                                                                         │tmux-line-472
+~                                 │~                                                                         │tmux-line-473
+~                                 │~                                                                         │tmux-line-474
+~                                 │~                                                                         │tmux-line-475
+~                                 │~                                                                         │tmux-line-476
+~                                 │~                                                                         │tmux-line-477
+~                                 │~                                                                         │tmux-line-478
+~                                 │~                                                                         │tmux-line-479
+~                                 │~                                                                         │tmux-line-480
+~                                 │~                                                                         │tmux-line-481
+~                                 │~                                                                         │tmux-line-482
+~                                 │~                                                                         │tmux-line-483
+~                                 │~                                                                         │tmux-line-484
+~                                 │~                                                                         │tmux-line-485
+~                                 │~                                                                         │tmux-line-486
+~                                 │~                                                                         │tmux-line-487
+~                                 │~                                                                         │tmux-line-488
+~                                 │~                                                                         │tmux-line-489
+~                                 │~                                                                         │tmux-line-490
+~                                 │~                                                                         │tmux-line-491
+~                                 │~                                                                         │tmux-line-492
+~                                 │~                                                                         │tmux-line-493
+~                                 │~                                                                         │tmux-line-494
+~                                 ├──────────────────────────────────────────────────────────────────────────┤tmux-line-495
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│tmux-line-496
+~                                 │you>                                                                      │tmux-line-497
+~                                 │~                                                                         │tmux-line-498
+~                                 │~                                                                         │tmux-line-499
+~                                 │~                                                                         │tmux-line-500
+~                                 │~                                                                         │
+ cland-proto   session 3 f-seq (tmux-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ 1:zsh 2:zsh *3:f-seq[t]               S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

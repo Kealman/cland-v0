@@ -1,0 +1,5 @@
+cd '/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da' && env  prototypes/nvim-host/run.sh
+evgeniyivanov@Evgeniys-MacBook-Air agent-a422a02bb845a01da % cd '/Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da' && env  prototypes/nvim-host/run.sh
++ env NVIM_APPNAME=cland-proto /Users/evgeniyivanov/Projects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/.nvim/nvim-macos-arm64/bin/nvim --clean -u /Users/evgeniyivanov/Pro
+jects/cland/v0/.claude/worktrees/agent-a422a02bb845a01da/prototypes/nvim-host/init.lua
+evgeniyivanov@Evgeniys-MacBook-Air agent-a422a02bb845a01da %

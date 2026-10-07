@@ -1,0 +1,6 @@
+:terminal, while sourcing the -u file                buffer-local scrollback=10000 (global -1)
+nvim_create_buf + jobstart(term), while sourcing -u  buffer-local scrollback=10000 (global -1)
+nvim_create_buf + jobstart(term), in VimEnter        buffer-local scrollback=1000000 (global -1)
+:terminal, in VimEnter                               buffer-local scrollback=1000000 (global -1)
+nvim_create_buf + jobstart(term), after startup      buffer-local scrollback=10000 (global -1)
+:terminal, after startup                             buffer-local scrollback=10000 (global -1)

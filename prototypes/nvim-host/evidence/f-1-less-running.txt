@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 87141 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │less-line-1
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │less-line-2
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │less-line-3
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │less-line-4
+ ◐  QA round 3: composer paste wit│client                                                                    │less-line-5
+    busy  2 msgs                  │                                                                          │less-line-6
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │less-line-7
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │less-line-8
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │less-line-9
+    waiting-for-approval  1 msgs  │                                                                          │less-line-10
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │less-line-11
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │less-line-12
+~                                 │                                                                          │less-line-13
+~                                 │~                                                                         │less-line-14
+~                                 │~                                                                         │less-line-15
+~                                 │~                                                                         │less-line-16
+~                                 │~                                                                         │less-line-17
+~                                 │~                                                                         │less-line-18
+~                                 │~                                                                         │less-line-19
+~                                 │~                                                                         │less-line-20
+~                                 │~                                                                         │less-line-21
+~                                 │~                                                                         │less-line-22
+~                                 │~                                                                         │less-line-23
+~                                 │~                                                                         │less-line-24
+~                                 │~                                                                         │less-line-25
+~                                 │~                                                                         │less-line-26
+~                                 │~                                                                         │less-line-27
+~                                 │~                                                                         │less-line-28
+~                                 │~                                                                         │less-line-29
+~                                 │~                                                                         │less-line-30
+~                                 │~                                                                         │less-line-31
+~                                 │~                                                                         │less-line-32
+~                                 │~                                                                         │less-line-33
+~                                 │~                                                                         │less-line-34
+~                                 │~                                                                         │less-line-35
+~                                 │~                                                                         │less-line-36
+~                                 │~                                                                         │less-line-37
+~                                 │~                                                                         │less-line-38
+~                                 │~                                                                         │less-line-39
+~                                 │~                                                                         │less-line-40
+~                                 ├──────────────────────────────────────────────────────────────────────────┤less-line-41
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│less-line-42
+~                                 │you>                                                                      │less-line-43
+~                                 │~                                                                         │less-line-44
+~                                 │~                                                                         │less-line-45
+~                                 │~                                                                         │less-line-46
+~                                 │~                                                                         │:
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                  S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

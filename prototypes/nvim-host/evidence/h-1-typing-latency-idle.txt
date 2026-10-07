@@ -1,0 +1,5 @@
+composer idle key 1: 22 ms found=1
+composer idle key 2: 29 ms found=1
+composer idle key 3: 28 ms found=1
+composer idle key 4: 26 ms found=1
+composer idle key 5: 32 ms found=1

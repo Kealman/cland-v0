@@ -1,0 +1,47 @@
+tmuxed ready: kitty-disambiguate=requested bracketed-paste=off. Ctrl+D quits.
+tmuxed #1 [1] 41  |A|
+tmuxed #2 [1] 0d  |^M|
+tmuxed #3 [1] 42  |B|
+tmuxed #4 [1] 0d  |^M|
+tmuxed #5 [1] 43  |C|
+tmuxed #6 [1] 0d  |^M|
+tmuxed #7 [1] 44  |D|
+tmuxed #8 [1] 03  |^C|
+tmuxed #9 [1] 45  |E|
+tmuxed #10 [1] 1b  |^[|
+tmuxed #11 [1] 46  |F|
+tmuxed #12 [3] 1b 5b 41  |^[[A|
+tmuxed #13 [1] 47  |G|
+tmuxed #14 [3] 1b 5b 42  |^[[B|
+tmuxed #15 [1] 48  |H|
+tmuxed #16 [3] 1b 5b 43  |^[[C|
+tmuxed #17 [1] 49  |I|
+tmuxed #18 [3] 1b 5b 44  |^[[D|
+tmuxed #19 [1] 4a  |J|
+tmuxed #20 [2] 1b 0d  |^[^M|
+tmuxed #21 [1] 4b  |K|
+tmuxed #22 [2] 1b 0d  |^[^M|
+tmuxed #23 [1] 4c  |L|
+tmuxed #24 [1] 0a  |^J|
+tmuxed #25 [1] 4d  |M|
+tmuxed #26 [1] 09  |^I|
+tmuxed #27 [1] 4e  |N|
+tmuxed #28 [6] 1b 5b 39 3b 32 75  |^[[9;2u|
+tmuxed #29 [1] 4f  |O|
+tmuxed #30 [1] 0d  |^M|
+tmuxed #31 [1] 50  |P|
+tmuxed #32 [1] 51  |Q|
+
+
+
+
+
+
+
+
+
+
+
+
+
+

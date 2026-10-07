@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/2  zsh · nvim-owned · running · pid 88810 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │999958
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │999959
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │999960
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │999961
+ ◐  QA round 3: composer paste wit│client                                                                    │999962
+    busy  2 msgs                  │                                                                          │999963
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │999964
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │999965
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │999966
+    waiting-for-approval  1 msgs  │                                                                          │999967
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │999968
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │999969
+~                                 │                                                                          │999970
+~                                 │~                                                                         │999971
+~                                 │~                                                                         │999972
+~                                 │~                                                                         │999973
+~                                 │~                                                                         │999974
+~                                 │~                                                                         │999975
+~                                 │~                                                                         │999976
+~                                 │~                                                                         │999977
+~                                 │~                                                                         │999978
+~                                 │~                                                                         │999979
+~                                 │~                                                                         │999980
+~                                 │~                                                                         │999981
+~                                 │~                                                                         │999982
+~                                 │~                                                                         │999983
+~                                 │~                                                                         │999984
+~                                 │~                                                                         │999985
+~                                 │~                                                                         │999986
+~                                 │~                                                                         │999987
+~                                 │~                                                                         │999988
+~                                 │~                                                                         │999989
+~                                 │~                                                                         │999990
+~                                 │~                                                                         │999991
+~                                 │~                                                                         │999992
+~                                 │~                                                                         │999993
+~                                 │~                                                                         │999994
+~                                 │~                                                                         │999995
+~                                 │~                                                                         │999996
+~                                 │~                                                                         │999997
+~                                 ├──────────────────────────────────────────────────────────────────────────┤999998
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│999999
+~                                 │you>                                                                      │1e+06
+~                                 │~                                                                         │1e+06
+~                                 │~                                                                         │1e+06
+~                                 │~                                                                         │1e+06
+~                                 │~                                                                         │1e+06
+ cland-proto   composer  INSERT │ topic: Hub transport: WebSocket or  │ *1:zsh 2:zsh                                                     S-Enter:off │ loop lag 103ms (max 236ms) │ nvim 0.12.5+v0.12.5
+-- INSERT --

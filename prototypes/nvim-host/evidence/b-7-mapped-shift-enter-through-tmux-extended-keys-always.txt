@@ -1,0 +1,47 @@
+mapped-ext-always ready: kitty-disambiguate=requested bracketed-paste=off. Ctrl+D quits.
+mapped-ext-always #1 [1] 42  |B|
+mapped-ext-always #2 [7] 1b 5b 31 33 3b 32 75  |^[[13;2u|
+mapped-ext-always #3 [1] 41  |A|
+mapped-ext-always #4 [1] 0d  |^M|
+mapped-ext-always #5 [1] 4a  |J|
+mapped-ext-always #6 [2] 1b 0d  |^[^M|
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,12 @@
+baseline, Normal mode, nothing pending: rpc '1+1' -> '2' after 32 ms
+count '2' typed in Normal mode, Esc after 3 s: rpc '1+1' -> '2' after 3093 ms
+   scheduled-callback max gap: {"sched":{"max_gap":3083.370166003704,"last_run":197870714.806583},"lag":{"recent":2.583833009004593,"last":2.515874981880188,"max":2.583833009004593}}
+operator 'd' pending in Normal mode, Esc after 3 s: rpc '1+1' -> '2' after 17 ms
+   scheduled-callback max gap: {"sched":{"max_gap":102.8004579842091,"last_run":197873832.75825},"lag":{"recent":2.515874981880188,"last":0.730333000421524,"max":2.742833018302917}}
+':ec' typed on the cmdline, Esc after 3 s: rpc '1+1' -> '2' after 17 ms
+   scheduled-callback max gap: {"sched":{"max_gap":102.7505410015583,"last_run":197876892.328666},"lag":{"recent":2.15837499499321,"last":2.0069580078125,"max":2.674458980560303}}
+Insert mode in the composer with text typed: rpc '1+1' -> '2' after 19 ms
+Terminal mode, <C-\> prefix typed, next key after 3 s: rpc '1+1' -> '2' after 815 ms
+   scheduled-callback max gap: {"sched":{"max_gap":859.5231249928474,"last_run":197881061.256833},"lag":{"recent":2.314916014671326,"last":0.4610000252723694,"max":2.50416699051857}}
+'Press ENTER' prompt after :!echo, Enter after 3 s: rpc '1+1' -> '2' after 3032 ms
+   scheduled-callback max gap: {"sched":{"max_gap":3655.206167012453,"last_run":197884722.234333},"lag":{"recent":2.080792009830475,"last":1.392083019018173,"max":2.09170800447464}}

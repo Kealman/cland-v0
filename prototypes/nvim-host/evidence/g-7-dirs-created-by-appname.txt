@@ -1,0 +1,8 @@
+ls: /Users/evgeniyivanov/.cache/cland-proto: No such file or directory
+ls: /Users/evgeniyivanov/.config/cland-proto: No such file or directory
+ls: /Users/evgeniyivanov/.local/share/cland-proto: No such file or directory
+/Users/evgeniyivanov/.local/state/cland-proto:
+total 0
+drwx------@  3 evgeniyivanov  staff   96 Oct  7 18:45 .
+drwxr-xr-x@ 14 evgeniyivanov  staff  448 Oct  7 19:49 ..
+-rw-r--r--@  1 evgeniyivanov  staff    0 Oct  7 18:45 nvim.log

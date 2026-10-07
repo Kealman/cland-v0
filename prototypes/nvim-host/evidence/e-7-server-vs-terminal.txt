@@ -1,0 +1,2 @@
+after :restart!: server 85253 ALIVE after its tmux session was killed (ppid 1)
+normal start: server 85878 exited with its terminal

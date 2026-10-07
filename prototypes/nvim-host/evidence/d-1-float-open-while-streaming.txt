@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 82714 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │stream line 0092 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │stream line 0093 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │stream line 0094 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │stream line 0095 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ ◐  QA round 3: composer paste wit│client                                                                    │stream line 0096 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    busy  2 msgs                  │                                                                          │stream line 0097 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │stream line 0098 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │stream line 0099 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │stream line 0100 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    waiting-for-approval  1 msgs  │                                                                          │stream line 0101 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │stream line 0102 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │stream line 0103 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │                                                                          │stream line 0╭─────────────────────── Ask · needs you ────────────────────────╮
+~                                 │~                                                                         │stream line 0│ zsh (session 1) asks:                                          │
+~                                 │~                                                                         │stream line 0│                                                                │
+~                                 │~                                                                         │stream line 0│   Run  git worktree add ../wt-impl-3 impl/topic-3 ?            │
+~                                 │~                                                                         │stream line 0│                                                                │
+~                                 │~                                                                         │stream line 0│   1  Approve once                                              │
+~                                 │~                                                                         │stream line 0│   2  Approve for this session                                  │
+~                                 │~                                                                         │stream line 0│   3  Deny and tell the agent why                               │
+~                                 │~                                                                         │stream line 0│                                                                │
+~                                 │~                                                                         │stream line 0│   q  close, answer later                                       │
+~                                 │~                                                                         │stream line 0╰──────────────────── 1/2/3 answer · q close ────────────────────╯
+~                                 │~                                                                         │stream line 0115 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0116 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0117 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0118 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0119 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0120 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0121 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0122 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0123 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0124 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0125 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0126 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0127 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0128 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0129 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0130 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0131 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 ├──────────────────────────────────────────────────────────────────────────┤stream line 0132 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│stream line 0133 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │you>                                                                      │stream line 0134 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0135 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0136 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │stream line 0137 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+~                                 │~                                                                         │
+ cland-proto   ask dialog  NORMAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                                             S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+

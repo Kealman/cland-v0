@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 80840 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │plain ready: kitty-disambiguate=off bracketed-paste=off. Ctrl+D quits.
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │plain #1 [1] 41  |A|
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │plain #2 [1] 0d  |^M|
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │plain #3 [1] 42  |B|
+ ◐  QA round 3: composer paste wit│client                                                                    │plain #4 [1] 0d  |^M|
+    busy  2 msgs                  │                                                                          │plain #5 [1] 43  |C|
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │plain #6 [1] 0d  |^M|
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │plain #7 [1] 44  |D|
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │plain #8 [1] 03  |^C|
+    waiting-for-approval  1 msgs  │                                                                          │plain #9 [1] 45  |E|
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │plain #10 [1] 1b  |^[|
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │plain #11 [1] 46  |F|
+~                                 │                                                                          │plain #12 [3] 1b 5b 41  |^[[A|
+~                                 │~                                                                         │plain #13 [1] 47  |G|
+~                                 │~                                                                         │plain #14 [3] 1b 5b 42  |^[[B|
+~                                 │~                                                                         │plain #15 [1] 48  |H|
+~                                 │~                                                                         │plain #16 [3] 1b 5b 43  |^[[C|
+~                                 │~                                                                         │plain #17 [1] 49  |I|
+~                                 │~                                                                         │plain #18 [3] 1b 5b 44  |^[[D|
+~                                 │~                                                                         │plain #19 [1] 4a  |J|
+~                                 │~                                                                         │plain #20 [2] 1b 0d  |^[^M|
+~                                 │~                                                                         │plain #21 [1] 4b  |K|
+~                                 │~                                                                         │plain #22 [2] 1b 0d  |^[^M|
+~                                 │~                                                                         │plain #23 [1] 4c  |L|
+~                                 │~                                                                         │plain #24 [1] 0a  |^J|
+~                                 │~                                                                         │plain #25 [1] 4d  |M|
+~                                 │~                                                                         │plain #26 [1] 09  |^I|
+~                                 │~                                                                         │plain #27 [1] 4e  |N|
+~                                 │~                                                                         │plain #28 [3] 1b 5b 5a  |^[[Z|
+~                                 │~                                                                         │plain #29 [1] 4f  |O|
+~                                 │~                                                                         │plain #30 [1] 0d  |^M|
+~                                 │~                                                                         │plain #31 [1] 50  |P|
+~                                 │~                                                                         │plain #32 [1] 51  |Q|
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 ├──────────────────────────────────────────────────────────────────────────┤
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│
+~                                 │you>                                                                      │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                  S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

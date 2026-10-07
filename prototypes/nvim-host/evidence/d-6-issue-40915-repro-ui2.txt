@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 82714 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │transcript line 037 ------------------------------
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │transcript line 038 ------------------------------
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │transcript line 039 ------------------------------
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │transcript line 040 ------------------------------
+ ◐  QA round 3: composer paste wit│client                                                                    │transcript line 041 ------------------------------
+    busy  2 msgs                  │                                                                          │transcript line 042 ------------------------------
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │transcript line 043 ------------------------------
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │transcript line 044 ------------------------------
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │transcript line 045 ------------------------------
+    waiting-for-approval  1 msgs  │                                                                          │transcript line 046 ------------------------------
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │transcript line 047 ------------------------------
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │transcript line 048 ------------------------------
+~                                 │                                                                          │transcript line 049 ------------------------------
+~                                 │~                                                                         │transcript line 050 ------------------------------
+~                                 │~                                                                         │transcript line 051 ------------------------------
+~                                 │~                                                                         │transcript line 052 ------------------------------
+~                                 │~                                                                         │transcript line 053 ------------------------------
+~                                 │~                                                                         │transcript line 054 ------------------------------
+~                                 │~                                                                         │transcript line 055 ------------------------------
+~                                 │~                                                                         │transcript line 056 ------------------------------
+~                                 │~                                                                         │transcript line 057 ------------------------------
+~                                 │~                                                                         │transcript line 058 ------------------------------
+~                                 │~                                                                         │transcript line 059 ------------------------------
+~                                 │~                                                                         │transcript line 060 ------------------------------
+~                                 │~                                                                         │transcript line 061 ------------------------------
+~                                 │~                                                                         │transcript line 062 ------------------------------
+~                                 │~                                                                         │transcript line 063 ------------------------------
+~                                 │~                                                                         │transcript line 064 ------------------------------
+~                                 │~                                                                         │transcript line 065 ------------------------------
+~                                 │~                                                                         │transcript line 066 ------------------------------
+~                                 │~                                                                         │transcript line 067 ------------------------------
+~                                 │~                                                                         │transcript line 068 ------------------------------
+~                                 │~                                                                         │transcript line 069 ------------------------------
+~                                 │~                                                                         │transcript line 070 ------------------------------
+~                                 │~                                                                         │transcript line 071 ------------------------------
+~                                 │~                                                                         │transcript line 072 ------------------------------
+~                                 │~                                                                         │transcript line 073 ------------------------------
+~                                 │~                                                                         │transcript line 074 ------------------------------
+~                                 │~                                                                         │transcript line 075 ------------------------------
+~                                 │~                                                                         │transcript line 076 ------------------------------
+~                                 ├──────────────────────────────────────────────────────────────────────────┤transcript line 077 ------------------------------
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│transcript line 078 ------------------------------
+~                                 │you>                                                                      │transcript line 079 ------------------------------
+~                                 │~                                                                         │transcript line 080 ------------------------------
+~                                 │~                                                                         │+--------------------------------------------------------------------------------------+
+~                                 │~                                                                         │| > abchello                                                                           |
+~                                 │~                                                                         │+--------------------------------------------------------------------------------------+
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                  S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --                                                                                                                                                                               i

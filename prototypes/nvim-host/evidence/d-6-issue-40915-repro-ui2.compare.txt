@@ -1,0 +1,1 @@
+MATCH: all 47 visible rows on screen equal the buffer (offset 1)

@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 80840 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │map-csi-u ready: kitty-disambiguate=off bracketed-paste=off. Ctrl+D quits.
+    waiting-for-you  5 msgs       │  Two options for the hub transport:                                      │map-csi-u #1 [1] 42  |B|
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │map-csi-u #2 [7] 1b 5b 31 33 3b 32 75  |^[[13;2u|
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │map-csi-u #3 [1] 43  |C|
+ ◐  QA round 3: composer paste wit│client                                                                    │map-csi-u #4 [7] 1b 5b 31 33 3b 32 75  |^[[13;2u|
+    busy  2 msgs                  │                                                                          │map-csi-u #5 [1] 41  |A|
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │map-csi-u #6 [1] 0d  |^M|
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │
+    waiting-for-approval  1 msgs  │                                                                          │
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │
+~                                 │                                                                          │
+~                                 │you   Human · cland                                                 19:47 │
+~                                 │  first line                                                              │
+~                                 │  second line                                                             │
+~                                 │                                                                          │
+~                                 │coordinator   Coordinator · Claude Code                             19:47 │
+~                                 │  (fake reply) Noted: "first line"                                        │
+~                                 │  (2 line(s) received)                                                    │
+~                                 │                                                                          │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 ├──────────────────────────────────────────────────────────────────────────┤
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│
+~                                 │you>                                                                      │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                S-Enter:csi-u │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 1/1  zsh · nvim-owned · running · pid 87141 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │vim-line-1
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │vim-line-2
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │vim-line-3
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │vim-line-4
+ ◐  QA round 3: composer paste wit│client                                                                    │vim-line-5
+    busy  2 msgs                  │                                                                          │vim-line-6
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │vim-line-7
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │vim-line-8
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │vim-line-9
+    waiting-for-approval  1 msgs  │                                                                          │vim-line-10
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │vim-line-11
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │vim-line-12
+~                                 │                                                                          │vim-line-13
+~                                 │~                                                                         │vim-line-14
+~                                 │~                                                                         │vim-line-15
+~                                 │~                                                                         │vim-line-16
+~                                 │~                                                                         │vim-line-17
+~                                 │~                                                                         │vim-line-18
+~                                 │~                                                                         │vim-line-19
+~                                 │~                                                                         │vim-line-20
+~                                 │~                                                                         │vim-line-21
+~                                 │~                                                                         │vim-line-22
+~                                 │~                                                                         │vim-line-23
+~                                 │~                                                                         │vim-line-24
+~                                 │~                                                                         │vim-line-25
+~                                 │~                                                                         │vim-line-26
+~                                 │~                                                                         │vim-line-27
+~                                 │~                                                                         │vim-line-28
+~                                 │~                                                                         │vim-line-29
+~                                 │~                                                                         │vim-line-30
+~                                 │~                                                                         │vim-line-31
+~                                 │~                                                                         │vim-line-32
+~                                 │~                                                                         │vim-line-33
+~                                 │~                                                                         │vim-line-34
+~                                 │~                                                                         │vim-line-35
+~                                 │~                                                                         │vim-line-36
+~                                 │~                                                                         │vim-line-37
+~                                 │~                                                                         │vim-line-38
+~                                 │~                                                                         │vim-line-39
+~                                 │~                                                                         │vim-line-40
+~                                 ├──────────────────────────────────────────────────────────────────────────┤vim-line-41
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│vim-line-42
+~                                 │you>                                                                      │vim-line-43
+~                                 │~                                                                         │vim-line-44
+~                                 │~                                                                         │vim-line-45
+~                                 │~                                                                         │vim-line-46
+~                                 │~                                                                         │                                                                        1,1           Top
+ cland-proto   session 1 zsh (nvim-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ *1:zsh                                  S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --

@@ -1,0 +1,18 @@
+--- session 1
+term-1 SIGWINCH #3 size=47 90
+term-1 SIGWINCH #4 size=41 70
+--- session 2
+term-2 SIGWINCH #2 size=6 90
+term-2 SIGWINCH #3 size=23 90
+--- session 3
+term-3 SIGWINCH #2 size=6 90
+term-3 SIGWINCH #3 size=15 90
+--- session 4
+term-4 SIGWINCH #2 size=6 90
+term-4 SIGWINCH #3 size=11 90
+--- session 5
+term-5 SIGWINCH #2 size=6 90
+term-5 SIGWINCH #3 size=8 90
+--- session 6
+term-6 SIGWINCH #3 size=47 90
+term-6 SIGWINCH #4 size=41 70

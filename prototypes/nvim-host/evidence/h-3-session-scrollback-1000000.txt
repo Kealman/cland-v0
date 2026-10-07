@@ -1,0 +1,17 @@
+session 1 'scrollback' = 1000000
+composer during seq key 1: 39 ms found=1
+composer during seq key 2: 39 ms found=1
+composer during seq key 3: 38 ms found=1
+composer during seq key 4: 38 ms found=1
+composer during seq key 5: 60 ms found=1
+composer during seq key 6: 59 ms found=1
+composer during seq key 7: 62 ms found=1
+composer during seq key 8: 61 ms found=1
+composer during seq key 9: 58 ms found=1
+composer during seq key 10: 58 ms found=1
+wall time from Enter to SEQ-2-DONE (seen over RPC): 255.2 s
+--- session 1
+( seq 1 2000000; )  0.40s user 1.47s system 0% cpu 4:15.07 total
+SEQ-2-DONE
+evgeniyivanov@Evgeniys-MacBook-Air agent-a422a02bb845a01da % 
+loop lag and scheduled-callback gap during the run (ms): {"sched":{"last_run":197865412.235708,"max_gap":339.2709589898586},"lag":{"last":47.5876669883728,"recent":103.6749590039253,"max":236.6815840005875}}

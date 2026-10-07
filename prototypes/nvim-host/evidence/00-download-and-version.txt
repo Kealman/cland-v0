@@ -1,0 +1,14 @@
+# run.sh download path, run on 2026-10-07 from a copy of the final run.sh in a
+# scratch folder (outside the repo), so the tarball was fetched, verified and
+# started from an arbitrary directory. The curl progress bar is filtered out;
+# <scratch> stands for the scratch folder.
+run.sh: downloading https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-macos-arm64.tar.gz
+run.sh: sha256 ok (65fb000099e47ca1b762584c484cc833f40e30851a0ec450d4174e16317c1f9b), matches the release asset digest
++ env NVIM_APPNAME=cland-proto <scratch>/.nvim/nvim-macos-arm64/bin/nvim --clean -u <scratch>/init.lua --version
+NVIM v0.12.5
+Build type: Release
+LuaJIT 2.1.1774638290
+Run "nvim -V1 -v" for more info
+
+# GitHub release API digest of the asset (the v0.12.5 release has no shasum.txt):
+nvim-macos-arm64.tar.gz sha256:65fb000099e47ca1b762584c484cc833f40e30851a0ec450d4174e16317c1f9b

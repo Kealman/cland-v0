@@ -1,0 +1,50 @@
+ TOPICS (5)                       │ THREAD  Hub transport: WebSocket or msgpack-RPC  ● waiting-for-you       │ SESSION 3/3  tmux:outside-cat · tmux-owned · running · pid 85006 · 90x48
+ ●  Hub transport: WebSocket or ms│coordinator   Coordinator · Claude Code                             14:02 │typed into tmux-owned cat before restart
+    waiting-for-you  3 msgs       │  Two options for the hub transport:                                      │typed into tmux-owned cat before restart
+ ○  Review: Codex session-state ad│    A) keep the BCAS WebSocket spoke, add a Lua WebSocket client          │typed into tmux-owned cat after restart
+    open  2 msgs                  │    B) msgpack-RPC over a Unix socket; the Node side uses the npm neovim  │typed into tmux-owned cat after restart
+ ◐  QA round 3: composer paste wit│client                                                                    │
+    busy  2 msgs                  │                                                                          │
+ ✓  Glossary: Topic versus Thread │reviewer   Reviewer · Codex                                         14:05 │
+    closed  2 msgs                │  B drops a dependency, but the spoke protocol is WebSocket today.        │
+ ◆  Approve: one git worktree per │  Re-implementing store-and-forward on RPC is a week, not a day.          │
+    waiting-for-approval  1 msgs  │                                                                          │
+~                                 │coordinator   Coordinator · Claude Code                             14:07 │
+~                                 │  Need your call: A or B? The hub ticket waits on this.                   │
+~                                 │                                                                          │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 ├──────────────────────────────────────────────────────────────────────────┤
+~                                 │<R  Enter sends · Shift+Enter newline · to: Hub transport: WebSocket or ms│
+~                                 │you>                                                                      │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+~                                 │~                                                                         │
+<ession 3 tmux:outside-cat (tmux-owned, running)  TERMINAL │ topic: Hub transport: WebSocket or  │ 1:/bin/zsh 2:cat -v *3:tmux:outside-cat[t]S-Enter:off │ loop lag 2ms (max 2ms) │ nvim 0.12.5+v0.12.5
+-- TERMINAL --
