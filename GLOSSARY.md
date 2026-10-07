@@ -40,11 +40,21 @@ _Avoid_: system prompt, role prompt, persona text
 The structured note that moves with a role to its next holder: goals now, work in flight, open decisions, what is waited on.
 _Avoid_: summary, context dump, transcript
 
-## Chat
+## Hub
 
 **Hub**:
-The service through which sessions talk to each other and to the human; the heart of agent-agent and agent-human collaboration.
-_Avoid_: bus, broker, server, bridge
+The per-project service through which sessions talk to each other and to the human; it holds the shared state and enforces the roles' permissions.
+_Avoid_: bus, broker, server, bridge, daemon
+
+**Spoke**:
+The small MCP server that runs inside a session and holds that session's connection to the hub; the hub knows a session by its spoke.
+_Avoid_: client, connector, plugin, channel
+
+**Adapter**:
+The hub-side component for one harness that launches, supervises and observes its sessions, delivers hub messages into them, and reports their state.
+_Avoid_: driver, integration, supervisor, wrapper
+
+## Chat
 
 **Topic**:
 A thread in the human's chat with agents. A topic has a title, a status (open, waiting for human, waiting for agent, closed) and at most one binding to a unit of work; messages in it address the Coordinator unless a role or a session is mentioned.
