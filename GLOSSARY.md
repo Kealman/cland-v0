@@ -64,9 +64,21 @@ _Avoid_: prompt, poll, question dialog, request
 
 ## Work
 
+**Item**:
+An entry in the project's tracker: an epic, a spec, a task, a question or a map. An item has a stable id, a state, labels, an assignee, a parent and blocking edges, and lives as one Markdown file.
+_Avoid_: ticket, issue, card, story
+
 **Unit of work**:
-A task or an epic in the tracker that a topic may bind to. Which entities exist is decided with the tracker.
-_Avoid_: ticket, issue, item, story
+A task or an epic: the kinds of item a topic can bind to.
+_Avoid_: work item, job, assignment
+
+**Claim**:
+A session's live hold on an item while it works on it, kept by the hub; distinct from the item's assignee, its long-term owner.
+_Avoid_: lock, checkout, assignment
+
+**Verdict**:
+A structured comment on an item that records the result of a review or a QA run: clear or not clear, by which session and role, from which run.
+_Avoid_: review result, report, approval
 
 **Artifact**:
 A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note.
