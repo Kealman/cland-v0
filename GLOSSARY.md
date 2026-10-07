@@ -25,8 +25,24 @@ The service through which sessions talk to each other and to the human; the hear
 _Avoid_: bus, broker, server, bridge
 
 **Topic**:
-A thread in the human's chat with agents. A topic has a status and may be bound to a unit of work such as a task or an epic.
+A thread in the human's chat with agents. A topic has a title, a status (open, waiting for human, waiting for agent, closed) and at most one binding to a unit of work; messages in it address the Coordinator unless a role or a session is mentioned.
 _Avoid_: thread, channel, conversation, chat
+
+**General**:
+The standing topic every project has for free conversation with the Coordinator; it is bound to no unit of work.
+_Avoid_: lobby, main chat, default channel
+
+**Agents topic**:
+The standing, read-only topic that records agent-to-agent messages and the lifecycle events of sessions and roles.
+_Avoid_: log, console, drivers channel, mirror
+
+**Ask**:
+A question an agent puts to the human inside a topic, with options and room for a free answer. An open ask keeps its topic waiting for the human.
+_Avoid_: prompt, poll, question dialog, request
+
+**Unit of work**:
+A task or an epic in the tracker that a topic may bind to. Which entities exist is decided with the tracker.
+_Avoid_: ticket, issue, item, story
 
 **Artifact**:
 A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note.
