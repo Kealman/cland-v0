@@ -103,5 +103,5 @@ A fast-forward of `main` to `dev`, tagged and pushed to GitHub as one deployable
 _Avoid_: deploy, publish, sync, push
 
 **Artifact**:
-A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note.
+A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note. An artifact has an id, a kind, a status (draft, sent, shared, archived) and may bind to a topic; it is not committed unless promoted into the repo.
 _Avoid_: scratch file, attachment, tmp file, output
