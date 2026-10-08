@@ -370,15 +370,27 @@ export class Store implements HygieneMemory {
     this.#db.prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
   }
 
-  /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does. `fn` must not record
-   *  messages (`record` has a transaction of its own). */
+  /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does, the messages it records
+   *  included. */
   transaction<T>(fn: () => T): T {
     return this.#transaction(fn);
   }
 
-  /** Run `fn` in one transaction: all of its writes land, or none does. */
+  /** How deep the running transaction is nested: an inner one joins the outer (a role's move records its notices). */
+  #depth = 0;
+
+  /** Run `fn` in one transaction: all of its writes land, or none does. Nested, it is part of the outer one. */
   #transaction<T>(fn: () => T): T {
+    if (this.#depth > 0) {
+      this.#depth++;
+      try {
+        return fn();
+      } finally {
+        this.#depth--;
+      }
+    }
     this.#db.exec('begin immediate');
+    this.#depth = 1;
     try {
       const result = fn();
       this.#db.exec('commit');
@@ -386,6 +398,8 @@ export class Store implements HygieneMemory {
     } catch (err) {
       this.#db.exec('rollback');
       throw err;
+    } finally {
+      this.#depth = 0;
     }
   }
 

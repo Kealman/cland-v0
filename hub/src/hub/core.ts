@@ -25,7 +25,7 @@ import {
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
 import { clauseText, revokedText } from '../roles/clause.ts';
-import { isRoleRecord, noteText, renderNote, type RoleRecord } from '../roles/note.ts';
+import { isRoleRecord, noteText, renderNote, type PendingClaims, type RoleRecord } from '../roles/note.ts';
 import { resolveTag } from '../address.ts';
 import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
@@ -130,6 +130,8 @@ export class HubCore {
   readonly #carriedNotice = new Map<string, string>();
   /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
   readonly #roleNotices = new Map<string, RoleClause>();
+  /** Told of every accepted hello (a pending claim move waits for its receiver's session id). */
+  readonly #hellos = new Set<(name: string, sessionId: string) => void>();
   /** Told when a session takes a new name (the process table renames its row). */
   readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
@@ -323,6 +325,13 @@ export class HubCore {
     }
     if (fresh) this.#emitRole(name, role, null, 'launch');
     this.#announceCoordinator();
+    for (const fn of [...this.#hellos]) {
+      try {
+        fn(name, hello.sessionId);
+      } catch (err) {
+        this.#log({ event: 'hello-listener-failed', name, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
     return { ok: true, name, connection };
   }
 
@@ -499,6 +508,14 @@ export class HubCore {
    * Subscribers see it as a `message` event with its `kind`; `to` also delivers it to those sessions. Returns its id.
    */
   noticeInTopic(topicId: string, notice: TopicNotice): string | null {
+    const message = this.#recordNotice(topicId, notice);
+    if (!message) return null;
+    this.#publishNotice(message);
+    return message.id;
+  }
+
+  /** A topic notice written to the store (inside a caller's transaction, when there is one), not yet published. */
+  #recordNotice(topicId: string, notice: TopicNotice): Message | null {
     const topic = this.#store.topic(topicId);
     if (!topic) return null;
     const to = [...new Set(notice.to ?? [])];
@@ -520,9 +537,19 @@ export class HubCore {
       this.#now().getTime(),
     );
     this.#store.touchTopic(topic.id, message.ts);
+    return message;
+  }
+
+  /** A recorded notice reaches the subscribers and its addressees. */
+  #publishNotice(message: Message): void {
     this.#emitMessage(message);
-    for (const n of to) this.#send(message, n);
-    return message.id;
+    for (const n of message.to) this.#send(message, n);
+  }
+
+  /** Listen to every accepted hello (`name`, session id); returns the unsubscribe. */
+  onSessionHello(listener: (name: string, sessionId: string) => void): () => void {
+    this.#hellos.add(listener);
+    return () => this.#hellos.delete(listener);
   }
 
   /** A session as it is shown everywhere: `name [Role]` with the role it holds (live, else as remembered). */
@@ -727,12 +754,14 @@ export class HubCore {
   /**
    * A role moves to `to` (#31): from its holder `from` (a handover by the holder, or the human's reassignment), or
    * from nobody. In one store transaction `from` loses it (or keeps `then`, an Implementer) and `to` takes it, with
-   * the role's record (the note, the move). `beforeCommit` runs first (the tracker's claims, another connection) and
-   * returns its undo, run when the transaction fails. Then: `to` gets its clause with the note, `from` its
-   * revocation (`reason: "handover"`), the Agents topic both notices, subscribers the `session.role` events and the
-   * Coordinator's `role.filled`. All synchronous: no frame is read between the checks and the last event.
+   * the role's record (the note, the move, the chain of holders, the tracker claims to move along) and both Agents
+   * notices. The claims themselves live in the tracker's tables (another connection): the caller moves them after the
+   * commit, idempotently, from the record (`roles/handover.ts`), and a hub that died in between does it at its next
+   * start. Then: `to` gets its clause with the note, `from` its revocation (`reason: "handover"`), subscribers the
+   * notices, the `session.role` events and the Coordinator's `role.filled`. All synchronous: no frame is read between
+   * the checks and the last event.
    */
-  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; beforeCommit?: () => () => void }): RoleHolder {
+  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; claims?: PendingClaims | null }): RoleHolder {
     const { role, from, to, by, note, then } = move;
     if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
     const refusal = nameRefusal(to, this.#reserved);
@@ -749,22 +778,29 @@ export class HubCore {
     const at = this.#now().toISOString();
     const stored = this.#store.roleRecord(role);
     const before: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
+    // every holder the role passed through: what waited for any of them waits for the role (role.state)
+    const chain = [...(before.chain ?? (before.handover?.from ? [before.handover.from] : [])), ...(before.handover ? [before.handover.to] : []), ...(from !== null ? [from] : [])].filter((n, i, all) => n !== to && all.indexOf(n) === i).slice(-20);
     const record: RoleRecord = {
       note: note ? { sections: note, from: by, to, at } : before.note,
       handover: { from, to, by, at },
+      chain,
+      claims: move.claims ?? null,
     };
-    const undo = move.beforeCommit?.() ?? (() => {});
-    try {
-      this.#store.transaction(() => {
-        if (from !== null) this.#store.rememberRole(from, then);
-        if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
-        this.#store.rememberRole(to, role);
-        this.#store.saveRoleRecord(role, record);
-      });
-    } catch (err) {
-      undo();
-      throw err;
-    }
+    const roleLabel = ROLE_LABELS[role] ?? role;
+    const fromLabel = from !== null ? withRole(from, role) : null;
+    const handed = by === HUMAN ? `the human moved the ${roleLabel} role${fromLabel ? ` from ${fromLabel}` : ''} to ${to}` : `${fromLabel ?? by} handed the ${roleLabel} role over to ${to}`;
+    // one transaction: the role leaves one session and reaches the other, the record (with the claims to move) and
+    // both notices in Agents land together or not at all
+    const notices = this.#store.transaction(() => {
+      if (from !== null) this.#store.rememberRole(from, then);
+      if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
+      this.#store.rememberRole(to, role);
+      this.#store.saveRoleRecord(role, record);
+      return [
+        this.#recordNotice(AGENTS.id, { kind: 'handover', text: note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`, detail: { role, from, to, by, note: note !== null } }),
+        this.#recordNotice(AGENTS.id, { kind: 'role-assign', text: `${withRole(to, role)} took over the ${roleLabel} role${from !== null ? ` from ${from}` : ''}.`, detail: { session: to, role, previous, handover: true } }),
+      ];
+    });
     if (cFrom) cFrom.role = then;
     if (cTo) cTo.role = role;
     this.#log({ event: 'role-handover', role, from, to, by, note: note !== null, then, live: cTo !== undefined });
@@ -781,11 +817,7 @@ export class HubCore {
         if (id) this.#send(this.#store.message(id) as Message, from);
       } else if (this.#store.dropNotices(from, ROLE_NOTICE).length) this.#log({ event: 'role-notices-dropped', session: from, reason: 'handover' });
     }
-    const roleLabel = ROLE_LABELS[role] ?? role;
-    const fromLabel = from !== null ? withRole(from, role) : null;
-    const handed = by === HUMAN ? `the human moved the ${roleLabel} role${fromLabel ? ` from ${fromLabel}` : ''} to ${to}` : `${fromLabel ?? by} handed the ${roleLabel} role over to ${to}`;
-    this.noticeInTopic(AGENTS.id, { kind: 'handover', text: note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`, detail: { role, from, to, by, note: note !== null } });
-    this.noticeInTopic(AGENTS.id, { kind: 'role-assign', text: `${withRole(to, role)} took over the ${roleLabel} role${from !== null ? ` from ${from}` : ''}.`, detail: { session: to, role, previous, handover: true } });
+    for (const m of notices) if (m) this.#publishNotice(m);
     if (from !== null) this.#emitRole(from, then, role, 'handover');
     this.#emitRole(to, role, previous, 'handover');
     this.#announceCoordinator();

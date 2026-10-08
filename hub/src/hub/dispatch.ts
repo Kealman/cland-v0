@@ -36,7 +36,7 @@ import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
-import { handOver, roleState, type HandoverContext } from '../roles/handover.ts';
+import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
 import { NoteIncomplete } from '../roles/note.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
@@ -93,6 +93,18 @@ export class Dispatcher {
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
+    // a role moved to a name with no session yet: its claims follow at that session's hello; and what a hub that
+    // died between a move's commit and its claims left pending is finished now
+    options.core.onSessionHello((name, sessionId) => this.#settleClaims({ name, sessionId }));
+    this.#settleClaims();
+  }
+
+  #settleClaims(hello?: { name: string; sessionId: string }): void {
+    try {
+      settleAllClaims(this.#handover(), hello);
+    } catch (err) {
+      this.#log({ event: 'claims-settle-failed', error: err instanceof Error ? err.message : String(err) });
+    }
   }
 
   useSessions(sessions: Sessions | undefined): void {
