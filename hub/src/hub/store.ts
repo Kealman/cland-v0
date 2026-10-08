@@ -147,9 +147,19 @@ export class Store implements HygieneMemory {
     return (row?.status as string | null | undefined) ?? null;
   }
 
-  /** Every name the store has a row for, however old: a generated name is never handed to another session. */
+  /** Every name the store knows, however old: a session row, a sender, an addressee or a delivery. A name a
+   *  session renamed away from has no row, but its traffic still names it, so it is never generated again. */
   sessionNames(): string[] {
-    return (this.#db.prepare('select name from sessions').all() as Row[]).map((r) => r.name as string);
+    return (
+      this.#db
+        .prepare(
+          `select name from sessions
+           union select from_name from messages
+           union select session from deliveries
+           union select t.value from messages m, json_each(m.to_json) t`,
+        )
+        .all() as Row[]
+    ).map((r) => r.name as string);
   }
 
   /** The name a session last held, by its session id, or null. */

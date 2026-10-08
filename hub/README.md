@@ -39,7 +39,7 @@ The spoke finds its hub through the nearest `.cland/hub.json` walking up from it
 
 A session's identity is the session id in its hello (`CLAND_SESSION_ID`; a spoke started without one makes up a random id). A name is what others address it by.
 
-- A generated `session-<n>` name is never one the store has a row for, live or offline. A new session therefore never inherits another session's queued messages, history or status line.
+- A generated `session-<n>` name is never one the store knows: a session's row, live or offline, or a name any stored message or delivery carries (so a name a session renamed away from stays retired while its traffic is kept). A new session therefore never inherits another session's queued messages, history or status line. History is still looked up by name: a session that explicitly claims a retired name sees that name's traffic.
 - A hello with no name from a session the hub already knows gets that session's previous name back, unless another session has claimed it by name since. The spoke also remembers the name it was welcomed under and asks for it on every reconnect, so it keeps it even when the hub lost its store.
 - A requested name is a claim. A live holder of another session refuses it; a live holder of the same session is replaced (close code 4002). A status line is inherited only by the same session id.
 - Hygiene (rate windows, pair counts, mutes) is keyed by the session id, so a rename moves nothing.

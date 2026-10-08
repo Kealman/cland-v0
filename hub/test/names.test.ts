@@ -172,6 +172,31 @@ test("a new unnamed session never takes an offline session's generated name, and
   }
 });
 
+test('a generated name a session renamed away from is never handed to a new session, which sees none of its history', async () => {
+  const hub = await startHub();
+  const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
+  const first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+  let newcomer: Session | null = null;
+  try {
+    await witness.waitForPresence(['witness', 'session-1']);
+    await witness.call('send', { to: ['session-1'], text: 'for the first session only' });
+    await first.waitForEvent((e) => e.params.content === 'for the first session only');
+    await first.call('send', { to: ['witness'], text: 'from the first session' });
+    assert.deepEqual(await first.call('rename', { name: 'alpha' }), { ok: true, name: 'alpha' });
+
+    newcomer = await spawnSpoke({ hub, sessionId: 'sess-newcomer' });
+    await witness.waitForPresence(['alpha', 'session-2']);
+    assert.equal((await newcomer.call<{ me: string }>('who')).me, 'session-2', 'session-1 appears in the history: it is never reused');
+    const history = await newcomer.call<{ messages: Array<{ text: string }> }>('history');
+    assert.deepEqual(history.messages, [], "no history of another session's name");
+  } finally {
+    await newcomer?.close();
+    await first.close();
+    await witness.close();
+    await hub.close();
+  }
+});
+
 test('an unnamed spoke keeps its accepted name across reconnects, even to a hub that lost its memory', async () => {
   const hub = await startHub();
   const port = hub.port;
