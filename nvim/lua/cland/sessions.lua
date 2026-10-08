@@ -37,10 +37,20 @@ local function note_buf(name, text)
   return b
 end
 
---- The live terminal of a session, if one is attached.
+--- Whether the terminal's attach client still runs (its job id answers jobwait with -1, "timed out").
+local function running(t)
+  if t.exited or not t.job or t.job <= 0 then
+    return false
+  end
+  local ok, res = pcall(vim.fn.jobwait, { t.job }, 0)
+  return ok and res[1] == -1
+end
+
+--- The live terminal of a session, if one is attached and its attach client still runs. A terminal whose
+--- client ended (TermClose) is no attachment: showing the session again runs the attach command again.
 function M.term(name)
   local t = M.terms[name]
-  if t and api.nvim_buf_is_valid(t.buf) then
+  if t and api.nvim_buf_is_valid(t.buf) and running(t) then
     return t
   end
   M.terms[name] = nil
@@ -62,8 +72,29 @@ local function start(name, command, win)
   else
     api.nvim_buf_call(buf, run)
   end
-  M.terms[name] = { buf = buf, job = job, command = command }
+  local t = { buf = buf, job = job, command = command }
+  M.terms[name] = t
   state.S.attached[name] = true
+  -- the attach client ended (the human quit it, the session went away): the finished terminal stays to be
+  -- read until it is hidden, then goes; the session is no longer attached here
+  api.nvim_create_autocmd('TermClose', {
+    buffer = buf,
+    once = true,
+    callback = function()
+      t.exited = true
+      vim.bo[buf].bufhidden = 'wipe'
+      if M.terms[name] == t then
+        M.terms[name] = nil
+        state.S.attached[name] = nil
+      end
+      vim.schedule(function()
+        if api.nvim_buf_is_valid(buf) and vim.fn.bufwinid(buf) == -1 then
+          pcall(api.nvim_buf_delete, buf, { force = true })
+        end
+      end)
+      state.changed()
+    end,
+  })
   api.nvim_create_autocmd('BufWipeout', {
     buffer = buf,
     once = true,

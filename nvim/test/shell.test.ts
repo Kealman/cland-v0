@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { centreOf, clock as clockOf, nvimOrSkip, startClient, type Client } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
@@ -486,6 +486,37 @@ test('the launcher shows what the hub refuses in the form and the panel, never a
   await c.waitScreen((x) => /loner +free/.test(x), 'loner in the panel');
   const [frame] = (await requestsOf(c, 'session.launch')).filter((f) => f.name === 'loner');
   assert.equal(frame?.role, undefined);
+});
+
+test('an attach client that ended is not reused: Enter and C-v run the attach command again', { skip }, async (t) => {
+  let runs = '';
+  const c = await startShell(t, (s) => {
+    runs = join(dirname(s.attach?.['coord-1']?.split(' ').at(-1)?.replace(/"/g, '') ?? tmpdir()), 'runs.txt');
+    // an attach client that ends at once (the session went away, the harness's attach failed)
+    s.attach = { ...s.attach, 'impl-1': `echo run >> ${JSON.stringify(runs)}; printf 'attach ended\\n'` };
+  });
+  const count = async () => (existsSync(runs) ? (await readFile(runs, 'utf8')).split('\n').filter(Boolean).length : 0);
+  const until = async (n: number, what: string) => {
+    const deadline = Date.now() + 5000;
+    while ((await count()) < n && Date.now() < deadline) await sleep(30);
+    assert.equal(await count(), n, what);
+  };
+  await c.input('<Esc>:Cland view session impl-1<CR>');
+  await c.waitScreen((x) => x.includes('attach ended') && x.includes('[Process exited 0]'), 'the attach client ended');
+  await until(1, 'one attach run');
+  await c.input('<C-\\><C-n><Space><Space>');
+  await c.waitScreen((x) => statusLine(x).includes('General · topic'), 'General');
+  // Enter on the row again: not the finished terminal, a new attach
+  await onSessionRow(c, 'impl-1');
+  await c.input('<CR>');
+  await until(2, 'Enter ran the attach command again');
+  await c.waitScreen((x) => statusLine(x).includes('impl-1 · session'), 'impl-1 in the centre');
+  await c.input('<C-\\><C-n><Space><Space>');
+  await c.waitScreen((x) => statusLine(x).includes('General · topic'), 'General again');
+  // C-v too
+  await onSessionRow(c, 'impl-1');
+  await c.input('<C-v>');
+  await until(3, 'C-v ran the attach command again');
 });
 
 test('the sessions panel: c shows the capability table, C-v attaches in a vertical split, l opens the launcher', { skip }, async (t) => {
