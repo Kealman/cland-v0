@@ -170,7 +170,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
   await writeFile(join(root, '.cland', 'tasks', 'T-1.md'), '# a task\n');
   await writeFile(join(root, '.cland', 'roles.toml'), '');
   await writeFile(join(root, '.cland', 'config.toml'), '');
-  for (const volatile of ['journal.jsonl', 'artifacts/a.txt', 'worktrees/w/x', 'territory.git/HEAD']) {
+  for (const volatile of ['journal.jsonl', 'artifacts/a.txt', 'worktrees/w/x', 'territory.git/HEAD', 'run/cx-1.sock']) {
     await mkdir(join(root, '.cland', volatile, '..'), { recursive: true });
     await writeFile(join(root, '.cland', volatile), 'x');
   }

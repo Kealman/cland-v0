@@ -38,6 +38,7 @@ hub.sock
 secret
 journal.jsonl
 log/
+run/
 artifacts/
 worktrees/
 territory.git/

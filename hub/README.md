@@ -409,6 +409,7 @@ The project's `.cland/`:
 | `hub.json` | no | The discovery file, mode 0600, present only while a hub runs. |
 | `hub.sock` | no | The Unix socket for the UI and the CLI. |
 | `log/hub.log` | no | The background hub's stdout and stderr: the process log. |
+| `run/` | no | The Codex adapter's app-server sockets (`cx-<id>.sock`), while its sessions run. |
 | `journal.jsonl` | no | The journal (above): the domain events and the audit records, JSON lines, append-only across restarts. |
 | `artifacts/`, `worktrees/`, `territory.git/` | no | Ignored ahead of the tickets that write them. |
 
