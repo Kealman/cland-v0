@@ -78,7 +78,7 @@ A topic is a thread in the human's chat with agents (spec 4.5): an id, a title, 
 - **The rest of the human side.** Topics beyond General and Agents, their statuses and asks (#32); a loop-breaker mute is still only journalled, not shown in the UI.
 - **Roles as hub state.** A session may declare one of the four role names so `@role` routes; clauses, permissions and handover come with #29–#33.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
-- **Adapters.** Codex (#26) and OpenCode (#27). Permissions on `session.launch` (#30): anyone may launch for now.
+- **Adapters.** Codex (#26). Permissions on `session.launch` (#30): anyone may launch for now.
 
 ## The project's hub
 
@@ -149,7 +149,7 @@ A `message` event comes for every message recorded in a topic, the human's own i
 
 ## Adapters and sessions
 
-An adapter launches one kind of harness, tells the hub what each session is doing, and hands it messages (spec 4.3). Claude Code is the only one yet; Codex (#26) and OpenCode (#27) follow the same contract.
+An adapter launches one kind of harness, tells the hub what each session is doing, and hands it messages (spec 4.3). Claude Code and OpenCode have one; Codex (#26) follows the same contract.
 
 ### The contract
 
@@ -197,12 +197,36 @@ The capability table declares the optional capabilities (`history`, `usage`, `se
 
 Signals or a bridge that arrive while a launch is still running belong to the new process and are kept until its row is written. The real SessionStart hook does arrive before `claude --bg` and the first `agents --json` return.
 
+### The OpenCode adapter
+
+`src/adapters/opencode.ts`, with `opencode/client.ts` (the HTTP API and the event stream), `opencode/state.ts` (events to states) and `opencode/server.ts` (the session's server and its files). Launched with `"harness": "opencode"`.
+
+| | Surface (OpenCode 2.0.24) |
+| --- | --- |
+| spawn | A standalone `opencode serve --hostname 127.0.0.1 --port 0` per session, detached, in the session's cwd; the url comes from its `server listening on …` line. The spoke is a local MCP server of a generated config passed as `OPENCODE_CONFIG` (`mcp.servers.cland: {type: local, command, environment}` with the same `CLAND_*` variables as Claude Code's), and the server gets a password of its own as `OPENCODE_PASSWORD`. Both live in `.cland/opencode/<name>/` (`opencode.json`, `password` mode 600, `serve.log`), which a `.gitignore` of its own (`*`) keeps out of the repository. Then `POST /api/session {title, model, location}`. The model is `<provider>/<id>` (`opencode/big-pickle`); without one, the first free model of `GET /api/model` (zero price, tools, OpenCode Zen's first). The row keeps the server's pid, its url as `harnessId` and the `ses_…` id as `harnessSessionId`. The server starts its MCP servers when the session is created, so the spoke connects right after the launch. |
+| attach | `OPENCODE_PASSWORD="$(cat <password file>)" opencode --server <url> --session <ses_…>`: the OpenCode TUI as one more client of the session's server. The password never appears on a command line. Closing the TUI (or Neovim) leaves the server and the session running. |
+| inject | `POST /api/session/{id}/prompt {text, delivery}` with the envelope as text: `steer` while the session runs a turn (it joins the turn at the next step boundary), `queue` otherwise. The reply is the durably admitted inbox item (`msg_…`), which confirms `injected`. A failed or timed-out request leaves the message `delivered` for the retry at the next `idle`. |
+| state | `GET /api/event` (SSE), one subscription per server, re-opened with backoff while the session is watched; each time it opens, a snapshot (`GET /api/session/active`, `GET /api/session/{id}/permission`, `GET /api/session/{id}/form`), since the stream is live-only. `session.execution.started` → `busy`; `.succeeded`, `.failed`, `.interrupted` → `idle`; `permission.asked` → `waiting for approval` until `permission.replied`; `form.created` → `waiting for human` until `form.replied` or `form.cancelled`. A pending approval outranks a pending form, which outranks a running turn. States reach the hub with source `sse`. A stream that ends with its server, or a pid gone at the `CLAND_ADAPTER_POLL_MS` check, is `unknown`. |
+| usage | `session.step.ended` (one per assistant message): `{model, inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, cost}`, the model from `session.step.started`. |
+| stop, resume | Stop is SIGTERM to the server, which ends its MCP servers, the spoke among them. Resume finds the session when the pid is alive and the server answers `GET /api/session/{id}` with the recorded password; the state comes from the snapshot. A relaunch starts a new server on the same config and password, then reopens the same session (OpenCode keeps sessions in its own database) or creates it again under its id. |
+
+| Capability | |
+| --- | --- |
+| history | none: the messages are readable (`GET /api/session/{id}/message`), but not read in v0 |
+| usage | reliable: per message, from `session.step.ended` |
+| setModel | none: `POST /api/session/{id}/model` exists, but the contract has no setModel yet |
+| approvalRelay | none: approvals stay in the OpenCode TUI (spec 4.3) |
+| busy, idle | reliable: the server reports a turn's start and end |
+| waiting for approval, waiting for human | heuristic: the server has no waiting status, so they are derived from a pending `permission.asked` or `form.created` |
+
+`CLAND_OPENCODE_BIN` names the `opencode` executable. The server's environment drops `CLAND_*`, `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT` and `OPENCODE_PASSWORD` from the hub's own. The user's global OpenCode config still applies, merged with the generated one.
+
 ### The frames and the CLI
 
 | Request | Result `value` | Who |
 | --- | --- | --- |
 | `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"cwd"?}` | `{"process":HarnessProcess}` | UI, CLI, spokes (anyone until #30) |
-| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities}}` | UI, CLI, spokes |
+| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities}}` | UI, CLI, spokes |
 | `{"type":"session.attach","id":…,"session":…}` | `{"command":"claude attach 1a2b3c4d"}` | UI, CLI |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true}` | `{"found","reason"?,"process"}` | UI, CLI |
@@ -213,7 +237,7 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 
 | Command | What it does |
 | --- | --- |
-| `cland session launch <name> [--role r] [--model m] [--harness claude-code] [--cwd dir]` | Launches a session through the hub. |
+| `cland session launch <name> [--role r] [--model m] [--harness claude-code\|opencode] [--cwd dir]` | Launches a session through the hub. |
 | `cland session list` / `attach <name>` / `stop <name>` / `resume <name> [--relaunch]` | As the frames above. |
 | `cland hook <event> --session <name> --hub-file <path>` | Posts one signal, with the harness's JSON payload from stdin. Only the fields the hub reads are kept, and a prompt is reduced to the message ids it carries. Always exits 0: a hook never fails the harness. |
 | `cland hook bridge --session <name> --hub-file <path>` | The mod's connection to the hub. It prints each `inject` frame as a JSON line, reconnects through `hub.json` after a hub restart, and ends with its parent. |
