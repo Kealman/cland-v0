@@ -10,7 +10,7 @@ import { mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/pro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWith, connectUi, eventually, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
@@ -240,7 +240,7 @@ test('after a hub restart, resume re-finds the app-server and its thread through
   await presentAs(ui, 'coord', 'idle');
   ui.close();
 
-  assert.equal((await clandWith(root, fake.env, 'hub', 'stop')).code, 0);
+  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
   assert.equal((await fake.servers()).length, 1, 'the app-server outlives the hub');
   const second = await startDaemon(t, root, fake.env);
   const ui2 = await connectUi(t, second.discovery);
