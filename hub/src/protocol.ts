@@ -79,13 +79,13 @@ export type HubFrame =
 
 export type SendOutcome = { to: string; outcome: Outcome; reason?: string };
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 /** Parse one wire frame; `null` when it is not even a typed object (the sender is then refused). */
 export function parseFrame(raw: string): Record<string, unknown> | null {
   try {
     const v: unknown = JSON.parse(raw);
-    return isRecord(v) && typeof v.type === 'string' ? v : null;
+    return isObject(v) && typeof v.type === 'string' ? v : null;
   } catch {
     return null;
   }
@@ -126,7 +126,7 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
     case 'welcome':
       return typeof f.name === 'string' && Array.isArray(f.presence);
     case 'deliver':
-      return isRecord(f.message) && typeof f.message.id === 'string' && typeof f.message.text === 'string';
+      return isObject(f.message) && typeof f.message.id === 'string' && typeof f.message.text === 'string';
     case 'result':
       return typeof f.id === 'string' && typeof f.ok === 'boolean';
     case 'error':
