@@ -1,6 +1,17 @@
 .tmp
 node_modules/
-.cland/
+# cland's volatile hub state, should a hub ever run in this repository (spec 4.9);
+# .cland/tasks/, roles.toml and config.toml are meant to be committed
+.cland/hub.db*
+.cland/hub.json
+.cland/hub.sock
+.cland/secret
+.cland/journal.jsonl
+.cland/log/
+.cland/artifacts/
+.cland/worktrees/
+.cland/territory.git/
+.cland/*.tmp
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

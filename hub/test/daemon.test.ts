@@ -157,3 +157,20 @@ test('a project path too long for a Unix socket puts the socket under the temp d
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await assert.rejects(stat(discovery.socket), { code: 'ENOENT' });
 });
+
+test('git sees only what is meant to be committed under .cland/ while a hub runs', async (t) => {
+  const root = await tempProject(t);
+  const git = (...args: string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  assert.equal(git('init', '-q').status, 0);
+  await startDaemon(t, root);
+  await mkdir(join(root, '.cland', 'tasks'), { recursive: true });
+  await writeFile(join(root, '.cland', 'tasks', 'T-1.md'), '# a task\n');
+  await writeFile(join(root, '.cland', 'roles.toml'), '');
+  await writeFile(join(root, '.cland', 'config.toml'), '');
+  for (const volatile of ['journal.jsonl', 'artifacts/a.txt', 'worktrees/w/x', 'territory.git/HEAD']) {
+    await mkdir(join(root, '.cland', volatile, '..'), { recursive: true });
+    await writeFile(join(root, '.cland', volatile), 'x');
+  }
+  const listed = git('status', '--porcelain', '--untracked-files=all', '.cland').stdout.trim().split('\n').map((l) => l.slice(3)).sort();
+  assert.deepEqual(listed, ['.cland/.gitignore', '.cland/config.toml', '.cland/roles.toml', '.cland/tasks/T-1.md']);
+});

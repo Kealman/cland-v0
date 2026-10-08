@@ -14,10 +14,10 @@ const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
 const START_DEADLINE_MS = 15_000;
 const STOP_DEADLINE_MS = 10_000;
 
-export const HUB_USAGE = `  hub start       start the project's hub as a daemon (idempotent)
+export const HUB_USAGE = `  hub start       start the project's hub in the background (idempotent)
   hub status      show the running hub and its connected sessions (--json for JSON)
   hub stop        stop the project's hub
-  hub serve       run the hub in the foreground (what the daemon runs)
+  hub serve       run the hub in the foreground (what start runs)
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
