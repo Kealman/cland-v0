@@ -165,3 +165,28 @@ test('a renamed session keeps its revocation: its process-table row follows the 
   assert.equal(status.coordinator, null);
   assert.ok(!status.sessions.some((s) => s.name === 'boss'));
 });
+
+test('a hub that dies between a launch reserving the Coordinator and its spawn gives the role back at its next start', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const first = await startDaemon(t, root, { ...fake.env, CLAND_TEST_CRASH_AT: 'launch-reserved' });
+  const ui = await connectUi(t, first.discovery);
+  await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'codex' }, 5000).catch(() => undefined);
+  await eventually('the hub is gone', () => {
+    try {
+      process.kill(first.discovery.pid, 0);
+      return undefined;
+    } catch {
+      return true;
+    }
+  });
+  assert.match(await hubLog(root), /"event":"role-reserved","session":"coord","role":"coordinator"/);
+
+  const second = await startDaemon(t, root, fake.env);
+  const again = await connectUi(t, second.discovery);
+  assert.deepEqual(await holders(again, 'coordinator'), []);
+  assert.match(await hubLog(root), /"event":"role-reservation-released","session":"coord","role":"coordinator"[^\n]*"reason":"interrupted"/);
+  // the role is free: another launch for it goes through
+  const launched = await again.request({ type: 'session.launch', name: 'coord-2', role: 'coordinator', harness: 'codex' }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+});

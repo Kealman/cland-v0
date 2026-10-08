@@ -13,7 +13,9 @@
 //       A prompt containing "needs approval" first sets the model's own status line to "idle" through the spoke's
 //       `status` tool (the hub must not take it for the state), then raises a PermissionRequest and waits for
 //       SIGUSR1 (the approval), then PostToolUse. A prompt that is "rename to <name>" calls the spoke's `rename`
-//       tool first.
+//       tool first. A prompt that is `[@<name> ]cland <args…>` runs the cland CLI (`$CLAND_NODE $CLAND_CLI <args…>`,
+//       split on spaces) in the session's own environment, as a Bash tool call would, and answers
+//       "ran: cland <args…>: exit <code>" with its stdout and stderr instead of the pong.
 //   claude agents --json   the live sessions (pid, id, sessionId, cwd, kind, status, waitingFor)
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
@@ -393,6 +395,23 @@ async function runSession(id: string): Promise<number> {
     }
     const topic = /\btopic="([^"]+)"/.exec(next.text)?.[1];
     const msgId = /\bmsg_id="([^"]+)"/.exec(next.text)?.[1];
+    const cli = /^(?:@\S+\s+)*cland\s+(.+)$/.exec(body.trim());
+    if (cli) {
+      const argv = (cli[1] as string).split(/\s+/);
+      const ran = await new Promise<string>((resolve) => {
+        const child = spawn(env.CLAND_NODE ?? process.execPath, [env.CLAND_CLI as string, ...argv], { cwd: job.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+        let out = '';
+        child.stdout.on('data', (c: Buffer) => (out += String(c)));
+        child.stderr.on('data', (c: Buffer) => (out += String(c)));
+        child.on('close', (code) => resolve(`ran: cland ${cli[1]}: exit ${code}\n${out.trim()}`));
+      });
+      log(ran);
+      await callTool('send', { text: ran, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
+      setStatus('idle');
+      await runHooks('Stop', { last_assistant_message: ran });
+      await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', inputTokens: 10, outputTokens: 2 } }, (e) => ({ text: e.answer }));
+      continue;
+    }
     await callTool('send', { text: `pong: ${body}`, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
     setStatus('idle');
     await runHooks('Stop', { last_assistant_message: `pong: ${body}` });

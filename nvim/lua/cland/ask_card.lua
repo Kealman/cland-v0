@@ -13,6 +13,8 @@ M.STATE = {
   answered = { '✓ answered', 'ClandGreen' },
   withdrawn = { 'withdrawn', 'ClandDim' },
   cancelled = { 'cancelled', 'ClandDim' },
+  -- an ask the client cached as open that the hub's open asks no longer list, its message past the history it read
+  closed = { 'closed', 'ClandDim' },
 }
 
 --- The card's lines under its message header: {text, group, option} entries. `option` is the option a line
@@ -43,7 +45,8 @@ function M.lines(card, question)
   elseif card.state == 'answered' then
     out[#out + 1] = { ' ┃ ' .. (card.option and ('answered with ' .. card.option) or 'answered in your words'), 'ClandDim', nil, bar }
   else
-    out[#out + 1] = { ' ┃ ' .. card.state .. (card.state == 'withdrawn' and ': the topic was resolved' or ': the topic or its item closed'), 'ClandDim', nil, bar }
+    local why = card.state == 'withdrawn' and ': the topic was resolved' or card.state == 'closed' and ': no longer open in the hub' or ': the topic or its item closed'
+    out[#out + 1] = { ' ┃ ' .. card.state .. why, 'ClandDim', nil, bar }
   end
   return out
 end

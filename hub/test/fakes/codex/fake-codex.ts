@@ -28,7 +28,9 @@
 //
 //   Failure modes for the hub's robustness tests: FAKE_CODEX_FAIL_FIRST_TURN=1 refuses a thread's first turn once the
 //   spoke is in the hub (its `who` answers: a launch that fails after the session said hello); a message whose text contains "lose the answer" runs as a turn but its
-//   `turn/start` (or `turn/steer`) result is never sent, the first time only (an ambiguous inject); SIGUSR2 drops every
+//   `turn/start` (or `turn/steer`) result is never sent, the first time only (an ambiguous inject); one containing
+//   "garble the answer" starts its turn and answers with a frame that is not JSON, and one containing "drop the
+//   connection" starts its turn and drops the client's connection instead of answering (the first time only); SIGUSR2 drops every
 //   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
 //   app-server lives). A body `rename to <name>` calls the spoke's `rename` tool before the pong. Each `turn/start`
 //   logs its `effort` when given.
@@ -301,13 +303,21 @@ async function appServer(args: string[]): Promise<number> {
     return ((params.input ?? []) as Array<{ type: string; text?: string }>).map((i) => i.text ?? '').join('\n');
   };
 
-  type Answer = { result: unknown } | { error: { code: number; message: string } } | { lost: true };
+  type Answer = { result: unknown } | { error: { code: number; message: string } } | { lost: true } | { garbled: true } | { dropped: true };
   const lost = new Set<string>();
   const loseOnce = (text: string): boolean => {
     if (!text.includes('lose the answer') || lost.has(text)) return false;
     lost.add(text);
     log('the answer is lost');
     return true;
+  };
+  // after the turn was accepted: its answer is a frame that is not JSON, or the connection drops instead (once each)
+  const spoilOnce = (text: string): Answer | null => {
+    const mode = text.includes('garble the answer') ? 'garbled' : text.includes('drop the connection') ? 'dropped' : null;
+    if (mode === null || lost.has(text)) return null;
+    lost.add(text);
+    log(`the answer is ${mode}`);
+    return mode === 'garbled' ? { garbled: true } : { dropped: true };
   };
   const handle = async (c: Conn, method: string, params: Record<string, unknown>): Promise<Answer> => {
     switch (method) {
@@ -358,6 +368,8 @@ async function appServer(args: string[]): Promise<number> {
         setStatus(t, { type: 'active', activeFlags: [] });
         toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });
         void runTurn(t);
+        const spoiled = spoilOnce(text);
+        if (spoiled) return spoiled;
         return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
       }
       case 'turn/steer': {
@@ -397,7 +409,9 @@ async function appServer(args: string[]): Promise<number> {
       }
       if (m.id === undefined) return; // a notification (`initialized`)
       void handle(c, m.method, m.params ?? {}).then((answer) => {
-        if (!('lost' in answer)) send(c, { id: m.id, ...answer });
+        if ('garbled' in answer) c.ws.send('{"id": this is not json');
+        else if ('dropped' in answer) c.ws.terminate();
+        else if (!('lost' in answer)) send(c, { id: m.id, ...answer });
       });
     });
   });

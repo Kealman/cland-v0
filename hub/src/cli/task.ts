@@ -5,6 +5,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { layout, pidAlive, projectRoot, readDiscovery } from '../project.ts';
 import type { Claim } from '../tracker/index-db.ts';
 import type { ItemSummary, ItemView } from '../tracker/tracker.ts';
+import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
 
@@ -18,10 +19,10 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-f
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task claim <id> [--release] [--force]
-${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: $CLAND_SESSION_NAME
-                  and $CLAND_ROLE, else "human"); acting as a session the hub knows (with
-                  $CLAND_SESSION_ID when it is the session's own), the call is checked against
-                  that session's role, as its own tools are
+${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: "human"). In a
+                  launched session's shell ($CLAND_SESSION_ID / $CLAND_SESSION_NAME) the call is always
+                  that session's, checked against its role as its own tools are; --as cannot change it.
+                  The human acting --as a session the hub knows is checked against that session's role
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
@@ -216,11 +217,8 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
     io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n\nusage:\n${TASK_USAGE}`);
     return 2;
   }
-  const name = (typeof values.as === 'string' ? values.as : env.CLAND_SESSION_NAME)?.trim();
-  const role = (typeof values.role === 'string' ? values.role : env.CLAND_ROLE)?.trim();
-  // a launched session's own id goes with its name: the hub then checks the call against that session's role
-  const sessionId = name !== undefined && name === env.CLAND_SESSION_NAME?.trim() ? env.CLAND_SESSION_ID?.trim() : undefined;
-  if (name) frame.as = { name, ...(role ? { role } : {}), ...(sessionId ? { sessionId } : {}) };
+  const as = actorOf(values, env, io);
+  if (as) frame.as = as;
 
   const root = projectRoot(cwd);
   const l = layout(root);

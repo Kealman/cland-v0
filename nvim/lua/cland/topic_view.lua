@@ -49,11 +49,29 @@ function M.new(client, topic)
       end
       view.thread:merge(value.messages)
       -- a free answer armed for an ask that closed meanwhile goes
-      local a = view.composer.answering
-      local m = a and view.thread.by_id[a.ask]
-      if m and type(m.ask) == 'table' and m.ask.state ~= 'open' then
-        view.composer:answer_to(nil)
+      local function disarm()
+        local a = view.composer.answering
+        local m = a and view.thread.by_id[a.ask]
+        if m and type(m.ask) == 'table' and m.ask.state ~= 'open' then
+          view.composer:answer_to(nil)
+        end
       end
+      disarm()
+      -- the history holds only the latest messages: an older ask cached as open is checked against the hub's open
+      -- asks, asked after the history so an ask opened meanwhile is in both
+      client:request({ type = 'inbox.list' }, function(ierr, inbox)
+        if ierr or type(inbox) ~= 'table' or type(inbox.asks) ~= 'table' then
+          return
+        end
+        local open = {}
+        for _, a in ipairs(inbox.asks) do
+          if type(a) == 'table' and a.id then
+            open[a.id] = true
+          end
+        end
+        view.thread:reconcile_asks(open)
+        disarm()
+      end)
     end)
   end
   client:on('connected', load)

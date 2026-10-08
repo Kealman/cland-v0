@@ -175,18 +175,21 @@ export class Dispatcher {
    * The session a client's task frame acts as (`as`, the CLI's `--as` or `$CLAND_SESSION_NAME`), when it is one the
    * hub knows: by its session id (`as.sessionId`, `$CLAND_SESSION_ID`), else by a name a session holds or held. Its
    * role is the hub's, never the frame's. Null for the human, and for a name no session ever had (a CLI actor).
+   * A session id decides before any name: a frame carrying one is that session's (an id the hub does not know is a
+   * roleless session, refused what needs a role), whatever name it gives, the human's included.
    */
   #asSession(frame: Record<string, unknown>): Caller | null {
     const core = this.#options.core;
     if (!core.roles) return null;
     const as = frame.as as { name?: unknown; sessionId?: unknown } | undefined;
-    if (!as || typeof as !== 'object' || typeof as.name !== 'string' || as.name === HUMAN_SESSION) return null;
+    if (!as || typeof as !== 'object' || typeof as.name !== 'string') return null;
     const sessionId = typeof as.sessionId === 'string' && as.sessionId !== '' ? as.sessionId : null;
+    if (sessionId === null && as.name === HUMAN_SESSION) return null;
     if (sessionId !== null) {
       const live = core.connectionOf(sessionId);
       if (live) return { name: live.name, sessionId, role: live.role };
       const known = core.store.nameOfSession(sessionId);
-      return { name: known ?? as.name, sessionId, role: known !== null ? core.store.roleOf(known) : null };
+      return { name: known ?? (as.name === HUMAN_SESSION ? sessionId : as.name), sessionId, role: known !== null ? core.store.roleOf(known) : null };
     }
     const present = core.presence().find((p) => p.name === as.name);
     if (present) return { name: present.name, sessionId: present.sessionId, role: present.role };

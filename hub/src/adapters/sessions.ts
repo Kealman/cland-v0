@@ -209,6 +209,8 @@ export class Sessions {
     // the role is reserved before anything is spawned: a second launch for an exclusive role is refused right here,
     // and a launch that fails gives back what it reserved (its early hello's grant included)
     const reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
+    // a test's crash between the reservation and the spawn (the next start gives the role back)
+    if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
     this.#launching.set(request.name, []);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
     if (role !== null) this.#firstHello.set(request.name, { role, carried: clause !== null && adapter.clauseAtSpawn === true });
@@ -218,6 +220,7 @@ export class Sessions {
       p = await adapter.spawn({ name: request.name, role, model, cwd: request.cwd ?? this.#root, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}) });
       p = { ...p, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
       this.#table.put(p);
+      if (reservation) this.#core.launchSettled(request.name);
     } catch (err) {
       this.#earlyBridges.delete(request.name);
       this.#firstHello.delete(request.name);
@@ -273,6 +276,11 @@ export class Sessions {
     this.#log({ event: 'session-resumed', session: name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
     if (r.state !== 'unknown') this.#signal(p.sessionId, { state: r.state, source: 'resume', at: Date.now() }, false);
     return { found: true, process: this.view(process) };
+  }
+
+  /** At the hub's start, before any frame is read: the roles reserved by launches the hub died in are given back. */
+  releaseInterruptedLaunches(): void {
+    this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running');
   }
 
   /** At the hub's start: every process the table says runs is re-found or marked gone. */

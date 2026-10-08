@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, tempProject, waitForAbsence, type Session } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, waitForAbsence, type Session } from './harness.ts';
 
 type Result = { ok: boolean; error?: string; code?: string; permission?: string; reason?: string };
 type Audit = { session: string; sessionId: string | null; role: string | null; tool: string; outcome: string; client?: string };
@@ -72,6 +72,46 @@ test('a launched session running `cland task` is checked against its role and au
   assert.deepEqual([claimed.claim.session, claimed.claim.sessionId], ['impl-1', 'sess-impl']);
   // the human: no `as`, unrestricted
   ok(await cland(root, 'task', 'close', 'T-1'));
+});
+
+test('a launched session cannot borrow another identity with `--as`: neither the human nor the Coordinator, it stays itself', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+  const implId = (launched.value as { process: { sessionId: string } }).process.sessionId;
+  ok(await cland(root, 'task', 'create', 'Ship it', '--assignee', 'impl-1'));
+
+  // the session's own shell runs the CLI, as its Bash tool would
+  const run = async (args: string): Promise<string> => {
+    assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: `@impl-1 cland ${args}` })).ok, true);
+    const answer = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'impl-1' && (f.message as { text: string }).text.startsWith(`ran: cland ${args}: `), 30_000);
+    return (answer.message as { text: string }).text;
+  };
+  for (const as of ['human', 'coord']) {
+    const out = await run(`task close T-1 --as ${as}`);
+    assert.match(out, /: exit 1\n/, out);
+    assert.match(out, /forbidden: task\.close \(Implementer may not use task\.close\)/, out);
+    const record = (await audits(root)).filter((a) => a.tool === 'task.close').at(-1);
+    assert.deepEqual([record?.session, record?.sessionId, record?.role, record?.outcome, record?.client], ['impl-1', implId, 'implementer', 'forbidden', 'cli']);
+  }
+  // on the wire the session id decides, before any name: a frame naming the human with the session's id is the session
+  const wire = await ui.request({ type: 'task.close', item: 'T-1', as: { name: 'human', sessionId: implId } });
+  assert.equal(wire.ok, false);
+  assert.match(wire.error ?? '', /forbidden: task\.close/);
+  // what the Implementer may do, it does as itself whatever `--as` says: the claim is held by its own session id
+  const claimed = await run('task claim T-1 --as coord --json');
+  assert.match(claimed, /: exit 0\n/, claimed);
+  const claim = (JSON.parse(claimed.split('\n').find((l) => l.startsWith('{')) as string) as { claim: { session: string; sessionId: string } }).claim;
+  assert.deepEqual([claim.session, claim.sessionId], ['impl-1', implId]);
+  const view = JSON.parse(ok(await cland(root, 'task', 'view', 'T-1', '--json')).stdout) as { item: { state: string } };
+  assert.equal(view.item.state, 'open');
 });
 
 test('a rename moves no ownership: only the Coordinator renames, and another session under an assignee\'s name owns nothing of it', async (t) => {

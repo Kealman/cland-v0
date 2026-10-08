@@ -86,6 +86,16 @@ create table if not exists assignees (
   name text not null,
   session_id text
 );
+create table if not exists meta (
+  key text primary key,
+  value text not null
+);
+create table if not exists launch_reservations (
+  name text primary key,
+  role text not null,
+  previous text,
+  at integer not null
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -137,13 +147,15 @@ create index if not exists messages_seq on messages (topic, seq);
 
 /**
  * The unread watermark's sequence, set up once the columns exist: rows written before it got their rowid (which was
- * the watermark then), the watermark moves to it, and the counter starts above every seq stored, never below.
+ * the watermark then), the watermark moves to it, and the counter starts above every seq stored and every watermark,
+ * never below: a pruned file keeps an old watermark with no message left to show it, and a new message numbered
+ * under it would never be unread.
  */
 const SEQ_SETUP = `
 update messages set seq = rowid where seq is null;
 update topics set read_seq = max(read_seq, coalesce(read_rowid, 0)) where read_rowid > read_seq;
 insert into counters (name, value) values ('message_seq', 0) on conflict (name) do nothing;
-update counters set value = max(value, (select coalesce(max(seq), 0) from messages)) where name = 'message_seq';
+update counters set value = max(value, (select coalesce(max(seq), 0) from messages), (select coalesce(max(read_seq), 0) from topics)) where name = 'message_seq';
 `;
 
 type Row = Record<string, string | number | null>;
@@ -364,6 +376,30 @@ export class Store implements HygieneMemory {
         )
         .all(session, notice) as Row[]
     ).map((r) => r.message_id as string);
+  }
+
+  /** One value the hub keeps beside its rows (the Agents journal's checkpoint), or null. */
+  meta(key: string): string | null {
+    const row = this.#db.prepare('select value from meta where key = ?').get(key) as Row | undefined;
+    return (row?.value as string | undefined) ?? null;
+  }
+
+  setMeta(key: string, value: string): void {
+    this.#db.prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
+  }
+
+  /** A launch reserved `role` for `name` (what the name held before: `previous`); cleared once its process row is
+   *  written or the launch gave the role back. One left at a start belongs to a launch the hub died in. */
+  saveReservation(name: string, role: string, previous: string | null, at: number): void {
+    this.#db.prepare('insert into launch_reservations (name, role, previous, at) values (?, ?, ?, ?) on conflict (name) do update set role = excluded.role, previous = excluded.previous, at = excluded.at').run(name, role, previous, at);
+  }
+
+  dropReservation(name: string): void {
+    this.#db.prepare('delete from launch_reservations where name = ?').run(name);
+  }
+
+  reservations(): Array<{ name: string; role: string; previous: string | null }> {
+    return (this.#db.prepare('select name, role, previous from launch_reservations order by name').all() as Row[]).map((r) => ({ name: r.name as string, role: r.role as string, previous: (r.previous as string | null) ?? null }));
   }
 
   /** The names holding a role, seen since `since` — a role as a tag resolves to these. */

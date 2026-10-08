@@ -10,12 +10,12 @@
 //
 // A notice is recorded after the event's own write (a microtask later), so a hub dying in between would lose it. The
 // journal closes that gap: an event that makes a notice is journalled with the notice's id (`agentsNotice`), and at
-// the next start `replayAgentsRecord` records every journalled notice after the last one Agents has, under that id
-// (once: `noticeInTopic` skips an id it already holds).
+// the next start `replayAgentsRecord` records every journalled notice after the last one recorded (the store's
+// checkpoint, which retention never prunes), under that id (once: `noticeInTopic` skips an id it already holds).
 import { randomUUID } from 'node:crypto';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { LogEntry, LogFn } from '../log.ts';
-import { AGENTS, type HubCore, type TopicNotice } from './core.ts';
+import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
 export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'role-assign', 'role-revoke', 'claim', 'release', 'handover', 'mute', 'unmute', 'refusal'] as const;
@@ -105,13 +105,17 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
 
 /**
  * At start: the journalled lifecycle events (`records`, oldest first) whose notices Agents lacks, recorded now. Only
- * those after the newest one Agents has: notices are recorded in order, so a gap is at the end of the previous run.
+ * those after the newest one recorded: notices are recorded in order, so a gap is at the end of the previous run.
+ * The newest one recorded is the store's checkpoint (`meta`, written with each journalled notice), which retention
+ * never prunes, else the newest one Agents still holds: once every notice is past the window, nothing comes back.
  */
 export function replayAgentsRecord(core: HubCore, records: ReadonlyArray<Record<string, unknown>>, log: LogFn = () => {}): number {
   const noticed = records.filter((r) => typeof r.agentsNotice === 'string');
+  const checkpoint = core.store.meta(AGENTS_JOURNAL_CHECKPOINT);
   let from = 0;
   for (let i = noticed.length - 1; i >= 0; i--) {
-    if (core.store.message(noticed[i]?.agentsNotice as string) !== null) {
+    const id = noticed[i]?.agentsNotice as string;
+    if (id === checkpoint || core.store.message(id) !== null) {
       from = i + 1;
       break;
     }

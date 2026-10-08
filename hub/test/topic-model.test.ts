@@ -5,7 +5,8 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixedRoles } from '../src/roles/config.ts';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { cland, connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 import type { Hub } from '../src/hub/server.ts';
@@ -371,6 +372,36 @@ test('an item closed while the hub was stopped closes its topic when the hub sta
   const again = await startDaemon(t, root);
   ui = await connectUi(t, again.discovery);
   assert.equal((await topicOf(ui, topic.id)).status, 'closed');
+});
+
+test('a hub.db written before the message sequence, its messages pruned: the migrated watermark hides no new message', async (t) => {
+  const root = await tempProject(t);
+  // the shape an older hub left: no `seq`, no `read_seq`; the human had read up to rowid 1000, then retention emptied
+  // the messages table
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const old = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  old.exec(`
+    create table messages (id text primary key, from_name text not null, from_kind text not null, from_role text, via text not null,
+      to_json text not null, text text not null, reply_to text, ts text not null, created_at integer not null, topic text);
+    create table topics (id text primary key, title text not null, status text not null, standing integer not null default 0,
+      created_at text not null, updated_at text not null, item text, read_rowid integer not null default 0);
+  `);
+  const at = '2026-10-01T00:00:00.000Z';
+  old.prepare('insert into topics (id, title, status, standing, created_at, updated_at, read_rowid) values (?, ?, ?, 0, ?, ?, 1000)').run('t-old', 'Read long ago', 'open', at, at);
+  old.prepare("insert into messages (id, from_name, from_kind, via, to_json, text, ts, created_at, topic) values ('m-1', 'coord', 'session', 'spoke', '[]', 'x', ?, 0, 't-old')").run(at);
+  old.exec('delete from messages');
+  old.close();
+
+  const { discovery } = await startDaemon(t, root);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await topicOf(ui, 't-old')).unread, 0);
+  await coord.call('send', { topic: 't-old', text: 'after the migration' });
+  assert.equal((await topicOf(ui, 't-old')).unread, 1);
+  await ok(ui, { type: 'topic.read', topic: 't-old' });
+  assert.equal((await topicOf(ui, 't-old')).unread, 0);
 });
 
 test('the unread count survives retention emptying the messages table: a message after the prune is unread', async (t) => {

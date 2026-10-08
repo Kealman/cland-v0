@@ -5,7 +5,8 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 
 type Message = { id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; replyTo?: string; kind?: string; detail?: Record<string, unknown> };
 type Refusal = { code: string; rule: string; until?: string };
@@ -321,6 +322,28 @@ test('a lifecycle event journalled but not yet recorded in Agents when the hub d
     return c.some((m) => m.id === lost.agentsNotice) ? c : undefined;
   });
   assert.deepEqual(claims.map((m) => m.text), ['alpha claimed T-1', 'beta claimed T-2']);
+});
+
+test('lifecycle notices retention removed are not brought back by the journal: no replay after every notice was pruned', async (t) => {
+  const root = await tempProject(t);
+  const first = await startDaemon(t, root);
+  const ui = await connectUi(t, first.discovery);
+  assert.equal((await cland(root, 'task', 'create', 'Recorded')).code, 0);
+  assert.equal((await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha')).code, 0);
+  await eventually('the claim in Agents', async () => (await history(ui, 'agents')).find((m) => m.kind === 'claim'));
+  ui.close();
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  // what retention leaves once every lifecycle notice is past the window: none of them in the store
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  db.exec("delete from messages where topic = 'agents'");
+  db.close();
+
+  const again = await startDaemon(t, root);
+  const after = await connectUi(t, again.discovery);
+  await sleep(300);
+  const agents = await history(after, 'agents');
+  assert.deepEqual(agents.filter((m) => m.kind === 'claim' || m.kind === 'role-assign'), [], JSON.stringify(agents));
+  assert.ok(!(await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).includes('"event":"agents-record-replayed"'));
 });
 
 test('a journal whose last line was cut off mid-write gets a newline before the next record: every later record parses', async (t) => {

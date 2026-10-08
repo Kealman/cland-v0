@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { layout, pidAlive, projectRoot, readDiscovery } from '../project.ts';
 import type { ImportedIssue, ImportOutcome, IssueRef } from '../tracker/import-github.ts';
+import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export const IMPORT_USAGE = `  task import-github [--repo owner/name] [--all]
@@ -168,9 +169,7 @@ export async function runImportGithub(args: string[], cwd: string, io: Io, env: 
     io.err(`cland: --repo must be owner/name, not "${repo}"\n`);
     return 2;
   }
-  const name = (values.as ?? env.CLAND_SESSION_NAME)?.trim();
-  const role = (values.role ?? env.CLAND_ROLE)?.trim();
-  const as = name ? { name, ...(role ? { role } : {}) } : undefined;
+  const as = actorOf(values, env, io);
 
   let fetched: { issues: ImportedIssue[]; pulls: number };
   try {
