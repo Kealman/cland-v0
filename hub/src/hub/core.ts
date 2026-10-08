@@ -11,6 +11,7 @@ import {
   type Presence,
   type RefusalCode,
   type SendOutcome,
+  type SessionState,
   type Topic,
   type TopicMessage,
   type TopicRef,
@@ -78,6 +79,10 @@ export class HubCore {
   readonly #retentionMs: number;
   readonly #hygiene: Hygiene;
   readonly #listeners = new Set<(event: HubEvent) => void>();
+  /** Each session's state by its session id (a rename moves nothing), set only by adapters (spec 4.2). */
+  readonly #states = new Map<string, SessionState>();
+  /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
+  #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
 
   constructor(options: CoreOptions = {}) {
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
@@ -217,10 +222,46 @@ export class HubCore {
     if (!this.isCurrent(connection)) return;
     if (!this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) return;
     this.#log({ event: 'acked', id: messageId, session: connection.name });
+    this.#emitStage(messageId);
+    this.#onDelivered?.(messageId, connection.name, connection.sessionId);
+  }
+
+  /** The message's stage as stored, to the subscribers; it moves only once every addressee got as far. */
+  #emitStage(messageId: string): void {
     const topic = this.#store.message(messageId)?.topic;
     const stage = this.#store.stage(messageId);
-    // the message's stage moves only once every addressee accepted it
     if (topic !== undefined && stage !== undefined && stage !== 'queued') this.#emit({ type: 'delivery', topic, message: messageId, stage });
+  }
+
+  /** Who injects what a spoke accepted (the adapters' supervisor); one at a time. */
+  onDelivered(listener: ((messageId: string, session: string, sessionId: string) => void) | null): void {
+    this.#onDelivered = listener;
+  }
+
+  /** A session's adapter confirmed the turn (spec 4.2, `injected`); false when the delivery was not `delivered`. */
+  markInjected(messageId: string, session: string): boolean {
+    if (!this.#store.markInjected(messageId, session)) return false;
+    this.#log({ event: 'injected', id: messageId, session });
+    this.#emitStage(messageId);
+    return true;
+  }
+
+  /** A session's state, from its adapter (never from the model's `status`); subscribers hear a change. */
+  setSessionState(sessionId: string, name: string, state: SessionState, source: string): boolean {
+    if (this.#states.get(sessionId) === state) return false;
+    this.#states.set(sessionId, state);
+    this.#log({ event: 'session-state', session: name, state, source });
+    this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString() });
+    return true;
+  }
+
+  sessionState(sessionId: string): SessionState {
+    return this.#states.get(sessionId) ?? 'unknown';
+  }
+
+  /** The live connection of a session id, if its spoke is connected. */
+  connectionOf(sessionId: string): Connection | undefined {
+    return [...this.#live.values()].find((c) => c.sessionId === sessionId);
   }
 
   /** A socket closed. Only the connection that owns the name is removed: a stale close must never
@@ -237,7 +278,15 @@ export class HubCore {
   }
 
   presence(): Presence[] {
-    return [...this.#live.values()].map((c) => ({ name: c.name, sessionId: c.sessionId, cwd: c.cwd, role: c.role, status: c.status, connectedAt: c.connectedAt }));
+    return [...this.#live.values()].map((c) => ({
+      name: c.name,
+      sessionId: c.sessionId,
+      cwd: c.cwd,
+      role: c.role,
+      status: c.status,
+      connectedAt: c.connectedAt,
+      state: this.sessionState(c.sessionId),
+    }));
   }
 
   /** A hub-kind message to one session: delivered now or queued, and recorded. */

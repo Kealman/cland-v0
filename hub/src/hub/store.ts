@@ -4,8 +4,9 @@ import { DatabaseSync } from 'node:sqlite';
 import type { DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 
-/** A delivery to one addressee: queued until its spoke acks it (delivered), or dropped past the TTL. */
-export type DeliveryState = 'delivered' | 'queued' | 'dropped';
+/** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
+ *  the turn, or dropped past the TTL. */
+export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected';
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 
 const SCHEMA = `
@@ -98,11 +99,13 @@ const toTopic = (row: Row): Topic => ({
   updatedAt: row.updated_at as string,
 });
 
-/** A message's stage from its deliveries' states: queued while any waits; dropped only when all were. */
+/** A message's stage from its deliveries' states: queued while any waits; dropped only when all were; injected
+ *  once every delivery that was not dropped was injected. */
 const stageOf = (states: string[]): DeliveryStage | undefined => {
   if (states.length === 0) return undefined;
   if (states.includes('queued')) return 'queued';
   if (states.every((s) => s === 'dropped')) return 'dropped';
+  if (states.every((s) => s === 'injected' || s === 'dropped')) return 'injected';
   return 'delivered';
 };
 
@@ -258,6 +261,19 @@ export class Store implements HygieneMemory {
   /** The session's spoke accepted the message; false when there was no queued delivery of it (a repeat ack). */
   markDelivered(messageId: string, session: string, now: number): boolean {
     return this.#db.prepare("update deliveries set state = 'delivered', delivered_at = ? where message_id = ? and session = ? and state = 'queued'").run(now, messageId, session).changes > 0;
+  }
+
+  /** The session's adapter confirmed the turn; false when the delivery was not `delivered` (a repeat, or never acked). */
+  markInjected(messageId: string, session: string): boolean {
+    return this.#db.prepare("update deliveries set state = 'injected' where message_id = ? and session = ? and state = 'delivered'").run(messageId, session).changes > 0;
+  }
+
+  /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
+  uninjected(session: string): Message[] {
+    const rows = this.#db
+      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' order by d.delivered_at, m.created_at")
+      .all(session) as Row[];
+    return rows.map(toMessage);
   }
 
   /**

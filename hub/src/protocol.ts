@@ -30,7 +30,13 @@ export type Presence = {
   role: string | null;
   status: string | null;
   connectedAt: string;
+  /** What the session's harness is doing, from its adapter's signals only (spec 4.2); `unknown` when no adapter can tell. */
+  state: SessionState;
 };
+
+/** A session's state (spec 4.2): fed by its harness adapter, never by the model's own `status`. */
+export type SessionState = 'idle' | 'busy' | 'waiting for human' | 'waiting for approval' | 'unknown';
+export const SESSION_STATES: readonly SessionState[] = ['idle', 'busy', 'waiting for human', 'waiting for approval', 'unknown'];
 
 export type Message = {
   id: string;
@@ -67,7 +73,7 @@ export type Topic = {
 export type TopicRef = { id: string; title: string };
 
 /** A message's progress (spec 4.2): `queued` until every addressee's spoke acked it, then `delivered`;
- *  `injected` (the adapter confirmed the turn) comes with #24; `dropped` when it waited past the TTL. */
+ *  `injected` once every addressee's adapter confirmed the turn; `dropped` when it waited past the TTL. */
 export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
 
 /** A message as a topic shows it: its stage is present when it had addressees. */
@@ -78,7 +84,9 @@ export type HubEvent =
   /** A new message in a topic: the human's, an agent's. */
   | { type: 'message'; topic: TopicRef; message: TopicMessage }
   /** A message's stage changed. */
-  | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage };
+  | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
+  /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
+  | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string };
 
 export type Hello = {
   type: 'hello';
@@ -116,6 +124,8 @@ export type HubFrame =
   | { type: 'result'; id: string; ok: true; value: unknown }
   | { type: 'result'; id: string; ok: false; error: string }
   | { type: 'error'; code: RefusalCode; message: string }
+  /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
+  | { type: 'inject'; session: string; message: string; text: string }
   | HubEvent;
 
 export type SendOutcome = { to: string; outcome: Outcome; reason?: string };
@@ -224,6 +234,29 @@ export type HubStatus = {
   startedAt: string;
   uptimeMs: number;
   sessions: Presence[];
+  /** The harness processes the hub launched (its process table), each with its state. */
+  harnesses?: HarnessProcessView[];
+};
+
+/** A row of the hub's process table as clients see it. */
+export type HarnessProcessView = {
+  name: string;
+  harness: string;
+  role: string | null;
+  model: string | null;
+  cwd: string;
+  pid: number | null;
+  /** The harness's own handle for the session (Claude Code: the background session id). */
+  harnessId: string | null;
+  /** The harness's conversation id (Claude Code: the session UUID); also the spoke's `CLAND_SESSION_ID`. */
+  sessionId: string;
+  startedAt: string;
+  /** `running`, `exited` (the process died on its own), `stopped` (through cland). */
+  status: 'running' | 'exited' | 'stopped';
+  state: SessionState;
+  attach: string | null;
+  /** The latest usage the harness reported, where its adapter has the capability. */
+  usage?: Record<string, unknown>;
 };
 
 export function isClientHello(f: Record<string, unknown>): f is ClientHello {
