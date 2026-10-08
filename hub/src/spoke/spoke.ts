@@ -18,7 +18,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from
 import { INSTRUCTIONS } from './instructions.ts';
 import { HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
-import { HEARTBEAT_MS, type Message, type SendOutcome } from '../protocol.ts';
+import { HEARTBEAT_MS, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 
 const VERSION = '0.1.0';
@@ -26,15 +26,17 @@ const VERSION = '0.1.0';
 const TOOLS = [
   {
     name: 'send',
-    description: 'Send a message to other sessions on the hub. Addressees are session names, `all`, globs over names (`impl-*`), or roles (`reviewer`) — exactly as names appear in `from` of inbound events.',
+    description:
+      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from). With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events — and is recorded in the topic (Agents unless `topic` names another).',
     inputSchema: {
       type: 'object',
       properties: {
-        to: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Session names, globs, roles or `all`' },
+        to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles or `all`; omit to write to the human' },
         text: { type: 'string', description: 'The message' },
+        topic: { type: 'string', description: 'The topic id (the `topic` of the event being answered); default General for the human, Agents between sessions' },
         reply_to: { type: 'string', description: 'msg_id of the event being answered' },
       },
-      required: ['to', 'text'],
+      required: ['text'],
     },
   },
   {
@@ -71,7 +73,7 @@ const text = (value: unknown, isError = false) => ({
 });
 
 /** The event attributes for one delivered message; keys are identifiers, values strings. */
-export function metaOf(message: Message): Record<string, string> {
+export function metaOf(message: Message, topic?: TopicRef): Record<string, string> {
   const meta: Record<string, string> = {
     from: message.from,
     from_kind: message.fromKind,
@@ -82,6 +84,10 @@ export function metaOf(message: Message): Record<string, string> {
   };
   if (message.fromRole !== undefined) meta.from_role = message.fromRole;
   if (message.replyTo !== undefined) meta.reply_to = message.replyTo;
+  if (topic) {
+    meta.topic = topic.id;
+    meta.topic_title = topic.title;
+  } else if (message.topic !== undefined) meta.topic = message.topic;
   return meta;
 }
 
@@ -96,8 +102,8 @@ type ChannelNotification = Notification & {
 };
 export type SpokeServer = Server<never, ChannelNotification>;
 const CHANNEL_CAPABILITY = { 'claude/channel': {} };
-const deliverToSession = (server: SpokeServer, message: Message): Promise<void> =>
-  server.notification({ method: 'notifications/claude/channel', params: { content: message.text, meta: metaOf(message) } });
+const deliverToSession = (server: SpokeServer, message: Message, topic?: TopicRef): Promise<void> =>
+  server.notification({ method: 'notifications/claude/channel', params: { content: message.text, meta: metaOf(message, topic) } });
 
 export type SpokeRuntime = { server: SpokeServer; hub: HubClient | null };
 
@@ -138,9 +144,15 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
       switch (req.params.name) {
         case 'send': {
           const to = Array.isArray(args.to) ? args.to.filter((t): t is string => typeof t === 'string') : [];
-          if (to.length === 0 || typeof args.text !== 'string') return text({ ok: false, error: 'send needs `to` (a non-empty list of names) and `text`' }, true);
-          const value = (await hub.request({ type: 'send', to, text: args.text, ...(typeof args.reply_to === 'string' ? { replyTo: args.reply_to } : {}) })) as { outcomes: SendOutcome[] };
-          return text({ ok: true, outcomes: value.outcomes });
+          if (typeof args.text !== 'string') return text({ ok: false, error: 'send needs `text`' }, true);
+          const value = (await hub.request({
+            type: 'send',
+            to,
+            text: args.text,
+            ...(typeof args.reply_to === 'string' ? { replyTo: args.reply_to } : {}),
+            ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),
+          })) as { outcomes: SendOutcome[]; topic: TopicRef };
+          return text({ ok: true, outcomes: value.outcomes, topic: value.topic });
         }
         case 'who': {
           const value = await hub.who();
@@ -216,8 +228,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
       ...(role ? { role } : {}),
     },
   });
-  hub.on('deliver', (message) => {
-    deliverToSession(server, message).catch((err: unknown) => log(`could not deliver ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
+  hub.on('deliver', (message, topic) => {
+    deliverToSession(server, message, topic).catch((err: unknown) => log(`could not deliver ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
   });
   hub.start();
   return { server, hub };

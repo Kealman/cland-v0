@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { serveProject } from '../hub/daemon.ts';
+import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
 import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
@@ -18,6 +19,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
   hub status      show the running hub and its connected sessions (--json for JSON)
   hub stop        stop the project's hub
   hub serve       run the hub in the foreground (what start runs)
+                  --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
@@ -156,9 +158,13 @@ async function stop(root: string, io: Io): Promise<number> {
   return 0;
 }
 
-async function serve(root: string): Promise<number> {
+async function serve(root: string, stdio = false): Promise<number> {
   const log = jsonLinesLog((line) => process.stderr.write(line));
   const daemon = await serveProject(root, { log });
+  if (stdio) {
+    // a UI spawned this hub as its child: stdout carries frames only, and the parent leaving stops the hub
+    createStdioEdge({ input: process.stdin, output: process.stdout, dispatcher: daemon.hub.dispatcher, log, onEnd: () => void daemon.stop() });
+  }
   const onSignal = (signal: NodeJS.Signals) => {
     log({ event: 'signal', signal });
     void daemon.stop();
@@ -167,7 +173,7 @@ async function serve(root: string): Promise<number> {
   process.on('SIGINT', onSignal);
   // a daemon has no terminal to lose
   process.on('SIGHUP', () => log({ event: 'signal', signal: 'SIGHUP', ignored: true }));
-  process.stdout.write(`hub serving ${root} on 127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket} (pid ${process.pid})\n`);
+  (stdio ? process.stderr : process.stdout).write(`hub serving ${root} on 127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket}${stdio ? ' and stdio' : ''} (pid ${process.pid})\n`);
   await daemon.stopped;
   return 0;
 }
@@ -184,7 +190,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
     case 'stop':
       return stop(root, io);
     case 'serve':
-      return serve(root);
+      return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'));
     default:
       io.err(`cland: unknown hub command "${sub ?? ''}"\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
       return 2;

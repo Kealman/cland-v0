@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from './store.ts';
+import { HubCore } from './core.ts';
 import type { Message } from '../protocol.ts';
 
 const message = (id: string, from: string, to: string[], text: string, ts = '2026-10-08T12:00:00.000Z'): Message => ({ id, from, fromKind: 'agent', via: 'session', to, text, ts });
@@ -28,6 +29,7 @@ test('a sessions table written by an older hub gains the status and role columns
       'the row survived and the new columns read as null',
     );
     assert.deepEqual(store.message('m0'), message('m0', 's1', ['s2'], 'old text', 'then'), 'an old message reads back without the new fields');
+    assert.deepEqual(store.topicMessages('general', 10), [], 'an old message belongs to no topic');
     store.rememberStatus('s1', '#27 backend: implement');
     store.rememberRole('s1', 'reviewer');
     store.rememberSessionId('s1', 'sess-1');
@@ -71,4 +73,41 @@ test('prune deletes messages older than the retention window with their deliveri
   assert.equal(store.prune(10_000, 5_000), 1);
   assert.deepEqual(store.pendingFor('beta', 10_000, 60_000).deliver.map((m) => m.text), ['fresh'], 'the pruned message took its queued delivery with it');
   store.close();
+});
+
+test('an ordinary topic can be renamed and deleted with its messages; a standing one cannot', () => {
+  const core = new HubCore({ now: () => new Date('2026-10-08T12:00:00.000Z') });
+  core.store.ensureTopic('t-1', 'Login page', false, '2026-10-08T12:00:00.000Z');
+  core.sendFromHuman('t-1', 'how is it going?');
+  assert.deepEqual(core.topics().map((t) => t.id), ['general', 'agents', 't-1']);
+  assert.equal(core.renameTopic('t-1', '  Login  ').title, 'Login');
+  assert.throws(() => core.renameTopic('t-1', ' '), /a topic needs a title/);
+  assert.equal(core.topicHistory('t-1').messages.length, 1);
+  core.deleteTopic('t-1');
+  assert.deepEqual(core.topics().map((t) => t.id), ['general', 'agents']);
+  assert.equal(core.store.topicMessages('t-1', 10).length, 0, 'its messages went with it');
+  assert.throws(() => core.renameTopic('general', 'x'), /General is a standing topic: it cannot be renamed/);
+  assert.throws(() => core.deleteTopic('agents'), /Agents is a standing topic: it cannot be deleted/);
+  core.store.close();
+});
+
+test("a human message held for a vacant role goes to the session that takes the role, and its stage follows the ack", () => {
+  const core = new HubCore();
+  const { message } = core.sendFromHuman('general', 'anyone?');
+  assert.deepEqual(message.to, ['coordinator']);
+  assert.equal(message.stage, 'queued');
+  const got: string[] = [];
+  const r = core.hello({ type: 'hello', protocol: 2, sessionId: 's-c', cwd: '/', name: 'coord', role: 'coordinator' }, (m) => {
+    got.push(m.text);
+    return true;
+  });
+  assert.ok(r.ok);
+  core.flushQueued('coord');
+  assert.deepEqual(got, ['anyone?']);
+  const events: unknown[] = [];
+  core.subscribe((e) => events.push(e));
+  core.ack(r.connection, message.id);
+  assert.deepEqual(events, [{ type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' }]);
+  assert.equal(core.topicHistory('general').messages[0]?.stage, 'delivered');
+  core.store.close();
 });

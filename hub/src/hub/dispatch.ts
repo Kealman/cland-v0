@@ -1,6 +1,6 @@
 // The hub's frame dispatcher: one conversation per connection, transport-agnostic. A transport hands it
 // raw frames and a peer to answer through (send a frame, close); the WebSocket edge, the Unix socket edge
-// and, later, stdio (#23) share it, so the protocol lives in one place.
+// and the stdio edge share it, so the protocol lives in one place.
 //
 // A conversation is a spoke (its hello carries a session id) or a client — the UI, the CLI — (its hello
 // names the client). A transport that authenticated the peer already (the WebSocket's bearer header) says
@@ -84,6 +84,8 @@ export class Dispatcher {
     let done = false;
     let name: string | null = null;
     let connection: Connection | null = null;
+    /** A client's event subscription, ended when the connection closes. */
+    let unsubscribe: (() => void) | null = null;
 
     const refuse = (code: RefusalCode, message: string) => {
       if (done) return;
@@ -105,7 +107,8 @@ export class Dispatcher {
       if (isHello(frame)) {
         const deliver = (message: Message): boolean => {
           if (!peer.isOpen()) return false;
-          peer.send({ type: 'deliver', id: message.id, message });
+          const topic = message.topic !== undefined ? core.topicRef(message.topic) : null;
+          peer.send({ type: 'deliver', id: message.id, message, ...(topic ? { topic } : {}) });
           return true;
         };
         const result = core.hello(frame, deliver, (reason, code) => peer.close(code ?? 4001, reason));
@@ -161,8 +164,8 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { pong: true } });
             break;
           case 'send': {
-            const { outcomes } = core.sendFromSession(me, frame.to, frame.text, frame.replyTo);
-            peer.send({ type: 'result', id: frame.id, ok: true, value: { outcomes } });
+            const { outcomes, topic } = core.sendFromSession(me, frame.to ?? [], frame.text, frame.replyTo, frame.topic);
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { outcomes, topic } });
             break;
           }
         }
@@ -175,6 +178,35 @@ export class Dispatcher {
       if (!isClientRequest(frame)) {
         const id = typeof frame.id === 'string' ? frame.id : '?';
         peer.send({ type: 'result', id, ok: false, error: `unknown request type "${String(frame.type)}"` });
+        return;
+      }
+      const answer = (value: unknown) => peer.send({ type: 'result', id: frame.id, ok: true, value });
+      try {
+        switch (frame.type) {
+          case 'topic.list':
+            return answer({ topics: core.topics() });
+          case 'topic.history':
+            return answer(core.topicHistory(frame.topic, frame.limit));
+          case 'topic.send': {
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to);
+            return answer({ message, outcomes });
+          }
+          case 'topic.rename':
+            return answer({ topic: core.renameTopic(frame.topic, frame.title) });
+          case 'topic.delete':
+            core.deleteTopic(frame.topic);
+            return answer({ deleted: frame.topic });
+          case 'subscribe':
+            if (!unsubscribe) {
+              unsubscribe = core.subscribe((event) => {
+                if (peer.isOpen()) peer.send(event);
+              });
+              log({ event: 'subscribed', edge: transport.edge });
+            }
+            return answer({ subscribed: true });
+        }
+      } catch (err) {
+        peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
         return;
       }
       const control = this.#options.control;
@@ -218,6 +250,8 @@ export class Dispatcher {
       closed: () => {
         done = true;
         clearTimeout(helloTimer);
+        unsubscribe?.();
+        unsubscribe = null;
         if (connection !== null) core.disconnect(connection);
       },
     };

@@ -287,3 +287,104 @@ export async function connectSocket(path: string): Promise<SocketClient> {
     close: () => socket.destroy(),
   };
 }
+
+// ------------------------------------------------------------------ the UI's seam
+// A scripted UI client: the hub's frames as JSON lines over any byte stream (the Unix socket, or a child
+// hub's stdio), requests correlated by id, pushed events collected in order.
+
+export type FrameClient = {
+  /** Send a request (an id is added) and resolve with its `result` frame. */
+  request: (frame: { type: string } & Record<string, unknown>, timeoutMs?: number) => Promise<{ ok: boolean; value?: unknown; error?: string }>;
+  /** Every frame that was not a result: the welcome, refusals, `message` and `delivery` events. */
+  frames: Array<Record<string, unknown>>;
+  /** The first frame (seen or yet to come) matching `predicate`. */
+  waitFor: (predicate: (f: Record<string, unknown>) => boolean, timeoutMs?: number) => Promise<Record<string, unknown>>;
+  /** Send a frame as is. */
+  send: (frame: Record<string, unknown>) => void;
+  close: () => void;
+};
+
+export function frameClient(write: (line: string) => void, onData: (fn: (chunk: string) => void) => void, close: () => void): FrameClient {
+  const frames: Array<Record<string, unknown>> = [];
+  const results = new Map<string, (f: Record<string, unknown>) => void>();
+  const waiters: Array<{ predicate: (f: Record<string, unknown>) => boolean; resolve: (f: Record<string, unknown>) => void }> = [];
+  let buffer = '';
+  let nextId = 1;
+  onData((chunk) => {
+    buffer += chunk;
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!line) continue;
+      const frame = JSON.parse(line) as Record<string, unknown>;
+      const r = frame.type === 'result' && typeof frame.id === 'string' ? results.get(frame.id) : undefined;
+      if (r) {
+        results.delete(frame.id as string);
+        r(frame);
+        continue;
+      }
+      frames.push(frame);
+      for (const w of [...waiters]) {
+        if (w.predicate(frame)) {
+          waiters.splice(waiters.indexOf(w), 1);
+          w.resolve(frame);
+        }
+      }
+    }
+  });
+  const send = (frame: Record<string, unknown>) => write(`${JSON.stringify(frame)}\n`);
+  return {
+    frames,
+    send,
+    close,
+    request: (frame, timeoutMs = 5000) =>
+      new Promise((resolve, reject) => {
+        const id = `r${nextId++}`;
+        const timer = setTimeout(() => {
+          results.delete(id);
+          reject(new Error(`no result for ${frame.type} within ${timeoutMs}ms`));
+        }, timeoutMs);
+        results.set(id, (f) => {
+          clearTimeout(timer);
+          resolve(f as { ok: boolean; value?: unknown; error?: string });
+        });
+        send({ ...frame, id });
+      }),
+    waitFor: (predicate, timeoutMs = 5000) => {
+      const hit = frames.find(predicate);
+      if (hit) return Promise.resolve(hit);
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`no frame matched within ${timeoutMs}ms; saw ${JSON.stringify(frames)}`)), timeoutMs);
+        waiters.push({
+          predicate,
+          resolve: (f) => {
+            clearTimeout(timer);
+            resolve(f);
+          },
+        });
+      });
+    },
+  };
+}
+
+/** A UI client on the daemon's Unix socket, welcomed with the project's secret. */
+export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'socket' | 'secret'>, client = 'ui'): Promise<FrameClient> {
+  const socket = createConnection(discovery.socket);
+  await new Promise<void>((resolve, reject) => {
+    socket.once('connect', resolve);
+    socket.once('error', reject);
+  });
+  socket.setEncoding('utf8');
+  socket.on('error', () => {});
+  const ui = frameClient(
+    (line) => socket.write(line),
+    (fn) => socket.on('data', fn),
+    () => socket.destroy(),
+  );
+  t.after(() => ui.close());
+  ui.send({ type: 'hello', protocol: 2, secret: discovery.secret, client });
+  const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
+  if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
+  return ui;
+}

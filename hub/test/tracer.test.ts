@@ -13,7 +13,8 @@ test('a message from one session arrives in the other session as a channel event
       to: ['beta'],
       text: 'is the branch ready for review?',
     });
-    assert.deepEqual(outcome, { ok: true, outcomes: [{ to: 'beta', outcome: 'delivered' }] });
+    // between sessions, with no topic named: recorded in Agents
+    assert.deepEqual(outcome, { ok: true, outcomes: [{ to: 'beta', outcome: 'delivered' }], topic: { id: 'agents', title: 'Agents' } });
 
     const event = await beta.waitForEvent((e) => e.params.content === 'is the branch ready for review?');
     const meta = event.params.meta ?? {};
@@ -25,6 +26,8 @@ test('a message from one session arrives in the other session as a channel event
     assert.match(meta.msg_id ?? '', /^[0-9a-f-]{36}$/);
     assert.match(meta.ts ?? '', /^\d{4}-\d{2}-\d{2}T/);
     assert.equal(meta.reply_to, undefined);
+    assert.equal(meta.topic, 'agents');
+    assert.equal(meta.topic_title, 'Agents');
 
     const reply = await beta.call<{ ok: boolean }>('send', { to: ['alpha'], text: 'yes', reply_to: meta.msg_id });
     assert.equal(reply.ok, true);

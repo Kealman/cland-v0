@@ -1,7 +1,20 @@
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
 // edge (`./server.ts`) is one thin layer over it.
 import { randomUUID } from 'node:crypto';
-import { PROTOCOL_VERSION, REPLACED_CLOSE_CODE, UPDATE_HINT, type Hello, type Message, type Presence, type RefusalCode, type SendOutcome } from '../protocol.ts';
+import {
+  PROTOCOL_VERSION,
+  REPLACED_CLOSE_CODE,
+  UPDATE_HINT,
+  type Hello,
+  type HubEvent,
+  type Message,
+  type Presence,
+  type RefusalCode,
+  type SendOutcome,
+  type Topic,
+  type TopicMessage,
+  type TopicRef,
+} from '../protocol.ts';
 import { generatedName, nameRefusal, ROLE_NAMES } from '../names.ts';
 import { resolveTag } from '../address.ts';
 import { Store } from './store.ts';
@@ -15,6 +28,16 @@ export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 export const HISTORY_LIMIT = 50;
 /** The session id of a hello that could not name its session: it identifies nobody. */
 export const UNKNOWN_SESSION = 'unknown';
+
+/** The standing topics every project has (spec 4.5): created at the first start, never renamed or deleted. */
+export const GENERAL: TopicRef = { id: 'general', title: 'General' };
+export const AGENTS: TopicRef = { id: 'agents', title: 'Agents' };
+const STANDING_TOPICS: readonly TopicRef[] = [GENERAL, AGENTS];
+/** The sender name of the human's messages. Reserved: no session can take it. */
+export const HUMAN = 'human';
+/** Who a human message addresses unless it names others (spec 4.5). */
+export const DEFAULT_HUMAN_ADDRESSEE = 'coordinator';
+export const TOPIC_HISTORY_LIMIT = 200;
 
 export type Connection = {
   name: string;
@@ -54,9 +77,10 @@ export class HubCore {
   readonly #queueTtlMs: number;
   readonly #retentionMs: number;
   readonly #hygiene: Hygiene;
+  readonly #listeners = new Set<(event: HubEvent) => void>();
 
   constructor(options: CoreOptions = {}) {
-    this.#reserved = new Set(options.reservedNames ?? []);
+    this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
     this.#now = options.now ?? (() => new Date());
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
@@ -68,6 +92,35 @@ export class HubCore {
       ...(options.maxTextBytes !== undefined ? { maxTextBytes: options.maxTextBytes } : {}),
       memory: this.#store,
     });
+    const now = this.#now().toISOString();
+    for (const t of STANDING_TOPICS) this.#store.ensureTopic(t.id, t.title, true, now);
+  }
+
+  // ---------------------------------------------------------------- events
+
+  /** Listen to every `message` and `delivery` event (a subscribed client); returns the unsubscribe. */
+  subscribe(listener: (event: HubEvent) => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  #emit(event: HubEvent): void {
+    for (const listener of [...this.#listeners]) {
+      try {
+        listener(event);
+      } catch (err) {
+        this.#log({ event: 'listener-failed', error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  }
+
+  /** A recorded topic message reaches the subscribers, with its stage as stored. */
+  #emitMessage(message: Message): void {
+    if (message.topic === undefined) return;
+    const topic = this.topicRef(message.topic);
+    if (!topic) return;
+    const stage = this.#store.stage(message.id);
+    this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) } });
   }
 
   get store(): Store {
@@ -139,6 +192,11 @@ export class HubCore {
     // The row equals the connection from here on: a line the hello did not inherit is gone for good.
     this.#store.rememberStatus(name, connection.status);
     this.#store.rememberRole(name, connection.role);
+    // what waited for the role while nobody held it now waits for this session (flushed after the welcome)
+    if (role !== null) {
+      const claimed = this.#store.claimRoleQueue(role, name);
+      if (claimed) this.#log({ event: 'role-queue-claimed', name, role, count: claimed });
+    }
     this.#log({ event: 'hello', name, sessionId: hello.sessionId, role });
     return { ok: true, name, connection };
   }
@@ -157,7 +215,12 @@ export class HubCore {
   /** The spoke accepted a message: its delivery moves from queued to delivered. A stale connection acks nothing. */
   ack(connection: Connection, messageId: string): void {
     if (!this.isCurrent(connection)) return;
-    if (this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) this.#log({ event: 'acked', id: messageId, session: connection.name });
+    if (!this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) return;
+    this.#log({ event: 'acked', id: messageId, session: connection.name });
+    const topic = this.#store.message(messageId)?.topic;
+    const stage = this.#store.stage(messageId);
+    // the message's stage moves only once every addressee accepted it
+    if (topic !== undefined && stage !== undefined && stage !== 'queued') this.#emit({ type: 'delivery', topic, message: messageId, stage });
   }
 
   /** A socket closed. Only the connection that owns the name is removed: a stale close must never
@@ -322,10 +385,100 @@ export class HubCore {
     return { sessions, unknown, empty, tagOf };
   }
 
-  /** A session's `send`: addressees are session names, globs, `all`, or roles. */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string): { message: Message; outcomes: SendOutcome[] } {
+  // ---------------------------------------------------------------- topics
+
+  topics(): Topic[] {
+    return this.#store.topics();
+  }
+
+  topicRef(id: string): TopicRef | null {
+    const t = this.#store.topic(id);
+    return t ? { id: t.id, title: t.title } : null;
+  }
+
+  #topicOrThrow(id: string): Topic {
+    const t = this.#store.topic(id);
+    if (!t) throw new Error(`no topic "${id}"`);
+    return t;
+  }
+
+  topicHistory(id: string, limit?: number): { topic: Topic; messages: TopicMessage[] } {
+    const topic = this.#topicOrThrow(id);
+    const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
+    return { topic, messages: this.#store.topicMessages(id, n) };
+  }
+
+  renameTopic(id: string, title: string): Topic {
+    const topic = this.#topicOrThrow(id);
+    if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be renamed`);
+    const clean = title.trim();
+    if (!clean) throw new Error('a topic needs a title');
+    this.#store.renameTopic(id, clean, this.#now().toISOString());
+    return this.#topicOrThrow(id);
+  }
+
+  deleteTopic(id: string): void {
+    const topic = this.#topicOrThrow(id);
+    if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be deleted`);
+    this.#store.deleteTopic(id);
+  }
+
+  /**
+   * The human writes into a topic. It addresses the Coordinator unless `to` names sessions or roles; a role
+   * nobody holds keeps the message queued under the role (`@<role>`) until a session takes the role.
+   * Always recorded: the human's words show in the topic whoever they reach.
+   */
+  sendFromHuman(topicId: string, text: string, to: string[] = [DEFAULT_HUMAN_ADDRESSEE]): { message: TopicMessage; outcomes: SendOutcome[] } {
+    const topic = this.#topicOrThrow(topicId);
+    const size = this.#hygiene.sizeRefusal(text);
+    if (size) throw new Error(size);
+    if (!text.trim()) throw new Error('an empty message is not sent');
+    const nowMs = this.#now().getTime();
+    const tags = to.length ? to : [DEFAULT_HUMAN_ADDRESSEE];
+    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(tags, HUMAN);
+    const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
+    // a role with no holder: held for the role, not refused
+    const placeholders = empty.map(({ tag }) => tag.replace(/^@/, ''));
+    const message: Message = {
+      id: randomUUID(),
+      from: HUMAN,
+      fromKind: 'human',
+      via: 'hub',
+      to: [...sessions, ...placeholders],
+      text,
+      ts: this.#now().toISOString(),
+      topic: topic.id,
+    };
+    this.#store.record(
+      message,
+      [...[...sessions].map((session) => ({ session, state: 'queued' as const })), ...placeholders.map((role) => ({ session: `@${role}`, state: 'queued' as const }))],
+      nowMs,
+    );
+    this.#store.touchTopic(topic.id, message.ts);
+    this.#emitMessage(message);
+    const states = new Map<string, boolean>();
+    for (const n of sessions) states.set(n, this.#send(message, n));
+    for (const [tag, names] of tagOf) {
+      const offline = names.filter((n) => !states.get(n));
+      outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} offline — queued` } : { to: tag, outcome: 'delivered' });
+    }
+    for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `nobody holds the role "${role}" — queued until a session takes it` });
+    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    const stage = this.#store.stage(message.id);
+    return { message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
+  }
+
+  /**
+   * A session's `send`: addressees are session names, globs, `all`, or roles. With no addressee the
+   * message goes into the topic for the human. The topic defaults to General for a message to the human
+   * and to Agents for one between sessions (spec 4.5).
+   */
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
     const sender = this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
+    const toHuman = to.length === 0;
+    const topic = this.#topicOrThrow(topicId ?? (toHuman ? GENERAL.id : AGENTS.id));
+    const topicRef: TopicRef = { id: topic.id, title: topic.title };
     const nowMs = this.#now().getTime();
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new Error(size);
@@ -362,9 +515,14 @@ export class HubCore {
       ts: this.#now().toISOString(),
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
       ...(replyTo !== undefined ? { replyTo } : {}),
+      topic: topic.id,
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
-    if (sessions.size > 0) this.#store.record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
+    if (sessions.size > 0 || toHuman) {
+      this.#store.record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
+      this.#store.touchTopic(topic.id, message.ts);
+      this.#emitMessage(message);
+    }
     const states = new Map<string, 'sent' | 'queued'>();
     for (const n of sessions) states.set(n, this.#send(message, n) ? 'sent' : 'queued');
     for (const [tag, names] of tagOf) {
@@ -378,11 +536,11 @@ export class HubCore {
       else if (queued.length) outcomes.push({ to: tag, outcome: 'delivered', reason: `queued for ${queued.join(', ')} (offline)` });
       else outcomes.push({ to: tag, outcome: 'delivered' });
     }
-    if (sessions.size === 0) {
+    if (sessions.size === 0 && !toHuman) {
       this.#log({ event: 'send-refused', from, to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
-      return { message, outcomes };
+      return { message, outcomes, topic: topicRef };
     }
-    this.#log({ event: 'send', id: message.id, from, to: message.to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
-    return { message, outcomes };
+    this.#log({ event: 'send', id: message.id, from, to: message.to, topic: topic.id, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    return { message, outcomes, topic: topicRef };
   }
 }

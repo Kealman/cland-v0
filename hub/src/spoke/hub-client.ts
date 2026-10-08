@@ -4,7 +4,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
-import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type Ack, type HubFrame, type Message, type Presence, type RefusalCode, type SpokeRequest } from '../protocol.ts';
+import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type Ack, type HubFrame, type Message, type Presence, type RefusalCode, type SpokeRequest, type TopicRef } from '../protocol.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 
 export type HubClientOptions = {
@@ -53,7 +53,7 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; time
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-export class HubClient extends EventEmitter<{ deliver: [Message]; state: [ConnectionState] }> {
+export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | undefined]; state: [ConnectionState] }> {
   #ws: WebSocket | null = null;
   #state: ConnectionState = { kind: 'connecting' };
   #pending = new Map<string, Pending>();
@@ -282,7 +282,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
         if (!this.#seen.has(frame.id)) {
           this.#seen.add(frame.id);
           if (this.#seen.size > SEEN_LIMIT) this.#seen.delete(this.#seen.values().next().value as string);
-          this.emit('deliver', frame.message);
+          this.emit('deliver', frame.message, frame.topic);
         }
         // accepted (spec 4.2, `delivered`): the hub stops re-sending it
         if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(JSON.stringify({ type: 'ack', id: frame.id } satisfies Ack));

@@ -1,7 +1,7 @@
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
-import type { Message } from '../protocol.ts';
+import type { DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), or dropped past the TTL. */
@@ -39,6 +39,14 @@ create table if not exists deliveries (
   primary key (message_id, session)
 );
 create index if not exists deliveries_session on deliveries (session, state, queued_at);
+create table if not exists topics (
+  id text primary key,
+  title text not null,
+  status text not null,
+  standing integer not null default 0,
+  created_at text not null,
+  updated_at text not null
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -58,7 +66,13 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'sessions', column: 'session_id', type: 'text' },
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
+  { table: 'messages', column: 'topic', type: 'text' },
 ];
+
+/** Indexes over added columns: created after the migration, when the column surely exists. */
+const LATE_INDEXES = `
+create index if not exists messages_topic on messages (topic, created_at);
+`;
 
 type Row = Record<string, string | number | null>;
 
@@ -72,7 +86,25 @@ const toMessage = (row: Row): Message => ({
   ts: row.ts as string,
   ...(row.from_role !== null && row.from_role !== undefined ? { fromRole: row.from_role as string } : {}),
   ...(row.reply_to !== null && row.reply_to !== undefined ? { replyTo: row.reply_to as string } : {}),
+  ...(row.topic !== null && row.topic !== undefined ? { topic: row.topic as string } : {}),
 });
+
+const toTopic = (row: Row): Topic => ({
+  id: row.id as string,
+  title: row.title as string,
+  status: row.status as TopicStatus,
+  standing: row.standing === 1,
+  createdAt: row.created_at as string,
+  updatedAt: row.updated_at as string,
+});
+
+/** A message's stage from its deliveries' states: queued while any waits; dropped only when all were. */
+const stageOf = (states: string[]): DeliveryStage | undefined => {
+  if (states.length === 0) return undefined;
+  if (states.includes('queued')) return 'queued';
+  if (states.every((s) => s === 'dropped')) return 'dropped';
+  return 'delivered';
+};
 
 const toKnown = (r: Row): KnownSession => ({
   name: r.name as string,
@@ -89,6 +121,7 @@ export class Store implements HygieneMemory {
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
     this.#migrate();
+    this.#db.exec(LATE_INDEXES);
   }
 
   #migrate(): void {
@@ -191,8 +224,8 @@ export class Store implements HygieneMemory {
   /** Record a message and the state of each addressee's delivery. */
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number): void {
     this.#db
-      .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now);
+      .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now, message.topic ?? null);
     const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
     for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
   }
@@ -225,6 +258,59 @@ export class Store implements HygieneMemory {
   /** The session's spoke accepted the message; false when there was no queued delivery of it (a repeat ack). */
   markDelivered(messageId: string, session: string, now: number): boolean {
     return this.#db.prepare("update deliveries set state = 'delivered', delivered_at = ? where message_id = ? and session = ? and state = 'queued'").run(now, messageId, session).changes > 0;
+  }
+
+  /**
+   * A session took a role: what waited for the role while nobody held it (deliveries addressed to the
+   * placeholder `@<role>`) now waits for that session. Returns how many moved.
+   */
+  claimRoleQueue(role: string, session: string): number {
+    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(session, `@${role}`).changes);
+  }
+
+  /** The stage of a message over all its deliveries; undefined when it had no addressee. */
+  stage(messageId: string): DeliveryStage | undefined {
+    return stageOf((this.#db.prepare('select state from deliveries where message_id = ?').all(messageId) as Row[]).map((r) => r.state as string));
+  }
+
+  // ---------------------------------------------------------------- topics
+
+  /** Create the topic unless it exists; an existing one is left exactly as it is. */
+  ensureTopic(id: string, title: string, standing: boolean, now: string): void {
+    this.#db.prepare("insert into topics (id, title, status, standing, created_at, updated_at) values (?, ?, 'open', ?, ?, ?) on conflict (id) do nothing").run(id, title, standing ? 1 : 0, now, now);
+  }
+
+  topic(id: string): Topic | null {
+    const row = this.#db.prepare('select * from topics where id = ?').get(id) as Row | undefined;
+    return row ? toTopic(row) : null;
+  }
+
+  /** Standing topics first (in creation order), then the rest by latest activity. */
+  topics(): Topic[] {
+    return (this.#db.prepare('select * from topics order by standing desc, case when standing = 1 then rowid end, updated_at desc, rowid').all() as Row[]).map(toTopic);
+  }
+
+  touchTopic(id: string, now: string): void {
+    this.#db.prepare('update topics set updated_at = ? where id = ?').run(now, id);
+  }
+
+  renameTopic(id: string, title: string, now: string): void {
+    this.#db.prepare('update topics set title = ?, updated_at = ? where id = ?').run(title, now, id);
+  }
+
+  /** The topic and its messages go; their deliveries go by the foreign key. */
+  deleteTopic(id: string): void {
+    this.#db.prepare('delete from messages where topic = ?').run(id);
+    this.#db.prepare('delete from topics where id = ?').run(id);
+  }
+
+  /** A topic's latest messages, oldest first, each with its stage. */
+  topicMessages(topic: string, limit: number): TopicMessage[] {
+    const rows = this.#db.prepare('select * from messages where topic = ? order by created_at desc, rowid desc limit ?').all(topic, limit) as Row[];
+    return rows.reverse().map((row) => {
+      const stage = this.stage(row.id as string);
+      return { ...toMessage(row), topic, ...(stage ? { stage } : {}) };
+    });
   }
 
   /** A rename: what still waits for the old name (in flight to the live session) waits for the new one. */

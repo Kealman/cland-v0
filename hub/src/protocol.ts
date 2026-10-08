@@ -44,7 +44,41 @@ export type Message = {
   text: string;
   replyTo?: string;
   ts: string;
+  /** The topic the message belongs to (its id); absent on the hub's own notices. */
+  topic?: string;
 };
+
+// ------------------------------------------------------------------ topics (spec 4.5)
+
+export type TopicStatus = 'open' | 'waiting for human' | 'waiting for agent' | 'closed';
+
+export type Topic = {
+  id: string;
+  title: string;
+  /** Only `open` is set yet; the status machine comes with #32. */
+  status: TopicStatus;
+  /** General and Agents: created at the project's first hub start, never renamed or deleted. */
+  standing: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** How a topic travels with a delivery or an event. */
+export type TopicRef = { id: string; title: string };
+
+/** A message's progress (spec 4.2): `queued` until every addressee's spoke acked it, then `delivered`;
+ *  `injected` (the adapter confirmed the turn) comes with #24; `dropped` when it waited past the TTL. */
+export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
+
+/** A message as a topic shows it: its stage is present when it had addressees. */
+export type TopicMessage = Message & { topic: string; stage?: DeliveryStage };
+
+/** What the hub pushes to a subscribed client. */
+export type HubEvent =
+  /** A new message in a topic: the human's, an agent's. */
+  | { type: 'message'; topic: TopicRef; message: TopicMessage }
+  /** A message's stage changed. */
+  | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage };
 
 export type Hello = {
   type: 'hello';
@@ -58,7 +92,8 @@ export type Hello = {
 };
 
 export type SpokeRequest =
-  | { type: 'send'; id: string; to: string[]; text: string; replyTo?: string }
+  /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
+  | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string }
   | { type: 'who'; id: string }
   | { type: 'history'; id: string; limit?: number; with?: string }
   | { type: 'status'; id: string; text: string }
@@ -75,11 +110,13 @@ export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name
 
 export type HubFrame =
   | { type: 'welcome'; name: string; presence: Presence[]; role?: string }
-  /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice. */
-  | { type: 'deliver'; id: string; message: Message }
+  /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice.
+   *  `topic` is the topic the message belongs to; absent on the hub's own notices. */
+  | { type: 'deliver'; id: string; message: Message; topic?: TopicRef }
   | { type: 'result'; id: string; ok: true; value: unknown }
   | { type: 'result'; id: string; ok: false; error: string }
-  | { type: 'error'; code: RefusalCode; message: string };
+  | { type: 'error'; code: RefusalCode; message: string }
+  | HubEvent;
 
 export type SendOutcome = { to: string; outcome: Outcome; reason?: string };
 
@@ -123,7 +160,12 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
     case 'rename':
       return typeof f.name === 'string';
     case 'send':
-      return Array.isArray(f.to) && f.to.every((t) => typeof t === 'string') && typeof f.text === 'string' && (f.replyTo === undefined || typeof f.replyTo === 'string');
+      return (
+        (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
+        typeof f.text === 'string' &&
+        (f.replyTo === undefined || typeof f.replyTo === 'string') &&
+        (f.topic === undefined || typeof f.topic === 'string')
+      );
     default:
       return false;
   }
@@ -146,13 +188,13 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
 
 // ------------------------------------------------------------------ the Unix socket (UI and CLI)
 // The same frames as JSON lines, one per line. There is no upgrade request to carry the secret, so the
-// client's hello carries it. TODO(#23): the UI's own requests (sessions, messages, mutes) join these.
+// client's hello carries it; on stdio the parent that spawned the hub vouches for the client instead.
 
 export type ClientHello = {
   type: 'hello';
   protocol: number;
-  /** The project's secret, from `.cland/secret` or `hub.json`. */
-  secret: string;
+  /** The project's secret, from `.cland/secret` or `hub.json`; not needed on an edge that authenticated the peer. */
+  secret?: string;
   /** What is connecting: `cli`, `ui`. */
   client: string;
 };
@@ -161,7 +203,17 @@ export type ClientRequest =
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'hub.status'; id: string }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
-  | { type: 'hub.stop'; id: string };
+  | { type: 'hub.stop'; id: string }
+  /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
+  | { type: 'topic.list'; id: string }
+  /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. */
+  | { type: 'topic.history'; id: string; topic: string; limit?: number }
+  /** The human writes into a topic: to the Coordinator unless `to` names sessions or roles. `{ message: TopicMessage, outcomes }` */
+  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[] }
+  | { type: 'topic.rename'; id: string; topic: string; title: string }
+  | { type: 'topic.delete'; id: string; topic: string }
+  /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
+  | { type: 'subscribe'; id: string };
 
 export type HubStatus = {
   pid: number;
@@ -175,9 +227,26 @@ export type HubStatus = {
 };
 
 export function isClientHello(f: Record<string, unknown>): f is ClientHello {
-  return f.type === 'hello' && typeof f.protocol === 'number' && typeof f.secret === 'string' && typeof f.client === 'string';
+  return f.type === 'hello' && typeof f.protocol === 'number' && (f.secret === undefined || typeof f.secret === 'string') && typeof f.client === 'string';
 }
 
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
-  return typeof f.id === 'string' && (f.type === 'hub.status' || f.type === 'hub.stop');
+  if (typeof f.id !== 'string') return false;
+  switch (f.type) {
+    case 'hub.status':
+    case 'hub.stop':
+    case 'topic.list':
+    case 'subscribe':
+      return true;
+    case 'topic.history':
+      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number');
+    case 'topic.send':
+      return typeof f.topic === 'string' && typeof f.text === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string')));
+    case 'topic.rename':
+      return typeof f.topic === 'string' && typeof f.title === 'string';
+    case 'topic.delete':
+      return typeof f.topic === 'string';
+    default:
+      return false;
+  }
 }
