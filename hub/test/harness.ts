@@ -1,11 +1,15 @@
 // The test harness for the two seams:
 //   1. the spoke's MCP stdio surface — the real spoke process, driven by the SDK's client
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
+//   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
-import { mkdtemp, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
@@ -29,7 +33,8 @@ export async function startHub(options: Partial<HubOptions> = {}): Promise<Hub> 
 }
 
 export type SpokeOptions = {
-  hub: { url: string };
+  /** The in-process hub to reach through CLAND_HUB_URL; absent with `discover` or `unconfigured`. */
+  hub?: { url: string };
   secret?: string;
   /** Requested name (CLAND_SESSION_NAME). */
   name?: string;
@@ -37,6 +42,8 @@ export type SpokeOptions = {
   role?: string;
   /** No hub url and secret at all — the "not started through cland" case. */
   unconfigured?: boolean;
+  /** No hub url and secret either: the spoke finds the hub through `.cland/hub.json` from its `cwd` up. */
+  discover?: boolean;
   sessionId?: string;
   cwd?: string;
   heartbeatMs?: number;
@@ -67,7 +74,9 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     CLAND_HUB_RECONNECT_MS: '50',
     CLAND_HUB_HEARTBEAT_MS: String(options.heartbeatMs ?? 30_000),
   };
-  if (!options.unconfigured) {
+  if (options.discover && !options.cwd) throw new Error('a discovering spoke needs the cwd of a project');
+  if (!options.unconfigured && !options.discover) {
+    if (!options.hub) throw new Error('spawnSpoke: pass `hub`, `discover` or `unconfigured`');
     env.CLAND_HUB_URL = options.hub.url;
     env.CLAND_HUB_SECRET = options.secret ?? TEST_SECRET;
   }
@@ -153,4 +162,125 @@ export async function waitForAbsence(viewer: Session, name: string, timeoutMs = 
     await sleep(25);
   }
   throw new Error(`${name} never left presence within ${timeoutMs}ms`);
+}
+
+// ------------------------------------------------------------------ the daemon seam
+// The `cland` CLI run as a separate process in a temporary project, and the hub's Unix socket spoken to
+// as JSON lines — the way `cland hub status` and the UI reach a daemon.
+
+export const CLI_ENTRY = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+
+export type CliResult = { code: number | null; stdout: string; stderr: string };
+
+/** Run `cland <args>` in `cwd` as its own process, with no `CLAND_*` variable from the test's environment. */
+export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  return new Promise((resolve, reject) => {
+    execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 }, (err, stdout, stderr) => {
+      if (err && typeof err.code !== 'number') reject(err);
+      else resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
+    });
+  });
+}
+
+/** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
+export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promise<string> {
+  const root = await realpath(await mkdtemp(join(tmpdir(), prefix)));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  return root;
+}
+
+export type Discovery = { socket: string; port: number; secret: string; pid: number; version: string };
+
+export const readDiscovery = async (root: string): Promise<Discovery> => JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
+
+export const pidAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
+  }
+};
+
+/**
+ * `cland hub start` in `root`; the daemon it leaves behind is killed when the test ends, whatever happened.
+ * Registered before the start returns, so even a failing assertion right after cannot leak a process.
+ */
+export async function startDaemon(t: TestContext, root: string): Promise<{ result: CliResult; discovery: Discovery }> {
+  const result = await cland(root, 'hub', 'start');
+  let discovery: Discovery | null = null;
+  try {
+    discovery = await readDiscovery(root);
+  } catch {
+    /* asserted by the caller through `result` */
+  }
+  const pid = discovery?.pid;
+  if (pid !== undefined) t.after(() => killDaemon(pid));
+  if (result.code !== 0 || !discovery) throw new Error(`cland hub start failed (${result.code}):\n${result.stdout}\n${result.stderr}`);
+  return { result, discovery };
+}
+
+export async function killDaemon(pid: number): Promise<void> {
+  if (!pidAlive(pid)) return;
+  try {
+    process.kill(pid, 'SIGKILL');
+  } catch {
+    /* gone already */
+  }
+  const deadline = Date.now() + 5000;
+  while (pidAlive(pid) && Date.now() < deadline) await sleep(20);
+}
+
+/** A JSON-lines client on the hub's Unix socket: send frames, await the next one. */
+export type SocketClient = {
+  send: (frame: Record<string, unknown>) => void;
+  next: (timeoutMs?: number) => Promise<Record<string, unknown>>;
+  /** Resolves when the hub closed the connection. */
+  closed: Promise<void>;
+  close: () => void;
+};
+
+export async function connectSocket(path: string): Promise<SocketClient> {
+  const socket = createConnection(path);
+  await new Promise<void>((resolve, reject) => {
+    socket.once('connect', resolve);
+    socket.once('error', reject);
+  });
+  const frames: Array<Record<string, unknown>> = [];
+  const waiters: Array<(f: Record<string, unknown>) => void> = [];
+  let buffer = '';
+  socket.setEncoding('utf8');
+  socket.on('data', (chunk: string) => {
+    buffer += chunk;
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl);
+      buffer = buffer.slice(nl + 1);
+      if (!line.trim()) continue;
+      const frame = JSON.parse(line) as Record<string, unknown>;
+      const w = waiters.shift();
+      if (w) w(frame);
+      else frames.push(frame);
+    }
+  });
+  const closed = new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  socket.on('error', () => {});
+  return {
+    send: (frame) => socket.write(`${JSON.stringify(frame)}\n`),
+    next: (timeoutMs = 5000) => {
+      const f = frames.shift();
+      if (f) return Promise.resolve(f);
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`no frame on the socket within ${timeoutMs}ms`)), timeoutMs);
+        waiters.push((frame) => {
+          clearTimeout(timer);
+          resolve(frame);
+        });
+      });
+    },
+    closed,
+    close: () => socket.destroy(),
+  };
 }

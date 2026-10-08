@@ -2,13 +2,15 @@
 // answers JSON text; a failure is `{ ok: false, error }` with isError set.
 //
 // Configuration comes from the environment the adapter launches the session with:
-//   CLAND_HUB_URL       the hub's WebSocket url (loopback)          required
-//   CLAND_HUB_SECRET    the per-project secret                       required
+//   CLAND_HUB_URL       the hub's WebSocket url (loopback)
+//   CLAND_HUB_SECRET    the per-project secret
+//     both absent: the hub is found through `.cland/hub.json`, the nearest one walking up from the cwd,
+//     re-read before every reconnect (a restarted hub listens on a new port)
 //   CLAND_SESSION_ID    the harness session id; a restart of the same session takes its name back
 //   CLAND_SESSION_NAME  the name to ask for; absent → the hub generates one
 //   CLAND_ROLE          the role the session runs under
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS   timings, for tests
-// TODO(#22, #24): `cland serve` writes the url and the secret file, and the adapters set these.
+// TODO(#24): the adapters launch sessions in the project, where discovery finds the hub.
 import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -16,6 +18,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from
 import { INSTRUCTIONS } from './instructions.ts';
 import { HubClient } from './hub-client.ts';
 import { HEARTBEAT_MS, type Message, type SendOutcome } from '../protocol.ts';
+import { findDiscovery, readDiscovery } from '../project.ts';
 
 const VERSION = '0.1.0';
 
@@ -104,8 +107,19 @@ const positive = (raw: string | undefined, fallback: number): number => {
 
 export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<SpokeRuntime> {
   const log = (line: string) => process.stderr.write(`cland-spoke: ${line}\n`);
-  const url = env.CLAND_HUB_URL?.trim();
-  const secret = env.CLAND_HUB_SECRET?.trim();
+  let url = env.CLAND_HUB_URL?.trim();
+  let secret = env.CLAND_HUB_SECRET?.trim();
+  // No hub in the environment: the project's discovery file, read again before every connect.
+  let endpoint: (() => { url: string; secret: string } | null) | undefined;
+  const discoveryFile = !url && !secret ? findDiscovery(process.cwd()) : null;
+  if (discoveryFile) {
+    endpoint = () => {
+      const d = readDiscovery(discoveryFile);
+      return d ? { url: `ws://127.0.0.1:${d.port}`, secret: d.secret } : null;
+    };
+    const first = endpoint();
+    if (first) ({ url, secret } = first);
+  }
 
   const server: SpokeServer = new Server<never, ChannelNotification>(
     { name: 'cland', version: VERSION },
@@ -113,7 +127,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
   );
 
   let hub: HubClient | null = null;
-  const notConfigured = 'this session is not connected to a cland hub: CLAND_HUB_URL and CLAND_HUB_SECRET are not set — start the session through cland';
+  const notConfigured = 'this session is not connected to a cland hub: CLAND_HUB_URL and CLAND_HUB_SECRET are not set and no .cland/hub.json was found from the cwd up — run `cland hub start` in the project, or start the session through cland';
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS] }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
@@ -180,9 +194,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
 
   const name = env.CLAND_SESSION_NAME?.trim();
   const role = env.CLAND_ROLE?.trim();
+  if (discoveryFile) log(`found the hub through ${discoveryFile}`);
   hub = new HubClient({
     url,
     secret,
+    ...(endpoint ? { endpoint } : {}),
     reconnectMs: positive(env.CLAND_HUB_RECONNECT_MS, 1000),
     log,
     hello: {

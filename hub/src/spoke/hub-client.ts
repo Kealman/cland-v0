@@ -9,6 +9,9 @@ import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hel
 export type HubClientOptions = {
   url: string;
   secret: string;
+  /** Asked before every connect, when present: a hub found through `.cland/hub.json` may come back on a new
+   *  port after a restart. Null keeps the last endpoint. */
+  endpoint?: () => { url: string; secret: string } | null;
   hello: Omit<Hello, 'type' | 'protocol'>;
   /** Base reconnect delay, ms (doubles up to 30 s). */
   reconnectMs?: number;
@@ -132,8 +135,9 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   #connect(): void {
     if (this.#stopped) return;
     this.#setState({ kind: 'connecting' });
-    const ws = new WebSocket(this.#options.url, {
-      headers: { authorization: `Bearer ${this.#options.secret}` },
+    const { url, secret } = this.#options.endpoint?.() ?? this.#options;
+    const ws = new WebSocket(url, {
+      headers: { authorization: `Bearer ${secret}` },
       handshakeTimeout: 10_000,
     });
     this.#ws = ws;

@@ -135,3 +135,41 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
       return false;
   }
 }
+
+// ------------------------------------------------------------------ the Unix socket (UI and CLI)
+// The same frames as JSON lines, one per line. There is no upgrade request to carry the secret, so the
+// client's hello carries it. TODO(#23): the UI's own requests (sessions, messages, mutes) join these.
+
+export type ClientHello = {
+  type: 'hello';
+  protocol: number;
+  /** The project's secret, from `.cland/secret` or `hub.json`. */
+  secret: string;
+  /** What is connecting: `cli`, `ui`. */
+  client: string;
+};
+
+export type ClientRequest =
+  /** What runs: the hub's process and the connected sessions. */
+  | { type: 'hub.status'; id: string }
+  /** Shut the hub down gracefully; the result is sent before the socket closes. */
+  | { type: 'hub.stop'; id: string };
+
+export type HubStatus = {
+  pid: number;
+  port: number;
+  socket: string;
+  version: string;
+  root: string;
+  startedAt: string;
+  uptimeMs: number;
+  sessions: Presence[];
+};
+
+export function isClientHello(f: Record<string, unknown>): f is ClientHello {
+  return f.type === 'hello' && typeof f.protocol === 'number' && typeof f.secret === 'string' && typeof f.client === 'string';
+}
+
+export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
+  return typeof f.id === 'string' && (f.type === 'hub.status' || f.type === 'hub.stop');
+}
