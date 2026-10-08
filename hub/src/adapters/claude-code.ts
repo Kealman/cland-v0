@@ -200,9 +200,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- launch
 
-  /** The command a hook runs: `cland hook <event>` naming the session and the hub, nothing secret. */
-  #hookCommand(event: string, name: string): string {
-    return [this.#host.node, this.#host.cli, 'hook', event, '--session', name, '--hub-file', this.#host.discoveryFile].map(sq).join(' ');
+  /** The command a hook runs: `cland hook <event>` naming the session, its launch and the hub, nothing secret. */
+  #hookCommand(event: string, name: string, launch: string): string {
+    return [this.#host.node, this.#host.cli, 'hook', event, '--session', name, '--launch', launch, '--hub-file', this.#host.discoveryFile].map(sq).join(' ');
   }
 
   /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. */
@@ -219,7 +219,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const hooks: Record<string, unknown[]> = {};
     for (const [hookEvent, event] of Object.entries(HOOK_EVENTS)) {
       // async: a hook never holds the session up; each signal carries its time, so order is restored at the hub
-      hooks[hookEvent] = [{ hooks: [{ type: 'command', command: this.#hookCommand(event, name), async: true, timeout: 10 }] }];
+      hooks[hookEvent] = [{ hooks: [{ type: 'command', command: this.#hookCommand(event, name, sessionId), async: true, timeout: 10 }] }];
     }
     const settings = {
       hooks,

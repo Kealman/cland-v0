@@ -6,8 +6,11 @@
 //   session.attach  {session}                                  → {command}
 //   session.stop    {session}                                  → {process}
 //   session.resume  {session, relaunch?}                       → {found, reason?, process}
-//   session.signal  {session?, sessionId?, event, at?, payload?} → {applied, state?}   clients only (`cland hook`)
-//   session.bridge  {session}                                  → {bridged: true}, then `inject` frames  clients only
+//   session.signal  {session?, sessionId?, launch?, event, at?, payload?} → {applied, state?}   clients only (`cland hook`)
+//   session.bridge  {session, launch?}                         → {bridged: true}, then `inject` frames  clients only
+//
+// `launch` is the cland session id the launch gave the session's hooks and mod: a signal or bridge of an
+// earlier launch under the same name is ignored or refused.
 import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';
 import type { Sessions } from './sessions.ts';
@@ -18,8 +21,8 @@ export type SessionRequest =
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.stop'; id: string; session: string }
   | { type: 'session.resume'; id: string; session: string; relaunch?: boolean }
-  | { type: 'session.signal'; id: string; session?: string; sessionId?: string; event: string; at?: number; payload?: Record<string, unknown> }
-  | { type: 'session.bridge'; id: string; session: string };
+  | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
+  | { type: 'session.bridge'; id: string; session: string; launch?: string };
 
 /** What a spoke may ask: launching is open to every session until permissions (#30); the rest is the UI's and the hooks'. */
 export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list']);
@@ -35,8 +38,9 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
       return true;
     case 'session.attach':
     case 'session.stop':
-    case 'session.bridge':
       return typeof f.session === 'string';
+    case 'session.bridge':
+      return typeof f.session === 'string' && optString(f.launch);
     case 'session.resume':
       return typeof f.session === 'string' && (f.relaunch === undefined || typeof f.relaunch === 'boolean');
     case 'session.signal':
@@ -44,6 +48,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
         typeof f.event === 'string' &&
         optString(f.session) &&
         optString(f.sessionId) &&
+        optString(f.launch) &&
         (f.at === undefined || typeof f.at === 'number') &&
         (f.payload === undefined || (typeof f.payload === 'object' && f.payload !== null))
       );
@@ -85,16 +90,21 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
             event: frame.event,
             ...(frame.session !== undefined ? { session: frame.session } : {}),
             ...(frame.sessionId !== undefined ? { sessionId: frame.sessionId } : {}),
+            ...(frame.launch !== undefined ? { launch: frame.launch } : {}),
             ...(frame.at !== undefined ? { at: frame.at } : {}),
             ...(frame.payload !== undefined ? { payload: frame.payload } : {}),
           }),
         );
       case 'session.bridge': {
-        const disconnect = sessions.bridge(frame.session, (inject: InjectFrame) => {
-          if (!peer.isOpen()) return false;
-          peer.send(inject);
-          return true;
-        });
+        const disconnect = sessions.bridge(
+          frame.session,
+          (inject: InjectFrame) => {
+            if (!peer.isOpen()) return false;
+            peer.send(inject);
+            return true;
+          },
+          frame.launch,
+        );
         peer.onClose(disconnect);
         return ok({ bridged: true });
       }

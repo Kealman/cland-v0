@@ -1,0 +1,123 @@
+// The Claude Code adapter's edges: the order of a session's signals, which launch a signal belongs to, deliveries
+// that wait across a launch, a rename or an unconfirmed inject, resume under a reused pid, and a stop that fails.
+// As in `claude-code-adapter.test.ts`: a real daemon, the fake Claude Code at the harness process boundary, the
+// real `cland hook` processes, and a scripted UI on the daemon's socket. Nothing inside the hub is mocked.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFile, spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
+
+type Presence = { name: string; sessionId: string; state: string };
+type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
+type Status = { sessions: Presence[]; harnesses: Harness[] };
+
+async function status(ui: FrameClient): Promise<Status> {
+  const r = await ui.request({ type: 'hub.status' });
+  assert.equal(r.ok, true, r.error);
+  return r.value as Status;
+}
+
+const harness = async (ui: FrameClient, name: string): Promise<Harness> => {
+  const h = (await status(ui)).harnesses.find((x) => x.name === name);
+  assert.ok(h, `no harness row ${name}`);
+  return h;
+};
+
+async function launch(ui: FrameClient, name: string, extra: Record<string, unknown> = {}): Promise<Harness> {
+  const r = await ui.request({ type: 'session.launch', name, ...extra }, 30_000);
+  assert.equal(r.ok, true, r.error);
+  return (r.value as { process: Harness }).process;
+}
+
+const presentAs = (ui: FrameClient, name: string, state: string) =>
+  eventually(`${name} present as ${state}`, async () => ((await status(ui)).sessions.find((s) => s.name === name)?.state === state ? true : undefined));
+
+const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+
+const sendGeneral = async (ui: FrameClient, text: string): Promise<string> => {
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', text });
+  assert.equal(sent.ok, true, sent.error);
+  return (sent.value as { message: { id: string } }).message.id;
+};
+
+const injected = (ui: FrameClient, id: string, timeoutMs = 15_000) => ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', timeoutMs);
+
+/**
+ * One `cland hook <event>` as a harness runs it, the payload on stdin; resolves when it exited (it waits for
+ * the hub's answer). `slowStartMs` holds the process up before `cland` runs, as a loaded machine does.
+ */
+function hook(root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; slowStartMs?: number }): Promise<void> {
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  if (o.slowStartMs) env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`const t = Date.now(); while (Date.now() - t < ${o.slowStartMs});`)}`;
+  const args = [CLI_ENTRY, 'hook', event, '--session', o.session, ...(o.launch ? ['--launch', o.launch] : []), '--hub-file', join(root, '.cland', 'hub.json')];
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'inherit'] });
+    child.on('error', reject);
+    child.on('close', () => resolve());
+    child.stdin.end(JSON.stringify(o.payload ?? {}));
+  });
+}
+
+test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 10_000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+
+  // the Stop of a turn fires first, but its process takes 1.5 s to start; the next turn's start fires after it
+  const stop = hook(root, 'turn-end', { session: 'coord', launch: launched.sessionId, slowStartMs: 1500 });
+  await sleep(150); // the gap between the two events the harness fired
+  await hook(root, 'turn-start', { session: 'coord', launch: launched.sessionId });
+  await presentAs(ui, 'coord', 'busy');
+  await stop;
+  assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
+  assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
+});
+
+test('a signal from an earlier launch under the same name changes nothing of the process that replaced it', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const first = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  await killDaemon(first.pid as number);
+  await eventually('the first process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
+
+  const second = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  const row = await harness(ui, 'impl-1');
+  assert.equal(row.sessionId, second.sessionId);
+
+  // the first launch's hooks, late: its own conversation id, a turn start
+  await hook(root, 'session-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } });
+  await hook(root, 'turn-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } });
+  const after = await harness(ui, 'impl-1');
+  assert.equal(after.harnessSessionId, row.harnessSessionId, "the replacement keeps its own conversation id");
+  assert.equal(after.state, 'idle', 'and its own state');
+  assert.match(await hubLog(root), /"event":"signal-other-launch","session":"impl-1"/);
+});
+
+test('a late SessionStart does not revive a session whose process is gone', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  await killDaemon(launched.pid as number);
+  await eventually('the process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
+
+  await hook(root, 'session-start', { session: 'impl-1', launch: launched.sessionId, payload: { session_id: launched.harnessSessionId } });
+  const row = await harness(ui, 'impl-1');
+  assert.equal(row.status, 'exited');
+  assert.equal(row.state, 'unknown');
+});
+

@@ -8,6 +8,10 @@
 //   state: signals from inside the session (`session.signal`, sent by `cland hook`) and the adapter's own poll.
 //   A signal older than the last one applied is dropped; a polled one counts only while no push signal came
 //   for a while (or nothing is known yet). The model's `status` tool never reaches here.
+//
+//   launch: a signal or a bridge names the launch it comes from (the cland session id the hooks and the mod
+//   were started with). One from an earlier launch under the same name is ignored: it never touches the row
+//   of the process that replaced it. A signal never revives a row that is not running (only resume does).
 import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
@@ -16,7 +20,7 @@ import type { AdapterHost, Capabilities, HarnessAdapter, HarnessProcess, InjectF
 import { ProcessTable } from './processes.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
-export type SignalFrame = { session?: string; sessionId?: string; event: string; at?: number; payload?: Record<string, unknown> };
+export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
 export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string };
 
@@ -222,6 +226,10 @@ export class Sessions {
       this.#log({ event: 'signal-unmatched', session: frame.session ?? null, hookEvent: frame.event });
       return { applied: false };
     }
+    if (frame.launch !== undefined && frame.launch !== p.sessionId) {
+      this.#log({ event: 'signal-other-launch', session: p.name, hookEvent: frame.event });
+      return { applied: false };
+    }
     const adapter = this.adapter(p.harness);
     const payload = frame.payload ?? {};
     if (frame.event === 'injected') {
@@ -236,7 +244,6 @@ export class Sessions {
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
     if (meaning.usage) adapter.noteUsage?.(p, meaning.usage);
-    if (frame.event === 'session-start' && p.status !== 'running') this.#table.update(p.name, { status: 'running' });
     if (!meaning.state) return { applied: false };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now() }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
@@ -277,14 +284,20 @@ export class Sessions {
 
   // ---------------------------------------------------------------- the bridge and inject
 
-  /** An in-session bridge (the mod) connected for `session`; returns its disconnect. What waited is retried. */
-  bridge(session: string, send: (frame: InjectFrame) => boolean): () => void {
+  /** An in-session bridge (the mod) connected for `session` (from `launch`, when it says); returns its
+   *  disconnect. What waited is retried. */
+  bridge(session: string, send: (frame: InjectFrame) => boolean, launch?: string): () => void {
     if (this.#launching.has(session)) {
       // the mod can connect before the launch returns: the row it belongs to is not written yet
       let disconnect: (() => void) | null = null;
       let closed = false;
       const connect = () => {
-        if (!closed) disconnect = this.bridge(session, send);
+        if (closed) return;
+        try {
+          disconnect = this.bridge(session, send, launch);
+        } catch (err) {
+          this.#log({ event: 'bridge-refused', session, error: err instanceof Error ? err.message : String(err) });
+        }
       };
       this.#earlyBridges.set(session, [...(this.#earlyBridges.get(session) ?? []), connect]);
       return () => {
@@ -293,6 +306,7 @@ export class Sessions {
       };
     }
     const p = this.#process(session);
+    if (launch !== undefined && launch !== p.sessionId) throw new Error(`this bridge belongs to an earlier launch of "${session}"`);
     const adapter = this.adapter(p.harness);
     if (!adapter.bridge) throw new Error(`the ${p.harness} adapter takes no bridge`);
     const disconnect = adapter.bridge(p, send);

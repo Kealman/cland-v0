@@ -9,10 +9,11 @@
 //           are posted as `cland hook mod-turn-start` / `mod-turn-complete`, the latter with the turn's usage.
 //
 // Its configuration is the session's environment, set by the adapter through `--settings` (`env`):
-// CLAND_SESSION_NAME, CLAND_HUB_FILE, CLAND_NODE, CLAND_CLI.
+// CLAND_SESSION_NAME, CLAND_HUB_FILE, CLAND_NODE, CLAND_CLI, and CLAND_SESSION_ID: the launch this session is,
+// which every signal and the bridge name (the hub ignores an earlier launch under the same name).
 import type { EngineInterface as Engine, Register } from 'claude-code';
 
-type Config = { name: string; hubFile: string; node: string; cli: string };
+type Config = { name: string; hubFile: string; node: string; cli: string; launch: string | null };
 
 let config: Config | null = null;
 /** What this module submitted, by hub message id: a retry waits on the same submission and confirms again. */
@@ -23,7 +24,8 @@ async function readConfig($: Engine): Promise<Config | null> {
   let hubFile: string | undefined = await $.env.get('CLAND_HUB_FILE');
   let node: string | undefined = await $.env.get('CLAND_NODE');
   let cli: string | undefined = await $.env.get('CLAND_CLI');
-  if (!name || !hubFile || !node || !cli) {
+  let launch: string | undefined = await $.env.get('CLAND_SESSION_ID');
+  if (!name || !hubFile || !node || !cli || !launch) {
     // the variables `--settings` declared, read from the settings when the process environment lacks them
     const settings = await $.settings.read();
     const env = (settings?.env ?? {}) as Record<string, string | undefined>;
@@ -31,14 +33,18 @@ async function readConfig($: Engine): Promise<Config | null> {
     hubFile ||= env.CLAND_HUB_FILE;
     node ||= env.CLAND_NODE;
     cli ||= env.CLAND_CLI;
+    launch ||= env.CLAND_SESSION_ID;
   }
-  return name && hubFile && node && cli ? { name, hubFile, node, cli } : null;
+  return name && hubFile && node && cli ? { name, hubFile, node, cli, launch: launch ?? null } : null;
 }
+
+/** The arguments every `cland hook` call of this session carries. */
+const hookArgs = (c: Config): string[] => ['--session', c.name, ...(c.launch ? ['--launch', c.launch] : []), '--hub-file', c.hubFile];
 
 /** `cland hook <event>` with the payload on stdin; never throws. */
 async function post($: Engine, c: Config, event: string, payload: Record<string, unknown>): Promise<void> {
   try {
-    await $.process.run([c.node, c.cli, 'hook', event, '--session', c.name, '--hub-file', c.hubFile], { stdin: JSON.stringify(payload), timeoutMs: 15_000 });
+    await $.process.run([c.node, c.cli, 'hook', event, ...hookArgs(c)], { stdin: JSON.stringify(payload), timeoutMs: 15_000 });
   } catch {
     /* the hub is away; the next signal or the poll catches up */
   }
@@ -65,7 +71,7 @@ async function bridge($: Engine, c: Config): Promise<void> {
   for (;;) {
     let buffer = '';
     try {
-      const child = $.process.spawn({ argv: [c.node, c.cli, 'hook', 'bridge', '--session', c.name, '--hub-file', c.hubFile] });
+      const child = $.process.spawn({ argv: [c.node, c.cli, 'hook', 'bridge', ...hookArgs(c)] });
       for await (const chunk of child) {
         if (chunk.stream !== 'stdout') continue;
         buffer += chunk.text;
@@ -98,16 +104,20 @@ export const register: Register = (on) => {
     return started;
   });
 
+  // each signal carries the time of its event: the hub orders a session's signals by it, and `cland hook`
+  // starts as a process of its own, later by an unknown delay
   on('turn.start', async ($, e, next) => {
+    const at = Date.now();
     const started = await next(e);
-    if (config) void post($, config, 'mod-turn-start', { text: e.text, turnId: e.turnId });
+    if (config) void post($, config, 'mod-turn-start', { at, text: e.text, turnId: e.turnId });
     return started;
   });
 
   on('turn.complete', async ($, e, next) => {
+    const at = Date.now();
     const completed = await next(e);
     // a subagent's loop is not the session's turn
-    if (config && e.agentId === undefined) void post($, config, 'mod-turn-complete', { isAborted: e.isAborted, reason: e.reason, ...(e.usage ? { usage: e.usage } : {}) });
+    if (config && e.agentId === undefined) void post($, config, 'mod-turn-complete', { at, isAborted: e.isAborted, reason: e.reason, ...(e.usage ? { usage: e.usage } : {}) });
     return completed;
   });
 };
