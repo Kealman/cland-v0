@@ -5,16 +5,19 @@
 // binary to use instead. Run as a script it prints the binary's path, downloading it first if missing.
 //
 // Two resolvers may start on an empty cache at once (two test files, two `cland open`): the download is held under
-// a lock file in the cache (`.download.lock`, created exclusively, naming its pid); the other waits for the binary
-// to appear, or takes the lock over once its holder is gone. Every temporary file is the downloader's own, and the
+// a lock file in the cache (`.download.lock`, created whole and exclusively, naming its pid); the other waits for the
+// binary to appear, or takes the lock over once its holder is gone (a dead pid, or no pid past a grace). A stale lock
+// is broken under a guard (`.download.lock.break`) and only if it still reads as found, so two resolvers breaking it
+// at once never remove the lock one of them then took. Every temporary file is the downloader's own, and the
 // unpacked tree is moved into place in one rename.
 //
 // For tests only: `CLAND_NVIM_CACHE_DIR` moves the cache, `CLAND_NVIM_DOWNLOAD_URL` (http(s) or file:) and
 // `CLAND_NVIM_DOWNLOAD_SHA256` replace the release and its pinned digest (both or neither),
-// `CLAND_TEST_NVIM_DOWNLOAD_PAUSE_MS` holds a download still before it writes.
+// `CLAND_TEST_NVIM_DOWNLOAD_PAUSE_MS` holds a download still before it writes, `CLAND_TEST_NVIM_BREAK_PAUSE_MS` a
+// breaker between finding a lock stale and removing it.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync, writeSync } from 'node:fs';
+import { existsSync, linkSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -79,40 +82,88 @@ const holderOf = (text: string): number | null => {
   return Number.isSafeInteger(pid) && pid > 0 ? pid : null;
 };
 
+/** Create `path` with `text`, whole, only if it does not exist yet (written aside, then hard-linked into place, which
+ *  fails when the name exists); false when it does. A live holder's lock is never seen empty. */
+function createExclusive(path: string, text: string): boolean {
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, text);
+  try {
+    linkSync(tmp, path);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') return false;
+    throw err;
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+}
+
+/** A breaker that died mid-break leaves its guard behind; past this age the guard is ignored. */
+const BREAK_GUARD_STALE_MS = 10_000;
+
+/**
+ * Remove the lock if it still reads `stale` (the text found stale), under the break guard (`.download.lock.break`,
+ * created the same way), as the hub's lock does: two resolvers that both found the same stale lock cannot each
+ * remove what the other created after it. A guard held by another breaker: wait a moment and look again.
+ */
+async function breakStale(lock: string, stale: string): Promise<void> {
+  const guard = `${lock}.break`;
+  if (!createExclusive(guard, `${process.pid}\n`)) {
+    try {
+      if (Date.now() - statSync(guard).mtimeMs > BREAK_GUARD_STALE_MS) rmSync(guard, { force: true });
+    } catch {
+      /* the other breaker finished */
+    }
+    await sleep(20);
+    return;
+  }
+  try {
+    // a test's pause between finding the lock stale and removing it
+    const pause = Number(process.env.CLAND_TEST_NVIM_BREAK_PAUSE_MS ?? 0);
+    if (pause > 0) await sleep(pause);
+    let now: string | null;
+    try {
+      now = readFileSync(lock, 'utf8');
+    } catch {
+      now = null; // already gone
+    }
+    if (now === stale) rmSync(lock, { force: true });
+  } finally {
+    rmSync(guard, { force: true });
+  }
+}
+
 /**
  * Hold the download lock in `dir` while `fn` runs. Another holder: wait until `done()` (its download landed), or until
- * its lock is gone or stale (its pid dead), then try again. Returns null when `done()` turned true while waiting.
+ * its lock is gone or stale (its pid dead, or no pid past a grace), then try again. Returns null when `done()` turned
+ * true while waiting. The lock is created whole and removed only by its holder, or, stale, under the break guard.
  */
 async function underLock<T>(dir: string, done: () => boolean, log: (s: string) => void, fn: () => Promise<T>): Promise<T | null> {
   const lock = join(dir, '.download.lock');
+  const mine = `${process.pid}\n`;
   const deadline = Date.now() + WAIT_MS;
   let said = false;
   for (;;) {
-    let fd: number | null = null;
-    try {
-      fd = openSync(lock, 'wx');
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-    }
-    if (fd !== null) {
-      try {
-        writeSync(fd, `${process.pid}\n`);
-      } finally {
-        closeSync(fd);
-      }
+    if (createExclusive(lock, mine)) {
       try {
         return await fn();
       } finally {
-        rmSync(lock, { force: true });
+        // only our own lock is removed: one a breaker replaced is left to its holder
+        try {
+          if (readFileSync(lock, 'utf8') === mine) rmSync(lock, { force: true });
+        } catch {
+          /* gone already */
+        }
       }
     }
     if (done()) return null;
-    let holder: number | null;
+    let text: string;
     try {
-      holder = holderOf(readFileSync(lock, 'utf8'));
+      text = readFileSync(lock, 'utf8');
     } catch {
       continue; // released between the two calls: try again at once
     }
+    const holder = holderOf(text);
     // a holder that died mid-download leaves the lock; one without a pid (empty, cut off, junk: its writer died
     // before the pid was out) is stale past a grace
     const age = (() => {
@@ -123,14 +174,14 @@ async function underLock<T>(dir: string, done: () => boolean, log: (s: string) =
       }
     })();
     if ((holder !== null && !pidAlive(holder)) || (holder === null && age > NO_PID_GRACE_MS)) {
-      rmSync(lock, { force: true });
+      await breakStale(lock, text);
       continue;
     }
     if (!said) {
       log(`waiting for pid ${holder ?? '?'}, which holds the download`);
       said = true;
     }
-    if (Date.now() > deadline) throw new Error(`gave up waiting for ${lock} (pid ${holder}) after ${WAIT_MS / 60_000} min`);
+    if (Date.now() > deadline) throw new Error(`gave up waiting for ${lock} (pid ${holder ?? '?'}) after ${WAIT_MS / 60_000} min`);
     await sleep(100);
   }
 }

@@ -93,3 +93,19 @@ test('an empty download lock (its writer died before the pid) is stale after a g
   assert.equal(out.stdout, `${r.expected}\n`);
   assert.deepEqual((await readdir(r.dir)).sort(), [r.unpacked]);
 });
+
+test("two resolvers that both find a dead holder's lock: one breaks it, neither removes the lock the other then holds", async (t) => {
+  // each holds still between finding the lock stale and removing it, so both decide before either acts
+  const r = await fakeRelease(t, { CLAND_TEST_NVIM_BREAK_PAUSE_MS: '400' });
+  if (!r) return t.skip('no pinned build for this platform');
+  await mkdir(r.dir, { recursive: true });
+  const dead = spawnSync(process.execPath, ['-e', '']).pid as number;
+  await writeFile(join(r.dir, '.download.lock'), `${dead}\n`);
+  const [a, b] = await Promise.all([r.resolve(), r.resolve()]);
+  assert.equal(a.code, 0, a.stderr);
+  assert.equal(b.code, 0, b.stderr);
+  assert.equal(a.stdout, `${r.expected}\n`);
+  assert.equal(b.stdout, `${r.expected}\n`);
+  assert.equal(`${a.stderr}${b.stderr}`.match(/downloading /g)?.length, 1, `one download:\n${a.stderr}\n${b.stderr}`);
+  assert.deepEqual((await readdir(r.dir)).sort(), [r.unpacked]);
+});
