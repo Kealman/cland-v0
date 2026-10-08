@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
 import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type HubFrame, type Message, type Presence, type RefusalCode, type SpokeRequest } from '../protocol.ts';
+import type { TaskRequest } from '../tracker/requests.ts';
 
 export type HubClientOptions = {
   url: string;
@@ -93,7 +94,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   }
 
   /** Send a request and await its result; rejects at once when there is no connection. */
-  request(frame: DistributiveOmit<SpokeRequest, 'id'>): Promise<unknown> {
+  request(frame: DistributiveOmit<SpokeRequest | TaskRequest, 'id'>): Promise<unknown> {
     if (this.#state.kind !== 'connected' || !this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error(this.describeOutage()));
     }

@@ -17,6 +17,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
 import { HubClient } from './hub-client.ts';
+import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { HEARTBEAT_MS, type Message, type SendOutcome } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 
@@ -129,7 +130,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
   let hub: HubClient | null = null;
   const notConfigured = 'this session is not connected to a cland hub: CLAND_HUB_URL and CLAND_HUB_SECRET are not set and no .cland/hub.json was found from the cwd up — run `cland hub start` in the project, or start the session through cland';
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS] }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS, ...TASK_TOOLS] }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const args = (req.params.arguments ?? {}) as Record<string, unknown>;
     if (!hub) return text({ ok: false, error: notConfigured }, true);
@@ -166,6 +167,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: true, messages: value.messages.map((m) => ({ ...metaOf(m), text: m.text })) });
         }
         default:
+          if (TASK_TOOL_NAMES.has(req.params.name)) {
+            const value = (await hub.request(taskFrame(req.params.name, args))) as Record<string, unknown>;
+            return text({ ok: true, ...value });
+          }
           return text({ ok: false, error: `unknown tool ${req.params.name}` }, true);
       }
     } catch (err) {

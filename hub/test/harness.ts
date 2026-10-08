@@ -18,7 +18,7 @@ import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
 /** The tools the spoke serves — the one list every surface assertion reads. */
-export const DOCUMENTED_TOOLS = ['history', 'rename', 'send', 'status', 'who'] as const;
+export const DOCUMENTED_TOOLS = ['history', 'rename', 'send', 'status', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.edit', 'task.link', 'task.list', 'task.view', 'who'] as const;
 
 export const ChannelEvent = z.object({
   method: z.literal('notifications/claude/channel'),
