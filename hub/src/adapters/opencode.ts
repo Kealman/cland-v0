@@ -244,7 +244,11 @@ export class OpenCodeAdapter implements HarnessAdapter {
             // the stream is live-only: what it missed comes from a snapshot taken once it is open
             w.client
               .snapshot(w.tracker.sessionId)
-              .then((s) => this.#apply(w, w.tracker.reset(s), Date.now()))
+              .then((s) => {
+                this.#apply(w, w.tracker.reset(s), Date.now());
+                // the stream is back: what failed to inject while it was down is retried, state change or not
+                this.#host.reconnected?.(w.process.sessionId);
+              })
               .catch((err: unknown) => this.#host.log({ event: 'opencode-snapshot-failed', session: w.process.name, error: err instanceof Error ? err.message : String(err) }));
           },
           w.abort.signal,

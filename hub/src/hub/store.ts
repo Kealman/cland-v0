@@ -7,7 +7,7 @@ import { vacancyWarning } from './topics.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
-export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected';
+export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'uncertain';
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 
 const SCHEMA = `
@@ -327,7 +327,7 @@ export class Store implements HygieneMemory {
     return (
       this.#db
         .prepare(
-          `update deliveries set state = 'dropped' where session = ? and state in ('queued', 'delivered')
+          `update deliveries set state = 'dropped' where session = ? and state in ('queued', 'delivered', 'uncertain')
            and message_id in (select id from messages where notice = ?) returning message_id`,
         )
         .all(session, notice) as Row[]
@@ -438,7 +438,18 @@ export class Store implements HygieneMemory {
 
   /** The session's adapter confirmed the turn; false when the delivery was not `delivered` (a repeat, or never acked). */
   markInjected(messageId: string, session: string): boolean {
-    return this.#db.prepare("update deliveries set state = 'injected' where message_id = ? and session = ? and state = 'delivered'").run(messageId, session).changes > 0;
+    return this.#db.prepare("update deliveries set state = 'injected' where message_id = ? and session = ? and state in ('delivered', 'uncertain')").run(messageId, session).changes > 0;
+  }
+
+  /** The adapter's inject reached the harness and got no answer: the turn may have started. `uncertain` is never
+   *  retried on its own (`uninjected` leaves it out). False when the delivery was not `delivered`. */
+  markUncertain(messageId: string, session: string): boolean {
+    return this.#db.prepare("update deliveries set state = 'uncertain' where message_id = ? and session = ? and state = 'delivered'").run(messageId, session).changes > 0;
+  }
+
+  /** The human asked for an uncertain delivery to be sent again: it is `delivered` (waiting for its inject) once more. */
+  retryUncertain(messageId: string, session: string): boolean {
+    return this.#db.prepare("update deliveries set state = 'delivered' where message_id = ? and session = ? and state = 'uncertain'").run(messageId, session).changes > 0;
   }
 
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
@@ -636,7 +647,7 @@ export class Store implements HygieneMemory {
   /** What `from`'s spoke accepted and its adapter has not confirmed (`delivered`) is `to`'s now: the same session
    *  renamed. A message that already has a delivery for `to` keeps that one. Returns how many rows moved. */
   moveUninjected(from: string, to: string): number {
-    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'delivered'").run(to, from).changes);
+    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state in ('delivered', 'uncertain')").run(to, from).changes);
   }
 
   /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */

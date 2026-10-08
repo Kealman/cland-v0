@@ -422,6 +422,25 @@ export class HubCore {
     return true;
   }
 
+  /**
+   * A session's adapter handed the message over and got no answer (whether the turn started cannot be told): the
+   * delivery is `uncertain`, logged, and the human's inbox notes it. Never retried on its own; `retryUncertain`
+   * sends it again.
+   */
+  markUncertain(messageId: string, session: string, why: string): boolean {
+    if (!this.#store.markUncertain(messageId, session)) return false;
+    this.#log({ event: 'inject-uncertain', id: messageId, session, why });
+    this.inbox.uncertain(session, this.label(session), messageId, why);
+    return true;
+  }
+
+  /** The human asks for an uncertain delivery to go again: back to `delivered`; false when it was not uncertain. */
+  retryUncertain(messageId: string, session: string): boolean {
+    if (!this.#store.retryUncertain(messageId, session)) return false;
+    this.#log({ event: 'inject-retry', id: messageId, session });
+    return true;
+  }
+
   /** A session's state, from its adapter (never from the model's `status`); subscribers hear a change. */
   setSessionState(sessionId: string, name: string, state: SessionState, source: string): boolean {
     if (this.#states.get(sessionId) === state) return false;

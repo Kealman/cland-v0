@@ -16,7 +16,7 @@ import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import type { AdapterHost, Capabilities, HarnessAdapter, HarnessProcess, InjectFrame, StateSignal } from './contract.ts';
+import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type StateSignal } from './contract.ts';
 import { ProcessTable, processStarted } from './processes.ts';
 import { clauseText } from '../roles/clause.ts';
 
@@ -126,6 +126,12 @@ export class Sessions {
       log: this.#log,
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       exited: (sessionId, detail) => this.#exited(sessionId, detail),
+      reconnected: (sessionId) => {
+        const p = this.#table.bySessionId(sessionId);
+        if (!p || p.status !== 'running') return;
+        this.#log({ event: 'adapter-reconnected', session: p.name });
+        this.#retry(p);
+      },
       recordPid: (sessionId, pid) => {
         const p = this.#table.bySessionId(sessionId);
         if (p) this.#table.update(p.name, { pid, pidStarted: processStarted(pid) });
@@ -445,7 +451,11 @@ export class Sessions {
     adapter
       .inject(p, message, topic)
       .then(() => this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name))
-      .catch((err: unknown) => this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error: err instanceof Error ? err.message : String(err) }))
+      .catch((err: unknown) => {
+        // the request reached the harness and no answer came: never replayed on its own
+        if (err instanceof InjectUncertain) this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message);
+        else this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error: err instanceof Error ? err.message : String(err) });
+      })
       .finally(() => {
         this.#inflight.delete(key);
         // a retry was asked for meanwhile (a bridge connected, the session went idle): made now, if the
@@ -454,6 +464,19 @@ export class Sessions {
         const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
         if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId);
       });
+  }
+
+  /**
+   * The human sends an uncertain delivery again (`session.retry`): the adapter could not tell whether the turn
+   * started, so only a person decides to risk it twice.
+   */
+  retry(session: string, messageId: string): { retried: true } {
+    const p = this.#rowOfName(session) ?? this.#process(session);
+    if (p.status !== 'running') throw new Error(`session "${session}" is not running (${p.status})`);
+    const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
+    if (!this.#core.retryUncertain(messageId, name)) throw new Error(`no uncertain delivery of message "${messageId}" to "${name}": only a message whose inject got no answer is retried by hand`);
+    this.#inject(p.sessionId, messageId);
+    return { retried: true };
   }
 
   close(): void {

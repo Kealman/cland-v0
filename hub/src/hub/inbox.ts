@@ -121,6 +121,11 @@ export class InboxBoard {
     this.#changed();
   }
 
+  /** An inject whose outcome is unknown: the human decides whether to send it again. */
+  uncertain(session: string, label: string, messageId: string, why: string): void {
+    this.#notify('delivery-uncertain', `${label}: a message may or may not have reached its harness (${why}); it is not sent again on its own: \`cland session retry ${session} ${messageId}\` sends it again`, { session });
+  }
+
   /** A verdict comment on an item (the tracker's): a notification. */
   verdict(v: VerdictNote): void {
     const text = `${v.item} ${v.verdict} ${v.result} · ${v.author}${v.run ? ` · run ${v.run}` : ''}`;
