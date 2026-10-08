@@ -57,6 +57,8 @@ const KEPT = [
   'verdict',
   'repo',
   'relaunch',
+  'then',
+  'move',
 ] as const;
 /** Free text: only its length is kept. */
 const TEXT = ['text', 'body', 'title', 'comment'] as const;
@@ -74,6 +76,8 @@ export function summarize(frame: Record<string, unknown>): Record<string, unknow
   const out: Record<string, unknown> = {};
   for (const k of KEPT) if (frame[k] !== undefined) out[k] = cap(frame[k]);
   for (const k of TEXT) if (typeof frame[k] === 'string') out[`${k}Chars`] = (frame[k] as string).length;
+  // a handover note (#31), Markdown or its four sections: only its length
+  if (frame.note !== undefined) out.noteChars = typeof frame.note === 'string' ? frame.note.length : JSON.stringify(frame.note).length;
   const as = frame.as as { name?: unknown; role?: unknown } | undefined;
   if (as && typeof as === 'object' && typeof as.name === 'string') out.as = cap(as.name);
   return out;

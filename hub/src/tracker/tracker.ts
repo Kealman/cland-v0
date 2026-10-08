@@ -484,6 +484,16 @@ export class Tracker {
     return existing ? 'updated' : 'created';
   }
 
+  /**
+   * A role moved (#31): the claims its previous holder held (by session id) are held by the new one, keeping their
+   * time. Returns an undo that puts them back, for a move that did not complete.
+   */
+  moveClaims(fromSessionId: string, to: { name: string; id: string; role: string | null }): { items: string[]; undo: () => void } {
+    const moved = this.#index.moveClaims(fromSessionId, { session: to.name, sessionId: to.id, role: to.role });
+    if (moved.length) this.#log({ event: 'task-claims-moved', items: moved.map((m) => m.item), from: moved[0]?.was.session, to: to.name, sessionId: to.id });
+    return { items: moved.map((m) => m.item), undo: () => moved.forEach((m) => this.#index.setClaim(m.item, m.was)) };
+  }
+
   /** Take (or with `release`, let go of) the live hold on an item. Only the hub knows of it; the file is untouched. */
   claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}): { id: string; claim: Claim | null } {
     const { id } = this.#require(rawId);
