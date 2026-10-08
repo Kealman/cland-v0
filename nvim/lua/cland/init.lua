@@ -162,7 +162,8 @@ M.HELP = {
   'Panels    ␣i items (left) · ␣n inbox · ␣s sessions · ␣t topics (right; the active key hides it)',
   'Items     1 all · 2 in work · 3 needs you · 4 done · 5 map (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
-  'Centre    ␣g General · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
+  'Centre    ␣g General · ␣a Agents log · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
+  'Agents    ␣a the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
   'Pick      ␣p items · topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
@@ -224,6 +225,9 @@ local function keymaps()
   map('<leader>b', function()
     layout.toggle_view({ kind = 'board' })
   end, 'board')
+  map('<leader>a', function()
+    layout.toggle_view({ kind = 'log' })
+  end, 'the Agents log')
   map('<leader>g', function()
     layout.show({ kind = 'thread', id = 'general' })
   end, 'General')

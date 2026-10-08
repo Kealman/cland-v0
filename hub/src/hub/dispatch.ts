@@ -30,6 +30,7 @@ import {
   type RoleClause,
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
+import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
@@ -106,7 +107,8 @@ export class Dispatcher {
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
     if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };
-    return { type: 'result', id, ok: false, error: err instanceof Error ? err.message : String(err) };
+    // hygiene's typed refusal rides along (#34)
+    return { type: 'result', id, ok: false, error: err instanceof Error ? err.message : String(err), ...(err instanceof HygieneError ? { refusal: err.refusal } : {}) };
   }
 
   get core(): HubCore {
@@ -131,7 +133,7 @@ export class Dispatcher {
     peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
     const target = call.tool === 'send' ? (call.toHuman ? ' to the human' : '') : typeof call.item === 'string' ? ` ${call.item}` : '';
     try {
-      core.noticeInTopic(AGENTS.id, `${withRole(connection.name, connection.role)} tried ${String(frame.type)}${target}: forbidden (${reason})`);
+      core.noticeInTopic(AGENTS.id, { kind: 'refusal', text: `${withRole(connection.name, connection.role)} tried ${String(frame.type)}${target}: forbidden (${reason})`, detail: { session: connection.name, role: connection.role, tool: String(frame.type), permission } });
     } catch (err) {
       this.#log({ event: 'notice-failed', error: err instanceof Error ? err.message : String(err) });
     }
@@ -358,7 +360,7 @@ export class Dispatcher {
           case 'topic.history':
             return answer(core.topicHistory(frame.topic, frame.limit));
           case 'topic.send': {
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to);
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo);
             return answer({ message, outcomes });
           }
           case 'topic.rename':
@@ -387,6 +389,8 @@ export class Dispatcher {
             return answer({ session: core.clearRole(frame.session) });
           case 'role.list':
             return answer(core.roleList());
+          case 'hygiene.unmute':
+            return answer(core.unmute(frame.a, frame.b));
           case 'subscribe':
             if (!unsubscribe) {
               const fromCore = core.subscribe((event) => {

@@ -56,7 +56,16 @@ export type Message = {
   ts: string;
   /** The topic the message belongs to (its id); absent on the hub's own notices. */
   topic?: string;
+  /** What kind of hub notice this is (`fromKind` `hub`): `role` (a clause), or an Agents record's lifecycle kind
+   *  (`session-start`, `role-assign`, `claim`, `mute`, …; `src/hub/agents-topic.ts`). Absent on every other message. */
+  kind?: string;
+  /** The notice's facts, typed by its kind: a mute carries its `HygieneRefusal` and the pair. */
+  detail?: Record<string, unknown>;
 };
+
+/** Why hygiene refused a send (spec 4.2): the size cap, the session's rate limit, or the pair's loop breaker
+ *  (with the mute's end). Carried by a refused outcome, a refused request's result, and the mute notice. */
+export type HygieneRefusal = { code: 'hygiene'; rule: 'rate' | 'loop' | 'size'; until?: string };
 
 // ------------------------------------------------------------------ topics (spec 4.5)
 
@@ -197,14 +206,14 @@ export type HubFrame =
   | ({ type: 'role'; id: string; message: Message } & RoleClause)
   | { type: 'result'; id: string; ok: true; value: unknown }
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
-   *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. */
-  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden' | 'note-incomplete'; permission?: string; role?: string | null; reason?: string; missing?: string[] }
+   *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
+    | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden' | 'note-incomplete'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
   | HubEvent;
 
-export type SendOutcome = { to: string; outcome: Outcome; reason?: string };
+export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refusal?: HygieneRefusal };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
@@ -305,8 +314,9 @@ export type ClientRequest =
   /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. */
   | { type: 'topic.history'; id: string; topic: string; limit?: number }
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
-   *  to the Coordinator. `{ message: TopicMessage, outcomes }` */
-  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[] }
+   *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
+   *  agent's message there, and the reply addresses its sender. */
+  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string }
   | { type: 'topic.rename'; id: string; topic: string; title: string }
   | { type: 'topic.delete'; id: string; topic: string }
   /** The human opens a topic, optionally bound to an item: `{ topic: Topic }`. */
@@ -326,7 +336,9 @@ export type ClientRequest =
   /** The human revokes a session's role: `{ session: RoleHolder }`. */
   | { type: 'role.clear'; id: string; session: string }
   /** The roles, their definitions and holders: `RoleList`. */
-  | { type: 'role.list'; id: string };
+  | { type: 'role.list'; id: string }
+  /** A person lifts the loop breaker's mute of a pair of sessions (by name): `{ lifted: boolean, pair: [a, b] }`. */
+  | { type: 'hygiene.unmute'; id: string; a: string; b: string };
 
 /** A session and its role as the role frames answer. */
 export type RoleHolder = { name: string; role: string | null; label: string; live: boolean };
@@ -399,7 +411,14 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.history':
       return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number');
     case 'topic.send':
-      return typeof f.topic === 'string' && typeof f.text === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string')));
+      return (
+        typeof f.topic === 'string' &&
+        typeof f.text === 'string' &&
+        (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
+        (f.replyTo === undefined || typeof f.replyTo === 'string')
+      );
+    case 'hygiene.unmute':
+      return typeof f.a === 'string' && typeof f.b === 'string';
     case 'topic.rename':
       return typeof f.topic === 'string' && typeof f.title === 'string';
     case 'topic.delete':

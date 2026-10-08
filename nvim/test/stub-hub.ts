@@ -85,7 +85,10 @@ const ok = (id: unknown, value: unknown) => write({ type: 'result', id, ok: true
 const fail = (id: unknown, error: string) => write({ type: 'result', id, ok: false, error });
 
 function topicMessage(f: Frame): Record<string, unknown> {
-  return { id: randomUUID(), from: 'human', fromKind: 'human', via: 'ui', to: ['coordinator'], text: f.text, ts: now(), topic: f.topic, stage: 'queued' };
+  // a reply (`replyTo`, the Agents log's `r`) addresses the sender of the message replied to, as the hub does
+  const original = typeof f.replyTo === 'string' ? Object.values(scenario.messages ?? {}).flat().find((m) => m.id === f.replyTo) : undefined;
+  const to = original ? [original.from] : ['coordinator'];
+  return { id: randomUUID(), from: 'human', fromKind: 'human', via: 'ui', to, text: f.text, ts: now(), topic: f.topic, stage: 'queued', ...(original ? { replyTo: f.replyTo } : {}) };
 }
 
 function acceptSend(f: Frame) {

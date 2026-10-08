@@ -75,6 +75,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'topic', type: 'text' },
   /** What kind of hub notice a message is (`role`: a role clause or revocation), null for every other message. */
   { table: 'messages', column: 'notice', type: 'text' },
+  /** A notice's facts as JSON (`Message.detail`): a mute's refusal and pair; null for every other message. */
+  { table: 'messages', column: 'notice_detail', type: 'text' },
   /** The item a topic is bound to (spec 4.5), null when unbound. */
   { table: 'topics', column: 'item', type: 'text' },
   /** The rowid of the last message the human read in the topic (`topic.read`); 0: none. */
@@ -100,6 +102,8 @@ const toMessage = (row: Row): Message => ({
   ...(row.from_role !== null && row.from_role !== undefined ? { fromRole: row.from_role as string } : {}),
   ...(row.reply_to !== null && row.reply_to !== undefined ? { replyTo: row.reply_to as string } : {}),
   ...(row.topic !== null && row.topic !== undefined ? { topic: row.topic as string } : {}),
+  ...(typeof row.notice === 'string' ? { kind: row.notice } : {}),
+  ...(typeof row.notice_detail === 'string' ? { detail: JSON.parse(row.notice_detail) as Record<string, unknown> } : {}),
 });
 
 const toTopic = (row: Row): Topic => {
@@ -316,8 +320,22 @@ export class Store implements HygieneMemory {
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null): void {
     this.#transaction(() => {
       this.#db
-        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now, message.topic ?? null, notice);
+        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(
+          message.id,
+          message.from,
+          message.fromKind,
+          message.fromRole ?? null,
+          message.via,
+          JSON.stringify(message.to),
+          message.text,
+          message.replyTo ?? null,
+          message.ts,
+          now,
+          message.topic ?? null,
+          notice ?? message.kind ?? null,
+          message.detail ? JSON.stringify(message.detail) : null,
+        );
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
     });

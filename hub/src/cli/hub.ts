@@ -9,7 +9,8 @@ import { jsonLinesLog } from '../log.ts';
 import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
 import { withRole } from '../names.ts';
-import { askHub, probe } from './socket-client.ts';
+import { askHub, askHubFrame, probe } from './socket-client.ts';
+import { journalPath, readJournal } from '../hub/journal.ts';
 import { liveHolder } from '../hub/lock.ts';
 import { formatAudit, parseSince, readAudit, type AuditFilter } from '../hub/audit.ts';
 
@@ -27,6 +28,10 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
                   --stdio --no-listen: stdio alone, binding nothing
   hub audit       every tool call the hub answered, allowed or refused (.cland/log/hub.log)
                   --session <name> (human: the UI and the CLI), --since <ISO time | 30m, 2h, 1d>, --json
+  hub unmute <a> <b>
+                  lift the loop breaker's mute of two sessions before its cool-down ends
+  hub journal     the journal (.cland/journal.jsonl), oldest first
+                  --since <ISO date | 30s | 10m | 2h | 1d>, --kind <event>[,<event>…], --json (the lines as they are)
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
@@ -255,6 +260,53 @@ const usageError = (io: Io, why: string): number => {
   io.err(`cland: hub audit: ${why}\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
   return 2;
 };
+async function unmute(root: string, names: string[], io: Io): Promise<number> {
+  const [a, b] = names;
+  if (!a || !b || names.length !== 2) {
+    io.err('usage: cland hub unmute <session> <session>\n');
+    return 2;
+  }
+  const d = readDiscovery(layout(root).discovery);
+  if (!d) {
+    io.err(`cland: no hub running for ${root}: a mute is lifted on the running hub (it is kept in hub.db until then)\n`);
+    return 1;
+  }
+  try {
+    const r = (await askHubFrame(d, { type: 'hygiene.unmute', a, b })) as { lifted: boolean; pair: [string, string] };
+    io.out(r.lifted ? `unmuted ${r.pair.join(' ↔ ')}\n` : `${r.pair.join(' ↔ ')} was not muted (its count starts afresh)\n`);
+    return 0;
+  } catch (err) {
+    io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+    return 1;
+  }
+}
+
+/** One journal record as a line: the time, the event, and its fields. */
+function journalLine(r: Record<string, unknown>): string {
+  const { ts, event, ...rest } = r;
+  const fields = Object.entries(rest)
+    .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
+    .join(' ');
+  return `${String(ts)}  ${String(event)}${fields ? `  ${fields}` : ''}`;
+}
+
+function journal(root: string, args: string[], io: Io): number {
+  const flag = (name: string): string | undefined => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const since = flag('--since');
+  const kind = flag('--kind');
+  try {
+    const records = readJournal(journalPath(layout(root).dir), { ...(since !== undefined ? { since } : {}), ...(kind !== undefined ? { kinds: kind.split(',').map((k) => k.trim()).filter(Boolean) } : {}) });
+    const json = args.includes('--json');
+    for (const r of records) io.out(`${json ? JSON.stringify(r) : journalLine(r)}\n`);
+    return 0;
+  } catch (err) {
+    io.err(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+    return 2;
+  }
+}
 
 /** `cland hub <sub> [flags]`; the process exit code. */
 export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio): Promise<number> {
@@ -269,6 +321,10 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
       return stop(root, io);
     case 'audit':
       return audit(root, rest, io);
+    case 'unmute':
+      return unmute(root, rest, io);
+    case 'journal':
+      return journal(root, rest, io);
     case 'serve':
       return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'), !rest.includes('--no-listen'), io);
     default:

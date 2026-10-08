@@ -151,6 +151,9 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   };
   if (message.fromRole !== undefined) meta.from_role = message.fromRole;
   if (message.replyTo !== undefined) meta.reply_to = message.replyTo;
+  // a hub notice: its kind (`mute`, …) and its typed facts (a mute's refusal: code, rule, until, pair)
+  if (message.kind !== undefined) meta.kind = message.kind;
+  if (message.detail !== undefined) meta.detail = JSON.stringify(message.detail);
   if (topic) {
     meta.topic = topic.id;
     meta.topic_title = topic.title;
@@ -297,7 +300,9 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
       // a refusal by the hub's permission table reaches the model typed: what was missing, for which role, why
       if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
       if (err instanceof Refused) return text({ ok: false, error: err.message, code: err.code, ...(err.missing ? { missing: err.missing } : {}) }, true);
-      return text({ ok: false, error: err instanceof Error ? err.message : String(err) }, true);
+      // a hygiene refusal reaches the model typed too
+      const refusal = err instanceof Error && 'refusal' in err ? (err as Error & { refusal: unknown }).refusal : undefined;
+      return text({ ok: false, error: err instanceof Error ? err.message : String(err), ...(refusal ? { refusal } : {}) }, true);
     }
   });
 

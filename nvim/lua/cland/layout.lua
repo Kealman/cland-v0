@@ -324,6 +324,10 @@ end
 
 --- Show `view` ({kind = thread|session|item|board|log|inbox, id}) in the centre.
 function M.show(view, opts)
+  -- Agents is read as its log, not as a thread with a composer (#34)
+  if view.kind == 'thread' and view.id == 'agents' then
+    view = { kind = 'log' }
+  end
   local ui = state.S.ui
   if not same(ui.view, view) then
     table.insert(ui.hist, ui.view)

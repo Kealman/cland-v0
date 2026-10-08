@@ -141,7 +141,8 @@ test("a spoke's send appears to the subscribed UI as a message event with sender
   const reply = await coord.call<{ ok: boolean; topic: { id: string; title: string } }>('send', { text: 'hello, human' });
   assert.equal(reply.ok, true, JSON.stringify(reply));
   assert.deepEqual(reply.topic, { id: 'general', title: 'General' });
-  const event = (await ui.waitFor((f) => f.type === 'message')) as { topic: { id: string }; message: TopicMessage };
+  // (the role assignment before it is a notice in Agents, #34)
+  const event = (await ui.waitFor((f) => f.type === 'message' && (f.message as TopicMessage).from === 'coord')) as { topic: { id: string }; message: TopicMessage };
   assert.equal(event.topic.id, 'general');
   assert.equal(event.message.from, 'coord');
   assert.equal(event.message.fromKind, 'agent');
@@ -153,7 +154,7 @@ test("a spoke's send appears to the subscribed UI as a message event with sender
   const elsewhere = await coord.call<{ ok: boolean; error?: string }>('send', { text: 'x', topic: 'nope' });
   assert.equal(elsewhere.ok, false);
   assert.equal(elsewhere.error, 'no topic "nope"');
-  assert.deepEqual(await history(ui, 'agents'), []);
+  assert.deepEqual((await history(ui, 'agents')).filter((m) => m.from !== 'hub'), [], 'nothing but the hub notices in Agents');
 });
 
 test('the same frames over stdio: a UI spawning `cland hub serve --stdio` as its child', async (t) => {

@@ -8,13 +8,15 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 | Path | What it is |
 | --- | --- |
-| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant`, `role.filled` and `task`, the `inject` frame to an in-session bridge; session states and the process table's view. |
+| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `hygiene.unmute`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant`, `role.filled` and `task`, the `inject` frame to an in-session bridge; session states and the process table's view. |
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
 | `src/hub/topics.ts` | The topic model (spec 4.5): the status moves, the mentions of a human message, the "no coordinator" warning, the port to the tracker a binding goes through. |
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, topics (status, binding, the human's read mark), messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
-| `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are the built-in defaults unless `.cland/config.toml` sets them (read at hub start). |
+| `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. Its constants are the defaults; `.cland/config.toml` `[hygiene]` overrides them at hub start (`src/init/config.ts`). |
+| `src/hub/journal.ts` | The journal, `.cland/journal.jsonl`: a tap on the log closure that appends the domain events as JSON lines (opened for appending: a restart never truncates), `write` for a record of its own, and the reader behind `cland hub journal`. |
+| `src/hub/agents-topic.ts` | The Agents record: maps the hub's lifecycle events (session start, stop, death; role assignment and revocation; claims and releases) to hub notices with a `kind`, posted through `HubCore.noticeInTopic`. |
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive, each session's role (assignment, the clause's delivery, Coordinator exclusivity and vacancy). Transport-free. |
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`, `topic.*`, `subscribe`), the `task.*` requests from either, the `session.*` requests (`src/adapters/requests.ts`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
 | `src/hub/server.ts` | The hub without listeners (`createHubBase`: core, dispatcher, prune) and the WebSocket edge (bearer secret check, frame size limit, heartbeat sweep). `createHub` is both, with no human side at all. |
@@ -91,7 +93,7 @@ A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an 
 - **Status** follows the direction of the messages (`src/hub/topics.ts`): a human message makes the topic `waiting for agent`; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask, #33, is answered by the human); a message from an agent the human's latest message addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open`: the `resolve` tool (the Coordinator's, by the permission table) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. `ask` (#33) will make it `waiting for human`, and closing will cancel its open asks. Agents keeps `open`.
 - **The warning.** While a message in a topic waits for a role nobody holds (a delivery queued under `@coordinator`), the topic carries `"warning":"no coordinator"` (`no reviewer`, … for another role). It clears when a session takes the role (its hello, or the human's `role.set`) and the queued delivery moves to it.
 - **Unread.** The human's unread count per topic is the messages from others since the human last read it: the UI sends `topic.read` when the thread is in view, and a message the human writes reads what came before it. It never moves back. Agents have no unread concept.
-- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses `to` when given, else its mentions: `@coordinator`, `@implementer`, `@reviewer`, `@qa` reach the role's live holders, `@<session-name>` that session (a session the hub knows); with no mention, the Coordinator. `@all` and globs stay text for the human; a mention that names no session and no role is reported as `unknown` and addresses nobody. Each address counts once, with or without its `@`. The addressed party answers with `send` and the topic's id, so the reply lands in the same topic. A party other than the Coordinator may answer the human there (no `to`) while the human's latest message in that topic was delivered to it, by its name or its role (see Permissions); elsewhere it writes to the Coordinator.
+- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused unless it is a reply: with `replyTo` naming an agent's message in Agents, the reply is recorded there and addresses that message's sender (a hub notice has no sender to answer). The message addresses `to` when given, else its mentions: `@coordinator`, `@implementer`, `@reviewer`, `@qa` reach the role's live holders, `@<session-name>` that session (a session the hub knows); with no mention, the Coordinator. `@all` and globs stay text for the human; a mention that names no session and no role is reported as `unknown` and addresses nobody. Each address counts once, with or without its `@`. The addressed party answers with `send` and the topic's id, so the reply lands in the same topic. A party other than the Coordinator may answer the human there (no `to`) while the human's latest message in that topic was delivered to it, by its name or its role (see Permissions); elsewhere it writes to the Coordinator.
 - **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
 - **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
@@ -128,7 +130,7 @@ On assignment and on every hello of a session holding a role, the hub records th
 {"type":"role","id":"<message id>","role":"reviewer","clause":"You are a Reviewer: …","skills":["code-review"],"message":{"id":"<message id>","from":"hub","fromKind":"hub","via":"hub","to":["rev-1"],"text":"cland hub: you hold the role Reviewer in this project, shown to others as rev-1 [Reviewer]. …","ts":"…"}}
 ```
 
-The spoke acks it like a `deliver` and logs it. A spoke that delivers itself shows the message's text as a channel event with `kind="role"` and `role` in its meta; in a launched session the adapter injects it as a turn (the session's first one), with the delivery pipeline's retries. A newer notice supersedes one still waiting (it is marked dropped). Revoking sends a notice with `"role":null` that tells the holder to stop acting in the role. The hub's log (the journal until #34) records each delivery: `role-clause` (session, role, reason `hello` | `assigned` | `assigned at launch`, message id) and `role-revoked`; the spoke's ack shows as `acked`.
+The spoke acks it like a `deliver` and logs it. A spoke that delivers itself shows the message's text as a channel event with `kind="role"` and `role` in its meta; in a launched session the adapter injects it as a turn (the session's first one), with the delivery pipeline's retries. A newer notice supersedes one still waiting (it is marked dropped). Revoking sends a notice with `"role":null` that tells the holder to stop acting in the role. The journal records each delivery: `role-clause` (session, role, reason `hello` | `assigned` | `assigned at launch`, message id) and `role-revoked`; the spoke's ack shows as `acked`.
 
 An adapter whose new session needs a first turn (Codex: a thread has no rollout before one, so attach and resume would fail) declares `clauseAtSpawn` and gets the rendered clause in `spawn`: the first turn carries it, and the hub records that first delivery as injected (`reason` `assigned at launch (first turn)`) instead of injecting it again. Every later hello delivers it as above.
 
@@ -234,11 +236,43 @@ Every tool call the hub answers, a spoke's (allowed or refused) or the human's t
 
 `cland hub audit [--session <name>] [--since <ISO time | 30s, 15m, 2h, 1d>] [--json]` prints the records, oldest first: one line each (`ts  rev-1 [reviewer]  task.close  item=T-12  forbidden task.close (…)`), or one JSON object per line. `--session human` selects the human's calls.
 
+## The Agents record, the journal and hygiene
+
+**Agents** (spec 4.5, decision #7) is the project's record of what agents do with each other. Every message a session sends to other sessions lands there unless it names another topic, and so does every lifecycle event, as a hub notice: a message `from` `hub`, `fromKind` `hub`, addressing nobody, with a `kind` and its facts in `detail`.
+
+| `kind` | When |
+| --- | --- |
+| `session-start` | A session was launched (`session-launched`), or re-found after a hub restart (`session-resumed`). |
+| `session-stop`, `session-death` | It was stopped through cland; its harness process died (`harness-exited`). |
+| `role-assign`, `role-revoke` | The human assigned a role (`(was …)` when it replaced another), a launch granted one at the first hello; the human revoked it, or its session stopped or died. A handover (`role.handover`, #31) is its own `handover` notice (with the note) followed by a `role-assign` for the new holder. |
+| `claim`, `release` | A session claimed an item (`taken over from …` when forced); a claim was released, by its holder, by another, or because the item closed. |
+| `handover` | A role was handed over (#31): who moved it, to whom, and the note. |
+| `mute`, `unmute` | The loop breaker muted a pair; a person lifted the mute. These two are delivered to both sessions of the pair as well. |
+| `refusal` | A tool call refused by the permission table (#30). |
+
+`src/hub/agents-topic.ts` maps the domain events to the notices, as they are logged; the mute, the unmute, #30's refusals and #31's handover call `HubCore.noticeInTopic(topic, { kind, text, to?, detail? })`, the one path into the record. Tool-level noise never enters: commands, outputs, hook signals, state changes, acks and injections are journalled, not recorded in Agents.
+
+**The journal** (spec 4.2, decision #13) is `.cland/journal.jsonl`: one JSON object per line, `{"ts":"<ISO>","event":"<event>",…}`, the hub log's own shape. It is a filter over the log closure every part of the hub logs through, so an event is journalled by being logged. It holds the domain events: `hub-started` and `hub-stopped` (written by the daemon at each start and clean stop), `config-loaded`; messages as metadata (`send`, `send-refused`, `human-send`: id, topic, sender, addressees, `bytes`, `replyTo`, outcomes; never the text); deliveries (`acked`, `injected`, `dropped`, `role-queue-claimed`); sessions (`hello`, `bye`, `rename`, `replaced`, `kick`, `refused-role`, `session-launched`, `session-stopped`, `session-resumed`, `harness-exited`, `session-state`); roles (`role-assigned`, `role-cleared`, `role-clause`, `role-revoked`, `role-handover`, `coordinator-vacant`, `coordinator-filled`); topics (`topic-created`, `topic-status`); the tracker (`task-written`, `task-claimed`, `task-released`, `task-conflict`, `task-removed`); hygiene (`loop-breaker`, `unmuted`, `rate-limited`); and the audit records (`audit`, #30). The file is opened for appending: a restart adds a `hub-started` line after the last one and never truncates. `Journal.write(record)` appends a record that is not a log line. The process log, everything the hub says, stays in `.cland/log/hub.log`.
+
+**Hygiene** (BCAS's, decision #13): a message's size cap, a per-session rate limit and the loop breaker, which mutes a pair of sessions that exchanged more than the threshold within the window with no human message to either in between (a human message to a session starts its pairs' counts afresh). The thresholds are read from `.cland/config.toml` at hub start, so a change applies at the next `cland hub stop` and `start`; a missing or unreadable file means the defaults:
+
+```toml
+[hygiene]
+rate_limit_max = 30               # messages one session may send to other sessions within the window
+rate_limit_window_minutes = 10
+loop_breaker_max = 20             # messages between one pair within the window before the pair is muted
+loop_breaker_window_minutes = 5
+loop_breaker_mute_minutes = 10    # the hard cool-down
+max_text_bytes = 8192
+```
+
+A refusal is typed, `{"code":"hygiene","rule":"size"|"rate"|"loop","until"?:"<ISO>"}`: the size cap and the rate limit refuse the `send` itself (the result's `error` and `refusal`; the spoke's tool answer carries both), the loop breaker refuses the outcome for the muted addressee (`outcome` `refused`, `reason`, `refusal` with `until`). When the breaker trips, both sessions get the `mute` notice (its `detail` is the refusal and the `pair`; a spoke shows `kind` and `detail` in the channel event's meta) and Agents shows it. Rate windows, pair counts and mutes persist in the `hygiene` table of `hub.db`, keyed by session id: a restart keeps a mute running. `cland hub unmute <a> <b>`, or the UI's `hygiene.unmute`, lifts a mute early and clears the pair's count.
+
 ## Not here yet
 
-- **The rest of the human side.** Asks and their `waiting for human` (#33); `task.link --topic` writes the item's field only, it binds no topic; a loop-breaker mute is still only journalled, not shown in the UI.
+- **The rest of the human side.** Asks and their `waiting for human` (#33); `task.link --topic` writes the item's field only, it binds no topic.
 - **Roles, the rest.** The Coordinator's role requests come later. A handover's `waiting` reads the topics `waiting for agent` (#32), and `asks` once asks exist (#33). The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
-- **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
+- **Claims.** A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 
 ## cland init and cland update
 
@@ -299,6 +333,8 @@ Run from a project's root, or anywhere inside it. The project root is the neares
 | `cland hub start` | Starts `cland hub serve` detached, waits until it answers, prints its pid, port and socket. A live hub is reported instead of started twice, also when two starts race: the hub that takes the project's lock serves, the other serve exits, and both commands report the one hub. A `hub.json` whose pid is gone, or is a process that does not hold the lock, is replaced. |
 | `cland hub status` | Asks the hub over its socket: pid, port, socket, uptime, version, connected sessions with their roles. `--json` prints the raw status. Exit 1 when no hub runs. |
 | `cland hub stop` | Asks the hub to stop over its socket and waits for the process to exit. When the socket does not answer it sends SIGTERM, but only to the process holding the project's lock (pid and start time match); a `hub.json` naming any other process is removed and that process left alone. A hub that died without cleaning up has its `hub.json` removed, and its socket file unless another hub holds the lock by now. |
+| `cland hub unmute <a> <b>` | Lifts the loop breaker's mute of two sessions (by name) on the running hub, and clears their count; Agents records it. |
+| `cland hub journal` | Prints `.cland/journal.jsonl`, oldest first, one record per line (`<ts>  <event>  key=value …`). `--since <ISO date \| 30s \| 10m \| 2h \| 1d>`, `--kind <event>[,<event>…]`, `--json` for the lines as they are. Reads the file: no hub needed. |
 | `cland hub serve` | The hub in the foreground, logging JSON lines to stderr. This is what `start` runs. SIGTERM and SIGINT stop it gracefully. |
 | `cland hub serve --stdio` | The same, and also the UI's frames on stdin and stdout for the parent that spawned it (`--transport stdio` works too). Stdout carries frames only; the hub stops when stdin ends. It is still the project's hub: it binds the socket and writes `hub.json`, so sessions find it. When either listener cannot bind (a sandbox that forbids it, spec 4.2), it logs `listen-failed`, closes the other and goes on over stdio alone (below). |
 | `cland hub serve --stdio --no-listen` | Stdio alone: binds nothing. |
@@ -320,8 +356,9 @@ The project's `.cland/`:
 | `hub.lock` | no | The hub lock, mode 0600: `{"pid":…,"started":"<ps lstart>"}` of the one hub serving the project, from before it prepares anything until it has shut down. |
 | `hub.json` | no | The discovery file, mode 0600, present only while a hub runs. |
 | `hub.sock` | no | The Unix socket for the UI and the CLI. |
-| `log/hub.log` | no | The background hub's stdout and stderr. |
-| `journal.jsonl`, `artifacts/`, `worktrees/`, `territory.git/` | no | Ignored ahead of the tickets that write them. |
+| `log/hub.log` | no | The background hub's stdout and stderr: the process log. |
+| `journal.jsonl` | no | The journal (above): the domain events and the audit records, JSON lines, append-only across restarts. |
+| `artifacts/`, `worktrees/`, `territory.git/` | no | Ignored ahead of the tickets that write them. |
 
 `hub.json`:
 
@@ -345,7 +382,7 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 | --- | --- |
 | `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then those waiting for the human, then by latest activity; a topic with no message last |
 | `{"type":"topic.history","id":…,"topic":"general","limit":50}` | `{"topic":Topic,"messages":[TopicMessage…]}`, oldest first, at most 200 |
-| `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"]}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator) |
+| `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"],"replyTo":"<message id>"}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator); in Agents only a reply is accepted, and it addresses the sender of `replyTo` |
 | `{"type":"topic.create","id":…,"title":"…","item":"T-12"}` | `{"topic":Topic}`; `item` is optional; refused without a title, or for an item that has a topic |
 | `{"type":"topic.close","id":…,"topic":…}` | `{"topic":Topic}`, `closed`; refused for General and Agents |
 | `{"type":"topic.resolve","id":…,"topic":…}` | `{"topic":Topic}`, `open`; refused for a closed topic and for Agents |
@@ -353,9 +390,10 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 | `{"type":"topic.rename","id":…,"topic":…,"title":…}` | `{"topic":Topic}`; refused for General and Agents |
 | `{"type":"topic.delete","id":…,"topic":…}` | `{"deleted":id}`; refused for General and Agents |
 | `{"type":"subscribe","id":…}` | `{"subscribed":true}`; events follow on this connection until it closes |
+| `{"type":"hygiene.unmute","id":…,"a":"<session>","b":"<session>"}` | `{"lifted":bool,"pair":[a,b]}`: the loop breaker's mute of the pair lifted (false when none ran); refused for a name the hub never knew |
 
 - `Topic` is `{"id","title","status","standing","createdAt","updatedAt","item","unread","lastMessageAt","warning"?}`: `status` is `open`, `waiting for human`, `waiting for agent` or `closed`; `item` the bound item or null; `unread` the human's unread count; `warning` (`no coordinator`) only while a message waits for a role nobody holds.
-- `TopicMessage` is the stored message, `{"id","from","fromKind","fromRole"?,"via","to","text","ts","replyTo"?,"topic","stage"?}`, where `stage` is present when the message had addressees.
+- `TopicMessage` is the stored message, `{"id","from","fromKind","fromRole"?,"via","to","text","ts","replyTo"?,"topic","stage"?,"kind"?,"detail"?}`, where `stage` is present when the message had addressees, and `kind` and `detail` on a hub notice (the Agents record, above).
 
 Events, pushed after `subscribe`:
 

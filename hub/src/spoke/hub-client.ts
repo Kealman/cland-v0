@@ -359,7 +359,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         if (frame.ok) p.resolve(frame.value);
         else if (frame.code === 'forbidden') p.reject(new Forbidden(frame.error, frame.permission ?? '', frame.role ?? null, frame.reason ?? ''));
         else if (frame.code !== undefined) p.reject(new Refused(frame.error, frame.code, frame.missing));
-        else p.reject(new Error(frame.error));
+        else p.reject(Object.assign(new Error(frame.error), frame.refusal ? { refusal: frame.refusal } : {}));
         break;
       }
       case 'error':
