@@ -18,7 +18,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
-import { HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
+import { Forbidden, HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { HEARTBEAT_MS, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
@@ -219,6 +219,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: false, error: `unknown tool ${req.params.name}` }, true);
       }
     } catch (err) {
+      // a refusal by the hub's permission table reaches the model typed: what was missing, for which role, why
+      if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
       return text({ ok: false, error: err instanceof Error ? err.message : String(err) }, true);
     }
   });

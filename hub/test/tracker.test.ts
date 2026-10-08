@@ -231,7 +231,8 @@ test('a claim belongs to the session, not its name: a rename keeps it, and whoev
   const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-b' });
   t.after(() => beta.close());
   await alpha.waitForPresence(['alpha', 'beta']);
-  ok(await cland(root, 'task', 'create', 'Held'));
+  // assigned to alpha: an Implementer claims only its own item (spec 4.4)
+  ok(await cland(root, 'task', 'create', 'Held', '--assignee', 'alpha'));
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
 
   assert.deepEqual(await alpha.call('rename', { name: 'alpha-2' }), { ok: true, name: 'alpha-2' });
@@ -371,9 +372,10 @@ test('the task frames work over the Unix socket as the CLI sends them', async (t
 test('the task.* tools work through a spoke over MCP, acting as the spoke\'s session', async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'impl-1', role: 'implementer' });
+  // the Coordinator: the one role that may use every task.* tool (spec 4.4)
+  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord-1', role: 'coordinator' });
   t.after(() => spoke.close());
-  await spoke.waitForPresence(['impl-1']);
+  await spoke.waitForPresence(['coord-1']);
 
   const created = await spoke.call<{ ok: boolean; item: View }>('task.create', { title: 'From a spoke', labels: ['mcp'], kind: 'task' });
   assert.equal(created.ok, true, JSON.stringify(created));
@@ -383,9 +385,9 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
   await spoke.call('task.edit', { id: 'T-1', add_labels: ['edited'] });
   await spoke.call('task.link', { id: 'T-1', branch: 't/1-from-a-spoke' });
   const claim = await spoke.call<{ ok: boolean; claim: { session: string; role: string } }>('task.claim', { id: 'T-1' });
-  assert.deepEqual([claim.claim.session, claim.claim.role], ['impl-1', 'implementer']);
+  assert.deepEqual([claim.claim.session, claim.claim.role], ['coord-1', 'coordinator']);
   const view = await spoke.call<{ ok: boolean; item: View }>('task.view', { id: 'T-1' });
-  assert.deepEqual(view.item.verdicts.map((v) => [v.by, v.result, v.run]), [['impl-1 [implementer]', 'clear', 'r-7']]);
+  assert.deepEqual(view.item.verdicts.map((v) => [v.by, v.result, v.run]), [['coord-1 [coordinator]', 'clear', 'r-7']]);
   assert.deepEqual(view.item.labels, ['mcp', 'edited']);
   assert.equal(view.item.branch, 't/1-from-a-spoke');
   const list = await spoke.call<{ ok: boolean; items: Summary[] }>('task.list', { verdict: 'review=clear', label: ['mcp'] });

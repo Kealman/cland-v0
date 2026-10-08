@@ -54,6 +54,8 @@ async function status(ui: FrameClient): Promise<Status> {
   return r.value as Status;
 }
 
+// The sessions here run as the Coordinator: the fake answers every turn to the human, which only the Coordinator
+// may (the hub's permission table, spec 4.4).
 async function launch(ui: FrameClient, name: string, extra: Record<string, unknown> = {}): Promise<Harness> {
   const r = await ui.request({ type: 'session.launch', name, harness: 'opencode', ...extra }, 30_000);
   assert.equal(r.ok, true, r.error);
@@ -99,7 +101,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
   // no model asked for: a free one the server lists
-  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
   assert.equal(launched.harness, 'opencode');
   assert.equal(launched.status, 'running');
   assert.equal(launched.model, 'opencode/fake-free');
@@ -121,7 +123,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   // the first turn is the role clause the hub delivered
   await clauseAnswered(ui, 'impl');
   const present = await presentAs(ui, 'impl', 'idle');
-  assert.equal(present.role, 'implementer');
+  assert.equal(present.role, 'coordinator');
   assert.equal(present.sessionId, launched.sessionId);
 
   // session.list: the session, its state, and the capability table with its heuristic waiting states
@@ -154,7 +156,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.equal(history.messages.find((m) => m.id === id)?.stage, 'injected');
   // queued (the session was idle), as the envelope with the line that names the way back
   const prompts = await fake.prompts(launched.harnessSessionId as string);
-  assert.match(prompts, /^prompt queue: <channel source="cland" from="hub" from_kind="hub"[^\n]*>\ncland hub: you hold the role Implementer/);
+  assert.match(prompts, /^prompt queue: <channel source="cland" from="hub" from_kind="hub"[^\n]*>\ncland hub: you hold the role Coordinator/);
   assert.match(prompts, /\nprompt queue: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool/);
 
   // busy during the turn, idle after, from the event stream
@@ -180,7 +182,7 @@ test('a message sent while the session works steers the running turn; one sent w
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const launched = await launch(ui, 'impl', { role: 'implementer', model: 'opencode/fake-paid' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator', model: 'opencode/fake-paid' });
   assert.equal(launched.model, 'opencode/fake-paid');
   await clauseAnswered(ui, 'impl');
   await presentAs(ui, 'impl', 'idle');
@@ -208,7 +210,7 @@ test('a pending permission is waiting for approval within one event, and the rep
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
   await clauseAnswered(ui, 'impl');
   await presentAs(ui, 'impl', 'idle');
   const clauseTurn = stateEvents(ui, 'impl').length;
@@ -244,7 +246,7 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
   await presentAs(ui, 'impl', 'idle');
 
   await killDaemon(launched.pid as number);
@@ -274,7 +276,7 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const first = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, first.discovery);
-  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
   await presentAs(ui, 'impl', 'idle');
   ui.close();
 
