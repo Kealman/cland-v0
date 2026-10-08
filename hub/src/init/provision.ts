@@ -1,0 +1,68 @@
+// `cland init` and `cland update` (spec 4.9, decision #17): what cland provisions into a project, idempotently.
+// Every managed file or block carries "managed by cland <version>"; a file without the mark is the project's own and
+// is never written. Running it again changes nothing; after a version change it rewrites the managed parts only.
+//
+//   .cland/.gitignore, config.toml, roles.toml (written once, then the human's), tasks/.gitkeep
+//   the General and Agents topics, in .cland/hub.db (not committed), through the store: no hub is needed
+//   .agents/skills/<name>/ and its manifest, .claude/skills (a symlink, or one per skill in the project's own folder)
+//   docs/agents/issue-tracker.md, domain.md, triage-labels.md
+//   AGENTS.md's managed block, the @AGENTS.md import of an existing CLAUDE.md
+//   the cland hooks in .claude/settings.json
+//
+// The territory (remotes, the bare repository, `dev`) is slice 2's.
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { AGENTS, GENERAL } from '../hub/core.ts';
+import { Store } from '../hub/store.ts';
+import { GITIGNORE, MANAGED_BY, layout } from '../project.ts';
+import { DEFAULT_ROLES_TOML } from '../roles/default-roles.ts';
+import { provisionClaudeSettings } from './claude-settings.ts';
+import { provisionConfig } from './config.ts';
+import { isManagedFile, readText, Report, writeIfChanged, type Change } from './files.ts';
+import { provisionAgentsMd, provisionClaudeMd, provisionDocs } from './instructions.ts';
+import { provisionClaudeSkills, provisionSkills, SKILLS_SOURCE } from './skills.ts';
+
+export type ProvisionOptions = {
+  /** Where the shipped skills are read from; this repository's `.agents/skills/` unless a test says otherwise. */
+  skillsSource?: string;
+};
+
+export const TASKS_KEEP = `# ${MANAGED_BY}: keeps .cland/tasks/ in git until it holds an item\n`;
+
+/** Provision `root`; returns what was done to each path. */
+export function provision(root: string, options: ProvisionOptions = {}): Change[] {
+  const report = new Report(root);
+  const l = layout(root);
+  mkdirSync(l.dir, { recursive: true });
+
+  // .cland/: the managed .gitignore (the hub's own rule: rewritten while marked), config, roles, tasks
+  const ignore = readText(l.gitignore);
+  if (ignore !== null && !isManagedFile(ignore)) report.add(l.gitignore, 'kept', 'no "managed by cland" mark: the project\'s own');
+  else writeIfChanged(report, l.gitignore, GITIGNORE, ignore);
+  provisionConfig(report, l.config, root);
+  if (existsSync(l.roles)) report.add(l.roles, 'unchanged', 'written once with the defaults, then the human\'s: cland never rewrites it');
+  else writeIfChanged(report, l.roles, DEFAULT_ROLES_TOML, null);
+  const keep = join(l.tasks, '.gitkeep');
+  const keepText = readText(keep);
+  if (keepText !== null && keepText !== '' && !isManagedFile(keepText)) report.add(keep, 'kept', 'the project\'s own');
+  else writeIfChanged(report, keep, TASKS_KEEP, keepText);
+
+  // the standing topics, as the hub creates them at its first start
+  const store = new Store(l.db);
+  try {
+    const had = store.topic(GENERAL.id) !== null && store.topic(AGENTS.id) !== null;
+    const now = new Date().toISOString();
+    for (const t of [GENERAL, AGENTS]) store.ensureTopic(t.id, t.title, true, now);
+    report.add(l.db, had ? 'unchanged' : 'created', 'the General and Agents topics');
+  } finally {
+    store.close();
+  }
+
+  const managed = provisionSkills(report, root, options.skillsSource ?? SKILLS_SOURCE);
+  provisionClaudeSkills(report, root, managed);
+  provisionDocs(report, root);
+  provisionAgentsMd(report, root);
+  provisionClaudeMd(report, root);
+  provisionClaudeSettings(report, root);
+  return report.changes;
+}
