@@ -16,11 +16,12 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive. Transport-free. |
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`, `topic.*`, `subscribe`), the `task.*` requests from either, the `session.*` requests (`src/adapters/requests.ts`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
-| `src/hub/server.ts` | The WebSocket edge: bearer secret check, frame size limit, heartbeat sweep. `createHub` starts it with no human side at all. |
+| `src/hub/server.ts` | The hub without listeners (`createHubBase`: core, dispatcher, prune) and the WebSocket edge (bearer secret check, frame size limit, heartbeat sweep). `createHub` is both, with no human side at all. |
 | `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. Bound under a private name and renamed into place; on close it removes the path only while the path is still the socket it bound. |
+| `src/hub/lines.ts` | The JSON-lines framing both byte-stream edges share: complete lines split off first, each held to the frame limit on its own, then only the unfinished remainder. |
 | `src/hub/stdio.ts` | The stdio edge for a UI that spawned the hub as its child (`cland hub serve --stdio`): JSON lines on stdin and stdout, no secret, the hub stops when stdin ends. |
 | `src/hub/lock.ts` | The project's hub lock, `.cland/hub.lock`: created whole or not at all, holding the holder's pid and process start time; a stale one (pid gone, or reused by a process started at another time) is broken under a guard. |
-| `src/hub/daemon.ts` | The hub serving one project in the background: the lock taken first, `.cland/` prepared, store on `hub.db`, both edges bound, the adapters plugged in, `hub.json` written last; the launched sessions re-found once it is reachable. Shutdown runs backwards: edges closed, `hub.json` removed, the lock released last. |
+| `src/hub/daemon.ts` | The hub serving one project in the background: the lock taken first, `.cland/` prepared, store on `hub.db`, both edges bound, the adapters plugged in, `hub.json` written last; the launched sessions re-found once it is reachable. Shutdown runs backwards: edges closed, `hub.json` removed, the lock released last. For a stdio hub the listeners are optional (below). |
 | `src/adapters/contract.ts` | The adapter contract (spec 4.3) and its capability table; the message envelope a harness reads. |
 | `src/adapters/processes.ts` | The process table: the harness processes the hub launched, in `hub.db` (table `harness_processes`), through a connection of its own. |
 | `src/adapters/sessions.ts` | The hub's side of the adapters: launch, attach, stop, resume, the state signals, and the delivery pipeline's last stage (delivered → inject → injected). Transport-free. |
@@ -70,8 +71,9 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 A topic is a thread in the human's chat with agents (spec 4.5): an id, a title, a status, a `standing` flag, creation and activity times. Every message belongs to one, and the `deliver` frame carries it as `"topic":{"id":…,"title":…}` (the spoke shows it as `topic` and `topic_title` on the channel event).
 
 - **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming or deleting them is refused. No other topic can be created yet (#32); the status is always `open` until the status machine (#32).
-- **The human** writes through the UI (`topic.send`). The message addresses the Coordinator unless `to` names sessions or roles. A role nobody holds keeps the message queued under the role; the first session to take the role (its hello) gets it, so the stage stays `queued` until a coordinator connects and acks. The sender is `human`, a reserved name.
-- **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents.
+- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses the Coordinator unless `to` names sessions or roles. Each address counts once, with or without its `@`.
+- **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
+- **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
 ## Not here yet
 
@@ -90,7 +92,10 @@ Run from a project's root, or anywhere inside it. The project root is the neares
 | `cland hub status` | Asks the hub over its socket: pid, port, socket, uptime, version, connected sessions with their roles. `--json` prints the raw status. Exit 1 when no hub runs. |
 | `cland hub stop` | Asks the hub to stop over its socket and waits for the process to exit. When the socket does not answer it sends SIGTERM, but only to the process holding the project's lock (pid and start time match); a `hub.json` naming any other process is removed and that process left alone. A hub that died without cleaning up has its `hub.json` removed, and its socket file unless another hub holds the lock by now. |
 | `cland hub serve` | The hub in the foreground, logging JSON lines to stderr. This is what `start` runs. SIGTERM and SIGINT stop it gracefully. |
-| `cland hub serve --stdio` | The same, and also the UI's frames on stdin and stdout for the parent that spawned it (`--transport stdio` works too). Stdout carries frames only; the hub stops when stdin ends. It is still the project's hub: it binds the socket and writes `hub.json`, so sessions find it. |
+| `cland hub serve --stdio` | The same, and also the UI's frames on stdin and stdout for the parent that spawned it (`--transport stdio` works too). Stdout carries frames only; the hub stops when stdin ends. It is still the project's hub: it binds the socket and writes `hub.json`, so sessions find it. When either listener cannot bind (a sandbox that forbids it, spec 4.2), it logs `listen-failed`, closes the other and goes on over stdio alone (below). |
+| `cland hub serve --stdio --no-listen` | Stdio alone: binds nothing. |
+
+A stdio hub without listeners still takes the project's lock: the store is one hub's alone. It writes no `hub.json` (nobody could reach it), plugs in no adapters (so `session.*` requests are refused: a launched session could never connect), and `hub.status` shows port 0 and an empty socket. While another hub holds the lock, `serve --stdio` does not proxy to it: it exits 1 before any frame, with `cland: a hub already runs for <root> (pid <n> holds …)` on stderr. A UI then talks to that hub over its socket, or stops it first.
 
 The project's `.cland/`:
 
@@ -145,7 +150,7 @@ Events, pushed after `subscribe`:
 {"type":"session.state","session":"coord","sessionId":"…","state":"busy","source":"hook","ts":"…"}
 ```
 
-A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `delivery` event comes when a message's stage changes after the send. A `session.state` event comes when a session's state changes (below).
+A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below).
 
 ## Adapters and sessions
 

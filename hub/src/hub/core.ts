@@ -199,8 +199,10 @@ export class HubCore {
     this.#store.rememberRole(name, connection.role);
     // what waited for the role while nobody held it now waits for this session (flushed after the welcome)
     if (role !== null) {
-      const claimed = this.#store.claimRoleQueue(role, name);
-      if (claimed) this.#log({ event: 'role-queue-claimed', name, role, count: claimed });
+      const { moved, merged } = this.#store.claimRoleQueue(role, name);
+      if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name, role, count: moved + merged.length });
+      // a message that already waited for this session by name keeps one delivery: its stage may move now
+      for (const id of merged) this.#emitStage(id);
     }
     this.#log({ event: 'hello', name, sessionId: hello.sessionId, role });
     return { ok: true, name, connection };
@@ -212,7 +214,10 @@ export class HubCore {
     const connection = this.#live.get(name);
     if (!connection) return;
     const { deliver, dropped } = this.#store.pendingFor(name, this.#now().getTime(), this.#queueTtlMs);
-    for (const message of dropped) this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
+    for (const message of dropped) {
+      this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
+      this.#emitStage(message.id);
+    }
     for (const message of deliver) connection.deliver(message);
     if (deliver.length) this.#log({ event: 'flushed', session: name, count: deliver.length });
   }
@@ -323,8 +328,9 @@ export class HubCore {
     c.name = to;
     this.#live.set(to, c);
     // deliveries still in flight to this session follow it, so its acks find them
-    this.#store.moveQueued(from, to);
+    const merged = this.#store.moveQueued(from, to);
     this.#store.forgetSession(from);
+    for (const id of merged) this.#emitStage(id);
     this.#store.rememberSession(to, this.#now().getTime());
     this.#store.rememberSessionId(to, c.sessionId);
     this.#store.rememberStatus(to, c.status);
@@ -376,30 +382,39 @@ export class HubCore {
     return this.#store.knownSessions(this.#now().getTime() - this.#queueTtlMs).map((d) => d.name);
   }
 
-  /** The sessions holding each role: the live ones by their hello, the offline ones by their row. Arrays, never iterators. */
-  #roleHolders(known: ReadonlySet<string>): Map<string, string[]> {
+  /**
+   * The sessions a role address reaches: its live holders whenever any is connected (a holder that went
+   * offline was replaced, it is not an addressee). With none live, the offline holders by their row when
+   * `vacant` is `offline-holders`; nobody when it is `placeholder` (the caller queues under the role).
+   * Several holders of one role are all reached. Arrays, never iterators.
+   */
+  #roleHolders(known: ReadonlySet<string>, vacant: 'offline-holders' | 'placeholder'): Map<string, string[]> {
     const since = this.#now().getTime() - this.#queueTtlMs;
     const roles = new Map<string, string[]>();
     for (const role of ROLE_NAMES) {
-      const fromRows = this.#store.sessionsWithRole(role, since).filter((n) => known.has(n) && !this.#live.has(n));
       const live = [...this.#live.values()].filter((c) => c.role === role).map((c) => c.name);
-      roles.set(role, [...new Set([...fromRows, ...live])].sort());
+      const holders = live.length || vacant === 'placeholder' ? live : this.#store.sessionsWithRole(role, since).filter((n) => known.has(n) && !this.#live.has(n));
+      roles.set(role, [...new Set(holders)].sort());
     }
     return roles;
   }
 
+  /** Addresses as tags: the `@` dropped, each tag once, in order of first appearance. */
+  static #normalized(tags: string[]): string[] {
+    return [...new Set(tags.map((t) => t.trim().replace(/^@/, '')).filter((t) => t.length > 0))];
+  }
+
   /** Tags → addressees. `all`, globs and roles reach the connected and the known-offline; `except` is the sender. */
-  #resolveAddressees(tags: string[], except: string) {
+  #resolveAddressees(tags: string[], except: string, vacant: 'offline-holders' | 'placeholder') {
     const connected = [...this.#live.keys()];
     const known = this.#known();
     const knownSet = new Set([...connected, ...known]);
-    const ctx = { connected, known, roles: this.#roleHolders(knownSet) };
+    const ctx = { connected, known, roles: this.#roleHolders(knownSet, vacant) };
     const sessions = new Set<string>();
     const unknown: string[] = [];
     const empty: Array<{ tag: string; reason: string }> = []; // tags that reach nobody but the sender — a fact, never a refusal
     const tagOf = new Map<string, string[]>(); // tag → the session names it resolved to
-    for (const raw of tags) {
-      const tag = raw.replace(/^@/, '');
+    for (const tag of HubCore.#normalized(tags)) {
       const r = resolveTag(tag, ctx);
       switch (r.kind) {
         case 'all': {
@@ -473,21 +488,25 @@ export class HubCore {
   }
 
   /**
-   * The human writes into a topic. It addresses the Coordinator unless `to` names sessions or roles; a role
-   * nobody holds keeps the message queued under the role (`@<role>`) until a session takes the role.
-   * Always recorded: the human's words show in the topic whoever they reach.
+   * The human writes into a topic, never into Agents. It addresses the Coordinator unless `to` names sessions
+   * or roles. A role reaches its live holders; with none connected the message is queued under the role
+   * (`@<role>`) until a session takes the role. Always recorded: the human's words show in the topic whoever
+   * they reach.
    */
   sendFromHuman(topicId: string, text: string, to: string[] = [DEFAULT_HUMAN_ADDRESSEE]): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
+    // Agents is the record of what agents send each other (spec 4.5): the human reads it, never writes in it
+    if (topic.id === AGENTS.id) throw new Error(`${topic.title} is read-only: it records what agents send each other; write in General or another topic`);
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new Error(size);
     if (!text.trim()) throw new Error('an empty message is not sent');
     const nowMs = this.#now().getTime();
-    const tags = to.length ? to : [DEFAULT_HUMAN_ADDRESSEE];
-    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(tags, HUMAN);
+    const tags = HubCore.#normalized(to).length ? to : [DEFAULT_HUMAN_ADDRESSEE];
+    // a role with no live holder waits for the next session to take it, not for a holder that went away
+    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(tags, HUMAN, 'placeholder');
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     // a role with no holder: held for the role, not refused
-    const placeholders = empty.map(({ tag }) => tag.replace(/^@/, ''));
+    const placeholders = empty.map(({ tag }) => tag);
     const message: Message = {
       id: randomUUID(),
       from: HUMAN,
@@ -511,7 +530,7 @@ export class HubCore {
       const offline = names.filter((n) => !states.get(n));
       outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} offline — queued` } : { to: tag, outcome: 'delivered' });
     }
-    for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `nobody holds the role "${role}" — queued until a session takes it` });
+    for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
     this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     const stage = this.#store.stage(message.id);
     return { message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
@@ -534,7 +553,7 @@ export class HubCore {
     const self = this.#identity(from);
     const rate = this.#hygiene.rateRefusal(self, nowMs);
     if (rate) throw new Error(rate);
-    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(to, from);
+    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders');
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     for (const { tag, reason } of empty) outcomes.push({ to: tag, outcome: 'empty', reason });
     // the loop breaker: a muted pair refuses; a pair crossing the threshold gets muted and refuses
