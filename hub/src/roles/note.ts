@@ -22,8 +22,9 @@ export type RoleRecord = {
   claims?: PendingClaims | null;
 };
 
-/** Claims held by the previous holder's session id, to be re-pointed to the receiver's. */
-export type PendingClaims = { from: string; to: { name: string; id: string | null; role: string } };
+/** Claims held by the previous holder's session id (`from`), and by earlier holders whose transfer was still pending
+ *  when the role moved on (`also`: a receiver that never connected), to be re-pointed to the receiver's. */
+export type PendingClaims = { from: string; also?: string[]; to: { name: string; id: string | null; role: string } };
 
 export const isRoleRecord = (v: unknown): v is RoleRecord => typeof v === 'object' && v !== null && 'note' in v && 'handover' in v;
 

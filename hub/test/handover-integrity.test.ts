@@ -73,6 +73,25 @@ test('a role moved to a name no session holds yet: its claims follow when a sess
   assert.equal((await claimOf(root, 'T-1'))?.session, 'later');
 });
 
+test('a role moved on again before its receiver ever connected: the first holder\'s claims still follow it to the end of the chain', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const spoke = await spokes(t, root);
+  const a = await spoke('coord', 'coordinator');
+  ok(await cland(root, 'task', 'create', 'Held by the Coordinator'));
+  assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
+  // coord → later (never connects) → final (connects only afterwards)
+  const first = await ui.request({ type: 'role.set', session: 'later', role: 'coordinator', move: true });
+  assert.equal(first.ok, true, first.error);
+  const second = await ui.request({ type: 'role.set', session: 'final', role: 'coordinator', move: true });
+  assert.equal(second.ok, true, second.error);
+  assert.equal((await claimOf(root, 'T-1'))?.session, 'coord');
+  await spoke('final');
+  await eventually('the claim reached the end of the chain', async () => ((await claimOf(root, 'T-1'))?.sessionId === 'sess-final' ? true : undefined));
+  assert.equal((await claimOf(root, 'T-1'))?.session, 'final');
+});
+
 test('a second handover keeps what waited for the first holder: the role state recognises every holder in the chain', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);

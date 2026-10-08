@@ -48,7 +48,12 @@ export function handOver(
   const fromId = args.from !== null ? sessionIdOf(ctx, args.from) : null;
   // the claims to move are part of the move's record (one store transaction); the tracker moves them right after the
   // commit, from that record, and again at the next start if the hub died in between (the move is idempotent)
-  const claims: PendingClaims | null = ctx.tracker && fromId !== null && fromId !== toId ? { from: fromId, to: { name: args.to, id: toId, role: args.role } } : null;
+  // a transfer still pending from an earlier move (its receiver never connected) is carried along, never dropped
+  const stored = ctx.core.store.roleRecord(args.role);
+  const prior = isRoleRecord(stored) ? stored.claims : null;
+  const sources = [...new Set([...(prior ? [prior.from, ...(prior.also ?? [])] : []), ...(fromId !== null ? [fromId] : [])])].filter((id) => id !== toId);
+  const [first, ...also] = sources;
+  const claims: PendingClaims | null = ctx.tracker && first !== undefined ? { from: first, ...(also.length ? { also } : {}), to: { name: args.to, id: toId, role: args.role } } : null;
   const holder = ctx.core.moveRole({ role: args.role, from: args.from, to: args.to, by: args.by, note, then: args.then ?? null, claims });
   // a test's crash between the commit and the claims' move (the replay at the next start finishes it)
   if (process.env.CLAND_TEST_CRASH_AT === 'handover-committed') process.kill(process.pid, 'SIGKILL');
@@ -74,7 +79,7 @@ export function settleClaims(ctx: HandoverContext, role: string, hello?: { name:
     if (!hello || hello.name !== pending.to.name) return;
     toId = hello.sessionId === UNKNOWN_SESSION ? `name:${hello.name}` : hello.sessionId;
   }
-  if (toId !== pending.from) tracker.moveClaims(pending.from, { name: pending.to.name, id: toId, role: pending.to.role });
+  for (const from of [pending.from, ...(pending.also ?? [])]) if (toId !== from) tracker.moveClaims(from, { name: pending.to.name, id: toId, role: pending.to.role });
   core.store.saveRoleRecord(role, { ...stored, claims: null } satisfies RoleRecord);
 }
 
