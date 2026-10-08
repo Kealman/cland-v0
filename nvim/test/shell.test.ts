@@ -9,7 +9,7 @@ import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { centreOf, nvimOrSkip, startClient, type Client } from './harness.ts';
+import { centreOf, clock as clockOf, nvimOrSkip, startClient, type Client } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
 
 const nvim = await nvimOrSkip();
@@ -234,7 +234,7 @@ test('the picker: ␣p opens on topics, typing narrows, Tab switches to sessions
   await c.input('<C-\\><C-n>');
   await c.waitScreen((x) => statusLine(x).includes('NORMAL  impl-1'), 'Normal mode in the terminal');
   await c.input('<Space>p<Tab>Agents<CR>');
-  s = await c.waitScreen((x) => statusLine(x).includes('Agents · topic') && centreOf(x).includes('T-12 claimed.'), 'the Agents thread');
+  s = await c.waitScreen((x) => statusLine(x).includes('Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents log (#34)');
 });
 
 test('gi, gt and gs on a reference under the cursor in the thread', { skip }, async (t) => {
@@ -259,7 +259,7 @@ test('gi, gt and gs on a reference under the cursor in the thread', { skip }, as
   await c.waitScreen((x) => statusLine(x).includes('General · topic'), 'back in General');
   await c.input('<C-w>k');
   await c.input('gg/Agents<CR>gt');
-  await c.waitScreen((x) => statusLine(x).includes('Agents · topic') && centreOf(x).includes('T-12 claimed.'), 'the Agents topic');
+  await c.waitScreen((x) => statusLine(x).includes('Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents topic, as its log (#34)');
   // gi from a session row in the panel: its claimed item
   await c.input('<Space>s<Space>s');
   await c.waitScreen((x) => x.includes('SESSIONS'), 'sessions panel');
@@ -518,4 +518,71 @@ test("the picker's topics kind lists needs you first, with the binding, the warn
   s = await c.waitScreen((x) => /● Codex adapter .*open · 3 unread/.test(x) && !x.includes('Daemon hello'), 'filtered by title');
   await c.input('<CR>');
   await c.waitScreen((x) => topBar(x).includes('│ Codex adapter'), 'the thread opened');
+});
+
+// ------------------------------------------------------------------ the Agents log (#34)
+
+/** Agents with an agent-to-agent message and lifecycle notices (a session start, a claim, a mute). */
+function withAgentsLog(s: Scenario): void {
+  s.messages = {
+    ...(s.messages ?? {}),
+    agents: [
+      { id: 'n1', from: 'hub', fromKind: 'hub', via: 'hub', to: [], text: 'impl-1 [Implementer] started (claude-code, sonnet)', ts: ts(1), topic: 'agents', kind: 'session-start' },
+      { id: 'm2', from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', via: 'session', to: ['coord-1'], text: 'T-12 claimed.', ts: ts(2), topic: 'agents' },
+      { id: 'n2', from: 'hub', fromKind: 'hub', via: 'hub', to: [], text: 'impl-1 [Implementer] claimed T-12', ts: ts(3), topic: 'agents', kind: 'claim' },
+      { id: 'n3', from: 'hub', fromKind: 'hub', via: 'hub', to: ['coord-1', 'impl-1'], text: 'coord-1 [Coordinator] ↔ impl-1 [Implementer] muted: a hard 10-min cool-down', ts: ts(4), topic: 'agents', kind: 'mute', detail: { code: 'hygiene', rule: 'loop', until: ts(14), pair: ['coord-1', 'impl-1'] } },
+    ],
+  };
+}
+
+test('the Agents log (␣a, :Cland view log) lists messages with sender [Role] → addressee and notices with kind glyphs, and follows message events', { skip }, async (t) => {
+  const c = await startShell(t, withAgentsLog);
+  await c.input('<Esc><Space>a');
+  let s = await c.waitScreen((x) => topBar(x).includes('│ Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents log');
+  const centre = centreOf(s);
+  assert.match(centre, /read-only log: lifecycle events and agent-to-agent messages · r on a message replies to its sender/);
+  assert.match(centre, new RegExp(`${clockOf(ts(1))} {2}▶ impl-1 \\[Implementer\\] started \\(claude-code, sonnet\\)`));
+  assert.match(centre, new RegExp(`${clockOf(ts(2))} {2}impl-1 \\[Implementer\\] → coord-1 \\[Coordinator\\] {2}T-12 claimed\\.`));
+  assert.match(centre, /⚑ impl-1 \[Implementer\] claimed T-12/);
+  assert.match(centre, /⊘ coord-1 \[Coordinator\] ↔ impl-1 \[Implementer\] muted/);
+  const order = ['▶ impl-1', 'T-12 claimed.', '⚑ impl-1', '⊘ coord-1'].map((w) => centre.indexOf(w));
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'oldest first');
+  // the hub's message event for agents adds a row
+  await c.control({ emit: { type: 'message', topic: { id: 'agents', title: 'Agents' }, message: { id: 'n4', from: 'hub', fromKind: 'hub', via: 'hub', to: [], text: 'impl-1 [Implementer] stopped', ts: ts(5), topic: 'agents', kind: 'session-stop' } } });
+  s = await c.waitScreen((x) => centreOf(x).includes('■ impl-1 [Implementer] stopped'), 'the new notice');
+  // ␣a again returns; :Cland view log and Agents as a thread open the log
+  await c.input('<Space>a');
+  await c.waitScreen((x) => topBar(x).includes('│ General'), 'back to General');
+  await c.input('<Esc>:Cland view log<CR>');
+  await c.waitScreen((x) => topBar(x).includes('│ Agents log'), 'the log by command');
+  await c.input('<Space>g');
+  await c.waitScreen((x) => topBar(x).includes('│ General'), 'General again');
+  await c.input('<Esc>:Cland view thread agents<CR>');
+  await c.waitScreen((x) => topBar(x).includes('│ Agents log'), 'Agents as a thread opens the log');
+  assert.equal(await c.lua<string>('return vim.b.cland_role'), 'log');
+});
+
+test('r on a message in the Agents log prepares a reply to its sender; the hub gets topic.send with replyTo; r on a notice says it has no sender', { skip }, async (t) => {
+  const c = await startShell(t, withAgentsLog);
+  await c.input('<Esc><Space>a');
+  await c.waitScreen((x) => centreOf(x).includes('T-12 claimed.'), 'the Agents log');
+  // a notice first: nothing to answer
+  await c.input('gg/claimed T-12<CR>r');
+  await c.waitScreen((x) => statusLine(x).includes('a hub notice has no sender to answer'), 'the notice refusal');
+  assert.equal(await c.lua<string>('return vim.b.cland_role'), 'log');
+  // then the agent's message
+  await c.input('gg/T-12 claimed<CR>r');
+  const s = await c.waitScreen((x) => x.includes('reply to impl-1 [Implementer]'), 'the reply composer');
+  assert.match(s, /↩ reply to impl-1 \[Implementer\]/);
+  assert.equal(await c.mode(), 'i', 'typing the reply');
+  assert.deepEqual(await c.lua<[string, string, string]>('return { vim.b.cland_role, vim.b.cland_reply_to, vim.b.cland_reply_sender }'), ['composer', 'm2', 'impl-1']);
+  await c.input('keep T-12 small<CR>');
+  await c.waitScreen((x) => statusLine(x).includes('replied to impl-1 [Implementer]'), 'replied');
+  const sends = await requestsOf(c, 'topic.send');
+  assert.deepEqual(
+    sends.map((f) => [f.topic, f.text, f.replyTo]),
+    [['agents', 'keep T-12 small', 'm2']],
+  );
+  // the reply shows in the log, addressed to the sender, and the composer is gone
+  await c.waitScreen((x) => centreOf(x).includes('you → impl-1 [Implementer]  keep T-12 small') && !x.includes('↩ reply to'), 'the reply in the log');
 });

@@ -1,6 +1,6 @@
--- The centre views other than the session terminal: one topic view per topic (thread and composer), and
--- the placeholders of the views later tickets fill (the item view and the board #36, the Agents log
--- #34, the inbox full width #33). A placeholder already names its view, so the view switch, the top
+-- The centre views other than the session terminal: one topic view per topic (thread and composer), the
+-- Agents log (`agents_log.lua`, #34), and the placeholders of the views later tickets fill (the item view and
+-- the board #36, the inbox full width #33). A placeholder already names its view, so the view switch, the top
 -- bar, the status line and `␣␣` work on it today.
 local api = vim.api
 local state = require('cland.state')
@@ -11,6 +11,7 @@ local ns = api.nvim_create_namespace('cland.views')
 
 function M.setup(client)
   M.client = client
+  require('cland.agents_log').setup(client)
 end
 
 --- The topic view of `id`, made on first use.
@@ -149,8 +150,11 @@ local function key(v)
   return v.kind .. (v.id and (':' .. v.id) or '')
 end
 
---- The buffer of a placeholder view (item, board, log, inbox).
+--- The buffer of a placeholder view (item, board, inbox), or of the Agents log.
 function M.placeholder(v)
+  if v.kind == 'log' then
+    return require('cland.agents_log').buffer()
+  end
   local k = key(v)
   local b = M.bufs[k]
   if not (b and api.nvim_buf_is_valid(b)) then
@@ -198,8 +202,6 @@ local function lines_for(v)
     return out
   elseif v.kind == 'board' then
     return { '', ' Board', '', ' The board (backlog, planned, in progress, review, qa, done) comes with #36.', ' ␣b or ␣␣ back' }
-  elseif v.kind == 'log' then
-    return { '', ' Agents log', '', ' The Agents log (lifecycle events, agent-to-agent messages) comes with #34.', ' The Agents topic opens as a thread from the topics panel (␣t).', ' ␣␣ back' }
   elseif v.kind == 'inbox' then
     return { '', ' Inbox · full width', '', ' Nothing needs you.', '', ' Asks, approvals and notifications come with #33.', ' ␣N or ␣␣ back' }
   end
@@ -207,6 +209,9 @@ local function lines_for(v)
 end
 
 function M.render_placeholder(v)
+  if v.kind == 'log' then
+    return require('cland.agents_log').render()
+  end
   local b = M.bufs[key(v)]
   if not (b and api.nvim_buf_is_valid(b)) then
     return
