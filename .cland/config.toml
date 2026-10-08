@@ -1,0 +1,17 @@
+# managed by cland 0.1.0 — cland update rewrites this file and keeps the values below; remove this line to take it over.
+# The project's cland settings (spec 4.9). Committed.
+
+[project]
+name = "v0"
+
+# The hub's message hygiene, read at hub start (cland hub stop, then start, to apply a change).
+[hygiene]
+# messages one session may send to other sessions within the window
+rate_limit_max = 30
+rate_limit_window_minutes = 10
+# messages between one pair of sessions within the window before the pair is muted, and for how long
+loop_breaker_max = 20
+loop_breaker_window_minutes = 5
+loop_breaker_mute_minutes = 10
+# the largest message text, in bytes
+max_text_bytes = 8192

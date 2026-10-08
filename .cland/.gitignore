@@ -1,7 +1,8 @@
-# managed by cland — rewritten by cland; remove this line to take the file over.
+# managed by cland 0.1.0 — rewritten by cland; remove this line to take the file over.
 # Volatile hub state: never committed. tasks/, roles.toml and config.toml are.
 hub.db*
 hub.json
+hub.lock*
 hub.sock
 secret
 journal.jsonl
