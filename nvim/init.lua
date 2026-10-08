@@ -3,6 +3,8 @@
 -- in that order, so nothing from the user's own configuration loads: only the bundled runtime and the
 -- files under nvim/. CLAND_ROOT names the project (default: the current directory); CLAND_HUB_TRANSPORT
 -- is `socket` (the project's hub over `.cland/hub.json`, the default) or `stdio` (a hub spawned as a child).
+-- CLAND_COMMAND (a JSON array) replaces the `cland` command the client runs; CLAND_RESTORE=1 reads a
+-- restart snapshot without a `:restart` (the tests use both).
 local here = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
 vim.opt.runtimepath:prepend(here)
 
@@ -26,16 +28,28 @@ vim.o.cmdheight = 1
 vim.opt.shortmess:append('aIcCFsWS')
 vim.o.showmode = false
 
--- The rest of the shell is #25; this is the minimum a thread and a composer need.
+-- :restart saves a Vim session and sources it in the new instance; cland rebuilds its shell over it
+-- (SessionLoadPost) and re-attaches the session terminals itself, so the session file carries nothing
+-- but the directory: no terminal is re-run from it.
+vim.o.sessionoptions = 'curdir'
+
+-- The shell (lua/cland/): the top bar is the tabline, the status line is global, each window's winbar
+-- is its panel header. Space is the leader.
+vim.g.mapleader = ' '
 vim.o.termguicolors = true
 vim.o.number = false
 vim.o.signcolumn = 'no'
 vim.o.splitbelow = true
+vim.o.splitright = true
 vim.o.laststatus = 3
+vim.o.showtabline = 2
+vim.o.mouse = 'a'
+vim.o.timeoutlen = 600
+vim.o.fillchars = 'eob: ,vert:│,horiz:─'
 
 vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
-    require('cland').start({ root = vim.env.CLAND_ROOT, transport = vim.env.CLAND_HUB_TRANSPORT })
+    require('cland').start({ root = vim.env.CLAND_ROOT, transport = vim.env.CLAND_HUB_TRANSPORT, restore = vim.env.CLAND_RESTORE == '1' })
   end,
 })

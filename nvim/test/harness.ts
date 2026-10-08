@@ -21,6 +21,7 @@ export async function nvimOrSkip(): Promise<{ bin: string } | { skip: string }> 
 }
 
 export type Client = {
+  /** The RPC channel; replaced when `:restart` moves the UI to a new server. */
   rpc: Rpc;
   /** The screen as text rows, read with screenstring(). */
   screen: () => Promise<string[]>;
@@ -30,7 +31,25 @@ export type Client = {
   lua: <T = unknown>(code: string, ...args: unknown[]) => Promise<T>;
   stderr: () => string;
   process: ChildProcess;
+  /** The current mode (`n`, `i`, `t`, …). */
+  mode: () => Promise<string>;
+  /** Resolves with the new server's address when Neovim sends the UI its `restart` event. */
+  restarted: () => Promise<string>;
 };
+
+/** The screen size the tests attach their UI with: the smallest the design is drawn for. */
+export const COLUMNS = 160;
+export const LINES = 45;
+
+/** Each row of the screen cut at its first vertical separator: the centre column when no left panel is open. */
+export const centreOf = (text: string): string =>
+  text
+    .split('\n')
+    .map((l) => {
+      const i = l.indexOf('│');
+      return i < 0 ? l : l.slice(0, i);
+    })
+    .join('\n');
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -43,19 +62,32 @@ for r = 1, vim.o.lines do
 end
 return rows`;
 
-/** Start the client in `root` as cland-nvim would (NVIM_APPNAME=cland, --clean -u init.lua), headless. */
+/**
+ * Start the client in `root` as cland-nvim would (NVIM_APPNAME=cland, --clean -u init.lua), headless, and
+ * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
+ */
 export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}): Promise<Client> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
   const sock = join(dir, 'nvim.sock');
   const childEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
-  Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root }, env);
+  // the restart snapshot lives under stdpath('state'): one per test
+  Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
   const child = spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (c: string) => (stderr += c));
+  let restartAddr: ((addr: string) => void) | null = null;
+  const pids: number[] = [];
   t.after(async () => {
     child.kill('SIGKILL');
+    for (const pid of pids) {
+      try {
+        process.kill(pid, 'SIGKILL');
+      } catch {
+        // gone already
+      }
+    }
     await rm(dir, { recursive: true, force: true });
   });
   const deadline = Date.now() + 10_000;
@@ -63,23 +95,58 @@ export async function startClient(t: TestContext, bin: string, root: string, env
     if (Date.now() > deadline || child.exitCode !== null) throw new Error(`nvim did not listen on ${sock}:\n${stderr}`);
     await sleep(25);
   }
-  const rpc = await connectRpc(sock);
-  t.after(() => rpc.close());
-  const screen = async () => rpc.request<string[]>('nvim_exec_lua', SCREEN_LUA, []);
-  return {
-    rpc,
-    screen,
+  const attach = async (path: string): Promise<Rpc> => {
+    const rpc = await connectRpc(path);
+    t.after(() => rpc.close());
+    rpc.onNotification((method, params) => {
+      if (method !== 'redraw') return;
+      for (const batch of params as unknown[][]) {
+        if (Array.isArray(batch) && batch[0] === 'restart') {
+          const args = batch[1] as unknown[];
+          const addr = Array.isArray(args) ? String(args[0]) : '';
+          restartAddr?.(addr);
+        }
+      }
+    });
+    await rpc.request('nvim_ui_attach', COLUMNS, LINES, { rgb: true, ext_linegrid: true });
+    pids.push(await rpc.request<number>('nvim_call_function', 'getpid', []));
+    return rpc;
+  };
+  const client: Client = {
+    rpc: await attach(sock),
+    screen: async () => client.rpc.request<string[]>('nvim_exec_lua', SCREEN_LUA, []),
     process: child,
     stderr: () => stderr,
     input: async (keys) => {
-      await rpc.request('nvim_input', keys);
+      await client.rpc.request('nvim_input', keys);
     },
-    lua: <T = unknown>(code: string, ...args: unknown[]) => rpc.request<T>('nvim_exec_lua', code, args),
+    lua: <T = unknown>(code: string, ...args: unknown[]) => client.rpc.request<T>('nvim_exec_lua', code, args),
+    mode: async () => (await client.rpc.request<{ mode: string }>('nvim_get_mode')).mode,
+    restarted: () =>
+      new Promise<string>((resolve) => {
+        restartAddr = (addr) => {
+          restartAddr = null;
+          resolve(addr);
+        };
+      }).then(async (addr) => {
+        // as a UI does: wait for the old server to close the channel, then attach to the new one
+        await client.rpc.closed;
+        const until = Date.now() + 10_000;
+        for (;;) {
+          try {
+            client.rpc = await attach(addr);
+            return addr;
+          } catch (err) {
+            if (Date.now() > until) throw err;
+            await sleep(50);
+          }
+        }
+      }),
     waitScreen: async (predicate, what, timeoutMs = 10_000) => {
       const until = Date.now() + timeoutMs;
       let last: string[] = [];
       while (Date.now() < until) {
-        last = await screen();
+        last = await client.screen();
         const text = last.join('\n');
         if (predicate(text)) return text;
         await sleep(40);
@@ -87,6 +154,7 @@ export async function startClient(t: TestContext, bin: string, root: string, env
       throw new Error(`the screen never showed ${what} within ${timeoutMs} ms:\n${last.map((l) => `|${l}|`).join('\n')}\n${stderr}`);
     },
   };
+  return client;
 }
 
 /** HH:MM of an ISO timestamp in this machine's time zone: what the thread shows. */
