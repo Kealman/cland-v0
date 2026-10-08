@@ -138,7 +138,17 @@ test('a peer whose bytes still arrive is alive: a socket in the middle of one la
     assert.ok(closed.has('silent'), 'the silent socket was cut off after two missed heartbeats');
     assert.ok(!closed.has('uploading'), 'the socket whose bytes kept arriving was not');
     assert.equal(uploading.readyState, WebSocket.OPEN);
-    const names = hub.core.presence().map((p) => p.name);
+    // asked over the wire by a session that just connected
+    const observer = await connect('observer');
+    const who = await new Promise<{ value: { sessions: Array<{ name: string }> } }>((resolve) => {
+      observer.on('message', (data) => {
+        const f = JSON.parse(String(data)) as { id?: string; value: { sessions: Array<{ name: string }> } };
+        if (f.id === 'w1') resolve(f);
+      });
+      observer.send(JSON.stringify({ type: 'who', id: 'w1' }));
+    });
+    observer.terminate();
+    const names = who.value.sessions.map((p) => p.name);
     assert.ok(names.includes('uploading') && !names.includes('silent'), `presence: ${names.join(', ')}`);
     assert.equal(log.filter((e) => e.event === 'heartbeat-timeout').length, 1, 'exactly one socket timed out — the silent one');
   } finally {

@@ -61,6 +61,8 @@ export type Session = {
   call: <T = unknown>(name: string, args?: Record<string, unknown>) => Promise<T>;
   /** Everything this spoke has written to stderr, for a failing assertion to quote. */
   log: () => string;
+  /** The spoke's process id: a test may pause it (SIGSTOP) to make it fall silent on the wire. */
+  pid: number;
   close: () => Promise<void>;
 };
 
@@ -144,6 +146,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     client,
     events,
     log: () => log,
+    pid: transport.pid as number,
     waitForEvent,
     waitForPresence,
     call,
