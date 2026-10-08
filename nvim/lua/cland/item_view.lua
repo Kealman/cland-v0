@@ -18,11 +18,15 @@ local function sw(s)
   return api.nvim_strwidth(s or '')
 end
 
---- Words of `text` wrapped to `width` display columns; a word longer than the width is cut.
+--- Words of `text` wrapped to `width` display columns; a word longer than the width is cut. A width below
+--- MIN_WRAP (an indentation past the window's edge) wraps at MIN_WRAP: the cut must advance.
+local MIN_WRAP = 8
 local function wrap(text, width)
+  width = math.max(MIN_WRAP, math.floor(tonumber(width) or MIN_WRAP))
   local out = {}
   for _, para in ipairs(vim.split(text or '', '\n', { plain = true })) do
-    local lead = para:match('^(%s*)') or ''
+    -- an indentation keeps at most half the width
+    local lead = (para:match('^(%s*)') or ''):sub(1, math.floor(width / 2))
     local cur = ''
     for word in para:gmatch('%S+') do
       local next = cur == '' and (lead .. word) or (cur .. ' ' .. word)
@@ -195,6 +199,11 @@ local function body_lines(it, d, width)
       else
         local indent = line:match('^(%s*[-*+] )') or line:match('^(%s*%d+%. )')
         if indent then
+          local rest = line:sub(#indent + 1)
+          -- a list nested deeper than half the width keeps its marker at half the width
+          local lead, marker = indent:match('^(%s*)(.*)$')
+          indent = lead:sub(1, math.max(0, math.floor(width / 2) - #marker)) .. marker
+          line = indent .. rest
           local first = true
           for _, l in ipairs(wrap(line:sub(#indent + 1), width - 1 - #indent)) do
             add({ { ' ' .. (first and indent or (' '):rep(#indent)) .. l } })

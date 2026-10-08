@@ -871,6 +871,24 @@ test('the items panel: a tree of epics and maps with status glyphs, the claim ri
   assert.match(topBar(s), /│ T-3 Board view/);
 });
 
+test('an item body with a list indented past the window width renders, and Neovim keeps answering', { skip, timeout: 30_000 }, async (t) => {
+  const deep = `${' '.repeat(150)}- deep item with a few words to wrap`;
+  const c = await startShell(t, (s) => {
+    s.items = (s.items ?? []).map((i) => (i.id === 'T-12' ? { ...i, body: `## Plan\n\n- top\n${deep}\n  1. numbered under it\n\nafter the list` } : i));
+  });
+  await c.input('<Esc>:Cland view item T-12<CR>');
+  let s = await c.waitScreen((x) => x.includes('after the list'), 'the item view with the deep list');
+  assert.match(s, /^ - top /m);
+  // the marker kept at half the body's width, the words wrapped beside it, the fields column untouched
+  assert.match(s, /^ {20,}- deep item with a few words to +│ branch/m);
+  assert.match(s, /^ {20,}wrap +│ blocked by/m);
+  assert.match(s, /^ {3}1\. numbered under it /m);
+  // a narrower centre (the items panel opens too): the list still renders
+  await c.input('<Space>i');
+  s = await c.waitScreen((x) => x.includes('ITEMS') && /│ +- deep item/.test(x) && x.includes('after the list'), 'the items panel beside the item view');
+  assert.equal(await c.mode(), 'n');
+});
+
 test('the item view: the title line, the fields column beside the body, the verdicts latest first, the comments', { skip }, async (t) => {
   const c = await startShell(t, withItems);
   // no panels: the centre is wide enough for the fields column beside the body
