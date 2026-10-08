@@ -32,6 +32,7 @@ import {
 import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
+import { readsAsVerdict } from '../tracker/item.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
@@ -177,7 +178,8 @@ export class Dispatcher {
       item,
       own,
       ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
-      ...(tool === 'task.comment' ? { verdict: typeof frame.verdict === 'object' && frame.verdict !== null } : {}),
+      // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
+      ...(tool === 'task.comment' ? { verdict: (typeof frame.verdict === 'object' && frame.verdict !== null) || (typeof frame.text === 'string' && readsAsVerdict(frame.text)) } : {}),
     };
   }
 

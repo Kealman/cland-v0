@@ -59,7 +59,8 @@ test('the default role clauses agree with the permission table: only the Coordin
     const clause = roles.get(role)?.clause ?? '';
     assert.doesNotMatch(clause, /Never write to the human/, role);
     assert.match(clause, /When the human mentions you in a topic \(`@[a-z]+` or your name\), answer the human in that topic with `send` and no `to`/, role);
-    assert.match(clause, /send` to `coordinator`|report back to the Coordinator with `send`/, role);
+    // questions and reports go to the Coordinator (#41's Reviewer and QA clauses say "`send` to the Coordinator")
+    assert.match(clause, /send` to `coordinator`|report back to the Coordinator with `send`|`send` to the Coordinator/, role);
   }
   assert.match(roles.get('coordinator')?.clause ?? '', /You are the only role that asks the human/);
 });

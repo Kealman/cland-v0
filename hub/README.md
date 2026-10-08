@@ -234,7 +234,7 @@ The hub checks every spoke tool call against the calling session's role, as the 
 | `send:human` | `send` with no `to`: to the human (`send` alone grants both) |
 | `task.claim:own` | claiming or releasing only the session's own item |
 | `task.comment:own` | plain comments (not verdicts) only on the session's own item |
-| `task.comment:verdict` | verdict comments (`verdict`, `result`, `run`) on any item |
+| `task.comment:verdict` | verdict comments (`verdict`, `result`, `run`, or a text that reads back as a verdict header) on any item |
 | `topic.create:own` | a topic only bound to the session's own item |
 
 **Mentions.** A session without `send:human`, but with some `send` grant, may still `send` to the human in a topic while the human's latest message in that topic was delivered to it, by its name (`@rev-1`) or its role (`@reviewer`): spec 4.5's mention pulls it in, Reviewer and QA included. The topic is the `send`'s `topic` (General when absent). The grant ends with the human's next message there that addresses someone else; in any other topic the call is refused with `send:human`.
