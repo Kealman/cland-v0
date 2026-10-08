@@ -124,8 +124,9 @@ test('the workbench opens on General: top bar with project, view, Coordinator ch
   assert.match(top, /needs you 0/);
   assert.match(top, /sessions {2}2 /);
   assert.match(s, /SESSIONS/);
-  assert.match(s, /coord-1 {2}coordinator +free/);
-  assert.match(s, /impl-1 {2}implementer +T-12/);
+  // the name with its role, as the hub labels it (spec 4.4)
+  assert.match(s, /coord-1 \[Coordinator\] +free/);
+  assert.match(s, /impl-1 \[Implementer\] +T-12/);
   // the adapter declares "waiting for human" heuristic: the panel says so
   assert.match(s, /Claude Code · sonnet\s.*\n.*waiting for human \(heuristic\)/);
   assert.match(statusLine(s), /INSERT {2}General · topic/);
@@ -203,7 +204,7 @@ test('Enter on a session attaches it in the centre in Terminal mode; ␣␣ retu
   await c.input('gg<CR>');
   let s = await c.waitScreen((x) => x.includes('keylog ready') && statusLine(x).includes('TERMINAL'), 'the attached terminal');
   assert.match(statusLine(s), /TERMINAL {2}coord-1 · session · attached · busy/);
-  assert.match(topBar(s), /│ coord-1 \[coordinator\]/);
+  assert.match(topBar(s), /│ coord-1 \[Coordinator\]/);
   assert.equal(await c.mode(), 't');
   await c.input('<C-\\><C-n><Space><Space>');
   s = await c.waitScreen((x) => topBar(x).includes('│ General') && statusLine(x).includes('General · topic'), 'General again');
@@ -225,7 +226,7 @@ test('the picker: ␣p opens on topics, typing narrows, Tab switches to sessions
   await c.input('<Tab>');
   s = await c.waitScreen((x) => x.includes('↵ attach in centre'), 'the sessions kind');
   await c.input('<C-u>impl');
-  s = await c.waitScreen((x) => /impl-1 implementer/.test(x) && !/coord-1 coordinator +Claude/.test(x), 'only impl-1');
+  s = await c.waitScreen((x) => /impl-1 \[Implementer\]/.test(x) && !/coord-1 \[Coordinator\] +Claude/.test(x), 'only impl-1');
   await c.input('<CR>');
   s = await c.waitScreen((x) => x.includes('attached impl-1') && statusLine(x).includes('TERMINAL  impl-1 · session'), 'impl-1 attached, Terminal mode');
   assert.doesNotMatch(s, /pick ›/, 'the picker closed');
@@ -284,7 +285,7 @@ test('a session.state event updates the chip while the human types in the compos
   await c.input('half a thought');
   await c.control({ emit: { type: 'session.state', session: 'coord-1', sessionId: 'coord-1-id', state: 'waiting for approval', source: 'hook', ts: ts(5) } });
   const s = await c.waitScreen((x) => topBar(x).includes('▲ coord-1 Coordinator · Claude Code · opus · waiting for approval'), 'the chip in its new state');
-  assert.match(s, /▲ coord-1 {2}coordinator/);
+  assert.match(s, /▲ coord-1 \[Coordinator\]/);
   assert.equal(await c.mode(), 'i');
   await c.input(' and more');
   const lines = await c.lua<string[]>("return vim.api.nvim_buf_get_lines(vim.fn.bufnr('cland://composer/general'), 0, -1, false)");

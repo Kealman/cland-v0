@@ -155,7 +155,7 @@ local function render_sessions(c)
     local g, ghl = M.session_glyph(s)
     local down = not s.live
     c:add(
-      { { ' ' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { s.role and ('  ' .. s.role) or '', down and 'ClandDim' or 'ClandTeal' } },
+      { { ' ' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { s.label:sub(#s.name + 1), down and 'ClandDim' or 'ClandTeal' } },
       { s.item and { s.item .. ' ', 'ClandTeal' } or { 'free ', 'ClandFaint' } },
       { session = s.name }
     )

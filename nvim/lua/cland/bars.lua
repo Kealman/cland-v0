@@ -231,7 +231,7 @@ function M.winbar(win)
       return head(win, name or 'session')
     end
     local g, ghl = require('cland.panels').session_glyph(s)
-    return head(win, name .. (s.role and (' · ' .. s.role) or ''), { { g .. ' ' .. require('cland.panels').session_meta(s), ghl .. 'Bar' }, { s.item and (' · ' .. s.item) or '', 'ClandDimBar' } })
+    return head(win, s.label, { { g .. ' ' .. require('cland.panels').session_meta(s), ghl .. 'Bar' }, { s.item and (' · ' .. s.item) or '', 'ClandDimBar' } })
   elseif role == 'item' or role == 'board' or role == 'log' or role == 'inbox_full' then
     return head(win, views().title(state.S.ui.view):upper(), { { '␣␣ back', 'ClandDimBar' } })
   end

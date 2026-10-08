@@ -68,6 +68,16 @@ function M.topic(id)
   end
 end
 
+local ROLE_LABELS = { coordinator = 'Coordinator', implementer = 'Implementer', reviewer = 'Reviewer', qa = 'QA' }
+
+--- A session as it is shown everywhere (spec 4.4): the hub's `label` (`rev-1 [Reviewer]`), else built the same way.
+function M.label(name, role, label)
+  if type(label) == 'string' and label ~= '' then
+    return label
+  end
+  return role and (name .. ' [' .. (ROLE_LABELS[role] or role) .. ']') or name
+end
+
 --- Every session the shell knows: the launched ones (session.list), then connected spokes nobody launched.
 function M.sessions()
   local out, seen = {}, {}
@@ -76,6 +86,7 @@ function M.sessions()
     out[#out + 1] = {
       name = p.name,
       role = p.role,
+      label = M.label(p.name, p.role, p.label),
       harness = p.harness,
       model = p.model,
       state = live and (p.state or 'unknown') or 'unknown',
@@ -88,7 +99,7 @@ function M.sessions()
   end
   for _, p in ipairs(M.S.presence) do
     if not seen[p.name] then
-      out[#out + 1] = { name = p.name, role = p.role, harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true }
+      out[#out + 1] = { name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true }
       seen[p.name] = true
     end
   end

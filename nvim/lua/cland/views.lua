@@ -38,7 +38,7 @@ function M.title(v)
     return t and t.title or (v.id == 'general' and 'General' or v.id)
   elseif v.kind == 'session' then
     local s = state.session(v.id)
-    return v.id .. (s and s.role and (' [' .. s.role .. ']') or '')
+    return s and s.label or v.id
   elseif v.kind == 'item' then
     local it = state.item(v.id)
     return v.id .. (it and (' ' .. it.title) or '')

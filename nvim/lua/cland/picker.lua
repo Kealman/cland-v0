@@ -23,7 +23,7 @@ local function session_entries()
   local out = {}
   for _, s in ipairs(state.sessions()) do
     local g, ghl = panels.session_glyph(s)
-    out[#out + 1] = { glyph = g, ghl = ghl, key = s.name .. (s.role and (' ' .. s.role) or ''), right = panels.session_meta(s), value = s.name }
+    out[#out + 1] = { glyph = g, ghl = ghl, key = s.label, right = panels.session_meta(s), value = s.name }
   end
   return out
 end
