@@ -8,11 +8,13 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 | Path | What it is |
 | --- | --- |
-| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant` and `role.filled`, the `inject` frame to an in-session bridge; session states and the process table's view. |
+| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*` (`topic.answer` among them), `inbox.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `ask`, `inbox`, `session.state`, `session.role`, `role.vacant` and `role.filled`, the typed `forbidden` result, the `inject` frame to an in-session bridge; session states and the process table's view. |
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
 | `src/hub/topics.ts` | The topic model (spec 4.5): the status moves, the mentions of a human message, the "no coordinator" warning, the port to the tracker a binding goes through. |
+| `src/hub/asks.ts` | Asks (spec 4.5, #33): the Coordinator's question with numbered options; the human's answer with `answer_to`; withdrawn by `resolve`, cancelled by a close. |
+| `src/hub/inbox.ts` | The inbox (spec 5, #33): asks, approvals, waiting topics and notifications, the "needs you" count, the `inbox` event; the idle threshold from `.cland/config.toml`. |
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, topics (status, binding, the human's read mark), messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
 | `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive, each session's role (assignment, the clause's delivery, Coordinator exclusivity and vacancy). Transport-free. |
@@ -48,7 +50,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/hook.ts` | `cland hook <event>`, run from inside a launched session by its hooks and the mod; `cland hook bridge`, the mod's connection to the hub. |
 | `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
-| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `who`, `status`, `rename`, `history`, `session.launch` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
+| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `ask`, `who`, `status`, `rename`, `history`, `session.launch` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
 | `bin/cland.ts` | The `cland` CLI: `open`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
@@ -80,12 +82,45 @@ A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an 
 
 - **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming, deleting or closing them is refused. The system creates no other topic.
 - **Creation.** The human creates a topic from the UI (`topic.create`), an agent with the `topic.create` tool; a title is required (at most 200 characters). The id is `topic-<n>`. `item` binds the topic to a unit of work: the item must exist and be open, and has one topic at most, so a second `topic.create` for it is refused with the topic it has (`T-1 already has a topic: "…" (topic-1); one topic per unit of work: write there`). The binding is written into the item's file (`topic: topic-1`) through the tracker. A hub with no project has no tracker and refuses a binding. A topic with no message yet is listed last (a task's topic appears with its first message).
-- **Status** follows the direction of the messages (`src/hub/topics.ts`): a human message makes the topic `waiting for agent`; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask, #33, is answered by the human); a message from an agent the human's latest message addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open`: the `resolve` tool (meant for the Coordinator; who may call it is #30's) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. `ask` (#33) will make it `waiting for human`, and closing will cancel its open asks. Agents keeps `open`.
+- **Status** follows the direction of the messages (`src/hub/topics.ts`): a human message makes the topic `waiting for agent`; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask is answered by the human); a message from an agent the human's latest message addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open` and withdraws the topic's open asks: the `resolve` tool (meant for the Coordinator; who may call it is #30's) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. An `ask` makes it `waiting for human`, and while any ask in it is open it stays so whatever else is written (below); closing cancels its open asks. Agents keeps `open`.
 - **The warning.** While a message in a topic waits for a role nobody holds (a delivery queued under `@coordinator`), the topic carries `"warning":"no coordinator"` (`no reviewer`, … for another role). It clears when a session takes the role (its hello, or the human's `role.set`) and the queued delivery moves to it.
 - **Unread.** The human's unread count per topic is the messages from others since the human last read it: the UI sends `topic.read` when the thread is in view, and a message the human writes reads what came before it. It never moves back. Agents have no unread concept.
 - **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses `to` when given, else its mentions: `@coordinator`, `@implementer`, `@reviewer`, `@qa` reach the role's live holders, `@<session-name>` that session (a session the hub knows); with no mention, the Coordinator. `@all` and globs stay text for the human; a mention that names no session and no role is reported as `unknown` and addresses nobody. Each address counts once, with or without its `@`. The addressed party answers with `send` and the topic's id, so the reply lands in the same topic.
 - **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
 - **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
+
+## Asks and the inbox
+
+An **ask** is a question the Coordinator puts to the human inside a topic (spec 4.5, decisions #7 and #10): a message whose text is the question, with a card in the store's `asks` table (the numbered options, whether a free answer is welcome, its state).
+
+- **Only the Coordinator asks.** The spoke tool `ask {topic, question, options, free?}` (frame `{"type":"ask","topic","question","options":[…],"free"?}`) from a session holding any other role, or none, is refused with the typed shape the permission table (#30) answers with: `{"ok":false,"error":"forbidden: ask (only the Coordinator asks the human: Implementer may not ask; …)","code":"forbidden","permission":"ask","role":"implementer","reason":"…"}`, which the spoke hands the model as it is. The check sits in the ask handler, so the table's `ask` row and it say the same thing.
+- **The card.** A question (one message, at most the hygiene's size), at most 9 options (one line of at most 200 characters each; the keys 1-9 answer them), `free` true unless given false; options or a free answer are needed. Not in Agents. The result is `{"ask":"<message id>","topic":{"id","title"}}`.
+- **Waiting.** An open ask makes its topic `waiting for human` (a `topic` event) and keeps it so: a plain human message, an agent's message, anything but the answer, `resolve` or a close leaves the status there. Several asks may be open in one topic.
+- **The answer.** `topic.answer {ask, option?, text?}` (UI): option `n` (1-based) sends that option's text, else `text` is the free answer (refused when the ask takes options only). It is the human's message in the ask's topic, carrying `answerTo` (the ask's id), addressed to the session that asked and delivered like any human message (the spoke shows `answer_to` on the channel event). The ask is `answered` with the answer's id and the option; when no ask in the topic stays open the topic waits for the agent (the human spoke last). An ask that is not open takes no answer.
+- **Withdrawn and cancelled.** `resolve` (the Coordinator's tool or the human's `topic.resolve`) withdraws the topic's open asks; when the human withdrew them, each asker gets a hub note in the topic. Closing the topic (`topic.close`) or its bound item cancels its open asks, and each asker gets a hub note (`cland hub: your ask "…" was cancelled: T-1 was closed`). A note does not reopen the topic.
+- **Events.** The `message` event of an ask carries `message.ask` (`AskCard`, below); every change of an ask's state is an `ask` event, `{"type":"ask","topic","ask":"<id>","card":AskCard}`. `topic.history` returns each ask with its card and each answer with `answerTo`. The log records `ask`, `ask-answered`, `ask-withdrawn`, `ask-cancelled`.
+
+`AskCard` is `{"question","options":[…],"free","state":"open|answered|withdrawn|cancelled","answer"?:"<message id>","option"?:n}`.
+
+The **inbox** (spec 5, `Inbox.dc.html`) is the human's queue, in a fixed order: what only the human can unblock first, oldest first within each section.
+
+| Section | What feeds it |
+| --- | --- |
+| `asks` | The open asks: `{"id","topic":{"id","title","item"?},"question","options","free","from","label","ts"}`. |
+| `approvals` | Launched sessions (the process table) in `waiting for approval`, plus a connected session reporting it: `{"session","label","harness","since","attach"}`. The hub does not answer them (spec 4.3): the attach command opens the harness's own prompt. |
+| `waiting` | Topics `waiting for human` with no open ask (`Topic`). |
+| `notifications` | Dismissable, never blocking: a verdict comment written through the hub (`T-1 review not clear · rev-1 · run r-1`, with `item`, `session`, `result`), a role assigned, cleared or granted at launch (`rev-1 is Reviewer: assigned`), a harness that died (`impl-3 [Implementer] died: its harness exited; …`), a session idle longer than the threshold (`impl-1 [Implementer] idle 30 min`). Each `{"id","kind":"verdict|role|death|idle","text","ts","item"?,"session"?,"result"?,"dismissed":false}`, stored in `hub.db` (table `notifications`) with its `dismissed` flag. |
+
+`needsYou` is asks + approvals + waiting; notifications never count. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
+
+| Request | Result `value` |
+| --- | --- |
+| `{"type":"topic.answer","id":…,"ask":"<ask id>","option":2}` or `"text":"…"` | `{"message":TopicMessage,"outcomes":[…]}` |
+| `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","waiting","notifications","needsYou"}` |
+| `{"type":"inbox.dismiss","id":…,"notification":"<notification id>"}` | `Inbox`; an ask's or a session's name is refused (`asks and approvals are not dismissed: answer them`), an unknown id too; dismissing twice is harmless |
+| `{"type":"inbox.dismiss_all","id":…}` | `Inbox`, its notifications gone; asks and approvals stay |
+
+Subscribers get `{"type":"inbox","inbox":Inbox}` whenever any of it changed (an ask, a session's state, a topic, a notification, a dismissal), coalesced to one per turn of the event loop and only when it differs from the last one sent. The idle threshold is `[inbox] idle_minutes` in `.cland/config.toml` (default 30; `CLAND_IDLE_NOTIFY_MS` overrides it, for tests); the clock starts at each transition to `idle`.
 
 ## Roles
 
@@ -132,7 +167,7 @@ An adapter whose new session needs a first turn (Codex: a thread has no rollout 
 | `{"type":"role.clear","id":…,"session":…}` | `{"session":RoleHolder}` | UI, CLI |
 | `{"type":"role.list","id":…}` | `{"roles":[{"role","label","exclusive","skills","launch","holders":[RoleHolder…]}…],"coordinator"}` | UI, CLI |
 
-`RoleHolder` is `{"name","role","label","live"}`, where `label` is the name with its role, `rev-1 [Reviewer]`. `hub.status` and `session.list` carry `"coordinator"`: the live holder's name, or `null` for "no coordinator". Presence (`who`, `hub.status`) and `HarnessProcess` carry `label` beside `role`.
+`RoleHolder` is `{"name","role","label","live"}`, where `label` is the name with its role, `rev-1 [Reviewer]`. `hub.status` and `session.list` carry `"coordinator"`: the live holder's name, or `null` for "no coordinator"; `hub.status` also carries `needsYou` (Asks and the inbox). Presence (`who`, `hub.status`) and `HarnessProcess` carry `label` beside `role`.
 
 Events, after `subscribe`:
 
@@ -152,7 +187,7 @@ Events, after `subscribe`:
 
 ## Not here yet
 
-- **The rest of the human side.** Asks and their `waiting for human` (#33); `task.link --topic` writes the item's field only, it binds no topic; a loop-breaker mute is still only journalled, not shown in the UI.
+- **The rest of the human side.** A verdict written by hand into an item's file is no inbox notification (only the hub's writes are); there is no `cland topic answer` yet; `task.link --topic` writes the item's field only, it binds no topic; a loop-breaker mute is still only journalled, not shown in the UI.
 - **Roles, the rest.** Permissions per role are recorded in `roles.toml` but not enforced (#30); handover and the Coordinator's role requests come later. The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 - **Adapters.** Permissions on `session.launch` (#30): anyone may launch for now.
@@ -180,7 +215,7 @@ The project's `.cland/`:
 | `.gitignore` | yes | Managed by cland (first line `# managed by cland`); ignores every volatile file below. Remove the mark to take the file over. |
 | `tasks/` | yes | The tracker's item files, one per item (below). Written by the hub, editable by hand, never committed by cland. |
 | `roles.toml` | yes | The role definitions (below). Written with the defaults (first line `# managed by cland`) when missing, never rewritten: the human's from then on. |
-| `config.toml` | yes | Not written by the hub yet. |
+| `config.toml` | yes | Not written by the hub. Read at start for `[inbox] idle_minutes` (the inbox's idle threshold). |
 | `hub.db` (+ `-wal`, `-shm`) | no | The SQLite store: sessions, messages, deliveries, hygiene counters and mutes; the tracker's index and claims. |
 | `secret` | no | 32 random bytes as hex, mode 0600. Kept across restarts, so spokes holding it reconnect. |
 | `hub.lock` | no | The hub lock, mode 0600: `{"pid":…,"started":"<ps lstart>"}` of the one hub serving the project, from before it prepares anything until it has shut down. |
@@ -218,10 +253,11 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 | `{"type":"topic.read","id":…,"topic":…,"upTo":"<message id>"}` | `{"topic":Topic}` with its `unread`; without `upTo`, up to the latest message |
 | `{"type":"topic.rename","id":…,"topic":…,"title":…}` | `{"topic":Topic}`; refused for General and Agents |
 | `{"type":"topic.delete","id":…,"topic":…}` | `{"deleted":id}`; refused for General and Agents |
+| `{"type":"topic.answer","id":…,"ask":…,"option"?:n,"text"?:…}`, `inbox.list`, `inbox.dismiss`, `inbox.dismiss_all` | Under Asks and the inbox above |
 | `{"type":"subscribe","id":…}` | `{"subscribed":true}`; events follow on this connection until it closes |
 
 - `Topic` is `{"id","title","status","standing","createdAt","updatedAt","item","unread","lastMessageAt","warning"?}`: `status` is `open`, `waiting for human`, `waiting for agent` or `closed`; `item` the bound item or null; `unread` the human's unread count; `warning` (`no coordinator`) only while a message waits for a role nobody holds.
-- `TopicMessage` is the stored message, `{"id","from","fromKind","fromRole"?,"via","to","text","ts","replyTo"?,"topic","stage"?}`, where `stage` is present when the message had addressees.
+- `TopicMessage` is the stored message, `{"id","from","fromKind","fromRole"?,"via","to","text","ts","replyTo"?,"answerTo"?,"topic","stage"?,"ask"?}`, where `stage` is present when the message had addressees, `answerTo` on the human's answer to an ask, `ask` (`AskCard`) on an ask.
 
 Events, pushed after `subscribe`:
 
