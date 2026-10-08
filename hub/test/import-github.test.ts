@@ -9,6 +9,7 @@ import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
+import { kindOfLabels } from '../src/tracker/import-github.ts';
 import { CLI_ENTRY, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 const FAKE_GH_DIR = fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url));
@@ -203,4 +204,13 @@ test('import-github needs a running hub, and a GitHub repository to read', async
   const ghFails = await cland(root, env, 'task', 'import-github', '--repo', REPO);
   assert.equal(ghFails.code, 1);
   assert.match(ghFails.stderr, /reading acme\/widgets from GitHub/);
+});
+
+test('an issue kind follows its labels as the own-tracker template files them', () => {
+  assert.equal(kindOfLabels(['epic', 'slice-1']), 'epic');
+  assert.equal(kindOfLabels(['wayfinder:map']), 'map');
+  assert.equal(kindOfLabels(['wayfinder:grilling']), 'question');
+  assert.equal(kindOfLabels(['wayfinder:research']), 'question');
+  assert.equal(kindOfLabels(['wayfinder:task']), 'task');
+  assert.equal(kindOfLabels(['ready-for-agent']), 'task');
 });

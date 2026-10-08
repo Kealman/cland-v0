@@ -63,7 +63,17 @@ function refOfApiUrl(url: string | null | undefined): IssueRef | null {
 
 /** Every page of a list endpoint, flattened (`gh api --paginate --slurp` prints an array of pages). */
 async function ghList<T>(gh: GhRunner, cwd: string, path: string): Promise<T[]> {
-  const out = await gh(['api', '--paginate', '--slurp', path], cwd);
+  // a read is safe to repeat: a transient network failure (a TLS handshake timeout) gets two more tries
+  let out = '';
+  for (let attempt = 1; ; attempt++) {
+    try {
+      out = await gh(['api', '--paginate', '--slurp', path], cwd);
+      break;
+    } catch (err) {
+      if (attempt >= 3 || /not installed/.test(String(err))) throw err;
+      await new Promise((r) => setTimeout(r, 500 * attempt));
+    }
+  }
   const pages = JSON.parse(out) as unknown;
   if (!Array.isArray(pages)) throw new Error(`gh api ${path}: expected a list`);
   return pages.flatMap((p) => (Array.isArray(p) ? (p as T[]) : [p as T]));

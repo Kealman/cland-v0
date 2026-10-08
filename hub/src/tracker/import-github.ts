@@ -31,11 +31,11 @@ export type ImportOutcome = {
   unresolved: IssueRef[];
 };
 
-/** `epic` → epic, `wayfinder:map` → map, any other `wayfinder:*` → question, else task. */
+/** `epic` → epic, `wayfinder:map` → map, `wayfinder:task` → task, any other `wayfinder:*` → question, else task (the kinds the own-tracker template gives them). */
 export function kindOfLabels(labels: string[]): Kind {
   if (labels.includes('epic')) return 'epic';
   if (labels.includes('wayfinder:map')) return 'map';
-  if (labels.some((l) => l.startsWith('wayfinder:'))) return 'question';
+  if (labels.some((l) => l.startsWith('wayfinder:') && l !== 'wayfinder:task')) return 'question';
   return 'task';
 }
 
