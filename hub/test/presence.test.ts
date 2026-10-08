@@ -30,22 +30,28 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
     beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
     await alpha.waitForPresence(['beta']);
     assert.equal(await statusOf('beta'), null);
-    // a generated name is not an identity: the next holder of session-1 does not inherit the line —
-    // and neither does one that asks for session-1 BY NAME
+    // a generated name belongs to the session it was generated for: the next unnamed session gets a fresh
+    // one and no line, and a session that asks for session-1 BY NAME inherits nobody else's line either
     let anon = await spawnSpoke({ hub, sessionId: 'sess-anon-1' });
     await alpha.waitForPresence(['session-1']);
     await anon.call('status', { text: "somebody else's work" });
     await anon.close();
     await waitForAbsence(alpha, 'session-1');
     anon = await spawnSpoke({ hub, sessionId: 'sess-anon-2' });
-    await alpha.waitForPresence(['session-1']);
-    assert.equal(await statusOf('session-1'), null);
-    await anon.close();
-    await waitForAbsence(alpha, 'session-1');
+    try {
+      await alpha.waitForPresence(['session-2']);
+      assert.equal(await statusOf('session-2'), null);
+    } finally {
+      await anon.close();
+    }
+    await waitForAbsence(alpha, 'session-2');
     anon = await spawnSpoke({ hub, name: 'session-1', sessionId: 'sess-anon-3' });
-    await alpha.waitForPresence(['session-1']);
-    assert.equal(await statusOf('session-1'), null, 'the row was cleared at the generated hello, not only the memory');
-    await anon.close();
+    try {
+      await alpha.waitForPresence(['session-1']);
+      assert.equal(await statusOf('session-1'), null, "another session's line is not inherited with the name");
+    } finally {
+      await anon.close();
+    }
   } finally {
     await alpha.close();
     await beta.close();

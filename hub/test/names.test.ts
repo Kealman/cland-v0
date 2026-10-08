@@ -1,16 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { startHub, spawnSpoke, sleep, waitForAbsence, type Session } from './harness.ts';
+import type { Hub } from '../src/hub/server.ts';
 
-test('a session with no requested name gets session-<n> with the lowest free n', async () => {
+test('a session with no requested name gets session-<n> with the lowest n no session has held, and a freed name stays with its session', async () => {
   const hub = await startHub();
   const one = await spawnSpoke({ hub, sessionId: 'sess-1' });
   const two = await spawnSpoke({ hub, sessionId: 'sess-2' });
   try {
     await one.waitForPresence(['session-1', 'session-2']);
     await one.close();
+    await waitForAbsence(two, 'session-1');
     const three = await spawnSpoke({ hub, sessionId: 'sess-3' });
-    await three.waitForPresence(['session-1', 'session-2']); // the freed 1 is reused
+    await three.waitForPresence(['session-2', 'session-3']); // session-1 belongs to sess-1, offline or not
+    assert.equal((await three.call<{ me: string }>('who')).me, 'session-3');
     await three.close();
   } finally {
     await two.close();
@@ -134,5 +137,60 @@ test('rename claims a new name under the rules, and the old name stops resolving
     await alpha.close();
     await beta.close();
     await hub.close();
+  }
+});
+
+test("a new unnamed session never takes an offline session's generated name, and never sees what was queued for it", async () => {
+  const hub = await startHub();
+  const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
+  let first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+  let newcomer: Session | null = null;
+  try {
+    await witness.waitForPresence(['witness', 'session-1']);
+    await first.close();
+    await waitForAbsence(witness, 'session-1');
+    const sent = await witness.call<{ outcomes: Array<{ outcome: string }> }>('send', { to: ['session-1'], text: 'for the first session only' });
+    assert.equal(sent.outcomes[0]?.outcome, 'queued');
+
+    newcomer = await spawnSpoke({ hub, sessionId: 'sess-newcomer' });
+    await witness.waitForPresence(['session-2']);
+    assert.equal((await newcomer.call<{ me: string }>('who')).me, 'session-2', 'the offline name stays with its session');
+    const history = await newcomer.call<{ messages: unknown[] }>('history');
+    assert.deepEqual(history.messages, [], "no history of another session's name");
+    await sleep(100);
+    assert.equal(newcomer.events.length, 0, 'nothing queued for session-1 reached the newcomer');
+
+    // the first session comes back with no name requested: the hub knows it by its session id
+    first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+    await first.waitForEvent((e) => e.params.content === 'for the first session only');
+    assert.equal((await first.call<{ me: string }>('who')).me, 'session-1');
+  } finally {
+    await newcomer?.close();
+    await first.close();
+    await witness.close();
+    await hub.close();
+  }
+});
+
+test('an unnamed spoke keeps its accepted name across reconnects, even to a hub that lost its memory', async () => {
+  const hub = await startHub();
+  const port = hub.port;
+  const other = await spawnSpoke({ hub, sessionId: 'sess-other' });
+  await other.waitForPresence(['session-1']);
+  const spoke = await spawnSpoke({ hub, sessionId: 'sess-mine' });
+  let second: Hub | null = null;
+  try {
+    await spoke.waitForPresence(['session-1', 'session-2']);
+    assert.equal((await spoke.call<{ me: string }>('who')).me, 'session-2');
+    await other.close();
+    await hub.close();
+    // a fresh in-memory store knows no names: the spoke asks for the one it was given
+    second = await startHub({ port });
+    await spoke.waitForPresence(['session-2'], 10_000);
+    assert.equal((await spoke.call<{ me: string }>('who')).me, 'session-2');
+  } finally {
+    await spoke.close();
+    await other.close();
+    await second?.close();
   }
 });

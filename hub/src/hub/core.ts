@@ -13,6 +13,8 @@ export const QUEUE_TTL_MS = 24 * 60 * 60 * 1000;
 /** How long the store keeps a message. */
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 export const HISTORY_LIMIT = 50;
+/** The session id of a hello that could not name its session: it identifies nobody. */
+export const UNKNOWN_SESSION = 'unknown';
 
 export type Connection = {
   name: string;
@@ -77,21 +79,32 @@ export class HubCore {
     if (hello.protocol !== PROTOCOL_VERSION) {
       return { ok: false, code: 'version', message: `protocol ${hello.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}` };
     }
+    // The session id is the stable identity; a hello with the unknown id identifies nobody.
+    const identified = hello.sessionId !== UNKNOWN_SESSION;
+    let requested = hello.name;
+    if (requested === undefined && identified) {
+      // No name asked for: a session the hub already knows gets its own name back (unless another session
+      // claimed it by name since), with whatever waited for it.
+      const previous = this.#store.nameOfSession(hello.sessionId);
+      const holder = previous === null ? undefined : this.#live.get(previous);
+      if (previous !== null && nameRefusal(previous, this.#reserved) === null && (!holder || holder.sessionId === hello.sessionId)) requested = previous;
+    }
     let name: string;
     let evict: Connection | null = null;
-    if (hello.name !== undefined) {
-      const refusal = nameRefusal(hello.name, this.#reserved);
+    if (requested !== undefined) {
+      const refusal = nameRefusal(requested, this.#reserved);
       if (refusal) return { ok: false, code: 'bad-name', message: refusal };
-      const holder = this.#live.get(hello.name);
+      const holder = this.#live.get(requested);
       // The same session's spoke restarted (an MCP reconnect, a resume) while its old socket still stood:
       // the new one IS the session and takes the name; anyone else is refused. An unknown session id
       // identifies nobody, so it never evicts.
-      const sameSession = holder !== undefined && holder.sessionId === hello.sessionId && hello.sessionId !== 'unknown';
-      if (holder && !sameSession) return { ok: false, code: 'name-in-use', message: `name "${hello.name}" is in use by a live session` };
+      const sameSession = holder !== undefined && holder.sessionId === hello.sessionId && identified;
+      if (holder && !sameSession) return { ok: false, code: 'name-in-use', message: `name "${requested}" is in use by a live session` };
       if (holder) evict = holder;
-      name = hello.name;
+      name = requested;
     } else {
-      name = generatedName(new Set([...this.#live.keys(), ...this.#reserved]));
+      // Never a name any session has held: a generated name carries no other session's queue or history.
+      name = generatedName(new Set([...this.#live.keys(), ...this.#reserved, ...this.#store.sessionNames()]));
     }
     // TODO(#29): roles become hub-held state; until then a session declares its role and an unknown one is ignored.
     let role: string | null = null;
@@ -104,10 +117,10 @@ export class HubCore {
       cwd: hello.cwd,
       sessionId: hello.sessionId,
       connectedAt: this.#now().toISOString(),
-      // The status line belongs to the NAME, not the socket: a reconnect that asks for the same name is the
-      // same work. A generated name was never a claim of identity, and a name unseen for longer than the
-      // queue's TTL is history — neither inherits a line.
-      status: hello.name !== undefined ? this.#store.statusOf(name, this.#now().getTime() - this.#queueTtlMs) : null,
+      // The status line belongs to the session under its name: a reconnect of the same session is the same
+      // work. Another session claiming the name, or a name unseen for longer than the queue's TTL, inherits
+      // no line.
+      status: identified ? this.#store.statusOf(name, this.#now().getTime() - this.#queueTtlMs, hello.sessionId) : null,
       role,
       deliver,
       close,
@@ -222,7 +235,7 @@ export class HubCore {
    */
   #identity(name: string): string {
     const id = this.#live.get(name)?.sessionId ?? this.#store.sessionIdOf(name);
-    return id && id !== 'unknown' ? `id:${id}` : `name:${name}`;
+    return id && id !== UNKNOWN_SESSION ? `id:${id}` : `name:${name}`;
   }
 
   /** Deliver to a session now, or queue it: the delivery state for the record. */

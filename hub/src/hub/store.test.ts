@@ -30,17 +30,19 @@ test('a sessions table written by an older hub gains the status and role columns
     assert.deepEqual(store.message('m0'), message('m0', 's1', ['s2'], 'old text', 'then'), 'an old message reads back without the new fields');
     store.rememberStatus('s1', '#27 backend: implement');
     store.rememberRole('s1', 'reviewer');
-    assert.equal(store.statusOf('s1'), '#27 backend: implement');
-    assert.equal(store.statusOf('s1', 2_000), null, 'a row older than the window answers null');
-    assert.equal(store.statusOf('nobody'), null);
+    store.rememberSessionId('s1', 'sess-1');
+    assert.equal(store.statusOf('s1', 0, 'sess-1'), '#27 backend: implement');
+    assert.equal(store.statusOf('s1', 0, 'sess-other'), null, "another session's line is not this one's");
+    assert.equal(store.statusOf('s1', 2_000, 'sess-1'), null, 'a row older than the window answers null');
+    assert.equal(store.statusOf('nobody', 0, 'sess-1'), null);
     assert.deepEqual(store.sessionsWithRole('reviewer'), ['s1']);
     store.rememberSession('s1', 3_000);
-    assert.equal(store.statusOf('s1', 2_000), '#27 backend: implement', 'a fresh hello keeps the line');
+    assert.equal(store.statusOf('s1', 2_000, 'sess-1'), '#27 backend: implement', 'a fresh hello keeps the line');
     store.close();
 
     // opening the file again is idempotent: the columns exist, nothing is altered twice
     const again = new Store(file);
-    assert.equal(again.statusOf('s1'), '#27 backend: implement');
+    assert.equal(again.statusOf('s1', 0, 'sess-1'), '#27 backend: implement');
     again.close();
   } finally {
     await rm(dir, { recursive: true, force: true });

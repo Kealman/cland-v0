@@ -140,10 +140,22 @@ export class Store implements HygieneMemory {
     this.#db.prepare('update sessions set status = ? where name = ?').run(status, name);
   }
 
-  /** The remembered status of a session seen since `since` (ms epoch), else null — a name older than the window is history. */
-  statusOf(name: string, since = 0): string | null {
-    const row = this.#db.prepare('select status from sessions where name = ? and last_seen >= ?').get(name, since) as Row | undefined;
+  /** The remembered status of a name seen since `since` (ms epoch) by this same session, else null: a name older
+   *  than the window is history, and another session's line is not this one's. */
+  statusOf(name: string, since: number, sessionId: string): string | null {
+    const row = this.#db.prepare('select status from sessions where name = ? and last_seen >= ? and session_id = ?').get(name, since, sessionId) as Row | undefined;
     return (row?.status as string | null | undefined) ?? null;
+  }
+
+  /** Every name the store has a row for, however old: a generated name is never handed to another session. */
+  sessionNames(): string[] {
+    return (this.#db.prepare('select name from sessions').all() as Row[]).map((r) => r.name as string);
+  }
+
+  /** The name a session last held, by its session id, or null. */
+  nameOfSession(sessionId: string): string | null {
+    const row = this.#db.prepare('select name from sessions where session_id = ? order by last_seen desc limit 1').get(sessionId) as Row | undefined;
+    return (row?.name as string | undefined) ?? null;
   }
 
   /** The harness session behind a name: hygiene is keyed by it, so a rename changes nothing there. */

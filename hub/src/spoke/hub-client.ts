@@ -42,6 +42,9 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   #attempt = 0;
   #stopped = false;
   #requestedName: string | undefined;
+  /** The name the hub last welcomed us under: a reconnect asks for it, so a generated name stays ours even
+   *  when the hub lost its memory. Dropped when the hub refuses it (someone claimed it by name meanwhile). */
+  #acceptedName: string | undefined;
   #nameRefusals = 0;
   /** The next reconnect is a retry of the requested name: a short fixed delay, not the transport backoff. */
   #retryingName = false;
@@ -73,6 +76,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   /** After a successful rename: the hub knows us by the new name from now on, and so does a reconnect. */
   renamed(name: string): void {
     this.#requestedName = name;
+    this.#acceptedName = name;
     this.#nameRefusals = 0;
     if (this.#state.kind === 'connected') this.#setState({ kind: 'connected', name, ...(this.#state.role ? { role: this.#state.role } : {}) });
   }
@@ -147,8 +151,9 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
         type: 'hello',
         protocol: PROTOCOL_VERSION,
         ...this.#hello,
-        ...(this.#requestedName !== undefined ? { name: this.#requestedName } : {}),
       };
+      const name = this.#requestedName ?? this.#acceptedName;
+      if (name !== undefined) hello.name = name;
       ws.send(JSON.stringify(hello));
     });
 
@@ -207,6 +212,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
         // welcomed under the name we asked for: a refusal on the way here is history, not a note for `who`
         if (this.#requestedName !== undefined) this.#lastRefusal = null;
         if (this.#state.kind === 'refused' && this.#state.code === 'unauthorized') this.#lastRefusal = null;
+        this.#acceptedName = frame.name;
         this.#setState({ kind: 'connected', name: frame.name, ...(frame.role ? { role: frame.role } : {}) });
         this.#log(`connected to the hub as ${frame.name}${frame.role ? ` (${frame.role})` : ''} (${frame.presence.length} online)`);
         break;
@@ -240,6 +246,10 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
             this.#retryingName = true;
             this.#log(`requested name "${this.#requestedName}" in use (${frame.message}) — retrying it (${this.#nameRefusals}/${NAME_RETRIES})`);
           }
+        } else if ((frame.code === 'name-in-use' || frame.code === 'bad-name') && this.#acceptedName !== undefined) {
+          // The name we were given earlier is gone (claimed by name while we were away): ask for a fresh one.
+          this.#log(`the name "${this.#acceptedName}" this spoke held is no longer ours (${frame.message}) — asking the hub for a generated one`);
+          this.#acceptedName = undefined;
         }
         break;
     }
