@@ -148,3 +148,23 @@ test("history returns a session's own traffic, newest last, filtered to one coun
     await hub.close();
   }
 });
+
+test('history filtered to one counterpart finds an older exchange behind a burst of traffic with others', async () => {
+  const hub = await startHub({ rateLimit: { max: 100, windowMs: 60_000 } });
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
+  try {
+    await alpha.waitForPresence(['alpha', 'beta', 'gamma']);
+    await alpha.call('send', { to: ['beta'], text: 'the one with beta' });
+    // more traffic with gamma than any multiple of the limit a pre-filter window would cover
+    for (let i = 0; i < 12; i += 1) await alpha.call('send', { to: ['gamma'], text: `to gamma ${i}` });
+    const withBeta = await alpha.call<{ messages: Array<{ text: string }> }>('history', { with: 'beta', limit: 2 });
+    assert.deepEqual(withBeta.messages.map((m) => m.text), ['the one with beta']);
+  } finally {
+    await alpha.close();
+    await beta.close();
+    await gamma.close();
+    await hub.close();
+  }
+});

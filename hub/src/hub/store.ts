@@ -217,17 +217,17 @@ export class Store implements HygieneMemory {
     return Number(this.#db.prepare('delete from messages where created_at < ?').run(now - retentionMs).changes);
   }
 
-  /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only. */
+  /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only.
+   *  The counterpart is filtered in SQL before the limit, so a burst of other traffic never hides an older exchange. */
   history(session: string, limit: number, counterpart?: string): Message[] {
     const rows = this.#db
       .prepare(
-        `select distinct m.* from messages m left join deliveries d on d.message_id = m.id
-         where (m.from_name = ? or d.session = ?)
-         order by m.created_at desc, m.rowid desc limit ?`,
+        `select m.* from messages m
+         where (m.from_name = :session or exists (select 1 from deliveries d where d.message_id = m.id and d.session = :session))
+           and (:counterpart is null or m.from_name = :counterpart or exists (select 1 from json_each(m.to_json) t where t.value = :counterpart))
+         order by m.created_at desc, m.rowid desc limit :limit`,
       )
-      .all(session, session, Math.max(limit * 4, limit)) as Row[];
-    const all = rows.map(toMessage).reverse();
-    const filtered = counterpart === undefined ? all : all.filter((m) => m.from === counterpart || m.to.includes(counterpart));
-    return filtered.slice(-limit);
+      .all({ session, counterpart: counterpart ?? null, limit }) as Row[];
+    return rows.map(toMessage).reverse();
   }
 }
