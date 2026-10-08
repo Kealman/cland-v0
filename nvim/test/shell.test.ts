@@ -1379,6 +1379,25 @@ test('a question and options over several lines render as lines in the card and 
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 1]]);
 });
 
+test('an ask closed while the client was away, now older than the history the reconnect reads: its card closes, a digit on it does nothing', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await c.input('<Esc>:Cland view thread topic-1<CR>');
+  await c.waitScreen((x) => x.includes('ask · ▲ waiting for you'), 'the open card');
+  await c.reconnect((s) => {
+    // the ask's message is past the latest messages the history returns; the inbox no longer lists it
+    s.messages!['topic-1'] = [{ id: 'later-1', from: 'coord-1', fromKind: 'session', fromRole: 'coordinator', via: 'spoke', to: ['human'], text: 'much later', ts: ts(5), topic: 'topic-1' }];
+    s.inbox!.asks = [];
+  });
+  const s = await c.waitScreen((x) => x.includes('much later') && x.includes('ask · closed'), 'the cached card closed after the reconnect', 5000);
+  assert.doesNotMatch(s, /1-9 answers · free answer: i/);
+  assert.doesNotMatch(s, /ask · ▲ waiting for you/);
+  await c.input('<Esc><C-w>k');
+  await c.waitScreen((x) => statusLine(x).includes('NORMAL'), 'Normal mode in the thread');
+  await c.input('gg/the harness<CR>2');
+  await sleep(300);
+  assert.equal((await requestsOf(c, 'topic.answer')).length, 0, 'no answer to an ask that is no longer open');
+});
+
 test('an ask answered while the client was away shows answered after the reconnect, and a digit on it does nothing', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await c.input('<Esc>:Cland view thread topic-1<CR>');

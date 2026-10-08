@@ -88,6 +88,22 @@ function Thread:merge(messages)
   self:render()
 end
 
+--- The hub's open asks (`inbox.list`), after a reconnect: a cached card still open that is not among them closed
+--- while the client was away, and its message may be older than the history the reconnect read, so the merge
+--- never brought its new state. It shows `closed` and takes no answer.
+function Thread:reconcile_asks(open_ids)
+  local changed = false
+  for _, m in ipairs(self.messages) do
+    if type(m.ask) == 'table' and m.ask.state == 'open' and not open_ids[m.id] then
+      m.ask = vim.tbl_extend('force', m.ask, { state = 'closed' })
+      changed = true
+    end
+  end
+  if changed then
+    self:render()
+  end
+end
+
 --- An ask's card changed (an `ask` event): answered, withdrawn, cancelled.
 function Thread:set_card(id, card)
   local m = self.by_id[id]
