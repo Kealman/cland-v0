@@ -68,6 +68,9 @@ export type Connection = {
   close: (reason: string, code?: number) => void;
 };
 
+/** What the adapters' side says of a hello's launch (`HubCore.launchedRole`). */
+export type LaunchedRole = { role: string | null; first: boolean; carried: boolean };
+
 export type HelloResult = { ok: true; name: string; connection: Connection } | { ok: false; code: RefusalCode; message: string };
 
 export type CoreOptions = {
@@ -119,14 +122,16 @@ export class HubCore {
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
-  /** The role a session was launched for, by the adapters' side (`Sessions`); a hello's role is honoured for it. */
-  #launchedRole: ((name: string, sessionId: string) => string | null) | null = null;
-  /** Whether the launch already handed the session its clause as its first turn (Codex): taken once, at the first hello. */
-  #clauseCarried: ((name: string, sessionId: string) => boolean) | null = null;
+  /** The role a session was launched for, by the adapters' side (`Sessions`): `first` once, at the first hello of a
+   *  launch (with `carried` when its first turn already carried the clause, Codex), else the role its process-table
+   *  row keeps (a relaunch takes it back). A hello's role is honoured for it. */
+  #launchedRole: ((name: string, sessionId: string) => LaunchedRole | null) | null = null;
   /** A clause the session already has (its launch's first turn), recorded as injected: sent once with the next flush. */
   readonly #carriedNotice = new Map<string, string>();
   /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
   readonly #roleNotices = new Map<string, RoleClause>();
+  /** Told when a session takes a new name (the process table renames its row). */
+  readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
   #items: TopicItems | null;
@@ -260,13 +265,14 @@ export class HubCore {
     }
     let role: string | null = null;
     let fresh = false;
+    let carried = false;
     if (this.#roles) {
       const r = this.#helloRole(name, hello);
       if (!r.ok) {
         this.#log({ event: 'refused-role', name, sessionId: hello.sessionId, requested: hello.role ?? null, reason: r.message });
         return { ok: false, code: 'no-role', message: r.message };
       }
-      ({ role, fresh } = r);
+      ({ role, fresh, carried } = r);
     } else if (hello.role !== undefined) {
       // no project: the role is a declared label; an unknown one is ignored
       if (ROLE_NAMES.includes(hello.role)) role = hello.role;
@@ -312,7 +318,6 @@ export class HubCore {
     // the clause goes out with what waited (flushQueued, after the welcome), ahead of it
     if (this.#roles && role !== null) {
       // a launch whose first turn already carried the clause: recorded (the journal), not injected again
-      const carried = fresh && (this.#clauseCarried?.(name, hello.sessionId) ?? false);
       const id = this.#recordClause(connection, carried ? 'assigned at launch (first turn)' : fresh ? 'assigned at launch' : 'hello', undefined, carried);
       if (carried && id) this.#carriedNotice.set(name, id);
     }
@@ -322,21 +327,38 @@ export class HubCore {
   }
 
   /**
-   * The role a hello gets on a project's hub: the one its name holds (assigned by the human, or kept from an
-   * earlier hello: a role follows the name), else the one the adapters launched it for. A requested role
-   * (`CLAND_ROLE`) is never enough on its own. No role: refused, the session stays off the hub (spec 4.4).
+   * The role a hello gets on a project's hub: at the first hello of a launch, the role it was launched for (its
+   * reservation); else the one its name holds (assigned by the human, or kept from an earlier hello: a role follows
+   * the name), else the one its process-table row keeps (a relaunch). A requested role (`CLAND_ROLE`) is never
+   * enough on its own. No role: refused, the session stays off the hub (spec 4.4). An exclusive role is checked on
+   * every hello: a holder remembered past the queue's TTL that comes back after another session took the role is
+   * refused it, and the role it remembered is cleared (`role-superseded` and a `session.role` event).
    */
-  #helloRole(name: string, hello: Hello): { ok: true; role: string; fresh: boolean } | { ok: false; message: string } {
+  #helloRole(name: string, hello: Hello): { ok: true; role: string; fresh: boolean; carried: boolean } | { ok: false; message: string } {
+    const refusal = (role: string, taken: string) => `role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``;
+    const launched = this.#launchedRole?.(name, hello.sessionId) ?? null;
+    if (launched?.first && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+      const taken = this.#exclusiveHolder(launched.role, name);
+      if (taken) return { ok: false, message: refusal(launched.role, taken) };
+      return { ok: true, role: launched.role, fresh: true, carried: launched.carried };
+    }
     const held = this.#store.roleOf(name);
     if (held !== null && ROLE_NAMES.includes(held)) {
+      const taken = this.#exclusiveHolder(held, name);
+      if (taken) {
+        // a stale holder: another session took the role while this one was forgotten
+        this.#store.rememberRole(name, null);
+        this.#log({ event: 'role-superseded', session: name, sessionId: hello.sessionId, role: held, holder: taken });
+        this.#emitRole(name, null, held, `superseded: ${taken} holds it`);
+        return { ok: false, message: `no role: "${name}" no longer holds the role ${ROLE_LABELS[held] ?? held}: ${taken} holds it now, and one session holds it at a time — assign another with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
+      }
       if (hello.role !== undefined && hello.role !== held) this.#log({ event: 'role-request-ignored', name, requested: hello.role, holds: held });
-      return { ok: true, role: held, fresh: false };
+      return { ok: true, role: held, fresh: false, carried: false };
     }
-    const launched = this.#launchedRole?.(name, hello.sessionId) ?? null;
-    if (launched !== null && ROLE_NAMES.includes(launched)) {
-      const taken = this.#exclusiveHolder(launched, name);
-      if (taken) return { ok: false, message: `role "${launched}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\`` };
-      return { ok: true, role: launched, fresh: true };
+    if (launched !== null && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+      const taken = this.#exclusiveHolder(launched.role, name);
+      if (taken) return { ok: false, message: refusal(launched.role, taken) };
+      return { ok: true, role: launched.role, fresh: true, carried: false };
     }
     const asked = hello.role !== undefined ? ` (it asked for "${hello.role}", which the hub grants only to a session it launched for that role)` : '';
     return { ok: false, message: `no role: "${name}" holds none${asked} — assign one with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
@@ -379,6 +401,12 @@ export class HubCore {
     const topic = this.#store.message(messageId)?.topic;
     const stage = this.#store.stage(messageId);
     if (topic !== undefined && stage !== undefined && stage !== 'queued') this.#emit({ type: 'delivery', topic, message: messageId, stage });
+  }
+
+  /** Listen to renames (`from`, `to`, the session id); returns the unsubscribe. */
+  onRenamed(listener: (from: string, to: string, sessionId: string) => void): () => void {
+    this.#renamed.add(listener);
+    return () => this.#renamed.delete(listener);
   }
 
   /** Who injects what a spoke accepted (the adapters' supervisor); one at a time. */
@@ -521,6 +549,7 @@ export class HubCore {
     this.#store.rememberStatus(to, c.status);
     this.#store.rememberRole(to, c.role);
     this.#log({ event: 'rename', from, to });
+    for (const fn of [...this.#renamed]) fn(from, to, c.sessionId);
     this.#announceCoordinator();
     return { ok: true, name: to };
   }
@@ -554,9 +583,36 @@ export class HubCore {
   }
 
   /** Who tells a hello which role its session was launched for (the adapters' side); one at a time. */
-  launchedRole(lookup: ((name: string, sessionId: string) => string | null) | null, carried: ((name: string, sessionId: string) => boolean) | null = null): void {
+  launchedRole(lookup: ((name: string, sessionId: string) => LaunchedRole | null) | null): void {
     this.#launchedRole = lookup;
-    this.#clauseCarried = carried;
+  }
+
+  /**
+   * A launch for `role` reserves it for `name` before the harness is spawned (the store remembers the name holding
+   * it): a second launch, or the human's assignment, of an exclusive role is refused while the first is under way.
+   * Returns what the name held before, for `releaseLaunchRole`. Throws the exclusivity refusal.
+   */
+  reserveLaunchRole(name: string, role: string): { previous: string | null } {
+    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const taken = this.#exclusiveHolder(role, name);
+    if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
+    const c = this.#live.get(name);
+    const previous = c ? c.role : this.#store.roleOf(name);
+    this.#store.rememberSession(name, this.#now().getTime());
+    this.#store.rememberRole(name, role);
+    this.#log({ event: 'role-reserved', session: name, role, previous });
+    return { previous };
+  }
+
+  /** A launch failed: the role it reserved (or its early hello took) is rolled back, unless something changed it since. */
+  releaseLaunchRole(name: string, role: string, previous: string | null): void {
+    const c = this.#live.get(name);
+    const current = c ? c.role : this.#store.roleOf(name);
+    if (current !== role) return;
+    this.#log({ event: 'role-reservation-released', session: name, role, previous });
+    if (c) this.#vacate(name, 'its launch failed');
+    else this.#store.rememberRole(name, previous);
+    this.#announceCoordinator();
   }
 
   /** The live session holding the Coordinator, or null: "no coordinator". */

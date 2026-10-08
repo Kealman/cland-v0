@@ -26,6 +26,13 @@
 //       embedded-mode trap); otherwise joins the thread with `thread/resume` and prints
 //       `fake codex attached to thread <id> (<status>) in <dir>`.
 //
+//   Failure modes for the hub's robustness tests: FAKE_CODEX_FAIL_FIRST_TURN=1 refuses a thread's first turn (a launch
+//   that fails after the spoke connected); a message whose text contains "lose the answer" runs as a turn but its
+//   `turn/start` (or `turn/steer`) result is never sent, the first time only (an ambiguous inject); SIGUSR2 drops every
+//   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
+//   app-server lives). A body `rename to <name>` calls the spoke's `rename` tool before the pong. Each `turn/start`
+//   logs its `effort` when given.
+//
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300).
 import { randomUUID } from 'node:crypto';
@@ -273,6 +280,8 @@ async function appServer(args: string[]): Promise<number> {
         await callTool('send', { to: [from], text: report, ...where });
         continue;
       }
+      const rename = /^rename to ([a-z0-9-]+)$/.exec(body);
+      if (rename) await callTool('rename', { name: rename[1] });
       await callTool('send', { text: `pong: ${body}`, ...where });
     }
     t.tokens += 12;
@@ -292,7 +301,14 @@ async function appServer(args: string[]): Promise<number> {
     return ((params.input ?? []) as Array<{ type: string; text?: string }>).map((i) => i.text ?? '').join('\n');
   };
 
-  type Answer = { result: unknown } | { error: { code: number; message: string } };
+  type Answer = { result: unknown } | { error: { code: number; message: string } } | { lost: true };
+  const lost = new Set<string>();
+  const loseOnce = (text: string): boolean => {
+    if (!text.includes('lose the answer') || lost.has(text)) return false;
+    lost.add(text);
+    log('the answer is lost');
+    return true;
+  };
   const handle = async (c: Conn, method: string, params: Record<string, unknown>): Promise<Answer> => {
     switch (method) {
       case 'initialize':
@@ -323,19 +339,21 @@ async function appServer(args: string[]): Promise<number> {
         const t = threads.get(params.threadId as string);
         if (!t) return { error: { code: -32600, message: `thread not loaded: ${String(params.threadId)}` } };
         const text = textOf(params);
+        if (process.env.FAKE_CODEX_FAIL_FIRST_TURN === '1' && t.turns === 0 && !t.turnId) return { error: { code: -32603, message: 'the model refused the first turn (FAKE_CODEX_FAIL_FIRST_TURN)' } };
+        const lose = loseOnce(text);
         if (t.turnId) {
           // an active turn: turn/start steers it
           t.queue.push({ text });
           log(`steered by turn/start: ${text}`);
-          return { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
+          return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
         }
         t.turnId = randomUUID();
         t.queue.push({ text });
-        log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}`);
+        log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}${typeof params.effort === 'string' ? ` effort=${params.effort}` : ''}`);
         setStatus(t, { type: 'active', activeFlags: [] });
         toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });
         void runTurn(t);
-        return { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
+        return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
       }
       case 'turn/steer': {
         const t = threads.get(params.threadId as string);
@@ -344,7 +362,7 @@ async function appServer(args: string[]): Promise<number> {
         const text = textOf(params);
         t.queue.push({ text });
         log(`turn/steer ${t.turnId}: ${text}`);
-        return { result: { turnId: t.turnId } };
+        return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };
       }
       case 'account/rateLimits/read':
         return { result: { rateLimits: { limitId: 'codex', primary: { usedPercent: 6, windowDurationMins: 10080, resetsAt: 1791955620 }, secondary: null } } };
@@ -355,7 +373,12 @@ async function appServer(args: string[]): Promise<number> {
 
   const http = createServer();
   const wss = new WebSocketServer({ server: http, perMessageDeflate: false });
+  let refuseUntil = 0;
   wss.on('connection', (ws) => {
+    if (Date.now() < refuseUntil) {
+      ws.terminate();
+      return;
+    }
     const c: Conn = { ws, initialized: false, subscribed: new Set() };
     conns.add(c);
     ws.on('close', () => conns.delete(c));
@@ -368,7 +391,9 @@ async function appServer(args: string[]): Promise<number> {
         return;
       }
       if (m.id === undefined) return; // a notification (`initialized`)
-      void handle(c, m.method, m.params ?? {}).then((answer) => send(c, { id: m.id, ...answer }));
+      void handle(c, m.method, m.params ?? {}).then((answer) => {
+        if (!('lost' in answer)) send(c, { id: m.id, ...answer });
+      });
     });
   });
   rmSync(socket, { force: true });
@@ -376,6 +401,11 @@ async function appServer(args: string[]): Promise<number> {
   log('listening');
 
   process.on('SIGUSR1', () => approveAll?.());
+  process.on('SIGUSR2', () => {
+    refuseUntil = Date.now() + Number(process.env.FAKE_CODEX_REFUSE_MS ?? 1500);
+    log('dropping every client connection');
+    for (const c of conns) c.ws.terminate();
+  });
   const shutdown = async () => {
     log('SIGTERM');
     for (const client of mcp.values()) await client.close().catch(() => {});

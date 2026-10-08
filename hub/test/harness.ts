@@ -4,7 +4,7 @@
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, realpath, rm } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -528,4 +528,42 @@ export async function eventually<T>(what: string, check: () => Promise<T | undef
     await sleep(50);
   }
   throw new Error(`${what}: not within ${timeoutMs} ms${last ? ` (last error: ${String(last)})` : ''}`);
+}
+
+// ------------------------------------------------------------------ the fake Codex
+// `test/fakes/codex/codex` first on a daemon's PATH, so the Codex adapter launches it as it would the real one. Its
+// app-servers are killed when the test ends.
+
+export const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
+
+export type FakeCodexServer = { pid: number; socket: string; argv: string[]; cwd: string };
+
+export type FakeCodex = {
+  env: Record<string, string>;
+  home: string;
+  /** The live fake app-servers. */
+  servers: () => Promise<FakeCodexServer[]>;
+  log: (pid: number) => Promise<string>;
+};
+
+export async function fakeCodex(t: TestContext, options: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number; env?: Record<string, string> } = {}): Promise<FakeCodex> {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
+  const env = {
+    PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
+    FAKE_CODEX_HOME: home,
+    FAKE_CODEX_TURN_MS: String(options.turnMs ?? 300),
+    CLAND_ADAPTER_POLL_MS: String(options.pollMs ?? 200),
+    CLAND_INJECT_TIMEOUT_MS: String(options.injectTimeoutMs ?? 5000),
+    ...options.env,
+  };
+  const servers = async () => {
+    const files = await readdir(join(home, 'servers')).catch(() => [] as string[]);
+    const all = await Promise.all(files.map(async (f) => JSON.parse(await readFile(join(home, 'servers', f), 'utf8')) as FakeCodexServer));
+    return all.filter((s) => pidAlive(s.pid));
+  };
+  t.after(async () => {
+    for (const s of await servers()) await killDaemon(s.pid);
+    await rm(home, { recursive: true, force: true });
+  });
+  return { env, home, servers, log: (pid) => readFile(join(home, 'log', `${pid}.log`), 'utf8').catch(() => '') };
 }

@@ -39,6 +39,9 @@ export type HarnessProcess = {
   harnessSessionId: string | null;
   startedAt: string;
   status: 'running' | 'exited' | 'stopped';
+  /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
+   *  still this process before any signal (`processes.ts` `signalProcess`). Null when unknown. */
+  pidStarted?: string | null;
 };
 
 export type SpawnRequest = {
