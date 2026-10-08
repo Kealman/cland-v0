@@ -91,6 +91,10 @@ test('cland topic answer --text sends a free answer; refused answers print cland
   const out = await cland(root, 'topic', 'answer', options.ask, '3');
   assert.equal(out.code, 1);
   assert.equal(out.stderr, 'cland: option 3 is not one of 1-2\n');
+  // 0 and negatives are integers too: the hub's refusal, not the CLI's
+  const zero = await cland(root, 'topic', 'answer', options.ask, '0');
+  assert.equal(zero.code, 1);
+  assert.equal(zero.stderr, 'cland: option 0 is not one of 1-2\n');
   // an ask that is no longer open takes no answer any more
   const again = await cland(root, 'topic', 'answer', free.ask, '1');
   assert.equal(again.code, 1);

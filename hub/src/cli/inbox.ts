@@ -74,7 +74,9 @@ async function runTopicAnswer(args: string[], cwd: string): Promise<number> {
     if (!text) throw new Error('usage: cland topic answer <ask id> --text "<free answer>"');
   } else if (rest.length === 1) {
     const n = Number(rest[0]);
-    if (!Number.isInteger(n) || n < 1) throw new Error('the option is a number: cland topic answer <ask id> <option number>');
+    // only a number can select an option; any integer goes to the hub, whose refusal (an option out of range,
+    // 0 and negatives included) prints `cland: <error>` with exit 1
+    if (!Number.isInteger(n)) throw new Error('the option is a number: cland topic answer <ask id> <option number>');
     option = n;
   } else {
     throw new Error('usage: cland topic answer <ask id> <option number> | --text "<free answer>"');
