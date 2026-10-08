@@ -45,6 +45,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
 | `src/cli/session.ts` | `cland session launch`, `list`, `attach`, `stop`, `resume`. |
 | `src/cli/role.ts` | `cland role set`, `clear`, `list`. |
+| `src/cli/inbox.ts` | `cland inbox`, `cland topic answer` (Asks and the inbox). |
 | `src/cli/init.ts` | `cland init [dir]`, `cland update [dir]`. |
 | `src/cli/doctor.ts` | `cland doctor [dir]` (below). |
 | `src/doctor/` | Its checks: `toolchain.ts` (the harnesses, `gh`, Neovim), `project.ts` (the hub, the config files, what `cland init` provisioned), `ranges.ts` (`TESTED_RANGES`, the harness versions each adapter was built against), `report.ts` (the verdicts, the text and the runner). |
@@ -131,6 +132,12 @@ The **inbox** (spec 5, `Inbox.dc.html`) is the human's queue, in a fixed order: 
 | `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","waiting","notifications","needsYou"}` |
 | `{"type":"inbox.dismiss","id":…,"notification":"<notification id>"}` | `Inbox`; an ask's or a session's name is refused (`asks and approvals are not dismissed: answer them`), an unknown id too; dismissing twice is harmless |
 | `{"type":"inbox.dismiss_all","id":…}` | `Inbox`, its notifications gone; asks and approvals stay |
+
+| Command | What it does |
+| --- | --- |
+| `cland inbox [--json]` | The inbox from a terminal: one block per open ask (the ask id, the topic title and its bound item, the asker's label, the question, the numbered options), then one line per approval, waiting topic and notification, last `needs you: <n>`. `--json` prints the `Inbox` value as the hub returns it. |
+| `cland topic answer <ask id> <option number>` | Answers an ask with its option n (1-based): prints `answered <ask id> in <topic title>: <the answer>`. |
+| `cland topic answer <ask id> --text "<free answer>"` | Answers an ask with a free answer (refused when the ask takes options only). The hub's refusals (an ask that is not open, an option out of range, a free answer to an options-only ask) print `cland: <error>` with exit code 1. |
 
 Subscribers get `{"type":"inbox","inbox":Inbox}` whenever any of it changed (an ask, a session's state, a topic, a notification, a dismissal), coalesced to one per turn of the event loop and only when it differs from the last one sent. The idle threshold is `[inbox] idle_minutes` in `.cland/config.toml` (default 30; `CLAND_IDLE_NOTIFY_MS` overrides it, for tests); the clock starts at each transition to `idle`.
 
@@ -313,7 +320,7 @@ A refusal is typed, `{"code":"hygiene","rule":"size"|"rate"|"loop","until"?:"<IS
 
 ## Not here yet
 
-- **The rest of the human side.** A verdict written by hand into an item's file is no inbox notification (only the hub's writes are); there is no `cland topic answer` yet.
+- **The rest of the human side.** A verdict written by hand into an item's file is no inbox notification (only the hub's writes are).
 - **Roles, the rest.** The Coordinator's role requests come later. A handover's `waiting` reads the topics `waiting for agent` (#32), and `asks` the open asks its holders put (#33). The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **Claims.** A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 
