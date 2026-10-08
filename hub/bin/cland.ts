@@ -5,17 +5,22 @@ import { TASK_USAGE, runTask } from '../src/cli/task.ts';
 import { SESSION_USAGE, runSession } from '../src/cli/session.ts';
 import { ROLE_USAGE, runRole } from '../src/cli/role.ts';
 import { HOOK_USAGE, runHook } from '../src/cli/hook.ts';
+import { OPEN_USAGE, runOpen } from '../src/cli/open.ts';
 import { VERSION } from '../src/version.ts';
 
 const usage = `cland ${VERSION}
 
-usage: cland <command>
+usage: cland [<command>]
 
-${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${ROLE_USAGE}${HOOK_USAGE}  --version, -v   print the version
+With no command on a terminal, cland opens the workbench (cland open).
+
+${OPEN_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${ROLE_USAGE}${HOOK_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
-const [command = '--help', ...rest] = process.argv.slice(2);
+// no command: the workbench on a terminal, the help anywhere else (a script, a pipe)
+const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+const [command = interactive ? 'open' : '--help', ...rest] = process.argv.slice(2);
 
 switch (command) {
   case '--version':
@@ -27,6 +32,14 @@ switch (command) {
   case '-h':
   case 'help':
     process.stdout.write(usage);
+    break;
+  case 'open':
+    try {
+      process.exitCode = await runOpen(rest);
+    } catch (err) {
+      process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exitCode = 1;
+    }
     break;
   case 'hub':
     try {

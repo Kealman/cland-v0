@@ -31,6 +31,8 @@ function M.new(topic)
   vim.bo[buf].modifiable = false
   vim.bo[buf].filetype = 'cland-thread'
   pcall(api.nvim_buf_set_name, buf, 'cland://topic/' .. topic.id)
+  vim.b[buf].cland_role = 'thread'
+  vim.b[buf].cland_topic = topic.id
   local self = setmetatable({ topic = topic, buf = buf, messages = {}, by_id = {}, notice = nil }, Thread)
   self:render()
   return self
@@ -140,6 +142,15 @@ function Thread:render()
     add(' ▲ ' .. self.notice.text, { { col = 0, opts = { end_col = 0, line_hl_group = self.notice.group } } })
   end
 
+  -- a window whose cursor is away from the tail (reading, or on a reference for gi/gt/gs) keeps it
+  local stay = {}
+  local old_count = api.nvim_buf_line_count(buf)
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    local row = api.nvim_win_get_cursor(win)[1]
+    if win == api.nvim_get_current_win() and row < old_count then
+      stay[win] = api.nvim_win_get_cursor(win)
+    end
+  end
   vim.bo[buf].modifiable = true
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
@@ -147,10 +158,14 @@ function Thread:render()
   for _, m in ipairs(marks) do
     pcall(api.nvim_buf_set_extmark, buf, ns, m.row, m.col, m.opts)
   end
-  -- every window on the thread follows its tail (via the first line: set_cursor scrolls minimally)
+  -- the other windows on the thread follow its tail (via the first line: set_cursor scrolls minimally)
   for _, win in ipairs(vim.fn.win_findbuf(buf)) do
-    pcall(api.nvim_win_set_cursor, win, { 1, 0 })
-    pcall(api.nvim_win_set_cursor, win, { #lines, 0 })
+    if stay[win] then
+      pcall(api.nvim_win_set_cursor, win, { math.min(stay[win][1], #lines), stay[win][2] })
+    else
+      pcall(api.nvim_win_set_cursor, win, { 1, 0 })
+      pcall(api.nvim_win_set_cursor, win, { #lines, 0 })
+    end
   end
 end
 
