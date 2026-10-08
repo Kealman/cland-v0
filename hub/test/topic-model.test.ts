@@ -5,7 +5,9 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixedRoles } from '../src/roles/config.ts';
-import { connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { cland, connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 import type { Hub } from '../src/hub/server.ts';
 
 type Topic = { id: string; title: string; status: string; standing: boolean; item: string | null; unread: number; lastMessageAt: string | null; warning?: string };
@@ -293,4 +295,101 @@ test("a topic bound to an item: the item's topic field is set, a second topic fo
   assert.equal((await ok<{ item: { state: string } }>(ui, { type: 'task.view', item: 'T-1' })).item.state, 'closed');
   const late = await ui.request({ type: 'topic.create', title: 'Too late', item: 'T-1' });
   assert.match(String(late.error), /T-1 already has a topic/);
+});
+
+// ------------------------------------------------------------------ one binding, startup reconciliation, unread past retention (review of #32)
+
+test('task.link and task.create with a topic go through the binding: one topic per item and one item per topic, both sides agree, and closing the item closes it', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  for (const title of ['First', 'Second']) await ok(ui, { type: 'task.create', title });
+  const a = await create(ui, 'Topic A');
+  const b = await create(ui, 'Topic B');
+  const view = async (item: string) => (await ok<{ item: { topic: string | null; state: string } }>(ui, { type: 'task.view', item })).item;
+
+  // link binds: the topic names the item and the item names the topic
+  await ok(ui, { type: 'task.link', item: 'T-1', topic: a.id });
+  assert.equal((await topicOf(ui, a.id)).item, 'T-1');
+  assert.equal((await view('T-1')).topic, a.id);
+
+  // a second item for the same topic is refused, by link and by create; nothing is written
+  const second = await ui.request({ type: 'task.link', item: 'T-2', topic: a.id });
+  assert.equal(second.ok, false);
+  assert.match(String(second.error), new RegExp(`${a.id} is already bound to T-1`));
+  assert.equal((await view('T-2')).topic, null);
+  const made = await ui.request({ type: 'task.create', title: 'Third', topic: a.id });
+  assert.equal(made.ok, false);
+  assert.match(String(made.error), new RegExp(`${a.id} is already bound to T-1`));
+  assert.equal((await ok<{ items: unknown[] }>(ui, { type: 'task.list' })).items.length, 2, 'no item was created');
+
+  // a second topic for the same item is refused
+  const other = await ui.request({ type: 'task.link', item: 'T-1', topic: b.id });
+  assert.equal(other.ok, false);
+  assert.match(String(other.error), /T-1 already has a topic/);
+  assert.equal((await topicOf(ui, b.id)).item, null);
+
+  // a topic that does not exist, or a standing one, cannot be bound
+  assert.match(String((await ui.request({ type: 'task.link', item: 'T-2', topic: 'topic-99' })).error), /no topic "topic-99"/);
+  assert.match(String((await ui.request({ type: 'task.link', item: 'T-2', topic: 'general' })).error), /standing/);
+
+  // create binds too
+  const third = (await ok<{ item: { id: string; topic: string | null } }>(ui, { type: 'task.create', title: 'Third', topic: b.id })).item;
+  assert.equal(third.topic, b.id);
+  assert.equal((await topicOf(ui, b.id)).item, third.id);
+
+  // linking to null unbinds both sides; the topic can then be bound again
+  await ok(ui, { type: 'task.link', item: third.id, topic: null });
+  assert.equal((await topicOf(ui, b.id)).item, null);
+  assert.equal((await view(third.id)).topic, null);
+  await ok(ui, { type: 'task.link', item: 'T-2', topic: b.id });
+  assert.equal((await topicOf(ui, b.id)).item, 'T-2');
+
+  // closing a linked item closes its topic
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'task.close', item: 'T-1' });
+  await topicEvent(ui, a.id, (x) => x.status === 'closed', mark);
+});
+
+test('an item closed while the hub was stopped closes its topic when the hub starts again', async (t) => {
+  const root = await tempProject(t);
+  const first = await startDaemon(t, root);
+  let ui = await connectUi(t, first.discovery);
+  await ok(ui, { type: 'task.create', title: 'Close me offline' });
+  const topic = await create(ui, 'About T-1', 'T-1');
+  assert.equal(topic.item, 'T-1');
+  ui.close();
+  const stopped = await cland(root, 'hub', 'stop');
+  assert.equal(stopped.code, 0, stopped.stderr);
+
+  // a hand edit while nothing watches
+  const dir = join(root, '.cland', 'tasks');
+  const file = (await readdir(dir)).find((n) => n.startsWith('T-1-')) as string;
+  await writeFile(join(dir, file), (await readFile(join(dir, file), 'utf8')).replace(/^state: open$/m, 'state: closed'));
+
+  const again = await startDaemon(t, root);
+  ui = await connectUi(t, again.discovery);
+  assert.equal((await topicOf(ui, topic.id)).status, 'closed');
+});
+
+test('the unread count survives retention emptying the messages table: a message after the prune is unread', async (t) => {
+  let clock = Date.parse('2026-10-01T00:00:00Z');
+  const hub = await startHub({ roles: fixedRoles(), now: () => new Date(clock), retentionMs: 60_000 });
+  t.after(() => hub.close());
+  const coord = await spoke(t, hub, 'coord', 'coordinator');
+  await coord.waitForPresence(['coord']);
+  const ui = await connectWsUi(t, hub);
+  const topic = await create(ui, 'Kept a while');
+  for (const text of ['one', 'two', 'three']) await coord.call('send', { topic: topic.id, text });
+  await ok(ui, { type: 'topic.read', topic: topic.id });
+  assert.equal((await topicOf(ui, topic.id)).unread, 0);
+
+  clock += 120_000;
+  assert.ok(hub.prune() >= 3, 'the old messages went');
+  assert.deepEqual((await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: topic.id })).messages, []);
+  await coord.call('send', { topic: topic.id, text: 'after the prune' });
+  assert.equal((await topicOf(ui, topic.id)).unread, 1);
+  await ok(ui, { type: 'topic.read', topic: topic.id });
+  assert.equal((await topicOf(ui, topic.id)).unread, 0);
 });

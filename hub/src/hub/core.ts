@@ -31,6 +31,7 @@ import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
+import type { TopicBinding } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
@@ -993,6 +994,46 @@ export class HubCore {
     this.#store.markTopicRead(id, upTo);
     this.#publishTopics(new Set([id]));
     return this.#topicOrThrow(id);
+  }
+
+  /**
+   * The binding as the tracker's `task.link` and `task.create` with a topic see it (spec 4.5): one topic per item and
+   * one item per topic; the store's binding follows the item's file.
+   */
+  topicBinding(): TopicBinding {
+    return {
+      check: (item, topicId) => {
+        const topic = this.#store.topic(topicId);
+        if (!topic) throw new TopicRefusal(`no topic "${topicId}"`);
+        if (topic.standing) throw new TopicRefusal(`${topic.title} is a standing topic: it is bound to no item`);
+        if (topic.item !== null && topic.item !== item) throw new TopicRefusal(`${topic.id} is already bound to ${topic.item}; one item per topic`);
+        const existing = item === null ? null : this.#store.topicOfItem(item);
+        if (existing && existing.id !== topic.id) throw new TopicRefusal(`${item} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
+      },
+      bound: (item, topicId) => {
+        this.#store.setItemTopic(item, topicId);
+        this.#log({ event: 'topic-bound', item, topic: topicId });
+        this.#publishTopics();
+      },
+    };
+  }
+
+  /**
+   * At start, what happened to the bound items while no hub watched (a hand edit, a `git pull`): a bound item that is
+   * closed closes its topic and cancels its asks, as its closing would have.
+   */
+  reconcileBindings(): void {
+    if (!this.#items) return;
+    for (const topic of this.#store.topics()) {
+      if (topic.item === null || topic.status === 'closed') continue;
+      let state: string;
+      try {
+        state = this.#items.check(topic.item).state;
+      } catch {
+        continue; // the item is gone or unreadable: nothing to say about it
+      }
+      if (state === 'closed') this.itemClosed(topic.item);
+    }
   }
 
   /** A unit of work closed (the tracker's close): its topic closes too. Never the other way round. */

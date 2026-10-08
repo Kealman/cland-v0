@@ -98,6 +98,17 @@ export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: s
 
 export class TrackerError extends Error {}
 
+/**
+ * The hub's side of an item's `topic` field (spec 4.5): one topic per item and one item per topic, the topic's
+ * `item` and the item's `topic` one fact. `task.link` and `task.create` with a topic go through it.
+ */
+export type TopicBinding = {
+  /** Throws why `topic` cannot be bound to `item` (null: an item about to be created). */
+  check: (item: string | null, topic: string) => void;
+  /** The item's file now names `topic` (null: none): the hub records the binding. */
+  bound: (item: string, topic: string | null) => void;
+};
+
 const hashOf = (text: string): string => createHash('sha256').update(text).digest('hex');
 
 const TASKS_REL = join('.cland', 'tasks');
@@ -120,6 +131,8 @@ export class Tracker {
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
   readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict) => void>();
+  /** The hub's topic binding; without one (a tracker on its own) the `topic` field is written as given. */
+  #topicBinding: TopicBinding | null = null;
 
   constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number }) {
     this.#root = options.root;
@@ -129,6 +142,24 @@ export class Tracker {
     this.#now = options.now ?? (() => new Date());
     mkdirSync(this.#dir, { recursive: true });
     this.#index = new TrackerIndex(options.db);
+  }
+
+  /** Route the `topic` field through the hub's binding; returns the undo. */
+  bindTopicsThrough(binding: TopicBinding): () => void {
+    this.#topicBinding = binding;
+    return () => {
+      if (this.#topicBinding === binding) this.#topicBinding = null;
+    };
+  }
+
+  /** Ask the binding whether `topic` may be `item`'s; its refusal is the asker's error. */
+  #checkTopic(item: string | null, topic: string | null): void {
+    if (topic === null || !this.#topicBinding) return;
+    try {
+      this.#topicBinding.check(item, topic);
+    } catch (err) {
+      throw new TrackerError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   /** Listen to items closing; returns the unsubscribe. */
@@ -413,6 +444,8 @@ export class Tracker {
     checkText(input.body ?? '', 'body');
     const parent = input.parent ? this.#ref(input.parent, null, 'parent') : null;
     const blocked = [...new Set((input.blocked_by ?? []).map((b) => this.#ref(b, null, 'blocked_by')))];
+    const topic = input.topic?.trim() || null;
+    this.#checkTopic(null, topic);
     const maxFile = Math.max(0, ...readdirSync(this.#dir).map((n) => fileNumber(n) ?? 0));
     const id = this.#index.allocate(maxFile);
     const name = fileNameOf(id, title);
@@ -427,7 +460,7 @@ export class Tracker {
         assignee: input.assignee ?? null,
         parent,
         blocked_by: blocked,
-        topic: input.topic ?? null,
+        topic,
         branch: input.branch ?? null,
         created: now,
         updated: now,
@@ -437,6 +470,7 @@ export class Tracker {
     };
     this.#write(name, item);
     this.#log({ event: 'task-written', id, file: name, op: 'create', by: actor.name });
+    if (topic !== null) this.#topicBinding?.bound(id, topic);
     return this.view(id);
   }
 
@@ -514,12 +548,23 @@ export class Tracker {
     const parent = input.parent === undefined ? undefined : input.parent === null ? null : this.#ref(input.parent, id, 'parent');
     const add = (input.blocked_by ?? []).map((b) => this.#ref(b, id, 'blocked_by'));
     const remove = (input.unblock ?? []).map((b) => normalizeId(b) ?? b);
-    return this.#mutate(id, actor, 'link', (item) => {
+    const topic = input.topic === undefined ? undefined : input.topic?.trim() || null;
+    if (topic !== undefined) this.#checkTopic(id, topic);
+    const view = this.#mutate(id, actor, 'link', (item) => {
       const fm = item.fm;
       if (parent !== undefined) fm.parent = parent;
       fm.blocked_by = uniq([...fm.blocked_by, ...add]).filter((b) => !remove.includes(b));
-      if (input.topic !== undefined) fm.topic = input.topic || null;
+      if (topic !== undefined) fm.topic = topic;
       if (input.branch !== undefined) fm.branch = input.branch || null;
+    });
+    if (topic !== undefined) this.#topicBinding?.bound(id, topic);
+    return view;
+  }
+
+  /** The hub's own write of an item's `topic` field (a binding it already made: `topic.create` with an item). */
+  writeTopic(actor: Actor, rawId: string, topic: string | null): ItemView {
+    return this.#mutate(rawId, actor, 'link', (item) => {
+      item.fm.topic = topic;
     });
   }
 

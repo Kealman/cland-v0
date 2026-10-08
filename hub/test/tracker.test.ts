@@ -7,7 +7,7 @@ import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { cland, connectSocket, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 type Summary = { id: string; title: string; state: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
 type View = Summary & {
@@ -323,10 +323,16 @@ test('edit, close and link change the file; bad references are refused', async (
   ok(await cland(root, 'task', 'create', 'Parent epic', '--kind', 'epic'));
   ok(await cland(root, 'task', 'create', 'Blocker'));
   ok(await cland(root, 'task', 'create', 'Child'));
-  ok(await cland(root, 'task', 'link', 'T-3', '--parent', 'T-1', '--blocked-by', 'T-2', '--topic', 'login', '--branch', 't/3-child'));
+  // a topic is the hub's: an unknown one is refused, a real one is bound (spec 4.5)
+  const unknown = await cland(root, 'task', 'link', 'T-3', '--topic', 'login');
+  assert.equal(unknown.code, 1);
+  assert.match(unknown.stderr, /no topic "login"/);
+  const ui = await connectUi(t, await readDiscovery(root));
+  const login = ((await ui.request({ type: 'topic.create', title: 'Login' })).value as { topic: { id: string } }).topic.id;
+  ok(await cland(root, 'task', 'link', 'T-3', '--parent', 'T-1', '--blocked-by', 'T-2', '--topic', login, '--branch', 't/3-child'));
   ok(await cland(root, 'task', 'edit', 'T-3', '--title', 'Child renamed', '--body', 'New body.', '--assignee', 'carol'));
   let fm = frontmatter(await readFile(join(tasksDir(root), 'T-3-child.md'), 'utf8'));
-  assert.deepEqual([fm.title, fm.parent, fm.blocked_by, fm.topic, fm.branch, fm.assignee], ['Child renamed', 'T-1', ['T-2'], 'login', 't/3-child', 'carol']);
+  assert.deepEqual([fm.title, fm.parent, fm.blocked_by, fm.topic, fm.branch, fm.assignee], ['Child renamed', 'T-1', ['T-2'], login, 't/3-child', 'carol']);
   ok(await cland(root, 'task', 'link', 'T-3', '--unblock', 'T-2', '--topic', 'none'));
   ok(await cland(root, 'task', 'close', 'T-3'));
   fm = frontmatter(await readFile(join(tasksDir(root), 'T-3-child.md'), 'utf8'));
