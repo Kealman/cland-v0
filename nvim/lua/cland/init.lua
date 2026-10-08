@@ -98,9 +98,32 @@ local function wire_client(client)
   end)
   client:on('connected', M.refresh)
   client:on('message', function(event)
-    if event.topic and not state.topic(event.topic.id) then
-      refresh_topics()
+    if not event.topic then
+      return
     end
+    local t = state.topic(event.topic.id)
+    if not t then
+      return refresh_topics()
+    end
+    local m = event.message or {}
+    if m.fromKind == 'human' then
+      return
+    end
+    local v = state.S.ui.view
+    if v.kind == 'thread' and v.id == t.id then
+      -- the thread is in view: read as it arrives
+      require('cland.views').mark_read(t.id, m.id)
+    else
+      t.unread = (tonumber(t.unread) or 0) + 1
+      if m.ts then
+        t.lastMessageAt = m.ts
+      end
+      state.changed()
+    end
+  end)
+  -- a topic's status, warning, binding or unread count changed (#32)
+  client:on('topic', function(event)
+    state.upsert_topic(event.topic)
   end)
   -- the Coordinator's vacancy (#29): the top bar's chip follows the hub's events at once
   client:on('role.vacant', function()
@@ -133,7 +156,9 @@ M.HELP = {
   'Centre    ␣g General · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
   'Pick      ␣p topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
-  'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it',
+  'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
+  'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
+  '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode: keys go to the session, C-\\ C-n leaves',
   'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
@@ -204,6 +229,9 @@ local function keymaps()
     require('cland.launcher').open()
   end, 'launch a session')
   map('<leader><leader>', layout.back, 'previous centre view')
+  map('<leader>r', function()
+    require('cland.views').resolve_topic()
+  end, 'resolve the topic')
   map('<leader>?', M.help, 'keys')
   map('gi', function()
     motions.go('item')
@@ -236,6 +264,17 @@ local function commands()
       else
         layout.right_panel(a)
       end
+    elseif sub == 'topic' then
+      local views = require('cland.views')
+      if a == 'new' then
+        views.create_topic(table.concat(vim.list_slice(o.fargs, 3), ' '))
+      elseif a == 'close' then
+        views.close_topic(o.fargs[3])
+      elseif a == 'resolve' then
+        views.resolve_topic(o.fargs[3])
+      else
+        state.say(':Cland topic new <title> | close [id] | resolve [id]', 'ClandRedBar')
+      end
     elseif sub == 'refresh' then
       M.refresh()
     elseif sub == 'launch' then
@@ -243,14 +282,14 @@ local function commands()
     elseif sub == 'help' or not sub then
       M.help()
     else
-      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | refresh | help', 'ClandRedBar')
+      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | refresh | help', 'ClandRedBar')
     end
   end, {
     nargs = '*',
     complete = function(_, line)
       local words = vim.split(line, '%s+', { trimempty = true })
       if #words <= 1 or (#words == 2 and not line:match('%s$')) then
-        return { 'preset', 'view', 'panel', 'launch', 'refresh', 'help' }
+        return { 'preset', 'view', 'panel', 'launch', 'topic', 'refresh', 'help' }
       end
       local sub = words[2]
       if sub == 'preset' then
@@ -259,6 +298,8 @@ local function commands()
         return { 'thread', 'session', 'item', 'board', 'log', 'inbox' }
       elseif sub == 'panel' then
         return { 'items', 'inbox', 'sessions', 'topics', 'dock' }
+      elseif sub == 'topic' then
+        return { 'new', 'close', 'resolve' }
       end
       return {}
     end,

@@ -288,6 +288,8 @@ function M.apply_view(opts)
     centre_opts(w, 'thread')
     open_composer(w, tv)
     tv.thread:render()
+    -- the thread is in view: the human has read it
+    views.mark_read(v.id)
     target = opts.insert ~= false and M.win.composer or w
   else
     close('composer')

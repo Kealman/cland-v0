@@ -6,6 +6,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket } from 'ws';
 import { HubCore, type CoreOptions } from './core.ts';
 import { Dispatcher, secretMatches, type Control } from './dispatch.ts';
+import { trackerItems } from './topics.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { HEARTBEAT_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
@@ -56,7 +57,9 @@ const bearerMatches = (header: string | undefined, secret: string): boolean => {
 
 /** The hub with no listener yet: a stdio-only hub is this and nothing more. */
 export function createHubBase(options: HubBaseOptions): HubBase {
-  const core = new HubCore(options);
+  const core = new HubCore({ ...options, ...(options.tracker ? { items: trackerItems(options.tracker) } : {}) });
+  // closing a unit of work closes its topic (spec 4.5)
+  const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));
   const dispatcher = new Dispatcher({
     core,
     secret: options.secret,
@@ -74,6 +77,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     prune: () => core.prune(),
     close: async () => {
       clearInterval(pruneTimer);
+      unwatchItems?.();
       core.store.close();
     },
   };

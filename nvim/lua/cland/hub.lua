@@ -50,8 +50,8 @@ function M.new(opts)
   }, Client)
 end
 
---- Events: `state` (state, detail), `connected` (), and the pushed frames `message`, `delivery` and
---- `session.state` (the event frame).
+--- Events: `state` (state, detail), `connected` (), and the pushed frames `message`, `delivery`, `topic`,
+--- `session.state`, `session.role`, `role.vacant` and `role.filled` (the event frame).
 function Client:on(event, fn)
   self.handlers[event] = self.handlers[event] or {}
   table.insert(self.handlers[event], fn)
@@ -268,7 +268,7 @@ function Client:_frame(frame)
         cb(frame.error or 'failed')
       end
     end
-  elseif t == 'message' or t == 'delivery' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' then
+  elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' then
     self:_emit(t, frame)
   end
 end

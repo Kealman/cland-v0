@@ -17,15 +17,18 @@ const bin = 'bin' in nvim ? nvim.bin : '';
 /** The composer's lines, read from its buffer. */
 const composerLines = (c: { lua: <T>(code: string) => Promise<T> }) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(vim.fn.bufnr('cland://composer/general'), 0, -1, false)");
 
+/** The thread's one-line notice (` ▲ …` under the messages) is on screen; the header's `▲ no coordinator` is not one. */
+const notice = (s: string): boolean => /^ ▲ /m.test(centreOf(s));
+
 test('a message typed in the composer shows queued, reaches a coordinator with the topic, and turns delivered; the reply shows with sender and time', { skip }, async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'the empty General thread, connected');
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
 
   await c.input('hello<CR>');
   const queued = await c.waitScreen((s) => /^ you {2}\d\d:\d\d +⌁ queued $/m.test(centreOf(s)) && /^ hello +$/m.test(centreOf(s)), 'hello, queued');
-  assert.doesNotMatch(centreOf(queued), /▲/, 'no notice: the client is connected');
+  assert.equal(notice(queued), false, 'no notice: the client is connected');
   assert.deepEqual(await composerLines(c), ['› '], 'the composer is empty again');
 
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
@@ -51,7 +54,7 @@ test('Shift+Enter inserts a newline in the composer; Enter sends both lines as o
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'the empty General thread, connected');
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
   await c.input('first line<S-CR>second line');
   assert.deepEqual(await composerLines(c), ['› first line', 'second line']);
   assert.deepEqual(await c.lua('return vim.api.nvim_get_mode()'), { mode: 'i', blocking: false });
@@ -64,7 +67,7 @@ test('Shift+Enter inserts a newline in the composer; Enter sends both lines as o
 test('the client spawns `cland hub serve --stdio` as its child when asked, and speaks the same frames', { skip }, async (t) => {
   const root = await tempProject(t);
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio' });
-  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'General, connected over stdio', 20_000);
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected over stdio', 20_000);
   await c.input('over stdio<CR>');
   await c.waitScreen((s) => /⌁ queued/.test(centreOf(s)) && centreOf(s).includes('over stdio'), 'the message, queued');
   // the child is the project's hub: a session finds it through hub.json
@@ -121,7 +124,7 @@ test('with no hub running, the client starts the project hub and connects to it'
   const root = await tempProject(t);
   const c = await startClient(t, bin, root);
   try {
-    await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'General, connected', 20_000);
+    await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected', 20_000);
   } finally {
     const d = await readDiscovery(root).catch(() => null);
     if (d) t.after(() => killDaemon(d.pid));
@@ -137,7 +140,7 @@ test('a stale hub.json (its hub killed, its socket gone) makes the client start 
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, '.cland', 'gone.sock'), port: 1, secret: 'f'.repeat(64), pid: dead, version: '0.0.0' }));
   const c = await startClient(t, bin, root);
   try {
-    await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'General, connected to a hub it started', 30_000);
+    await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected to a hub it started', 30_000);
   } finally {
     const d = await readDiscovery(root).catch(() => null);
     if (d && d.pid !== dead) t.after(() => killDaemon(d.pid));
@@ -150,13 +153,13 @@ test('the client follows its hub through a restart and keeps the thread', { skip
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'General, connected');
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected');
   await c.input('before<CR>');
   await c.waitScreen((s) => /^ before *$/m.test(centreOf(s)), 'the first message');
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await c.waitScreen((s) => centreOf(s).includes('▲'), 'a notice that the hub is gone');
+  await c.waitScreen((s) => notice(s), 'a notice that the hub is gone');
   await startDaemon(t, root);
-  await c.waitScreen((s) => !centreOf(s).includes('▲'), 'the notice cleared on reconnect', 15_000);
+  await c.waitScreen((s) => !notice(s), 'the notice cleared on reconnect', 15_000);
   await c.input('after<CR>');
   const screen = await c.waitScreen((s) => /^ after *$/m.test(centreOf(s)), 'the second message');
   assert.equal(centreOf(screen).match(/^ before *$/gm)?.length, 1, 'the history merged without duplicates');

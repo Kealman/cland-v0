@@ -113,6 +113,24 @@ function answer(f: Frame) {
       if (scenario.send === 'refuse') return fail(f.id, 'the message is larger than 8192 bytes');
       if (scenario.send === 'hold') return void held.push(f);
       return acceptSend(f);
+    case 'topic.create': {
+      if (typeof f.title !== 'string' || !f.title.trim()) return fail(f.id, 'a topic needs a title');
+      const topic = { id: `topic-${(scenario.topics?.length ?? 0) + 1}`, title: f.title.trim(), status: 'open', standing: false, createdAt: now(), updatedAt: now(), item: null, unread: 0, lastMessageAt: null };
+      scenario.topics?.push(topic);
+      write({ type: 'topic', topic });
+      return ok(f.id, { topic });
+    }
+    case 'topic.close':
+    case 'topic.resolve':
+    case 'topic.read': {
+      const topic = scenario.topics?.find((t) => t.id === f.topic);
+      if (!topic) return fail(f.id, `no topic "${String(f.topic)}"`);
+      if (f.type === 'topic.close') topic.status = 'closed';
+      if (f.type === 'topic.resolve') topic.status = 'open';
+      if (f.type === 'topic.read') topic.unread = 0;
+      write({ type: 'topic', topic });
+      return ok(f.id, { topic });
+    }
     case 'session.list':
       return ok(f.id, { processes: scenario.processes ?? [], adapters: scenario.adapters ?? {} });
     case 'session.attach': {

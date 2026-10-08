@@ -71,6 +71,58 @@ function M.topic(id)
   end
 end
 
+--- A topic as a `topic` event or a `topic.*` result carries it: replaces the known one, or joins the list.
+function M.upsert_topic(topic)
+  if type(topic) ~= 'table' or not topic.id then
+    return
+  end
+  for i, t in ipairs(M.S.topics) do
+    if t.id == topic.id then
+      M.S.topics[i] = topic
+      M.changed()
+      return
+    end
+  end
+  table.insert(M.S.topics, topic)
+  M.changed()
+end
+
+--- The topic bound to an item, if any.
+function M.topic_of_item(id)
+  for _, t in ipairs(M.S.topics) do
+    if t.item == id then
+      return t
+    end
+  end
+end
+
+--- A topic's warning (`no coordinator`), or nil.
+function M.warning(t)
+  local w = t and t.warning
+  return type(w) == 'string' and w ~= '' and w or nil
+end
+
+--- The topics as the panel and the picker group them (spec 4.5, Watch.dc.html): those waiting for the human
+--- pinned on top (needs you), then the open ones (waiting for an agent included), then the closed ones; the
+--- hub's order (activity) within each group.
+function M.topic_groups()
+  local groups = { { name = 'needs you', topics = {} }, { name = 'open', topics = {} }, { name = 'closed', topics = {} } }
+  for _, t in ipairs(M.S.topics) do
+    local g = t.status == 'waiting for human' and 1 or (t.status == 'closed' and 3 or 2)
+    table.insert(groups[g].topics, t)
+  end
+  return groups
+end
+
+--- The human's unread messages over every topic.
+function M.unread_total()
+  local n = 0
+  for _, t in ipairs(M.S.topics) do
+    n = n + (tonumber(t.unread) or 0)
+  end
+  return n
+end
+
 --- Every session the shell knows: the launched ones (session.list), then connected spokes nobody launched.
 function M.sessions()
   local out, seen = {}, {}
@@ -188,9 +240,15 @@ function M.counts()
   return c
 end
 
---- The "needs you" count: the inbox is #33, so nothing counts yet.
+--- The "needs you" count: the topics waiting for the human (asks and approvals join with the inbox, #33).
 function M.needs_you()
-  return 0
+  local n = 0
+  for _, t in ipairs(M.S.topics) do
+    if t.status == 'waiting for human' then
+      n = n + 1
+    end
+  end
+  return n
 end
 
 function M.item(id)

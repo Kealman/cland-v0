@@ -3,6 +3,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import type { DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
+import { vacancyWarning } from './topics.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
@@ -70,11 +71,16 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'topic', type: 'text' },
   /** What kind of hub notice a message is (`role`: a role clause or revocation), null for every other message. */
   { table: 'messages', column: 'notice', type: 'text' },
+  /** The item a topic is bound to (spec 4.5), null when unbound. */
+  { table: 'topics', column: 'item', type: 'text' },
+  /** The rowid of the last message the human read in the topic (`topic.read`); 0: none. */
+  { table: 'topics', column: 'read_rowid', type: 'integer not null default 0' },
 ];
 
 /** Indexes over added columns: created after the migration, when the column surely exists. */
 const LATE_INDEXES = `
 create index if not exists messages_topic on messages (topic, created_at);
+create unique index if not exists topics_item on topics (item) where item is not null;
 `;
 
 type Row = Record<string, string | number | null>;
@@ -92,14 +98,31 @@ const toMessage = (row: Row): Message => ({
   ...(row.topic !== null && row.topic !== undefined ? { topic: row.topic as string } : {}),
 });
 
-const toTopic = (row: Row): Topic => ({
-  id: row.id as string,
-  title: row.title as string,
-  status: row.status as TopicStatus,
-  standing: row.standing === 1,
-  createdAt: row.created_at as string,
-  updatedAt: row.updated_at as string,
-});
+const toTopic = (row: Row): Topic => {
+  const warning = vacancyWarning(typeof row.vacant_roles === 'string' && row.vacant_roles ? row.vacant_roles.split(',') : []);
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    status: row.status as TopicStatus,
+    standing: row.standing === 1,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+    item: (row.item as string | null) ?? null,
+    unread: Number(row.unread ?? 0),
+    lastMessageAt: (row.last_message_at as string | null) ?? null,
+    ...(warning ? { warning } : {}),
+  };
+};
+
+/** A topic with what is derived from its messages: the human's unread count (messages from others past the
+ *  last read), the latest message's time, and the roles a message in it still waits for (`@role` deliveries). */
+const TOPIC_SELECT = `
+select t.*, t.rowid as rid,
+  (select count(*) from messages m where m.topic = t.id and m.rowid > coalesce(t.read_rowid, 0) and m.from_kind != 'human') as unread,
+  (select max(m.ts) from messages m where m.topic = t.id) as last_message_at,
+  (select group_concat(distinct substr(d.session, 2)) from deliveries d join messages m on m.id = d.message_id
+     where m.topic = t.id and d.session like '@%' and d.state = 'queued') as vacant_roles
+from topics t`;
 
 /** A message's stage from its deliveries' states: queued while any waits; dropped only when all were; injected
  *  once every delivery that was not dropped was injected. */
@@ -357,13 +380,66 @@ export class Store implements HygieneMemory {
   }
 
   topic(id: string): Topic | null {
-    const row = this.#db.prepare('select * from topics where id = ?').get(id) as Row | undefined;
+    const row = this.#db.prepare(`${TOPIC_SELECT} where t.id = ?`).get(id) as Row | undefined;
     return row ? toTopic(row) : null;
   }
 
-  /** Standing topics first (in creation order), then the rest by latest activity. */
+  /** Standing topics first (in creation order), then those waiting for the human, then the rest by latest
+   *  activity; a topic with no message yet comes last (spec 4.5: a task's topic appears with its first message). */
   topics(): Topic[] {
-    return (this.#db.prepare('select * from topics order by standing desc, case when standing = 1 then rowid end, updated_at desc, rowid').all() as Row[]).map(toTopic);
+    return (
+      this.#db
+        .prepare(
+          `select * from (${TOPIC_SELECT}) order by standing desc, case when standing = 1 then rid end,
+             case when status = 'waiting for human' then 0 when last_message_at is null then 2 else 1 end, updated_at desc, rid`,
+        )
+        .all() as Row[]
+    ).map(toTopic);
+  }
+
+  /** A new topic, open; `item` binds it (the unique index refuses a second topic for one item). */
+  createTopic(id: string, title: string, item: string | null, now: string): void {
+    this.#db.prepare("insert into topics (id, title, status, standing, created_at, updated_at, item) values (?, ?, 'open', 0, ?, ?, ?)").run(id, title, now, now, item);
+  }
+
+  /** The next free id of a created topic: `topic-<n>`, above every one the store has. */
+  nextTopicId(): string {
+    const row = this.#db.prepare("select max(cast(substr(id, 7) as integer)) as n from topics where id like 'topic-%'").get() as Row | undefined;
+    return `topic-${Number(row?.n ?? 0) + 1}`;
+  }
+
+  /** The topic bound to an item, or null. */
+  topicOfItem(item: string): Topic | null {
+    const row = this.#db.prepare(`${TOPIC_SELECT} where t.item = ?`).get(item) as Row | undefined;
+    return row ? toTopic(row) : null;
+  }
+
+  setTopicStatus(id: string, status: TopicStatus): void {
+    this.#db.prepare('update topics set status = ? where id = ?').run(status, id);
+  }
+
+  /** The human read the topic up to a message (its id), else up to its latest message. It never moves back. */
+  markTopicRead(id: string, upTo?: string): void {
+    const row = (
+      upTo !== undefined
+        ? this.#db.prepare('select rowid as r from messages where id = ? and topic = ?').get(upTo, id)
+        : this.#db.prepare('select max(rowid) as r from messages where topic = ?').get(id)
+    ) as Row | undefined;
+    if (upTo !== undefined && !row) throw new Error(`no message "${upTo}" in this topic`);
+    const r = Number(row?.r ?? 0);
+    this.#db.prepare('update topics set read_rowid = max(coalesce(read_rowid, 0), ?) where id = ?').run(r, id);
+  }
+
+  /** Who the topic's latest human message was delivered to (a role's placeholder once claimed is its holder). */
+  lastHumanAddressees(topic: string): string[] {
+    return (
+      this.#db
+        .prepare(
+          `select d.session from deliveries d where d.message_id = (
+             select id from messages where topic = ? and from_kind = 'human' order by created_at desc, rowid desc limit 1)`,
+        )
+        .all(topic) as Row[]
+    ).map((r) => r.session as string);
   }
 
   touchTopic(id: string, now: string): void {
