@@ -172,3 +172,68 @@ test('a session renamed while a message waits for its inject still gets it, and 
   assert.equal(history.messages.find((m) => m.id === first)?.stage, 'injected');
 });
 
+test('resume never adopts another session that reuses the pid: no identity match, no resume', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  ui.close();
+  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+
+  // the session dies while no hub runs, and its pid is taken by another session (the table is made to say so)
+  await killDaemon(launched.pid as number);
+  await new Promise<void>((resolve) =>
+    execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['--bg', '--name', 'other'], { cwd: root, env: { ...process.env, ...fake.env } }, () => resolve()),
+  );
+  const other = (await fake.sessions()).find((s) => s.name === 'other');
+  assert.ok(other && pidAlive(other.pid));
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  db.prepare('update harness_processes set pid = ? where name = ?').run(other.pid, 'coord');
+  db.close();
+
+  const second = await startDaemon(t, root, fake.env);
+  const ui2 = await connectUi(t, second.discovery);
+  const row = await eventually('coord not resumed', async () => {
+    const h = (await status(ui2)).harnesses.find((x) => x.name === 'coord');
+    return h?.status === 'exited' ? h : undefined;
+  });
+  assert.equal(row.state, 'unknown');
+  assert.doesNotMatch(await hubLog(root), /"event":"session-resumed","session":"coord"/);
+  assert.ok(pidAlive(other.pid), 'the other session is left alone');
+});
+
+test('a stop whose `claude stop` fails falls back to SIGTERM and stops the session', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { stopCrash: true, stopGraceMs: 1000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  const r = await ui.request({ type: 'session.stop', session: 'coord' }, 15_000);
+  assert.equal(r.ok, true, r.error);
+  assert.equal((r.value as { process: Harness }).process.status, 'stopped');
+  assert.ok(!pidAlive(launched.pid as number));
+  assert.match(await hubLog(root), /"event":"harness-stop-failed","session":"coord"/);
+  assert.doesNotMatch(await hubLog(root), /"event":"harness-exited"/, 'a stop is no crash');
+});
+
+test('a stop that cannot end the process fails and leaves it running and watched: its later death is caught', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { stopCrash: true, ignoreTerm: true, stopGraceMs: 500 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  const r = await ui.request({ type: 'session.stop', session: 'coord' }, 15_000);
+  assert.equal(r.ok, false);
+  assert.match(r.error ?? '', /still watched/);
+  assert.equal((await harness(ui, 'coord')).status, 'running');
+
+  process.kill(launched.pid as number, 'SIGKILL');
+  const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'coord' && f.state === 'unknown', 15_000);
+  assert.equal(event.source, 'process');
+  assert.equal((await harness(ui, 'coord')).status, 'exited');
+});

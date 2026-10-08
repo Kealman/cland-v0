@@ -99,6 +99,7 @@ async function main(args: string[]): Promise<number> {
     return 0;
   }
   if (first === 'stop' || first === 'kill') {
+    if (process.env.FAKE_CLAUDE_STOP_CRASH === '1') process.kill(process.pid, 'SIGKILL');
     const s = readJson<SessionFile>(join(SESSIONS, `${args[1]}.json`));
     if (s && alive(s.pid)) process.kill(s.pid, 'SIGTERM');
     process.stdout.write(`stopped ${args[1]}\n`);
@@ -314,12 +315,17 @@ async function runSession(id: string): Promise<number> {
     for (const client of tools.values()) await client.close().catch(() => {});
     process.exit(0);
   };
-  process.on('SIGTERM', () => void shutdown());
+  process.on('SIGTERM', () => {
+    if (env.FAKE_CLAUDE_IGNORE_TERM === '1') log('ignored SIGTERM');
+    else void shutdown();
+  });
 
   await runHooks('SessionStart', { source: job.resume ? 'resume' : 'startup', model: job.model ?? 'claude-fake-1' });
   await dispatch('session.start', { cwd: job.cwd, surface: 'terminal', isInteractive: true }, (e) => ({ cwd: e.cwd }));
   log('session ready');
 
+  // a session lives until it is stopped, with or without an MCP server holding the loop open
+  setInterval(() => {}, 1 << 30);
   const turnMs = Number(env.FAKE_CLAUDE_TURN_MS ?? 300);
   for (;;) {
     const next = queue.shift();

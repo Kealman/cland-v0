@@ -1,7 +1,8 @@
 // The adapters a project's hub runs with, built in one place so the daemon only plugs them in.
 // Timings come from the environment, for tests: CLAND_ADAPTER_POLL_MS (the polled fallback and the liveness
 // check), CLAND_INJECT_TIMEOUT_MS (how long an inject waits for its confirmation), CLAND_PUSH_TRUST_MS (how
-// long a hook's signal outranks a poll). CLAND_CLAUDE_BIN names the `claude` executable, CLAND_OPENCODE_BIN the
+// long a hook's signal outranks a poll), CLAND_STOP_GRACE_MS (how long a Claude Code stop waits for the pid to go,
+// per step). CLAND_CLAUDE_BIN names the `claude` executable, CLAND_OPENCODE_BIN the
 // `opencode` one.
 import { fileURLToPath } from 'node:url';
 import type { HubCore } from '../hub/core.ts';
@@ -29,11 +30,13 @@ export function projectSessions(options: { core: HubCore; root: string; db: stri
   const host = sessions.host({ discoveryFile: options.discoveryFile, node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY });
   const pollMs = positive(env.CLAND_ADAPTER_POLL_MS);
   const injectTimeoutMs = positive(env.CLAND_INJECT_TIMEOUT_MS);
+  const stopGraceMs = positive(env.CLAND_STOP_GRACE_MS);
   sessions.register(
     new ClaudeCodeAdapter(host, {
       ...(env.CLAND_CLAUDE_BIN ? { bin: env.CLAND_CLAUDE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
+      ...(stopGraceMs ? { stopGraceMs } : {}),
       env,
     }),
   );

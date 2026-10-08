@@ -13,9 +13,11 @@
 //   state    the hooks (`cland hook <event>`: SessionStart, UserPromptSubmit, Stop, StopFailure, PermissionRequest,
 //            PostToolUse, Notification, Elicitation) and the mod's `turn.start`/`turn.complete` (which also fires on
 //            an interrupt, where `Stop` does not) — pushed, reliable; `claude agents --json`, polled, as the fallback.
-//   stop     `claude stop <background id>`.
-//   resume   re-find the process by its pid and its session id in `claude agents --json`; or relaunch it with
-//            `claude --bg --resume <uuid>` and the same flags (they are not restored by the harness).
+//   stop     `claude stop <background id>`, then SIGTERM if the pid outlives it; the process stays watched until
+//            its pid is gone, and a stop that cannot confirm that fails (the row stays running, supervised).
+//   resume   re-find the process by its session id or background id in `claude agents --json` (a pid alone
+//            never: it may be reused by another process); or relaunch it with `claude --bg --resume <uuid>` and
+//            the same flags (they are not restored by the harness).
 //
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
 import { execFile } from 'node:child_process';
@@ -75,6 +77,8 @@ export type ClaudeCodeOptions = {
   injectTimeoutMs?: number;
   /** How long a launch waits for the session to show in `claude agents --json`, ms. */
   spawnDeadlineMs?: number;
+  /** How long a stop waits for the pid to go, after `claude stop` and again after SIGTERM, ms. */
+  stopGraceMs?: number;
   /** The environment the harness is started in (cland's own variables are removed). */
   env?: NodeJS.ProcessEnv;
 };
@@ -146,6 +150,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #pollMs: number;
   readonly #injectTimeoutMs: number;
   readonly #spawnDeadlineMs: number;
+  readonly #stopGraceMs: number;
   readonly #env: NodeJS.ProcessEnv;
   /** Watched processes by session id. */
   readonly #watched = new Map<string, HarnessProcess>();
@@ -154,6 +159,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #pending = new Map<string, Pending>();
   /** The last usage the mod reported, by session id. */
   readonly #usage = new Map<string, Record<string, unknown>>();
+  /** Sessions being stopped: still watched, but their exit is the stop's to report. */
+  readonly #stopping = new Set<string>();
   #timer: NodeJS.Timeout | null = null;
   #polling = false;
 
@@ -163,6 +170,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 20_000;
+    this.#stopGraceMs = options.stopGraceMs ?? 5000;
     const env: NodeJS.ProcessEnv = {};
     for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') || k === 'CLAND_CLAUDE_BIN') env[k] = v;
     this.#env = env;
@@ -190,11 +198,13 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
   }
 
+  /** The entry of this session: by its session id, else its background id. A pid is only a match for an entry
+   *  that names no session of its own — pids are reused, and a reused one belongs to another session. */
   #find(entries: AgentEntry[], p: Pick<HarnessProcess, 'sessionId' | 'harnessSessionId' | 'harnessId' | 'pid'>): AgentEntry | undefined {
     return (
       entries.find((e) => e.sessionId === (p.harnessSessionId ?? p.sessionId)) ??
       (p.harnessId ? entries.find((e) => e.id === p.harnessId) : undefined) ??
-      (p.pid !== null ? entries.find((e) => e.pid === p.pid) : undefined)
+      (p.pid !== null ? entries.find((e) => e.pid === p.pid && e.sessionId === undefined && e.id === undefined) : undefined)
     );
   }
 
@@ -357,6 +367,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     try {
       // a pid that is gone is a crash, whatever agent view says
       for (const p of [...this.#watched.values()]) {
+        if (this.#stopping.has(p.sessionId)) continue;
         if (p.pid !== null && !pidAlive(p.pid)) {
           this.#unwatch(p.sessionId);
           this.#host.exited(p.sessionId, `pid ${p.pid} is gone`);
@@ -367,6 +378,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const entries = await this.#agents();
       if (!entries) return;
       for (const p of [...this.#watched.values()]) {
+        if (this.#stopping.has(p.sessionId)) continue;
         const entry = this.#find(entries, p);
         if (!entry) continue;
         if (p.pid === null && entry.pid !== undefined) {
@@ -382,14 +394,40 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  async stop(p: HarnessProcess): Promise<void> {
-    this.#unwatch(p.sessionId);
-    if (p.harnessId) {
-      const r = await this.#run(['stop', p.harnessId], p.cwd);
-      if (r.code === 0) return;
-      this.#host.log({ event: 'harness-stop-failed', session: p.name, out: (r.stderr || r.stdout).trim().slice(0, 300) });
+  /** Whether the pid is gone within `ms`. */
+  async #gone(pid: number, ms: number): Promise<boolean> {
+    const deadline = Date.now() + ms;
+    while (pidAlive(pid)) {
+      if (Date.now() >= deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    if (p.pid !== null && pidAlive(p.pid)) process.kill(p.pid, 'SIGTERM');
+    return true;
+  }
+
+  async stop(p: HarnessProcess): Promise<void> {
+    // watched until the process is known to be gone: a stop that fails leaves it supervised
+    this.#stopping.add(p.sessionId);
+    try {
+      let stopped = false;
+      if (p.harnessId) {
+        try {
+          const r = await this.#run(['stop', p.harnessId], p.cwd);
+          stopped = r.code === 0;
+          if (!stopped) this.#host.log({ event: 'harness-stop-failed', session: p.name, out: (r.stderr || r.stdout).trim().slice(0, 300) });
+        } catch (err) {
+          this.#host.log({ event: 'harness-stop-failed', session: p.name, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+      if (p.pid === null) {
+        if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
+      } else if (!(stopped && (await this.#gone(p.pid, this.#stopGraceMs)))) {
+        if (pidAlive(p.pid)) process.kill(p.pid, 'SIGTERM');
+        if (!(await this.#gone(p.pid, this.#stopGraceMs))) throw new Error(`could not stop "${p.name}": pid ${p.pid} outlived \`claude stop\` and SIGTERM; it is still watched`);
+      }
+      this.#unwatch(p.sessionId);
+    } finally {
+      this.#stopping.delete(p.sessionId);
+    }
   }
 
   async resume(p: HarnessProcess, options: { relaunch?: boolean } = {}): Promise<ResumeResult> {
