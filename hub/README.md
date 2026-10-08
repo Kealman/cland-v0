@@ -166,7 +166,7 @@ An adapter launches one kind of harness, tells the hub what each session is doin
 | `attachCommand(process)` | The command, as a string, that attaches a terminal to the live session; the harness's own. |
 | `inject(process, message, topic)` | Hands the message to the session as a turn. Resolves when the harness confirmed the turn (stage `injected`). Rejects when there is no way in or no confirmation in time: the message then stays `delivered`, the hub logs `inject-unconfirmed` and retries at the session's next transition to `idle`, or when its in-session connection comes back. |
 | the state stream | Push signals from inside the session go to the hub as `session.signal` frames and the adapter's `interpret` turns them into states. The adapter's own poll and its liveness check report through its host. |
-| `stop(process)`, `resume(process, {relaunch})` | Stop through the harness. Re-find a process after a hub restart by its pid and the harness's own ids, or start it again on its own conversation (`relaunch`). |
+| `stop(process)`, `resume(process, {relaunch})` | Stop through the harness; a stop that cannot confirm the process gone fails and leaves it watched. Re-find a process after a hub restart by the harness's own ids (a pid alone never: it may have been reused), or start it again on its own conversation (`relaunch`). |
 
 The capability table declares the optional capabilities (`history`, `usage`, `setModel`, `approvalRelay`) and each state signal as `reliable`, `heuristic` or `none`. What is `none` is never emulated. `session.list` returns every adapter's table.
 
@@ -174,7 +174,9 @@ The capability table declares the optional capabilities (`history`, `usage`, `se
 
 `idle`, `busy`, `waiting for human`, `waiting for approval`, `unknown` (spec 4.2). Only adapters set it; the model's `status` tool sets the status line and never the state. Presence (`who`, `hub.status`) carries it, and subscribed clients get `session.state`. A session no adapter launched is `unknown`, and so is a launched one whose process died or was stopped.
 
-- A push signal (a hook, the mod) carries the time it happened; one older than the last push applied is dropped, so out-of-order hooks never move a session back.
+- A push signal (a hook, the mod) carries the time it happened; one older than the last push applied is dropped, so out-of-order hooks never move a session back. For a hook that time is when its `cland hook` process started (the harness fires the event by starting it; the process may take hundreds of milliseconds more to run), for the mod the event's own time. The hub's receipt order is not used: two hook processes started in one order often arrive in the other.
+- A signal or a bridge names its launch (`--launch`, the cland session id the launch gave the hooks and the mod). One from an earlier launch under the same name is ignored (`signal-other-launch` in the log) or refused: it never changes the row of the process that replaced it. A signal never revives a row that is not `running`; only resume does.
+- A retry asked for while an inject of the same message is still waiting for its confirmation (an `idle`, a bridge that connected) is made when that inject gives up, if the message still waits. A rename takes the session's `delivered` messages along, so their retry and confirmation find them. At a launch, the bridges that connected early are registered before the early signals are replayed.
 - A polled signal counts only while no push came for `CLAND_PUSH_TRUST_MS` (15 s), or while nothing is known yet.
 
 ### The process table
@@ -188,8 +190,8 @@ The capability table declares the optional capabilities (`history`, `usage`, `se
 | spawn | `claude --bg --session-id <uuid> --name <name> [--model m] --mcp-config <json> --settings <json> --plugin-dir hub/mod/cland`, in the session's cwd. The MCP config starts `bin/cland-spoke.ts` with `CLAND_HUB_FILE`, `CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_ROLE`, `CLAND_DELIVERY=adapter`. The settings add the hooks below (all `async`) and an `env` the mod reads (`CLAND_SESSION_NAME`, `CLAND_HUB_FILE`, `CLAND_NODE`, `CLAND_CLI`). No secret goes on a command line: everything finds the hub through `hub.json`. `--bg` takes `--session-id` but picks its own id (its prefix is the background id); the hub records it as `harnessSessionId`. The workspace must be trusted once (`claude` in it, accept the prompt), or `--bg` refuses. |
 | attach | `claude attach <background id>`; several clients can attach at once. |
 | inject | The cland mod keeps `cland hook bridge` running, which receives `inject` frames for its session. It submits each one with `$.prompt.submit`, framed as the plugin's (a turn of its own once the session is idle), and confirms it with `cland hook injected`. A turn whose prompt carries a message's envelope confirms it too. The message reads as `<channel source="cland" from=… msg_id=… topic=…>text</channel>` plus one line naming the `send` tool as the way back. The session's inbox socket is not used, because its message format is undocumented. |
-| state | Hooks, run as `cland hook <event> --session <name> --hub-file <path>`: SessionStart → `idle` (and the model), UserPromptSubmit → `busy`, Stop and StopFailure → `idle`, PermissionRequest → `waiting for approval` (`waiting for human` for AskUserQuestion), PostToolUse → `busy`, Elicitation → `waiting for human`, Notification `idle_prompt` → `idle`. The mod adds `turn.start` → `busy` and `turn.complete` → `idle`, which also fires on an interrupt where Stop does not, with the turn's usage. The fallback is `claude agents --json`, polled every `CLAND_ADAPTER_POLL_MS` (5 s), which also catches a dead pid. |
-| stop, resume | `claude stop <id>`. Resume reads `claude agents --json`; a relaunch is `claude --bg --resume <its session id>` with the same flags (the harness does not restore them). |
+| state | Hooks, run as `cland hook <event> --session <name> --launch <cland session id> --hub-file <path>`: SessionStart → `idle` (and the model), UserPromptSubmit → `busy`, Stop and StopFailure → `idle`, PermissionRequest → `waiting for approval` (`waiting for human` for AskUserQuestion), PostToolUse → `busy`, Elicitation → `waiting for human`, Notification `idle_prompt` → `idle`. The mod adds `turn.start` → `busy` and `turn.complete` → `idle`, which also fires on an interrupt where Stop does not, with the turn's usage. The fallback is `claude agents --json`, polled every `CLAND_ADAPTER_POLL_MS` (5 s), which also catches a dead pid. |
+| stop, resume | `claude stop <id>`, then SIGTERM when the pid outlives it by `CLAND_STOP_GRACE_MS` (5 s); the process stays watched until its pid is gone, and a stop that cannot see it go fails with the row still `running`. Resume reads `claude agents --json` and matches the session id or the background id; an entry that only shares the pid is another session, so the row turns `exited`. A relaunch is `claude --bg --resume <its session id>` with the same flags (the harness does not restore them). |
 
 | Capability | |
 | --- | --- |
@@ -235,8 +237,8 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 | `{"type":"session.attach","id":…,"session":…}` | `{"command":"claude attach 1a2b3c4d"}` | UI, CLI |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true}` | `{"found","reason"?,"process"}` | UI, CLI |
-| `{"type":"session.signal","id":…,"session":…,"event":…,"at":…,"payload":{…}}` | `{"applied","state"?}` | `cland hook` |
-| `{"type":"session.bridge","id":…,"session":…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
+| `{"type":"session.signal","id":…,"session":…,"launch"?:…,"event":…,"at":…,"payload":{…}}` | `{"applied","state"?}` | `cland hook` |
+| `{"type":"session.bridge","id":…,"session":…,"launch"?:…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
 
 `HarnessProcess` is `{"name","harness","role","model","cwd","pid","harnessId","sessionId","harnessSessionId","startedAt","status","state","attach","usage"?}`; `hub.status` lists them as `harnesses`.
 
@@ -244,7 +246,7 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 | --- | --- |
 | `cland session launch <name> [--role r] [--model m] [--harness claude-code\|opencode] [--cwd dir]` | Launches a session through the hub. |
 | `cland session list` / `attach <name>` / `stop <name>` / `resume <name> [--relaunch]` | As the frames above. |
-| `cland hook <event> --session <name> --hub-file <path>` | Posts one signal, with the harness's JSON payload from stdin. Only the fields the hub reads are kept, and a prompt is reduced to the message ids it carries. Always exits 0: a hook never fails the harness. |
+| `cland hook <event> --session <name> [--launch <id>] --hub-file <path>` | Posts one signal, stamped with the process's start time (or the payload's `at`), with the harness's JSON payload from stdin. Only the fields the hub reads are kept, and a prompt is reduced to the message ids it carries. Always exits 0: a hook never fails the harness. |
 | `cland hook bridge --session <name> --hub-file <path>` | The mod's connection to the hub. It prints each `inject` frame as a JSON line, reconnects through `hub.json` after a hub restart, and ends with its parent. |
 
 `CLAND_CLAUDE_BIN` names the `claude` executable, `CLAND_INJECT_TIMEOUT_MS` (60 s) how long an inject waits for its confirmation.
