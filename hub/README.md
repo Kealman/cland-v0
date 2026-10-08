@@ -13,7 +13,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, topics, messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
-| `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
+| `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are the built-in defaults unless `.cland/config.toml` sets them (read at hub start). |
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive, each session's role (assignment, the clause's delivery, Coordinator exclusivity and vacancy). Transport-free. |
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`, `topic.*`, `subscribe`), the `task.*` requests from either, the `session.*` requests (`src/adapters/requests.ts`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
 | `src/hub/server.ts` | The hub without listeners (`createHubBase`: core, dispatcher, prune) and the WebSocket edge (bearer secret check, frame size limit, heartbeat sweep). `createHub` is both, with no human side at all. |
@@ -40,6 +40,8 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
 | `src/cli/session.ts` | `cland session launch`, `list`, `attach`, `stop`, `resume`. |
 | `src/cli/role.ts` | `cland role set`, `clear`, `list`. |
+| `src/cli/init.ts` | `cland init [dir]`, `cland update [dir]`. |
+| `src/init/provision.ts` | What `cland init` and `cland update` provision, step by step (below); `src/init/` holds one module per managed part: `config.ts` (`config.toml`, also read by the hub), `skills.ts`, `instructions.ts` (`AGENTS.md`, `CLAUDE.md`, `docs/agents/*`), `claude-settings.ts` (the hooks), `files.ts` (write-only-when-changed and the report). |
 | `src/roles/config.ts` | `.cland/roles.toml`: parsed (smol-toml), written with the defaults when missing, watched and read again when it changed. |
 | `src/roles/default-roles.ts` | The default `roles.toml`: the four roles' clauses, skills, launch defaults, permissions. |
 | `src/roles/clause.ts` | The text a holder reads when its clause (or its revocation) is delivered. |
@@ -49,9 +51,9 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
 | `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `who`, `status`, `rename`, `history`, `session.launch` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
-| `bin/cland.ts` | The `cland` CLI: `open`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
+| `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
-| `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. |
+| `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. Like the real one it also runs the project's `.claude/settings.json` hooks and reads `CLAUDE.md` with its `@` imports, else `AGENTS.md`; what a session loaded goes to `jobs/<id>.context.json`. |
 | `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
 
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_HEARTBEAT_MS` and `CLAND_HUB_REQUEST_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_PAUSE_MS`, read by `cland hub serve`, holds every tracker write still between its temporary file and the rename, so a test can land a hand edit in that window; nothing else sets it.
@@ -152,6 +154,30 @@ Events, after `subscribe`:
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 - **Adapters.** Permissions on `session.launch` (#30): anyone may launch for now.
 
+## cland init and cland update
+
+`cland init [dir]` prepares a project (`dir`, else the project around the current directory); `cland update [dir]` rewrites what cland manages there to the running version and refuses a folder without `.cland/`. Both need no hub, are idempotent and print one line per path they touched (`--json`: `{root, version, changes: [{path, action, note?}]}`, actions `created`, `updated`, `unchanged`, `kept`, `removed`). A file is written only when its bytes change, so a second `cland init` changes nothing, mtimes included.
+
+Every managed file or block carries `managed by cland <version>`. A file or hook without that mark is the project's own and is never written; it is reported as `kept`. The managed set:
+
+| Path | Committed | How it is managed |
+| --- | --- | --- |
+| `.cland/.gitignore` | yes | The hub's own rule: rewritten while its first line carries the mark. |
+| `.cland/config.toml` | yes | Written with the defaults; `update` rewrites it to the current template and keeps the values it finds. |
+| `.cland/roles.toml` | yes | Written with the defaults when missing, then the human's: never rewritten (`roles.toml` above). |
+| `.cland/tasks/.gitkeep` | yes | A mark line. |
+| `.cland/hub.db` | no | The General and Agents topics, created through the store as the hub would at its first start. |
+| `.agents/skills/<name>/` | yes | The skills cland ships: every skill of cland's own `.agents/skills/` (the vendored set with cland's patches, `skills/README.md`), read relative to the cland package. `.agents/skills/.cland-manifest.json` (with the mark) lists each skill's files: `update` rewrites those, removes what a newer cland no longer ships, and leaves other files in the folder alone. A skill folder of the same name that the manifest does not list is the project's: cland's is not installed. |
+| `.claude/skills` | yes | A relative symlink to `../.agents/skills`. When the project already has a `.claude/skills/` folder it is kept, and gets one symlink per cland skill (`../../.agents/skills/<name>`) beside the project's own. |
+| `docs/agents/issue-tracker.md`, `domain.md`, `triage-labels.md` | yes | `skills/templates/docs/agents/*` with a first line `<!-- managed by cland <version>: … -->`. An existing file without it is kept and reported. |
+| `AGENTS.md` | yes | A block between `<!-- cland:begin managed by cland <version> … -->` and `<!-- cland:end -->` (`skills/templates/AGENTS.block.md`): obey hub events, tasks through `cland task`, artifacts through the hub, sub-agents never use the hub, pushes to GitHub only on the Coordinator's decision. Rewritten in place; appended to a file without it; the whole file when there is none. Text outside the block is never touched. |
+| `CLAUDE.md` | yes | Never created (its presence stops Claude Code from reading `AGENTS.md`). An existing one gets `@AGENTS.md` under a mark comment, unless it imports `AGENTS.md` already. |
+| `.claude/settings.json` | yes | The cland hooks merged in: one entry per event of the Claude Code adapter (`SessionStart`, `UserPromptSubmit`, `Stop`, `StopFailure`, `PermissionRequest`, `PostToolUse`, `Notification`, `Elicitation`, `SessionEnd`), `async`, after the project's own. Their command is `[ -n "$CLAND_SESSION_NAME" ] \|\| ! command -v cland >/dev/null 2>&1 \|\| cland hook <event> # managed by cland <version>`: `cland` from the PATH, no machine path, the mark as a shell comment by which `update` finds and replaces them. Every other hook and setting is kept, in its order; a file whose content does not change keeps its formatting byte for byte. A file that is not valid JSON is kept and reported. |
+
+The project hooks are for a Claude Code session started by hand, and do nothing where `cland` is not on the PATH. A session the hub launches already gets the same hooks, naming its session and hub file, through `--settings`, plus the cland mod (`--plugin-dir`) and the spoke (`--mcp-config`); there `CLAND_SESSION_NAME` is set and the project hooks stand aside. The mod is therefore not provisioned into the project: it needs the session's identity, which only a launch has, and its path would be a machine path. Committed files never hold a machine path or the secret.
+
+Not provisioned yet: the territory (remotes, the bare repository, `dev`) is slice 2's; `cland doctor` is a ticket of its own.
+
 ## The project's hub
 
 Run from a project's root, or anywhere inside it. The project root is the nearest ancestor holding `.git` or `.cland/`, else the current directory.
@@ -172,10 +198,11 @@ The project's `.cland/`:
 
 | Path | Committed | What it is |
 | --- | --- | --- |
-| `.gitignore` | yes | Managed by cland (first line `# managed by cland`); ignores every volatile file below. Remove the mark to take the file over. |
+| `.gitignore` | yes | Managed by cland (first line `# managed by cland <version>`); ignores every volatile file below. Remove the mark to take the file over. |
 | `tasks/` | yes | The tracker's item files, one per item (below). Written by the hub, editable by hand, never committed by cland. |
-| `roles.toml` | yes | The role definitions (below). Written with the defaults (first line `# managed by cland`) when missing, never rewritten: the human's from then on. |
-| `config.toml` | yes | Not written by the hub yet. |
+| `roles.toml` | yes | The role definitions (below). Written with the defaults (first line `# managed by cland <version>`) when missing, never rewritten: the human's from then on. |
+| `config.toml` | yes | Written by `cland init`: `[project] name` and the `[hygiene]` thresholds (`rate_limit_max`, `rate_limit_window_minutes`, `loop_breaker_max`, `loop_breaker_window_minutes`, `loop_breaker_mute_minutes`, `max_text_bytes`). The hub reads it at start (`config-loaded` in its log); missing or unreadable, the built-in defaults apply. |
+| `tasks/.gitkeep` | yes | Written by `cland init`, so `tasks/` is committed before the first item. |
 | `hub.db` (+ `-wal`, `-shm`) | no | The SQLite store: sessions, messages, deliveries, hygiene counters and mutes; the tracker's index and claims. |
 | `secret` | no | 32 random bytes as hex, mode 0600. Kept across restarts, so spokes holding it reconnect. |
 | `hub.lock` | no | The hub lock, mode 0600: `{"pid":…,"started":"<ps lstart>"}` of the one hub serving the project, from before it prepares anything until it has shut down. |
