@@ -86,7 +86,7 @@ const TOOLS = [
   },
   {
     name: 'rename',
-    description: 'Take another name. Lowercase letters, digits, hyphens, 1–24 chars; reserved: all, hub and the role names; a name another live session holds is refused.',
+    description: 'Take another name (the Coordinator only: names never change for other roles). Lowercase letters, digits, hyphens, 1–24 chars; reserved: all, hub and the role names; a name another live session holds is refused.',
     inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
   },
   {
