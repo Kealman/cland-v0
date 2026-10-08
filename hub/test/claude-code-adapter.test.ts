@@ -219,9 +219,9 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const unknownHarness = await ui.request({ type: 'session.launch', name: 'x', harness: 'codex' });
+  const unknownHarness = await ui.request({ type: 'session.launch', name: 'x', harness: 'nope' });
   assert.equal(unknownHarness.ok, false);
-  assert.match(unknownHarness.error ?? '', /no adapter for harness "codex"/);
+  assert.match(unknownHarness.error ?? '', /no adapter for harness "nope"/);
   const badRole = await ui.request({ type: 'session.launch', name: 'x', role: 'boss' });
   assert.match(badRole.error ?? '', /unknown role "boss"/);
   const attach = await ui.request({ type: 'session.attach', session: 'nobody' });
