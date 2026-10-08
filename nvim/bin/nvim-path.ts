@@ -68,6 +68,17 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 /** How long a resolver waits for another's download before it gives up. */
 const WAIT_MS = 10 * 60_000;
 
+/** A lock naming no positive pid is stale once it is this old. */
+const NO_PID_GRACE_MS = 5000;
+
+/** The pid a lock's text names: a positive integer, else null (empty, cut off, junk). */
+const holderOf = (text: string): number | null => {
+  const t = text.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const pid = Number(t);
+  return Number.isSafeInteger(pid) && pid > 0 ? pid : null;
+};
+
 /**
  * Hold the download lock in `dir` while `fn` runs. Another holder: wait until `done()` (its download landed), or until
  * its lock is gone or stale (its pid dead), then try again. Returns null when `done()` turned true while waiting.
@@ -96,13 +107,14 @@ async function underLock<T>(dir: string, done: () => boolean, log: (s: string) =
       }
     }
     if (done()) return null;
-    let holder = NaN;
+    let holder: number | null;
     try {
-      holder = Number(readFileSync(lock, 'utf8').trim());
+      holder = holderOf(readFileSync(lock, 'utf8'));
     } catch {
       continue; // released between the two calls: try again at once
     }
-    // a holder that died mid-download (or a lock not yet written for a moment) leaves the lock: past a grace, it is broken
+    // a holder that died mid-download leaves the lock; one without a pid (empty, cut off, junk: its writer died
+    // before the pid was out) is stale past a grace
     const age = (() => {
       try {
         return Date.now() - statSync(lock).mtimeMs;
@@ -110,12 +122,12 @@ async function underLock<T>(dir: string, done: () => boolean, log: (s: string) =
         return 0;
       }
     })();
-    if ((Number.isInteger(holder) && holder > 0 && !pidAlive(holder)) || (!Number.isInteger(holder) && age > 5000)) {
+    if ((holder !== null && !pidAlive(holder)) || (holder === null && age > NO_PID_GRACE_MS)) {
       rmSync(lock, { force: true });
       continue;
     }
     if (!said) {
-      log(`waiting for pid ${Number.isInteger(holder) ? holder : '?'}, which holds the download`);
+      log(`waiting for pid ${holder ?? '?'}, which holds the download`);
       said = true;
     }
     if (Date.now() > deadline) throw new Error(`gave up waiting for ${lock} (pid ${holder}) after ${WAIT_MS / 60_000} min`);
