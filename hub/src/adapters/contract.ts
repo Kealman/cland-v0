@@ -39,6 +39,9 @@ export type HarnessProcess = {
   harnessSessionId: string | null;
   startedAt: string;
   status: 'running' | 'exited' | 'stopped';
+  /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
+   *  still this process before any signal (`processes.ts` `signalProcess`). Null when unknown. */
+  pidStarted?: string | null;
 };
 
 export type SpawnRequest = {
@@ -75,6 +78,9 @@ export type AdapterHost = {
   signal: (sessionId: string, signal: StateSignal) => void;
   /** The adapter learnt the session's pid after the launch (its supervisor started it late). */
   recordPid: (sessionId: string, pid: number) => void;
+  /** The adapter's own connection to the session came back (a reconnect): what waits for an inject is retried now,
+   *  whether or not the state changed (an idle session reconnected to is still idle). */
+  reconnected?: (sessionId: string) => void;
   /** The process is gone without cland stopping it: the hub sets `unknown` and journals it. */
   exited: (sessionId: string, detail: string) => void;
 };
@@ -99,7 +105,8 @@ export interface HarnessAdapter {
   /**
    * Hand a message to the session as a turn. Resolves when the harness confirmed it (stage `injected`);
    * rejects when it could not be handed over or was not confirmed in time — the message then stays
-   * `delivered` and the hub retries it at the next `idle`.
+   * `delivered` and the hub retries it at the next `idle`. Rejects with `InjectUncertain` when the request reached
+   * the harness and its answer never came: the delivery is `uncertain`, never retried on its own.
    */
   inject(process: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void>;
   /** A confirmation the harness sent through the hub (the mod's `injected`): settles a pending inject. */
@@ -111,6 +118,8 @@ export interface HarnessAdapter {
   /** The latest usage the harness reported (only where `capabilities.usage` is not `none`). */
   usage?(process: HarnessProcess): Record<string, unknown> | null;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
+  /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
+  renamed?(process: HarnessProcess, from: string): void;
   /** Start watching a process (after spawn or resume): the polled fallback and the liveness check. */
   watch(process: HarnessProcess): void;
   /** Stop through the harness; the process table then says `stopped`. */
@@ -123,6 +132,18 @@ export interface HarnessAdapter {
   resume(process: HarnessProcess, options?: { relaunch?: boolean }): Promise<ResumeResult>;
   /** The hub stops: timers end; the harness processes keep running (they outlive the hub). */
   close(): void;
+}
+
+/**
+ * An inject whose outcome is unknown: the request reached the harness and no answer came (a deadline, a lost
+ * connection), so the turn may or may not have started. The hub marks the delivery `uncertain` and never replays it
+ * on its own: only the human's `session.retry`, or an adapter that proves the turn did not start, sends it again.
+ */
+export class InjectUncertain extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InjectUncertain';
+  }
 }
 
 /** The message as the harness reads it: the same envelope the spoke's channel event used, so the spoke's

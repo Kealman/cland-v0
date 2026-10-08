@@ -18,6 +18,15 @@ export class RpcError extends Error {
   }
 }
 
+/** A request that went out and got no answer: by its deadline, or before the connection closed. The server may have
+ *  acted on it. Never a request that could not be sent. */
+export class RpcNoAnswer extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RpcNoAnswer';
+  }
+}
+
 /** A request the server sent to its clients (an approval, a question): the adapter never answers one. */
 export type ServerRequest = { id: string | number; method: string; params: Record<string, unknown> };
 
@@ -53,7 +62,7 @@ export class AppServerClient extends EventEmitter {
     socket.on('error', (err) => this.#fail(err));
     socket.on('close', () => {
       this.#closed = true;
-      this.#fail(new Error('the app-server connection closed; a pending request may have been accepted'));
+      this.#fail(new RpcNoAnswer('the app-server connection closed; a pending request may have been accepted'));
       this.emit('close');
     });
   }
@@ -100,7 +109,7 @@ export class AppServerClient extends EventEmitter {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.#pending.delete(id);
-        reject(new Error(`the app-server did not answer ${method} within ${timeoutMs} ms; it may have accepted it`));
+        reject(new RpcNoAnswer(`the app-server did not answer ${method} within ${timeoutMs} ms; it may have accepted it`));
       }, timeoutMs);
       this.#pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
       this.#socket.send(JSON.stringify({ id, method, params }), (err) => {
@@ -111,7 +120,7 @@ export class AppServerClient extends EventEmitter {
 
   close(): void {
     this.#closed = true;
-    this.#fail(new Error('the app-server client closed; a pending request may have been accepted'));
+    this.#fail(new RpcNoAnswer('the app-server client closed; a pending request may have been accepted'));
     if (this.#socket.readyState === WebSocket.CONNECTING) this.#socket.terminate();
     else this.#socket.close();
   }

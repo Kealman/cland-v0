@@ -68,7 +68,7 @@ model = ""
 effort = ""
 
 [implementer.permissions]
-tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "who", "history", "status", "task.view", "task.list"]
 
 [reviewer]
 skills = ["code-review"]
@@ -88,7 +88,7 @@ model = "gpt-6.1-sol"
 effort = "high"
 
 [reviewer.permissions]
-tools = ["send:agents", "task.comment:verdict", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]
 
 [qa]
 skills = ["diagnosing-bugs"]
@@ -108,5 +108,5 @@ model = "gpt-6-astra"
 effort = "high"
 
 [qa.permissions]
-tools = ["send:agents", "task.comment:verdict", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]
 `;

@@ -53,10 +53,11 @@ const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log')
 
 test('a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod', async (t) => {
   const root = await tempProject(t);
-  // the polled fallback slowed down: every state asserted here must come from a push (a hook, the mod)
+  // the polled fallback out of the way (a loaded machine runs a hook's process late, and a poll would beat it): every
+  // state asserted here must come from a push (a hook, the mod)
   // and `--bg` returns after the session's SessionStart hook already posted (seen with the real harness)
   // a turn long enough that its busy is still news when a hook's process (a node start) reports it
-  const fake = await fakeClaude(t, { pollMs: 10_000, lateBg: true, turnMs: 1000 });
+  const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, turnMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -148,7 +149,9 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
 
 test('a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { lateBg: true });
+  // a confirmation comes from a hook's or the mod's process, which a loaded machine starts seconds late: the deadline is
+  // wide, so an unconfirmed inject below means the new process's confirmation was not taken, not that it was slow
+  const fake = await fakeClaude(t, { lateBg: true, injectTimeoutMs: 30_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -169,10 +172,13 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const again = await launch(ui, 'impl-1', { role: 'implementer' });
   assert.notEqual(again.sessionId, launched.sessionId);
   await presentAs(ui, 'impl-1', 'idle');
+  // the new process's mod has its bridge (a process of its own, which a loaded machine starts late)
+  await eventually('the new bridge', async () => ((await hubLog(root)).split('"event":"bridge-connected","session":"impl-1"').length > 2 ? true : undefined));
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'are you back?', to: ['impl-1'] });
   const id = (sent.value as { message: { id: string } }).message.id;
-  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
-  assert.ok(!(await hubLog(root)).includes(`"inject-unconfirmed","session":"impl-1","id":"${id}"`), 'injected at once, through the new process');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 45_000);
+  const log = await hubLog(root);
+  assert.ok(!log.includes(`"inject-unconfirmed","session":"impl-1","id":"${id}"`), `injected at once, through the new process:\n${log.split('\n').filter((l) => /impl-1|bridge|inject/.test(l)).slice(-40).join('\n')}`);
 });
 
 test('an inject the harness never confirmed stays delivered, is logged, and is retried at the next idle', async (t) => {

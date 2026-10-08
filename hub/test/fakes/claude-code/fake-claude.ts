@@ -24,8 +24,8 @@
 // ones), and reads its instructions: `CLAUDE.md` with its `@<path>` imports, or `AGENTS.md` when there is no
 // `CLAUDE.md` (spec 4.9). What it loaded is written to jobs/<id>.context.json: the instruction files and their text,
 // and the hook commands per event.
-// FAKE_CLAUDE_LATE_BG=1 makes `--bg` return only after the session's SessionStart hook ran; =bridged, only after
-// the mod's bridge was also answered by the hub.
+// FAKE_CLAUDE_LATE_BG=1 makes `--bg` return only after the session's SessionStart hook ran to its end (an `async`
+// hook's process too: it has posted to the hub); =bridged, only after the mod's bridge was also answered by the hub.
 // FAKE_CLAUDE_STOP_CRASH=1 makes `claude stop` die by a signal without stopping anything.
 // FAKE_CLAUDE_IGNORE_TERM=1 makes the session ignore SIGTERM (only SIGKILL ends it).
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
@@ -154,7 +154,7 @@ async function startBackground(args: string[]): Promise<number> {
   // FAKE_CLAUDE_LATE_BG=1: return only once the session ran its SessionStart hook, as the real one can
   const late = process.env.FAKE_CLAUDE_LATE_BG;
   if (late === '1' || late === 'bridged') {
-    const marker = late === 'bridged' ? 'mod bridge bridged' : 'session ready';
+    const marker = late === 'bridged' ? 'mod bridge bridged' : 'hooks SessionStart done';
     while (Date.now() < deadline && !readFileSync(join(JOBS, `${id}.log`), { encoding: 'utf8', flag: 'a+' }).includes(marker)) await new Promise((r) => setTimeout(r, 20));
     await new Promise((r) => setTimeout(r, 300));
   }
@@ -199,6 +199,7 @@ async function runSession(id: string): Promise<number> {
 
   // the settings hooks: a shell command, the payload on stdin; `async` ones run in the background
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
+    const background: Array<Promise<void>> = [];
     for (const entry of hooksOf(event)) {
       for (const h of entry.hooks) {
         if (h.type !== 'command') continue;
@@ -214,8 +215,11 @@ async function runSession(id: string): Promise<number> {
           child.stdin.end(JSON.stringify({ session_id: job.sessionId, hook_event_name: event, cwd: job.cwd, ...payload }));
         });
         if (!h.async) await run;
+        else background.push(run);
       }
     }
+    // when the event's background hooks have all exited (each `cland hook` waits for the hub's answer)
+    void Promise.all(background).then(() => log(`hooks ${event} done`));
   };
 
   // the MCP servers: the real spoke, connected to the real hub

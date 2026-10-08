@@ -93,6 +93,8 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       tracker,
       roles,
       idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),
+      // tests only: how long a queued message and a remembered name last (the default is a day)
+      ...(Number(process.env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(process.env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
         // without listeners: port 0 and no socket
         status: () => ({

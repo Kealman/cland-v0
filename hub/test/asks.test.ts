@@ -337,17 +337,18 @@ test('a launched session that renamed itself is one approval, with its attach co
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
-  const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
+  const launched = await ui.request({ type: 'session.launch', name: 'coord-1', role: 'coordinator', harness: 'claude-code' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
-  const attach = (launched.value as { process: { attach: string } }).process.attach;
+  const { attach, sessionId } = (launched.value as { process: { attach: string; sessionId: string } }).process;
   const present = (name: string) => eventually(`${name} idle`, async () => ((await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' })).sessions.find((s) => s.name === name && s.state === 'idle') ? true : undefined));
-  await present('impl-1');
-  // the session renames itself in a turn (the fake does what the text says)
-  await ok(ui, { type: 'topic.send', topic: 'general', text: 'rename to pool-1', to: ['impl-1'] });
-  await present('pool-1');
+  await present('coord-1');
+  // the session renames itself in a turn (the fake does what the text says; only the Coordinator may rename)
+  await ok(ui, { type: 'topic.send', topic: 'general', text: 'rename to lead-1', to: ['coord-1'] });
+  await present('lead-1');
 
   const mark = ui.frames.length;
-  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
+  // the hook still names the launch name, and carries the launch's session id, as a real hook does after a rename
+  await ok(ui, { type: 'session.signal', session: 'coord-1', launch: sessionId, event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
   const listed = await inboxEvent(ui, (i) => i.approvals.length > 0, mark);
   assert.equal(listed.approvals.length, 1, JSON.stringify(listed.approvals));
   assert.equal(listed.approvals[0]?.attach, attach);

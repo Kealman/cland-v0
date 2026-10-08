@@ -25,8 +25,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Message, SessionState, TopicRef } from '../protocol.ts';
 import { VERSION } from '../version.ts';
-import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
-import { AppServerClient, RpcError, type ServerRequest } from './codex/app-server.ts';
+import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
+import { processAlive, sameProcess, signalProcess } from './processes.ts';
 
 export const CODEX = 'codex';
 
@@ -348,7 +349,8 @@ export class CodexAdapter implements HarnessAdapter {
       this.#attach(live, client);
       void this.#readRateLimits(live);
       // the first turn carries the clause: the thread gets its rollout, so attach and resume work
-      const turn = await client.request<{ turn?: { id?: string } }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause), text_elements: [] }] });
+      // the launch's effort (roles.toml) rides on the first turn: `turn/start` takes it for this turn and the next ones
+      const turn = await client.request<{ turn?: { id?: string } }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause), text_elements: [] }], ...(request.effort ? { effort: request.effort } : {}) });
       // the turn is accepted: the thread is active, though its `thread/status/changed` may come after this result
       // (seen with 0.160.0); a launch never reports the idle that preceded the clause turn
       if (typeof turn.turn?.id === 'string') live.turnId ??= turn.turn.id;
@@ -387,6 +389,8 @@ export class CodexAdapter implements HarnessAdapter {
         this.#host.log({ event: 'harness-steered', harness: this.harness, session: p.name, id: message.id, turn: expected });
         return;
       } catch (err) {
+        // sent and never answered: the steer may have landed, so it is never sent again on its own
+        if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/steer: ${err.message}`);
         if (!(err instanceof RpcError)) throw err;
         // the turn ended (or another began) in between: try again on what is current now; a turn id the
         // app-server refuses and nothing replaced is stale, and the thread takes a new turn below
@@ -395,7 +399,13 @@ export class CodexAdapter implements HarnessAdapter {
     }
     // an active turn whose id the hub missed (it reconnected mid-turn): `turn/start` steers it
     const params = live.state === 'idle' || live.state === 'unknown' ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input };
-    const r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
+    let r: { turn?: { id?: string } };
+    try {
+      r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
+    } catch (err) {
+      if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/start: ${err.message}`);
+      throw err;
+    }
     if (typeof r.turn?.id === 'string' && live.state !== 'idle') live.turnId ??= r.turn.id;
   }
 
@@ -464,6 +474,8 @@ export class CodexAdapter implements HarnessAdapter {
         const r = await this.#subscribe(live, client);
         if (r.state !== 'unknown') this.#setState(live, r.state);
         void this.#readRateLimits(live);
+        // a message whose inject failed while the connection was down waits for no state change: retried now
+        this.#host.reconnected?.(live.p.sessionId);
       } catch (err) {
         client?.close();
         this.#host.log({ event: 'harness-reconnect-failed', harness: this.harness, session: live.p.name, error: err instanceof Error ? err.message : String(err) });
@@ -481,11 +493,11 @@ export class CodexAdapter implements HarnessAdapter {
     const live = this.#live.get(p.sessionId);
     live?.client?.close();
     this.#live.delete(p.sessionId);
-    if (p.pid !== null && pidAlive(p.pid)) {
-      process.kill(p.pid, 'SIGTERM');
+    // only the app-server the hub started: a pid reused by another process is never signalled
+    if (signalProcess(p, 'SIGTERM', this.#host.log)) {
       const deadline = Date.now() + 5000;
-      while (pidAlive(p.pid) && Date.now() < deadline) await sleep(50);
-      if (pidAlive(p.pid)) process.kill(p.pid, 'SIGKILL');
+      while (sameProcess(p) && Date.now() < deadline) await sleep(50);
+      signalProcess(p, 'SIGKILL', this.#host.log);
     }
     if (p.harnessId) rmSync(p.harnessId, { force: true });
   }
@@ -496,7 +508,7 @@ export class CodexAdapter implements HarnessAdapter {
     const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
     live.p = p;
     this.#live.set(p.sessionId, live);
-    if (p.pid !== null && pidAlive(p.pid) && existsSync(socket)) {
+    if (processAlive(p) && existsSync(socket)) {
       let client: AppServerClient | null = null;
       try {
         client = await this.#connectTo(socket);
@@ -509,10 +521,10 @@ export class CodexAdapter implements HarnessAdapter {
       } catch (err) {
         client?.close();
         if (!options.relaunch) return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}` };
-        process.kill(p.pid, 'SIGTERM');
+        signalProcess(p, 'SIGTERM', this.#host.log);
       }
     } else if (!options.relaunch) {
-      return { found: false, reason: p.pid !== null && pidAlive(p.pid) ? `no socket at ${socket}` : `pid ${p.pid ?? '?'} is gone` };
+      return { found: false, reason: processAlive(p) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
     }
     // a new app-server on the same socket, resuming the thread from its rollout
     const { pid, client } = await this.#startServer(p, socket);

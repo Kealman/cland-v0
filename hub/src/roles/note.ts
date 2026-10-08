@@ -14,7 +14,16 @@ export const NOTE_SECTIONS: ReadonlyArray<{ key: keyof HandoverNote; heading: st
 export type RoleRecord = {
   note: { sections: HandoverNote; from: string; to: string; at: string } | null;
   handover: { from: string | null; to: string; by: string; at: string } | null;
+  /** Every session that held the role through its handovers, oldest first (the latest moves at most 20 kept): what
+   *  waited for any of them waits for the role. */
+  chain?: string[];
+  /** The tracker claims the move takes along, written with the move in one transaction and done after it (replayed
+   *  at the next start when the hub died in between; done at its hello when the receiver had no session id yet). */
+  claims?: PendingClaims | null;
 };
+
+/** Claims held by the previous holder's session id, to be re-pointed to the receiver's. */
+export type PendingClaims = { from: string; to: { name: string; id: string | null; role: string } };
 
 export const isRoleRecord = (v: unknown): v is RoleRecord => typeof v === 'object' && v !== null && 'note' in v && 'handover' in v;
 

@@ -7,7 +7,7 @@ import { vacancyWarning } from './topics.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
-export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected';
+export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'uncertain';
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 
 const SCHEMA = `
@@ -81,6 +81,11 @@ create table if not exists counters (
   name text primary key,
   value integer not null
 );
+create table if not exists assignees (
+  item text primary key,
+  name text not null,
+  session_id text
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -116,6 +121,11 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'topics', column: 'read_seq', type: 'integer not null default 0' },
   /** The ask a human message answers (#33). */
   { table: 'messages', column: 'answer_to', type: 'text' },
+  /** The session id behind a delivery's addressee name when it was recorded (or when a role's queue was claimed):
+   *  what a grant tied to a delivery (the mention rule) is checked against, never the name. */
+  { table: 'deliveries', column: 'session_id', type: 'text' },
+  /** The sender's session id, for an agent's message: a reply finds the sender after a rename. */
+  { table: 'messages', column: 'from_session_id', type: 'text' },
 ];
 
 /** Indexes over added columns: created after the migration, when the column surely exists. */
@@ -349,7 +359,7 @@ export class Store implements HygieneMemory {
     return (
       this.#db
         .prepare(
-          `update deliveries set state = 'dropped' where session = ? and state in ('queued', 'delivered')
+          `update deliveries set state = 'dropped' where session = ? and state in ('queued', 'delivered', 'uncertain')
            and message_id in (select id from messages where notice = ?) returning message_id`,
         )
         .all(session, notice) as Row[]
@@ -382,15 +392,27 @@ export class Store implements HygieneMemory {
     this.#db.prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
   }
 
-  /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does. `fn` must not record
-   *  messages (`record` has a transaction of its own). */
+  /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does, the messages it records
+   *  included. */
   transaction<T>(fn: () => T): T {
     return this.#transaction(fn);
   }
 
-  /** Run `fn` in one transaction: all of its writes land, or none does. */
+  /** How deep the running transaction is nested: an inner one joins the outer (a role's move records its notices). */
+  #depth = 0;
+
+  /** Run `fn` in one transaction: all of its writes land, or none does. Nested, it is part of the outer one. */
   #transaction<T>(fn: () => T): T {
+    if (this.#depth > 0) {
+      this.#depth++;
+      try {
+        return fn();
+      } finally {
+        this.#depth--;
+      }
+    }
     this.#db.exec('begin immediate');
+    this.#depth = 1;
     try {
       const result = fn();
       this.#db.exec('commit');
@@ -398,6 +420,8 @@ export class Store implements HygieneMemory {
     } catch (err) {
       this.#db.exec('rollback');
       throw err;
+    } finally {
+      this.#depth = 0;
     }
   }
 
@@ -425,8 +449,10 @@ export class Store implements HygieneMemory {
           message.answerTo ?? null,
           seq,
         );
-      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
-      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
+      if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
+      // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
+      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?))');
+      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session);
     });
   }
 
@@ -462,7 +488,18 @@ export class Store implements HygieneMemory {
 
   /** The session's adapter confirmed the turn; false when the delivery was not `delivered` (a repeat, or never acked). */
   markInjected(messageId: string, session: string): boolean {
-    return this.#db.prepare("update deliveries set state = 'injected' where message_id = ? and session = ? and state = 'delivered'").run(messageId, session).changes > 0;
+    return this.#db.prepare("update deliveries set state = 'injected' where message_id = ? and session = ? and state in ('delivered', 'uncertain')").run(messageId, session).changes > 0;
+  }
+
+  /** The adapter's inject reached the harness and got no answer: the turn may have started. `uncertain` is never
+   *  retried on its own (`uninjected` leaves it out). False when the delivery was not `delivered`. */
+  markUncertain(messageId: string, session: string): boolean {
+    return this.#db.prepare("update deliveries set state = 'uncertain' where message_id = ? and session = ? and state = 'delivered'").run(messageId, session).changes > 0;
+  }
+
+  /** The human asked for an uncertain delivery to be sent again: it is `delivered` (waiting for its inject) once more. */
+  retryUncertain(messageId: string, session: string): boolean {
+    return this.#db.prepare("update deliveries set state = 'delivered' where message_id = ? and session = ? and state = 'uncertain'").run(messageId, session).changes > 0;
   }
 
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
@@ -478,7 +515,10 @@ export class Store implements HygieneMemory {
    * placeholder `@<role>`) now waits for that session. Returns how many moved.
    */
   claimRoleQueue(role: string, session: string): { moved: number; merged: string[] } {
-    return this.#moveQueuedTo(`@${role}`, session);
+    const r = this.#moveQueuedTo(`@${role}`, session);
+    // the deliveries it took are this session's: by its id, as every other delivery
+    if (r.moved) this.#db.prepare("update deliveries set session_id = (select session_id from sessions where name = ?) where session = ? and session_id is null and state = 'queued'").run(session, session);
+    return r;
   }
 
   /**
@@ -563,6 +603,37 @@ export class Store implements HygieneMemory {
     if (upTo !== undefined && !row) throw new Error(`no message "${upTo}" in this topic`);
     const r = Number(row?.r ?? 0);
     this.#db.prepare('update topics set read_seq = max(read_seq, ?) where id = ?').run(r, id);
+  }
+
+  /** The deliveries of the topic's latest human message: each addressee's name and the session id it was recorded
+   *  for (null for a role's unclaimed placeholder, or a row older than the column). */
+  lastHumanDeliveries(topic: string): Array<{ session: string; sessionId: string | null }> {
+    return (
+      this.#db
+        .prepare(
+          `select d.session, d.session_id from deliveries d where d.message_id = (
+             select id from messages where topic = ? and from_kind = 'human' order by created_at desc, rowid desc limit 1)`,
+        )
+        .all(topic) as Row[]
+    ).map((r) => ({ session: r.session as string, sessionId: (r.session_id as string | null) ?? null }));
+  }
+
+  /** The session id an agent's message was sent from, or null (a hub notice, the human, a row older than the column). */
+  senderSessionId(messageId: string): string | null {
+    const row = this.#db.prepare('select from_session_id from messages where id = ?').get(messageId) as Row | undefined;
+    return (row?.from_session_id as string | null | undefined) ?? null;
+  }
+
+  /** The session an item was assigned to by the hub (its name then, and its session id when the hub knew it). */
+  assigneeOf(item: string): { name: string; sessionId: string | null } | null {
+    const row = this.#db.prepare('select name, session_id from assignees where item = ?').get(item) as Row | undefined;
+    return row ? { name: row.name as string, sessionId: (row.session_id as string | null) ?? null } : null;
+  }
+
+  /** Bind an item's assignee to a session (null name: the item has none). */
+  bindAssignee(item: string, name: string | null, sessionId: string | null): void {
+    if (name === null) this.#db.prepare('delete from assignees where item = ?').run(item);
+    else this.#db.prepare('insert into assignees (item, name, session_id) values (?, ?, ?) on conflict (item) do update set name = excluded.name, session_id = excluded.session_id').run(item, name, sessionId);
   }
 
   /** Who the topic's latest human message was delivered to (a role's placeholder once claimed is its holder). */
@@ -668,7 +739,7 @@ export class Store implements HygieneMemory {
   /** What `from`'s spoke accepted and its adapter has not confirmed (`delivered`) is `to`'s now: the same session
    *  renamed. A message that already has a delivery for `to` keeps that one. Returns how many rows moved. */
   moveUninjected(from: string, to: string): number {
-    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'delivered'").run(to, from).changes);
+    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state in ('delivered', 'uncertain')").run(to, from).changes);
   }
 
   /**

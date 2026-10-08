@@ -19,7 +19,9 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-f
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task claim <id> [--release] [--force]
 ${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: $CLAND_SESSION_NAME
-                  and $CLAND_ROLE, else "human")
+                  and $CLAND_ROLE, else "human"); acting as a session the hub knows (with
+                  $CLAND_SESSION_ID when it is the session's own), the call is checked against
+                  that session's role, as its own tools are
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
@@ -216,7 +218,9 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   }
   const name = (typeof values.as === 'string' ? values.as : env.CLAND_SESSION_NAME)?.trim();
   const role = (typeof values.role === 'string' ? values.role : env.CLAND_ROLE)?.trim();
-  if (name) frame.as = { name, ...(role ? { role } : {}) };
+  // a launched session's own id goes with its name: the hub then checks the call against that session's role
+  const sessionId = name !== undefined && name === env.CLAND_SESSION_NAME?.trim() ? env.CLAND_SESSION_ID?.trim() : undefined;
+  if (name) frame.as = { name, ...(role ? { role } : {}), ...(sessionId ? { sessionId } : {}) };
 
   const root = projectRoot(cwd);
   const l = layout(root);

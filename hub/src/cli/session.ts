@@ -11,6 +11,8 @@ export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
   session resume <name> [--relaunch]   re-find the session's process, or start it again
+  session retry <name> <message id>    send again a message whose inject got no answer
+                  (its delivery is uncertain: the turn may have started; never retried on its own)
 `;
 
 const flag = (args: string[], name: string): string | undefined => {
@@ -70,6 +72,13 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       const v = (await askHubFrame(d, { type: 'session.resume', session: name, relaunch: rest.includes('--relaunch') }, 60_000)) as { found: boolean; reason?: string; process: HarnessProcessView };
       out(v, v.found ? `resumed ${line(v.process)}` : `not found: ${v.reason ?? ''}\n${line(v.process)}`);
       return v.found ? 0 : 1;
+    }
+    case 'retry': {
+      const message = rest.filter((a) => !a.startsWith('--'))[1];
+      if (!name || !message) throw new Error('usage: cland session retry <name> <message id>');
+      const v = (await askHubFrame(d, { type: 'session.retry', session: name, message }, 30_000)) as { retried: boolean };
+      out(v, `retried ${message} for ${name}`);
+      return 0;
     }
     default:
       process.stderr.write(`cland: unknown session command "${sub ?? ''}"\n\nusage: cland session <command>\n\n${SESSION_USAGE}`);

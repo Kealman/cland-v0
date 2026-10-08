@@ -8,7 +8,7 @@
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import { ROLE_LABELS, ROLE_NAMES } from '../names.ts';
 import type { RoleHolder, RoleState } from '../protocol.ts';
-import { isRoleRecord, parseNote, renderNote, type RoleRecord } from './note.ts';
+import { isRoleRecord, parseNote, renderNote, type PendingClaims, type RoleRecord } from './note.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 
 const label = (role: string) => ROLE_LABELS[role] ?? role;
@@ -46,20 +46,42 @@ export function handOver(
     throw new Error(`"${args.to}" is not a session the hub knows: hand the ${label(args.role)} role to a live session, or to one launched with \`session.launch\``);
   }
   const fromId = args.from !== null ? sessionIdOf(ctx, args.from) : null;
-  const tracker = ctx.tracker;
-  return ctx.core.moveRole({
-    role: args.role,
-    from: args.from,
-    to: args.to,
-    by: args.by,
-    note,
-    then: args.then ?? null,
-    // before the store's transaction (the tracker is another connection to the same file): undone if the move fails
-    beforeCommit: () => {
-      if (!tracker || fromId === null || toId === null || fromId === toId) return () => {};
-      return tracker.moveClaims(fromId, { name: args.to, id: toId, role: args.role }).undo;
-    },
-  });
+  // the claims to move are part of the move's record (one store transaction); the tracker moves them right after the
+  // commit, from that record, and again at the next start if the hub died in between (the move is idempotent)
+  const claims: PendingClaims | null = ctx.tracker && fromId !== null && fromId !== toId ? { from: fromId, to: { name: args.to, id: toId, role: args.role } } : null;
+  const holder = ctx.core.moveRole({ role: args.role, from: args.from, to: args.to, by: args.by, note, then: args.then ?? null, claims });
+  // a test's crash between the commit and the claims' move (the replay at the next start finishes it)
+  if (process.env.CLAND_TEST_CRASH_AT === 'handover-committed') process.kill(process.pid, 'SIGKILL');
+  settleClaims(ctx, args.role);
+  return holder;
+}
+
+/**
+ * Move the tracker claims a role's last move took along, if they are still pending: right after the move, at the
+ * hub's start (a hub that died between the commit and the claims), and at the hello of a receiver that had no
+ * session id when the role moved to its name. Idempotent: the tracker moves only what the previous holder still
+ * holds, and the record is cleared once done.
+ */
+export function settleClaims(ctx: HandoverContext, role: string, hello?: { name: string; sessionId: string }): void {
+  const { core, tracker } = ctx;
+  if (!tracker) return;
+  const stored = core.store.roleRecord(role);
+  if (!isRoleRecord(stored) || !stored.claims) return;
+  const pending = stored.claims;
+  let toId = pending.to.id;
+  if (toId === null) {
+    // the receiver had no session yet: its first hello under that name gives the id
+    if (!hello || hello.name !== pending.to.name) return;
+    toId = hello.sessionId === UNKNOWN_SESSION ? `name:${hello.name}` : hello.sessionId;
+  }
+  if (toId !== pending.from) tracker.moveClaims(pending.from, { name: pending.to.name, id: toId, role: pending.to.role });
+  core.store.saveRoleRecord(role, { ...stored, claims: null } satisfies RoleRecord);
+}
+
+/** Every role's pending claims: at the hub's start, and at each hello. */
+export function settleAllClaims(ctx: HandoverContext, hello?: { name: string; sessionId: string }): void {
+  // a failure leaves the record pending: the next start or hello tries again
+  for (const role of ROLE_NAMES) settleClaims(ctx, role, hello);
 }
 
 /** How far back `role.state` reads a topic for messages waiting for the role. */
@@ -77,6 +99,8 @@ export function roleState(ctx: HandoverContext, role: string): RoleState {
   const stored = core.store.roleRecord(role);
   const record: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
   const names = new Set([role, ...holders.map((h) => h.name)]);
+  // every holder the role passed through, not only the latest one it moved from
+  for (const n of record.chain ?? []) names.add(n);
   if (record.handover?.from) names.add(record.handover.from);
   if (record.note && record.note.from !== 'human') names.add(record.note.from);
 

@@ -25,7 +25,7 @@ import {
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
 import { clauseText, revokedText } from '../roles/clause.ts';
-import { isRoleRecord, noteText, renderNote, type RoleRecord } from '../roles/note.ts';
+import { isRoleRecord, noteText, renderNote, type PendingClaims, type RoleRecord } from '../roles/note.ts';
 import { resolveTag } from '../address.ts';
 import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
@@ -68,6 +68,9 @@ export type Connection = {
   /** Close this session's socket: a kick (4001 — the spoke reconnects) or a replacement (4002 — it does not). */
   close: (reason: string, code?: number) => void;
 };
+
+/** What the adapters' side says of a hello's launch (`HubCore.launchedRole`). */
+export type LaunchedRole = { role: string | null; first: boolean; carried: boolean };
 
 export type HelloResult = { ok: true; name: string; connection: Connection } | { ok: false; code: RefusalCode; message: string };
 
@@ -120,14 +123,18 @@ export class HubCore {
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
-  /** The role a session was launched for, by the adapters' side (`Sessions`); a hello's role is honoured for it. */
-  #launchedRole: ((name: string, sessionId: string) => string | null) | null = null;
-  /** Whether the launch already handed the session its clause as its first turn (Codex): taken once, at the first hello. */
-  #clauseCarried: ((name: string, sessionId: string) => boolean) | null = null;
+  /** The role a session was launched for, by the adapters' side (`Sessions`): `first` once, at the first hello of a
+   *  launch (with `carried` when its first turn already carried the clause, Codex), else the role its process-table
+   *  row keeps (a relaunch takes it back). A hello's role is honoured for it. */
+  #launchedRole: ((name: string, sessionId: string) => LaunchedRole | null) | null = null;
   /** A clause the session already has (its launch's first turn), recorded as injected: sent once with the next flush. */
   readonly #carriedNotice = new Map<string, string>();
   /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
   readonly #roleNotices = new Map<string, RoleClause>();
+  /** Told of every accepted hello (a pending claim move waits for its receiver's session id). */
+  readonly #hellos = new Set<(name: string, sessionId: string) => void>();
+  /** Told when a session takes a new name (the process table renames its row). */
+  readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
   #items: TopicItems | null;
@@ -261,13 +268,14 @@ export class HubCore {
     }
     let role: string | null = null;
     let fresh = false;
+    let carried = false;
     if (this.#roles) {
       const r = this.#helloRole(name, hello);
       if (!r.ok) {
         this.#log({ event: 'refused-role', name, sessionId: hello.sessionId, requested: hello.role ?? null, reason: r.message });
         return { ok: false, code: 'no-role', message: r.message };
       }
-      ({ role, fresh } = r);
+      ({ role, fresh, carried } = r);
     } else if (hello.role !== undefined) {
       // no project: the role is a declared label; an unknown one is ignored
       if (ROLE_NAMES.includes(hello.role)) role = hello.role;
@@ -313,31 +321,54 @@ export class HubCore {
     // the clause goes out with what waited (flushQueued, after the welcome), ahead of it
     if (this.#roles && role !== null) {
       // a launch whose first turn already carried the clause: recorded (the journal), not injected again
-      const carried = fresh && (this.#clauseCarried?.(name, hello.sessionId) ?? false);
       const id = this.#recordClause(connection, carried ? 'assigned at launch (first turn)' : fresh ? 'assigned at launch' : 'hello', undefined, carried);
       if (carried && id) this.#carriedNotice.set(name, id);
     }
     if (fresh) this.#emitRole(name, role, null, 'launch');
     this.#announceCoordinator();
+    for (const fn of [...this.#hellos]) {
+      try {
+        fn(name, hello.sessionId);
+      } catch (err) {
+        this.#log({ event: 'hello-listener-failed', name, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
     return { ok: true, name, connection };
   }
 
   /**
-   * The role a hello gets on a project's hub: the one its name holds (assigned by the human, or kept from an
-   * earlier hello: a role follows the name), else the one the adapters launched it for. A requested role
-   * (`CLAND_ROLE`) is never enough on its own. No role: refused, the session stays off the hub (spec 4.4).
+   * The role a hello gets on a project's hub: at the first hello of a launch, the role it was launched for (its
+   * reservation); else the one its name holds (assigned by the human, or kept from an earlier hello: a role follows
+   * the name), else the one its process-table row keeps (a relaunch). A requested role (`CLAND_ROLE`) is never
+   * enough on its own. No role: refused, the session stays off the hub (spec 4.4). An exclusive role is checked on
+   * every hello: a holder remembered past the queue's TTL that comes back after another session took the role is
+   * refused it, and the role it remembered is cleared (`role-superseded` and a `session.role` event).
    */
-  #helloRole(name: string, hello: Hello): { ok: true; role: string; fresh: boolean } | { ok: false; message: string } {
+  #helloRole(name: string, hello: Hello): { ok: true; role: string; fresh: boolean; carried: boolean } | { ok: false; message: string } {
+    const refusal = (role: string, taken: string) => `role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``;
+    const launched = this.#launchedRole?.(name, hello.sessionId) ?? null;
+    if (launched?.first && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+      const taken = this.#exclusiveHolder(launched.role, name);
+      if (taken) return { ok: false, message: refusal(launched.role, taken) };
+      return { ok: true, role: launched.role, fresh: true, carried: launched.carried };
+    }
     const held = this.#store.roleOf(name);
     if (held !== null && ROLE_NAMES.includes(held)) {
+      const taken = this.#exclusiveHolder(held, name);
+      if (taken) {
+        // a stale holder: another session took the role while this one was forgotten
+        this.#store.rememberRole(name, null);
+        this.#log({ event: 'role-superseded', session: name, sessionId: hello.sessionId, role: held, holder: taken });
+        this.#emitRole(name, null, held, `superseded: ${taken} holds it`);
+        return { ok: false, message: `no role: "${name}" no longer holds the role ${ROLE_LABELS[held] ?? held}: ${taken} holds it now, and one session holds it at a time — assign another with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
+      }
       if (hello.role !== undefined && hello.role !== held) this.#log({ event: 'role-request-ignored', name, requested: hello.role, holds: held });
-      return { ok: true, role: held, fresh: false };
+      return { ok: true, role: held, fresh: false, carried: false };
     }
-    const launched = this.#launchedRole?.(name, hello.sessionId) ?? null;
-    if (launched !== null && ROLE_NAMES.includes(launched)) {
-      const taken = this.#exclusiveHolder(launched, name);
-      if (taken) return { ok: false, message: `role "${launched}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\`` };
-      return { ok: true, role: launched, fresh: true };
+    if (launched !== null && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+      const taken = this.#exclusiveHolder(launched.role, name);
+      if (taken) return { ok: false, message: refusal(launched.role, taken) };
+      return { ok: true, role: launched.role, fresh: true, carried: false };
     }
     const asked = hello.role !== undefined ? ` (it asked for "${hello.role}", which the hub grants only to a session it launched for that role)` : '';
     return { ok: false, message: `no role: "${name}" holds none${asked} — assign one with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
@@ -382,6 +413,12 @@ export class HubCore {
     if (topic !== undefined && stage !== undefined && stage !== 'queued') this.#emit({ type: 'delivery', topic, message: messageId, stage });
   }
 
+  /** Listen to renames (`from`, `to`, the session id); returns the unsubscribe. */
+  onRenamed(listener: (from: string, to: string, sessionId: string) => void): () => void {
+    this.#renamed.add(listener);
+    return () => this.#renamed.delete(listener);
+  }
+
   /** Who injects what a spoke accepted (the adapters' supervisor); one at a time. */
   onDelivered(listener: ((messageId: string, session: string, sessionId: string) => void) | null): void {
     this.#onDelivered = listener;
@@ -392,6 +429,25 @@ export class HubCore {
     if (!this.#store.markInjected(messageId, session)) return false;
     this.#log({ event: 'injected', id: messageId, session });
     this.#emitStage(messageId);
+    return true;
+  }
+
+  /**
+   * A session's adapter handed the message over and got no answer (whether the turn started cannot be told): the
+   * delivery is `uncertain`, logged, and the human's inbox notes it. Never retried on its own; `retryUncertain`
+   * sends it again.
+   */
+  markUncertain(messageId: string, session: string, why: string): boolean {
+    if (!this.#store.markUncertain(messageId, session)) return false;
+    this.#log({ event: 'inject-uncertain', id: messageId, session, why });
+    this.inbox.uncertain(session, this.label(session), messageId, why);
+    return true;
+  }
+
+  /** The human asks for an uncertain delivery to go again: back to `delivered`; false when it was not uncertain. */
+  retryUncertain(messageId: string, session: string): boolean {
+    if (!this.#store.retryUncertain(messageId, session)) return false;
+    this.#log({ event: 'inject-retry', id: messageId, session });
     return true;
   }
 
@@ -453,10 +509,24 @@ export class HubCore {
    * Subscribers see it as a `message` event with its `kind`; `to` also delivers it to those sessions. Returns its id.
    */
   noticeInTopic(topicId: string, notice: TopicNotice): string | null {
+    // a notice with an id of its own (a journalled lifecycle event's) is recorded and published once, however often
+    // it is replayed
+    if (notice.id !== undefined && this.#store.topic(topicId) && this.#store.message(notice.id) !== null) return notice.id;
+    const message = this.#recordNotice(topicId, notice);
+    if (!message) return null;
+    this.#publishNotice(message);
+    return message.id;
+  }
+
+  /** A topic notice written to the store (inside a caller's transaction, when there is one), not yet published. */
+  #recordNotice(topicId: string, notice: TopicNotice): Message | null {
     const topic = this.#store.topic(topicId);
     if (!topic) return null;
-    // a notice with an id of its own (a journalled lifecycle event's) is recorded once, however often it is replayed
-    if (notice.id !== undefined && this.#store.message(notice.id) !== null) return notice.id;
+    // a notice with an id of its own is recorded once: a replay finds the stored one
+    if (notice.id !== undefined) {
+      const stored = this.#store.message(notice.id);
+      if (stored !== null) return stored;
+    }
     const to = [...new Set(notice.to ?? [])];
     const message: Message = {
       id: notice.id ?? randomUUID(),
@@ -476,9 +546,19 @@ export class HubCore {
       this.#now().getTime(),
     );
     this.#store.touchTopic(topic.id, message.ts);
+    return message;
+  }
+
+  /** A recorded notice reaches the subscribers and its addressees. */
+  #publishNotice(message: Message): void {
     this.#emitMessage(message);
-    for (const n of to) this.#send(message, n);
-    return message.id;
+    for (const n of message.to) this.#send(message, n);
+  }
+
+  /** Listen to every accepted hello (`name`, session id); returns the unsubscribe. */
+  onSessionHello(listener: (name: string, sessionId: string) => void): () => void {
+    this.#hellos.add(listener);
+    return () => this.#hellos.delete(listener);
   }
 
   /** A session as it is shown everywhere: `name [Role]` with the role it holds (live, else as remembered). */
@@ -524,6 +604,7 @@ export class HubCore {
     this.#store.rememberStatus(to, c.status);
     this.#store.rememberRole(to, c.role);
     this.#log({ event: 'rename', from, to });
+    for (const fn of [...this.#renamed]) fn(from, to, c.sessionId);
     this.#announceCoordinator();
     return { ok: true, name: to };
   }
@@ -560,9 +641,36 @@ export class HubCore {
   }
 
   /** Who tells a hello which role its session was launched for (the adapters' side); one at a time. */
-  launchedRole(lookup: ((name: string, sessionId: string) => string | null) | null, carried: ((name: string, sessionId: string) => boolean) | null = null): void {
+  launchedRole(lookup: ((name: string, sessionId: string) => LaunchedRole | null) | null): void {
     this.#launchedRole = lookup;
-    this.#clauseCarried = carried;
+  }
+
+  /**
+   * A launch for `role` reserves it for `name` before the harness is spawned (the store remembers the name holding
+   * it): a second launch, or the human's assignment, of an exclusive role is refused while the first is under way.
+   * Returns what the name held before, for `releaseLaunchRole`. Throws the exclusivity refusal.
+   */
+  reserveLaunchRole(name: string, role: string): { previous: string | null } {
+    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const taken = this.#exclusiveHolder(role, name);
+    if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
+    const c = this.#live.get(name);
+    const previous = c ? c.role : this.#store.roleOf(name);
+    this.#store.rememberSession(name, this.#now().getTime());
+    this.#store.rememberRole(name, role);
+    this.#log({ event: 'role-reserved', session: name, role, previous });
+    return { previous };
+  }
+
+  /** A launch failed: the role it reserved (or its early hello took) is rolled back, unless something changed it since. */
+  releaseLaunchRole(name: string, role: string, previous: string | null): void {
+    const c = this.#live.get(name);
+    const current = c ? c.role : this.#store.roleOf(name);
+    if (current !== role) return;
+    this.#log({ event: 'role-reservation-released', session: name, role, previous });
+    if (c) this.#vacate(name, 'its launch failed');
+    else this.#store.rememberRole(name, previous);
+    this.#announceCoordinator();
   }
 
   /** The live session holding the Coordinator, or null: "no coordinator". */
@@ -658,12 +766,14 @@ export class HubCore {
   /**
    * A role moves to `to` (#31): from its holder `from` (a handover by the holder, or the human's reassignment), or
    * from nobody. In one store transaction `from` loses it (or keeps `then`, an Implementer) and `to` takes it, with
-   * the role's record (the note, the move). `beforeCommit` runs first (the tracker's claims, another connection) and
-   * returns its undo, run when the transaction fails. Then: `to` gets its clause with the note, `from` its
-   * revocation (`reason: "handover"`), the Agents topic both notices, subscribers the `session.role` events and the
-   * Coordinator's `role.filled`. All synchronous: no frame is read between the checks and the last event.
+   * the role's record (the note, the move, the chain of holders, the tracker claims to move along) and both Agents
+   * notices. The claims themselves live in the tracker's tables (another connection): the caller moves them after the
+   * commit, idempotently, from the record (`roles/handover.ts`), and a hub that died in between does it at its next
+   * start. Then: `to` gets its clause with the note, `from` its revocation (`reason: "handover"`), subscribers the
+   * notices, the `session.role` events and the Coordinator's `role.filled`. All synchronous: no frame is read between
+   * the checks and the last event.
    */
-  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; beforeCommit?: () => () => void }): RoleHolder {
+  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; claims?: PendingClaims | null }): RoleHolder {
     const { role, from, to, by, note, then } = move;
     if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
     const refusal = nameRefusal(to, this.#reserved);
@@ -680,22 +790,29 @@ export class HubCore {
     const at = this.#now().toISOString();
     const stored = this.#store.roleRecord(role);
     const before: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
+    // every holder the role passed through: what waited for any of them waits for the role (role.state)
+    const chain = [...(before.chain ?? (before.handover?.from ? [before.handover.from] : [])), ...(before.handover ? [before.handover.to] : []), ...(from !== null ? [from] : [])].filter((n, i, all) => n !== to && all.indexOf(n) === i).slice(-20);
     const record: RoleRecord = {
       note: note ? { sections: note, from: by, to, at } : before.note,
       handover: { from, to, by, at },
+      chain,
+      claims: move.claims ?? null,
     };
-    const undo = move.beforeCommit?.() ?? (() => {});
-    try {
-      this.#store.transaction(() => {
-        if (from !== null) this.#store.rememberRole(from, then);
-        if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
-        this.#store.rememberRole(to, role);
-        this.#store.saveRoleRecord(role, record);
-      });
-    } catch (err) {
-      undo();
-      throw err;
-    }
+    const roleLabel = ROLE_LABELS[role] ?? role;
+    const fromLabel = from !== null ? withRole(from, role) : null;
+    const handed = by === HUMAN ? `the human moved the ${roleLabel} role${fromLabel ? ` from ${fromLabel}` : ''} to ${to}` : `${fromLabel ?? by} handed the ${roleLabel} role over to ${to}`;
+    // one transaction: the role leaves one session and reaches the other, the record (with the claims to move) and
+    // both notices in Agents land together or not at all
+    const notices = this.#store.transaction(() => {
+      if (from !== null) this.#store.rememberRole(from, then);
+      if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
+      this.#store.rememberRole(to, role);
+      this.#store.saveRoleRecord(role, record);
+      return [
+        this.#recordNotice(AGENTS.id, { kind: 'handover', text: note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`, detail: { role, from, to, by, note: note !== null } }),
+        this.#recordNotice(AGENTS.id, { kind: 'role-assign', text: `${withRole(to, role)} took over the ${roleLabel} role${from !== null ? ` from ${from}` : ''}.`, detail: { session: to, role, previous, handover: true } }),
+      ];
+    });
     if (cFrom) cFrom.role = then;
     if (cTo) cTo.role = role;
     this.#log({ event: 'role-handover', role, from, to, by, note: note !== null, then, live: cTo !== undefined });
@@ -712,11 +829,7 @@ export class HubCore {
         if (id) this.#send(this.#store.message(id) as Message, from);
       } else if (this.#store.dropNotices(from, ROLE_NOTICE).length) this.#log({ event: 'role-notices-dropped', session: from, reason: 'handover' });
     }
-    const roleLabel = ROLE_LABELS[role] ?? role;
-    const fromLabel = from !== null ? withRole(from, role) : null;
-    const handed = by === HUMAN ? `the human moved the ${roleLabel} role${fromLabel ? ` from ${fromLabel}` : ''} to ${to}` : `${fromLabel ?? by} handed the ${roleLabel} role over to ${to}`;
-    this.noticeInTopic(AGENTS.id, { kind: 'handover', text: note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`, detail: { role, from, to, by, note: note !== null } });
-    this.noticeInTopic(AGENTS.id, { kind: 'role-assign', text: `${withRole(to, role)} took over the ${roleLabel} role${from !== null ? ` from ${from}` : ''}.`, detail: { session: to, role, previous, handover: true } });
+    for (const m of notices) if (m) this.#publishNotice(m);
     if (from !== null) this.#emitRole(from, then, role, 'handover');
     this.#emitRole(to, role, previous, 'handover');
     this.#announceCoordinator();
@@ -1098,7 +1211,10 @@ export class HubCore {
       const original = this.#store.message(replyTo);
       if (!original || original.topic !== AGENTS.id) throw new Error(`no message "${replyTo}" in ${topic.title} to reply to`);
       if (original.fromKind !== 'agent') throw new Error(`a hub notice has no sender to answer: reply to an agent's message in ${topic.title}`);
-      to = [original.from];
+      // the sender by its session id: a session renamed since is still the one that wrote it
+      const senderId = this.#store.senderSessionId(original.id);
+      const sender = senderId !== null && senderId !== UNKNOWN_SESSION ? (this.connectionOf(senderId)?.name ?? this.#store.nameOfSession(senderId)) : null;
+      to = [sender ?? original.from];
     }
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });

@@ -178,7 +178,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
   assert.deepEqual(listed, ['.cland/.gitignore', '.cland/config.toml', '.cland/roles.toml', '.cland/tasks/T-1.md']);
 });
 
-test('both edges speak one protocol: a spoke hello over the Unix socket, a client status over the WebSocket', async (t) => {
+test('both edges speak one protocol: a spoke hello over the Unix socket; a client hello over the WebSocket is refused (the human side is the socket)', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
 
@@ -201,22 +201,23 @@ test('both edges speak one protocol: a spoke hello over the Unix socket, a clien
   assert.equal((await noSecret.next()).code, 'unauthorized');
   await noSecret.closed;
 
+  // the bearer secret every spoke holds makes no human: a client hello on the WebSocket is refused
   const frames = await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${discovery.port}`, { headers: { authorization: `Bearer ${discovery.secret}` } });
     const got: Array<Record<string, unknown>> = [];
     ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'ws-test' })));
-    ws.on('message', (data) => {
-      got.push(JSON.parse(data.toString()) as Record<string, unknown>);
-      if (got.length === 1) ws.send(JSON.stringify({ type: 'hub.status', id: 's1' }));
-      else {
-        ws.close();
-        resolve(got);
-      }
-    });
+    ws.on('message', (data) => got.push(JSON.parse(data.toString()) as Record<string, unknown>));
+    ws.on('close', () => resolve(got));
     ws.on('error', reject);
   });
-  assert.equal(frames[0]?.type, 'welcome');
-  const status = frames[1] as { ok: boolean; value: { pid: number; sessions: Array<{ name: string }> } };
+  assert.deepEqual(frames.map((f) => [f.type, f.code]), [['error', 'unauthorized']]);
+  // the same status over the Unix socket, the client's edge
+  const client = await connectSocket(discovery.socket);
+  t.after(() => client.close());
+  client.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'sock-test' });
+  assert.equal((await client.next()).type, 'welcome');
+  client.send({ type: 'hub.status', id: 's1' });
+  const status = (await client.next()) as { ok: boolean; value: { pid: number; sessions: Array<{ name: string }> } };
   assert.equal(status.ok, true);
   assert.equal(status.value.pid, discovery.pid);
   assert.deepEqual(status.value.sessions.map((s) => s.name), ['sock']);

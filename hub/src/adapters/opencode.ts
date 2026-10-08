@@ -19,12 +19,14 @@
 //            on the same config and password, and the same session (OpenCode keeps sessions in its own database;
 //            a session it lost is created again under its id).
 import { randomUUID } from 'node:crypto';
+import { existsSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { Message, SessionState, TopicRef } from '../protocol.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { formatModel, OpenCodeClient, parseModel, pickFreeModel, type ModelRef } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
+import { processAlive, sameProcess, signalProcess } from './processes.ts';
 
 export const OPENCODE = 'opencode';
 
@@ -158,6 +160,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false);
   }
 
+  /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
+  renamed(p: HarnessProcess, from: string): void {
+    const source = this.#files(from).dir;
+    const target = this.#files(p.name).dir;
+    if (!existsSync(source) || existsSync(target)) return;
+    renameSync(source, target);
+    const w = this.#watched.get(p.sessionId);
+    if (w) w.process = { ...w.process, name: p.name };
+  }
+
   attachCommand(p: HarnessProcess): string {
     const bin = this.#bin === 'opencode' ? 'opencode' : bare(this.#bin);
     const password = this.#files(p.name).password;
@@ -232,7 +244,11 @@ export class OpenCodeAdapter implements HarnessAdapter {
             // the stream is live-only: what it missed comes from a snapshot taken once it is open
             w.client
               .snapshot(w.tracker.sessionId)
-              .then((s) => this.#apply(w, w.tracker.reset(s), Date.now()))
+              .then((s) => {
+                this.#apply(w, w.tracker.reset(s), Date.now());
+                // the stream is back: what failed to inject while it was down is retried, state change or not
+                this.#host.reconnected?.(w.process.sessionId);
+              })
               .catch((err: unknown) => this.#host.log({ event: 'opencode-snapshot-failed', session: w.process.name, error: err instanceof Error ? err.message : String(err) }));
           },
           w.abort.signal,
@@ -279,16 +295,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   async stop(p: HarnessProcess): Promise<void> {
     this.#unwatch(p.sessionId);
-    if (p.pid === null || !pidAlive(p.pid)) return;
-    process.kill(p.pid, 'SIGTERM');
+    // only the server the hub started: a pid reused by another process is never signalled
+    if (!signalProcess(p, 'SIGTERM', this.#host.log)) return;
     const deadline = Date.now() + 5000;
-    while (pidAlive(p.pid) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-    if (pidAlive(p.pid)) process.kill(p.pid, 'SIGKILL');
+    while (sameProcess(p) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+    signalProcess(p, 'SIGKILL', this.#host.log);
   }
 
   async resume(p: HarnessProcess, options: { relaunch?: boolean } = {}): Promise<ResumeResult> {
     let reason: string;
-    if (p.pid === null || !pidAlive(p.pid)) reason = `the server's pid ${p.pid ?? '?'} is gone`;
+    if (!processAlive(p)) reason = p.pid !== null && pidAlive(p.pid) ? `the server's pid ${p.pid} belongs to another process now` : `the server's pid ${p.pid ?? '?'} is gone`;
     else if (!p.harnessId || !p.harnessSessionId) reason = 'no server url or session recorded';
     else {
       const password = readPassword(this.#files(p.name));
@@ -309,7 +325,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       }
     }
     if (!options.relaunch) return { found: false, reason };
-    if (p.pid !== null && pidAlive(p.pid)) process.kill(p.pid, 'SIGTERM');
+    signalProcess(p, 'SIGTERM', this.#host.log);
     const process_ = await this.#launch({ name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true);
     return { found: true, process: process_, state: 'unknown' as SessionState };
   }
