@@ -21,7 +21,7 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => s.includes('General') && centreOf(s).includes('No messages in General yet.'), 'the empty General thread');
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'the empty General thread, connected');
 
   await c.input('hello<CR>');
   const queued = await c.waitScreen((s) => /^ you {2}\d\d:\d\d +⌁ queued $/m.test(centreOf(s)) && /^ hello +$/m.test(centreOf(s)), 'hello, queued');
@@ -51,7 +51,7 @@ test('Shift+Enter inserts a newline in the composer; Enter sends both lines as o
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.'), 'the empty General thread');
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'the empty General thread, connected');
   await c.input('first line<S-CR>second line');
   assert.deepEqual(await composerLines(c), ['› first line', 'second line']);
   assert.deepEqual(await c.lua('return vim.api.nvim_get_mode()'), { mode: 'i', blocking: false });
@@ -150,6 +150,7 @@ test('the client follows its hub through a restart and keeps the thread', { skip
   const root = await tempProject(t);
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
+  await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'General, connected');
   await c.input('before<CR>');
   await c.waitScreen((s) => /^ before *$/m.test(centreOf(s)), 'the first message');
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
