@@ -1,0 +1,98 @@
+// `.cland/config.toml` (spec 4.9, decision #17): the project's name and the hub's hygiene thresholds, committed.
+// `cland init` writes it with the defaults; `cland update` rewrites it to the current template, keeping the values
+// it finds (so a threshold the human changed survives an update). A file without the mark is the human's and left
+// alone. The hub reads the thresholds at start; a missing or unreadable file means the built-in defaults.
+import { basename } from 'node:path';
+import { parse } from 'smol-toml';
+import { LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
+import { MANAGED_MARK } from '../project.ts';
+import { VERSION } from '../version.ts';
+import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts';
+
+export type ProjectConfig = {
+  name: string;
+  hygiene: { rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
+};
+
+const MINUTE = 60_000;
+
+export const defaultConfig = (name: string): ProjectConfig => ({
+  name,
+  hygiene: { rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
+});
+
+const minutes = (ms: number): number => ms / MINUTE;
+
+export function renderConfig(c: ProjectConfig): string {
+  const h = c.hygiene;
+  return `${MANAGED_MARK} ${VERSION} — cland update rewrites this file and keeps the values below; remove this line to take it over.
+# The project's cland settings (spec 4.9). Committed.
+
+[project]
+name = ${JSON.stringify(c.name)}
+
+# The hub's message hygiene, read at hub start (cland hub stop, then start, to apply a change).
+[hygiene]
+# messages one session may send to other sessions within the window
+rate_limit_max = ${h.rateLimit.max}
+rate_limit_window_minutes = ${minutes(h.rateLimit.windowMs)}
+# messages between one pair of sessions within the window before the pair is muted, and for how long
+loop_breaker_max = ${h.loopBreaker.max}
+loop_breaker_window_minutes = ${minutes(h.loopBreaker.windowMs)}
+loop_breaker_mute_minutes = ${minutes(h.loopBreaker.muteMs)}
+# the largest message text, in bytes
+max_text_bytes = ${h.maxTextBytes}
+`;
+}
+
+const positive = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
+
+/** The file's values over the defaults; a value of the wrong type is ignored. Throws when the TOML does not parse. */
+export function parseConfig(text: string, fallbackName: string): ProjectConfig {
+  const doc = parse(text) as Record<string, unknown>;
+  const c = defaultConfig(fallbackName);
+  const project = (doc.project ?? {}) as Record<string, unknown>;
+  if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
+  const h = (doc.hygiene ?? {}) as Record<string, unknown>;
+  const set = (key: string, apply: (n: number) => void, scale = 1) => {
+    const n = positive(h[key]);
+    if (n !== undefined) apply(n * scale);
+  };
+  set('rate_limit_max', (n) => (c.hygiene.rateLimit.max = Math.floor(n)));
+  set('rate_limit_window_minutes', (n) => (c.hygiene.rateLimit.windowMs = n), MINUTE);
+  set('loop_breaker_max', (n) => (c.hygiene.loopBreaker.max = Math.floor(n)));
+  set('loop_breaker_window_minutes', (n) => (c.hygiene.loopBreaker.windowMs = n), MINUTE);
+  set('loop_breaker_mute_minutes', (n) => (c.hygiene.loopBreaker.muteMs = n), MINUTE);
+  set('max_text_bytes', (n) => (c.hygiene.maxTextBytes = Math.floor(n)));
+  return c;
+}
+
+/** What the hub runs with: the file's values, or null (the built-in defaults) when it is missing or unreadable. */
+export function readProjectConfig(path: string, root: string): ProjectConfig | null {
+  const text = readText(path);
+  if (text === null) return null;
+  try {
+    return parseConfig(text, basename(root));
+  } catch {
+    return null;
+  }
+}
+
+/** Write the managed config: the defaults when missing, the current template with the file's values when marked. */
+export function provisionConfig(report: Report, path: string, root: string): void {
+  const current = readText(path);
+  if (current !== null && !isManagedFile(current)) {
+    report.add(path, 'kept', 'no "managed by cland" mark: the project\'s own');
+    return;
+  }
+  let config = defaultConfig(basename(root));
+  if (current !== null) {
+    try {
+      config = parseConfig(current, basename(root));
+    } catch (err) {
+      report.add(path, 'kept', `marked, but not valid TOML (${err instanceof Error ? err.message : String(err)}): fix or remove it`);
+      return;
+    }
+  }
+  writeIfChanged(report, path, renderConfig(config), current);
+}

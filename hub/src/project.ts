@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { VERSION } from './version.ts';
 
 export const CLAND_DIR = '.cland';
 
@@ -21,11 +22,14 @@ export type Discovery = {
 /** The marker every file cland manages starts with; a file without it is the user's and left alone. */
 export const MANAGED_MARK = '# managed by cland';
 
+/** The words every managed file or block carries, with the version that wrote it (`cland update` rewrites it). */
+export const MANAGED_BY = `managed by cland ${VERSION}`;
+
 /**
  * `.cland/.gitignore`: everything volatile. What is meant to be committed — `tasks/`, `roles.toml`,
  * `config.toml` and this file — is deliberately absent.
  */
-export const GITIGNORE = `${MANAGED_MARK} — rewritten by cland; remove this line to take the file over.
+export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; remove this line to take the file over.
 # Volatile hub state: never committed. tasks/, roles.toml and config.toml are.
 hub.db*
 hub.json
@@ -54,6 +58,10 @@ export type Layout = {
   gitignore: string;
   /** The role definitions (spec 4.4): written with the defaults when missing, then the human's. */
   roles: string;
+  /** The project's settings (`cland init`): its name, the hygiene thresholds. */
+  config: string;
+  /** The tracker's items, committed. */
+  tasks: string;
   logDir: string;
   log: string;
   /** Where the hub binds its Unix socket: inside `.cland/`, or under the temp dir when that path is too long. */
@@ -73,6 +81,8 @@ export function layout(root: string): Layout {
     lock: join(dir, 'hub.lock'),
     gitignore: join(dir, '.gitignore'),
     roles: join(dir, 'roles.toml'),
+    config: join(dir, 'config.toml'),
+    tasks: join(dir, 'tasks'),
     logDir: join(dir, 'log'),
     log: join(dir, 'log', 'hub.log'),
     socket,

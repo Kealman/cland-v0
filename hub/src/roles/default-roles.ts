@@ -1,8 +1,9 @@
 // The `.cland/roles.toml` the hub writes when a project has none (spec 4.4, decision #10). The human edits it;
 // the hub never rewrites an existing file.
 import { MANAGED_MARK } from '../project.ts';
+import { VERSION } from '../version.ts';
 
-export const DEFAULT_ROLES_TOML = `${MANAGED_MARK}: written when the project had no roles.toml; cland never rewrites it, edit freely.
+export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the project had no roles.toml; cland never rewrites it, edit freely.
 #
 # The four roles a session can hold (spec 4.4). Per role:
 #   clause       the instruction text the hub delivers to the holder at assignment and on every reconnect
