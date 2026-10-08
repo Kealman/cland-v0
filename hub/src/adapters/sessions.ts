@@ -14,6 +14,7 @@ import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { AdapterHost, Capabilities, HarnessAdapter, HarnessProcess, InjectFrame, StateSignal } from './contract.ts';
 import { ProcessTable } from './processes.ts';
+import { clauseText } from '../roles/clause.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; event: string; at?: number; payload?: Record<string, unknown> };
@@ -50,6 +51,8 @@ export class Sessions {
   readonly #earlyBridges = new Map<string, Array<() => void>>();
   /** The role each launch in progress is for: its spoke's hello may beat the process-table row. */
   readonly #launchRoles = new Map<string, string>();
+  /** Launches whose first turn carried the clause, until the session's first hello. */
+  readonly #clauseCarried = new Set<string>();
   /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
   #vacating = false;
 
@@ -61,7 +64,11 @@ export class Sessions {
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
-    this.#core.launchedRole((name, sessionId) => this.#launchRoles.get(name) ?? this.#table.bySessionId(sessionId)?.role ?? null);
+    this.#core.launchedRole(
+      (name, sessionId) => this.#launchRoles.get(name) ?? this.#table.bySessionId(sessionId)?.role ?? null,
+      // taken once: a reconnect gets the clause again, injected
+      (name) => this.#clauseCarried.delete(name),
+    );
     // the human's assignment or revocation is what a relaunch starts with
     this.#unsubscribe = this.#core.subscribe((event) => {
       if (event.type !== 'session.role' || this.#vacating) return;
@@ -164,13 +171,16 @@ export class Sessions {
     const adapter = this.adapter(harness);
     this.#launching.set(request.name, []);
     if (role !== null) this.#launchRoles.set(request.name, role);
+    const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
+    if (clause !== null && adapter.clauseAtSpawn) this.#clauseCarried.add(request.name);
     let early: SignalFrame[] = [];
     let p: HarnessProcess;
     try {
-      p = await adapter.spawn({ name: request.name, role, model, cwd: request.cwd ?? this.#root, ...(effort ? { effort } : {}) });
+      p = await adapter.spawn({ name: request.name, role, model, cwd: request.cwd ?? this.#root, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}) });
       this.#table.put(p);
     } catch (err) {
       this.#earlyBridges.delete(request.name);
+      this.#clauseCarried.delete(request.name);
       throw err;
     } finally {
       early = this.#launching.get(request.name) ?? [];

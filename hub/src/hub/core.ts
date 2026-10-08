@@ -105,6 +105,10 @@ export class HubCore {
   readonly #roles: RolesSource | null;
   /** The role a session was launched for, by the adapters' side (`Sessions`); a hello's role is honoured for it. */
   #launchedRole: ((name: string, sessionId: string) => string | null) | null = null;
+  /** Whether the launch already handed the session its clause as its first turn (Codex): taken once, at the first hello. */
+  #clauseCarried: ((name: string, sessionId: string) => boolean) | null = null;
+  /** A clause the session already has (its launch's first turn), recorded as injected: sent once with the next flush. */
+  readonly #carriedNotice = new Map<string, string>();
   /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
   readonly #roleNotices = new Map<string, RoleClause>();
   /** The live Coordinator last announced to subscribers. */
@@ -247,7 +251,12 @@ export class HubCore {
     }
     this.#log({ event: 'hello', name, sessionId: hello.sessionId, role });
     // the clause goes out with what waited (flushQueued, after the welcome), ahead of it
-    if (this.#roles && role !== null) this.#recordClause(connection, fresh ? 'assigned at launch' : 'hello');
+    if (this.#roles && role !== null) {
+      // a launch whose first turn already carried the clause: recorded (the journal), not injected again
+      const carried = fresh && (this.#clauseCarried?.(name, hello.sessionId) ?? false);
+      const id = this.#recordClause(connection, carried ? 'assigned at launch (first turn)' : fresh ? 'assigned at launch' : 'hello', undefined, carried);
+      if (carried && id) this.#carriedNotice.set(name, id);
+    }
     if (fresh) this.#emitRole(name, role, null, 'launch');
     this.#announceCoordinator();
     return { ok: true, name, connection };
@@ -283,6 +292,13 @@ export class HubCore {
     for (const message of dropped) {
       this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
       this.#emitStage(message.id);
+    }
+    // a clause the launch already handed over: the spoke learns it (it acks; nothing is injected again)
+    const carried = this.#carriedNotice.get(name);
+    if (carried !== undefined) {
+      this.#carriedNotice.delete(name);
+      const message = this.#store.message(carried);
+      if (message) this.#sendTo(connection, message);
     }
     // a role clause first: what else waited is read under the role
     const ordered = [...deliver.filter((m) => this.#roleNotices.has(m.id)), ...deliver.filter((m) => !this.#roleNotices.has(m.id))];
@@ -439,8 +455,9 @@ export class HubCore {
   }
 
   /** Who tells a hello which role its session was launched for (the adapters' side); one at a time. */
-  launchedRole(lookup: ((name: string, sessionId: string) => string | null) | null): void {
+  launchedRole(lookup: ((name: string, sessionId: string) => string | null) | null, carried: ((name: string, sessionId: string) => boolean) | null = null): void {
     this.#launchedRole = lookup;
+    this.#clauseCarried = carried;
   }
 
   /** The live session holding the Coordinator, or null: "no coordinator". */
@@ -554,14 +571,14 @@ export class HubCore {
    * delivery pipeline (queued → delivered on the spoke's ack → injected by the session's adapter). A newer notice
    * supersedes what an older one still waits for. The log is the journal of every delivery until #34.
    */
-  #recordClause(c: Connection, reason: string, previous?: string | null): string | null {
+  #recordClause(c: Connection, reason: string, previous?: string | null, injected = false): string | null {
     if (!this.#roles) return null;
     const definition = c.role !== null ? this.#roles.get().get(c.role) : undefined;
     const clause: RoleClause = c.role !== null ? { role: c.role, clause: definition?.clause ?? '', skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
     const text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
     const superseded = this.#store.dropNotices(c.name, ROLE_NOTICE);
     const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [c.name], text, ts: this.#now().toISOString() };
-    this.#store.record(message, [{ session: c.name, state: 'queued' }], this.#now().getTime(), ROLE_NOTICE);
+    this.#store.record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);
     this.#roleNotices.set(message.id, clause);
     // TODO(#34): the journal; until it exists, the hub's log records each delivery
     this.#log({ event: c.role !== null ? 'role-clause' : 'role-revoked', session: c.name, sessionId: c.sessionId, role: c.role, previous: previous ?? null, reason, id: message.id, superseded: superseded.length });
