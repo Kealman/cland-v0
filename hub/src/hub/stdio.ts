@@ -4,6 +4,7 @@
 import type { Readable, Writable } from 'node:stream';
 import type { Dispatcher } from './dispatch.ts';
 import { MAX_FRAME_BYTES } from '../protocol.ts';
+import { lineReader } from './lines.ts';
 import type { LogFn } from '../log.ts';
 
 export type StdioEdgeOptions = {
@@ -37,20 +38,18 @@ export function createStdioEdge(options: StdioEdgeOptions): void {
     { authenticated: true, edge: 'stdio' },
   );
   input.setEncoding('utf8');
-  let buffer = '';
-  input.on('data', (chunk: string) => {
-    buffer += chunk;
-    if (Buffer.byteLength(buffer) > MAX_FRAME_BYTES) {
-      log({ event: 'refused', edge: 'stdio', code: 'frame-too-large' });
-      return end();
-    }
-    let nl: number;
-    while ((nl = buffer.indexOf('\n')) >= 0 && open) {
-      const line = buffer.slice(0, nl).trim();
-      buffer = buffer.slice(nl + 1);
-      if (line) conversation.receive(line);
-    }
-  });
+  input.on(
+    'data',
+    lineReader({
+      maxBytes: MAX_FRAME_BYTES,
+      onLine: (line) => conversation.receive(line),
+      onTooLarge: () => {
+        log({ event: 'refused', edge: 'stdio', code: 'frame-too-large' });
+        end();
+      },
+      isOpen: () => open,
+    }),
+  );
   input.once('end', end);
   input.once('close', end);
   output.on('error', end);

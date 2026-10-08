@@ -249,6 +249,8 @@ export async function killDaemon(pid: number): Promise<void> {
 /** A JSON-lines client on the hub's Unix socket: send frames, await the next one. */
 export type SocketClient = {
   send: (frame: Record<string, unknown>) => void;
+  /** Write bytes as they are: several lines at once, or part of one. */
+  write: (raw: string) => void;
   next: (timeoutMs?: number) => Promise<Record<string, unknown>>;
   /** Resolves when the hub closed the connection. */
   closed: Promise<void>;
@@ -282,6 +284,7 @@ export async function connectSocket(path: string): Promise<SocketClient> {
   socket.on('error', () => {});
   return {
     send: (frame) => socket.write(`${JSON.stringify(frame)}\n`),
+    write: (raw) => socket.write(raw),
     next: (timeoutMs = 5000) => {
       const f = frames.shift();
       if (f) return Promise.resolve(f);
