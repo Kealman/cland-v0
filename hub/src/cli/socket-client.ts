@@ -6,6 +6,11 @@ import type { Discovery } from '../project.ts';
 
 /** One request over the socket; rejects on a refusal, an error result, a closed socket or the timeout. */
 export function askHub(d: Pick<Discovery, 'socket' | 'secret'>, type: ClientRequest['type'], timeoutMs = 3000): Promise<unknown> {
+  return askHubFrame(d, { type }, timeoutMs);
+}
+
+/** One request frame of any type (its `id` is added here) over the socket. */
+export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, request: { type: string } & Record<string, unknown>, timeoutMs = 3000): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const socket = createConnection(d.socket);
     const id = randomUUID();
@@ -32,7 +37,7 @@ export function askHub(d: Pick<Discovery, 'socket' | 'secret'>, type: ClientRequ
         const frame = parseFrame(buffer.slice(0, nl));
         buffer = buffer.slice(nl + 1);
         if (!frame) continue;
-        if (frame.type === 'welcome') socket.write(`${JSON.stringify({ type, id } satisfies ClientRequest)}\n`);
+        if (frame.type === 'welcome') socket.write(`${JSON.stringify({ ...request, id })}\n`);
         else if (frame.type === 'error') done(new Error(`the hub refused: ${String(frame.message)}`));
         else if (frame.type === 'result' && frame.id === id) {
           if (frame.ok === true) done(null, frame.value);

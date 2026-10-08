@@ -22,6 +22,8 @@ import {
   type RefusalCode,
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
+import { actorOf, answerTask, isTaskRequest } from '../tracker/requests.ts';
+import type { Tracker } from '../tracker/tracker.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -52,6 +54,8 @@ export type DispatcherOptions = {
   /** How long a fresh connection may stay silent before its hello, ms. */
   helloTimeoutMs?: number;
   log?: LogFn;
+  /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
+  tracker?: Tracker;
 };
 
 export const secretMatches = (given: string, secret: string): boolean => {
@@ -203,8 +207,12 @@ export class Dispatcher {
             return;
           }
           if (isAck(frame)) return core.ack(connection, frame.id);
+          // a spoke always acts as its own session
+          if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, { name: connection.name, role: connection.role }));
           return spokeRequest(frame, name as string);
         }
+        // a client's frame may name who it acts as
+        if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, actorOf(frame, 'human')));
         clientRequest(frame);
       },
       closed: () => {

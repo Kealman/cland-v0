@@ -15,16 +15,21 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, messages, per-addressee deliveries (queued → delivered on the spoke's ack, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
 | `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks. Transport-free. |
-| `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
+| `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`), the `task.*` requests from either, refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
 | `src/hub/server.ts` | The WebSocket edge: bearer secret check, frame size limit, heartbeat sweep. `createHub` starts it with no human side at all. |
 | `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. |
 | `src/hub/daemon.ts` | The hub serving one project in the background: `.cland/` prepared, store on `hub.db`, both edges bound, `hub.json` written last and removed first. |
 | `src/project.ts` | The `.cland/` layout, the managed `.gitignore`, the secret, the discovery file, finding the project root. |
+| `src/tracker/item.ts` | The item file format: frontmatter, body, comments, verdicts; parse (lenient for hand edits) and serialize. |
+| `src/tracker/index-db.ts` | The tracker's index (items, labels, blockers, verdicts), its id high-water mark and the claims: tables of their own in `hub.db`, through a connection of their own. |
+| `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` and re-indexes hand edits, holds claims. |
+| `src/tracker/requests.ts` | The `task.*` request frames and their handler, called from the dispatcher for spokes and clients alike. |
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve`. |
+| `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats. |
-| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send`, `who`, `status`, `rename`, `history`; exits when the session's stdin closes. |
+| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send`, `who`, `status`, `rename`, `history` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
-| `bin/cland.ts` | The `cland` CLI: `hub …`, `--version`, `--help`. |
+| `bin/cland.ts` | The `cland` CLI: `hub …`, `task …`, `--version`, `--help`. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket. The tests touch nothing else. |
 
 The spoke finds its hub through the nearest `.cland/hub.json` walking up from its cwd, and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional. `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_HEARTBEAT_MS` and `CLAND_HUB_REQUEST_TIMEOUT_MS` set the timings, for tests. Delivering a message into the session uses Claude Code's channel notification, kept small and isolated in `spoke.ts` until the Claude Code adapter takes it over (#24).
@@ -46,8 +51,9 @@ A delivery row is `queued` until the spoke accepts it, then `delivered` (spec 4.
 
 ## Not here yet
 
-- **The human side.** The Unix socket answers only `hub.status` and `hub.stop`; the UI's protocol comes with #23, and until then a loop-breaker mute is only journalled.
+- **The human side.** The Unix socket answers only `hub.status`, `hub.stop` and the `task.*` requests; the UI's protocol comes with #23, and until then a loop-breaker mute is only journalled.
 - **Roles as hub state.** A session may declare one of the four role names so `@role` routes; clauses, permissions and handover come with #29–#33.
+- **The journal.** Tracker conflicts and re-indexes go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 - **Adapters.** Claude Code (#24), Codex (#26) and OpenCode (#27) launch, attach and deliver into sessions.
 
 ## The project's hub
@@ -66,8 +72,9 @@ The project's `.cland/`:
 | Path | Committed | What it is |
 | --- | --- | --- |
 | `.gitignore` | yes | Managed by cland (first line `# managed by cland`); ignores every volatile file below. Remove the mark to take the file over. |
-| `tasks/`, `roles.toml`, `config.toml` | yes | Not written by the hub yet (#29 onward). |
-| `hub.db` (+ `-wal`, `-shm`) | no | The SQLite store: sessions, messages, deliveries, hygiene counters and mutes. |
+| `tasks/` | yes | The tracker's item files, one per item (below). Written by the hub, editable by hand, never committed by cland. |
+| `roles.toml`, `config.toml` | yes | Not written by the hub yet (#29 onward). |
+| `hub.db` (+ `-wal`, `-shm`) | no | The SQLite store: sessions, messages, deliveries, hygiene counters and mutes; the tracker's index and claims. |
 | `secret` | no | 32 random bytes as hex, mode 0600. Kept across restarts, so spokes holding it reconnect. |
 | `hub.json` | no | The discovery file, mode 0600, present only while a hub runs. |
 | `hub.sock` | no | The Unix socket for the UI and the CLI. |
@@ -88,7 +95,68 @@ The project's `.cland/`:
 
 `port` is the 127.0.0.1 WebSocket port for spokes, chosen free at each start. When `.cland/hub.sock` would exceed the Unix socket path limit (about 104 bytes on macOS), the socket is `cland-<hash of the root>.sock` in the system temp dir, and `socket` names it.
 
-The Unix socket speaks the hub's frames as JSON lines, through the same dispatcher as the WebSocket: a spoke's hello works there too when it carries the secret, and a client's hello works on the WebSocket. The first frame is `{"type":"hello","protocol":2,"secret":"…","client":"cli"}`; a wrong secret gets `{"type":"error","code":"unauthorized",…}` and the socket closes. After the `welcome`, a client sends `{"type":"hub.status","id":"…"}` or `{"type":"hub.stop","id":"…"}` and gets a `result` with the same id.
+The Unix socket speaks the hub's frames as JSON lines, through the same dispatcher as the WebSocket: a spoke's hello works there too when it carries the secret, and a client's hello works on the WebSocket. The first frame is `{"type":"hello","protocol":2,"secret":"…","client":"cli"}`; a wrong secret gets `{"type":"error","code":"unauthorized",…}` and the socket closes. After the `welcome`, a client sends `{"type":"hub.status","id":"…"}`, `{"type":"hub.stop","id":"…"}` or a `task.*` request (below) and gets a `result` with the same id.
+
+## The tracker
+
+One Markdown file per item in `.cland/tasks/`, `T-<n>-<slug>.md` (spec 4.6, ADR 0002). Ids are sequential per project and never reused: the hub hands out one above the highest in the folder and in the index. The file name keeps the slug of the title the item was created with.
+
+```markdown
+---
+id: T-1
+kind: task            # epic | spec | task | question | map
+title: Add the login page
+state: open           # open | closed
+labels:
+  - ui
+assignee: null
+parent: T-2
+blocked_by: []
+topic: null
+branch: t/1-add-the-login-page
+created: 2026-10-08T12:38:26.370Z
+updated: 2026-10-08T12:38:26.729Z
+---
+
+The page the human logs in on.
+
+## Comments
+
+### alice · 2026-10-08T12:38:26.640Z
+
+Session cookie handled.
+
+### rev-1 · 2026-10-08T12:38:26.729Z
+
+verdict: review
+result: clear
+by: rev-1 [reviewer]
+run: r-1
+
+Looks right.
+```
+
+A comment is headed `### <author> · <ISO time>`; one whose first lines are `verdict:` (`review` | `qa`), `result:` (`clear` | `not clear`), `by:` (`<session> [<role>]`) and `run:` is a verdict.
+
+- **Writes** go through the hub and are serialized: each runs read–change–write–index synchronously, the file replaced atomically. Nothing is committed.
+- **Hand edits** are picked up by a watcher on the folder (debounced 100 ms) and re-indexed; a hand-edited file is read leniently (a missing field takes its default). Last writer wins: a hand edit landing within 2 s of a hub write of the same item, or a hub write finding a hand edit the watcher has not reached yet (the hub's change is then applied on top of it), is logged as `task-conflict` in the hub's log. A file that cannot be parsed is logged as `task-unreadable` and keeps its last indexed version.
+- **The index** (items, labels, blockers, verdicts) is rebuilt from the files at every start. `--verdict review=clear` matches the item's latest verdict of that kind.
+- **Claims** are a session's live hold on an item, kept in `hub.db` (they survive a restart), never written to the file and distinct from `assignee`. Another session's claim is refused unless forced; closing an item releases its claim.
+
+`cland task …` speaks to the project's hub over its socket (a hub must be running: `cland hub start`); every subcommand prints a human-readable summary, or the raw result with `--json`. It acts as `--as <name> [--role r]`, else `$CLAND_SESSION_NAME` and `$CLAND_ROLE`, else `human`.
+
+| Command | Tool | What it does |
+| --- | --- | --- |
+| `cland task create <title> [--kind] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
+| `cland task view <id>` | `task.view` | Frontmatter, body, comments, verdicts and the claim. |
+| `cland task list [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. |
+| `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id>]` | `task.comment` | Appends a comment, or a verdict. |
+| `cland task edit <id> [--title] [--body] [--kind] [--state] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
+| `cland task close <id> [--comment]` | `task.close` | Closes the item. |
+| `cland task link <id> [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
+| `cland task claim <id> [--release] [--force]` | `task.claim` | Takes or releases the claim. |
+
+The frames are `{"type":"task.<op>","id":"<request id>","item":"T-1",…}` with fields named as in the frontmatter (`labels`, `blocked_by`, `add_labels`, …); a CLI frame may carry `"as":{"name":…,"role":…}`, a spoke's always acts as its own session. The tools take the item as `id`.
 
 ## Running
 

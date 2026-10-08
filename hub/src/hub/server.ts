@@ -6,6 +6,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket } from 'ws';
 import { HubCore, type CoreOptions } from './core.ts';
 import { Dispatcher, secretMatches, type Control } from './dispatch.ts';
+import type { Tracker } from '../tracker/tracker.ts';
 import { HEARTBEAT_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
 export type HubOptions = CoreOptions & {
@@ -21,6 +22,8 @@ export type HubOptions = CoreOptions & {
   heartbeatMs?: number;
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
+  /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
+  tracker?: Tracker;
 };
 
 export type Hub = {
@@ -49,6 +52,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     secret: options.secret,
     log,
     ...(options.control ? { control: options.control } : {}),
+    ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
   });
   const http: HttpServer = createServer((_req, res) => {

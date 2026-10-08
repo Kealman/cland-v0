@@ -6,6 +6,7 @@ import { createHub, type Hub } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
 import { ensureSkeleton, layout, pidAlive, readDiscovery, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
 import { VERSION } from '../version.ts';
+import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 
 export type Daemon = {
@@ -27,18 +28,27 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   }
 
   const startedAt = new Date();
+  // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
+  const tracker = new Tracker({ root, db: l.db, log });
   let hub!: Hub;
-  hub = await createHub({
-    port: 0,
-    host: '127.0.0.1',
-    secret,
-    store: new Store(l.db),
-    log,
-    control: {
-      status: () => ({ pid: process.pid, port: hub.port, socket: l.socket, version: VERSION, root, startedAt: startedAt.toISOString(), uptimeMs: Date.now() - startedAt.getTime() }),
-      stop: () => void stop(),
-    },
-  });
+  try {
+    tracker.start();
+    hub = await createHub({
+      port: 0,
+      host: '127.0.0.1',
+      secret,
+      store: new Store(l.db),
+      log,
+      tracker,
+      control: {
+        status: () => ({ pid: process.pid, port: hub.port, socket: l.socket, version: VERSION, root, startedAt: startedAt.toISOString(), uptimeMs: Date.now() - startedAt.getTime() }),
+        stop: () => void stop(),
+      },
+    });
+  } catch (err) {
+    tracker.stop();
+    throw err;
+  }
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
@@ -50,6 +60,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
       removeDiscovery(l.discovery, process.pid);
       await edge?.close();
       await hub.close();
+      tracker.stop();
       log({ event: 'stopped' });
       resolveStopped();
     })();
@@ -60,6 +71,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
     edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
   } catch (err) {
     await hub.close();
+    tracker.stop();
     throw err;
   }
 
