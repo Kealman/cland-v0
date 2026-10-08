@@ -1,0 +1,28 @@
+{
+  "name": "@cland/hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The cland hub: the per-project service sessions talk through, the spoke each session runs, and the cland CLI.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.13.0 <25"
+  },
+  "bin": {
+    "cland": "bin/cland.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "@types/ws": "8.18.1",
+    "typescript": "5.9.3",
+    "zod": "4.5.4"
+  }
+}

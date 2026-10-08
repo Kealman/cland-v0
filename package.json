@@ -1,0 +1,19 @@
+{
+  "name": "cland",
+  "private": true,
+  "description": "A terminal IDE for running and coordinating AI coding-agent harnesses.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.13.0 <25"
+  },
+  "workspaces": [
+    "hub"
+  ],
+  "bin": {
+    "cland": "hub/bin/cland.ts"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspace hub",
+    "test": "npm test --workspace hub"
+  }
+}
