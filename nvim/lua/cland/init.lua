@@ -52,18 +52,22 @@ local function refresh_sessions()
       state.changed()
     end
   end)
+  -- `coordinator: null` is the hub saying nobody holds the role (a role.vacant missed while away, #29): it
+  -- arrives as vim.NIL; a hub.status without the field leaves the chip to the session rows
   M.client:request({ type = 'hub.status' }, function(err, value)
     if not err and value then
       state.S.presence = value.sessions or {}
-      if value.coordinator ~= nil then
-        state.S.hub_coordinator = { name = value.coordinator ~= vim.NIL and value.coordinator or nil }
+      if value.coordinator == vim.NIL then
+        state.S.hub_coordinator = { name = nil }
+      elseif type(value.coordinator) == 'string' then
+        state.S.hub_coordinator = { name = value.coordinator }
       end
       if type(value.needsYou) == 'number' then
         state.S.needs_you = value.needsYou
       end
       state.changed()
     end
-  end)
+  end, { nulls = true })
   -- the roles and their launch defaults: the launcher's prefill and the labels
   M.client:request({ type = 'role.list' }, function(err, value)
     if not err and value and value.roles then
@@ -101,6 +105,10 @@ function M.refresh()
 end
 
 local function wire_client(client)
+  -- a handler that failed says so on the status line, one line, never as an error in the message area
+  client:on('error', function(msg)
+    state.say('cland: ' .. tostring(msg), 'ClandRedBar')
+  end)
   client:on('state', function(st, detail)
     state.S.hub = { state = st, detail = detail }
     state.changed()

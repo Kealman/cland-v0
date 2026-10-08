@@ -9,6 +9,9 @@
 //                        stopped and emits session.state unknown, or stopError)
 //   CLAND_STUB_CONTROL   a Unix socket the test drives it through, one JSON line per command:
 //                        {"emit": frame}       push an event frame to the client
+//                        {"emits": [frames]}   push several event frames in one write (a burst)
+//                        {"exit": true}        exit, as a hub that dies does (the client spawns a new one, which
+//                                              reads CLAND_STUB_SCENARIO again)
 //                        {"set": {...}}        replace parts of the scenario (processes, items, send, …)
 //                        {"requests": true}    answer with every request frame received so far
 //                        {"release": {"error"?: "…"}}  answer the held topic.send requests
@@ -33,6 +36,8 @@ export type Scenario = {
   launchError?: string;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
   stopError?: string;
+  /** `task.view` never answers (a disconnect while the client waits for it). */
+  holdView?: boolean;
   /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event. */
   inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>> };
 };
@@ -221,6 +226,7 @@ function answer(f: Frame) {
       return ok(f.id, { items: scenario.items ?? [] });
     case 'task.view': {
       // the whole item: a scenario item may carry `body` and `comments` beside its summary fields
+      if (scenario.holdView) return;
       const item = scenario.items?.find((i) => i.id === f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
       return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...item, path: `.cland/tasks/${String(item.file)}` } });
@@ -261,6 +267,7 @@ if (controlPath) {
         buf = buf.slice(nl + 1);
         const cmd = JSON.parse(line) as Record<string, unknown>;
         if (cmd.emit) write(cmd.emit);
+        if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map((f) => `${JSON.stringify(f)}\n`).join(''));
         if (cmd.set) Object.assign(scenario, cmd.set);
         if (cmd.release) {
           const error = (cmd.release as { error?: string }).error;
@@ -270,6 +277,11 @@ if (controlPath) {
           }
         }
         sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}) })}\n`);
+        if (cmd.exit) {
+          server?.close();
+          if (controlPath) rmSync(controlPath, { force: true });
+          sock.end(() => process.exit(0));
+        }
       }
     });
     sock.on('error', () => {});

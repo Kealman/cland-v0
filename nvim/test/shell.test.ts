@@ -66,7 +66,15 @@ function baseScenario(keylog: string): Scenario {
   };
 }
 
-type Shell = Client & { root: string; keylog: string; control: (cmd: Record<string, unknown>) => Promise<Record<string, unknown>> };
+type Shell = Client & {
+  root: string;
+  keylog: string;
+  control: (cmd: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  /** Change the scenario file: what the next stub hub reads when the client spawns it again. */
+  rewrite: (edit: (s: Scenario) => void) => Promise<void>;
+  /** The stub hub dies after `rewrite`; the client reconnects to a new one, which reads the file again. */
+  reconnect: (edit?: (s: Scenario) => void) => Promise<void>;
+};
 
 async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}, env: Record<string, string> = {}): Promise<Shell> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-sh-'));
@@ -108,8 +116,28 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
       sock.write(`${JSON.stringify(cmd)}\n`);
     });
   };
+  const rewrite = async (change: (s: Scenario) => void) => {
+    const now = JSON.parse(await readFile(scenarioFile, 'utf8')) as Scenario;
+    change(now);
+    await writeFile(scenarioFile, JSON.stringify(now));
+  };
+  const reconnect = async (change: (s: Scenario) => void = () => {}) => {
+    await rewrite(change);
+    await control({ exit: true });
+    // the new stub listens again once it runs: a control round trip proves it
+    const until = Date.now() + 10_000;
+    for (;;) {
+      try {
+        await control({});
+        break;
+      } catch (err) {
+        if (Date.now() > until) throw err;
+        await sleep(50);
+      }
+    }
+  };
   await c.waitScreen((s) => s.includes('Starting T-12') && s.includes('coord-1'), 'the workbench on General');
-  return Object.assign(c, { root, keylog, control });
+  return Object.assign(c, { root, keylog, control, rewrite, reconnect });
 }
 
 const topBar = (s: string) => s.split('\n')[0] ?? '';
@@ -152,6 +180,19 @@ test("the hub's role.vacant turns the chip into the no-coordinator warning at on
   await c.control({ set: { coordinator: 'coord-1' } });
   await c.control({ emit: { type: 'role.filled', role: 'coordinator', session: 'coord-1', ts: ts(6) } });
   await c.waitScreen((x) => topBar(x).includes('coord-1') && !topBar(x).includes('no coordinator'), 'the chip after role.filled', 3000);
+});
+
+test('a hub that comes back with coordinator null after a disconnect drops the chip (no ghost Coordinator from a missed role.vacant)', { skip }, async (t) => {
+  const c = await startShell(t, (s) => {
+    s.coordinator = 'coord-1';
+  });
+  await c.waitScreen((x) => topBar(x).includes('● coord-1 Coordinator') && !topBar(x).includes('no coordinator'), 'the coordinator chip');
+  // the role went vacant while the client was away: no role.vacant event ever reaches it, only hub.status's null;
+  // the session rows still name coord-1 as the coordinator, and the hub's word wins
+  await c.reconnect((s) => {
+    s.coordinator = null;
+  });
+  await c.waitScreen((x) => topBar(x).includes('no coordinator · messages queue in the hub'), 'the warning after the reconnect', 5000);
 });
 
 test('each panel toggles with its key; the active right-panel key hides it; the status line names the centre view throughout', { skip }, async (t) => {

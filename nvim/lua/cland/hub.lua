@@ -50,7 +50,7 @@ function M.new(opts)
   }, Client)
 end
 
---- Events: `state` (state, detail), `connected` (), and the pushed frames `message`, `delivery`, `topic`,
+--- Events: `state` (state, detail), `connected` (), `error` (a handler or callback failed: the message), and the pushed frames `message`, `delivery`, `topic`,
 --- `session.state`, `session.role`, `role.vacant` and `role.filled` (the event frame).
 function Client:on(event, fn)
   self.handlers[event] = self.handlers[event] or {}
@@ -59,10 +59,7 @@ end
 
 function Client:_emit(event, ...)
   for _, fn in ipairs(self.handlers[event] or {}) do
-    local ok, err = pcall(fn, ...)
-    if not ok then
-      self.last_error = ('%s handler: %s'):format(event, err)
-    end
+    self:_call(event .. ' handler', fn, ...)
   end
 end
 
@@ -104,18 +101,24 @@ function Client:_write(frame)
 end
 
 --- Send a request; `cb(err, value)` runs in the main loop. Fails at once while not connected.
-function Client:request(frame, cb)
+--- opts.nulls: an explicit JSON null among the value's top-level fields arrives as vim.NIL (frames decode
+--- null as nil otherwise, which cannot be told from a field left out: `coordinator: null` is "no coordinator").
+function Client:request(frame, cb, opts)
   cb = cb or function() end
   if not self:connected() then
     local why = self.detail or 'not connected to the hub'
     vim.schedule(function()
-      cb(why)
+      self:_call('request', cb, why)
     end)
     return
   end
   local id = 'nvim-' .. self.next_id
   self.next_id = self.next_id + 1
   self.pending[id] = cb
+  if opts and opts.nulls then
+    self.nulls = self.nulls or {}
+    self.nulls[id] = true
+  end
   self:_write(vim.tbl_extend('force', frame, { id = id }))
 end
 
@@ -237,13 +240,27 @@ function Client:_data(chunk)
     if line:match('%S') then
       local ok, frame = pcall(vim.json.decode, line, { luanil = { object = true, array = true } })
       if ok and type(frame) == 'table' then
-        self:_frame(frame)
+        self:_frame(frame, line)
       end
     end
   end
 end
 
-function Client:_frame(frame)
+--- Call a handler or a request's callback: an error in it is kept (last_error) and emitted as `error`, never
+--- raised into the main loop, where it would be a multi-line message and a hit-enter prompt.
+function Client:_call(what, fn, ...)
+  local ok, err = pcall(fn, ...)
+  if not ok then
+    self.last_error = ('%s: %s'):format(what, err)
+    if what ~= 'error handler' then
+      for _, h in ipairs(self.handlers.error or {}) do
+        self:_call('error handler', h, self.last_error)
+      end
+    end
+  end
+end
+
+function Client:_frame(frame, line)
   local t = frame.type
   if t == 'welcome' then
     self.retry_ms = 250
@@ -262,10 +279,24 @@ function Client:_frame(frame)
     local cb = self.pending[frame.id]
     if cb then
       self.pending[frame.id] = nil
+      local nulls = self.nulls and self.nulls[frame.id]
+      if nulls then
+        self.nulls[frame.id] = nil
+      end
       if frame.ok then
-        cb(nil, frame.value)
+        if nulls and line and type(frame.value) == 'table' then
+          local ok, raw = pcall(vim.json.decode, line)
+          if ok and type(raw) == 'table' and type(raw.value) == 'table' then
+            for k, v in pairs(raw.value) do
+              if v == vim.NIL then
+                frame.value[k] = vim.NIL
+              end
+            end
+          end
+        end
+        self:_call('request ' .. tostring(frame.id), cb, nil, frame.value)
       else
-        cb(frame.error or 'failed')
+        self:_call('request ' .. tostring(frame.id), cb, frame.error or 'failed')
       end
     end
   elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' then
@@ -284,8 +315,9 @@ function Client:_lost(reason)
   end
   local pending = self.pending
   self.pending = {}
-  for _, cb in pairs(pending) do
-    pcall(cb, reason)
+  self.nulls = {}
+  for id, cb in pairs(pending) do
+    self:_call('request ' .. tostring(id), cb, reason)
   end
   if self.stopping then
     return
