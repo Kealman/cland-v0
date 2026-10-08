@@ -88,7 +88,15 @@ export class Sessions {
     });
     // a rename moves the session's row to its new name
     this.#unrename = this.#core.onRenamed((from, to, sessionId) => {
-      if (this.#table.rename(sessionId, to)) this.#log({ event: 'process-renamed', from, to, sessionId });
+      const before = this.#table.bySessionId(sessionId);
+      if (!before || !this.#table.rename(sessionId, to)) return;
+      this.#log({ event: 'process-renamed', from: before.name, to, sessionId });
+      const after = this.#table.get(to);
+      try {
+        if (after) this.#adapters.get(after.harness)?.renamed?.(after, before.name);
+      } catch (err) {
+        this.#log({ event: 'process-rename-failed', session: to, error: err instanceof Error ? err.message : String(err) });
+      }
     });
   }
 

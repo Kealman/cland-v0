@@ -27,6 +27,15 @@ export function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>): bool
   return processStarted(p.pid) === p.pidStarted;
 }
 
+/** Whether the row's process still runs: its pid is alive and, when its start time was recorded, started then. */
+export function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>): boolean {
+  if (p.pid === null || !pidAlive(p.pid)) return false;
+  if (!p.pidStarted) return true;
+  const now = processStarted(p.pid);
+  // `ps` failing for a live pid says nothing either way
+  return now === null || now === p.pidStarted;
+}
+
 /**
  * Send `signal` to the row's process, only after verifying it is still the one the hub launched (`sameProcess`):
  * a pid reused by an unrelated process after a restart or a crash is never signalled. Whether it was sent.

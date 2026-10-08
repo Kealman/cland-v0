@@ -24,6 +24,7 @@ import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import { signalProcess } from './processes.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 
 export const CLAUDE_CODE = 'claude-code';
@@ -422,7 +423,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       if (p.pid === null) {
         if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
       } else if (!(stopped && (await this.#gone(p.pid, this.#stopGraceMs)))) {
-        if (pidAlive(p.pid)) process.kill(p.pid, 'SIGTERM');
+        // only the session's own process: a pid reused by another process is never signalled
+        signalProcess(p, 'SIGTERM', this.#host.log);
         if (!(await this.#gone(p.pid, this.#stopGraceMs))) throw new Error(`could not stop "${p.name}": pid ${p.pid} outlived \`claude stop\` and SIGTERM; it is still watched`);
       }
       this.#unwatch(p.sessionId);

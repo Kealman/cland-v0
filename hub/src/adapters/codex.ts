@@ -27,6 +27,7 @@ import type { Message, SessionState, TopicRef } from '../protocol.ts';
 import { VERSION } from '../version.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, type ServerRequest } from './codex/app-server.ts';
+import { processAlive, sameProcess, signalProcess } from './processes.ts';
 
 export const CODEX = 'codex';
 
@@ -481,11 +482,11 @@ export class CodexAdapter implements HarnessAdapter {
     const live = this.#live.get(p.sessionId);
     live?.client?.close();
     this.#live.delete(p.sessionId);
-    if (p.pid !== null && pidAlive(p.pid)) {
-      process.kill(p.pid, 'SIGTERM');
+    // only the app-server the hub started: a pid reused by another process is never signalled
+    if (signalProcess(p, 'SIGTERM', this.#host.log)) {
       const deadline = Date.now() + 5000;
-      while (pidAlive(p.pid) && Date.now() < deadline) await sleep(50);
-      if (pidAlive(p.pid)) process.kill(p.pid, 'SIGKILL');
+      while (sameProcess(p) && Date.now() < deadline) await sleep(50);
+      signalProcess(p, 'SIGKILL', this.#host.log);
     }
     if (p.harnessId) rmSync(p.harnessId, { force: true });
   }
@@ -496,7 +497,7 @@ export class CodexAdapter implements HarnessAdapter {
     const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
     live.p = p;
     this.#live.set(p.sessionId, live);
-    if (p.pid !== null && pidAlive(p.pid) && existsSync(socket)) {
+    if (processAlive(p) && existsSync(socket)) {
       let client: AppServerClient | null = null;
       try {
         client = await this.#connectTo(socket);
@@ -509,10 +510,10 @@ export class CodexAdapter implements HarnessAdapter {
       } catch (err) {
         client?.close();
         if (!options.relaunch) return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}` };
-        process.kill(p.pid, 'SIGTERM');
+        signalProcess(p, 'SIGTERM', this.#host.log);
       }
     } else if (!options.relaunch) {
-      return { found: false, reason: p.pid !== null && pidAlive(p.pid) ? `no socket at ${socket}` : `pid ${p.pid ?? '?'} is gone` };
+      return { found: false, reason: processAlive(p) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
     }
     // a new app-server on the same socket, resuming the thread from its rollout
     const { pid, client } = await this.#startServer(p, socket);

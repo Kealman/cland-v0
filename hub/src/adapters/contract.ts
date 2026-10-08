@@ -114,6 +114,8 @@ export interface HarnessAdapter {
   /** The latest usage the harness reported (only where `capabilities.usage` is not `none`). */
   usage?(process: HarnessProcess): Record<string, unknown> | null;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
+  /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
+  renamed?(process: HarnessProcess, from: string): void;
   /** Start watching a process (after spawn or resume): the polled fallback and the liveness check. */
   watch(process: HarnessProcess): void;
   /** Stop through the harness; the process table then says `stopped`. */
