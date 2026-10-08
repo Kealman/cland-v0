@@ -7,6 +7,12 @@
 //
 // Tool-level noise never enters: commands, outputs, hook signals, state changes, acks and deliveries are not
 // lifecycle events, so nothing maps them.
+//
+// A notice is recorded after the event's own write (a microtask later), so a hub dying in between would lose it. The
+// journal closes that gap: an event that makes a notice is journalled with the notice's id (`agentsNotice`), and at
+// the next start `replayAgentsRecord` records every journalled notice after the last one Agents has, under that id
+// (once: `noticeInTopic` skips an id it already holds).
+import { randomUUID } from 'node:crypto';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, type HubCore, type TopicNotice } from './core.ts';
@@ -74,14 +80,19 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
       core = c;
     },
     tap: (log) => (entry) => {
-      log(entry);
-      if (!core) return;
-      const notice = lifecycleNotice(entry, (name) => (core as HubCore).label(name));
-      if (!notice) return;
+      const notice = core ? lifecycleNotice(entry, (name) => (core as HubCore).label(name)) : null;
+      if (!core || !notice) {
+        log(entry);
+        return;
+      }
+      // the journal line carries the notice's id: a notice lost to a crash is found and recorded at the next start
+      notice.id = randomUUID();
+      log({ ...entry, agentsNotice: notice.id });
       const target = core;
       // after the logging call returns: the event's own write (a tracker transaction on another connection to the
       // same file, a core method half-way through) is complete before the record is written
       queueMicrotask(() => {
+        if (target.store.message(notice.id as string) !== null) return;
         try {
           target.noticeInTopic(AGENTS.id, notice);
         } catch (err) {
@@ -90,4 +101,32 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
       });
     },
   };
+}
+
+/**
+ * At start: the journalled lifecycle events (`records`, oldest first) whose notices Agents lacks, recorded now. Only
+ * those after the newest one Agents has: notices are recorded in order, so a gap is at the end of the previous run.
+ */
+export function replayAgentsRecord(core: HubCore, records: ReadonlyArray<Record<string, unknown>>, log: LogFn = () => {}): number {
+  const noticed = records.filter((r) => typeof r.agentsNotice === 'string');
+  let from = 0;
+  for (let i = noticed.length - 1; i >= 0; i--) {
+    if (core.store.message(noticed[i]?.agentsNotice as string) !== null) {
+      from = i + 1;
+      break;
+    }
+  }
+  let replayed = 0;
+  for (const r of noticed.slice(from)) {
+    const notice = lifecycleNotice(r as LogEntry, (name) => core.label(name));
+    if (!notice) continue;
+    try {
+      core.noticeInTopic(AGENTS.id, { ...notice, id: r.agentsNotice as string });
+      replayed++;
+    } catch (err) {
+      log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  if (replayed) log({ event: 'agents-record-replayed', notices: replayed });
+  return replayed;
 }

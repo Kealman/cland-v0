@@ -6,7 +6,7 @@
 // Every record is `{ ts, event, … }`, the hub log's own shape: the journal is a filter over the log closure (`tap`),
 // so an event is journalled by being logged, with no second call site. `write` is there for a record that is not
 // a log line (the audit log calls it, or logs `{ event: 'audit', … }`, which the filter journals too).
-import { closeSync, existsSync, openSync, readFileSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LogEntry, LogFn } from '../log.ts';
 
@@ -87,7 +87,22 @@ export class Journal {
   constructor(path: string, now: () => Date = () => new Date()) {
     this.#path = path;
     this.#now = now;
-    this.#fd = openSync(path, 'a');
+    this.#fd = openSync(path, 'a+');
+    // a previous run cut off mid-line (a crash, a full disk): the next record starts on a line of its own
+    const size = fstatSync(this.#fd).size;
+    if (size > 0) {
+      const last = Buffer.alloc(1);
+      readSync(this.#fd, last, 0, 1, size - 1);
+      if (last[0] !== 0x0a) this.#writeAll('\n');
+    }
+  }
+
+  /** Write all of `text`: a short write is continued until every byte is out. */
+  #writeAll(text: string): void {
+    if (this.#fd === null) return;
+    const buf = Buffer.from(text);
+    let off = 0;
+    while (off < buf.length) off += writeSync(this.#fd, buf, off, buf.length - off);
   }
 
   get path(): string {
@@ -97,7 +112,7 @@ export class Journal {
   /** Append one record, `{ ts, event, … }` (a `ts` of its own wins). Nothing once closed. */
   write(record: { event: string } & Record<string, unknown>): void {
     if (this.#fd === null) return;
-    writeSync(this.#fd, `${JSON.stringify({ ts: this.#now().toISOString(), ...record })}\n`);
+    this.#writeAll(`${JSON.stringify({ ts: this.#now().toISOString(), ...record })}\n`);
   }
 
   /** The log closure that also journals: every entry goes to `log`, the domain-level ones to the journal too. */

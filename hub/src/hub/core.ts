@@ -98,7 +98,7 @@ export type CoreOptions = {
 
 /** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
  *  delivered to (nobody by default: the record is for reading), and its typed facts. */
-export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown> };
+export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown>; id?: string };
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
 export const COORDINATOR = 'coordinator';
@@ -455,9 +455,11 @@ export class HubCore {
   noticeInTopic(topicId: string, notice: TopicNotice): string | null {
     const topic = this.#store.topic(topicId);
     if (!topic) return null;
+    // a notice with an id of its own (a journalled lifecycle event's) is recorded once, however often it is replayed
+    if (notice.id !== undefined && this.#store.message(notice.id) !== null) return notice.id;
     const to = [...new Set(notice.to ?? [])];
     const message: Message = {
-      id: randomUUID(),
+      id: notice.id ?? randomUUID(),
       from: 'hub',
       fromKind: 'hub',
       via: 'hub',
@@ -1227,6 +1229,16 @@ export class HubCore {
       this.#emitMessage(message);
       this.#move(topic, toHuman ? 'to-human' : awaited.includes(from) ? 'reply' : 'between-agents', `a message from ${from}`);
       this.#publishTopics();
+      // every agent-to-agent message is in the Agents record (spec 4.5, #34): one sent into another topic is
+      // referenced there (who to whom, where, which message), its text left where it was written
+      if (!toHuman && topic.id !== AGENTS.id) {
+        const addressees = [...sessions];
+        this.noticeInTopic(AGENTS.id, {
+          kind: 'agent-message',
+          text: `${this.label(from)} → ${addressees.join(', ')} in "${topic.title}" (${topic.id}): message ${message.id}`,
+          detail: { from, to: addressees, topic: topic.id, message: message.id },
+        });
+      }
     }
     const states = new Map<string, 'sent' | 'queued'>();
     for (const n of sessions) states.set(n, this.#send(message, n) ? 'sent' : 'queued');

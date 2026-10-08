@@ -267,3 +267,70 @@ test('hygiene refusals are typed: the size cap and the rate limit refuse the sen
   assert.match(chatty.error ?? '', /^rate limit: 1 messages in 1 min/);
   assert.deepEqual(chatty.refusal, { code: 'hygiene', rule: 'rate' });
 });
+
+// ------------------------------------------------------------------ the record's gaps (review of #34)
+
+test('an agent-to-agent message in another topic is referenced in Agents (sender, addressees, topic, message id), its text not repeated', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const alpha = await spoke(t, root, 'alpha', 'implementer');
+  const beta = await spoke(t, root, 'beta', 'reviewer');
+  await alpha.waitForPresence(['alpha', 'beta']);
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Review of T-1' })).topic;
+
+  const text = 'the diff is in, have a look at the store changes';
+  const sent = await alpha.call<Send & { message?: { id: string } }>('send', { to: ['beta'], text, topic: topic.id });
+  assert.equal(sent.ok, true, JSON.stringify(sent));
+  const inTopic = (await history(ui, topic.id)).find((m) => m.text === text);
+  assert.ok(inTopic, 'the message itself is in its topic');
+  const ref = await eventually('the reference in Agents', async () => (await history(ui, 'agents')).find((m) => m.fromKind === 'hub' && m.kind === 'agent-message'));
+  assert.deepEqual(ref.detail, { from: 'alpha', to: ['beta'], topic: topic.id, message: inTopic.id });
+  assert.match(ref.text, new RegExp(`^alpha \\[Implementer\\] → beta in "Review of T-1" \\(${topic.id}\\): message ${inTopic.id}$`));
+  assert.ok(!ref.text.includes(text), 'the text is not duplicated');
+  assert.deepEqual(ref.to, [], 'a reference addresses nobody');
+  // a message sent into Agents itself is not referenced again
+  await alpha.call<Send>('send', { to: ['beta'], text: 'plain one' });
+  await eventually('the plain one in Agents', async () => ((await history(ui, 'agents')).some((m) => m.text === 'plain one') ? true : undefined));
+  assert.equal((await history(ui, 'agents')).filter((m) => m.kind === 'agent-message').length, 1);
+});
+
+test('a lifecycle event journalled but not yet recorded in Agents when the hub died is recorded at the next start, once', async (t) => {
+  const root = await tempProject(t);
+  const first = await startDaemon(t, root);
+  let ui = await connectUi(t, first.discovery);
+  assert.equal((await cland(root, 'task', 'create', 'Recorded')).code, 0);
+  assert.equal((await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha')).code, 0);
+  const recorded = await eventually('the claim in Agents', async () => (await history(ui, 'agents')).find((m) => m.kind === 'claim'));
+  ui.close();
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  const lines = await journalLines(root);
+  const claimed = lines.find((l) => l.event === 'task-claimed');
+  assert.ok(claimed && typeof claimed.agentsNotice === 'string', `the journalled event names its notice: ${JSON.stringify(claimed)}`);
+  assert.equal(claimed.agentsNotice, recorded.id);
+
+  // the state a crash leaves: the event's journal line written, its notice never recorded (the hub died between)
+  const lost = { ...claimed, ts: new Date().toISOString(), id: 'T-2', session: 'beta', agentsNotice: '00000000-0000-4000-8000-00000000c1a1' };
+  await writeFile(join(root, '.cland', 'journal.jsonl'), `${JSON.stringify(lost)}\n`, { flag: 'a' });
+
+  const again = await startDaemon(t, root);
+  ui = await connectUi(t, again.discovery);
+  const claims = await eventually('the lost claim recorded', async () => {
+    const c = (await history(ui, 'agents')).filter((m) => m.kind === 'claim');
+    return c.some((m) => m.id === lost.agentsNotice) ? c : undefined;
+  });
+  assert.deepEqual(claims.map((m) => m.text), ['alpha claimed T-1', 'beta claimed T-2']);
+});
+
+test('a journal whose last line was cut off mid-write gets a newline before the next record: every later record parses', async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'journal.jsonl'), '{"ts":"2026-10-01T00:00:00.000Z","event":"hub-started"}\n{"ts":"2026-10-01T00:00:01.000Z","event":"se');
+  await startDaemon(t, root);
+  const text = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  const lines = text.split('\n').filter(Boolean);
+  assert.equal(lines[1], '{"ts":"2026-10-01T00:00:01.000Z","event":"se', 'the cut line is left as it was, alone on its line');
+  const later = lines.slice(2).map((l) => JSON.parse(l) as { event: string });
+  assert.equal(later[0]?.event, 'hub-started', "this start's record is a whole line of its own");
+});
