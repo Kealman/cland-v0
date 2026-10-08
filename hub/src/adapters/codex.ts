@@ -348,7 +348,10 @@ export class CodexAdapter implements HarnessAdapter {
       void this.#readRateLimits(live);
       // the first turn carries the clause: the thread gets its rollout, so attach and resume work
       const turn = await client.request<{ turn?: { id?: string } }>('turn/start', { threadId, input: [{ type: 'text', text: placeholderClause(request.name, request.role), text_elements: [] }] });
-      if (typeof turn.turn?.id === 'string' && live.state !== 'idle') live.turnId = turn.turn.id;
+      // the turn is accepted: the thread is active, though its `thread/status/changed` may come after this result
+      // (seen with 0.160.0); a launch never reports the idle that preceded the clause turn
+      if (typeof turn.turn?.id === 'string') live.turnId ??= turn.turn.id;
+      if (live.state === 'idle') live.state = 'busy';
       this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
       return p;
     } catch (err) {
@@ -383,8 +386,10 @@ export class CodexAdapter implements HarnessAdapter {
         this.#host.log({ event: 'harness-steered', harness: this.harness, session: p.name, id: message.id, turn: expected });
         return;
       } catch (err) {
-        // the turn ended (or another began) in between: try again on what is current now
-        if (!(err instanceof RpcError) || live.turnId === expected) throw err;
+        if (!(err instanceof RpcError)) throw err;
+        // the turn ended (or another began) in between: try again on what is current now; a turn id the
+        // app-server refuses and nothing replaced is stale, and the thread takes a new turn below
+        if (live.turnId === expected) live.turnId = null;
       }
     }
     // an active turn whose id the hub missed (it reconnected mid-turn): `turn/start` steers it

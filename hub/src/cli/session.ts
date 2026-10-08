@@ -3,7 +3,7 @@ import { layout, projectRoot, readDiscovery } from '../project.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code] [--cwd dir]
+export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--cwd dir]
                   launch a harness session through the hub
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session

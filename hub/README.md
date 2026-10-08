@@ -27,6 +27,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/adapters/sessions.ts` | The hub's side of the adapters: launch, attach, stop, resume, the state signals, and the delivery pipeline's last stage (delivered → inject → injected). Transport-free. |
 | `src/adapters/requests.ts` | The `session.*` frames and their handler. |
 | `src/adapters/claude-code.ts` | The Claude Code adapter. |
+| `src/adapters/codex.ts` | The Codex adapter; `src/adapters/codex/app-server.ts` is its JSON-RPC client for an app-server's Unix socket. |
 | `src/adapters/index.ts` | The adapters a project's hub runs with, and their timings from the environment. |
 | `mod/cland/` | The cland mod, loaded into every Claude Code session the hub launches (`--plugin-dir`): it submits the hub's messages as turns and reports turn starts and ends. |
 | `src/project.ts` | The `.cland/` layout, the managed `.gitignore`, the secret, the discovery file, finding the project root. |
@@ -46,6 +47,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `bin/cland.ts` | The `cland` CLI: `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. |
+| `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
 
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional. `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_HEARTBEAT_MS` and `CLAND_HUB_REQUEST_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_PAUSE_MS`, read by `cland hub serve`, holds every tracker write still between its temporary file and the rename, so a test can land a hand edit in that window; nothing else sets it.
 
@@ -80,7 +82,7 @@ A topic is a thread in the human's chat with agents (spec 4.5): an id, a title, 
 - **The rest of the human side.** Topics beyond General and Agents, their statuses and asks (#32); a loop-breaker mute is still only journalled, not shown in the UI.
 - **Roles as hub state.** A session may declare one of the four role names so `@role` routes; clauses, permissions and handover come with #29–#33.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
-- **Adapters.** Codex (#26). Permissions on `session.launch` (#30): anyone may launch for now.
+- **Adapters.** Permissions on `session.launch` (#30): anyone may launch for now.
 
 ## The project's hub
 
@@ -154,7 +156,7 @@ A `message` event comes for every message recorded in a topic, the human's own i
 
 ## Adapters and sessions
 
-An adapter launches one kind of harness, tells the hub what each session is doing, and hands it messages (spec 4.3). Claude Code and OpenCode have one; Codex (#26) follows the same contract.
+An adapter launches one kind of harness, tells the hub what each session is doing, and hands it messages (spec 4.3). Claude Code, OpenCode and Codex have one.
 
 ### The contract
 
@@ -179,7 +181,7 @@ The capability table declares the optional capabilities (`history`, `usage`, `se
 
 ### The process table
 
-`harness_processes` in `hub.db`: name, harness, role, model, cwd, pid, the harness's handle (Claude Code's background id), cland's session id (the spoke's `CLAND_SESSION_ID`), the harness's own conversation id where it chose one, start time, and `running` | `exited` | `stopped`. At its start the hub resumes every `running` row. A process found alive under its ids is watched again. Otherwise the row turns `exited`, the state `unknown`, and the log gets `harness-exited`. The watch also catches a process that dies while the hub runs.
+`harness_processes` in `hub.db`: name, harness, role, model, cwd, pid, the harness's handle (Claude Code's background id, Codex's app-server socket), cland's session id (the spoke's `CLAND_SESSION_ID`), the harness's own conversation id where it chose one (Codex: the thread id), start time, and `running` | `exited` | `stopped`. At its start the hub resumes every `running` row. A process found alive under its ids is watched again. Otherwise the row turns `exited`, the state `unknown`, and the log gets `harness-exited`. The watch also catches a process that dies while the hub runs.
 
 ### The Claude Code adapter
 
@@ -226,12 +228,35 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 
 `CLAND_OPENCODE_BIN` names the `opencode` executable. The server's environment drops `CLAND_*`, `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT` and `OPENCODE_PASSWORD` from the hub's own. The user's global OpenCode config still applies, merged with the generated one.
 
+### The Codex adapter
+
+`src/adapters/codex.ts`, with `codex/app-server.ts` (the JSON-RPC client on the app-server's Unix socket). Launched with `"harness": "codex"`; `CLAND_CODEX_BIN` names the `codex` executable.
+
+| | Surface (Codex 0.160.0) |
+| --- | --- |
+| spawn | `codex app-server --listen unix://<socket>` in the session's cwd, detached in its own process group (it outlives the hub; its output goes to `.cland/log/codex-<name>.log`). The socket is `.cland/run/cx-<id>.sock`, or `$TMPDIR/cland-cx-<id>.sock` when that path is too long for a Unix socket. The spoke is passed to the app-server only, as `-c mcp_servers.cland.*` overrides (`command`, `args`, `env.CLAND_HUB_FILE`, `env.CLAND_SESSION_ID`, `env.CLAND_SESSION_NAME`, `env.CLAND_ROLE`, `env.CLAND_DELIVERY=adapter`, `enabled`, `required`, `default_tools_approval_mode="approve"`); nothing is written to `~/.codex/config.toml`. Then `thread/start {cwd, model}` and a first turn carrying the session's clause (a placeholder until roles, #29): a thread without a turn has no rollout, and `thread/resume` (attach, a restarted hub) refuses it. Codex 0.153.4 or newer is required. |
+| attach | `codex resume --remote unix://<socket> --cd <cwd> <thread id>`. Never a `-c` or a `--profile`: either one puts the TUI in embedded mode, which has no external surface (spec 9). The first attach in a new folder asks to trust it. |
+| inject | Idle: `turn/start {threadId, input: [], toolOutput: {name: "hub_event", namespace: "cland", output: <envelope>}}`. During a turn: `turn/steer {threadId, expectedTurnId, input}` with the envelope as text. The JSON-RPC result confirms `injected`; an error or no answer within `CLAND_INJECT_TIMEOUT_MS` leaves the message `delivered` for the next `idle`. A steer the app-server refuses because the turn just ended falls back to `turn/start`. |
+| state | `thread/status/changed` for the session's thread id (the app-server sends it to every connection; other threads, such as ephemeral helpers, are ignored): `idle` → `idle`, `active` → `busy`, `active [waitingOnApproval]` → `waiting for approval`, `active [waitingOnUserInput]` → `waiting for human`, `systemError` → `idle`, `notLoaded` → `unknown`. Source `app-server`. The pid is checked every `CLAND_ADAPTER_POLL_MS` (5 s), and a lost connection is reopened and resubscribed. |
+| usage | `thread/tokenUsage/updated` (`usage.tokens`: total, last, context window) and `account/rateLimits/read` after each turn, plus `account/rateLimits/updated` (`usage.rateLimits`). |
+| stop, resume | Stop sends SIGTERM to the app-server (its MCP children end with it), then SIGKILL after 5 s. Resume needs the pid alive and the socket answering `thread/resume` for the recorded thread (or `thread/read` while the thread has no turn yet). A relaunch starts a new app-server on the same socket and resumes the thread from its rollout. |
+
+| Capability | |
+| --- | --- |
+| history | none: `Thread.path` is unstable and the rollout format is not a stable interface |
+| usage | reliable: token counts and the account's rate limits |
+| setModel | none |
+| approvalRelay | none: server requests (approvals, questions) are left to the attached TUI; the hub only logs `harness-request` |
+| busy, idle, waiting for approval, waiting for human | reliable (`thread/status/changed`) |
+
+What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/start`'s result arrives before the turn's `thread/status/changed`, so the adapter counts an accepted turn as `busy`. The TUI does not render the `hub_event` tool output, only the model's `cland.send` call and its answer. With `default_tools_approval_mode="approve"`, the cland tools ran without a prompt.
+
 ### The frames and the CLI
 
 | Request | Result `value` | Who |
 | --- | --- | --- |
 | `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"cwd"?}` | `{"process":HarnessProcess}` | UI, CLI, spokes (anyone until #30) |
-| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities}}` | UI, CLI, spokes |
+| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities,"codex":Capabilities}}` | UI, CLI, spokes |
 | `{"type":"session.attach","id":…,"session":…}` | `{"command":"claude attach 1a2b3c4d"}` | UI, CLI |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true}` | `{"found","reason"?,"process"}` | UI, CLI |
@@ -242,7 +267,7 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 
 | Command | What it does |
 | --- | --- |
-| `cland session launch <name> [--role r] [--model m] [--harness claude-code\|opencode] [--cwd dir]` | Launches a session through the hub. |
+| `cland session launch <name> [--role r] [--model m] [--harness claude-code\|opencode\|codex] [--cwd dir]` | Launches a session through the hub. |
 | `cland session list` / `attach <name>` / `stop <name>` / `resume <name> [--relaunch]` | As the frames above. |
 | `cland hook <event> --session <name> --hub-file <path>` | Posts one signal, with the harness's JSON payload from stdin. Only the fields the hub reads are kept, and a prompt is reduced to the message ids it carries. Always exits 0: a hook never fails the harness. |
 | `cland hook bridge --session <name> --hub-file <path>` | The mod's connection to the hub. It prints each `inject` frame as a JSON line, reconnects through `hub.json` after a hub restart, and ends with its parent. |
