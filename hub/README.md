@@ -17,8 +17,9 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks. Transport-free. |
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`), the `task.*` requests from either, refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
 | `src/hub/server.ts` | The WebSocket edge: bearer secret check, frame size limit, heartbeat sweep. `createHub` starts it with no human side at all. |
-| `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. |
-| `src/hub/daemon.ts` | The hub serving one project in the background: `.cland/` prepared, store on `hub.db`, both edges bound, `hub.json` written last and removed first. |
+| `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. Bound under a private name and renamed into place; on close it removes the path only while the path is still the socket it bound. |
+| `src/hub/lock.ts` | The project's hub lock, `.cland/hub.lock`: created whole or not at all, holding the holder's pid and process start time; a stale one (pid gone, or reused by a process started at another time) is broken under a guard. |
+| `src/hub/daemon.ts` | The hub serving one project in the background: the lock taken first, `.cland/` prepared, store on `hub.db`, both edges bound, `hub.json` written last. Shutdown runs backwards: edges closed, `hub.json` removed, the lock released last. |
 | `src/project.ts` | The `.cland/` layout, the managed `.gitignore`, the secret, the discovery file, finding the project root. |
 | `src/tracker/item.ts` | The item file format: frontmatter, body, comments, verdicts; parse (lenient for hand edits) and serialize. |
 | `src/tracker/index-db.ts` | The tracker's index (items, labels, blockers, verdicts), its id high-water mark and the claims: tables of their own in `hub.db`, through a connection of their own. |
@@ -62,9 +63,9 @@ Run from a project's root, or anywhere inside it. The project root is the neares
 
 | Command | What it does |
 | --- | --- |
-| `cland hub start` | Prepares `.cland/`, starts `cland hub serve` detached, waits until it answers, prints its pid, port and socket. A live hub is reported instead of started twice; a `hub.json` whose pid is gone is replaced. |
+| `cland hub start` | Starts `cland hub serve` detached, waits until it answers, prints its pid, port and socket. A live hub is reported instead of started twice, also when two starts race: the hub that takes the project's lock serves, the other serve exits, and both commands report the one hub. A `hub.json` whose pid is gone, or is a process that does not hold the lock, is replaced. |
 | `cland hub status` | Asks the hub over its socket: pid, port, socket, uptime, version, connected sessions with their roles. `--json` prints the raw status. Exit 1 when no hub runs. |
-| `cland hub stop` | Asks the hub to stop over its socket, falls back to SIGTERM, waits for the process to exit, removes `hub.json` and the socket file. |
+| `cland hub stop` | Asks the hub to stop over its socket and waits for the process to exit. When the socket does not answer it sends SIGTERM, but only to the process holding the project's lock (pid and start time match); a `hub.json` naming any other process is removed and that process left alone. A hub that died without cleaning up has its `hub.json` removed, and its socket file unless another hub holds the lock by now. |
 | `cland hub serve` | The hub in the foreground, logging JSON lines to stderr. This is what `start` runs. SIGTERM and SIGINT stop it gracefully. |
 
 The project's `.cland/`:
@@ -76,6 +77,7 @@ The project's `.cland/`:
 | `roles.toml`, `config.toml` | yes | Not written by the hub yet (#29 onward). |
 | `hub.db` (+ `-wal`, `-shm`) | no | The SQLite store: sessions, messages, deliveries, hygiene counters and mutes; the tracker's index and claims. |
 | `secret` | no | 32 random bytes as hex, mode 0600. Kept across restarts, so spokes holding it reconnect. |
+| `hub.lock` | no | The hub lock, mode 0600: `{"pid":…,"started":"<ps lstart>"}` of the one hub serving the project, from before it prepares anything until it has shut down. |
 | `hub.json` | no | The discovery file, mode 0600, present only while a hub runs. |
 | `hub.sock` | no | The Unix socket for the UI and the CLI. |
 | `log/hub.log` | no | The background hub's stdout and stderr. |

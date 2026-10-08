@@ -1,10 +1,13 @@
-// The hub as a project's daemon: `.cland/` prepared, the store opened on `hub.db`, the WebSocket edge for
-// spokes and the Unix socket edge for the UI bound, and the discovery file written last — a client that
-// reads `hub.json` finds a hub that answers.
+// The hub as a project's daemon: the project's lock taken first, `.cland/` prepared, the store opened on
+// `hub.db`, the WebSocket edge for spokes and the Unix socket edge for the UI bound, and the discovery file
+// written last — a client that reads `hub.json` finds a hub that answers. Shutdown runs it backwards: the
+// edges close, `hub.json` goes, and the lock is released last, so no successor binds before this hub is gone.
+import { mkdirSync } from 'node:fs';
 import { Store } from './store.ts';
 import { createHub, type Hub } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
-import { ensureSkeleton, layout, pidAlive, readDiscovery, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
+import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
+import { acquireLock, HubLocked } from './lock.ts';
 import { VERSION } from '../version.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
@@ -21,10 +24,21 @@ export type Daemon = {
 export async function serveProject(root: string, options: { log?: LogFn } = {}): Promise<Daemon> {
   const log = options.log ?? (() => {});
   const l = layout(root);
-  const secret = ensureSkeleton(l);
-  const running = readDiscovery(l.discovery);
-  if (running && running.pid !== process.pid && pidAlive(running.pid)) {
-    throw new Error(`a hub already runs for ${root} (pid ${running.pid}, socket ${running.socket})`);
+  mkdirSync(l.dir, { recursive: true });
+  // before anything is prepared: a second hub must not even write the secret
+  let lock;
+  try {
+    lock = acquireLock(l.lock);
+  } catch (err) {
+    if (err instanceof HubLocked) throw new Error(`a hub already runs for ${root} (pid ${err.holder.pid} holds ${l.lock})`);
+    throw err;
+  }
+  let secret: string;
+  try {
+    secret = ensureSkeleton(l);
+  } catch (err) {
+    lock.release();
+    throw err;
   }
 
   const startedAt = new Date();
@@ -47,6 +61,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
     });
   } catch (err) {
     tracker.stop();
+    lock.release();
     throw err;
   }
   let resolveStopped!: () => void;
@@ -56,11 +71,12 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
       log({ event: 'stopping' });
-      // the discovery file goes first: from here on nobody is sent to a hub on its way out
-      removeDiscovery(l.discovery, process.pid);
       await edge?.close();
       await hub.close();
       tracker.stop();
+      // the discovery file and then the lock go last: a successor can only start once this hub is gone
+      removeDiscovery(l.discovery, process.pid);
+      lock.release();
       log({ event: 'stopped' });
       resolveStopped();
     })();
@@ -72,6 +88,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   } catch (err) {
     await hub.close();
     tracker.stop();
+    lock.release();
     throw err;
   }
 

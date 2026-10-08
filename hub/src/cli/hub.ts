@@ -5,9 +5,10 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { serveProject } from '../hub/daemon.ts';
 import { jsonLinesLog } from '../log.ts';
-import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery } from '../project.ts';
+import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
 import { askHub, probe } from './socket-client.ts';
+import { liveHolder } from '../hub/lock.ts';
 
 const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
 /** How long `start` waits for the daemon to answer, and `stop` for it to exit. */
@@ -40,13 +41,20 @@ function describe(s: HubStatus): string {
   return `${lines.join('\n')}\n`;
 }
 
-/** What `hub.json` says and whether it is true: a live hub, a stale file, or nothing. */
-async function inspect(file: string): Promise<{ kind: 'none' } | { kind: 'stale'; d: Discovery } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery; status: HubStatus }> {
-  const d = readDiscovery(file);
+/** Whether `pid` is the project's hub: the process holding `.cland/hub.lock`, started when the lock says. */
+const ownsProject = (lockFile: string, pid: number): boolean => liveHolder(lockFile)?.pid === pid;
+
+/**
+ * What `hub.json` says and whether it is true: a live hub, a stale file (its pid is gone, or is a live
+ * process that does not hold the project's lock — a reused pid), a hub that does not answer, or nothing.
+ */
+async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery; status: HubStatus }> {
+  const d = readDiscovery(l.discovery);
   if (!d) return { kind: 'none' };
-  if (!pidAlive(d.pid)) return { kind: 'stale', d };
+  if (!pidAlive(d.pid)) return { kind: 'stale', d, why: `pid ${d.pid} is gone` };
   const status = await probe(d);
-  return status ? { kind: 'live', d, status } : { kind: 'mute', d };
+  if (status) return { kind: 'live', d, status };
+  return ownsProject(l.lock, d.pid) ? { kind: 'mute', d } : { kind: 'stale', d, why: `pid ${d.pid} is not this project's hub` };
 }
 
 async function waitForExit(pid: number, ms: number): Promise<boolean> {
@@ -60,7 +68,7 @@ async function waitForExit(pid: number, ms: number): Promise<boolean> {
 
 async function start(root: string, io: Io): Promise<number> {
   const l = layout(root);
-  const found = await inspect(l.discovery);
+  const found = await inspect(l);
   if (found.kind === 'live') {
     io.out(`hub already running for ${root}\n${describe(found.status)}`);
     return 0;
@@ -70,7 +78,7 @@ async function start(root: string, io: Io): Promise<number> {
     return 1;
   }
   if (found.kind === 'stale') {
-    io.out(`replacing a stale ${l.discovery} (pid ${found.d.pid} is gone)\n`);
+    io.out(`replacing a stale ${l.discovery} (${found.why})\n`);
     rmSync(l.discovery, { force: true });
   }
 
@@ -82,13 +90,17 @@ async function start(root: string, io: Io): Promise<number> {
   let exited: number | null = null;
   child.once('exit', (code) => (exited = code ?? -1));
 
+  // Our child serves, or — when another start got the project's lock first — exits, and the hub to report
+  // is the lock's holder: either way the answer is the hub `hub.json` names once it answers.
   const deadline = Date.now() + START_DEADLINE_MS;
-  while (Date.now() < deadline && exited === null) {
+  while (Date.now() < deadline) {
+    const holder = liveHolder(l.lock);
+    if (exited !== null && holder === null) break;
     const d = readDiscovery(l.discovery);
-    if (d && d.pid === child.pid) {
+    if (d && (d.pid === child.pid || d.pid === holder?.pid)) {
       const status = await probe(d);
       if (status) {
-        io.out(`hub started for ${root}\n${describe(status)}`);
+        io.out(d.pid === child.pid ? `hub started for ${root}\n${describe(status)}` : `hub already running for ${root}\n${describe(status)}`);
         return 0;
       }
     }
@@ -107,7 +119,7 @@ async function start(root: string, io: Io): Promise<number> {
 
 async function status(root: string, json: boolean, io: Io): Promise<number> {
   const l = layout(root);
-  const found = await inspect(l.discovery);
+  const found = await inspect(l);
   switch (found.kind) {
     case 'live':
       io.out(json ? `${JSON.stringify(found.status)}\n` : `hub running for ${root}\n${describe(found.status)}`);
@@ -116,7 +128,7 @@ async function status(root: string, json: boolean, io: Io): Promise<number> {
       io.out(json ? `${JSON.stringify({ running: false, root })}\n` : `no hub running for ${root}\n`);
       return 1;
     case 'stale':
-      io.out(json ? `${JSON.stringify({ running: false, root, stale: found.d.pid })}\n` : `no hub running for ${root} (stale ${l.discovery}: pid ${found.d.pid} is gone)\n`);
+      io.out(json ? `${JSON.stringify({ running: false, root, stale: found.d.pid })}\n` : `no hub running for ${root} (stale ${l.discovery}: ${found.why})\n`);
       return 1;
     case 'mute':
       io.err(`cland: pid ${found.d.pid} holds ${l.discovery} but does not answer on ${found.d.socket}\n`);
@@ -139,7 +151,13 @@ async function stop(root: string, io: Io): Promise<number> {
       asked = false;
     }
     if (!(asked && (await waitForExit(d.pid, STOP_DEADLINE_MS)))) {
-      // the socket did not take the request, or the hub did not leave in time: the signal's turn
+      // The socket did not take the request, or the hub did not leave in time: the signal's turn — but only
+      // for the process that holds the project's lock. Any other is a stranger behind a reused pid.
+      if (!ownsProject(l.lock, d.pid)) {
+        removeDiscovery(l.discovery, d.pid);
+        io.out(`pid ${d.pid} named by ${l.discovery} is not this project's hub (it does not hold ${l.lock}); left it running and removed the stale ${l.discovery}\n`);
+        return 0;
+      }
       process.kill(d.pid, 'SIGTERM');
       if (!(await waitForExit(d.pid, STOP_DEADLINE_MS))) {
         io.err(`cland: pid ${d.pid} did not exit after SIGTERM; it is left running\n`);
@@ -150,9 +168,13 @@ async function stop(root: string, io: Io): Promise<number> {
   } else {
     io.out(`removed a stale ${l.discovery} (pid ${d.pid} was gone)\n`);
   }
-  // a hub that died without cleaning up leaves these; a newer hub's file is never touched
-  removeDiscovery(l.discovery, d.pid);
-  rmSync(d.socket, { force: true });
+  // A hub that stopped cleanly removed its own files. One that died without cleaning up leaves hub.json
+  // naming it, and its socket: those go, unless another hub holds the project's lock by now (its socket
+  // may already stand at that path). A newer hub's hub.json is never touched.
+  if (readDiscovery(l.discovery)?.pid === d.pid) {
+    removeDiscovery(l.discovery, d.pid);
+    if (liveHolder(l.lock) === null) rmSync(d.socket, { force: true });
+  }
   return 0;
 }
 
