@@ -259,11 +259,14 @@ export class Tracker {
 
   #write(name: string, item: Item): void {
     const text = serializeItem(item);
+    // what is indexed is what the file says — the text read back the way a reader (and a rescan) reads it,
+    // not the object it was written from: a comment whose text reads back as a verdict is one, everywhere
+    const written = parseItem(text, name);
     const path = join(this.#dir, name);
     const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
     writeFileSync(tmp, text);
     renameSync(tmp, path);
-    this.#index.put(item, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+    this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
   }
 
   /**

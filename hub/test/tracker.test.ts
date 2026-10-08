@@ -285,6 +285,16 @@ test('a verdict comment is stored in the file with its header and is queryable t
   assert.deepEqual(view.item.comments.map((c) => c.author), ['alice', 'qa-1']);
 });
 
+test('the index holds what the file says: a plain comment that reads back as a verdict is a verdict to view and list alike', async (t) => {
+  const root = await project(t);
+  ok(await cland(root, 'task', 'create', 'Shaped'));
+  ok(await cland(root, 'task', 'comment', 'T-1', 'verdict: review\nresult: clear\nby: rev-9 [reviewer]\nrun: r-9\n\nwritten as a plain comment', '--as', 'alice'));
+  const view = await json<{ item: View }>(root, 'view', 'T-1');
+  const inView = view.item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]);
+  const listed = (await json<{ items: Summary[] }>(root, 'list', '--verdict', 'review=clear')).items.map((i) => i.id);
+  assert.deepEqual({ inView, listed }, { inView: [['review', 'clear', 'rev-9 [reviewer]', 'r-9']], listed: ['T-1'] });
+});
+
 test('edit, close and link change the file; bad references are refused', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', 'Parent epic', '--kind', 'epic'));
