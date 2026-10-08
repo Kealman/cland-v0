@@ -2,6 +2,7 @@
 // adapter uses, as Codex 0.160.0 does, and nothing else:
 //
 //   codex --version                       `codex-cli 0.160.0`
+//   codex login status                    `Logged in using ChatGPT`; FAKE_CODEX_LOGGED_OUT=1: `Not logged in`, exit 1
 //   codex app-server --listen unix://PATH [-c key=value]...
 //       JSON-RPC over a WebSocket on the Unix socket: `initialize`, `thread/start`, `thread/resume` (refused with
 //       "no rollout found" until the thread had a turn, as the real one), `thread/read`, `turn/start` (with `input`
@@ -55,6 +56,14 @@ type ThreadFile = { id: string; cwd: string; model: string; turns: number };
 async function main(args: string[]): Promise<number> {
   if (args[0] === '--version' || args[0] === '-V') {
     process.stdout.write(`codex-cli ${VERSION}\n`);
+    return 0;
+  }
+  if (args[0] === 'login' && args[1] === 'status') {
+    if (process.env.FAKE_CODEX_LOGGED_OUT === '1') {
+      process.stderr.write('Not logged in\n');
+      return 1;
+    }
+    process.stderr.write('Logged in using ChatGPT\n');
     return 0;
   }
   if (args[0] === 'app-server') return appServer(args.slice(1));

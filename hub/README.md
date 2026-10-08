@@ -42,6 +42,8 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/session.ts` | `cland session launch`, `list`, `attach`, `stop`, `resume`. |
 | `src/cli/role.ts` | `cland role set`, `clear`, `list`. |
 | `src/cli/init.ts` | `cland init [dir]`, `cland update [dir]`. |
+| `src/cli/doctor.ts` | `cland doctor [dir]` (below). |
+| `src/doctor/` | Its checks: `toolchain.ts` (the harnesses, `gh`, Neovim), `project.ts` (the hub, the config files, what `cland init` provisioned), `ranges.ts` (`TESTED_RANGES`, the harness versions each adapter was built against), `report.ts` (the verdicts, the text and the runner). |
 | `src/init/provision.ts` | What `cland init` and `cland update` provision, step by step (below); `src/init/` holds one module per managed part: `config.ts` (`config.toml`, also read by the hub), `skills.ts`, `instructions.ts` (`AGENTS.md`, `CLAUDE.md`, `docs/agents/*`), `claude-settings.ts` (the hooks), `files.ts` (write-only-when-changed and the report). |
 | `src/roles/config.ts` | `.cland/roles.toml`: parsed (smol-toml), written with the defaults when missing, watched and read again when it changed. |
 | `src/roles/default-roles.ts` | The default `roles.toml`: the four roles' clauses, skills, launch defaults, permissions. |
@@ -56,7 +58,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
 | `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `who`, `status`, `rename`, `history` (a session's traffic, or a topic's with `topic`), `session.launch`, `role.handover`, `role.state` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
-| `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
+| `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `doctor`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. Like the real one it also runs the project's `.claude/settings.json` hooks and reads `CLAUDE.md` with its `@` imports, else `AGENTS.md`; what a session loaded goes to `jobs/<id>.context.json`. |
 | `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
@@ -258,7 +260,32 @@ Every managed file or block carries `managed by cland <version>`. A file or hook
 
 The project hooks are for a Claude Code session started by hand, and do nothing where `cland` is not on the PATH. A session the hub launches already gets the same hooks, naming its session and hub file, through `--settings`, plus the cland mod (`--plugin-dir`) and the spoke (`--mcp-config`); there `CLAND_SESSION_NAME` is set and the project hooks stand aside. The mod is therefore not provisioned into the project: it needs the session's identity, which only a launch has, and its path would be a machine path. Committed files never hold a machine path or the secret.
 
-Not provisioned yet: the territory (remotes, the bare repository, `dev`) is slice 2's; `cland doctor` is a ticket of its own.
+Not provisioned yet: the territory (remotes, the bare repository, `dev`) is slice 2's.
+
+## cland doctor
+
+`cland doctor [dir]` checks the machine and the project (`dir`, else the one around the current directory) and prints one line per check: `ok`, `warn` or `fail`, what it found, and for a `warn` or `fail` the fix after `— fix:`. The text is plain, to paste into an item comment; the verdict is coloured only on a terminal (never with `NO_COLOR`). `--json` prints `{root, version, checks: [{name, verdict, detail, fix?}], summary: {ok, warn, fail}}`. The exit code is 1 when any check fails, else 0: a warning never fails it. It starts nothing and changes nothing; the hub is only asked `hub.status`.
+
+| Check | `ok` when | Otherwise |
+| --- | --- | --- |
+| `claude-code`, `codex`, `opencode` | The executable (the adapter's `CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN`, `CLAND_OPENCODE_BIN`, else `claude`, `codex`, `opencode` on the PATH) answers `--version` within the tested range: Claude Code `>=2.1.294 <2.2.0`, Codex `>=0.160.0 <0.161.0`, OpenCode `>=2.0.24 <2.1.0` (`src/doctor/ranges.ts`, the one place to widen after re-verifying an adapter). | Missing: `fail`, install it or set the variable. Outside the range: `warn` (older: upgrade; newer: it may work). |
+| `claude-code auth` | `claude auth status --json` says `"loggedIn": true`. | `fail`, `claude auth login`. |
+| `codex auth` | `codex login status` exits 0 (`Logged in using …`). | `fail`, `codex login`. |
+| `opencode auth` | `opencode auth list --standalone --format json` lists a provider with credentials (`--standalone`: a private server for the call, the background service is not started). | None: `warn` (the free models still work), `opencode auth login`; the command failing: `warn: cannot check`. |
+| `gh`, `gh auth` | `gh --version`; `gh auth status` exits 0. | `fail`: install gh, `gh auth login`. |
+| `neovim` | `CLAND_NVIM`, else the pinned build in the launcher's cache (`nvim/bin/nvim-path.ts`), prints `NVIM <nvim/NVIM_VERSION>`. | Not downloaded: `fail`, run `cland open` (its launcher downloads and verifies it). `CLAND_NVIM` at another version: `warn`. |
+| `project` | Only when `.cland/` is missing: then the project checks below are this one `fail`, `cland init`. | |
+| `hub` | `hub.json` names a live pid that holds `.cland/hub.lock` and answers `hub.status` on the socket, at this cland's version. | No hub (no file, a stale file): `warn`, `cland hub start`. A lock holder without `hub.json`, an invalid file, a hub that does not answer: `fail`. Another version: `warn`, restart it. |
+| `hub.json` | Valid (socket, port, secret, pid, version), or absent while no hub runs. | Missing while a hub holds the lock, or invalid: `fail`. Stale: `warn`. |
+| `secret` | `.cland/secret` is 64 hex digits, mode 0600, the one `hub.json` carries. | Absent before the first start: `warn`; loose mode: `fail`, `chmod 600 .cland/secret`. |
+| `roles.toml`, `config.toml` | Parse (`roles.toml` as the hub reads it, `config.toml` as `cland update` does). | `fail` with smol-toml's error and its line and column. Absent: `warn`. |
+| `skills manifest` | `.agents/skills/.cland-manifest.json` is valid and each skill it lists has its `SKILL.md` (cland's own repository, the skills' source, needs none). | `fail`, `cland update`. |
+| `skills` | `.claude/skills` is a symlink resolving to `.agents/skills`, or the project's own folder with a working link per cland skill. | Missing or broken: `fail`, `cland update` (a link pointing elsewhere: `rm .claude/skills` first). A link of the project's own elsewhere: `warn`. |
+| `claude hooks` | `.claude/settings.json` holds the managed hook (`cland hook <event> # managed by cland <version>`) for every adapter event, at this version. | Missing: `fail`; another version: `warn`; both `cland update`. |
+| `cland mod` | `hub/mod/cland/hooks/hooks.json` ships with this cland. | `fail`, reinstall cland. |
+| `docs/agents`, `AGENTS.md` | The three files exist (a file without the mark is the project's own and fine); `AGENTS.md` has the managed block, at this version. | `fail` (another version: `warn`), `cland update`. |
+
+The fakes answer the same surfaces in the tests (`test/doctor.test.ts`): `claude --version` and `auth status` (`FAKE_CLAUDE_VERSION`, `FAKE_CLAUDE_LOGGED_OUT`), `codex login status` (`FAKE_CODEX_LOGGED_OUT`), `opencode auth list` (`FAKE_OPENCODE_NO_AUTH`), and the fake `gh`'s `--version` and `auth status` (`FAKE_GH_LOGGED_OUT`).
 
 ## The project's hub
 

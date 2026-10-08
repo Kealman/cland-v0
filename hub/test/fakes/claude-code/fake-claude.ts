@@ -17,6 +17,8 @@
 //   claude agents --json   the live sessions (pid, id, sessionId, cwd, kind, status, waitingFor)
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
+//   claude --version       `2.1.294 (Claude Code)` (FAKE_CLAUDE_VERSION overrides the number), for `cland doctor`
+//   claude auth status --json   `{"loggedIn": true, "authMethod": "claude.ai", …}`; FAKE_CLAUDE_LOGGED_OUT=1: false, exit 1
 //
 // Like the real one, a session also runs the hooks of the project's `.claude/settings.json` (before the `--settings`
 // ones), and reads its instructions: `CLAUDE.md` with its `@<path>` imports, or `AGENTS.md` when there is no
@@ -85,6 +87,15 @@ const flag = (args: string[], ...names: string[]) => {
 async function main(args: string[]): Promise<number> {
   const [first] = args;
   if (first === '__session') return runSession(args[1] as string);
+  if (first === '--version' || first === '-v') {
+    process.stdout.write(`${process.env.FAKE_CLAUDE_VERSION ?? '2.1.294'} (Claude Code)\n`);
+    return 0;
+  }
+  if (first === 'auth' && args[1] === 'status') {
+    const loggedIn = process.env.FAKE_CLAUDE_LOGGED_OUT !== '1';
+    process.stdout.write(`${JSON.stringify({ loggedIn, authMethod: loggedIn ? 'claude.ai' : 'none', apiProvider: 'firstParty' }, null, 2)}\n`);
+    return loggedIn ? 0 : 1;
+  }
   if (first === 'agents') {
     const entries = readdirSync(SESSIONS)
       .filter((f) => f.endsWith('.json'))
