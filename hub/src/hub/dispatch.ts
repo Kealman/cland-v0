@@ -336,9 +336,17 @@ export class Dispatcher {
             return answer(core.roleList());
           case 'subscribe':
             if (!unsubscribe) {
-              unsubscribe = core.subscribe((event) => {
+              const fromCore = core.subscribe((event) => {
                 if (peer.isOpen()) peer.send(event);
               });
+              // the tracker's index changes reach the UI as `task` events (the items panel, the board)
+              const fromTracker = this.#options.tracker?.onChange(({ id, item }) => {
+                if (peer.isOpen()) peer.send({ type: 'task', id, item });
+              });
+              unsubscribe = () => {
+                fromCore();
+                fromTracker?.();
+              };
               log({ event: 'subscribed', edge: transport.edge });
             }
             return answer({ subscribed: true });

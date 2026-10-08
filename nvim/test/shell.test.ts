@@ -233,7 +233,8 @@ test('the picker: ␣p opens on topics, typing narrows, Tab switches to sessions
   // Enter on a topic opens its thread
   await c.input('<C-\\><C-n>');
   await c.waitScreen((x) => statusLine(x).includes('NORMAL  impl-1'), 'Normal mode in the terminal');
-  await c.input('<Space>p<Tab>Agents<CR>');
+  // the picker opens on the kind used last (sessions); S-Tab goes back to topics (items · topics · sessions)
+  await c.input('<Space>p<S-Tab>Agents<CR>');
   s = await c.waitScreen((x) => statusLine(x).includes('Agents · topic') && centreOf(x).includes('T-12 claimed.'), 'the Agents thread');
 });
 
@@ -244,7 +245,7 @@ test('gi, gt and gs on a reference under the cursor in the thread', { skip }, as
   await c.input('gg/T-12<CR>gi');
   let s = await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'the item view of T-12');
   assert.match(topBar(s), /│ T-12 Hub daemon and spoke hello/);
-  assert.match(s, /claim {5}impl-1/);
+  assert.match(s, /claim +impl-1 \[Implementer\] · since/);
   // from the item view: gs is the session claiming it
   await c.input('gs');
   s = await c.waitScreen((x) => statusLine(x).includes('impl-1 · session'), 'impl-1 from the item');
@@ -669,4 +670,292 @@ test("the picker's topics kind lists needs you first, with the binding, the warn
   s = await c.waitScreen((x) => /● Codex adapter .*open · 3 unread/.test(x) && !x.includes('Daemon hello'), 'filtered by title');
   await c.input('<CR>');
   await c.waitScreen((x) => topBar(x).includes('│ Codex adapter'), 'the thread opened');
+});
+
+// Items (#36): the panel's tree and filters, the map grouping, the item view, the board, the motions and the
+// picker's items kind, over a fixture set of items -----------------------------------------------------------
+
+const item = (id: string, kind: string, title: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  kind,
+  title,
+  state: 'open',
+  labels: [],
+  assignee: null,
+  parent: null,
+  blocked_by: [],
+  topic: null,
+  branch: null,
+  created: ts(0),
+  updated: ts(0),
+  file: `${id}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`,
+  claim: null,
+  verdicts: [],
+  ...extra,
+});
+const claimBy = (session: string, role = 'implementer') => ({ session, sessionId: `${session}-id`, role, claimedAt: ts(1) });
+const verdict = (kind: string, result: string, run: string, min: number) => ({ verdict: kind, result, by: `${kind === 'qa' ? 'qa-1 [qa]' : 'rev-1 [reviewer]'}`, run, author: kind === 'qa' ? 'qa-1' : 'rev-1', at: ts(min) });
+
+/** An epic with three children (claimed with an ask waiting on its topic; a not-clear review; closed with clear
+ *  verdicts), a map with a decided, a frontier, a blocked and an assigned child, an item past review, one assigned
+ *  to the human, and the base T-12 (claimed by impl-1) and T-13. */
+function withItems(s: Scenario): void {
+  s.processes = [...(s.processes ?? []), proc('impl-2', 'implementer', 'busy')];
+  s.attach = { ...(s.attach ?? {}), 'impl-2': `printf 'attached impl-2\\n'; sleep 600` };
+  s.topics = [
+    topic('general', 'General', 'open'),
+    topic('agents', 'Agents', 'open'),
+    topic('topic-2', 'Items panel work', 'waiting for human', { item: 'T-2' }),
+  ];
+  s.items = [
+    item('T-1', 'epic', 'Workbench shell'),
+    item('T-2', 'task', 'Items panel', { parent: 'T-1', claim: claimBy('impl-2'), topic: 'topic-2', branch: 't/2-items-panel', labels: ['ui', 'slice-1'] }),
+    item('T-3', 'task', 'Board view', {
+      parent: 'T-1',
+      blocked_by: ['T-4'],
+      body: '## Goal\n\nSix columns derived from the item.\n\n- backlog\n- done',
+      verdicts: [verdict('review', 'clear', 'r-1', 3), verdict('review', 'not clear', 'r-2', 5)],
+      comments: [
+        { author: 'impl-2', at: ts(2), text: 'Ready for review.' },
+        { author: 'rev-1', at: ts(5), text: 'The qa column is missing.', verdict: verdict('review', 'not clear', 'r-2', 5) },
+      ],
+    }),
+    item('T-4', 'task', 'Item view', { parent: 'T-1', state: 'closed', verdicts: [verdict('review', 'clear', 'r-3', 4), verdict('qa', 'clear', 'q-1', 6)] }),
+    item('T-5', 'map', 'Slice 2 map'),
+    item('T-6', 'question', 'Which store', { parent: 'T-5', state: 'closed' }),
+    item('T-7', 'question', 'Transport', { parent: 'T-5' }),
+    item('T-8', 'question', 'Auth scheme', { parent: 'T-5', blocked_by: ['T-7'] }),
+    item('T-9', 'question', 'CRDT spike', { parent: 'T-5', assignee: 'sub-1' }),
+    item('T-10', 'task', 'Review passed', { verdicts: [verdict('review', 'clear', 'r-4', 7)] }),
+    item('T-11', 'task', 'For the human', { assignee: 'human' }),
+    ...(baseScenario('').items ?? []),
+  ];
+}
+
+const leftOf = (text: string): string =>
+  text
+    .split('\n')
+    .map((l) => {
+      const i = l.indexOf('│');
+      return i < 0 ? '' : l.slice(0, i);
+    })
+    .join('\n');
+
+/** The left panel's rows that show an item or a group header, trimmed. */
+const itemRows = (s: string): string[] =>
+  leftOf(s)
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /^[○●◐◑◆◌] T-\d+ /.test(l) || /^[A-Z][A-Z -]+ · \d+$/.test(l));
+const idsOf = (rows: string[]): string[] => rows.map((r) => r.split(' ')[1] ?? '');
+
+test('the items panel: a tree of epics and maps with status glyphs, the claim right-aligned and the ask badge; filters 1–5 and f; the map grouping', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc><Space>i');
+  let s = await c.waitScreen((x) => x.includes('ITEMS') && x.includes('T-13'), 'the items panel');
+  assert.match(s, / ITEMS +all · 13 │/);
+  assert.match(leftOf(s), /1 all 2 work 3 you 4 done 5 map/);
+  const panel = leftOf(s);
+  // the tree: children under their parent, indented, ordered by id; orphans at the root
+  assert.match(panel, /^ ○ T-1 Workbench shell +1\/3 $/m, 'an epic with its progress');
+  assert.match(panel, /^ {3}◆ T-2 Items panel +impl-2 {2}1 {2}$/m, 'claimed, with the ask badge of its topic waiting for the human: needs you');
+  assert.match(panel, /^ {3}◆ T-3 Board view +$/m, 'a not-clear review verdict: needs you');
+  assert.match(panel, /^ {3}● T-4 Item view +$/m, 'closed');
+  assert.match(panel, /^ ○ T-5 Slice 2 map +1\/4 $/m);
+  assert.match(panel, /^ {3}◌ T-8 Auth scheme +$/m, 'an open blocker');
+  assert.match(panel, /^ {3}◑ T-9 CRDT spike +sub-1 $/m, 'assigned');
+  assert.match(panel, /^ ◐ T-12 Hub daemon and spo… impl-1 $/m, 'claimed, the session right-aligned');
+  assert.deepEqual(idsOf(itemRows(s)), ['T-1', 'T-2', 'T-3', 'T-4', 'T-5', 'T-6', 'T-7', 'T-8', 'T-9', 'T-10', 'T-11', 'T-12', 'T-13']);
+
+  const rowsOf = async (key: string, header: string) => {
+    await c.input(key);
+    const x = await c.waitScreen((y) => y.includes(` ITEMS`) && new RegExp(`${header} │`).test(y.split('\n')[1] ?? ''), `the ${header} filter`);
+    return itemRows(x);
+  };
+  // 2: in work (claimed or assigned, open)
+  assert.deepEqual(idsOf(await rowsOf('2', 'in work · 4')), ['T-2', 'T-9', 'T-11', 'T-12']);
+  // 3: needs you
+  assert.deepEqual(idsOf(await rowsOf('3', 'needs you · 2')), ['T-2', 'T-3']);
+  // 4: done
+  assert.deepEqual(idsOf(await rowsOf('4', 'done · 2')), ['T-4', 'T-6']);
+  // 5: the map, grouped under headers, ordered by id
+  assert.deepEqual(
+    (await rowsOf('5', 'map · 1 map')).map((r) => r.replace(/\s+/g, ' ')),
+    ['○ T-5 Slice 2 map 1/4', 'DECIDED · 1', '● T-6 Which store', 'FRONTIER · 1', '○ T-7 Transport', 'IN WORK BY SUB-AGENTS · 1', '◑ T-9 CRDT spike sub-1', 'BLOCKED · 1', '◌ T-8 Auth scheme'],
+  );
+  // f cycles back to all, F goes back
+  await c.input('f');
+  await c.waitScreen((y) => / ITEMS +all · 13 │/.test(y), 'f: all again');
+  await c.input('F');
+  await c.waitScreen((y) => / ITEMS +map · 1 map │/.test(y), 'F: map');
+  // Enter on a row opens the item view
+  await c.input('1');
+  await c.waitScreen((y) => / ITEMS +all · 13 │/.test(y), 'all');
+  await c.input('gg/T-3 Board<CR><CR>');
+  s = await c.waitScreen((y) => statusLine(y).includes('T-3 · item'), 'the item view of T-3');
+  assert.match(topBar(s), /│ T-3 Board view/);
+});
+
+test('the item view: the title line, the fields column beside the body, the verdicts latest first, the comments', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  // no panels: the centre is wide enough for the fields column beside the body
+  await c.input('<Esc><Space>s');
+  await c.waitScreen((x) => !x.includes('SESSIONS'), 'no right panel');
+  await c.input(':Cland view item T-3<CR>');
+  let s = await c.waitScreen((x) => x.includes('COMMENTS · 2'), 'the item view of T-3 with its comments');
+  const rows = s.split('\n');
+  const at = (re: RegExp) => rows.findIndex((r) => re.test(r));
+  assert.match(s, /^ ◆ T-3 · open · needs you · task +$/m, 'the title line: id and state');
+  // the fields column, right of the body, row by row
+  assert.match(s, /^ Board view +│ state {6}◆ open · needs you +$/m);
+  assert.match(s, /^ \.cland\/tasks\/T-3-board-view\.md · updated .+│ kind {7}task · no labels +$/m);
+  assert.match(s, /│ parent {5}T-1 Workbench shell +$/m);
+  assert.match(s, /│ assignee {3}— +$/m);
+  assert.match(s, /│ claim {6}— +$/m);
+  assert.match(s, /│ topic {6}no topic yet +$/m);
+  assert.match(s, /│ blocked by T-4 \(closed\) +$/m);
+  assert.match(s, /│ blocks {5}— +$/m);
+  assert.match(s, /│ cost {7}— +$/m);
+  // the body as Markdown text
+  assert.ok(at(/^ ## Goal /) > 0 && at(/^ Six columns derived from the item\. /) > at(/^ ## Goal /));
+  assert.match(s, /^ - backlog /m);
+  // the verdicts: the latest of each kind on top, the earlier below
+  assert.match(s, /^ VERDICTS · 2 /m);
+  const latest = at(/^ ✗ review not clear · by rev-1 \[reviewer\] · run r-2 · /);
+  const earlier = at(/^ ✓ review clear · by rev-1 \[reviewer\] · run r-1 · /);
+  assert.ok(latest > 0 && earlier > latest && at(/^ earlier /) === latest + 1, 'the latest verdict first');
+  // the comments, a verdict comment marked
+  assert.match(s, /^ impl-2 {2}\d{4}-\d\d-\d\d \d\d:\d\d +/m);
+  assert.match(s, /^ {3}Ready for review\. /m);
+  assert.match(s, /^ rev-1 {2}\d{4}-\d\d-\d\d \d\d:\d\d {2}review not clear /m);
+  assert.match(s, /^ {3}The qa column is missing\. /m);
+
+  // another item: its claim, topic, branch, labels; the item it blocks
+  await c.input(':Cland view item T-2<CR>');
+  s = await c.waitScreen((x) => statusLine(x).includes('T-2 · item') && x.includes('COMMENTS · 0'), 'the item view of T-2');
+  assert.match(s, /│ kind {7}task · ui, slice-1 +$/m);
+  assert.match(s, /│ claim {6}impl-2 \[Implementer\] · since .+$/m);
+  assert.match(s, /│ topic {6}Items panel work · waiting for you +$/m);
+  assert.match(s, /│ branch {5}t\/2-items-panel +$/m);
+  assert.match(s, /^ none yet /m, 'no verdicts');
+  await c.input(':Cland view item T-7<CR>');
+  s = await c.waitScreen((x) => statusLine(x).includes('T-7 · item') && x.includes('COMMENTS'), 'the item view of T-7');
+  assert.match(s, /│ blocks {5}T-8 +$/m);
+  assert.match(s, /│ parent {5}T-5 Slice 2 map +$/m);
+});
+
+/** The board on screen: the column names, the card ids per column top to bottom, and every cell's text. */
+function boardOf(screen: string): { header: string[]; ids: string[][]; text: string[][] } {
+  const rows = screen.split('\n');
+  const at = rows.findIndex((r) => r.includes('BACKLOG'));
+  const cols = (r: string) => r.split('│').map((x) => x.trim());
+  const ids: string[][] = [[], [], [], [], [], []];
+  const text: string[][] = [[], [], [], [], [], []];
+  for (const r of rows.slice(at + 1)) {
+    if (!r.includes('│')) break;
+    cols(r).forEach((cell, i) => {
+      const m = /^(T-\d+)/.exec(cell);
+      if (m) ids[i]?.push(m[1] ?? '');
+      if (cell) text[i]?.push(cell);
+    });
+  }
+  return { header: at < 0 ? [] : cols(rows[at] ?? ''), ids, text };
+}
+
+test('the board: backlog, planned, in progress, review, qa and done derived from state, claims, labels and verdicts; ↵ opens a card', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc><Space>s');
+  await c.waitScreen((x) => !x.includes('SESSIONS'), 'no right panel');
+  await c.input('<Space>b');
+  const s = await c.waitScreen((x) => x.includes('BACKLOG') && statusLine(x).includes('Board'), 'the board');
+  const { header, ids, text } = boardOf(s);
+  assert.deepEqual(header, ['BACKLOG', 'PLANNED', 'IN PROGRESS', 'REVIEW', 'QA', 'DONE']);
+  assert.deepEqual(text.map((col) => col[0]?.split(' ')[0]), ['3', '2', '2', '1', '1', '2'], 'the counts under the names');
+  assert.deepEqual(ids, [['T-7', 'T-8', 'T-13'], ['T-9', 'T-11'], ['T-2', 'T-12'], ['T-3'], ['T-10'], ['T-4', 'T-6']]);
+  // the marks: the ask, the claim, the assignee, a blocker, the verdicts
+  assert.ok(text[2]?.includes('T-2 ? ask') && text[2]?.includes('impl-2') && text[2]?.includes('impl-1'), text[2]?.join(' | '));
+  assert.ok(text[1]?.includes('for sub-1') && text[1]?.includes('for human'), text[1]?.join(' | '));
+  assert.ok(text[0]?.includes('◌ by T-7'), text[0]?.join(' | '));
+  assert.ok(text[3]?.includes('✗ review'), text[3]?.join(' | '));
+  assert.ok(text[4]?.includes('✓ review'), text[4]?.join(' | '));
+  assert.ok(text[5]?.includes('✓ review') && text[5]?.includes('✓ qa'), text[5]?.join(' | '));
+  // a label moves a card: `review` on a claimed item
+  await c.control({ emit: { type: 'task', id: 'T-12', item: { ...(baseScenario('').items?.[0] ?? {}), labels: ['review'], verdicts: [] } } });
+  await c.waitScreen((x) => JSON.stringify(boardOf(x).ids) === JSON.stringify([['T-7', 'T-8', 'T-13'], ['T-9', 'T-11'], ['T-2'], ['T-3', 'T-12'], ['T-10'], ['T-4', 'T-6']]), 'T-12 in the review column under T-3');
+  // ↵ on a card opens its item view
+  await c.input('gg/T-10<CR><CR>');
+  await c.waitScreen((x) => statusLine(x).includes('T-10 · item'), 'the item view of T-10');
+});
+
+test('gi, gt and gs between items, topics and sessions, both ways; a topic event binding an item is followed', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc>:Cland view item T-2<CR>');
+  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'T-2');
+  // item → its topic
+  await c.input('gt');
+  await c.waitScreen((x) => statusLine(x).includes('Items panel work · T-2 · topic'), 'gt: the topic bound to T-2');
+  // topic → its item
+  await c.input('<Esc><C-w>kgi');
+  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'gi: the bound item');
+  // item → the claiming session; session → its item
+  await c.input('gs');
+  await c.waitScreen((x) => statusLine(x).includes('impl-2 · session'), 'gs: the claiming session');
+  await c.input('gi');
+  await c.waitScreen((x) => statusLine(x).includes('T-2 · item'), 'gi: the claimed item');
+  // an unbound item: no topic is created
+  await c.input(':Cland view item T-13<CR>');
+  await c.waitScreen((x) => statusLine(x).includes('T-13 · item'), 'T-13');
+  await c.input('gt');
+  await c.waitScreen((x) => statusLine(x).includes('gt: T-13 has no topic yet'), 'no topic yet');
+  assert.equal((await requestsOf(c, 'topic.create')).length, 0, 'gt creates no topic');
+  // an agent's topic.create with a binding: the topic event, then the item's own `task` event; both follow
+  const t13 = (baseScenario('').items ?? [])[1] ?? {};
+  await c.control({ emit: { type: 'topic', topic: topic('topic-9', 'Codex adapter work', 'open', { item: 'T-13' }) } });
+  await c.control({ emit: { type: 'task', id: 'T-13', item: { ...t13, topic: 'topic-9', verdicts: [] } } });
+  await c.waitScreen((x) => /topic {6}Codex adapter work · open/.test(x), 'the item view shows the new topic');
+  await c.input('gt');
+  await c.waitScreen((x) => statusLine(x).includes('Codex adapter work · T-13 · topic'), 'gt: the new topic');
+  // from the items panel row and from a board card
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((x) => x.includes('ITEMS'), 'the items panel');
+  await c.input('gg/T-12<CR>gs');
+  await c.waitScreen((x) => statusLine(x).includes('impl-1 · session'), 'gs from the T-12 row');
+  await c.input('<Space>b');
+  await c.waitScreen((x) => statusLine(x).includes('Board'), 'the board');
+  await c.input('gg/T-12<CR>gi');
+  await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'gi from the T-12 card');
+  await c.input('<Space>b');
+  await c.waitScreen((x) => statusLine(x).includes('Board'), 'the board again');
+  await c.input('gg/T-2 <CR>gt');
+  await c.waitScreen((x) => statusLine(x).includes('Items panel work · T-2 · topic'), 'gt from the T-2 card');
+});
+
+test('the tree follows task events: a claim, a new item, a removed file', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((x) => x.includes('ITEMS') && x.includes('T-13'), 'the items panel');
+  await c.control({ emit: { type: 'task', id: 'T-7', item: item('T-7', 'question', 'Transport', { parent: 'T-5', claim: claimBy('impl-2') }) } });
+  await c.waitScreen((x) => /^ {3}◐ T-7 Transport +impl-2 $/m.test(leftOf(x)), 'T-7 claimed');
+  await c.control({ emit: { type: 'task', id: 'T-14', item: item('T-14', 'task', 'Born by hand', { parent: 'T-1' }) } });
+  await c.waitScreen((x) => /^ {3}○ T-14 Born by hand +$/m.test(leftOf(x)) && / ITEMS +all · 14 │/.test(x), 'T-14 under T-1');
+  const rows = idsOf(itemRows(await c.screen().then((l) => l.join('\n'))));
+  assert.deepEqual(rows.slice(0, 5), ['T-1', 'T-2', 'T-3', 'T-4', 'T-14'], 'a new child joins its parent, ordered by id');
+  await c.control({ emit: { type: 'task', id: 'T-13', item: null } });
+  await c.waitScreen((x) => !x.includes('T-13 Codex') && / ITEMS +all · 13 │/.test(x), 'T-13 gone');
+});
+
+test("the picker's items kind searches ids, titles and claims; Enter opens the item view", { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc><Space>p<S-Tab>');
+  let s = await c.waitScreen((x) => x.includes('↵ open the item view'), 'the items kind');
+  assert.match(s, /◆ T-2 Items panel {2}impl-2 .*needs you · claim impl-2/);
+  assert.match(s, /○ T-13 Codex adapter .*open/);
+  await c.input('impl-1');
+  s = await c.waitScreen((x) => /◐ T-12 Hub daemon/.test(x) && !/T-2 Items panel/.test(x), 'by claim');
+  await c.input('<C-u>Board view');
+  s = await c.waitScreen((x) => /◆ T-3 Board view/.test(x) && !/T-12 Hub daemon/.test(x), 'by title');
+  await c.input('<C-u>T-11');
+  await c.waitScreen((x) => /◑ T-11 For the human/.test(x.split('\n').find((l) => /[○●◐◑◆◌] T-\d/.test(l)) ?? ''), 'by id, T-11 first');
+  await c.input('<CR>');
+  await c.waitScreen((x) => statusLine(x).includes('T-11 · item'), 'the item view of T-11');
 });

@@ -232,7 +232,7 @@ function M.winbar(win)
   local buf = api.nvim_win_get_buf(win)
   local role = vim.b[buf].cland_role
   if role == 'items' then
-    return head(win, 'ITEMS', { { #state.S.items .. ' items', 'ClandDimBar' } })
+    return head(win, 'ITEMS', { { require('cland.items').summary(), 'ClandDimBar' } })
   elseif role == 'sessions' then
     local c = state.counts()
     return head(win, 'SESSIONS', { { c.live .. ' live · ' .. c.waiting .. ' waiting' .. (c.down > 0 and (' · ' .. c.down .. ' down') or ''), 'ClandDimBar' } })

@@ -1,6 +1,8 @@
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
 // Frames travel as JSON text over one WebSocket per spoke.
 
+import type { ItemSummary } from './tracker/tracker.ts';
+
 export const PROTOCOL_VERSION = 2;
 
 /** The spoke's heartbeat interval; the hub closes a socket silent for two of them. */
@@ -104,7 +106,10 @@ export type HubEvent =
   /** No live session holds the Coordinator any more: the UI shows "no coordinator". */
   | { type: 'role.vacant'; role: 'coordinator'; ts: string }
   /** A live session holds the Coordinator again. */
-  | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string };
+  | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string }
+  /** The tracker's index changed (a hub write, a hand edit the watcher read, a removed file, a claim): the item as
+   *  `task.list` shows it, or null when its file is gone. */
+  | { type: 'task'; id: string; item: ItemSummary | null };
 
 /** A role's clause as the hub delivers it to the holder (spec 4.4): on assignment and on every reconnect.
  *  `role` null: the session's role was revoked. */

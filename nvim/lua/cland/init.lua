@@ -12,6 +12,7 @@ local hub = require('cland.hub')
 local state = require('cland.state')
 
 M.REFRESH_MS = tonumber(vim.env.CLAND_REFRESH_MS or '') or 5000
+M.ITEMS_REFRESH_MS = math.min(1000, M.REFRESH_MS)
 
 --- nvim/ (this file is nvim/lua/cland/init.lua) and the repository around it.
 local function dirs()
@@ -125,6 +126,13 @@ local function wire_client(client)
   client:on('topic', function(event)
     state.upsert_topic(event.topic)
   end)
+  -- the tracker's index changed (#36): the items panel, the board and an item view follow at once
+  client:on('task', function(event)
+    require('cland.items').apply_event(event)
+    if event.id then
+      require('cland.item_view').invalidate(event.id)
+    end
+  end)
   -- the Coordinator's vacancy (#29): the top bar's chip follows the hub's events at once
   client:on('role.vacant', function()
     state.S.hub_coordinator = { name = nil }
@@ -152,10 +160,11 @@ M.HELP = {
   'cland workbench · Space is the leader (␣)',
   '',
   'Panels    ␣i items (left) · ␣n inbox · ␣s sessions · ␣t topics (right; the active key hides it)',
+  'Items     1 all · 2 in work · 3 needs you · 4 done · 5 map (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Centre    ␣g General · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
-  'Pick      ␣p topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
+  'Pick      ␣p items · topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   '          :Cland topic new <title> | close | resolve',
@@ -413,6 +422,7 @@ function M.start(opts)
   wire_client(M.client)
   require('cland.views').setup(M.client)
   require('cland.sessions').setup(M.client)
+  require('cland.item_view').setup(M.client)
   -- General's history and events are wired before the client starts
   require('cland.views').topic('general')
 
@@ -447,6 +457,14 @@ function M.start(opts)
   M.timer:start(M.REFRESH_MS, M.REFRESH_MS, vim.schedule_wrap(function()
     if M.client:connected() then
       refresh_sessions()
+      refresh_items()
+    end
+  end))
+  -- while the items are on screen (the panel, the board, an item view) they refresh at least each second,
+  -- besides the `task` events
+  M.items_timer = vim.uv.new_timer()
+  M.items_timer:start(M.ITEMS_REFRESH_MS, M.ITEMS_REFRESH_MS, vim.schedule_wrap(function()
+    if M.client:connected() and require('cland.items').visible() then
       refresh_items()
     end
   end))

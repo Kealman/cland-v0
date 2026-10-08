@@ -1,5 +1,5 @@
--- The one floating picker (spec section 5, Pickers.dc.html): `␣p` over topics and sessions (items and
--- artifacts join with #36 and the artifacts ticket). Two floats: a one-line input titled with the kinds,
+-- The one floating picker (spec section 5, Pickers.dc.html): `␣p` over items, topics and sessions (artifacts
+-- join with their ticket). Two floats: a one-line input titled with the kinds,
 -- and the list. Tab and Shift+Tab switch the kind, typing filters fuzzily (matchfuzzypos), Up/Down or
 -- C-n/C-p move, Enter opens, Esc closes. The sessions kind lists the sessions waiting for the human first and
 -- matches the label, the role and the harness, so a name, a role or a harness narrows it.
@@ -9,7 +9,23 @@ local state = require('cland.state')
 local M = { last = 'topics' }
 local ns = api.nvim_create_namespace('cland.picker')
 
-M.KINDS = { 'topics', 'sessions' }
+M.KINDS = { 'items', 'topics', 'sessions' }
+
+--- The items by id; typing filters on the id, the title and the claiming session (#36).
+local function item_entries()
+  local items = require('cland.items')
+  local out = {}
+  for _, it in ipairs(items.all()) do
+    local glyph, ghl = items.glyph(it)
+    local c = items.claim(it)
+    local right = { items.WORDS[items.status(it)] }
+    if c then
+      right[#right + 1] = 'claim ' .. c.session
+    end
+    out[#out + 1] = { glyph = glyph, ghl = ghl, key = it.id .. ' ' .. (it.title or '') .. (c and ('  ' .. c.session) or ''), right = table.concat(right, ' · '), value = it.id }
+  end
+  return out
+end
 
 --- The topics as the panel groups them: needs you first, then open, then closed (Pickers.dc.html); the title
 --- is what typing filters. The right side: the binding, the warning, the status, the unread count.
@@ -68,7 +84,7 @@ local function session_entries()
   return out
 end
 
-local BUILD = { topics = topic_entries, sessions = session_entries }
+local BUILD = { items = item_entries, topics = topic_entries, sessions = session_entries }
 
 function M.close()
   local p = M.cur
@@ -98,6 +114,7 @@ local function title(p)
 end
 
 local FOOTER = {
+  items = ' ↵ open the item view · id, title or claim · Tab kind · Esc close ',
   topics = ' ↵ open thread · needs you first · Tab kind · Esc close · :Cland topic new <title> ',
   sessions = ' ↵ attach in centre · Tab kind · Esc close ',
 }
@@ -179,7 +196,9 @@ end
 --- What Enter does with the chosen entry.
 function M.act(kind, value)
   local layout = require('cland.layout')
-  if kind == 'topics' then
+  if kind == 'items' then
+    layout.show({ kind = 'item', id = value }, { insert = false })
+  elseif kind == 'topics' then
     layout.show({ kind = 'thread', id = value })
   elseif kind == 'sessions' then
     layout.show({ kind = 'session', id = value }, { insert = true })

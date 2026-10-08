@@ -8,7 +8,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 | Path | What it is |
 | --- | --- |
-| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant` and `role.filled`, the `inject` frame to an in-session bridge; session states and the process table's view. |
+| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant`, `role.filled` and `task`, the `inject` frame to an in-session bridge; session states and the process table's view. |
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
@@ -304,11 +304,12 @@ Events, pushed after `subscribe`:
 {"type":"delivery","topic":"general","message":"<message id>","stage":"delivered"}
 {"type":"topic","topic":{"id":"topic-1","title":"…","status":"waiting for agent","item":"T-12","unread":0,"warning":"no coordinator",…}}
 {"type":"session.state","session":"coord","sessionId":"…","state":"busy","source":"hook","ts":"…"}
+{"type":"task","id":"T-12","item":{"id":"T-12","title":"…","state":"open",…,"claim":{"session":"impl-1",…},"verdicts":[…]}}
 ```
 
 The role frames (`role.set`, `role.clear`, `role.list`) and events (`session.role`, `role.vacant`, `role.filled`) are under Roles above.
 
-A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `topic` event comes when a topic is created or its status, warning, binding or title changes, and after a `topic.read` (its unread count); a new message alone moves the count without one (the UI counts `message` events). A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below).
+A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `topic` event comes when a topic is created or its status, warning, binding or title changes, and after a `topic.read` (its unread count); a new message alone moves the count without one (the UI counts `message` events). A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below). A `task` event comes on every change to the tracker's index: a hub write, a hand edit the watcher read, a claim taken or released, and a removed file (`item` null); `item` is the item as `task.list` shows it.
 
 ## Adapters and sessions
 
@@ -484,7 +485,7 @@ A comment is headed `### <author> · <ISO time>`; one whose first lines are `ver
 | --- | --- | --- |
 | `cland task create <title> [--kind] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
 | `cland task view <id>` | `task.view` | Frontmatter, body, comments, verdicts and the claim. |
-| `cland task list [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. |
+| `cland task list [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
 | `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id>]` | `task.comment` | Appends a comment, or a verdict. |
 | `cland task edit <id> [--title] [--body] [--kind] [--state] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
 | `cland task close <id> [--comment]` | `task.close` | Closes the item. |

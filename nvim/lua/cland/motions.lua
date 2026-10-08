@@ -1,7 +1,7 @@
 -- The three motions (spec section 5): `gi` its item, `gt` its topic, `gs` its session, from every panel
 -- and view. What they act on, first match wins:
 --   1. a reference under the cursor: an item id (`T-12`), a topic's title or id, a session's name;
---   2. the row under the cursor in a panel (an item, a session, a topic);
+--   2. the row under the cursor in a panel (an item, a session, a topic), the card under it on the board;
 --   3. the centre view itself (a thread is its topic, a session view its session, an item view its item).
 -- Then the dispatch: from a session to its claimed item, from an item to the session claiming it, from a topic
 -- to the item it is bound to (#32) and back; a topic's session is its Coordinator.
@@ -75,6 +75,11 @@ function M.context()
     return { session = vim.b[buf].cland_session, here = 'session' }
   elseif role == 'item' then
     return { item = vim.b[buf].cland_item, here = 'item' }
+  elseif role == 'board' then
+    local id = require('cland.board').item_at()
+    if id then
+      return { item = id }
+    end
   end
   -- elsewhere (an empty panel row, a placeholder): the centre view
   local v = state.S.ui.view
