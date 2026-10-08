@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: steady stage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;min-width:0}
+.panel.right{border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:14px;padding:6px 16px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
+.colh{display:flex;justify-content:space-between;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid #222a35}
+.tcard{border:1px solid #222a35;border-radius:5px;background:#10141b;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.tcard .t{color:#d6dbe4;font-size:13px}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">Board · sprint 7</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">1</span></span>
+    <span class="chip">sessions <span class="badge n">6</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="tabs"><span class="cur">sprint 7</span><span>all epics</span><span>E-4 Artifacts</span><span>E-5 Git territory</span><span style="margin-left: auto" class="dim">v velocity · b backlog health · p plan next sprint with @coordinator</span></div>
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; padding: 12px 16px; flex: 1; min-height: 0">
+        <div class="col"><div class="colh"><span>backlog</span><span class="warn">3 · thin</span></div>
+          <div class="tcard"><span class="dim">T-41</span><span class="t">Journal viewer</span></div>
+          <div class="tcard"><span class="dim">T-42</span><span class="t">Cost per item</span></div>
+          <div class="tcard"><span class="dim">T-43</span><span class="t">Crew presets</span></div>
+          <div class="tcard" style="border-style: dashed; color: #8a94a3">+ from GitHub: 2 new issues to triage</div>
+        </div>
+        <div class="col"><div class="colh"><span>planned</span><span>4</span></div>
+          <div class="tcard"><span class="dim">T-36</span><span class="t">Promote artifact to docs</span></div>
+          <div class="tcard"><span class="dim">T-37</span><span class="t">Artifact cleanup job</span></div>
+          <div class="tcard"><span class="dim">T-38</span><span class="t">Release notes from items</span></div>
+          <div class="tcard"><span class="dim">T-39</span><span class="t">cland init --undo</span></div>
+        </div>
+        <div class="col"><div class="colh"><span>in progress</span><span>3</span></div>
+          <div class="tcard" style="border-color: #35c4a0"><span class="dim">T-33</span><span class="t">artifact.create hub tool</span><span class="teal">impl-1 · OpenCode</span></div>
+          <div class="tcard" style="border-color: #35c4a0"><span class="dim">T-34</span><span class="t">Prompt artifact in composer</span><span class="teal">impl-2 · Claude Code</span></div>
+          <div class="tcard" style="border-color: #35c4a0"><span class="dim">T-31</span><span class="t">Worktree per item</span><span class="teal">impl-3 · OpenCode</span><span class="warn">▲ ask open</span></div>
+        </div>
+        <div class="col"><div class="colh"><span>review</span><span>2</span></div>
+          <div class="tcard" style="border-color: #f0b429"><span class="dim">T-30</span><span class="t">cland merge gate</span><span class="teal">rev-1 · Codex sol</span></div>
+          <div class="tcard" style="border-color: #f0b429"><span class="dim">T-32</span><span class="t">Territory bare repo</span><span class="teal">rev-2 · Codex sol</span></div>
+        </div>
+        <div class="col"><div class="colh"><span>qa</span><span>1</span></div>
+          <div class="tcard" style="border-color: #f0b429"><span class="dim">T-29</span><span class="t">cland release</span><span class="teal">qa-1 · Codex astra</span><span class="ok">✓ review</span></div>
+        </div>
+        <div class="col"><div class="colh"><span>done</span><span>11</span></div>
+          <div class="tcard"><span class="dim">T-28</span><span class="t">Verdict comments</span><span class="ok">✓ review · ✓ qa</span></div>
+          <div class="tcard"><span class="dim">T-27</span><span class="t">Topic artifacts list</span><span class="ok">✓ review · ✓ qa</span></div>
+          <div class="tcard"><span class="dim">T-26</span><span class="t">Agents topic filters</span><span class="ok">✓ review</span></div>
+          <div class="tcard dim">+ 8 more · v1.2.0 released</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel right" style="width: 360px">
+      <div class="ph"><span>inbox</span><span class="warn">1 needs you</span></div>
+      <div class="sec">asks</div>
+      <div class="row sel"><span class="warn">?</span><span>T-31 · worktree path for nested repos</span><span class="claim dim">09:14</span></div>
+      <div class="sec">waiting for you</div>
+      <div class="row dim"><span>○</span><span>nothing</span></div>
+      <div class="sec">notifications</div>
+      <div class="row dim"><span class="ok">✓</span><span>T-29 review clear · rev-1</span><span class="claim dim">09:02</span></div>
+      <div class="row dim"><span class="blue">⇡</span><span>v1.2.0 released to github</span><span class="claim dim">08:40</span></div>
+      <div class="row dim"><span class="blue">+</span><span>2 GitHub issues imported to backlog</span><span class="claim dim">08:15</span></div>
+      <div class="row dim"><span>○</span><span>impl-3 idle 40 min</span><span class="claim dim">08:10</span></div>
+      <div class="sec">sprint</div>
+      <div class="row dim"><span class="teal">▮▮▮▮▮▮▯▯</span><span>day 6 of 8 · 11 done · 6 open</span></div>
+      <div class="row dim" style="margin-top: auto; border-top: 1px solid #222a35; font-size: 12px">␣g talk to coordinator · ␣i items · ␣t topics</div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>board · sprint 7 · 24 items</span>
+    <span>hub: ok</span>
+    <span>sessions: 3 busy · 2 reviewing · 1 idle</span>
+    <span style="margin-left: auto">stage 3: board centre, inbox right, items and topics hidden</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

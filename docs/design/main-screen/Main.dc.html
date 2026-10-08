@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland workbench</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.keys{display:flex;align-items:center;gap:8px;padding:0 14px;height:34px;border-bottom:1px solid #222a35;background:#0d1117}
+.key{font:inherit;font-size:12px;line-height:16px;padding:4px 10px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;cursor:pointer;min-height:26px}
+.key:hover{border-color:#6aa5ff}
+.key.on{background:#1b2a3f;border-color:#6aa5ff;color:#9cc3ff}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.panel.right{border-right:0;border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.msg{display:flex;flex-direction:column;gap:2px;padding:8px 16px}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.stage{margin-left:auto;color:#8a94a3}
+.card{margin:6px 16px;border:1px solid #3a3320;background:#171510;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:center}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.compose{border-top:1px solid #222a35;background:#0d1117;padding:8px 16px;display:flex;flex-direction:column;gap:6px}
+.input{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:8px 10px;color:#d6dbe4;min-height:44px;font:inherit}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
+.colh{color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid #222a35}
+.tcard{border:1px solid #222a35;border-radius:5px;background:#10141b;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.term{font-size:12px;line-height:17px;color:#c9d1dc;white-space:pre;padding:12px 16px;overflow:hidden}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.bad{color:#ff7b72}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">{{viewTitle}}</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+    <span class="chip">sessions <span class="badge n">5</span></span>
+  </div>
+
+  <div class="keys">
+    <span class="dim" style="font-size: 12px">keys (click = press):</span>
+    <button class="{{keyItems}}" onClick="{{toggleItems}}">␣i items</button>
+    <button class="{{keyTopics}}" onClick="{{showTopics}}">␣t topics</button>
+    <button class="{{keySessions}}" onClick="{{showSessions}}">␣s sessions</button>
+    <button class="{{keyInbox}}" onClick="{{showInbox}}">␣n inbox</button>
+    <span style="color: #2a3340">|</span>
+    <button class="{{keyThread}}" onClick="{{viewGeneral}}">␣g General</button>
+    <button class="{{keyBoard}}" onClick="{{viewBoard}}">␣b board</button>
+    <button class="{{keyItem}}" onClick="{{viewItem}}">gi item T-12</button>
+    <button class="{{keySession}}" onClick="{{viewSession}}">gs session rev-1</button>
+    <span style="color: #2a3340">|</span>
+    <button class="{{keyPicker}}" onClick="{{togglePicker}}">␣p picker</button>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <sc-if value="{{showItems}}" hint-placeholder-val="{{true}}">
+    <div class="panel" style="width: 340px">
+      <div class="ph"><span>items</span><span>12 open · 4 in work</span></div>
+      <div class="tabs"><span class="cur">all</span><span>in work</span><span>needs you</span><span>done</span></div>
+      <div style="padding: 6px 0; overflow: hidden; flex: 1">
+        <sc-for list="{{items}}" as="it" hint-placeholder-count="12">
+          <div class="{{it.rowClass}}" style="padding-left: {{it.pad}}">
+            <span style="color: {{it.color}}">{{it.glyph}}</span>
+            <span class="id">{{it.id}}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis">{{it.title}}</span>
+            <span class="claim">{{it.claim}}</span>
+            <sc-if value="{{it.ask}}" hint-placeholder-val="{{false}}"><span class="badge">?</span></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">Enter open · gt topic · gs session · c claim</div>
+    </div>
+    </sc-if>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+
+      <sc-if value="{{viewThread}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; flex: 1; min-height: 0">
+        <div class="ph"><span>General · to @coordinator</span><span>topic open · 2 unread</span></div>
+        <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 6px">
+          <div class="msg">
+            <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>11:52</span></div>
+            <div>Round 2 on the hub boundaries is closed. I am starting <a href="#">T-12</a> with impl-1; the spoke hello works end to end against a stub.</div>
+          </div>
+          <div class="msg" style="background: #0d1117">
+            <div class="who"><b>you</b><span>11:58</span><span class="stage">✓✓ injected</span></div>
+            <div>Take T-13 next with impl-2, the Codex adapter. Keep rev-1 on the T-15 review.</div>
+          </div>
+          <div class="msg">
+            <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:01</span><span class="stage warn">▲ waiting for you</span></div>
+          </div>
+          <div class="card">
+            <div><span class="warn">ask</span> <span class="dim">· T-12 Hub daemon and spoke hello</span></div>
+            <div>Spoke identity on reconnect: which should win?</div>
+            <div class="opt"><span class="k">1</span><span>the name recorded by the spoke</span></div>
+            <div class="opt"><span class="k">2</span><span>the harness session id</span></div>
+            <div class="opt"><span class="k">3</span><span>ask me later</span></div>
+            <div class="dim" style="font-size: 12px">or type a free answer below</div>
+          </div>
+          <div class="msg">
+            <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:03</span></div>
+            <div>shared <span class="chip"><span class="blue">A-7</span> diagram · spoke reconnect sequence</span></div>
+          </div>
+        </div>
+        <div class="compose">
+          <div class="input dim">@coordinator  Message General… (Enter sends, S-Enter newline, @ mentions, ␣a attach artifact)</div>
+          <div class="dim" style="font-size: 12px; display: flex; gap: 16px"><span>to: Coordinator (coord-1)</span><span>last: injected 11:58</span><span style="margin-left: auto">␣o open as prompt artifact</span></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{viewBoard}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; flex: 1; min-height: 0">
+        <div class="ph"><span>board · all epics</span><span>backlog thinning: 3 left</span></div>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; padding: 12px 16px; flex: 1">
+          <div class="col"><div class="colh">backlog · 3</div>
+            <div class="tcard"><span class="dim">T-16</span>Handover note</div>
+            <div class="tcard"><span class="dim">T-23</span>Journal viewer</div>
+            <div class="tcard"><span class="dim">T-24</span>Agents topic filters</div>
+          </div>
+          <div class="col"><div class="colh">planned · 2</div>
+            <div class="tcard"><span class="dim">T-14</span>OpenCode adapter</div>
+            <div class="tcard"><span class="dim">T-22</span>Index and watcher</div>
+          </div>
+          <div class="col"><div class="colh">in progress · 2</div>
+            <div class="tcard" style="border-color: #35c4a0"><span class="dim">T-12</span>Hub daemon and spoke hello<span class="teal">impl-1 · OpenCode</span><span class="warn">▲ ask open</span></div>
+            <div class="tcard" style="border-color: #35c4a0"><span class="dim">T-13</span>Codex adapter<span class="teal">impl-2 · Claude Code</span></div>
+          </div>
+          <div class="col"><div class="colh">review · 1</div>
+            <div class="tcard" style="border-color: #f0b429"><span class="dim">T-15</span>Role clause delivery<span class="teal">rev-1 · Codex sol</span><span class="warn">waiting for approval</span></div>
+          </div>
+          <div class="col"><div class="colh">qa · 0</div></div>
+          <div class="col"><div class="colh">done · 4</div>
+            <div class="tcard"><span class="dim">T-21</span>cland task CLI<span class="ok">✓ review · ✓ qa</span></div>
+            <div class="tcard"><span class="dim">T-11</span>Spoke protocol extracted<span class="ok">✓ review</span></div>
+            <div class="tcard"><span class="dim">T-10</span>Hub store on SQLite<span class="ok">✓ review</span></div>
+            <div class="tcard"><span class="dim">M-1</span>cland v0 spec</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{viewItem}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; flex: 1; min-height: 0">
+        <div class="ph"><span>T-12 · task · in progress</span><span>gt topic · gs session · gb branch</span></div>
+        <div style="padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+          <div style="font-size: 18px; line-height: 24px; font-weight: 600">Hub daemon and spoke hello</div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-size: 12px">
+            <div><span class="dim">parent</span><br>E-1 Hub and spoke</div>
+            <div><span class="dim">assignee</span><br>Implementer</div>
+            <div><span class="dim">claim</span><br><span class="teal">impl-1 · OpenCode · busy</span></div>
+            <div><span class="dim">labels</span><br>slice-1, tracer-bullet</div>
+            <div><span class="dim">topic</span><br><a href="#">T-12 Hub daemon and spoke hello</a> · <span class="warn">waiting for you</span></div>
+            <div><span class="dim">branch</span><br>t/T-12-hub-spoke-hello</div>
+            <div><span class="dim">blocked by</span><br>none</div>
+            <div><span class="dim">blocks</span><br>T-13, T-14</div>
+          </div>
+          <div style="border-top: 1px solid #222a35; padding-top: 10px">The hub daemon starts from the repo root, a Claude Code session connects through the spoke, and a message typed in General reaches the session and comes back as a reply with the stages queued, delivered and injected shown in the UI.</div>
+          <div class="sec" style="padding-left: 0">verdicts</div>
+          <div class="dim">none yet · review required · qa required</div>
+          <div class="sec" style="padding-left: 0">comments · 2</div>
+          <div class="msg" style="padding: 4px 0"><div class="who"><b>impl-1</b><span class="role">Implementer</span><span>11:40</span></div><div>Hello works against the stub. Real spoke next; the identity question is open, see the ask in the topic.</div></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{viewSession}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; flex: 1; min-height: 0">
+        <div class="ph"><span>rev-1 · Reviewer · Codex · gpt-6.1-sol</span><span class="warn">waiting for approval · T-15</span></div>
+        <div class="term" style="flex: 1">› codex  resume --remote unix:///…/.cland/sessions/rev-1.sock  01a1…c7
+
+  <span class="dim">thread</span>  Review of t/T-15-role-clause-delivery against dev
+  <span class="dim">model</span>   gpt-6.1-sol · effort high
+
+  Reading the diff: 14 files, +612 −88.
+  Running the hub tests to confirm the clause arrives on reconnect…
+
+  <span class="warn">▲ approval needed</span>  run command:  npm test -- --filter reconnect
+                     [y] allow once   [a] always for this session   [n] deny
+
+  <span class="dim">(attached TUI; the answer is given here, the hub only shows the state)</span></div>
+        <div class="status" style="border-top: 1px solid #222a35"><span>attached</span><span>state: waiting for approval</span><span>item: T-15</span><span>topic: T-15 Role clause delivery</span><span style="margin-left: auto">␣␣ back to thread · gi item</span></div>
+      </div>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{rightInbox}}" hint-placeholder-val="{{true}}">
+    <div class="panel right" style="width: 360px">
+      <div class="ph"><span>inbox</span><span class="warn">3 need you</span></div>
+      <div class="sec">asks</div>
+      <div class="row sel"><span class="warn">?</span><span>T-12 · spoke identity on reconnect</span><span class="claim dim">12:01</span></div>
+      <div class="sec">approvals (answer in the session)</div>
+      <div class="row"><span class="warn">▲</span><span>rev-1 · npm test</span><span class="claim dim">Enter opens</span></div>
+      <div class="sec">waiting for you</div>
+      <div class="row"><span class="warn">●</span><span>Spoke reconnect: flaky test</span><span class="badge">2</span></div>
+      <div class="sec">notifications</div>
+      <div class="row dim"><span class="ok">✓</span><span>T-21 qa clear · qa-1</span><span class="claim dim">11:20</span></div>
+      <div class="row dim"><span class="blue">↔</span><span>Coordinator: coord-0 → coord-1</span><span class="claim dim">10:02</span></div>
+      <div class="row dim"><span>○</span><span>impl-1 idle 25 min</span><span class="claim dim">11:35</span></div>
+      <div class="row dim" style="margin-top: auto; border-top: 1px solid #222a35; font-size: 12px">Enter open · 1-3 answer · d dismiss</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{rightSessions}}" hint-placeholder-val="{{false}}">
+    <div class="panel right" style="width: 360px">
+      <div class="ph"><span>sessions</span><span>5 · 1 waiting</span></div>
+      <sc-for list="{{sessions}}" as="s" hint-placeholder-count="5">
+        <div class="row" style="height: 40px; align-items: flex-start; padding-top: 4px">
+          <span style="color: {{s.color}}">{{s.glyph}}</span>
+          <div style="display: flex; flex-direction: column; min-width: 0">
+            <div><b>{{s.name}}</b> <span class="role">{{s.role}}</span></div>
+            <div class="dim" style="font-size: 12px">{{s.meta}}</div>
+          </div>
+          <span class="claim">{{s.item}}</span>
+        </div>
+      </sc-for>
+      <div class="row dim" style="margin-top: auto; border-top: 1px solid #222a35; font-size: 12px">Enter attach · n new · r role · x stop</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{rightTopics}}" hint-placeholder-val="{{false}}">
+    <div class="panel right" style="width: 360px">
+      <div class="ph"><span>topics</span><span>9 · 4 unread</span></div>
+      <div class="sec">needs you</div>
+      <div class="row sel"><span class="warn">●</span><span>General</span><span class="badge">?</span></div>
+      <div class="row"><span class="warn">●</span><span>Spoke reconnect: flaky test</span><span class="badge">2</span></div>
+      <div class="sec">open</div>
+      <div class="row"><span class="teal">●</span><span>T-12 Hub daemon and spoke hello</span><span class="badge n">3</span></div>
+      <div class="row"><span class="teal">●</span><span>T-13 Codex adapter</span></div>
+      <div class="row"><span class="teal">●</span><span>T-15 Role clause delivery</span><span class="badge n">1</span></div>
+      <div class="row"><span class="dim">≡</span><span>Agents</span><span class="claim dim">log</span></div>
+      <div class="sec">closed</div>
+      <div class="row dim"><span>○</span><span>T-21 cland task CLI</span></div>
+      <div class="row dim"><span>○</span><span>T-11 Spoke protocol extracted</span></div>
+      <div class="row dim" style="margin-top: auto; border-top: 1px solid #222a35; font-size: 12px">Enter open · gi item · n new topic</div>
+    </div>
+    </sc-if>
+
+  </div>
+
+  <div class="status">
+    <span>{{statusLeft}}</span>
+    <span>hub: ok · 3 queued</span>
+    <span style="margin-left: auto">␣i ␣t ␣s ␣n panels · ␣b board · ␣p pick · ␣g General</span>
+  </div>
+
+  <sc-if value="{{showPicker}}" hint-placeholder-val="{{false}}">
+  <div style="position: absolute; inset: 0; background: rgba(5, 8, 12, 0.55); display: flex; align-items: flex-start; justify-content: center; padding-top: 140px">
+    <div style="width: 720px; border: 1px solid #2a3340; border-radius: 8px; background: #10141b; box-shadow: 0 20px 60px rgba(0,0,0,.6); overflow: hidden">
+      <div style="display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #222a35"><span class="dim">pick ›</span><span>topics · sessions · items · artifacts</span><span style="margin-left: auto" class="dim">tab switches kind</span></div>
+      <div style="padding: 8px 14px; border-bottom: 1px solid #222a35; color: #d6dbe4">spo<span style="color: #6aa5ff">▏</span></div>
+      <div class="row sel"><span class="warn">●</span><span class="dim">topic</span><span>Spoke reconnect: flaky test</span><span class="claim dim">waiting for you</span></div>
+      <div class="row"><span class="teal">●</span><span class="dim">item</span><span>T-12 Hub daemon and spoke hello</span><span class="claim">impl-1</span></div>
+      <div class="row"><span class="teal">●</span><span class="dim">item</span><span>T-11 Spoke protocol extracted</span><span class="claim ok">done</span></div>
+      <div class="row"><span class="blue">A</span><span class="dim">artifact</span><span>A-7 spoke reconnect sequence</span><span class="claim dim">diagram</span></div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px; height: 28px">Enter open in centre · C-v open in split · C-t topic of item · Esc close</div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { items: true, right: 'inbox', view: 'thread', picker: false };
+  }
+  renderVals() {
+    const st = this.state;
+    const key = (on) => on ? 'key on' : 'key';
+    const items = [
+      { glyph: '▾', color: '#8a94a3', id: 'E-1', title: 'Hub and spoke', claim: '', pad: '12px', rowClass: 'row', ask: false },
+      { glyph: '◐', color: '#35c4a0', id: 'T-12', title: 'Hub daemon and spoke hello', claim: 'impl-1', pad: '28px', rowClass: 'row sel', ask: true },
+      { glyph: '◐', color: '#35c4a0', id: 'T-13', title: 'Codex adapter', claim: 'impl-2', pad: '28px', rowClass: 'row', ask: false },
+      { glyph: '◔', color: '#8a94a3', id: 'T-14', title: 'OpenCode adapter', claim: '', pad: '28px', rowClass: 'row', ask: false },
+      { glyph: '▾', color: '#8a94a3', id: 'E-2', title: 'Roles', claim: '', pad: '12px', rowClass: 'row', ask: false },
+      { glyph: '◉', color: '#f0b429', id: 'T-15', title: 'Role clause delivery', claim: 'rev-1', pad: '28px', rowClass: 'row', ask: false },
+      { glyph: '○', color: '#8a94a3', id: 'T-16', title: 'Handover note', claim: '', pad: '28px', rowClass: 'row', ask: false },
+      { glyph: '▾', color: '#8a94a3', id: 'E-3', title: 'Tracker', claim: '', pad: '12px', rowClass: 'row', ask: false },
+      { glyph: '●', color: '#7ddc8a', id: 'T-21', title: 'cland task CLI', claim: '', pad: '28px', rowClass: 'row', ask: false },
+      { glyph: '◔', color: '#8a94a3', id: 'T-22', title: 'Index and watcher', claim: '', pad: '28px', rowClass: 'row', ask: false },
+      { glyph: '●', color: '#7ddc8a', id: 'M-1', title: 'cland v0 spec (map)', claim: '', pad: '12px', rowClass: 'row', ask: false },
+      { glyph: '○', color: '#8a94a3', id: 'Q-3', title: 'Which free model for impl-1?', claim: '', pad: '12px', rowClass: 'row', ask: false }
+    ];
+    const sessions = [
+      { glyph: '●', color: '#35c4a0', name: 'coord-1', role: 'Coordinator', meta: 'Claude Code · fable · busy', item: 'T-12' },
+      { glyph: '○', color: '#8a94a3', name: 'impl-1', role: 'Implementer', meta: 'OpenCode · free model · idle', item: 'T-12' },
+      { glyph: '●', color: '#35c4a0', name: 'impl-2', role: 'Implementer', meta: 'Claude Code · opus · busy', item: 'T-13' },
+      { glyph: '▲', color: '#f0b429', name: 'rev-1', role: 'Reviewer', meta: 'Codex · gpt-6.1-sol · waiting for approval', item: 'T-15' },
+      { glyph: '○', color: '#8a94a3', name: 'qa-1', role: 'QA', meta: 'Codex · gpt-6-astra · idle', item: '' }
+    ];
+    const titles = { thread: 'General', board: 'Board', item: 'T-12 Hub daemon and spoke hello', session: 'rev-1 [Reviewer]' };
+    const statuses = { thread: 'General · topic open · to @coordinator', board: 'board · 12 items · 2 in progress', item: 'T-12 · in progress · claim impl-1', session: 'rev-1 · attached · waiting for approval' };
+    return {
+      showItems: st.items,
+      rightInbox: st.right === 'inbox',
+      rightSessions: st.right === 'sessions',
+      rightTopics: st.right === 'topics',
+      viewThread: st.view === 'thread',
+      viewBoard: st.view === 'board',
+      viewItem: st.view === 'item',
+      viewSession: st.view === 'session',
+      showPicker: st.picker,
+      viewTitle: titles[st.view],
+      statusLeft: statuses[st.view],
+      keyItems: key(st.items),
+      keyTopics: key(st.right === 'topics'),
+      keySessions: key(st.right === 'sessions'),
+      keyInbox: key(st.right === 'inbox'),
+      keyThread: key(st.view === 'thread'),
+      keyBoard: key(st.view === 'board'),
+      keyItem: key(st.view === 'item'),
+      keySession: key(st.view === 'session'),
+      keyPicker: key(st.picker),
+      items: items,
+      sessions: sessions,
+      toggleItems: () => this.setState({ items: !st.items }),
+      showTopics: () => this.setState({ right: st.right === 'topics' ? null : 'topics' }),
+      showSessions: () => this.setState({ right: st.right === 'sessions' ? null : 'sessions' }),
+      showInbox: () => this.setState({ right: st.right === 'inbox' ? null : 'inbox' }),
+      viewGeneral: () => this.setState({ view: 'thread' }),
+      viewBoard: () => this.setState({ view: st.view === 'board' ? 'thread' : 'board' }),
+      viewItem: () => this.setState({ view: st.view === 'item' ? 'thread' : 'item' }),
+      viewSession: () => this.setState({ view: st.view === 'session' ? 'thread' : 'session' }),
+      togglePicker: () => this.setState({ picker: !st.picker })
+    };
+  }
+}
+</script>
+</body>
+</html>

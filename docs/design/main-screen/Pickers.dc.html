@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: floating pickers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.pick{border:1px solid #2a3340;border-radius:8px;background:#10141b;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column}
+.pt{display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px}
+.pt .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.pq{padding:8px 14px;border-bottom:1px solid #222a35;color:#d6dbe4}
+.pf{display:flex;gap:14px;padding:6px 14px;border-top:1px solid #222a35;color:#8a94a3;font-size:12px}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23;padding:0 4px}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.cap{color:#8a94a3;font-size:12px;line-height:16px}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar" style="opacity: .45">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">General</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+  </div>
+
+  <div style="flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; padding: 40px 48px; background: rgba(5, 8, 12, 0.55)">
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div class="cap">␣p · one picker, four kinds (Tab switches): items · topics · sessions · artifacts</div>
+      <div class="pick">
+        <div class="pt"><span class="cur">items</span><span>topics</span><span>sessions</span><span>artifacts</span><span style="margin-left: auto">fuzzy over id, title, claim</span></div>
+        <div class="pq">spo<span style="color: #6aa5ff">▏</span></div>
+        <div class="row sel"><span class="teal">◐</span><span class="dim">T-12</span><span>Hub daemon and <b>spo</b>ke hello</span><span class="claim">impl-1 · ask open</span></div>
+        <div class="row"><span class="ok">●</span><span class="dim">T-11</span><span><b>Spo</b>ke protocol extracted</span><span class="claim ok">done</span></div>
+        <div class="row"><span class="dim">○</span><span class="dim">T-25</span><span><b>Spo</b>ke reconnect test matrix</span><span class="claim dim">backlog</span></div>
+        <div class="row"><span class="dim">○</span><span class="dim">Q-3</span><span>Which free model for impl-1? (que<b>s</b>tion)</span><span class="claim dim">open</span></div>
+        <div class="pf"><span><span class="k">↵</span> open in centre</span><span><span class="k">C-v</span> open in split</span><span><span class="k">C-t</span> its topic</span><span><span class="k">C-s</span> its session</span><span><span class="k">Esc</span> close</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div class="cap">␣t · topics picker (the Slack list as an overlay, not a permanent column)</div>
+      <div class="pick">
+        <div class="pt"><span>items</span><span class="cur">topics</span><span>sessions</span><span>artifacts</span><span style="margin-left: auto">sorted: needs you, then activity</span></div>
+        <div class="pq"><span class="dim">type to filter…</span></div>
+        <div class="row sel"><span class="warn">●</span><span>General</span><span class="dim">· coord-1 asked 12:01</span><span class="claim"><span class="badge">?</span></span></div>
+        <div class="row"><span class="warn">●</span><span>Spoke reconnect: flaky test</span><span class="dim">· unbound · coord-1</span><span class="claim"><span class="badge">2</span></span></div>
+        <div class="row"><span class="teal">●</span><span>T-12 Hub daemon and spoke hello</span><span class="claim"><span class="badge n">3</span></span></div>
+        <div class="row"><span class="teal">●</span><span>T-13 Codex adapter</span><span class="claim dim">11:40</span></div>
+        <div class="row"><span class="teal">●</span><span>T-15 Role clause delivery</span><span class="claim"><span class="badge n">1</span></span></div>
+        <div class="row"><span class="dim">≡</span><span>Agents</span><span class="dim">· 14 events in the last hour</span><span class="claim dim">log</span></div>
+        <div class="row dim"><span>○</span><span>T-21 cland task CLI</span><span class="dim">· closed</span></div>
+        <div class="pf"><span><span class="k">↵</span> open thread</span><span><span class="k">C-i</span> its item</span><span><span class="k">n</span> new topic</span><span><span class="k">␣T</span> dock as a panel instead</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div class="cap">␣s · sessions picker (jump into a live harness)</div>
+      <div class="pick">
+        <div class="pt"><span>items</span><span>topics</span><span class="cur">sessions</span><span>artifacts</span><span style="margin-left: auto">waiting first</span></div>
+        <div class="pq"><span class="dim">type to filter…</span></div>
+        <div class="row sel"><span class="warn">▲</span><span><b>rev-1</b> <span class="teal">Reviewer</span></span><span class="dim">Codex · gpt-6.1-sol · waiting for approval</span><span class="claim">T-15</span></div>
+        <div class="row"><span class="teal">●</span><span><b>coord-1</b> <span class="teal">Coordinator</span></span><span class="dim">Claude Code · fable · busy</span><span class="claim">T-12</span></div>
+        <div class="row"><span class="teal">●</span><span><b>impl-2</b> <span class="teal">Implementer</span></span><span class="dim">Claude Code · opus · busy</span><span class="claim">T-13</span></div>
+        <div class="row"><span class="dim">○</span><span><b>impl-1</b> <span class="teal">Implementer</span></span><span class="dim">OpenCode · free model · idle 25m</span><span class="claim">T-12</span></div>
+        <div class="row"><span class="dim">○</span><span><b>qa-1</b> <span class="teal">QA</span></span><span class="dim">Codex · gpt-6-astra · idle</span><span class="claim dim">free</span></div>
+        <div class="row dim"><span>+</span><span>new session…</span><span class="dim">role · harness · model from roles.toml defaults</span></div>
+        <div class="pf"><span><span class="k">↵</span> attach in centre</span><span><span class="k">C-v</span> attach in split</span><span><span class="k">C-i</span> its item</span><span><span class="k">r</span> change role</span><span><span class="k">h</span> hand over</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div class="cap">␣a · artifacts picker (also used by the composer to attach)</div>
+      <div class="pick">
+        <div class="pt"><span>items</span><span>topics</span><span>sessions</span><span class="cur">artifacts</span><span style="margin-left: auto">this topic first, then project</span></div>
+        <div class="pq"><span class="dim">type to filter…</span></div>
+        <div class="row sel"><span class="blue">A-7</span><span>spoke reconnect sequence</span><span class="dim">· diagram · coord-1 · shared</span><span class="claim dim">T-12</span></div>
+        <div class="row"><span class="blue">A-9</span><span>brief for impl-1: adapter contract</span><span class="dim">· prompt · you · sent</span><span class="claim dim">T-12</span></div>
+        <div class="row"><span class="blue">A-6</span><span>hub boundaries sketch</span><span class="dim">· note · you · draft</span><span class="claim dim">General</span></div>
+        <div class="row dim"><span class="blue">A-4</span><span>QA lanes comparison</span><span class="dim">· page · qa-1 · archived in 12 days</span><span class="claim dim">—</span></div>
+        <div class="pf"><span><span class="k">↵</span> open (md in nvim, html in browser)</span><span><span class="k">C-a</span> attach to composer</span><span><span class="k">p</span> promote to repo</span><span><span class="k">n</span> new prompt artifact</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status" style="opacity: .45">
+    <span>General · topic open</span>
+    <span style="margin-left: auto">pickers float over whatever is open and close on Esc</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

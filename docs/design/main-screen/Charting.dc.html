@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: charting stage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.msg{display:flex;flex-direction:column;gap:2px;padding:8px 16px}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.stage{margin-left:auto;color:#8a94a3}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.compose{border-top:1px solid #222a35;background:#0d1117;padding:8px 16px;display:flex;flex-direction:column;gap:6px}
+.input{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:8px 10px;color:#d6dbe4;min-height:44px;font:inherit}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.q{border-left:2px solid #2a3340;padding:4px 10px;margin:4px 0;display:flex;flex-direction:column;gap:2px}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">General</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">1</span></span>
+    <span class="chip">sessions <span class="badge n">1</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 380px">
+      <div class="ph"><span>items · map</span><span>M-1 · 17 tickets</span></div>
+      <div class="tabs"><span>all</span><span class="cur">map</span><span>frontier</span><span>done</span></div>
+      <div style="padding: 6px 0; flex: 1; overflow: hidden">
+        <div class="row" style="padding-left: 12px"><span class="dim">▾</span><span class="id">M-1</span><span>cland v0: the way to a buildable spec</span></div>
+        <div class="sec">decided · 9</div>
+        <div class="row"><span class="ok">●</span><span class="id">Q-2</span><span class="dim" style="overflow: hidden; text-overflow: ellipsis">BCAS hub: what is reusable</span></div>
+        <div class="row"><span class="ok">●</span><span class="id">Q-3</span><span class="dim" style="overflow: hidden; text-overflow: ellipsis">Harness integration surfaces</span></div>
+        <div class="row"><span class="ok">●</span><span class="id">Q-4</span><span class="dim" style="overflow: hidden; text-overflow: ellipsis">Neovim as the engine</span></div>
+        <div class="row"><span class="ok">●</span><span class="id">Q-7</span><span class="dim" style="overflow: hidden; text-overflow: ellipsis">Topic model</span></div>
+        <div class="row"><span class="ok">●</span><span class="id">Q-10</span><span class="dim" style="overflow: hidden; text-overflow: ellipsis">Role model</span></div>
+        <div class="sec">frontier · 3</div>
+        <div class="row sel"><span class="teal">◐</span><span class="id">Q-13</span><span>Hub boundaries</span><span class="claim">coord-1 · grilling</span></div>
+        <div class="row"><span class="warn">◔</span><span class="id">Q-8</span><span>Task tracking</span><span class="claim dim">unclaimed</span></div>
+        <div class="row"><span class="warn">◔</span><span class="id">Q-9</span><span>Artifact model</span><span class="claim dim">unclaimed</span></div>
+        <div class="sec">in work by sub-agents · 2</div>
+        <div class="row"><span class="teal">◐</span><span class="id">Q-5</span><span>Git engines research</span><span class="claim">research · 41 min</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">Q-11</span><span>Engine prototype</span><span class="claim">prototype · 12 min</span></div>
+        <div class="sec">blocked · 5</div>
+        <div class="row dim"><span>◌</span><span class="id">Q-12</span><span>Adapter contract</span><span class="claim dim">by Q-3</span></div>
+        <div class="row dim"><span>◌</span><span class="id">Q-15</span><span>Chat screen prototype</span><span class="claim dim">by Q-7, Q-11</span></div>
+        <div class="row dim"><span>◌</span><span class="id">Q-18</span><span>First usable slice</span><span class="claim dim">by 9</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">Enter open · gt topic · c claim · f frontier</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="ph"><span>General · to @coordinator</span><span>grilling Q-13 · round 2</span></div>
+      <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 6px">
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>16:40</span></div>
+          <div>Round 1 on the hub is closed. Round 2, four clarifications, then I record the resolution and ADR 0003.</div>
+          <div class="q"><div><span class="warn">Q1</span> <b>Delivery stages.</b> The hub tracks queued, delivered and injected per delivery; the UI shows the stage.</div><div class="dim">→ yes</div></div>
+          <div class="q"><div><span class="warn">Q2</span> <b>Hygiene.</b> BCAS limits and loop breaker kept, thresholds in project config, state persisted.</div><div class="dim">→ yes</div></div>
+          <div class="q"><div><span class="warn">Q3</span> <b>Discovery.</b> Spokes, CLI and UI find the hub through a file in the cland folder.</div><div class="dim">→ yes</div></div>
+          <div class="q"><div><span class="warn">Q4</span> <b>Journal and tests.</b> JSON-lines journal; tests drive a real spoke and a real hub.</div><div class="dim">→ yes</div></div>
+        </div>
+        <div class="msg" style="background: #0d1117">
+          <div class="who"><b>you</b><span>16:52</span><span class="stage">✓✓ injected</span></div>
+          <div>all yes</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>16:53</span><span class="stage teal">● busy · writing ADR 0003</span></div>
+          <div>Recording Q-13. Next on the frontier: Q-8, task tracking. I will start round 1 in a minute.</div>
+        </div>
+      </div>
+      <div class="compose">
+        <div class="input dim">@coordinator  Message General…</div>
+        <div class="dim" style="font-size: 12px; display: flex; gap: 16px"><span>to: Coordinator (coord-1)</span><span>last: injected 16:52</span><span style="margin-left: auto">␣o open as prompt artifact</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>General · topic open · to @coordinator</span>
+    <span>hub: ok</span>
+    <span>right panel hidden · ␣n inbox · ␣s sessions · ␣t topics</span>
+    <span style="margin-left: auto">stage 1: one chat, the map beside it</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: item detail view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.panel.right{border-right:0;border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding-top:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.msg{display:flex;flex-direction:column;gap:2px;padding:6px 0}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.verdict{border:1px solid #2a3340;border-radius:5px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.field{display:flex;flex-direction:column;gap:2px;font-size:12px}
+.field .l{color:#8a94a3}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">T-15 Role clause delivery</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+    <span class="chip">sessions <span class="badge n">5</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 300px">
+      <div class="ph"><span>items</span><span>E-2 roles</span></div>
+      <div style="padding: 6px 0; flex: 1; overflow: hidden">
+        <div class="row"><span class="dim">▾</span><span class="id">E-2</span><span>Roles</span><span class="claim dim">3 of 5</span></div>
+        <div class="row" style="padding-left: 28px"><span class="ok">●</span><span class="id">T-17</span><span style="overflow: hidden; text-overflow: ellipsis">Roles config and defaults</span></div>
+        <div class="row sel" style="padding-left: 28px"><span class="warn">◉</span><span class="id">T-15</span><span style="overflow: hidden; text-overflow: ellipsis">Role clause delivery</span><span class="claim">rev-1 ▲</span></div>
+        <div class="row" style="padding-left: 28px"><span class="dim">◌</span><span class="id">T-16</span><span style="overflow: hidden; text-overflow: ellipsis">Handover note</span><span class="claim dim">by T-15</span></div>
+        <div class="row" style="padding-left: 28px"><span class="dim">○</span><span class="id">T-18</span><span style="overflow: hidden; text-overflow: ellipsis">Permission table in hub</span></div>
+        <div class="row" style="padding-left: 28px"><span class="dim">○</span><span class="id">T-20</span><span style="overflow: hidden; text-overflow: ellipsis">Vacant coordinator warning</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">Enter opens the item in the centre</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="ph"><span>T-15 · task · in review</span><span>gt topic · gs session · gb branch · e edit · x close</span></div>
+      <div style="display: flex; flex: 1; min-height: 0">
+        <div style="flex: 1; min-width: 0; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+          <div style="font-size: 18px; line-height: 24px; font-weight: 600">Role clause delivery on assignment and reconnect</div>
+          <div class="dim" style="font-size: 12px">.cland/tasks/T-15-role-clause-delivery.md · created 2026-10-14 · updated 12:04</div>
+          <div style="border-top: 1px solid #222a35; padding-top: 10px; display: flex; flex-direction: column; gap: 6px">
+            <div>When a role is assigned to a session, and on every reconnect of that session, the hub delivers the role clause as an event. The clause is read from <span class="blue">.cland/roles.toml</span>; the adapter confirms the injected stage.</div>
+            <div class="dim">Acceptance: assign Reviewer to a Codex session, kill the spoke, reconnect, and see the clause arrive again within one turn; the journal shows both deliveries.</div>
+          </div>
+          <div class="sec">verdicts</div>
+          <div class="verdict" style="border-color: #f0b429"><div><span class="warn">review · in progress</span> <span class="dim">· rev-1 [Reviewer] · run r-0412 · round 1</span></div><div class="dim">waiting for approval in the session · started 12:04</div></div>
+          <div class="verdict"><div><span class="dim">qa · required · not started</span></div></div>
+          <div class="sec">comments · 3</div>
+          <div class="msg"><div class="who"><b>impl-2</b><span class="role">Implementer</span><span>11:30</span></div><div>Clause delivery implemented as a hub event; added a reconnect test. Ready for review.</div></div>
+          <div class="msg"><div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>11:32</span></div><div>Review requested from rev-1. QA after review.</div></div>
+          <div class="msg dim"><div class="who"><b>hub</b><span>12:04</span></div><div>rev-1 claimed the review · state waiting for approval</div></div>
+        </div>
+        <div style="width: 300px; border-left: 1px solid #222a35; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; background: #0d1117">
+          <div class="field"><span class="l">state</span><span class="warn">◉ in review</span></div>
+          <div class="field"><span class="l">kind · labels</span><span>task · slice-1, roles</span></div>
+          <div class="field"><span class="l">parent</span><span>E-2 Roles</span></div>
+          <div class="field"><span class="l">assignee</span><span>Implementer</span></div>
+          <div class="field"><span class="l">claim</span><span class="teal">rev-1 · Reviewer · waiting for approval</span></div>
+          <div class="field"><span class="l">topic</span><span><a href="#">T-15 Role clause delivery</a> · open · 1 unread</span></div>
+          <div class="field"><span class="l">branch</span><span>t/T-15-role-clause-delivery · 6 commits · rebased</span></div>
+          <div class="field"><span class="l">blocked by</span><span class="dim">none</span></div>
+          <div class="field"><span class="l">blocks</span><span>T-16 Handover note</span></div>
+          <div class="field"><span class="l">cost so far</span><span>$4.20 · 310k tokens</span></div>
+          <div class="field" style="margin-top: auto"><span class="l">merge gate</span><span class="dim">review clear · qa clear · rebased → cland merge T-15</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>T-15 · in review · claim rev-1</span>
+    <span>hub: ok</span>
+    <span style="margin-left: auto">item view: the file, its verdicts and comments, and the links to its topic, session and branch</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

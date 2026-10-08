@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: live session view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.panel.right{border-right:0;border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.term{font-size:12px;line-height:17px;color:#c9d1dc;white-space:pre;padding:12px 16px;overflow:hidden;background:#07090d}
+.srow{display:flex;gap:8px;align-items:flex-start;padding:5px 12px;min-height:40px}
+.srow.sel{background:#182131}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.role{color:#35c4a0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">rev-1 [Reviewer] · attached</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+    <span class="chip">sessions <span class="badge n">5</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 300px">
+      <div class="ph"><span>items</span><span>in work</span></div>
+      <div style="padding: 6px 0; flex: 1; overflow: hidden">
+        <div class="row"><span class="teal">◐</span><span class="id">T-12</span><span style="overflow: hidden; text-overflow: ellipsis">Hub daemon and spoke hello</span><span class="claim">impl-1</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-13</span><span style="overflow: hidden; text-overflow: ellipsis">Codex adapter</span><span class="claim">impl-2</span></div>
+        <div class="row sel"><span class="warn">◉</span><span class="id">T-15</span><span style="overflow: hidden; text-overflow: ellipsis">Role clause delivery</span><span class="claim">rev-1 ▲</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-17</span><span style="overflow: hidden; text-overflow: ellipsis">Roles config and defaults</span><span class="claim">coord-1</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">gs opened this session from T-15</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="ph"><span>rev-1 · Reviewer · Codex · gpt-6.1-sol · high</span><span class="warn">waiting for approval · T-15</span></div>
+      <div class="term" style="flex: 1">› codex resume --remote unix:///…/.cland/sessions/rev-1.sock 01a1…c7
+
+  <span class="dim">thread</span>   Review of t/T-15-role-clause-delivery against dev (round 1)
+  <span class="dim">model</span>    gpt-6.1-sol · effort high
+  <span class="dim">context</span>  hub event 12:04 · role clause: Reviewer · item T-15
+
+  Reading the diff: 14 files, +612 −88.
+  Running the hub tests to confirm the clause arrives on reconnect…
+
+  <span class="warn">▲ approval needed</span>  run command:  npm test -- --filter reconnect
+                     [y] allow once   [a] always for this session   [n] deny
+
+  <span class="dim">You are inside the harness's own TUI. The answer is given here; the hub only shows the
+  state "waiting for approval" in the items panel, the sessions panel and the inbox.</span>
+
+  <span class="dim">█</span></div>
+      <div class="status" style="border-top: 1px solid #222a35">
+        <span>attached · keys go to the session</span>
+        <span>state: <span class="warn">waiting for approval</span></span>
+        <span>item: T-15 · topic: T-15 Role clause delivery</span>
+        <span style="margin-left: auto">C-\ C-n leave · ␣␣ back to thread · gi item · gt topic</span>
+      </div>
+    </div>
+
+    <div class="panel right" style="width: 360px">
+      <div class="ph"><span>sessions</span><span>5 · 1 waiting</span></div>
+      <div class="srow"><span class="teal">●</span><div style="display: flex; flex-direction: column; min-width: 0"><div><b>coord-1</b> <span class="role">Coordinator</span></div><div class="dim" style="font-size: 12px">Claude Code · fable · busy · 2h 10m</div></div><span class="claim">T-12</span></div>
+      <div class="srow"><span class="dim">○</span><div style="display: flex; flex-direction: column; min-width: 0"><div><b>impl-1</b> <span class="role">Implementer</span></div><div class="dim" style="font-size: 12px">OpenCode · free model · idle 25m</div></div><span class="claim">T-12</span></div>
+      <div class="srow"><span class="teal">●</span><div style="display: flex; flex-direction: column; min-width: 0"><div><b>impl-2</b> <span class="role">Implementer</span></div><div class="dim" style="font-size: 12px">Claude Code · opus · busy · $1.80</div></div><span class="claim">T-13</span></div>
+      <div class="srow sel"><span class="warn">▲</span><div style="display: flex; flex-direction: column; min-width: 0"><div><b>rev-1</b> <span class="role">Reviewer</span></div><div class="dim" style="font-size: 12px">Codex · gpt-6.1-sol · waiting for approval</div></div><span class="claim">T-15</span></div>
+      <div class="srow"><span class="dim">○</span><div style="display: flex; flex-direction: column; min-width: 0"><div><b>qa-1</b> <span class="role">QA</span></div><div class="dim" style="font-size: 12px">Codex · gpt-6-astra · idle</div></div><span class="claim dim">free</span></div>
+      <div class="row dim" style="margin-top: 12px"><span>last delivery</span><span class="claim dim">rev-1 · injected 12:04</span></div>
+      <div class="row dim" style="margin-top: auto; border-top: 1px solid #222a35; font-size: 12px">Enter attach · n new · r role · x stop · h handover</div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>rev-1 · attached · waiting for approval</span>
+    <span>hub: ok</span>
+    <span>sessions: 2 busy · 1 waiting · 2 idle</span>
+    <span style="margin-left: auto">the terminal attaches to a session owned by the hub; :restart re-attaches</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

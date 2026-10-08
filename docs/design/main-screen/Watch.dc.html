@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: watching stage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.panel.right{border-right:0;border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.msg{display:flex;flex-direction:column;gap:2px;padding:8px 16px}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.stage{margin-left:auto;color:#8a94a3}
+.card{margin:6px 16px;border:1px solid #3a3320;background:#171510;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:center}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.compose{border-top:1px solid #222a35;background:#0d1117;padding:8px 16px;display:flex;flex-direction:column;gap:6px}
+.input{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:8px 10px;color:#d6dbe4;min-height:44px;font:inherit}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">T-12 Hub daemon and spoke hello</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">4</span></span>
+    <span class="chip">sessions <span class="badge n">5</span> <span class="warn">1▲</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 300px">
+      <div class="ph"><span>items</span><span>in work</span></div>
+      <div class="tabs"><span>all</span><span class="cur">in work</span><span>needs you</span><span>done</span></div>
+      <div style="padding: 6px 0; flex: 1; overflow: hidden">
+        <div class="row sel"><span class="teal">◐</span><span class="id">T-12</span><span style="overflow: hidden; text-overflow: ellipsis">Hub daemon and spoke hello</span><span class="claim">impl-1</span><span class="badge">?</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-13</span><span style="overflow: hidden; text-overflow: ellipsis">Codex adapter</span><span class="claim">impl-2</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-15</span><span style="overflow: hidden; text-overflow: ellipsis">Role clause delivery</span><span class="claim">rev-1 ▲</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-17</span><span style="overflow: hidden; text-overflow: ellipsis">Roles config and defaults</span><span class="claim">coord-1</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-19</span><span style="overflow: hidden; text-overflow: ellipsis">Topic store</span><span class="claim">qa-1</span></div>
+        <div class="sec">planned</div>
+        <div class="row dim"><span>◔</span><span class="id">T-14</span><span>OpenCode adapter</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-22</span><span>Index and watcher</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-16</span><span>Handover note</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">Enter open · gt topic · gs session</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="ph"><span>T-12 Hub daemon and spoke hello · to @coordinator</span><span class="warn">waiting for you</span></div>
+      <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 6px">
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>11:40</span></div>
+          <div>impl-1 reports the hello works against the stub. Moving to the real spoke.</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:01</span><span class="stage warn">▲ waiting for you</span></div>
+        </div>
+        <div class="card">
+          <div><span class="warn">ask</span> <span class="dim">· from coord-1, raised by impl-1</span></div>
+          <div>Spoke identity on reconnect: which should win when the recorded name and the harness session id disagree?</div>
+          <div class="opt"><span class="k">1</span><span>the name recorded by the spoke</span></div>
+          <div class="opt"><span class="k">2</span><span>the harness session id</span></div>
+          <div class="opt"><span class="k">3</span><span>ask me later</span></div>
+          <div class="dim" style="font-size: 12px">or type a free answer below</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:03</span></div>
+          <div>shared <span class="chip"><span class="blue">A-7</span> diagram · spoke reconnect sequence</span> <span class="dim">· Enter opens, gb opens in browser</span></div>
+        </div>
+      </div>
+      <div class="compose">
+        <div class="input dim">@coordinator  Answer or message T-12…  (1-3 picks an option)</div>
+        <div class="dim" style="font-size: 12px; display: flex; gap: 16px"><span>to: Coordinator (coord-1)</span><span>item: T-12 · claim impl-1 · branch t/T-12-hub-spoke-hello</span></div>
+      </div>
+    </div>
+
+    <div class="panel right" style="width: 380px">
+      <div class="ph"><span>topics</span><span>9 · 4 unread</span></div>
+      <div style="flex: 1; overflow: hidden; padding-bottom: 4px">
+        <div class="sec">needs you</div>
+        <div class="row sel"><span class="warn">●</span><span>T-12 Hub daemon and spoke hello</span><span class="badge">?</span></div>
+        <div class="row"><span class="warn">●</span><span>Spoke reconnect: flaky test</span><span class="badge">2</span></div>
+        <div class="row"><span class="warn">●</span><span>General</span><span class="badge">1</span></div>
+        <div class="sec">open</div>
+        <div class="row"><span class="teal">●</span><span>T-13 Codex adapter</span><span class="badge n">3</span></div>
+        <div class="row"><span class="teal">●</span><span>T-15 Role clause delivery</span><span class="badge n">1</span></div>
+        <div class="row"><span class="teal">●</span><span>T-17 Roles config and defaults</span></div>
+        <div class="row"><span class="dim">≡</span><span>Agents</span><span class="claim dim">14 events/h</span></div>
+        <div class="sec">closed</div>
+        <div class="row dim"><span>○</span><span>T-21 cland task CLI</span></div>
+      </div>
+      <div class="ph" style="border-top: 1px solid #222a35"><span>inbox</span><span class="warn">4 need you</span></div>
+      <div style="overflow: hidden">
+        <div class="row"><span class="warn">?</span><span>T-12 · spoke identity</span><span class="claim dim">12:01</span></div>
+        <div class="row"><span class="warn">▲</span><span>rev-1 · approval · npm test</span><span class="claim dim">Enter</span></div>
+        <div class="row"><span class="warn">●</span><span>Spoke reconnect: flaky test</span><span class="claim dim">2 new</span></div>
+        <div class="row"><span class="warn">●</span><span>General · coord-1 question</span><span class="claim dim">1 new</span></div>
+        <div class="row dim"><span class="ok">✓</span><span>T-21 qa clear · qa-1</span><span class="claim dim">11:20</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">␣t toggles topics · ␣n inbox only · ␣s sessions</div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>T-12 · topic waiting for you · claim impl-1</span>
+    <span>hub: ok · 1 queued</span>
+    <span>sessions: 3 busy · 1 waiting · 1 idle</span>
+    <span style="margin-left: auto">stage 2: topics and inbox open, items filtered to in work</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

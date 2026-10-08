@@ -1,0 +1,24 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-08T06:30:00Z"},
+  "title": "cland Main Screen",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "title": "Workbench (interactive: toggle panels and views)", "is_interactive": true},
+    "Charting.dc.html": {"x": 0, "y": 1500, "w": 1440, "h": 900, "title": "Stage 1: charting with the Coordinator"},
+    "Watch.dc.html": {"x": 1520, "y": 1500, "w": 1440, "h": 900, "title": "Stage 2: watching everything (topics open)"},
+    "Steady.dc.html": {"x": 3040, "y": 1500, "w": 1440, "h": 900, "title": "Stage 3: board and inbox"},
+    "Session.dc.html": {"x": 0, "y": 3000, "w": 1440, "h": 900, "title": "Center view: live harness session"},
+    "Item.dc.html": {"x": 1520, "y": 3000, "w": 1440, "h": 900, "title": "Center view: item detail"},
+    "Pickers.dc.html": {"x": 3040, "y": 3000, "w": 1440, "h": 900, "title": "Floating pickers"},
+    "Inbox.dc.html": {"x": 4560, "y": 3000, "w": 1440, "h": 900, "title": "Inbox anatomy"}
+  },
+  "order": ["Main.dc.html", "Charting.dc.html", "Watch.dc.html", "Steady.dc.html", "Session.dc.html", "Item.dc.html", "Pickers.dc.html", "Inbox.dc.html"],
+  "notes": {
+    "t1": {"x": 0, "y": -300, "text": "cland main screen: one shell, panels that toggle, the item list at the centre of everything", "kind": "title1", "maxW": 1440},
+    "t2": {"x": 0, "y": 1200, "text": "The same shell across the three stages: nothing is a mode, only which panels are open", "kind": "title1", "maxW": 4480},
+    "t3": {"x": 0, "y": 2700, "text": "Center views and overlays: session, item, pickers, inbox", "kind": "title1", "maxW": 6000}
+  },
+  "designSystems": []
+}

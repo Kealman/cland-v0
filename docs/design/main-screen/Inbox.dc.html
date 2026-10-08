@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: inbox anatomy</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.panel{display:flex;flex-direction:column;background:#10141b;border:1px solid #222a35;border-radius:6px;min-width:0;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;min-height:24px;padding:2px 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.claim{margin-left:auto;color:#8a94a3;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;justify-content:space-between;padding:10px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.card{margin:4px 12px;border:1px solid #3a3320;background:#171510;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.opt{display:flex;gap:10px;align-items:center}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23;padding:0 4px}
+.note{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid #222a35;border-radius:6px;background:#0d1117}
+.note h3{margin:0;font-size:13px;font-weight:600;color:#d6dbe4}
+.note p{margin:0;color:#8a94a3;font-size:12px;line-height:17px}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 32px 40px; overflow: hidden">
+
+  <div class="panel">
+    <div class="ph"><span>inbox</span><span class="warn">4 need you</span></div>
+    <div class="sec"><span>asks · answer here</span><span>2</span></div>
+    <div class="card" style="border-color: #6aa5ff">
+      <div><span class="warn">?</span> <b>T-12</b> <span class="dim">· coord-1 · 12:01</span></div>
+      <div>Spoke identity on reconnect: which should win?</div>
+      <div class="opt"><span class="k">1</span><span>the name recorded by the spoke</span></div>
+      <div class="opt"><span class="k">2</span><span>the harness session id</span></div>
+      <div class="opt"><span class="k">3</span><span>ask me later</span></div>
+      <div class="dim"><span class="k">i</span> free answer · <span class="k">↵</span> open the topic</div>
+    </div>
+    <div class="row"><span class="warn">?</span><span>T-31 · worktree path for nested repos</span><span class="claim">coord-1 · 09:14</span></div>
+    <div class="sec"><span>approvals · answer in the session</span><span>1</span></div>
+    <div class="row"><span class="warn">▲</span><span>rev-1 · run: npm test -- --filter reconnect</span><span class="claim"><span class="k">↵</span> attach</span></div>
+    <div class="sec"><span>waiting for you · topics</span><span>1</span></div>
+    <div class="row"><span class="warn">●</span><span>Spoke reconnect: flaky test</span><span class="badge">2</span><span class="claim">coord-1 · 11:48</span></div>
+    <div class="sec"><span>notifications</span><span>6 · <span class="k">d</span> dismiss · <span class="k">D</span> all</span></div>
+    <div class="row dim"><span class="ok">✓</span><span>T-21 qa clear · qa-1 · run q-0117</span><span class="claim">11:20</span></div>
+    <div class="row dim"><span class="bad">✗</span><span>T-19 review not clear · rev-1 · 3 findings</span><span class="claim">11:05</span></div>
+    <div class="row dim"><span class="blue">↔</span><span>Coordinator handed over: coord-0 → coord-1</span><span class="claim">10:02</span></div>
+    <div class="row dim"><span class="bad">!</span><span>impl-3 died · T-31 unclaimed</span><span class="claim">09:50</span></div>
+    <div class="row dim"><span>○</span><span>impl-1 idle 25 min</span><span class="claim">11:35</span></div>
+    <div class="row dim"><span class="blue">+</span><span>2 GitHub issues imported to backlog</span><span class="claim">08:15</span></div>
+    <div class="row dim" style="margin-top: auto; border-top: 1px solid #222a35; font-size: 12px; padding: 6px 12px">␣n toggles the panel · ␣N opens it full width · j/k move · ↵ act</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 14px">
+    <div class="note"><h3>What feeds each section</h3>
+      <p><span class="warn">asks</span>: Ask messages from the Coordinator (the only role that may ask the human). Answered inline with 1-9 or a free text; the answer is a message with answer_to and clears the topic's "waiting for human".</p>
+      <p><span class="warn">approvals</span>: sessions whose state is "waiting for approval". The hub does not answer them in v0; Enter attaches the session's TUI in the centre and the human answers there.</p>
+      <p><span class="warn">waiting for you</span>: topics in status "waiting for human" that carry no open ask (the agent replied with a question in prose, or mentioned you).</p>
+      <p><span class="dim">notifications</span>: journal events worth the human's eye: verdicts, role changes and handovers, session deaths and long idles, releases, imports. Dismissable; never block anything.</p>
+    </div>
+    <div class="note"><h3>Order and sound</h3>
+      <p>Sections are fixed in this order: what only you can unblock comes first. Inside a section, oldest first, so nothing starves. The top bar's "needs you" count is the sum of asks, approvals and waiting topics; notifications are not counted.</p>
+    </div>
+    <div class="note"><h3>Where it lives</h3>
+      <p>Right panel by default (␣n). Full-width centre view (␣N) when the queue is long, which is stage 2. Hidden in stage 1 when the count is in the top bar anyway. Always one keystroke away, never a separate screen you must visit.</p>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 14px">
+    <div class="note"><h3>Acting from a row</h3>
+      <p><span class="k">↵</span> opens the thing: the topic thread for asks and waiting topics, the attached session for approvals, the item for verdicts.</p>
+      <p><span class="k">1</span>…<span class="k">9</span> answer an ask with an option without leaving the inbox; <span class="k">i</span> types a free answer in the composer with the topic preselected.</p>
+      <p><span class="k">gi</span> jumps to the item, <span class="k">gs</span> to the session, <span class="k">gt</span> to the topic, the same three motions as everywhere else.</p>
+      <p><span class="k">d</span> dismisses a notification; <span class="k">D</span> all of them. Asks and approvals cannot be dismissed, only answered.</p>
+    </div>
+    <div class="note"><h3>Not in v0</h3>
+      <p>Timeouts, escalation, snoozing, grouping by item, and routing rules. The inbox is a view over existing state; it stores nothing of its own.</p>
+    </div>
+    <div class="note" style="border-color: #35c4a0"><h3>The three motions</h3>
+      <p>Everything that names an item, a topic or a session is a link, and the same three keys move between them from any panel or view: <span class="k">gi</span> item · <span class="k">gt</span> topic · <span class="k">gs</span> session. This is what makes the panels optional: you never need a panel open to get somewhere.</p>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
