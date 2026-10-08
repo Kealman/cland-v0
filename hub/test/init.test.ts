@@ -3,14 +3,14 @@
 // project and a fake Claude Code launched there check that what was provisioned is what they use.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmod, lstat, mkdir, readdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
-import { clandWithEnv, connectUi, eventually, fakeClaude, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { CLI_ENTRY, clandWithEnv, connectUi, eventually, fakeClaude, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_SKILLS = join(REPO, '.agents', 'skills');
@@ -453,6 +453,41 @@ test('provisioning never writes through a symlink: a managed file, AGENTS.md or 
   }
 
   assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the projects changed');
+});
+
+test('a parent folder replaced by a symlink between the check and the write: the write is refused, nothing lands outside', async (t) => {
+  const outside = await tempProject(t, 'cland-outside-');
+  await mkdir(join(outside, 'dir'));
+  await writeFile(join(outside, 'dir', 'keep'), 'external\n');
+  const was = await tree(outside);
+  const root = await tempProject(t, 'cland-link-race-');
+  await mkdir(join(root, '.claude'));
+
+  // the write of .claude/settings.json holds still after its checks, before its temporary file exists; meanwhile the
+  // folder is swapped for a link to a folder outside
+  const child = spawn(process.execPath, [CLI_ENTRY, 'init', '--json'], {
+    cwd: root,
+    env: { ...process.env, CLAND_TEST_INIT_WRITE_PAUSE_MS: '1500', CLAND_TEST_INIT_WRITE_PAUSE_PATH: join('.claude', 'settings.json') },
+  });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', (c: Buffer) => (stdout += String(c)));
+  const paused = new Promise<void>((resolve) =>
+    child.stderr.on('data', (c: Buffer) => {
+      stderr += String(c);
+      if (stderr.includes('test pause before writing')) resolve();
+    }),
+  );
+  const exited = new Promise<number | null>((resolve) => child.on('close', resolve));
+  await paused;
+  await rename(join(root, '.claude'), join(root, '.claude-moved'));
+  await symlink(join(outside, 'dir'), join(root, '.claude'));
+  assert.equal(await exited, 0, stderr);
+
+  const c = (JSON.parse(stdout) as { changes: Change[] }).changes.find((x) => x.path === '.claude/settings.json');
+  assert.equal(c?.action, 'kept', JSON.stringify(c));
+  assert.match(c?.note ?? '', /^symlink: \.claude /);
+  assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the project changed');
 });
 
 test('a file of the human\'s inside a managed skill is never adopted: a later release shipping that path reports a conflict and keeps it', async (t) => {

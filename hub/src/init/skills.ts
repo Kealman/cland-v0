@@ -173,7 +173,11 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       owned.push(rel);
       const from = readFileSync(join(source, name, rel));
       if (kind === 'file' && readFileSync(to).equals(from)) continue;
-      writeAtomic(to, from);
+      const refused = writeAtomic(report.root, to, from);
+      if (refused !== null) {
+        report.add(to, 'kept', symlinkNote(refused));
+        continue;
+      }
       wrote = true;
     }
     // files an earlier version installed that this one no longer ships
