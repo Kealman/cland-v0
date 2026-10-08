@@ -8,13 +8,13 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 | Path | What it is |
 | --- | --- |
-| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it; the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `subscribe`, the pushed events `message`, `delivery` and `session.state`, the `inject` frame to an in-session bridge; session states and the process table's view. |
+| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `session.state`, `session.role`, `role.vacant` and `role.filled`, the `inject` frame to an in-session bridge; session states and the process table's view. |
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, topics, messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
 | `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
-| `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive. Transport-free. |
+| `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive, each session's role (assignment, the clause's delivery, Coordinator exclusivity and vacancy). Transport-free. |
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`, `topic.*`, `subscribe`), the `task.*` requests from either, the `session.*` requests (`src/adapters/requests.ts`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
 | `src/hub/server.ts` | The hub without listeners (`createHubBase`: core, dispatcher, prune) and the WebSocket edge (bearer secret check, frame size limit, heartbeat sweep). `createHub` is both, with no human side at all. |
 | `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. Bound under a private name and renamed into place; on close it removes the path only while the path is still the socket it bound. |
@@ -38,6 +38,10 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve [--stdio]`. |
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
 | `src/cli/session.ts` | `cland session launch`, `list`, `attach`, `stop`, `resume`. |
+| `src/cli/role.ts` | `cland role set`, `clear`, `list`. |
+| `src/roles/config.ts` | `.cland/roles.toml`: parsed (smol-toml), written with the defaults when missing, watched and read again when it changed. |
+| `src/roles/default-roles.ts` | The default `roles.toml`: the four roles' clauses, skills, launch defaults, permissions. |
+| `src/roles/clause.ts` | The text a holder reads when its clause (or its revocation) is delivered. |
 | `src/cli/hook.ts` | `cland hook <event>`, run from inside a launched session by its hooks and the mod; `cland hook bridge`, the mod's connection to the hub. |
 | `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
@@ -47,7 +51,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. |
 
-The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional. `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_HEARTBEAT_MS` and `CLAND_HUB_REQUEST_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_PAUSE_MS`, read by `cland hub serve`, holds every tracker write still between its temporary file and the rename, so a test can land a hand edit in that window; nothing else sets it.
+The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_HEARTBEAT_MS` and `CLAND_HUB_REQUEST_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_PAUSE_MS`, read by `cland hub serve`, holds every tracker write still between its temporary file and the rename, so a test can land a hand edit in that window; nothing else sets it.
 
 ## Identity and delivery
 
@@ -75,10 +79,73 @@ A topic is a thread in the human's chat with agents (spec 4.5): an id, a title, 
 - **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
 - **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
+## Roles
+
+A session holds at most one role: Coordinator, Implementer, Reviewer or QA (spec 4.4). On a project's hub the role is the hub's state, not the session's (ADR 0001): the human assigns and revokes it, or a launch for the role grants it. A hub with no project (`createHub` in tests) takes a hello's role as declared and delivers no clause.
+
+### `.cland/roles.toml`
+
+One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default), and `[<role>.permissions]` `tools`, recorded for #30 and not enforced yet. A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:
+
+| Role | Launch defaults | Skills |
+| --- | --- | --- |
+| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | wayfinder, to-spec, to-tickets, triage, grilling, code-review |
+| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | implement, tdd, diagnosing-bugs |
+| Reviewer | codex, `gpt-6.1-sol`, effort `high` | code-review |
+| QA | codex, `gpt-6-astra`, effort `high` | diagnosing-bugs |
+
+The hub watches the file and reads it again before each launch and assignment when it changed on disk, so the next one uses what the human last saved (`roles-loaded` in the log). A file that does not parse is logged (`roles-unreadable`) and the last good version stays in force.
+
+### Assignment
+
+- **The human** assigns with `role.set` (UI) or `cland role set <session> <role>`, and revokes with `role.clear` or `cland role clear <session>`. A live session gets its clause at once (and what was queued for the role); a name not connected yet gets the role when a session takes the name. A role follows the name: a session that reconnects under it has it back.
+- **A launch for a role** (`session.launch` with `role`) fills what it does not give from the role's launch defaults: the harness, and the model and effort when the harness is the role's. The launched session's hello is granted that role.
+- **`CLAND_ROLE`** is only a request: a hello whose name holds no role and that the hub did not launch for one is refused with `{"type":"error","code":"no-role","message":"no role: \"rev-1\" holds none … — assign one with `cland role set rev-1 <coordinator|implementer|reviewer|qa>`; the session connects on its next retry"}`. The spoke keeps retrying with its backoff and logs the refusal; once the human assigns the role it connects.
+- **Coordinator is exclusive.** Assigning it, or launching for it, while another session holds it (live, or remembered within the queue's TTL) is refused, naming the holder: `role "coordinator" is held by coord [Coordinator] (live): one session holds it at a time — clear it first with `cland role clear coord``.
+- **A dead holder** (its harness exited, or `session.stop`) leaves its role vacant; the process table keeps the role, so a relaunch (`session.resume --relaunch`) takes it back. The human's assignment or revocation of a launched session is written to its row too.
+
+### The clause
+
+On assignment and on every hello of a session holding a role, the hub records the clause as a hub notice to the session (`from: "hub"`, no topic) and sends it as a `role` frame, ahead of what else waited:
+
+```json
+{"type":"role","id":"<message id>","role":"reviewer","clause":"You are a Reviewer: …","skills":["code-review"],"message":{"id":"<message id>","from":"hub","fromKind":"hub","via":"hub","to":["rev-1"],"text":"cland hub: you hold the role Reviewer in this project, shown to others as rev-1 [Reviewer]. …","ts":"…"}}
+```
+
+The spoke acks it like a `deliver` and logs it. A spoke that delivers itself shows the message's text as a channel event with `kind="role"` and `role` in its meta; in a launched session the adapter injects it as a turn (the session's first one), with the delivery pipeline's retries. A newer notice supersedes one still waiting (it is marked dropped). Revoking sends a notice with `"role":null` that tells the holder to stop acting in the role. The hub's log (the journal until #34) records each delivery: `role-clause` (session, role, reason `hello` | `assigned` | `assigned at launch`, message id) and `role-revoked`; the spoke's ack shows as `acked`.
+
+For the Codex adapter (#26): this event replaces its placeholder first turn; the clause reaches a Codex session the same way, injected by the adapter.
+
+### The frames, the events, the CLI
+
+| Request | Result `value` | Who |
+| --- | --- | --- |
+| `{"type":"role.set","id":…,"session":…,"role":…}` | `{"session":RoleHolder}` | UI, CLI |
+| `{"type":"role.clear","id":…,"session":…}` | `{"session":RoleHolder}` | UI, CLI |
+| `{"type":"role.list","id":…}` | `{"roles":[{"role","label","exclusive","skills","launch","holders":[RoleHolder…]}…],"coordinator"}` | UI, CLI |
+
+`RoleHolder` is `{"name","role","label","live"}`, where `label` is the name with its role, `rev-1 [Reviewer]`. `hub.status` and `session.list` carry `"coordinator"`: the live holder's name, or `null` for "no coordinator". Presence (`who`, `hub.status`) and `HarnessProcess` carry `label` beside `role`.
+
+Events, after `subscribe`:
+
+```json
+{"type":"session.role","session":"rev-1","role":"reviewer","previous":null,"reason":"assigned","ts":"…"}
+{"type":"role.vacant","role":"coordinator","ts":"…"}
+{"type":"role.filled","role":"coordinator","session":"coord","ts":"…"}
+```
+
+`session.role` comes when a role is assigned, cleared (`role` null), granted at launch, or vacated by its holder's death. `role.vacant` comes when no live session holds the Coordinator any more (cleared, disconnected, dead), right after the change that caused it; `role.filled` when one holds it again. At a hub's start there is no event: `hub.status` says it.
+
+| Command | What it does |
+| --- | --- |
+| `cland role set <session> <role>` | Assigns the role; prints `rev-1 [Reviewer]: role set` (`(offline)` when the session is not connected). |
+| `cland role clear <session>` | Revokes the session's role. |
+| `cland role list` | Each role with its launch defaults and holders, and the coordinator or `no coordinator`; `--json` for the raw value. |
+
 ## Not here yet
 
 - **The rest of the human side.** Topics beyond General and Agents, their statuses and asks (#32); a loop-breaker mute is still only journalled, not shown in the UI.
-- **Roles as hub state.** A session may declare one of the four role names so `@role` routes; clauses, permissions and handover come with #29–#33.
+- **Roles, the rest.** Permissions per role are recorded in `roles.toml` but not enforced (#30); handover and the Coordinator's role requests come later. The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 - **Adapters.** Codex (#26). Permissions on `session.launch` (#30): anyone may launch for now.
 
@@ -103,7 +170,8 @@ The project's `.cland/`:
 | --- | --- | --- |
 | `.gitignore` | yes | Managed by cland (first line `# managed by cland`); ignores every volatile file below. Remove the mark to take the file over. |
 | `tasks/` | yes | The tracker's item files, one per item (below). Written by the hub, editable by hand, never committed by cland. |
-| `roles.toml`, `config.toml` | yes | Not written by the hub yet (#29 onward). |
+| `roles.toml` | yes | The role definitions (below). Written with the defaults (first line `# managed by cland`) when missing, never rewritten: the human's from then on. |
+| `config.toml` | yes | Not written by the hub yet. |
 | `hub.db` (+ `-wal`, `-shm`) | no | The SQLite store: sessions, messages, deliveries, hygiene counters and mutes; the tracker's index and claims. |
 | `secret` | no | 32 random bytes as hex, mode 0600. Kept across restarts, so spokes holding it reconnect. |
 | `hub.lock` | no | The hub lock, mode 0600: `{"pid":…,"started":"<ps lstart>"}` of the one hub serving the project, from before it prepares anything until it has shut down. |
@@ -150,6 +218,8 @@ Events, pushed after `subscribe`:
 {"type":"session.state","session":"coord","sessionId":"…","state":"busy","source":"hook","ts":"…"}
 ```
 
+The role frames (`role.set`, `role.clear`, `role.list`) and events (`session.role`, `role.vacant`, `role.filled`) are under Roles above.
+
 A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below).
 
 ## Adapters and sessions
@@ -185,7 +255,7 @@ The capability table declares the optional capabilities (`history`, `usage`, `se
 
 | | Surface (Claude Code 2.1.294) |
 | --- | --- |
-| spawn | `claude --bg --session-id <uuid> --name <name> [--model m] --mcp-config <json> --settings <json> --plugin-dir hub/mod/cland`, in the session's cwd. The MCP config starts `bin/cland-spoke.ts` with `CLAND_HUB_FILE`, `CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_ROLE`, `CLAND_DELIVERY=adapter`. The settings add the hooks below (all `async`) and an `env` the mod reads (`CLAND_SESSION_NAME`, `CLAND_HUB_FILE`, `CLAND_NODE`, `CLAND_CLI`). No secret goes on a command line: everything finds the hub through `hub.json`. `--bg` takes `--session-id` but picks its own id (its prefix is the background id); the hub records it as `harnessSessionId`. The workspace must be trusted once (`claude` in it, accept the prompt), or `--bg` refuses. |
+| spawn | `claude --bg --session-id <uuid> --name <name> [--model m] [--effort e] --mcp-config <json> --settings <json> --plugin-dir hub/mod/cland`, in the session's cwd. The MCP config starts `bin/cland-spoke.ts` with `CLAND_HUB_FILE`, `CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_ROLE`, `CLAND_DELIVERY=adapter`. The settings add the hooks below (all `async`) and an `env` the mod reads (`CLAND_SESSION_NAME`, `CLAND_HUB_FILE`, `CLAND_NODE`, `CLAND_CLI`). No secret goes on a command line: everything finds the hub through `hub.json`. `--bg` takes `--session-id` but picks its own id (its prefix is the background id); the hub records it as `harnessSessionId`. The workspace must be trusted once (`claude` in it, accept the prompt), or `--bg` refuses. |
 | attach | `claude attach <background id>`; several clients can attach at once. |
 | inject | The cland mod keeps `cland hook bridge` running, which receives `inject` frames for its session. It submits each one with `$.prompt.submit`, framed as the plugin's (a turn of its own once the session is idle), and confirms it with `cland hook injected`. A turn whose prompt carries a message's envelope confirms it too. The message reads as `<channel source="cland" from=… msg_id=… topic=…>text</channel>` plus one line naming the `send` tool as the way back. The session's inbox socket is not used, because its message format is undocumented. |
 | state | Hooks, run as `cland hook <event> --session <name> --hub-file <path>`: SessionStart → `idle` (and the model), UserPromptSubmit → `busy`, Stop and StopFailure → `idle`, PermissionRequest → `waiting for approval` (`waiting for human` for AskUserQuestion), PostToolUse → `busy`, Elicitation → `waiting for human`, Notification `idle_prompt` → `idle`. The mod adds `turn.start` → `busy` and `turn.complete` → `idle`, which also fires on an interrupt where Stop does not, with the turn's usage. The fallback is `claude agents --json`, polled every `CLAND_ADAPTER_POLL_MS` (5 s), which also catches a dead pid. |
@@ -230,19 +300,19 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 
 | Request | Result `value` | Who |
 | --- | --- | --- |
-| `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"cwd"?}` | `{"process":HarnessProcess}` | UI, CLI, spokes (anyone until #30) |
-| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities}}` | UI, CLI, spokes |
+| `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"effort"?,"cwd"?}` | `{"process":HarnessProcess}`; a role's launch defaults fill the rest | UI, CLI, spokes (anyone until #30) |
+| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities},"coordinator"}` | UI, CLI, spokes |
 | `{"type":"session.attach","id":…,"session":…}` | `{"command":"claude attach 1a2b3c4d"}` | UI, CLI |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true}` | `{"found","reason"?,"process"}` | UI, CLI |
 | `{"type":"session.signal","id":…,"session":…,"event":…,"at":…,"payload":{…}}` | `{"applied","state"?}` | `cland hook` |
 | `{"type":"session.bridge","id":…,"session":…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
 
-`HarnessProcess` is `{"name","harness","role","model","cwd","pid","harnessId","sessionId","harnessSessionId","startedAt","status","state","attach","usage"?}`; `hub.status` lists them as `harnesses`.
+`HarnessProcess` is `{"name","harness","role","label","model","cwd","pid","harnessId","sessionId","harnessSessionId","startedAt","status","state","attach","usage"?}`; `hub.status` lists them as `harnesses`.
 
 | Command | What it does |
 | --- | --- |
-| `cland session launch <name> [--role r] [--model m] [--harness claude-code\|opencode] [--cwd dir]` | Launches a session through the hub. |
+| `cland session launch <name> [--role r] [--model m] [--harness claude-code\|opencode] [--effort e] [--cwd dir]` | Launches a session through the hub; with `--role`, the role's launch defaults fill what is not given. |
 | `cland session list` / `attach <name>` / `stop <name>` / `resume <name> [--relaunch]` | As the frames above. |
 | `cland hook <event> --session <name> --hub-file <path>` | Posts one signal, with the harness's JSON payload from stdin. Only the fields the hub reads are kept, and a prompt is reduced to the message ids it carries. Always exits 0: a hook never fails the harness. |
 | `cland hook bridge --session <name> --hub-file <path>` | The mod's connection to the hub. It prints each `inject` frame as a JSON line, reconnects through `hub.json` after a hub restart, and ends with its parent. |
