@@ -1,10 +1,14 @@
 // `cland role …`: the human assigns and revokes roles (spec 4.4, ADR 0001) through the project's hub.
+import { readFileSync } from 'node:fs';
 import { layout, projectRoot, readDiscovery } from '../project.ts';
 import type { RoleHolder, RoleList } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordinator, implementer, reviewer, qa) to a session,
                   live or not yet connected; the session gets the role's clause
+                  --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,
+                                      Waiting on); the Coordinator moves from its holder, who is told to stop
+                  --move              move the Coordinator from its holder without a note
   role clear <session>        revoke the session's role
   role list       the roles, their launch defaults and holders (--json for JSON)
 `;
@@ -30,13 +34,18 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
     return 1;
   }
   const json = rest.includes('--json');
-  const [first, second] = rest.filter((a) => !a.startsWith('--'));
+  const noteAt = rest.indexOf('--note-file');
+  const noteFile = noteAt >= 0 ? rest[noteAt + 1] : undefined;
+  if (noteAt >= 0 && (!noteFile || noteFile.startsWith('--'))) throw new Error('--note-file needs a file');
+  const [first, second] = rest.filter((a, i) => !a.startsWith('--') && !(noteAt >= 0 && i === noteAt + 1));
   const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
     case 'set': {
-      if (!first || !second) throw new Error('usage: cland role set <session> <role>');
-      const v = (await askHubFrame(d, { type: 'role.set', session: first, role: second })) as { session: RoleHolder };
-      out(v, `${holderLine(v.session)}: role set`);
+      if (!first || !second) throw new Error('usage: cland role set <session> <role> [--note-file <file>] [--move]');
+      const note = noteFile !== undefined ? readFileSync(noteFile, 'utf8') : undefined;
+      const move = rest.includes('--move');
+      const v = (await askHubFrame(d, { type: 'role.set', session: first, role: second, ...(note !== undefined ? { note } : {}), ...(move ? { move } : {}) })) as { session: RoleHolder };
+      out(v, `${holderLine(v.session)}: role set${note !== undefined ? ', with the handover note' : ''}`);
       return 0;
     }
     case 'clear': {

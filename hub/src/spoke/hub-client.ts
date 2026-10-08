@@ -62,6 +62,17 @@ export class Forbidden extends Error {
   }
 }
 
+/** A request the hub refused with a typed code other than `forbidden` (`note-incomplete`: `missing` sections). */
+export class Refused extends Error {
+  readonly code: string;
+  readonly missing: string[] | undefined;
+  constructor(message: string, code: string, missing?: string[]) {
+    super(message);
+    this.code = code;
+    this.missing = missing;
+  }
+}
+
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
 
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
@@ -319,7 +330,15 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
           this.#seen.add(frame.id);
           if (this.#seen.size > SEEN_LIMIT) this.#seen.delete(this.#seen.values().next().value as string);
           this.#log(frame.role ? `role ${frame.role}: clause received (${frame.clause.length} chars, skills: ${frame.skills.join(', ') || 'none'})` : 'role revoked by the hub');
-          this.emit('role', frame.message, { role: frame.role, clause: frame.clause, skills: frame.skills });
+          this.emit('role', frame.message, {
+            role: frame.role,
+            clause: frame.clause,
+            skills: frame.skills,
+            ...(frame.note ? { note: frame.note } : {}),
+            ...(frame.from !== undefined ? { from: frame.from } : {}),
+            ...(frame.reason !== undefined ? { reason: frame.reason } : {}),
+            ...(frame.to !== undefined ? { to: frame.to } : {}),
+          });
         }
         if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(JSON.stringify({ type: 'ack', id: frame.id } satisfies Ack));
         break;
@@ -339,6 +358,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         clearTimeout(p.timer);
         if (frame.ok) p.resolve(frame.value);
         else if (frame.code === 'forbidden') p.reject(new Forbidden(frame.error, frame.permission ?? '', frame.role ?? null, frame.reason ?? ''));
+        else if (frame.code !== undefined) p.reject(new Refused(frame.error, frame.code, frame.missing));
         else p.reject(new Error(frame.error));
         break;
       }
