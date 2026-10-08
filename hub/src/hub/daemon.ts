@@ -7,6 +7,7 @@
 // binding is forbidden). It still takes the lock — the store is one hub's alone — but writes no `hub.json`
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
 import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { Store } from './store.ts';
 import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
@@ -17,6 +18,7 @@ import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { RolesFile } from '../roles/config.ts';
+import { idleNotifyMs } from './inbox.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -77,6 +79,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       log,
       tracker,
       roles,
+      idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),
       control: {
         // without listeners: port 0 and no socket
         status: () => ({

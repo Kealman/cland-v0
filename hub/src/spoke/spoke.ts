@@ -18,7 +18,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
-import { HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
+import { Forbidden, HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { HEARTBEAT_MS, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
@@ -58,6 +58,21 @@ const TOOLS = [
     name: 'resolve',
     description: "Clear a topic's wait (waiting for agent, waiting for human) back to open, when nothing in it waits any more.",
     inputSchema: { type: 'object', properties: { topic: { type: 'string', description: 'The topic id' } }, required: ['topic'] },
+  },
+  {
+    name: 'ask',
+    description:
+      "Ask the human a question in a topic (the Coordinator only): numbered options (at most 9; the human answers with a key) and, unless `free` is false, room for a free answer. The topic waits for the human until the answer arrives as an event with `answer_to` set to this ask's id (and from_kind=\"human\"). `resolve` on the topic withdraws open asks; closing the topic cancels them. Several asks may be open at once.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'The topic id to ask in (General is `general`)' },
+        question: { type: 'string', description: 'The question, self-contained' },
+        options: { type: 'array', items: { type: 'string' }, description: 'The options, one line each, in order (1 first); may be empty when only a free answer fits' },
+        free: { type: 'boolean', description: 'Whether a free answer is welcome beside the options (default true)' },
+      },
+      required: ['topic', 'question', 'options'],
+    },
   },
   {
     name: 'who',
@@ -120,6 +135,7 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   };
   if (message.fromRole !== undefined) meta.from_role = message.fromRole;
   if (message.replyTo !== undefined) meta.reply_to = message.replyTo;
+  if (message.answerTo !== undefined) meta.answer_to = message.answerTo;
   if (topic) {
     meta.topic = topic.id;
     meta.topic_title = topic.title;
@@ -201,6 +217,12 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           const value = (await hub.request({ type: 'resolve', topic: args.topic })) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
+        case 'ask': {
+          if (typeof args.topic !== 'string' || typeof args.question !== 'string') return text({ ok: false, error: 'ask needs `topic` and `question`' }, true);
+          const options = Array.isArray(args.options) ? args.options.filter((o): o is string => typeof o === 'string') : [];
+          const value = (await hub.request({ type: 'ask', topic: args.topic, question: args.question, options, ...(typeof args.free === 'boolean' ? { free: args.free } : {}) })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         case 'who': {
           const value = await hub.who();
           const note = hub.lastRefusal;
@@ -248,6 +270,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: false, error: `unknown tool ${req.params.name}` }, true);
       }
     } catch (err) {
+      // a refusal by the hub's permission table reaches the model typed: what was missing, for which role, why
+      if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
       return text({ ok: false, error: err instanceof Error ? err.message : String(err) }, true);
     }
   });

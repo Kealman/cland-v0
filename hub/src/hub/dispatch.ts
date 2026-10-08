@@ -27,6 +27,7 @@ import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts'
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
+import { AskForbidden } from './asks.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -80,6 +81,8 @@ export class Dispatcher {
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+    // the inbox's approvals are the launched sessions waiting for approval, with their attach commands (#33)
+    this.#options.core.inbox.useProcesses(sessions ? () => sessions.list() : null);
   }
 
   get core(): HubCore {
@@ -194,8 +197,16 @@ export class Dispatcher {
           case 'resolve':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.resolveTopic(frame.topic, me) } });
             break;
+          case 'ask':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: core.asks.ask(me, frame.topic, frame.question, frame.options, frame.free) });
+            break;
         }
       } catch (err) {
+        // only the Coordinator asks (#33): refused with the permission table's typed shape (#30)
+        if (err instanceof AskForbidden) {
+          peer.send({ type: 'result', id: frame.id, ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason });
+          return;
+        }
         peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
       }
     };
@@ -236,6 +247,14 @@ export class Dispatcher {
             return answer({ session: core.clearRole(frame.session) });
           case 'role.list':
             return answer(core.roleList());
+          case 'topic.answer':
+            return answer(core.asks.answer(frame.ask, frame.option, frame.text));
+          case 'inbox.list':
+            return answer(core.inbox.list());
+          case 'inbox.dismiss':
+            return answer(core.inbox.dismiss(frame.notification));
+          case 'inbox.dismiss_all':
+            return answer(core.inbox.dismissAll());
           case 'subscribe':
             if (!unsubscribe) {
               unsubscribe = core.subscribe((event) => {
@@ -256,7 +275,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'hub.status':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator() } satisfies HubStatus });
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou() } satisfies HubStatus });
           break;
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });
