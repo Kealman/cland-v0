@@ -25,6 +25,12 @@ export type Scenario = {
   send?: 'ok' | 'refuse' | 'hold';
   /** `hub.status`'s `coordinator` (the live holder, or null); absent, the field is left out. */
   coordinator?: string | null;
+  /** `role.list`'s roles; absent, the four default roles with their launch defaults. */
+  roles?: Array<Record<string, unknown>>;
+  /** How `session.launch` answers: absent, it adds an idle running process; a string refuses with it. */
+  launchError?: string;
+  /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
+  stopError?: string;
 };
 
 type Frame = Record<string, unknown> & { type?: string; id?: string };
@@ -37,6 +43,37 @@ scenario.topics ??= [
   { id: 'general', title: 'General', status: 'open', standing: true, createdAt: now(), updatedAt: now() },
   { id: 'agents', title: 'Agents', status: 'open', standing: true, createdAt: now(), updatedAt: now() },
 ];
+
+const DEFAULT_ROLES = [
+  { role: 'coordinator', label: 'Coordinator', exclusive: true, skills: [], launch: { harness: 'claude-code', model: 'claude-fable-5-1', effort: 'max' }, holders: [] },
+  { role: 'implementer', label: 'Implementer', exclusive: false, skills: [], launch: { harness: 'opencode', model: null, effort: null }, holders: [] },
+  { role: 'reviewer', label: 'Reviewer', exclusive: false, skills: [], launch: { harness: 'codex', model: 'gpt-6.1-sol', effort: 'high' }, holders: [] },
+  { role: 'qa', label: 'QA', exclusive: false, skills: [], launch: { harness: 'codex', model: 'gpt-6-astra', effort: 'high' }, holders: [] },
+];
+const LABELS: Record<string, string> = { coordinator: 'Coordinator', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA' };
+
+/** What `session.launch` adds to the process list: a running idle session, the frame's values as given. */
+function launched(f: Frame): Record<string, unknown> {
+  const name = String(f.name);
+  const role = typeof f.role === 'string' ? f.role : null;
+  const harness = typeof f.harness === 'string' ? f.harness : 'claude-code';
+  return {
+    name,
+    harness,
+    role,
+    label: role ? `${name} [${LABELS[role] ?? role}]` : name,
+    model: typeof f.model === 'string' ? f.model : null,
+    cwd: typeof f.cwd === 'string' ? f.cwd : '/tmp',
+    pid: 2,
+    harnessId: `${name}-bg`,
+    sessionId: `${name}-id`,
+    harnessSessionId: null,
+    startedAt: now(),
+    status: 'running',
+    state: 'idle',
+    attach: `printf 'attached ${name}\\n'; sleep 600`,
+  };
+}
 
 const requests: Frame[] = [];
 const held: Frame[] = [];
@@ -80,6 +117,23 @@ function answer(f: Frame) {
       const command = scenario.attach?.[String(f.session)];
       return command ? ok(f.id, { command }) : fail(f.id, `no session named ${String(f.session)}`);
     }
+    case 'session.launch': {
+      if (scenario.launchError) return fail(f.id, scenario.launchError);
+      const p = launched(f);
+      scenario.processes = [...(scenario.processes ?? []).filter((x) => x.name !== p.name), p];
+      scenario.attach = { ...scenario.attach, [p.name as string]: p.attach as string };
+      return ok(f.id, { process: p });
+    }
+    case 'session.stop': {
+      if (scenario.stopError) return fail(f.id, scenario.stopError);
+      const p = scenario.processes?.find((x) => x.name === f.session);
+      if (!p) return fail(f.id, `no session "${String(f.session)}" was launched by this hub`);
+      Object.assign(p, { status: 'stopped', state: 'unknown', attach: null });
+      write({ type: 'session.state', session: p.name, sessionId: p.sessionId, state: 'unknown', source: 'stopped', ts: now() });
+      return ok(f.id, { process: p });
+    }
+    case 'role.list':
+      return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status':
       return ok(f.id, { sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}) });
     case 'task.list':

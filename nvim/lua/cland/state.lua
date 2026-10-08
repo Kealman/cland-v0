@@ -17,6 +17,8 @@ function M.reset(opts)
     presence = {}, -- connected sessions from hub.status (spokes started by hand included)
     adapters = {}, -- harness → capability table
     hub_coordinator = nil, -- { name = <live holder> | nil } once the hub said (hub.status, role.vacant, role.filled)
+    roles = {}, -- role.list's roles: {role, label, exclusive, launch = {harness, model, effort}, holders}
+    sessions_note = nil, -- { text, group }: the last launch or stop outcome, shown atop the sessions panel
     items = {}, -- task.list summaries
     items_note = nil, -- why the items panel is empty
     ui = {
@@ -26,6 +28,7 @@ function M.reset(opts)
       right = nil, -- 'inbox' | 'sessions' | 'topics'
       dock = false,
       preset = nil,
+      confirm = nil, -- { session = name }: the sessions panel asks before stopping it
     },
     attached = {}, -- session name → true while a terminal is attached in this Neovim
     flash = nil, -- one line for the status line, instead of the message area
@@ -76,19 +79,22 @@ function M.sessions()
     out[#out + 1] = {
       name = p.name,
       role = p.role,
+      label = p.label or M.label(p.name, p.role),
       harness = p.harness,
       model = p.model,
+      cwd = p.cwd,
       state = live and (p.state or 'unknown') or 'unknown',
       status = p.status,
       launched = true,
       live = live,
       attach = p.attach,
+      usage = p.usage,
     }
     seen[p.name] = true
   end
   for _, p in ipairs(M.S.presence) do
     if not seen[p.name] then
-      out[#out + 1] = { name = p.name, role = p.role, harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true }
+      out[#out + 1] = { name = p.name, role = p.role, label = p.label or M.label(p.name, p.role), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true }
       seen[p.name] = true
     end
   end
@@ -96,6 +102,32 @@ function M.sessions()
     s.item = M.item_of_session(s.name)
   end
   return out
+end
+
+M.ROLE_LABELS = { coordinator = 'Coordinator', implementer = 'Implementer', reviewer = 'Reviewer', qa = 'QA' }
+
+--- "rev-1 [Reviewer]": the name with its role, as the hub labels it.
+function M.label(name, role)
+  if not role or role == vim.NIL or role == '' then
+    return name
+  end
+  local r
+  for _, def in ipairs(M.S and M.S.roles or {}) do
+    if def.role == role then
+      r = def.label
+    end
+  end
+  return name .. ' [' .. (r or M.ROLE_LABELS[role] or role) .. ']'
+end
+
+--- A role's definition from role.list (its launch defaults), by name or label, whatever the case.
+function M.role_def(role)
+  role = (role or ''):lower()
+  for _, def in ipairs(M.S.roles) do
+    if def.role == role or (def.label or ''):lower() == role then
+      return def
+    end
+  end
 end
 
 function M.session(name)

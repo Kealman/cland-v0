@@ -138,6 +138,153 @@ function M.show_in(win, name, opts)
   return note
 end
 
+-- Stop and the capability table (the sessions panel's x and c) ----------------------------------------
+
+local function note(text, group)
+  state.S.sessions_note = { text = text, group = group }
+  state.changed()
+end
+
+local CONFIRM_KEYS = { 'y', 'n', '<Esc>' }
+
+--- Answer the pending confirmation: `yes` stops the session through the hub (`session.stop`).
+function M.resolve_stop(yes)
+  local confirm = state.S.ui.confirm
+  state.S.ui.confirm = nil
+  local b = require('cland.panels').bufs.sessions
+  if b and api.nvim_buf_is_valid(b) then
+    for _, k in ipairs(CONFIRM_KEYS) do
+      pcall(vim.keymap.del, 'n', k, { buffer = b })
+    end
+  end
+  state.changed()
+  if not (confirm and yes) then
+    return
+  end
+  local name = confirm.session
+  if not (M.client and M.client:connected()) then
+    return note('cannot stop ' .. name .. ': not connected to the hub', 'ClandRed')
+  end
+  note('stopping ' .. name .. '…', 'ClandDim')
+  M.client:request({ type = 'session.stop', session = name }, function(err, value)
+    if err then
+      return note('stop ' .. name .. ' refused: ' .. tostring(err):gsub('\n', ' '), 'ClandRed')
+    end
+    local p = value and value.process
+    if p then
+      for i, row in ipairs(state.S.processes) do
+        if row.name == p.name then
+          state.S.processes[i] = p
+        end
+      end
+    end
+    note(name .. ' stopped', 'ClandDim')
+    pcall(require('cland').refresh_sessions)
+  end)
+end
+
+--- x in the sessions panel: a confirmation line in the panel (y stops, n or Esc keeps), never a dialog.
+function M.ask_stop(name)
+  local s = state.session(name)
+  if not s then
+    return
+  end
+  if not s.launched then
+    return note(name .. ' was not launched by cland: there is nothing to stop from here', 'ClandAmber')
+  end
+  if not s.live then
+    return note(name .. ' is not running (' .. tostring(s.status) .. ')', 'ClandDim')
+  end
+  state.S.ui.confirm = { session = name }
+  local b = require('cland.panels').bufs.sessions
+  if b and api.nvim_buf_is_valid(b) then
+    local function map(lhs, yes)
+      vim.keymap.set('n', lhs, function()
+        M.resolve_stop(yes)
+      end, { buffer = b, nowait = true, silent = true, desc = yes and 'cland: stop it' or 'cland: keep it' })
+    end
+    map('y', true)
+    map('n', false)
+    map('<Esc>', false)
+  end
+  state.changed()
+end
+
+M.CAP_ORDER = { 'busy', 'idle', 'waiting for approval', 'waiting for human' }
+M.OPT_ORDER = { 'history', 'usage', 'setModel', 'approvalRelay' }
+
+--- The lines of a harness's capability table.
+function M.capability_lines(s)
+  local caps = s and s.harness and state.S.adapters[s.harness]
+  local harness = s and s.harness and (require('cland.panels').HARNESS[s.harness] or s.harness)
+  if not caps then
+    return {
+      (s and s.label or '?') .. (harness and (' · ' .. harness) or ''),
+      '',
+      harness and ('no capability table from the ' .. harness .. ' adapter') or 'not launched by cland: no adapter,',
+      harness and '' or 'so no capability table; its state is what its spoke says',
+    }
+  end
+  local lines = { s.label .. ' · ' .. harness .. ' · capability table', '', 'state signals' }
+  local function row(k, v)
+    lines[#lines + 1] = '  ' .. k .. (' '):rep(math.max(1, 23 - #k)) .. v
+  end
+  for _, k in ipairs(M.CAP_ORDER) do
+    row(k, caps.states and caps.states[k] or 'none')
+  end
+  row('unknown', 'always')
+  lines[#lines + 1] = ''
+  lines[#lines + 1] = 'capabilities'
+  for _, k in ipairs(M.OPT_ORDER) do
+    row(k, caps[k] or 'none')
+  end
+  lines[#lines + 1] = ''
+  lines[#lines + 1] = 'heuristic: derived, may be wrong · none: never emulated'
+  return lines
+end
+
+local CAP_HL = { reliable = 'ClandGreen', heuristic = 'ClandAmber', none = 'ClandDim', always = 'ClandDim' }
+
+--- c in the sessions panel: the session's adapter capability table in a float; q or Esc closes it.
+function M.show_capabilities(name)
+  local s = state.session(name)
+  local lines = vim.tbl_map(function(l)
+    return ' ' .. l
+  end, M.capability_lines(s))
+  local buf = api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = 'wipe'
+  api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  vim.b[buf].cland_role = 'capabilities'
+  local ns = api.nvim_create_namespace('cland.capabilities')
+  for i, l in ipairs(lines) do
+    local word = l:match('(%a+)$')
+    if word and CAP_HL[word] and l:match('^   ') then
+      pcall(api.nvim_buf_set_extmark, buf, ns, i - 1, #l - #word, { end_col = #l, hl_group = CAP_HL[word] })
+    elseif i == 1 then
+      pcall(api.nvim_buf_set_extmark, buf, ns, 0, 0, { end_col = #l, hl_group = 'ClandBold' })
+    elseif l == ' state signals' or l == ' capabilities' then
+      pcall(api.nvim_buf_set_extmark, buf, ns, i - 1, 0, { end_col = #l, hl_group = 'ClandSection' })
+    end
+  end
+  local width = 0
+  for _, l in ipairs(lines) do
+    width = math.max(width, api.nvim_strwidth(l) + 2)
+  end
+  width = math.min(width, vim.o.columns - 4)
+  local win = api.nvim_open_win(buf, true, {
+    relative = 'editor', row = 3, col = math.floor((vim.o.columns - width) / 2), width = width, height = #lines,
+    border = 'rounded', style = 'minimal', zindex = 90, title = ' capabilities ', title_pos = 'left', footer = ' q close ', footer_pos = 'left',
+  })
+  vim.wo[win].winbar = ''
+  for _, k in ipairs({ 'q', '<Esc>', 'c' }) do
+    vim.keymap.set('n', k, function()
+      pcall(api.nvim_win_close, win, true)
+    end, { buffer = buf, nowait = true })
+  end
+  return win
+end
+
 --- Attach `name` in a hidden terminal (after a restart, for a session not in the centre).
 function M.reattach(name)
   if M.term(name) then
