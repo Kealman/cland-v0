@@ -42,6 +42,24 @@ const TOOLS = [
     },
   },
   {
+    name: 'topic.create',
+    description:
+      "Open a topic for the human when a question has no fitting one (usually bound to your item). A title is required; `item` binds it to a unit of work (T-12), which has one topic at most. The topic shows in the human's list with its first message: write into it with send(topic).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'What the topic is about' },
+        item: { type: 'string', description: 'The item it is bound to (T-12); omit for an unbound topic' },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'resolve',
+    description: "Clear a topic's wait (waiting for agent, waiting for human) back to open, when nothing in it waits any more.",
+    inputSchema: { type: 'object', properties: { topic: { type: 'string', description: 'The topic id' } }, required: ['topic'] },
+  },
+  {
     name: 'who',
     description: 'List the sessions connected to the hub: name, role, status, connected since.',
     inputSchema: { type: 'object', properties: {} },
@@ -105,6 +123,7 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   if (topic) {
     meta.topic = topic.id;
     meta.topic_title = topic.title;
+    if (topic.item) meta.topic_item = topic.item;
   } else if (message.topic !== undefined) meta.topic = message.topic;
   return meta;
 }
@@ -171,6 +190,16 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
             ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),
           })) as { outcomes: SendOutcome[]; topic: TopicRef };
           return text({ ok: true, outcomes: value.outcomes, topic: value.topic });
+        }
+        case 'topic.create': {
+          if (typeof args.title !== 'string' || !args.title.trim()) return text({ ok: false, error: 'topic.create needs a `title`' }, true);
+          const value = (await hub.request({ type: 'topic.create', title: args.title, ...(typeof args.item === 'string' ? { item: args.item } : {}) })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'resolve': {
+          if (typeof args.topic !== 'string') return text({ ok: false, error: 'resolve needs `topic`' }, true);
+          const value = (await hub.request({ type: 'resolve', topic: args.topic })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
         }
         case 'who': {
           const value = await hub.who();

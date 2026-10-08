@@ -63,16 +63,24 @@ export type TopicStatus = 'open' | 'waiting for human' | 'waiting for agent' | '
 export type Topic = {
   id: string;
   title: string;
-  /** Only `open` is set yet; the status machine comes with #32. */
+  /** Set by message direction, `resolve` and `close` (spec 4.5, `src/hub/topics.ts`); Agents stays `open`. */
   status: TopicStatus;
-  /** General and Agents: created at the project's first hub start, never renamed or deleted. */
+  /** General and Agents: created at the project's first hub start, never renamed, deleted or closed. */
   standing: boolean;
   createdAt: string;
   updatedAt: string;
+  /** The unit of work the topic is bound to (an item id, `T-12`), or null; one topic per item at most. */
+  item: string | null;
+  /** The human's unread messages: those from others since the human last read the topic (`topic.read`). */
+  unread: number;
+  /** The latest message's time, or null for a topic with no message yet (listed last). */
+  lastMessageAt: string | null;
+  /** A message waits for a role nobody holds: `no coordinator` (or `no reviewer`, …); absent otherwise. */
+  warning?: string;
 };
 
-/** How a topic travels with a delivery or an event. */
-export type TopicRef = { id: string; title: string };
+/** How a topic travels with a delivery or an event: its id, its title and its binding. */
+export type TopicRef = { id: string; title: string; item?: string | null };
 
 /** A message's progress (spec 4.2): `queued` until every addressee's spoke acked it, then `delivered`;
  *  `injected` once every addressee's adapter confirmed the turn; `dropped` when it waited past the TTL. */
@@ -91,6 +99,8 @@ export type HubEvent =
   | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string }
   /** A session's role changed: assigned, moved, cleared (null), or vacated by its harness's death. */
   | { type: 'session.role'; session: string; role: string | null; previous: string | null; reason: string; ts: string }
+  /** A topic changed: created, its status, its warning, its binding or the human's unread count. */
+  | { type: 'topic'; topic: Topic }
   /** No live session holds the Coordinator any more: the UI shows "no coordinator". */
   | { type: 'role.vacant'; role: 'coordinator'; ts: string }
   /** A live session holds the Coordinator again. */
@@ -119,6 +129,10 @@ export type SpokeRequest =
   | { type: 'history'; id: string; limit?: number; with?: string }
   | { type: 'status'; id: string; text: string }
   | { type: 'rename'; id: string; name: string }
+  /** Open a topic, with a title and optionally bound to an item: `{ topic: Topic }`. */
+  | { type: 'topic.create'; id: string; title: string; item?: string }
+  /** Clear a topic's wait (`waiting for human` or `waiting for agent`) back to `open`: `{ topic: Topic }`. */
+  | { type: 'resolve'; id: string; topic: string }
   /** The heartbeat. */
   | { type: 'ping'; id: string };
 
@@ -185,6 +199,10 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       return typeof f.text === 'string';
     case 'rename':
       return typeof f.name === 'string';
+    case 'topic.create':
+      return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
+    case 'resolve':
+      return typeof f.topic === 'string';
     case 'send':
       return (
         (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
@@ -236,10 +254,19 @@ export type ClientRequest =
   | { type: 'topic.list'; id: string }
   /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. */
   | { type: 'topic.history'; id: string; topic: string; limit?: number }
-  /** The human writes into a topic: to the Coordinator unless `to` names sessions or roles. `{ message: TopicMessage, outcomes }` */
+  /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
+   *  to the Coordinator. `{ message: TopicMessage, outcomes }` */
   | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[] }
   | { type: 'topic.rename'; id: string; topic: string; title: string }
   | { type: 'topic.delete'; id: string; topic: string }
+  /** The human opens a topic, optionally bound to an item: `{ topic: Topic }`. */
+  | { type: 'topic.create'; id: string; title: string; item?: string }
+  /** The human closes a topic; a new message reopens it: `{ topic: Topic }`. */
+  | { type: 'topic.close'; id: string; topic: string }
+  /** The human clears a topic's wait back to `open`: `{ topic: Topic }`. */
+  | { type: 'topic.resolve'; id: string; topic: string }
+  /** The human read the topic up to a message (its id; absent: the latest): `{ topic: Topic }` with `unread`. */
+  | { type: 'topic.read'; id: string; topic: string; upTo?: string }
   /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
   | { type: 'subscribe'; id: string }
   /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
@@ -322,7 +349,13 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.rename':
       return typeof f.topic === 'string' && typeof f.title === 'string';
     case 'topic.delete':
+    case 'topic.close':
+    case 'topic.resolve':
       return typeof f.topic === 'string';
+    case 'topic.create':
+      return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
+    case 'topic.read':
+      return typeof f.topic === 'string' && (f.upTo === undefined || typeof f.upTo === 'string');
     default:
       return false;
   }

@@ -110,6 +110,8 @@ export class Tracker {
 
   /** Tests only: how long a write holds still between its temporary file and the rename (0: not at all). */
   readonly #writePauseMs: number;
+  /** Told when an item closes (the hub's close, an edit to `closed`, a hand edit): its topic closes too (spec 4.5). */
+  readonly #closedListeners = new Set<(id: string) => void>();
 
   constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number }) {
     this.#root = options.root;
@@ -119,6 +121,22 @@ export class Tracker {
     this.#now = options.now ?? (() => new Date());
     mkdirSync(this.#dir, { recursive: true });
     this.#index = new TrackerIndex(options.db);
+  }
+
+  /** Listen to items closing; returns the unsubscribe. */
+  onClosed(listener: (id: string) => void): () => void {
+    this.#closedListeners.add(listener);
+    return () => this.#closedListeners.delete(listener);
+  }
+
+  #closed(id: string): void {
+    for (const listener of [...this.#closedListeners]) {
+      try {
+        listener(id);
+      } catch (err) {
+        this.#log({ event: 'task-close-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
   }
 
   /** Bring the index level with the folder, then watch it. */
@@ -213,8 +231,10 @@ export class Tracker {
     if (previous?.source === 'hub' && now - previous.indexedAt < CONCURRENT_MS) {
       this.#log({ event: 'task-conflict', id, file: name, winner: 'hand', note: `a hand edit replaced the hub's write of ${new Date(previous.indexedAt).toISOString()}; last writer wins` });
     }
+    const wasOpen = this.#index.get(id)?.state === 'open';
     this.#index.put(item, { file: name, hash, source: 'hand', indexedAt: now });
     this.#log({ event: 'task-reindexed', id, file: name, source: 'hand' });
+    if (wasOpen && item.fm.state === 'closed') this.#closed(id);
   }
 
   #dropFile(name: string): void {
@@ -412,7 +432,10 @@ export class Tracker {
       if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
       if (input.assignee !== undefined) fm.assignee = input.assignee || null;
     });
-    if (input.state === 'closed') this.#releaseOnClose(view.id);
+    if (input.state === 'closed') {
+      this.#releaseOnClose(view.id);
+      this.#closed(view.id);
+    }
     return input.state === 'closed' ? this.view(view.id) : view;
   }
 
@@ -424,6 +447,7 @@ export class Tracker {
       if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
     });
     this.#releaseOnClose(view.id);
+    this.#closed(view.id);
     return this.view(view.id);
   }
 

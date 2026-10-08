@@ -18,6 +18,7 @@ import {
   type Topic,
   type TopicMessage,
   type TopicRef,
+  type TopicStatus,
 } from '../protocol.ts';
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
@@ -25,6 +26,7 @@ import { clauseText, revokedText } from '../roles/clause.ts';
 import { resolveTag } from '../address.ts';
 import { Store } from './store.ts';
 import { Hygiene, type LoopBreaker, type RateLimit } from './hygiene.ts';
+import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
 import type { LogFn } from '../log.ts';
 
 /** How long a message waits for an offline session; also how long a name stays known after its last sign of life. */
@@ -81,6 +83,8 @@ export type CoreOptions = {
    * human side) a hello's role is taken as declared.
    */
   roles?: RolesSource;
+  /** The tracker as a topic's binding sees it (`topic.create` with an item); absent, a binding is refused. */
+  items?: TopicItems;
 };
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
@@ -113,6 +117,9 @@ export class HubCore {
   readonly #roleNotices = new Map<string, RoleClause>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
+  #items: TopicItems | null;
+  /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
+  readonly #publishedTopics = new Map<string, string>();
 
   constructor(options: CoreOptions = {}) {
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
@@ -120,6 +127,7 @@ export class HubCore {
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
     this.#roles = options.roles ?? null;
+    this.#items = options.items ?? null;
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -130,6 +138,7 @@ export class HubCore {
     });
     const now = this.#now().toISOString();
     for (const t of STANDING_TOPICS) this.#store.ensureTopic(t.id, t.title, true, now);
+    for (const t of this.#store.topics()) this.#publishedTopics.set(t.id, HubCore.#topicSignature(t));
   }
 
   // ---------------------------------------------------------------- events
@@ -248,6 +257,8 @@ export class HubCore {
       if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name, role, count: moved + merged.length });
       // a message that already waited for this session by name keeps one delivery: its stage may move now
       for (const id of merged) this.#emitStage(id);
+      // a topic's "no coordinator" warning clears once a holder took what waited
+      if (moved || merged.length) this.#publishTopics();
     }
     this.#log({ event: 'hello', name, sessionId: hello.sessionId, role });
     // the clause goes out with what waited (flushQueued, after the welcome), ahead of it
@@ -496,6 +507,7 @@ export class HubCore {
       const { moved, merged } = this.#store.claimRoleQueue(role, name);
       if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name, role, count: moved + merged.length });
       for (const id of merged) this.#emitStage(id);
+      if (moved || merged.length) this.#publishTopics();
       this.#recordClause(c, 'assigned');
       // the clause first, then what waited for the role (a spoke acks a re-sent message and hands it over once)
       this.flushQueued(name);
@@ -709,7 +721,104 @@ export class HubCore {
 
   topicRef(id: string): TopicRef | null {
     const t = this.#store.topic(id);
-    return t ? { id: t.id, title: t.title } : null;
+    return t ? { id: t.id, title: t.title, ...(t.item !== null ? { item: t.item } : {}) } : null;
+  }
+
+  /** What a `topic` event is about: a change of any of these is published; the unread count alone is not. */
+  static #topicSignature(t: Topic): string {
+    return JSON.stringify([t.status, t.warning ?? null, t.item, t.title]);
+  }
+
+  /** Tell subscribers about every topic whose status, warning, binding or title changed since they last heard,
+   *  and about the ones in `force` whatever changed (the human's unread count). */
+  #publishTopics(force: ReadonlySet<string> = new Set()): void {
+    for (const topic of this.#store.topics()) {
+      const signature = HubCore.#topicSignature(topic);
+      if (this.#publishedTopics.get(topic.id) === signature && !force.has(topic.id)) continue;
+      this.#publishedTopics.set(topic.id, signature);
+      this.#emit({ type: 'topic', topic });
+    }
+  }
+
+  /** Move a topic's status (spec 4.5); Agents has none to move. */
+  #move(topic: Topic, move: TopicMove, why: string): TopicStatus {
+    if (topic.id === AGENTS.id) return topic.status;
+    const next = nextStatus(topic.status, move);
+    if (next !== topic.status) {
+      this.#store.setTopicStatus(topic.id, next);
+      this.#log({ event: 'topic-status', topic: topic.id, from: topic.status, to: next, why });
+    }
+    return next;
+  }
+
+  /**
+   * Open a topic (spec 4.5): the human from the UI or an agent with `topic.create`; the system opens only General
+   * and Agents. A title is required. `item` binds it to a unit of work, which has one topic at most: a second is
+   * refused, and the item's `topic` field is written through the tracker.
+   */
+  createTopic(title: string, item?: string, by = HUMAN): Topic {
+    const clean = typeof title === 'string' ? title.trim() : '';
+    if (!clean) throw new TopicRefusal('a topic needs a title');
+    if (clean.length > 200) throw new TopicRefusal('a topic title is at most 200 characters');
+    let bound: string | null = null;
+    if (item !== undefined && item.trim() !== '') {
+      if (!this.#items) throw new TopicRefusal("this hub has no tracker: a topic is bound to an item only on a project's hub");
+      const found = this.#items.check(item.trim());
+      bound = found.id;
+      const existing = this.#store.topicOfItem(bound) ?? (found.topic !== null ? this.#store.topic(found.topic) : null);
+      if (existing) throw new TopicRefusal(`${bound} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
+      if (found.state === 'closed') throw new TopicRefusal(`${bound} is closed: a closed unit of work gets no new topic`);
+    }
+    const id = this.#store.nextTopicId();
+    const now = this.#now().toISOString();
+    this.#store.createTopic(id, clean, bound, now);
+    if (bound !== null) {
+      try {
+        this.#items?.bind(bound, id);
+      } catch (err) {
+        this.#store.deleteTopic(id);
+        throw err;
+      }
+    }
+    this.#log({ event: 'topic-created', topic: id, title: clean, item: bound, by });
+    this.#publishTopics();
+    return this.#topicOrThrow(id);
+  }
+
+  /** The human closes a topic (spec 4.5); a new message reopens it. Standing topics are never closed. */
+  closeTopic(id: string, why = 'closed by the human'): Topic {
+    const topic = this.#topicOrThrow(id);
+    if (topic.standing) throw new TopicRefusal(`${topic.title} is a standing topic: it cannot be closed`);
+    // TODO(#33): open asks in the topic are cancelled with a system note
+    this.#move(topic, 'close', why);
+    this.#publishTopics();
+    return this.#topicOrThrow(id);
+  }
+
+  /** Clear a topic's wait back to `open`: the Coordinator's `resolve`, the human's `topic.resolve`. */
+  resolveTopic(id: string, by = HUMAN): Topic {
+    const topic = this.#topicOrThrow(id);
+    if (topic.id === AGENTS.id) throw new TopicRefusal(`${topic.title} has no status to resolve: it is a record of what agents send each other`);
+    this.#move(topic, 'resolve', `resolved by ${by}`);
+    this.#publishTopics();
+    return this.#topicOrThrow(id);
+  }
+
+  /** The human read a topic up to a message (else its latest): its unread count drops, subscribers hear it. */
+  readTopic(id: string, upTo?: string): Topic {
+    this.#topicOrThrow(id);
+    this.#store.markTopicRead(id, upTo);
+    this.#publishTopics(new Set([id]));
+    return this.#topicOrThrow(id);
+  }
+
+  /** A unit of work closed (the tracker's close): its topic closes too. Never the other way round. */
+  itemClosed(item: string): void {
+    const topic = this.#store.topicOfItem(item);
+    if (!topic || topic.status === 'closed') return;
+    // TODO(#33): open asks in the topic are cancelled with a system note
+    this.#move(topic, 'close', `${item} closed`);
+    this.#publishTopics();
   }
 
   #topicOrThrow(id: string): Topic {
@@ -737,15 +846,17 @@ export class HubCore {
     const topic = this.#topicOrThrow(id);
     if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be deleted`);
     this.#store.deleteTopic(id);
+    this.#publishedTopics.delete(id);
   }
 
   /**
-   * The human writes into a topic, never into Agents. It addresses the Coordinator unless `to` names sessions
-   * or roles. A role reaches its live holders; with none connected the message is queued under the role
-   * (`@<role>`) until a session takes the role. Always recorded: the human's words show in the topic whoever
-   * they reach.
+   * The human writes into a topic, never into Agents. It addresses `to` when given, else the `@role` and
+   * `@session-name` mentions in the text, else the Coordinator (spec 4.5). A role reaches its live holders; with
+   * none connected the message is queued under the role (`@<role>`) until a session takes the role, and the topic
+   * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
+   * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to: string[] = [DEFAULT_HUMAN_ADDRESSEE]): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[]): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     // Agents is the record of what agents send each other (spec 4.5): the human reads it, never writes in it
     if (topic.id === AGENTS.id) throw new Error(`${topic.title} is read-only: it records what agents send each other; write in General or another topic`);
@@ -753,10 +864,19 @@ export class HubCore {
     if (size) throw new Error(size);
     if (!text.trim()) throw new Error('an empty message is not sent');
     const nowMs = this.#now().getTime();
-    const tags = HubCore.#normalized(to).length ? to : [DEFAULT_HUMAN_ADDRESSEE];
+    let tags: string[];
+    let unmentioned: string[] = [];
+    if (to !== undefined && HubCore.#normalized(to).length) tags = to;
+    else {
+      const known = new Set([...this.#live.keys(), ...this.#known()]);
+      const found = mentions(text, (name) => known.has(name));
+      tags = found.to.length ? found.to : [DEFAULT_HUMAN_ADDRESSEE];
+      unmentioned = found.unknown;
+    }
     // a role with no live holder waits for the next session to take it, not for a holder that went away
     const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(tags, HUMAN, 'placeholder');
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
+    for (const tag of unmentioned) outcomes.push({ to: tag, outcome: 'unknown', reason: `@${tag} names no session the hub knows and no role: not addressed` });
     // a role with no holder: held for the role, not refused
     const placeholders = empty.map(({ tag }) => tag);
     const message: Message = {
@@ -775,7 +895,10 @@ export class HubCore {
       nowMs,
     );
     this.#store.touchTopic(topic.id, message.ts);
+    this.#store.markTopicRead(topic.id, message.id);
     this.#emitMessage(message);
+    this.#move(topic, 'human', 'a human message');
+    this.#publishTopics();
     const states = new Map<string, boolean>();
     for (const n of sessions) states.set(n, this.#send(message, n));
     for (const [tag, names] of tagOf) {
@@ -839,9 +962,13 @@ export class HubCore {
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
     if (sessions.size > 0 || toHuman) {
+      // who the human's latest message here waited for, read before this one is recorded
+      const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
       this.#store.record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
       this.#store.touchTopic(topic.id, message.ts);
       this.#emitMessage(message);
+      this.#move(topic, toHuman ? 'to-human' : awaited.includes(from) ? 'reply' : 'between-agents', `a message from ${from}`);
+      this.#publishTopics();
     }
     const states = new Map<string, 'sent' | 'queued'>();
     for (const n of sessions) states.set(n, this.#send(message, n) ? 'sent' : 'queued');

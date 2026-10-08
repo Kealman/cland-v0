@@ -188,6 +188,12 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { outcomes, topic } });
             break;
           }
+          case 'topic.create':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.createTopic(frame.title, frame.item, me) } });
+            break;
+          case 'resolve':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.resolveTopic(frame.topic, me) } });
+            break;
         }
       } catch (err) {
         peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
@@ -216,6 +222,14 @@ export class Dispatcher {
           case 'topic.delete':
             core.deleteTopic(frame.topic);
             return answer({ deleted: frame.topic });
+          case 'topic.create':
+            return answer({ topic: core.createTopic(frame.title, frame.item) });
+          case 'topic.close':
+            return answer({ topic: core.closeTopic(frame.topic) });
+          case 'topic.resolve':
+            return answer({ topic: core.resolveTopic(frame.topic) });
+          case 'topic.read':
+            return answer({ topic: core.readTopic(frame.topic, frame.upTo) });
           case 'role.set':
             return answer({ session: core.assignRole(frame.session, frame.role) });
           case 'role.clear':
