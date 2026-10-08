@@ -26,8 +26,10 @@ export type Presence = {
   name: string;
   sessionId: string;
   cwd: string;
-  /** The role the session declared in its hello, or null. */
+  /** The role the session holds (hub-held, ADR 0001), or null. */
   role: string | null;
+  /** The name as it is shown everywhere: `rev-1 [Reviewer]`. */
+  label?: string;
   status: string | null;
   connectedAt: string;
   /** What the session's harness is doing, from its adapter's signals only (spec 4.2); `unknown` when no adapter can tell. */
@@ -86,7 +88,17 @@ export type HubEvent =
   /** A message's stage changed. */
   | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
   /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
-  | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string };
+  | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string }
+  /** A session's role changed: assigned, moved, cleared (null), or vacated by its harness's death. */
+  | { type: 'session.role'; session: string; role: string | null; previous: string | null; reason: string; ts: string }
+  /** No live session holds the Coordinator any more: the UI shows "no coordinator". */
+  | { type: 'role.vacant'; role: 'coordinator'; ts: string }
+  /** A live session holds the Coordinator again. */
+  | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string };
+
+/** A role's clause as the hub delivers it to the holder (spec 4.4): on assignment and on every reconnect.
+ *  `role` null: the session's role was revoked. */
+export type RoleClause = { role: string | null; clause: string; skills: string[] };
 
 export type Hello = {
   type: 'hello';
@@ -95,7 +107,8 @@ export type Hello = {
   cwd: string;
   /** Requested name; absent means "assign me one". */
   name?: string;
-  /** The role the session runs under. TODO(#29): roles become hub-held state; today it is a declared label. */
+  /** The role the session asks for (`CLAND_ROLE`). A project's hub honours it only for a session it launched for
+   *  that role; otherwise the role is the one the human assigned (`role.set`), and a session with none is refused. */
   role?: string;
 };
 
@@ -114,13 +127,16 @@ export type Ack = { type: 'ack'; id: string };
 
 export type SpokeFrame = Hello | SpokeRequest | Ack;
 
-export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name' | 'bad-hello';
+export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name' | 'bad-hello' | 'no-role';
 
 export type HubFrame =
   | { type: 'welcome'; name: string; presence: Presence[]; role?: string }
   /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice.
    *  `topic` is the topic the message belongs to; absent on the hub's own notices. */
   | { type: 'deliver'; id: string; message: Message; topic?: TopicRef }
+  /** The session's role clause (or its revocation), carried by a hub message (`message`, id `id`) the spoke acks
+   *  like a `deliver`; the message's text is what the model reads. */
+  | ({ type: 'role'; id: string; message: Message } & RoleClause)
   | { type: 'result'; id: string; ok: true; value: unknown }
   | { type: 'result'; id: string; ok: false; error: string }
   | { type: 'error'; code: RefusalCode; message: string }
@@ -187,6 +203,8 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
       return typeof f.name === 'string' && Array.isArray(f.presence);
     case 'deliver':
       return typeof f.id === 'string' && isObject(f.message) && typeof f.message.id === 'string' && typeof f.message.text === 'string';
+    case 'role':
+      return typeof f.id === 'string' && isObject(f.message) && typeof f.message.text === 'string' && (f.role === null || typeof f.role === 'string') && typeof f.clause === 'string' && Array.isArray(f.skills);
     case 'result':
       return typeof f.id === 'string' && typeof f.ok === 'boolean';
     case 'error':
@@ -223,7 +241,22 @@ export type ClientRequest =
   | { type: 'topic.rename'; id: string; topic: string; title: string }
   | { type: 'topic.delete'; id: string; topic: string }
   /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
-  | { type: 'subscribe'; id: string };
+  | { type: 'subscribe'; id: string }
+  /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
+  | { type: 'role.set'; id: string; session: string; role: string }
+  /** The human revokes a session's role: `{ session: RoleHolder }`. */
+  | { type: 'role.clear'; id: string; session: string }
+  /** The roles, their definitions and holders: `RoleList`. */
+  | { type: 'role.list'; id: string };
+
+/** A session and its role as the role frames answer. */
+export type RoleHolder = { name: string; role: string | null; label: string; live: boolean };
+
+export type RoleList = {
+  roles: Array<{ role: string; label: string; exclusive: boolean; skills: string[]; launch: { harness: string; model: string | null; effort: string | null }; holders: RoleHolder[] }>;
+  /** The live Coordinator's name, or null: "no coordinator". */
+  coordinator: string | null;
+};
 
 export type HubStatus = {
   pid: number;
@@ -234,6 +267,8 @@ export type HubStatus = {
   startedAt: string;
   uptimeMs: number;
   sessions: Presence[];
+  /** The live session holding the Coordinator, or null ("no coordinator"). */
+  coordinator?: string | null;
   /** The harness processes the hub launched (its process table), each with its state. */
   harnesses?: HarnessProcessView[];
 };
@@ -243,6 +278,8 @@ export type HarnessProcessView = {
   name: string;
   harness: string;
   role: string | null;
+  /** `name [Role]`. */
+  label?: string;
   model: string | null;
   cwd: string;
   pid: number | null;
@@ -272,7 +309,12 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'hub.stop':
     case 'topic.list':
     case 'subscribe':
+    case 'role.list':
       return true;
+    case 'role.set':
+      return typeof f.session === 'string' && typeof f.role === 'string';
+    case 'role.clear':
+      return typeof f.session === 'string';
     case 'topic.history':
       return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number');
     case 'topic.send':

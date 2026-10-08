@@ -1,8 +1,9 @@
 // The `session.*` frames: launching and managing harness sessions (UI, CLI, spokes), and the signals and
 // bridge that come from inside a launched session (`cland hook`). Called from the dispatcher.
 //
-//   session.launch  {name, role?, model?, harness?, cwd?}     → {process}       anyone may launch until #30
-//   session.list    {}                                         → {processes, adapters: {<harness>: capabilities}}
+//   session.launch  {name, role?, model?, harness?, cwd?, effort?} → {process}   anyone may launch until #30; a role's
+//                                                              launch defaults (roles.toml) fill what is not given
+//   session.list    {}                                         → {processes, adapters: {<harness>: capabilities}, coordinator}
 //   session.attach  {session}                                  → {command}
 //   session.stop    {session}                                  → {process}
 //   session.resume  {session, relaunch?}                       → {found, reason?, process}
@@ -13,7 +14,7 @@ import type { InjectFrame } from './contract.ts';
 import type { Sessions } from './sessions.ts';
 
 export type SessionRequest =
-  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string }
+  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string }
   | { type: 'session.list'; id: string }
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.stop'; id: string; session: string }
@@ -30,7 +31,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
   if (typeof f.id !== 'string' || typeof f.type !== 'string' || !f.type.startsWith('session.')) return false;
   switch (f.type) {
     case 'session.launch':
-      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd);
+      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd) && optString(f.effort);
     case 'session.list':
       return true;
     case 'session.attach':
@@ -69,10 +70,11 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
             ...(frame.model !== undefined ? { model: frame.model } : {}),
             ...(frame.harness !== undefined ? { harness: frame.harness } : {}),
             ...(frame.cwd !== undefined ? { cwd: frame.cwd } : {}),
+            ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
           }),
         });
       case 'session.list':
-        return ok({ processes: sessions.list(), adapters: sessions.capabilities() });
+        return ok({ processes: sessions.list(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
       case 'session.stop':

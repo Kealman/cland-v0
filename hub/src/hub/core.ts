@@ -10,13 +10,18 @@ import {
   type Message,
   type Presence,
   type RefusalCode,
+  type RoleClause,
+  type RoleHolder,
+  type RoleList,
   type SendOutcome,
   type SessionState,
   type Topic,
   type TopicMessage,
   type TopicRef,
 } from '../protocol.ts';
-import { generatedName, nameRefusal, ROLE_NAMES } from '../names.ts';
+import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole } from '../names.ts';
+import type { RolesSource } from '../roles/config.ts';
+import { clauseText, revokedText } from '../roles/clause.ts';
 import { resolveTag } from '../address.ts';
 import { Store } from './store.ts';
 import { Hygiene, type LoopBreaker, type RateLimit } from './hygiene.ts';
@@ -49,6 +54,8 @@ export type Connection = {
   role: string | null;
   /** Send the message to the spoke; false when the socket is no longer open (it stays queued). */
   deliver: (message: Message) => boolean;
+  /** Send a role clause (or revocation) carried by `message`; the spoke acks it like a delivery. */
+  deliverRole: (message: Message, clause: RoleClause) => boolean;
   /** Close this session's socket: a kick (4001 — the spoke reconnects) or a replacement (4002 — it does not). */
   close: (reason: string, code?: number) => void;
 };
@@ -67,7 +74,19 @@ export type CoreOptions = {
   maxTextBytes?: number;
   now?: () => Date;
   log?: LogFn;
+  /**
+   * The project's role definitions (`.cland/roles.toml`). With them roles are hub-held (spec 4.4, ADR 0001): a
+   * session holds the role the human assigned or the one it was launched for, a session with none is refused,
+   * and the holder gets its clause on assignment and on every hello. Without them (a hub with no project and no
+   * human side) a hello's role is taken as declared.
+   */
+  roles?: RolesSource;
 };
+
+/** The one exclusive role (spec 4.4): a vacancy is announced. */
+export const COORDINATOR = 'coordinator';
+/** The `notice` kind of a stored role clause or revocation. */
+const ROLE_NOTICE = 'role';
 
 export class HubCore {
   readonly #live = new Map<string, Connection>();
@@ -83,12 +102,20 @@ export class HubCore {
   readonly #states = new Map<string, SessionState>();
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
+  readonly #roles: RolesSource | null;
+  /** The role a session was launched for, by the adapters' side (`Sessions`); a hello's role is honoured for it. */
+  #launchedRole: ((name: string, sessionId: string) => string | null) | null = null;
+  /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
+  readonly #roleNotices = new Map<string, RoleClause>();
+  /** The live Coordinator last announced to subscribers. */
+  #coordinator: string | null = null;
 
   constructor(options: CoreOptions = {}) {
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
     this.#now = options.now ?? (() => new Date());
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
+    this.#roles = options.roles ?? null;
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -134,7 +161,12 @@ export class HubCore {
 
   // ---------------------------------------------------------------- presence
 
-  hello(hello: Hello, deliver: (message: Message) => boolean, close: (reason: string, code?: number) => void = () => {}): HelloResult {
+  hello(
+    hello: Hello,
+    deliver: (message: Message) => boolean,
+    close: (reason: string, code?: number) => void = () => {},
+    deliverRole: (message: Message, clause: RoleClause) => boolean = (message) => deliver(message),
+  ): HelloResult {
     if (hello.protocol !== PROTOCOL_VERSION) {
       return { ok: false, code: 'version', message: `protocol ${hello.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}` };
     }
@@ -165,9 +197,17 @@ export class HubCore {
       // Never a name any session has held: a generated name carries no other session's queue or history.
       name = generatedName(new Set([...this.#live.keys(), ...this.#reserved, ...this.#store.sessionNames()]));
     }
-    // TODO(#29): roles become hub-held state; until then a session declares its role and an unknown one is ignored.
     let role: string | null = null;
-    if (hello.role !== undefined) {
+    let fresh = false;
+    if (this.#roles) {
+      const r = this.#helloRole(name, hello);
+      if (!r.ok) {
+        this.#log({ event: 'refused-role', name, sessionId: hello.sessionId, requested: hello.role ?? null, reason: r.message });
+        return { ok: false, code: 'no-role', message: r.message };
+      }
+      ({ role, fresh } = r);
+    } else if (hello.role !== undefined) {
+      // no project: the role is a declared label; an unknown one is ignored
       if (ROLE_NAMES.includes(hello.role)) role = hello.role;
       else this.#log({ event: 'role-ignored', name, role: hello.role, roles: ROLE_NAMES });
     }
@@ -182,6 +222,7 @@ export class HubCore {
       status: identified ? this.#store.statusOf(name, this.#now().getTime() - this.#queueTtlMs, hello.sessionId) : null,
       role,
       deliver,
+      deliverRole,
       close,
     };
     if (evict) {
@@ -205,7 +246,32 @@ export class HubCore {
       for (const id of merged) this.#emitStage(id);
     }
     this.#log({ event: 'hello', name, sessionId: hello.sessionId, role });
+    // the clause goes out with what waited (flushQueued, after the welcome), ahead of it
+    if (this.#roles && role !== null) this.#recordClause(connection, fresh ? 'assigned at launch' : 'reconnect');
+    if (fresh) this.#emitRole(name, role, null, 'launch');
+    this.#announceCoordinator();
     return { ok: true, name, connection };
+  }
+
+  /**
+   * The role a hello gets on a project's hub: the one its name holds (assigned by the human, or kept from an
+   * earlier hello: a role follows the name), else the one the adapters launched it for. A requested role
+   * (`CLAND_ROLE`) is never enough on its own. No role: refused, the session stays off the hub (spec 4.4).
+   */
+  #helloRole(name: string, hello: Hello): { ok: true; role: string; fresh: boolean } | { ok: false; message: string } {
+    const held = this.#store.roleOf(name);
+    if (held !== null && ROLE_NAMES.includes(held)) {
+      if (hello.role !== undefined && hello.role !== held) this.#log({ event: 'role-request-ignored', name, requested: hello.role, holds: held });
+      return { ok: true, role: held, fresh: false };
+    }
+    const launched = this.#launchedRole?.(name, hello.sessionId) ?? null;
+    if (launched !== null && ROLE_NAMES.includes(launched)) {
+      const taken = this.#exclusiveHolder(launched, name);
+      if (taken) return { ok: false, message: `role "${launched}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\`` };
+      return { ok: true, role: launched, fresh: true };
+    }
+    const asked = hello.role !== undefined ? ` (it asked for "${hello.role}", which the hub grants only to a session it launched for that role)` : '';
+    return { ok: false, message: `no role: "${name}" holds none${asked} — assign one with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
   }
 
   /** After the welcome: hand a session what waited for it, oldest first; drop what waited too long. A message
@@ -218,7 +284,9 @@ export class HubCore {
       this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
       this.#emitStage(message.id);
     }
-    for (const message of deliver) connection.deliver(message);
+    // a role clause first: what else waited is read under the role
+    const ordered = [...deliver.filter((m) => this.#roleNotices.has(m.id)), ...deliver.filter((m) => !this.#roleNotices.has(m.id))];
+    for (const message of ordered) this.#sendTo(connection, message);
     if (deliver.length) this.#log({ event: 'flushed', session: name, count: deliver.length });
   }
 
@@ -275,6 +343,7 @@ export class HubCore {
     if (this.#live.get(connection.name) !== connection) return;
     this.#live.delete(connection.name);
     this.#log({ event: 'bye', name: connection.name });
+    this.#announceCoordinator();
   }
 
   /** Whether this connection still holds its session's name (a takeover or a close ends that). */
@@ -288,6 +357,7 @@ export class HubCore {
       sessionId: c.sessionId,
       cwd: c.cwd,
       role: c.role,
+      label: withRole(c.name, c.role),
       status: c.status,
       connectedAt: c.connectedAt,
       state: this.sessionState(c.sessionId),
@@ -336,6 +406,7 @@ export class HubCore {
     this.#store.rememberStatus(to, c.status);
     this.#store.rememberRole(to, c.role);
     this.#log({ event: 'rename', from, to });
+    this.#announceCoordinator();
     return { ok: true, name: to };
   }
 
@@ -360,6 +431,163 @@ export class HubCore {
     return this.#store.history(session, n, counterpart?.replace(/^@/, ''));
   }
 
+  // ---------------------------------------------------------------- roles (spec 4.4, ADR 0001)
+
+  /** The project's role definitions, or null on a hub with no project (roles are then declared labels). */
+  get roles(): RolesSource | null {
+    return this.#roles;
+  }
+
+  /** Who tells a hello which role its session was launched for (the adapters' side); one at a time. */
+  launchedRole(lookup: ((name: string, sessionId: string) => string | null) | null): void {
+    this.#launchedRole = lookup;
+  }
+
+  /** The live session holding the Coordinator, or null: "no coordinator". */
+  coordinator(): string | null {
+    return [...this.#live.values()].find((c) => c.role === COORDINATOR)?.name ?? null;
+  }
+
+  /** Another session (live, or remembered within the queue's TTL) holding an exclusive role, as `name [Role]`
+   *  with where it is; null when the role is not exclusive or free. */
+  #exclusiveHolder(role: string, except: string): string | null {
+    if (!this.#roles?.get().get(role)?.exclusive) return null;
+    const live = [...this.#live.values()].find((c) => c.role === role && c.name !== except);
+    if (live) return `${withRole(live.name, role)} (live)`;
+    const since = this.#now().getTime() - this.#queueTtlMs;
+    const offline = this.#store.sessionsWithRole(role, since).find((n) => n !== except && !this.#live.has(n));
+    return offline ? `${withRole(offline, role)} (offline)` : null;
+  }
+
+  /**
+   * The human assigns a role to a session: a live one gets the clause now, a name not connected gets the role
+   * when a session takes the name. An exclusive role another session holds is refused with the reason.
+   */
+  assignRole(name: string, role: string): RoleHolder {
+    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const refusal = nameRefusal(name, this.#reserved);
+    if (refusal) throw new Error(refusal);
+    const taken = this.#exclusiveHolder(role, name);
+    if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
+    const c = this.#live.get(name);
+    const previous = c ? c.role : this.#store.roleOf(name);
+    if (c) c.role = role;
+    else this.#store.rememberSession(name, this.#now().getTime());
+    this.#store.rememberRole(name, role);
+    this.#log({ event: 'role-assigned', session: name, role, previous, live: c !== undefined });
+    if (c) {
+      const { moved, merged } = this.#store.claimRoleQueue(role, name);
+      if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name, role, count: moved + merged.length });
+      for (const id of merged) this.#emitStage(id);
+      this.#recordClause(c, 'assigned');
+      // the clause first, then what waited for the role (a spoke acks a re-sent message and hands it over once)
+      this.flushQueued(name);
+    }
+    this.#emitRole(name, role, previous, 'assigned');
+    this.#announceCoordinator();
+    return this.#holder(name);
+  }
+
+  /** The human revokes a session's role. A live holder is told to stop acting in it (decision #10). */
+  clearRole(name: string, reason = 'revoked by the human'): RoleHolder {
+    const c = this.#live.get(name);
+    const previous = c ? c.role : this.#store.roleOf(name);
+    if (previous === null) throw new Error(`"${name}" holds no role`);
+    this.#vacate(name, reason);
+    return this.#holder(name);
+  }
+
+  /** A holder's harness died or was stopped: its role is vacant (spec 4.4), until the human assigns it again or
+   *  a relaunch of the session takes it back. Nothing when it held none. */
+  vacateRole(name: string, reason: string): void {
+    const c = this.#live.get(name);
+    if ((c ? c.role : this.#store.roleOf(name)) === null) return;
+    this.#vacate(name, reason);
+  }
+
+  #vacate(name: string, reason: string): void {
+    const c = this.#live.get(name);
+    const previous = c ? c.role : this.#store.roleOf(name);
+    if (c) c.role = null;
+    this.#store.rememberRole(name, null);
+    this.#log({ event: 'role-cleared', session: name, previous, reason, live: c !== undefined });
+    if (c) {
+      const id = this.#recordClause(c, reason, previous);
+      if (id) this.#send(this.#store.message(id) as Message, name);
+    } else if (this.#store.dropNotices(name, ROLE_NOTICE).length) {
+      // a clause still waiting for a session that is gone would reach whatever takes the name next
+      this.#log({ event: 'role-notices-dropped', session: name, reason });
+    }
+    this.#emitRole(name, null, previous, reason);
+    this.#announceCoordinator();
+  }
+
+  #holder(name: string): RoleHolder {
+    const c = this.#live.get(name);
+    const role = c ? c.role : this.#store.roleOf(name);
+    return { name, role, label: withRole(name, role), live: c !== undefined };
+  }
+
+  /** The roles, their definitions and their holders (live, or remembered within the queue's TTL). */
+  roleList(): RoleList {
+    const config = this.#roles?.get();
+    const since = this.#now().getTime() - this.#queueTtlMs;
+    return {
+      roles: ROLE_NAMES.map((role) => {
+        const d = config?.get(role);
+        const names = new Set([...[...this.#live.values()].filter((c) => c.role === role).map((c) => c.name), ...this.#store.sessionsWithRole(role, since).filter((n) => !this.#live.has(n))]);
+        return {
+          role,
+          label: ROLE_LABELS[role] ?? role,
+          exclusive: d?.exclusive ?? false,
+          skills: d?.skills ?? [],
+          launch: d?.launch ?? { harness: '', model: null, effort: null },
+          holders: [...names].sort().map((n) => this.#holder(n)),
+        };
+      }),
+      coordinator: this.coordinator(),
+    };
+  }
+
+  /**
+   * Record the session's role clause (or, with `previous`, its revocation) as a hub notice to it: it rides the
+   * delivery pipeline (queued → delivered on the spoke's ack → injected by the session's adapter). A newer notice
+   * supersedes what an older one still waits for. The log is the journal of every delivery until #34.
+   */
+  #recordClause(c: Connection, reason: string, previous?: string | null): string | null {
+    if (!this.#roles) return null;
+    const definition = c.role !== null ? this.#roles.get().get(c.role) : undefined;
+    const clause: RoleClause = c.role !== null ? { role: c.role, clause: definition?.clause ?? '', skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
+    const text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
+    const superseded = this.#store.dropNotices(c.name, ROLE_NOTICE);
+    const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [c.name], text, ts: this.#now().toISOString() };
+    this.#store.record(message, [{ session: c.name, state: 'queued' }], this.#now().getTime(), ROLE_NOTICE);
+    this.#roleNotices.set(message.id, clause);
+    // TODO(#34): the journal; until it exists, the hub's log records each delivery
+    this.#log({ event: c.role !== null ? 'role-clause' : 'role-revoked', session: c.name, sessionId: c.sessionId, role: c.role, previous: previous ?? null, reason, id: message.id, superseded: superseded.length });
+    return message.id;
+  }
+
+  #emitRole(session: string, role: string | null, previous: string | null, reason: string): void {
+    this.#emit({ type: 'session.role', session, role, previous, reason, ts: this.#now().toISOString() });
+  }
+
+  /** Tell subscribers when the live Coordinator changes: `role.vacant` when none is left, `role.filled` when one is back. */
+  #announceCoordinator(): void {
+    const now = this.coordinator();
+    if (now === this.#coordinator) return;
+    const was = this.#coordinator;
+    this.#coordinator = now;
+    const ts = this.#now().toISOString();
+    if (now === null) {
+      this.#log({ event: 'coordinator-vacant', was });
+      this.#emit({ type: 'role.vacant', role: COORDINATOR, ts });
+    } else {
+      this.#log({ event: 'coordinator-filled', session: now });
+      this.#emit({ type: 'role.filled', role: COORDINATOR, session: now, ts });
+    }
+  }
+
   // ---------------------------------------------------------------- routing
 
   /**
@@ -374,7 +602,14 @@ export class HubCore {
   /** Send to a session now if it is connected: whether the frame went out on an open socket. The record says
    *  `queued` either way until the spoke's ack; an unsent or unacked message goes out again on its next hello. */
   #send(message: Message, name: string): boolean {
-    return this.#live.get(name)?.deliver(message) ?? false;
+    const c = this.#live.get(name);
+    return c ? this.#sendTo(c, message) : false;
+  }
+
+  /** A role notice goes out as a `role` frame, everything else as a `deliver`. */
+  #sendTo(c: Connection, message: Message): boolean {
+    const clause = this.#roleNotices.get(message.id);
+    return clause ? c.deliverRole(message, clause) : c.deliver(message);
   }
 
   /** A session the hub has seen within the queue's own TTL — beyond it a name is history, not an addressee. */

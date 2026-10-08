@@ -15,6 +15,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { WebSocket } from 'ws';
 import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
+import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -41,6 +42,12 @@ export type SpokeOptions = {
   name?: string;
   /** The role the session runs under (CLAND_ROLE). */
   role?: string;
+  /**
+   * A `discover` spoke with a name connects to a project's hub, which admits only a session holding a role (spec
+   * 4.4): the harness first assigns it one, as the human would (`role.set` on the project's socket): `role`, else
+   * implementer. False leaves the session roleless, for a test of the refusal.
+   */
+  assignRole?: boolean;
   /** No hub url and secret at all — the "not started through cland" case. */
   unconfigured?: boolean;
   /** No hub url and secret either: the spoke finds the hub through `.cland/hub.json` from its `cwd` up. */
@@ -86,6 +93,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     env.CLAND_HUB_SECRET = options.secret ?? TEST_SECRET;
   }
   if (options.requestTimeoutMs !== undefined) env.CLAND_HUB_REQUEST_TIMEOUT_MS = String(options.requestTimeoutMs);
+  if (options.discover && options.name && options.assignRole !== false) await assignRole(options.cwd as string, options.name, options.role ?? 'implementer');
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
   const transport = new StdioClientTransport({ command: process.execPath, args: [SPOKE_ENTRY], env, cwd: options.cwd ?? workDir, stderr: 'pipe' });
@@ -159,6 +167,24 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
 }
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** The human assigns `role` to the session `name` on the project's hub found from `cwd` up (its socket, `role.set`). */
+export async function assignRole(cwd: string, name: string, role: string): Promise<void> {
+  const file = findDiscovery(cwd);
+  const discovery = file ? readDiscoveryFile(file) : null;
+  if (!discovery) throw new Error(`no hub.json from ${cwd} up: start the project's hub first`);
+  const socket = await connectSocket(discovery.socket);
+  try {
+    socket.send({ type: 'hello', protocol: 2, secret: discovery.secret, client: 'harness' });
+    const welcome = await socket.next();
+    if (welcome.type !== 'welcome') throw new Error(`the hub refused the harness: ${JSON.stringify(welcome)}`);
+    socket.send({ type: 'role.set', id: 'assign', session: name, role });
+    const result = await socket.next();
+    if (result.ok !== true) throw new Error(`role.set ${name} ${role}: ${String(result.error)}`);
+  } finally {
+    socket.close();
+  }
+}
 
 /** Poll `who()` through `viewer` until `name` has left presence (a close is processed asynchronously). */
 export async function waitForAbsence(viewer: Session, name: string, timeoutMs = 5000): Promise<void> {
@@ -466,6 +492,13 @@ export async function fakeClaude(t: TestContext, timings: { pollMs?: number; inj
   });
   return { env, home, sessions, log: async (id) => readFile(join(home, 'jobs', `${id}.log`), 'utf8').catch(() => '') };
 }
+
+/**
+ * A launched session's first turn is its role clause, injected by its adapter (spec 4.4); the fake harnesses answer
+ * every turn with "pong: <text>". Wait for that answer on a subscribed UI, so the turns a test asserts on come after it.
+ */
+export const clauseAnswered = (ui: FrameClient, session: string, timeoutMs = 15_000) =>
+  ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === session && (f.message as { text: string }).text.startsWith('pong: cland hub: you hold the role'), timeoutMs);
 
 /** Poll until `check` returns a value (not undefined), or fail with what was last seen. */
 export async function eventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, timeoutMs = 15_000): Promise<T> {

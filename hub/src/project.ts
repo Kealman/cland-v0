@@ -52,6 +52,8 @@ export type Layout = {
   /** The hub's lock: held by the one hub serving the project, from before it prepares anything until it is gone. */
   lock: string;
   gitignore: string;
+  /** The role definitions (spec 4.4): written with the defaults when missing, then the human's. */
+  roles: string;
   logDir: string;
   log: string;
   /** Where the hub binds its Unix socket: inside `.cland/`, or under the temp dir when that path is too long. */
@@ -70,6 +72,7 @@ export function layout(root: string): Layout {
     discovery: join(dir, 'hub.json'),
     lock: join(dir, 'hub.lock'),
     gitignore: join(dir, '.gitignore'),
+    roles: join(dir, 'roles.toml'),
     logDir: join(dir, 'log'),
     log: join(dir, 'log', 'hub.log'),
     socket,

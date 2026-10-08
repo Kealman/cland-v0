@@ -16,6 +16,7 @@ import { VERSION } from '../version.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
+import { RolesFile } from '../roles/config.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -61,17 +62,21 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
   const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
   const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}) });
+  // the role definitions: written with the defaults when the project has none, then watched
+  const roles = new RolesFile(l.roles, log);
   let hub!: HubBase;
   let adapters: ProjectSessions | null = null;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
   try {
     tracker.start();
+    roles.start();
     hub = createHubBase({
       secret,
       store: new Store(l.db),
       log,
       tracker,
+      roles,
       control: {
         // without listeners: port 0 and no socket
         status: () => ({
@@ -88,6 +93,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       },
     });
   } catch (err) {
+    roles.stop();
     tracker.stop();
     lock.release();
     throw err;
@@ -103,6 +109,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       adapters?.close();
       await hub.close();
       tracker.stop();
+      roles.stop();
       // the discovery file and then the lock go last: a successor can only start once this hub is gone
       removeDiscovery(l.discovery, process.pid);
       lock.release();
@@ -123,6 +130,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       if (listen === 'required') {
         await hub.close();
         tracker.stop();
+        roles.stop();
         lock.release();
         throw err;
       }

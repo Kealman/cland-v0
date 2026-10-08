@@ -8,7 +8,7 @@
 //   state: signals from inside the session (`session.signal`, sent by `cland hook`) and the adapter's own poll.
 //   A signal older than the last one applied is dropped; a polled one counts only while no push signal came
 //   for a while (or nothing is known yet). The model's `status` tool never reaches here.
-import { nameRefusal, ROLE_NAMES } from '../names.ts';
+import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
@@ -18,7 +18,7 @@ import { ProcessTable } from './processes.ts';
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
-export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string };
+export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null };
 
 export type SessionsOptions = {
   core: HubCore;
@@ -48,6 +48,10 @@ export class Sessions {
   readonly #launching = new Map<string, SignalFrame[]>();
   /** Bridges that connected during their session's launch: registered once the row is written. */
   readonly #earlyBridges = new Map<string, Array<() => void>>();
+  /** The role each launch in progress is for: its spoke's hello may beat the process-table row. */
+  readonly #launchRoles = new Map<string, string>();
+  /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
+  #vacating = false;
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -56,6 +60,20 @@ export class Sessions {
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
+    // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
+    this.#core.launchedRole((name, sessionId) => this.#launchRoles.get(name) ?? this.#table.bySessionId(sessionId)?.role ?? null);
+    // the human's assignment or revocation is what a relaunch starts with
+    this.#unsubscribe = this.#core.subscribe((event) => {
+      if (event.type !== 'session.role' || this.#vacating) return;
+      if (this.#table.get(event.session)) this.#table.update(event.session, { role: event.role });
+    });
+  }
+
+  readonly #unsubscribe: () => void;
+
+  /** The live Coordinator, or null ("no coordinator"). */
+  coordinator(): string | null {
+    return this.#core.coordinator();
   }
 
   /** The callbacks an adapter is built with, bound to this hub. */
@@ -92,6 +110,7 @@ export class Sessions {
       name: p.name,
       harness: p.harness,
       role: p.role,
+      label: withRole(p.name, p.role),
       model: p.model,
       cwd: p.cwd,
       pid: p.pid,
@@ -128,16 +147,27 @@ export class Sessions {
     if (refusal) throw new Error(refusal);
     const role = request.role ?? null;
     if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
+    const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
+    const harness = request.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
+    const forHarness = defaults !== null && defaults.harness === harness;
+    const model = request.model ?? (forHarness ? defaults.model : null);
+    const effort = request.effort ?? (forHarness ? defaults.effort : null);
+    if (role !== null && this.#core.roles?.get().get(role)?.exclusive) {
+      const holder = this.#core.roleList().roles.find((r) => r.role === role)?.holders.find((h) => h.name !== request.name);
+      if (holder) throw new Error(`role "${role}" is held by ${holder.label} (${holder.live ? 'live' : 'offline'}): one session holds it at a time — clear it first with \`cland role clear ${holder.name}\``);
+    }
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
-    const adapter = this.adapter(request.harness ?? DEFAULT_HARNESS);
+    const adapter = this.adapter(harness);
     this.#launching.set(request.name, []);
+    if (role !== null) this.#launchRoles.set(request.name, role);
     let early: SignalFrame[] = [];
     let p: HarnessProcess;
     try {
-      p = await adapter.spawn({ name: request.name, role, model: request.model ?? null, cwd: request.cwd ?? this.#root });
+      p = await adapter.spawn({ name: request.name, role, model, cwd: request.cwd ?? this.#root, ...(effort ? { effort } : {}) });
       this.#table.put(p);
     } catch (err) {
       this.#earlyBridges.delete(request.name);
@@ -145,11 +175,12 @@ export class Sessions {
     } finally {
       early = this.#launching.get(request.name) ?? [];
       this.#launching.delete(request.name);
+      this.#launchRoles.delete(request.name);
     }
     this.#lastAt.delete(p.sessionId);
     this.#lastPush.delete(p.sessionId);
     adapter.watch(p);
-    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, role: p.role, early: early.length });
+    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, early: early.length });
     for (const frame of early) this.signal(frame);
     for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
     this.#earlyBridges.delete(p.name);
@@ -168,6 +199,7 @@ export class Sessions {
     this.#table.update(name, { status: 'stopped' });
     this.#core.setSessionState(p.sessionId, name, 'unknown', 'stopped');
     this.#log({ event: 'session-stopped', session: name, harness: p.harness });
+    this.#vacate(p, 'its session was stopped');
     return this.view(this.#process(name));
   }
 
@@ -273,6 +305,17 @@ export class Sessions {
     // TODO(#34): the journal; until it exists, the hub's log carries the event
     this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail });
     this.#core.setSessionState(sessionId, p.name, 'unknown', 'process');
+    this.#vacate(p, 'its harness exited');
+  }
+
+  /** A dead holder leaves its role vacant (spec 4.4); the process table keeps it for a relaunch. */
+  #vacate(p: HarnessProcess, reason: string): void {
+    this.#vacating = true;
+    try {
+      this.#core.vacateRole(this.#core.connectionOf(p.sessionId)?.name ?? p.name, reason);
+    } finally {
+      this.#vacating = false;
+    }
   }
 
   // ---------------------------------------------------------------- the bridge and inject
@@ -338,5 +381,7 @@ export class Sessions {
   close(): void {
     for (const a of this.#adapters.values()) a.close();
     this.#core.onDelivered(null);
+    this.#core.launchedRole(null);
+    this.#unsubscribe();
   }
 }

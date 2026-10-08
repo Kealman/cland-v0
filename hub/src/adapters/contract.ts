@@ -47,6 +47,9 @@ export type SpawnRequest = {
   /** The model to run; the harness's default when null. */
   model: string | null;
   cwd: string;
+  /** The reasoning effort (roles.toml's launch default); the harness's default when absent. An adapter whose
+   *  harness takes none ignores it. */
+  effort?: string | null;
 };
 
 /** A state signal from the harness, with where it came from and when it happened (ms epoch): an older signal

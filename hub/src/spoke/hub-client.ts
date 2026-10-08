@@ -4,7 +4,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
-import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type Ack, type HubFrame, type Message, type Presence, type RefusalCode, type SpokeRequest, type TopicRef } from '../protocol.ts';
+import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type Ack, type HubFrame, type Message, type Presence, type RefusalCode, type RoleClause, type SpokeRequest, type TopicRef } from '../protocol.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { SessionRequest } from '../adapters/requests.ts';
 
@@ -54,7 +54,7 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; time
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | undefined]; state: [ConnectionState] }> {
+export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | undefined]; role: [Message, RoleClause]; state: [ConnectionState] }> {
   #ws: WebSocket | null = null;
   #state: ConnectionState = { kind: 'connecting' };
   #pending = new Map<string, Pending>();
@@ -298,6 +298,17 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         this.#setState({ kind: 'connected', name: frame.name, ...(frame.role ? { role: frame.role } : {}) });
         if (this.#ws) this.#startHeartbeat(this.#ws);
         this.#log(`connected to the hub as ${frame.name}${frame.role ? ` (${frame.role})` : ''} (${frame.presence.length} online)`);
+        break;
+      case 'role':
+        // the session's role clause (or its revocation): handed over once, acked like a delivery
+        if (this.#state.kind === 'connected') this.#setState({ kind: 'connected', name: this.#state.name, ...(frame.role ? { role: frame.role } : {}) });
+        if (!this.#seen.has(frame.id)) {
+          this.#seen.add(frame.id);
+          if (this.#seen.size > SEEN_LIMIT) this.#seen.delete(this.#seen.values().next().value as string);
+          this.#log(frame.role ? `role ${frame.role}: clause received (${frame.clause.length} chars, skills: ${frame.skills.join(', ') || 'none'})` : 'role revoked by the hub');
+          this.emit('role', frame.message, { role: frame.role, clause: frame.clause, skills: frame.skills });
+        }
+        if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(JSON.stringify({ type: 'ack', id: frame.id } satisfies Ack));
         break;
       case 'deliver':
         if (!this.#seen.has(frame.id)) {

@@ -68,6 +68,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
+  /** What kind of hub notice a message is (`role`: a role clause or revocation), null for every other message. */
+  { table: 'messages', column: 'notice', type: 'text' },
 ];
 
 /** Indexes over added columns: created after the migration, when the column surely exists. */
@@ -218,6 +220,25 @@ export class Store implements HygieneMemory {
     this.#db.prepare('update sessions set role = ? where name = ?').run(role, name);
   }
 
+  /** The role a name holds, as the hub last recorded it, or null. */
+  roleOf(name: string): string | null {
+    const row = this.#db.prepare('select role from sessions where name = ?').get(name) as Row | undefined;
+    return (row?.role as string | null | undefined) ?? null;
+  }
+
+  /** The notices of one kind still waiting for a session (queued, or accepted and not injected) are superseded:
+   *  marked dropped. Returns their ids. */
+  dropNotices(session: string, notice: string): string[] {
+    return (
+      this.#db
+        .prepare(
+          `update deliveries set state = 'dropped' where session = ? and state in ('queued', 'delivered')
+           and message_id in (select id from messages where notice = ?) returning message_id`,
+        )
+        .all(session, notice) as Row[]
+    ).map((r) => r.message_id as string);
+  }
+
   /** The names holding a role, seen since `since` — a role as a tag resolves to these. */
   sessionsWithRole(role: string, since = 0): string[] {
     return (this.#db.prepare('select name from sessions where role = ? and last_seen >= ? order by name').all(role, since) as Row[]).map((r) => r.name as string);
@@ -249,11 +270,11 @@ export class Store implements HygieneMemory {
 
   /** Record a message and the state of each addressee's delivery, together: a message is never stored with
    *  only some of its deliveries. */
-  record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number): void {
+  record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null): void {
     this.#transaction(() => {
       this.#db
-        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now, message.topic ?? null);
+        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now, message.topic ?? null, notice);
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
     });

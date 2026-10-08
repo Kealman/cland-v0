@@ -8,6 +8,7 @@ import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
 import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
+import { withRole } from '../names.ts';
 import { askHub, probe } from './socket-client.ts';
 import { liveHolder } from '../hub/lock.ts';
 
@@ -41,10 +42,11 @@ const duration = (ms: number): string => {
 
 function describe(s: HubStatus): string {
   const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`, `sessions: ${s.sessions.length}`];
-  for (const p of s.sessions) lines.push(`  ${p.name}${p.role ? `  (${p.role})` : ''}  [${p.state ?? 'unknown'}]${p.status ? `  — ${p.status}` : ''}`);
+  for (const p of s.sessions) lines.push(`  ${withRole(p.name, p.role)}  [${p.state ?? 'unknown'}]${p.status ? `  — ${p.status}` : ''}`);
+  if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');
   const launched = s.harnesses ?? [];
   if (launched.length) lines.push(`launched: ${launched.length}`);
-  for (const h of launched) lines.push(`  ${h.name}  ${h.harness}  ${h.status}  [${h.state}]  pid ${h.pid ?? '?'}${h.attach ? `  — ${h.attach}` : ''}`);
+  for (const h of launched) lines.push(`  ${withRole(h.name, h.role)}  ${h.harness}  ${h.status}  [${h.state}]  pid ${h.pid ?? '?'}${h.attach ? `  — ${h.attach}` : ''}`);
   return `${lines.join('\n')}\n`;
 }
 

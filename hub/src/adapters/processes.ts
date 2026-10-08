@@ -63,10 +63,10 @@ export class ProcessTable {
       .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status);
   }
 
-  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status'>>): void {
+  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status' | 'role'>>): void {
     const sets: string[] = [];
     const values: Array<string | number | null> = [];
-    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status' } as const;
+    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status', role: 'role' } as const;
     for (const [k, v] of Object.entries(change) as Array<[keyof typeof column, string | number | null]>) {
       sets.push(`${column[k]} = ?`);
       values.push(v);

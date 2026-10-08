@@ -74,18 +74,26 @@ test('a message from the UI is queued while no session holds the coordinator rol
   assert.equal(event.message.stage, 'queued');
   assert.match(event.message.ts, ISO);
 
-  // a session with no role does not take the coordinator's queue
+  // a session with no role stays off the hub (spec 4.4), let alone takes the coordinator's queue; asking for the
+  // role is not enough either: only a session the hub launched for it gets it that way
   const bystander = await connectSocket(discovery.socket);
   t.after(() => bystander.close());
-  bystander.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, sessionId: 'sess-by', cwd: root, name: 'bystander' });
-  assert.equal((await bystander.next()).type, 'welcome');
-  await assert.rejects(bystander.next(300), /no frame/);
+  bystander.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, sessionId: 'sess-by', cwd: root, name: 'bystander', role: 'coordinator' });
+  const refused = await bystander.next();
+  assert.equal(refused.code, 'no-role');
+  assert.match(String(refused.message), /cland role set bystander/);
   assert.equal((await history(ui, 'general'))[0]?.stage, 'queued');
 
+  // the human assigns the role; the session's first frame after the welcome is its clause
+  assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
   const coord = await connectSocket(discovery.socket);
   t.after(() => coord.close());
-  coord.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, sessionId: 'sess-coord', cwd: root, name: 'coord', role: 'coordinator' });
+  coord.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, sessionId: 'sess-coord', cwd: root, name: 'coord' });
   assert.equal((await coord.next()).type, 'welcome');
+  const clause = await coord.next();
+  assert.equal(clause.type, 'role');
+  assert.equal(clause.role, 'coordinator');
+  coord.send({ type: 'ack', id: clause.id });
   const deliver = (await coord.next()) as { type: string; id: string; topic: { id: string; title: string }; message: TopicMessage };
   assert.equal(deliver.type, 'deliver');
   assert.equal(deliver.id, message.id);

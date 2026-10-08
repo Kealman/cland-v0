@@ -2,9 +2,11 @@
 import { layout, projectRoot, readDiscovery } from '../project.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
+import { withRole } from '../names.ts';
 
-export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code] [--cwd dir]
-                  launch a harness session through the hub
+export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness h] [--effort e] [--cwd dir]
+                  launch a harness session through the hub; a role's launch defaults
+                  (.cland/roles.toml) fill the harness, model and effort not given
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
@@ -17,7 +19,7 @@ const flag = (args: string[], name: string): string | undefined => {
 };
 
 const line = (p: HarnessProcessView): string =>
-  `${p.name}  ${p.harness}  ${p.status}  [${p.state}]${p.role ? `  (${p.role})` : ''}${p.model ? `  ${p.model}` : ''}  pid ${p.pid ?? '?'}${p.attach ? `\n    attach: ${p.attach}` : ''}`;
+  `${withRole(p.name, p.role)}  ${p.harness}  ${p.status}  [${p.state}]${p.model ? `  ${p.model}` : ''}  pid ${p.pid ?? '?'}${p.attach ? `\n    attach: ${p.attach}` : ''}`;
 
 export async function runSession(args: string[], cwd: string = process.cwd()): Promise<number> {
   const [sub, ...rest] = args;
@@ -27,7 +29,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     return 1;
   }
   const json = rest.includes('--json');
-  const valueFlags = new Set(['--role', '--model', '--harness', '--cwd']);
+  const valueFlags = new Set(['--role', '--model', '--harness', '--cwd', '--effort']);
   const name = rest.find((a, i) => !a.startsWith('--') && !valueFlags.has(rest[i - 1] ?? ''));
   const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
@@ -37,17 +39,18 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       const model = flag(rest, '--model');
       const harness = flag(rest, '--harness');
       const dir = flag(rest, '--cwd');
+      const effort = flag(rest, '--effort');
       const v = (await askHubFrame(
         d,
-        { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(dir ? { cwd: dir } : {}) },
+        { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(dir ? { cwd: dir } : {}), ...(effort ? { effort } : {}) },
         60_000,
       )) as { process: HarnessProcessView };
       out(v, `launched ${line(v.process)}`);
       return 0;
     }
     case 'list': {
-      const v = (await askHubFrame(d, { type: 'session.list' })) as { processes: HarnessProcessView[] };
-      out(v, v.processes.length ? v.processes.map(line).join('\n') : 'no sessions launched');
+      const v = (await askHubFrame(d, { type: 'session.list' })) as { processes: HarnessProcessView[]; coordinator?: string | null };
+      out(v, `${v.processes.length ? v.processes.map(line).join('\n') : 'no sessions launched'}\n${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}`);
       return 0;
     }
     case 'attach': {
