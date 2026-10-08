@@ -4,7 +4,7 @@
 --
 -- Today: items from `task.list` (the tree, filters and badges are #36); sessions from `session.list` and
 -- the connected spokes, their states with the adapter's `heuristic` qualifier; topics from `topic.list`;
--- the inbox is an empty placeholder until asks exist (#33).
+-- the inbox (`inbox.lua`, #33).
 local api = vim.api
 local state = require('cland.state')
 local hl = require('cland.hl')
@@ -111,6 +111,8 @@ function Canvas:apply(buf)
   end
   return self.info
 end
+
+M.canvas = canvas
 
 --- What the row under the cursor of `buf` shows: {item=}, {session=} or {topic=}; nil on other rows.
 function M.row_at(buf, row)
@@ -257,11 +259,7 @@ end
 -- Inbox -----------------------------------------------------------------------------------------------
 
 local function render_inbox(c)
-  c:add({ { ' ✓ nothing needs you', 'ClandGreen' } })
-  c:add({})
-  c:add({ { ' Asks, approvals and notifications', 'ClandFaint' } })
-  c:add({ { ' come with #33.', 'ClandFaint' } })
-  return { ' ␣N full width' }
+  return require('cland.inbox').render(c, false)
 end
 
 local RENDER = { sessions = render_sessions, topics = render_topics, items = render_items, inbox = render_inbox }
@@ -303,6 +301,9 @@ function M.buf(kind, slot)
   vim.keymap.set('n', '<2-LeftMouse>', function()
     open_row(b)
   end, { buffer = b, silent = true })
+  if kind == 'inbox' then
+    require('cland.inbox').keys(b)
+  end
   if kind == 'topics' then
     local views = require('cland.views')
     local function topic_key(lhs, fn, desc)

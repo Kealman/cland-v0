@@ -1,6 +1,8 @@
 -- A topic's thread buffer: the messages oldest first, each a header (sender, role, local time, and on the
 -- human's own messages the delivery stage, right-aligned) and its text. Built from `topic.history` and
--- kept current by `message` and `delivery` events; a stage changes in place on its message's header.
+-- kept current by `message` and `delivery` events; a stage changes in place on its message's header. An ask (#33)
+-- shows as a card (`ask_card.lua`): the question, the numbered options, and once answered the chosen option and
+-- the answer message beneath it; `ask` events change the card in place.
 local api = vim.api
 local hl = require('cland.hl')
 
@@ -82,6 +84,20 @@ function Thread:merge(messages)
   self:render()
 end
 
+--- An ask's card changed (an `ask` event): answered, withdrawn, cancelled.
+function Thread:set_card(id, card)
+  local m = self.by_id[id]
+  if m and type(card) == 'table' then
+    m.ask = card
+    self:render()
+  end
+end
+
+--- The open ask on row `row` of the buffer ({id, topic, question, options, free}), or nil.
+function Thread:ask_at(row)
+  return (self.card_rows or {})[row]
+end
+
 function Thread:set_stage(id, stage)
   local m = self.by_id[id]
   if m then
@@ -115,7 +131,15 @@ function Thread:render()
     add(' No messages in ' .. self.topic.title .. ' yet.', { { col = 0, opts = { end_col = 0, line_hl_group = 'ClandDim' } } })
     add('')
   end
+  local card_rows = {}
+  -- an answer shows under its ask's card, not in its place in time
+  local answers = {}
   for _, m in ipairs(self.messages) do
+    if m.answerTo and self.by_id[m.answerTo] and self.by_id[m.answerTo].ask then
+      answers[m.answerTo] = m
+    end
+  end
+  local function message(m)
     local mine = m.fromKind == 'human'
     local name = mine and 'you' or tostring(m.from)
     local header = ' ' .. name
@@ -132,12 +156,43 @@ function Thread:render()
     if stage then
       table.insert(hmarks, { col = 0, opts = { virt_text = { { stage[1] .. ' ' .. stage[2] .. ' ', stage[3] } }, virt_text_pos = 'right_align' } })
     end
+    local card = type(m.ask) == 'table' and m.ask or nil
+    if card then
+      local st = require('cland.ask_card').STATE[card.state] or { tostring(card.state), 'ClandDim' }
+      table.insert(hmarks, { col = 0, opts = { virt_text = { { 'ask · ' .. st[1] .. ' ', st[2] } }, virt_text_pos = 'right_align' } })
+    end
     add(header, hmarks)
+    if card then
+      local open = card.state == 'open'
+      local ask = { id = m.id, topic = m.topic or self.topic.id, question = m.text, options = card.options or {}, free = card.free }
+      for _, l in ipairs(require('cland.ask_card').lines(card, m.text)) do
+        local marks = { { col = 1, opts = { end_col = 4, hl_group = l[4] } } }
+        if l[2] then
+          table.insert(marks, { col = 5, opts = { end_col = #l[1], hl_group = l[2] } })
+        end
+        add(l[1], marks)
+        if open then
+          card_rows[#lines] = ask
+        end
+      end
+      add('')
+      local answer = answers[m.id]
+      if answer then
+        message(answer)
+      end
+      return
+    end
     for _, l in ipairs(vim.split(tostring(m.text or ''), '\n', { plain = true })) do
       add(' ' .. l)
     end
     add('')
   end
+  for _, m in ipairs(self.messages) do
+    if not (m.answerTo and answers[m.answerTo] == m) then
+      message(m)
+    end
+  end
+  self.card_rows = card_rows
   if self.notice then
     add(' ▲ ' .. self.notice.text, { { col = 0, opts = { end_col = 0, line_hl_group = self.notice.group } } })
   end

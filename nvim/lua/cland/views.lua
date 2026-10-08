@@ -1,6 +1,6 @@
 -- The centre views other than the session terminal: one topic view per topic (thread and composer), and
 -- the placeholders of the views later tickets fill (the item view and the board #36, the Agents log
--- #34, the inbox full width #33). A placeholder already names its view, so the view switch, the top
+-- #34); the inbox full width is `inbox.lua`'s (#33). A placeholder already names its view, so the view switch, the top
 -- bar, the status line and `␣␣` work on it today.
 local api = vim.api
 local state = require('cland.state')
@@ -151,6 +151,10 @@ end
 
 --- The buffer of a placeholder view (item, board, log, inbox).
 function M.placeholder(v)
+  -- the inbox full width is the inbox's own buffer (#33)
+  if v.kind == 'inbox' then
+    return require('cland.inbox').full_buf()
+  end
   local k = key(v)
   local b = M.bufs[k]
   if not (b and api.nvim_buf_is_valid(b)) then
@@ -207,6 +211,9 @@ local function lines_for(v)
 end
 
 function M.render_placeholder(v)
+  if v.kind == 'inbox' then
+    return require('cland.inbox').render_full()
+  end
   local b = M.bufs[key(v)]
   if not (b and api.nvim_buf_is_valid(b)) then
     return

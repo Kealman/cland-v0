@@ -192,6 +192,8 @@ function M.status()
     hint = 'keys go to the session · C-\\ C-n leaves · then ␣␣ back'
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
+  elseif role == 'inbox' or role == 'inbox_full' then
+    hint = '1-9 answer · i free answer · ↵ open · d dismiss · D all'
   else
     hint = '␣i ␣s ␣t ␣n panels · ␣p pick · ␣␣ back · gi gt gs'
   end
@@ -240,11 +242,17 @@ function M.winbar(win)
     local unread = state.unread_total()
     return head(win, 'TOPICS', { { #state.S.topics .. ' topics' .. (unread > 0 and (' · ' .. unread .. ' unread') or ''), 'ClandDimBar' } })
   elseif role == 'inbox' then
-    return head(win, 'INBOX', { { 'nothing needs you', 'ClandGreenBar' } })
+    local n = state.needs_you()
+    return head(win, 'INBOX', { n > 0 and { n .. ' need you', 'ClandAmberBar' } or { 'nothing needs you', 'ClandGreenBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)
     return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', M.thread_marks(t))
   elseif role == 'composer' then
+    local tv = views().topics[vim.b[buf].cland_topic]
+    local answering = tv and tv.composer.answering
+    if answering then
+      return head(win, 'answer to: ' .. answering.question, { { 'Enter sends the answer', 'ClandAmberBar' } })
+    end
     local coord = state.coordinator()
     return head(win, 'to: Coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues it)'), { { 'Enter sends · S-Enter newline', 'ClandDimBar' } })
   elseif role == 'session' then

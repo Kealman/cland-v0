@@ -19,6 +19,8 @@ function M.reset(opts)
     hub_coordinator = nil, -- { name = <live holder> | nil } once the hub said (hub.status, role.vacant, role.filled)
     items = {}, -- task.list summaries
     items_note = nil, -- why the items panel is empty
+    inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {} }, -- inbox.list and `inbox` events (#33)
+    needs_you = nil, -- the hub's "needs you" count (hub.status, `inbox` events); nil until it said
     ui = {
       view = { kind = 'thread', id = 'general' },
       hist = {},
@@ -216,8 +218,42 @@ function M.counts()
   return c
 end
 
---- The "needs you" count: the topics waiting for the human (asks and approvals join with the inbox, #33).
+--- The inbox as the hub sent it (`inbox.list`, an `inbox` event); its count is the hub's "needs you".
+function M.set_inbox(inbox)
+  if type(inbox) ~= 'table' then
+    return
+  end
+  local function list(x)
+    return type(x) == 'table' and x or {}
+  end
+  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), waiting = list(inbox.waiting), notifications = list(inbox.notifications) }
+  if type(inbox.needsYou) == 'number' then
+    M.S.needs_you = inbox.needsYou
+  end
+  M.changed()
+end
+
+--- The human answered ask `id`: its row goes at once (the hub's `inbox` event confirms it).
+function M.answered(id)
+  local asks = M.S.inbox.asks
+  for i, a in ipairs(asks) do
+    if a.id == id then
+      table.remove(asks, i)
+      if M.S.needs_you then
+        M.S.needs_you = math.max(0, M.S.needs_you - 1)
+      end
+      break
+    end
+  end
+  M.changed()
+end
+
+--- The "needs you" count: the hub's (asks + approvals + topics waiting without an ask, #33); before the hub said,
+--- the topics waiting for the human.
 function M.needs_you()
+  if type(M.S.needs_you) == 'number' then
+    return M.S.needs_you
+  end
   local n = 0
   for _, t in ipairs(M.S.topics) do
     if t.status == 'waiting for human' then

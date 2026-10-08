@@ -268,7 +268,7 @@ function Client:_frame(frame)
         cb(frame.error or 'failed')
       end
     end
-  elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' then
+  elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'ask' or t == 'inbox' then
     self:_emit(t, frame)
   end
 end

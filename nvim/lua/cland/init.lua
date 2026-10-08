@@ -57,7 +57,15 @@ local function refresh_sessions()
       if value.coordinator ~= nil then
         state.S.hub_coordinator = { name = value.coordinator ~= vim.NIL and value.coordinator or nil }
       end
+      if type(value.needsYou) == 'number' then
+        state.S.needs_you = value.needsYou
+      end
       state.changed()
+    end
+  end)
+  M.client:request({ type = 'inbox.list' }, function(err, value)
+    if not err then
+      state.set_inbox(value)
     end
   end)
 end
@@ -135,6 +143,10 @@ local function wire_client(client)
       refresh_sessions()
     end
   end)
+  -- the inbox, whole, whenever any of it changed (#33)
+  client:on('inbox', function(event)
+    state.set_inbox(event.inbox)
+  end)
 end
 
 -- Keys and commands ---------------------------------------------------------------------------------------
@@ -149,6 +161,7 @@ M.HELP = {
   'Pick      ␣p topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
+  'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
   '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode: keys go to the session, C-\\ C-n leaves',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
