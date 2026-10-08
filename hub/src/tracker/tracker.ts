@@ -488,10 +488,13 @@ export class Tracker {
     const view = this.#mutate(rawId, actor, verdict ? 'verdict' : 'comment', (item) => {
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
     });
-    if (v) {
+    // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
+    // as one (its header lines), so every verdict on record is a notification
+    const recorded = view.comments.at(-1)?.verdict;
+    if (recorded) {
       for (const listener of [...this.#verdictListeners]) {
         try {
-          listener(view.id, actor.name, v);
+          listener(view.id, actor.name, recorded);
         } catch (err) {
           this.#log({ event: 'task-verdict-listener-failed', id: view.id, error: err instanceof Error ? err.message : String(err) });
         }

@@ -391,3 +391,20 @@ test('deleting a topic with an open ask refreshes the subscribed inbox (review o
   const refreshed = await inboxEvent(ui, (i) => i.asks.length === 0, mark);
   assert.equal(refreshed.needsYou, 0);
 });
+
+test('a verdict written as text (no structured argument) is a notification like any verdict (review of #33)', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  await ok(ui, { type: 'task.create', title: 'Textual verdict' });
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'task.comment', item: 'T-1', text: 'verdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-7\n\nAll green.', as: { name: 'qa-1', role: 'qa' } });
+  const listed = await inboxEvent(ui, (i) => i.notifications.some((n) => n.kind === 'verdict'), mark);
+  const verdict = listed.notifications.find((n) => n.kind === 'verdict') as Notification;
+  assert.equal(verdict.text, 'T-1 qa clear · qa-1 · run q-7');
+  assert.equal(verdict.result, 'clear');
+  // a plain comment is no notification
+  await ok(ui, { type: 'task.comment', item: 'T-1', text: 'Just a note.', as: { name: 'qa-1', role: 'qa' } });
+  assert.equal((await inbox(ui)).notifications.filter((n) => n.kind === 'verdict').length, 1);
+});
