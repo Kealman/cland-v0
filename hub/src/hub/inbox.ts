@@ -129,8 +129,8 @@ export class InboxBoard {
 
   #sessionState(e: Extract<HubEvent, { type: 'session.state' }>): void {
     if (e.state === 'waiting for approval') {
-      if (!this.#since.has(e.session)) this.#since.set(e.session, e.ts);
-    } else this.#since.delete(e.session);
+      if (!this.#since.has(e.sessionId)) this.#since.set(e.sessionId, e.ts);
+    } else this.#since.delete(e.sessionId);
     const timer = this.#idle.get(e.sessionId);
     if (timer) {
       clearTimeout(timer);
@@ -200,16 +200,23 @@ export class InboxBoard {
     const asked = new Set(open.map((a) => a.topic));
     const waiting = topics.filter((t) => t.status === 'waiting for human' && !asked.has(t.id)).sort((a, b) => (a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0));
     const approvals: InboxApproval[] = [];
+    // one approval per session, by its id: a launched session that renamed itself is its process row (the launch
+    // name, with the attach command) and its presence (the name it has now) at once
+    const presence = p.presence();
+    const live = new Map(presence.map((s) => [s.sessionId, s]));
     const seen = new Set<string>();
     for (const proc of this.#processes?.() ?? []) {
       if (proc.status !== 'running' || proc.state !== 'waiting for approval') continue;
-      seen.add(proc.name);
-      approvals.push({ session: proc.name, label: proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.name) ?? null, attach: proc.attach });
+      seen.add(proc.sessionId);
+      const now = live.get(proc.sessionId);
+      const name = now?.name ?? proc.name;
+      approvals.push({ session: name, label: now?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.sessionId) ?? null, attach: proc.attach });
     }
     // a session the adapters did not launch has no state of its own; one that has (a resumed launch under another name) still counts
-    for (const s of p.presence()) {
-      if (s.state !== 'waiting for approval' || seen.has(s.name)) continue;
-      approvals.push({ session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.name) ?? null, attach: null });
+    for (const s of presence) {
+      if (s.state !== 'waiting for approval' || seen.has(s.sessionId)) continue;
+      seen.add(s.sessionId);
+      approvals.push({ session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? null, attach: null });
     }
     approvals.sort((a, b) => String(a.since ?? '').localeCompare(String(b.since ?? '')));
     return { asks, approvals, waiting, notifications: p.store.notifications(), needsYou: asks.length + approvals.length + waiting.length };

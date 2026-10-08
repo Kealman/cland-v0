@@ -330,3 +330,26 @@ test('a session entering waiting for approval is an approval within one event, w
   const idle = await eventually('the idle notification', async () => (await inbox(ui)).notifications.find((n) => n.kind === 'idle' && n.session === 'impl-1'));
   assert.equal(idle.text, 'impl-1 [Implementer] idle 1 min');
 });
+
+test('a launched session that renamed itself is one approval, with its attach command (review of #33)', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+  const attach = (launched.value as { process: { attach: string } }).process.attach;
+  const present = (name: string) => eventually(`${name} idle`, async () => ((await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' })).sessions.find((s) => s.name === name && s.state === 'idle') ? true : undefined));
+  await present('impl-1');
+  // the session renames itself in a turn (the fake does what the text says)
+  await ok(ui, { type: 'topic.send', topic: 'general', text: 'rename to pool-1', to: ['impl-1'] });
+  await present('pool-1');
+
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
+  const listed = await inboxEvent(ui, (i) => i.approvals.length > 0, mark);
+  assert.equal(listed.approvals.length, 1, JSON.stringify(listed.approvals));
+  assert.equal(listed.approvals[0]?.attach, attach);
+  assert.equal(listed.needsYou, 1);
+});
