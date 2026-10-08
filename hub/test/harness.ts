@@ -139,13 +139,15 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     });
   };
 
+  // Through this spoke's own `who`: it returns once this spoke is connected (welcomed: its own calls work) and sees
+  // every name. Another spoke's presence is the hub's view, which comes before this spoke has read its welcome.
   const waitForPresence = async (names: string[], timeoutMs = PRESENCE_DEADLINE_MS): Promise<void> => {
     const deadline = Date.now() + timeoutMs;
     let last: unknown;
     while (Date.now() < deadline) {
       last = await call<{ ok: boolean; sessions?: Array<{ name: string }> }>('who');
-      const sessions = (last as { sessions?: Array<{ name: string }> }).sessions ?? [];
-      if (names.every((n) => sessions.some((d) => d.name === n))) return;
+      const sessions = (last as { sessions?: Array<{ name: string }> }).sessions;
+      if (Array.isArray(sessions) && names.every((n) => sessions.some((d) => d.name === n))) return;
       await new Promise((r) => setTimeout(r, 25));
     }
     throw new Error(`presence never showed ${names.join(',')}; last who(): ${JSON.stringify(last)}\n${log}`);
@@ -190,8 +192,9 @@ export async function assignRole(cwd: string, name: string, role: string): Promi
 export async function waitForAbsence(viewer: Session, name: string, timeoutMs = 5000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const who = await viewer.call<{ sessions: Array<{ name: string }> }>('who');
-    if (!who.sessions.some((d) => d.name === name)) return;
+    // a viewer between connections answers no `sessions`: that says nothing about `name`
+    const who = await viewer.call<{ sessions?: Array<{ name: string }> }>('who');
+    if (Array.isArray(who.sessions) && !who.sessions.some((d) => d.name === name)) return;
     await sleep(25);
   }
   throw new Error(`${name} never left presence within ${timeoutMs}ms`);

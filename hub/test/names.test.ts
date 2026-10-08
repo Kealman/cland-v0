@@ -27,7 +27,7 @@ test('a requested name that is live in ANOTHER session is refused, and the secon
   await first.waitForPresence(['rate-cache']); // the first is on the hub before the second asks for its name
   const second = await spawnSpoke({ hub, name: 'rate-cache', sessionId: 'sess-second' });
   try {
-    await first.waitForPresence(['rate-cache', 'session-1'], 10_000);
+    await second.waitForPresence(['rate-cache', 'session-1'], 10_000);
     const who = await second.call<{ me: string; note?: string }>('who');
     assert.equal(who.me, 'session-1');
     assert.match(who.note ?? '', /"rate-cache" is in use by a live session/);
@@ -46,6 +46,8 @@ test('a reserved or malformed requested name is refused with the reason, and the
   const bad = await spawnSpoke({ hub, name: 'Not A Name!', sessionId: 'sess-bad' });
   try {
     await reserved.waitForPresence(['session-1', 'session-2', 'session-3']);
+    // each spoke's own calls once it is connected (the hub lists a session before its spoke read the welcome)
+    for (const s of [role, bad]) await s.waitForPresence(['session-1', 'session-2', 'session-3']);
     assert.match((await reserved.call<{ note?: string }>('who')).note ?? '', /"human" is reserved/);
     assert.match((await role.call<{ note?: string }>('who')).note ?? '', /"reviewer" is reserved/, 'a role name is never a session name');
     assert.match((await bad.call<{ note?: string }>('who')).note ?? '', /must match/);
@@ -116,6 +118,7 @@ test('rename claims a new name under the rules, and the old name stops resolving
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
+    await beta.waitForPresence(['alpha', 'beta']);
     for (const [name, reason] of [
       ['Rate Cache', /must match/],
       ['all', /reserved/],
@@ -153,7 +156,7 @@ test("a new unnamed session never takes an offline session's generated name, and
     assert.equal(sent.outcomes[0]?.outcome, 'queued');
 
     newcomer = await spawnSpoke({ hub, sessionId: 'sess-newcomer' });
-    await witness.waitForPresence(['session-2']);
+    await newcomer.waitForPresence(['session-2']);
     assert.equal((await newcomer.call<{ me: string }>('who')).me, 'session-2', 'the offline name stays with its session');
     const history = await newcomer.call<{ messages: unknown[] }>('history');
     assert.deepEqual(history.messages, [], "no history of another session's name");
@@ -179,13 +182,14 @@ test('a generated name a session renamed away from is never handed to a new sess
   let newcomer: Session | null = null;
   try {
     await witness.waitForPresence(['witness', 'session-1']);
+    await first.waitForPresence(['witness', 'session-1']);
     await witness.call('send', { to: ['session-1'], text: 'for the first session only' });
     await first.waitForEvent((e) => e.params.content === 'for the first session only');
     await first.call('send', { to: ['witness'], text: 'from the first session' });
     assert.deepEqual(await first.call('rename', { name: 'alpha' }), { ok: true, name: 'alpha' });
 
     newcomer = await spawnSpoke({ hub, sessionId: 'sess-newcomer' });
-    await witness.waitForPresence(['alpha', 'session-2']);
+    await newcomer.waitForPresence(['alpha', 'session-2']);
     assert.equal((await newcomer.call<{ me: string }>('who')).me, 'session-2', 'session-1 appears in the history: it is never reused');
     const history = await newcomer.call<{ messages: Array<{ text: string }> }>('history');
     assert.deepEqual(history.messages, [], "no history of another session's name");

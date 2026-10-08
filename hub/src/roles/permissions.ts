@@ -117,7 +117,9 @@ const label = (role: string) => ROLE_LABELS[role] ?? role;
  * May a session holding `role` (null: none) make `call`, under `grants` (its role's list)? A refusal names the
  * permission that would have allowed it (`tool` or `tool:scope`) and says why, for the model and the human.
  */
-export function decide(role: string | null, grants: readonly string[] | undefined, call: ToolCall): Decision {
+export function decide(role: string | null, grants: readonly string[] | undefined, input: ToolCall): Decision {
+  // normalised before anything is decided: a blank item is no item (review of #32)
+  const call: ToolCall = { ...input, item: typeof input.item === 'string' ? input.item.trim() || null : (input.item ?? null) };
   const { tool } = call;
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
   const list = grants ?? [];
@@ -151,8 +153,8 @@ export function decide(role: string | null, grants: readonly string[] | undefine
     }
     case 'task.claim':
     case 'topic.create': {
-      const own = call.own?.();
-      if (has(`${tool}:own`) && call.item && own !== false) return { ok: true };
+      // positive ownership only: an item that cannot be looked up (gone, unreadable, blank) is not the caller's
+      if (has(`${tool}:own`) && call.item && call.own?.() === true) return { ok: true };
       const what = tool === 'task.claim' ? 'claim only its own item (assigned to it or claimed by it)' : 'create a topic only bound to its own item';
       return { ok: false, permission: tool, reason: `${who} may ${what}` };
     }

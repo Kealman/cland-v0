@@ -81,6 +81,6 @@ export function trackerItems(tracker: Tracker): TopicItems {
       const view = tracker.view(item);
       return { id: view.id, topic: view.topic ?? null, state: view.state };
     },
-    bind: (item, topic) => void tracker.link(hub, item, { topic }),
+    bind: (item, topic) => void tracker.writeTopic(hub, item, topic),
   };
 }

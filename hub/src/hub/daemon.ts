@@ -19,8 +19,8 @@ import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { RolesFile } from '../roles/config.ts';
 import { readProjectConfig } from '../init/config.ts';
-import { Journal, journalPath } from './journal.ts';
-import { agentsRecord } from './agents-topic.ts';
+import { Journal, journalPath, readJournal } from './journal.ts';
+import { agentsRecord, replayAgentsRecord } from './agents-topic.ts';
 import { idleNotifyMs } from './inbox.ts';
 
 /**
@@ -116,6 +116,12 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     throw err;
   }
   agents.attach(hub.core);
+  // notices a previous run journalled but died before recording (a crash between the two)
+  try {
+    replayAgentsRecord(hub.core, readJournal(journalPath(l.dir)), log);
+  } catch (err) {
+    log({ event: 'agents-record-failed', error: err instanceof Error ? err.message : String(err) });
+  }
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;

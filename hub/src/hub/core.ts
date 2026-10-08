@@ -31,6 +31,7 @@ import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
+import type { TopicBinding } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
@@ -97,7 +98,7 @@ export type CoreOptions = {
 
 /** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
  *  delivered to (nobody by default: the record is for reading), and its typed facts. */
-export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown> };
+export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown>; id?: string };
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
 export const COORDINATOR = 'coordinator';
@@ -454,9 +455,11 @@ export class HubCore {
   noticeInTopic(topicId: string, notice: TopicNotice): string | null {
     const topic = this.#store.topic(topicId);
     if (!topic) return null;
+    // a notice with an id of its own (a journalled lifecycle event's) is recorded once, however often it is replayed
+    if (notice.id !== undefined && this.#store.message(notice.id) !== null) return notice.id;
     const to = [...new Set(notice.to ?? [])];
     const message: Message = {
-      id: randomUUID(),
+      id: notice.id ?? randomUUID(),
       from: 'hub',
       fromKind: 'hub',
       via: 'hub',
@@ -537,7 +540,10 @@ export class HubCore {
   /** Delete what is older than the retention window. */
   prune(): number {
     const gone = this.#store.prune(this.#now().getTime(), this.#retentionMs);
-    if (gone) this.#log({ event: 'pruned', messages: gone });
+    if (gone) {
+      this.#log({ event: 'pruned', messages: gone });
+      this.inbox.refresh();
+    }
     return gone;
   }
 
@@ -940,7 +946,8 @@ export class HubCore {
     if (!clean) throw new TopicRefusal('a topic needs a title');
     if (clean.length > 200) throw new TopicRefusal('a topic title is at most 200 characters');
     let bound: string | null = null;
-    if (item !== undefined && item.trim() !== '') {
+    if (item !== undefined && item !== null && (typeof item !== 'string' || item.trim() === '')) throw new TopicRefusal('`item` is blank: name the item to bind (T-<n>), or leave it out');
+    if (item !== undefined && item !== null) {
       if (!this.#items) throw new TopicRefusal("this hub has no tracker: a topic is bound to an item only on a project's hub");
       const found = this.#items.check(item.trim());
       bound = found.id;
@@ -995,6 +1002,46 @@ export class HubCore {
     return this.#topicOrThrow(id);
   }
 
+  /**
+   * The binding as the tracker's `task.link` and `task.create` with a topic see it (spec 4.5): one topic per item and
+   * one item per topic; the store's binding follows the item's file.
+   */
+  topicBinding(): TopicBinding {
+    return {
+      check: (item, topicId) => {
+        const topic = this.#store.topic(topicId);
+        if (!topic) throw new TopicRefusal(`no topic "${topicId}"`);
+        if (topic.standing) throw new TopicRefusal(`${topic.title} is a standing topic: it is bound to no item`);
+        if (topic.item !== null && topic.item !== item) throw new TopicRefusal(`${topic.id} is already bound to ${topic.item}; one item per topic`);
+        const existing = item === null ? null : this.#store.topicOfItem(item);
+        if (existing && existing.id !== topic.id) throw new TopicRefusal(`${item} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
+      },
+      bound: (item, topicId) => {
+        this.#store.setItemTopic(item, topicId);
+        this.#log({ event: 'topic-bound', item, topic: topicId });
+        this.#publishTopics();
+      },
+    };
+  }
+
+  /**
+   * At start, what happened to the bound items while no hub watched (a hand edit, a `git pull`): a bound item that is
+   * closed closes its topic and cancels its asks, as its closing would have.
+   */
+  reconcileBindings(): void {
+    if (!this.#items) return;
+    for (const topic of this.#store.topics()) {
+      if (topic.item === null || topic.status === 'closed') continue;
+      let state: string;
+      try {
+        state = this.#items.check(topic.item).state;
+      } catch {
+        continue; // the item is gone or unreadable: nothing to say about it
+      }
+      if (state === 'closed') this.itemClosed(topic.item);
+    }
+  }
+
   /** A unit of work closed (the tracker's close): its topic closes too. Never the other way round. */
   itemClosed(item: string): void {
     const topic = this.#store.topicOfItem(item);
@@ -1031,6 +1078,8 @@ export class HubCore {
     if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be deleted`);
     this.#store.deleteTopic(id);
     this.#publishedTopics.delete(id);
+    // its asks went with it: the inbox lists them no more
+    this.inbox.refresh();
   }
 
   /**
@@ -1180,6 +1229,16 @@ export class HubCore {
       this.#emitMessage(message);
       this.#move(topic, toHuman ? 'to-human' : awaited.includes(from) ? 'reply' : 'between-agents', `a message from ${from}`);
       this.#publishTopics();
+      // every agent-to-agent message is in the Agents record (spec 4.5, #34): one sent into another topic is
+      // referenced there (who to whom, where, which message), its text left where it was written
+      if (!toHuman && topic.id !== AGENTS.id) {
+        const addressees = [...sessions];
+        this.noticeInTopic(AGENTS.id, {
+          kind: 'agent-message',
+          text: `${this.label(from)} → ${addressees.join(', ')} in "${topic.title}" (${topic.id}): message ${message.id}`,
+          detail: { from, to: addressees, topic: topic.id, message: message.id },
+        });
+      }
     }
     const states = new Map<string, 'sent' | 'queued'>();
     for (const n of sessions) states.set(n, this.#send(message, n) ? 'sent' : 'queued');

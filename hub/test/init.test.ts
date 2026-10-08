@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmod, lstat, mkdir, readdir, readFile, readlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -110,7 +110,8 @@ test('cland init on an empty repository: git status shows exactly the committed 
   assert.equal(await readlink(join(root, '.claude', 'skills')), '../.agents/skills');
   await lstat(join(root, '.claude', 'skills', 'tdd', 'SKILL.md'));
 
-  // every managed file or block names the version that wrote it
+  // every managed file or block names the version that wrote it; the vendored skill files carry no mark of their
+  // own (upstream's text, byte for byte): the manifest's mark, checked here, covers every file it lists
   for (const f of ['.cland/.gitignore', '.cland/config.toml', '.cland/roles.toml', '.cland/tasks/.gitkeep', 'AGENTS.md', 'docs/agents/domain.md', 'docs/agents/issue-tracker.md', 'docs/agents/triage-labels.md', '.agents/skills/.cland-manifest.json']) {
     assert.match(await readFile(join(root, f), 'utf8'), new RegExp(`managed by cland ${VERSION.replace(/\./g, '\\.')}`), f);
   }
@@ -360,4 +361,126 @@ test('a Claude Code session launched in the initialised project gets the project
   const second = await launch('cc-2');
   assert.deepEqual(second.instructions.map((i) => i.file), ['CLAUDE.md', 'AGENTS.md']);
   assert.equal(second.instructions[1]?.text.trim(), block);
+});
+
+// ------------------------------------------------------------------ the manifest, symlinks and ownership (review of #39)
+
+test('a manifest that is not cland\'s, malformed, or names a path outside its skill is reported, and update deletes nothing', async (t) => {
+  const root = await tempProject(t, 'cland-update-manifest-');
+  await gitRepo(root);
+  await run(root, 'init');
+  const manifestPath = join(root, '.agents', 'skills', '.cland-manifest.json');
+  const good = JSON.parse(await readFile(manifestPath, 'utf8')) as { managed: string; skills: Record<string, string[]> };
+  await writeFile(join(root, 'README.md'), 'ours\n');
+  await mkdir(join(root, '.agents', 'skills', 'x'), { recursive: true });
+  await writeFile(join(root, '.agents', 'skills', 'x', 'SKILL.md'), 'ours\n');
+  const bad: Array<[string, unknown]> = [
+    ['a path climbing out', { managed: good.managed, skills: { tdd: ['../../../README.md'] } }],
+    ['an absolute path', { managed: good.managed, skills: { tdd: [join(root, 'README.md')] } }],
+    ['a path into a sibling skill', { managed: good.managed, skills: { tdd: ['../x/SKILL.md'] } }],
+    ['a skill name that is a path', { managed: good.managed, skills: { '..': ['README.md'] } }],
+    ['a skill name with capitals', { managed: good.managed, skills: { X: ['SKILL.md'] } }],
+    ['a list that is not one', { managed: good.managed, skills: { tdd: 'SKILL.md' } }],
+    ['no mark: not cland\'s', { managed: 'ours', skills: { tdd: ['SKILL.md'] } }],
+    ['not JSON', null],
+  ];
+  for (const [what, manifest] of bad) {
+    const text = manifest === null ? '{ not json' : `${JSON.stringify(manifest, null, 2)}\n`;
+    await writeFile(manifestPath, text);
+    const before = await tree(root);
+    const changes = await run(root, 'update');
+    assert.deepEqual(changes.filter((c) => c.action === 'removed'), [], what);
+    const report = changes.find((c) => c.path === '.agents/skills/.cland-manifest.json');
+    assert.equal(report?.action, 'kept', what);
+    assert.match(report?.note ?? '', /manifest/, what);
+    // nothing under .agents/ changed, the manifest included; the files the paths name are all still there
+    assert.deepEqual(changed(before, await tree(root)).filter((p) => p.startsWith('.agents/') || p === 'README.md'), [], what);
+    assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'ours\n', what);
+    assert.equal(await readFile(join(root, '.agents', 'skills', 'x', 'SKILL.md'), 'utf8'), 'ours\n', what);
+    await lstat(join(root, '.agents', 'skills', 'tdd', 'SKILL.md'));
+  }
+  // a valid manifest again: update works as before
+  await writeFile(manifestPath, `${JSON.stringify(good, null, 2)}\n`);
+  const changes = await run(root, 'update');
+  assert.equal(changes.find((c) => c.path === '.agents/skills/.cland-manifest.json')?.action, 'unchanged');
+});
+
+test('provisioning never writes through a symlink: a managed file, AGENTS.md or a parent folder that is a link is kept, its target untouched', async (t) => {
+  const outside = await tempProject(t, 'cland-outside-');
+  await writeFile(join(outside, 'target.md'), 'external\n');
+  await mkdir(join(outside, 'dir'));
+  await writeFile(join(outside, 'dir', 'keep'), 'external\n');
+  const was = await tree(outside);
+
+  // a managed skill file replaced by a link to a file outside the project, then `cland update`
+  const a = await tempProject(t, 'cland-link-skill-');
+  await run(a, 'init');
+  const skillMd = join(a, '.agents', 'skills', 'tdd', 'SKILL.md');
+  await rm(skillMd);
+  await symlink(join(outside, 'target.md'), skillMd);
+  let changes = await run(a, 'update');
+  let c = changes.find((x) => x.path === '.agents/skills/tdd/SKILL.md');
+  assert.equal(c?.action, 'kept');
+  assert.match(c?.note ?? '', /^symlink/);
+  assert.equal((await lstat(skillMd)).isSymbolicLink(), true);
+
+  // a whole managed skill folder replaced by a link to a folder outside
+  await rm(join(a, '.agents', 'skills', 'grill-me'), { recursive: true });
+  await symlink(join(outside, 'dir'), join(a, '.agents', 'skills', 'grill-me'));
+  changes = await run(a, 'update');
+  c = changes.find((x) => x.path.startsWith('.agents/skills/grill-me'));
+  assert.equal(c?.action, 'kept');
+  assert.match(c?.note ?? '', /^symlink/);
+
+  // AGENTS.md a link to a file outside, before init
+  const b = await tempProject(t, 'cland-link-agents-');
+  await symlink(join(outside, 'target.md'), join(b, 'AGENTS.md'));
+  changes = await run(b, 'init');
+  c = changes.find((x) => x.path === 'AGENTS.md');
+  assert.equal(c?.action, 'kept');
+  assert.match(c?.note ?? '', /^symlink/);
+
+  // docs/agents and .claude links to a folder outside: nothing is written into it
+  const d = await tempProject(t, 'cland-link-parent-');
+  await mkdir(join(d, 'docs'));
+  await symlink(join(outside, 'dir'), join(d, 'docs', 'agents'));
+  await symlink(join(outside, 'dir'), join(d, '.claude'));
+  changes = await run(d, 'init');
+  for (const p of ['docs/agents/domain.md', '.claude/settings.json', '.claude/skills']) {
+    c = changes.find((x) => x.path === p);
+    assert.equal(c?.action, 'kept', p);
+    assert.match(c?.note ?? '', /^symlink/, p);
+  }
+
+  assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the projects changed');
+});
+
+test('a file of the human\'s inside a managed skill is never adopted: a later release shipping that path reports a conflict and keeps it', async (t) => {
+  const root = await tempProject(t, 'cland-update-conflict-');
+  const v1 = await tempProject(t, 'cland-skills-v1-');
+  await mkdir(join(v1, 'tdd'));
+  await writeFile(join(v1, 'tdd', 'SKILL.md'), 'tdd v1\n');
+  await run(root, 'init', { CLAND_SKILLS_SOURCE_OVERRIDE: v1 });
+  await writeFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'ours\n');
+
+  // the next release ships tdd/NOTES.md
+  const v2 = await tempProject(t, 'cland-skills-v2-');
+  await mkdir(join(v2, 'tdd'));
+  await writeFile(join(v2, 'tdd', 'SKILL.md'), 'tdd v2\n');
+  await writeFile(join(v2, 'tdd', 'NOTES.md'), 'cland notes\n');
+  const manifestOf = async () => (JSON.parse(await readFile(join(root, '.agents', 'skills', '.cland-manifest.json'), 'utf8')) as { skills: Record<string, string[]> }).skills;
+  for (let i = 0; i < 2; i++) {
+    const changes = await run(root, 'update', { CLAND_SKILLS_SOURCE_OVERRIDE: v2 });
+    const c = changes.find((x) => x.path === '.agents/skills/tdd/NOTES.md');
+    assert.equal(c?.action, 'kept', `run ${i + 1}`);
+    assert.match(c?.note ?? '', /conflict/);
+    assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'ours\n');
+    assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'SKILL.md'), 'utf8'), 'tdd v2\n');
+    assert.deepEqual((await manifestOf()).tdd, ['SKILL.md'], 'not adopted');
+  }
+  // the human removes theirs: cland's is installed and managed from then on
+  await rm(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'));
+  await run(root, 'update', { CLAND_SKILLS_SOURCE_OVERRIDE: v2 });
+  assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'cland notes\n');
+  assert.deepEqual((await manifestOf()).tdd, ['NOTES.md', 'SKILL.md']);
 });

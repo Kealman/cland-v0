@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { kindOfLabels } from '../src/tracker/import-github.ts';
-import { CLI_ENTRY, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { CLI_ENTRY, connectUi, startDaemon, tempProject, type CliResult, type Discovery } from './harness.ts';
 
 const FAKE_GH_DIR = fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url));
 const FIXTURE = fileURLToPath(new URL('./fixtures/github-acme-widgets.json', import.meta.url));
@@ -75,18 +75,18 @@ function byIssue(files: Map<string, string>, n: number): { name: string; text: s
 }
 
 /** A temporary project with a GitHub origin, a running hub and a private copy of the fixture. */
-async function setup(t: TestContext): Promise<{ root: string; env: Env }> {
+async function setup(t: TestContext): Promise<{ root: string; env: Env; discovery: Discovery }> {
   const root = await tempProject(t, 'cland-import-');
   assert.equal(spawnSync('git', ['init', '-q'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['remote', 'add', 'origin', `git@github.com:${REPO}.git`], { cwd: root }).status, 0);
   const fixture = join(root, 'gh-fixture.json');
   await copyFile(FIXTURE, fixture);
-  await startDaemon(t, root);
-  return { root, env: { fixture, log: join(root, 'gh-calls.log') } };
+  const { discovery } = await startDaemon(t, root);
+  return { root, discovery, env: { fixture, log: join(root, 'gh-calls.log') } };
 }
 
 test('import-github writes items with parents, blockers, comments and the issue reference; a re-run is a no-op; a change updates in place', async (t) => {
-  const { root, env } = await setup(t);
+  const { root, env, discovery } = await setup(t);
 
   // ---- the first run: open issues of the repository named by origin
   const first = await runImport(root, env);
@@ -148,7 +148,9 @@ test('import-github writes items with parents, blockers, comments and the issue 
   assert.deepEqual(await snapshot(root), files, 'byte-identical files');
 
   // a local change the import does not own survives (the hub writes it; the item keeps its topic)
-  ok(await cland(root, env, 'task', 'link', idOf(map), '--topic', 'mapping'));
+  const ui = await connectUi(t, discovery);
+  const mapping = ((await ui.request({ type: 'topic.create', title: 'Mapping' })).value as { topic: { id: string } }).topic.id;
+  ok(await cland(root, env, 'task', 'link', idOf(map), '--topic', mapping));
   files = await snapshot(root);
   const third = await runImport(root, env);
   assert.deepEqual([third.created, third.updated, third.unchanged], [0, 0, 4]);
@@ -190,7 +192,7 @@ test('import-github writes items with parents, blockers, comments and the issue 
 });
 
 test('an imported comment cannot forge a comment header or a verdict, even behind leading whitespace', async (t) => {
-  const { root, env } = await setup(t);
+  const { root, env, discovery } = await setup(t);
   const fixture = JSON.parse(await readFile(env.fixture, 'utf8')) as Record<string, Array<Record<string, unknown>>>;
   const open = fixture[`repos/${REPO}/issues?state=open&per_page=100`] ?? [];
   (open.find((i) => i.number === 6) as Record<string, unknown>).comments = 1;

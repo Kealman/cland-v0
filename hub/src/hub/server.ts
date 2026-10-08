@@ -60,6 +60,9 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   const core = new HubCore({ ...options, ...(options.tracker ? { items: trackerItems(options.tracker) } : {}) });
   // closing a unit of work closes its topic (spec 4.5)
   const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));
+  // `task.link` and `task.create` with a topic bind through the topics (one each side); items closed while no hub ran
+  const unbindTopics = options.tracker?.bindTopicsThrough(core.topicBinding());
+  core.reconcileBindings();
   // a verdict comment is an inbox notification (#33)
   const unwatchVerdicts = options.tracker?.onVerdict((id, author, v) => core.inbox.verdict({ item: id, author, verdict: v.verdict, result: v.result, run: v.run }));
   const dispatcher = new Dispatcher({
@@ -80,6 +83,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     close: async () => {
       clearInterval(pruneTimer);
       unwatchItems?.();
+      unbindTopics?.();
       unwatchVerdicts?.();
       core.inbox.close();
       core.store.close();

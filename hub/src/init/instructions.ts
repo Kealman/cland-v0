@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MANAGED_BY } from '../project.ts';
-import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts';
+import { isManagedFile, readText, refuseSymlink, writeIfChanged, type Report } from './files.ts';
 
 export const TEMPLATES = fileURLToPath(new URL('../../../skills/templates/', import.meta.url));
 
@@ -22,6 +22,7 @@ export const agentsBlock = (): string => `${BLOCK_BEGIN}\n${readFileSync(join(TE
 /** `AGENTS.md`: the block written in place, appended to a file without it, or the whole file when there is none. */
 export function provisionAgentsMd(report: Report, root: string): void {
   const path = join(root, 'AGENTS.md');
+  if (refuseSymlink(report, path)) return;
   const current = readText(path);
   const block = agentsBlock();
   if (current === null) return writeIfChanged(report, path, `${block}\n`, null);
@@ -40,6 +41,7 @@ const OUR_IMPORT = /<!-- managed by cland\b[^\n]*-->\n@AGENTS\.md[ \t]*(?=\n|$)/
 /** An existing `CLAUDE.md` imports `AGENTS.md` (one managed line with its mark); none is ever created. */
 export function provisionClaudeMd(report: Report, root: string): void {
   const path = join(root, 'CLAUDE.md');
+  if (refuseSymlink(report, path)) return;
   const current = readText(path);
   if (current === null) return;
   const ours = `${IMPORT_MARK}\n@AGENTS.md`;
@@ -56,6 +58,7 @@ export function provisionClaudeMd(report: Report, root: string): void {
 export function provisionDocs(report: Report, root: string): void {
   for (const rel of DOCS) {
     const path = join(root, rel);
+    if (refuseSymlink(report, path)) continue;
     const current = readText(path);
     if (current !== null && !isManagedFile(current)) {
       report.add(path, 'kept', 'no "managed by cland" mark: the project\'s own (compare it with cland\'s template, or delete it and run cland update)');

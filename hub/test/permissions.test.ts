@@ -381,6 +381,9 @@ test('the tools still to come are checked through the same table: one session, i
         future('topic.create', { title: 'Mine', item: 'T-1' }),
         { ...future('topic.create', { title: 'Not mine', item: 'T-2' }), forbidden: 'topic.create', reason: /bound to its own item/, target: ' T-2' },
         { ...future('topic.create', { title: 'Unbound' }), forbidden: 'topic.create', reason: /bound to its own item/ },
+        // a blank item is no item, and an item that cannot be looked up is not its own: both refused (review of #32)
+        { ...future('topic.create', { title: 'Blank', item: '   ' }), forbidden: 'topic.create', reason: /bound to its own item/ },
+        { ...future('topic.create', { title: 'Missing', item: 'T-99' }), forbidden: 'topic.create', reason: /bound to its own item/, target: ' T-99' },
         { ...future('role.handover'), forbidden: 'role.handover' },
         { ...future('merge', { item: 'T-1' }), forbidden: 'merge', target: ' T-1' },
         { ...future('artifact.create'), error: unknown },

@@ -77,6 +77,10 @@ create table if not exists notifications (
   result text,
   dismissed integer not null default 0
 );
+create table if not exists counters (
+  name text primary key,
+  value integer not null
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -103,8 +107,13 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'notice_detail', type: 'text' },
   /** The item a topic is bound to (spec 4.5), null when unbound. */
   { table: 'topics', column: 'item', type: 'text' },
-  /** The rowid of the last message the human read in the topic (`topic.read`); 0: none. */
+  /** The rowid of the last message the human read in the topic; superseded by `read_seq` (a rowid restarts once
+   *  retention empties the table), and read once, by the migration to `read_seq`. */
   { table: 'topics', column: 'read_rowid', type: 'integer not null default 0' },
+  /** A message's place in the hub's one monotonic sequence (`counters.message_seq`): never reused, whatever is pruned. */
+  { table: 'messages', column: 'seq', type: 'integer' },
+  /** The `seq` of the last message the human read in the topic (`topic.read`); 0: none. */
+  { table: 'topics', column: 'read_seq', type: 'integer not null default 0' },
   /** The ask a human message answers (#33). */
   { table: 'messages', column: 'answer_to', type: 'text' },
 ];
@@ -113,6 +122,18 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
 const LATE_INDEXES = `
 create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
+create index if not exists messages_seq on messages (topic, seq);
+`;
+
+/**
+ * The unread watermark's sequence, set up once the columns exist: rows written before it got their rowid (which was
+ * the watermark then), the watermark moves to it, and the counter starts above every seq stored, never below.
+ */
+const SEQ_SETUP = `
+update messages set seq = rowid where seq is null;
+update topics set read_seq = max(read_seq, coalesce(read_rowid, 0)) where read_rowid > read_seq;
+insert into counters (name, value) values ('message_seq', 0) on conflict (name) do nothing;
+update counters set value = max(value, (select coalesce(max(seq), 0) from messages)) where name = 'message_seq';
 `;
 
 type Row = Record<string, string | number | null>;
@@ -190,7 +211,7 @@ const toTopic = (row: Row): Topic => {
  *  last read), the latest message's time, and the roles a message in it still waits for (`@role` deliveries). */
 const TOPIC_SELECT = `
 select t.*, t.rowid as rid,
-  (select count(*) from messages m where m.topic = t.id and m.rowid > coalesce(t.read_rowid, 0) and m.from_kind != 'human') as unread,
+  (select count(*) from messages m where m.topic = t.id and m.seq > t.read_seq and m.from_kind != 'human') as unread,
   (select max(m.ts) from messages m where m.topic = t.id) as last_message_at,
   (select group_concat(distinct substr(d.session, 2)) from deliveries d join messages m on m.id = d.message_id
      where m.topic = t.id and d.session like '@%' and d.state = 'queued') as vacant_roles
@@ -222,6 +243,7 @@ export class Store implements HygieneMemory {
     this.#db.exec(SCHEMA);
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
+    this.#db.exec(SEQ_SETUP);
   }
 
   #migrate(): void {
@@ -383,8 +405,9 @@ export class Store implements HygieneMemory {
    *  only some of its deliveries. */
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null): void {
     this.#transaction(() => {
+      const seq = Number((this.#db.prepare("update counters set value = value + 1 where name = 'message_seq' returning value").get() as Row).value);
       this.#db
-        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail, answer_to) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail, answer_to, seq) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(
           message.id,
           message.from,
@@ -400,6 +423,7 @@ export class Store implements HygieneMemory {
           notice ?? message.kind ?? null,
           message.detail ? JSON.stringify(message.detail) : null,
           message.answerTo ?? null,
+          seq,
         );
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
@@ -517,6 +541,14 @@ export class Store implements HygieneMemory {
     return row ? toTopic(row) : null;
   }
 
+  /** Bind `item` to `topic` (null: to none): whatever topic held the item lets it go first. One binding a side. */
+  setItemTopic(item: string, topic: string | null): void {
+    this.#transaction(() => {
+      this.#db.prepare('update topics set item = null where item = ?').run(item);
+      if (topic !== null) this.#db.prepare('update topics set item = ? where id = ?').run(item, topic);
+    });
+  }
+
   setTopicStatus(id: string, status: TopicStatus): void {
     this.#db.prepare('update topics set status = ? where id = ?').run(status, id);
   }
@@ -525,12 +557,12 @@ export class Store implements HygieneMemory {
   markTopicRead(id: string, upTo?: string): void {
     const row = (
       upTo !== undefined
-        ? this.#db.prepare('select rowid as r from messages where id = ? and topic = ?').get(upTo, id)
-        : this.#db.prepare('select max(rowid) as r from messages where topic = ?').get(id)
+        ? this.#db.prepare('select seq as r from messages where id = ? and topic = ?').get(upTo, id)
+        : this.#db.prepare('select max(seq) as r from messages where topic = ?').get(id)
     ) as Row | undefined;
     if (upTo !== undefined && !row) throw new Error(`no message "${upTo}" in this topic`);
     const r = Number(row?.r ?? 0);
-    this.#db.prepare('update topics set read_rowid = max(coalesce(read_rowid, 0), ?) where id = ?').run(r, id);
+    this.#db.prepare('update topics set read_seq = max(read_seq, ?) where id = ?').run(r, id);
   }
 
   /** Who the topic's latest human message was delivered to (a role's placeholder once claimed is its holder). */
@@ -639,10 +671,13 @@ export class Store implements HygieneMemory {
     return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'delivered'").run(to, from).changes);
   }
 
-  /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */
+  /**
+   * Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went.
+   * An ask still open is kept, and its message with it: the human has not answered yet, whatever its age.
+   */
   prune(now: number, retentionMs: number): number {
-    const gone = Number(this.#db.prepare('delete from messages where created_at < ?').run(now - retentionMs).changes);
-    // an ask goes with its message
+    const gone = Number(this.#db.prepare("delete from messages where created_at < ? and id not in (select id from asks where state = 'open')").run(now - retentionMs).changes);
+    // an answered, withdrawn or cancelled ask goes with its message
     if (gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
     return gone;
   }

@@ -4,6 +4,7 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, unlink, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -262,4 +263,91 @@ test('a project with no hub: the hub is a warning (startable), the exit code 0; 
   assert.equal(check(none.report, 'project').verdict, 'fail');
   assert.equal(check(none.report, 'project').fix, `cland init ${bare}`);
   assert.equal(none.code, 1);
+});
+
+// ------------------------------------------------------------------ probes with deadlines, the stale file, skill entries (review of #31/#40)
+
+/** An executable that never answers: it records its own pid and a grandchild's, which holds its stdout open. */
+async function hanging(dir: string, name: string, pids: string): Promise<string> {
+  const path = join(dir, name);
+  await writeFile(path, `#!/bin/sh\necho $$ >> '${pids}'\nsleep 60 &\necho $! >> '${pids}'\nwait\n`);
+  await chmod(path, 0o755);
+  return path;
+}
+
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+test('a probe that never answers is cut at its deadline: the lock probe and a harness both, and their whole process group is killed', async (t) => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  await startDaemon(t, root);
+  const dir = await tempProject(t, 'cland-doctor-hang-');
+  const pids = join(dir, 'pids');
+  await hanging(dir, 'ps', pids);
+  const claude = await hanging(dir, 'claude-hangs', pids);
+  const started = Date.now();
+  const { report: r } = await report(root, { ...tools.env, PATH: `${dir}:${tools.env.PATH}`, CLAND_CLAUDE_BIN: claude, CLAND_DOCTOR_PROBE_TIMEOUT_MS: '1000' });
+  assert.ok(Date.now() - started < 15_000, `doctor took ${Date.now() - started} ms`);
+  const c = check(r, 'claude-code');
+  assert.equal(c.verdict, 'fail');
+  assert.match(c.detail, /no answer within 1 s/);
+  // `ps` could not tell the holder's start time: the live lock holder is still the hub
+  assert.equal(check(r, 'hub').verdict, 'ok');
+  const recorded = (await readFile(pids, 'utf8')).split('\n').filter(Boolean).map(Number);
+  assert.ok(recorded.length >= 4, `the ps probe and the claude probe each ran, with a grandchild: ${recorded.join(' ')}`);
+  const deadline = Date.now() + 5000;
+  while (recorded.some(alive) && Date.now() < deadline) await new Promise((res) => setTimeout(res, 50));
+  assert.deepEqual(recorded.filter(alive), [], 'every process of a probe that timed out is gone');
+});
+
+test('a stale hub.json naming a dead pid while a live hub holds the lock is a failure naming the holder', async (t) => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const { discovery } = await startDaemon(t, root);
+  const dead = await new Promise<number>((res) => {
+    const child = spawn(process.execPath, ['-e', '']);
+    child.on('exit', () => res(child.pid ?? 0));
+  });
+  const path = join(root, '.cland', 'hub.json');
+  await writeFile(path, JSON.stringify({ ...JSON.parse(await readFile(path, 'utf8')), pid: dead }));
+  const { code, report: r } = await report(root, tools.env);
+  const hub = check(r, 'hub');
+  assert.equal(hub.verdict, 'fail');
+  assert.match(hub.detail, new RegExp(`pid ${discovery.pid} holds \\.cland/hub\\.lock`));
+  assert.match(hub.detail, new RegExp(`names pid ${dead}`));
+  assert.match(hub.fix ?? '', new RegExp(`kill ${discovery.pid}`));
+  assert.match(hub.fix ?? '', /rm \.cland\/hub\.json/);
+  assert.equal(check(r, 'hub.json').verdict, 'fail');
+  assert.equal(code, 1);
+});
+
+test('a skill entry in the project\'s own .claude/skills/ is ok only as a folder (or a link to one) holding SKILL.md', async (t) => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  await unlink(join(root, '.claude', 'skills'));
+  await mkdir(join(root, '.claude', 'skills'));
+  assert.equal((await clandWithEnv(root, tools.env, 'update')).code, 0);
+  assert.equal(check((await report(root, tools.env)).report, 'skills').verdict, 'ok');
+  const entry = join(root, '.claude', 'skills', 'grill-me');
+
+  await unlink(entry);
+  await writeFile(entry, 'not a skill\n');
+  let c = check((await report(root, tools.env)).report, 'skills');
+  assert.equal(c.verdict, 'fail', 'a regular file');
+  assert.match(c.detail, /grill-me/);
+
+  await unlink(entry);
+  const empty = join(root, 'empty');
+  await mkdir(empty);
+  await symlink(empty, entry);
+  c = check((await report(root, tools.env)).report, 'skills');
+  assert.equal(c.verdict, 'fail', 'a link to a folder without SKILL.md');
+  assert.match(c.detail, /grill-me/);
 });

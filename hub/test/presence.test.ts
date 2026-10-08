@@ -11,6 +11,7 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
   let gamma: Session | null = null;
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
+    await beta.waitForPresence(['alpha', 'beta']); // beta's own calls need beta connected, not only listed
     const statusOf = statusIn(alpha);
     const set = await beta.call<{ ok: boolean; status: string }>('status', { text: 'rate-cache: implement #334, tests running' });
     assert.equal(set.status, 'rate-cache: implement #334, tests running');
@@ -19,6 +20,7 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
     await beta.close();
     beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
     await alpha.waitForPresence(['beta']);
+    await beta.waitForPresence(['beta']);
     assert.equal(await statusOf('beta'), 'rate-cache: implement #334, tests running');
     // a name the hub has never seen starts with nothing
     gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
@@ -34,6 +36,7 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
     // one and no line, and a session that asks for session-1 BY NAME inherits nobody else's line either
     let anon = await spawnSpoke({ hub, sessionId: 'sess-anon-1' });
     await alpha.waitForPresence(['session-1']);
+    await anon.waitForPresence(['session-1']);
     await anon.call('status', { text: "somebody else's work" });
     await anon.close();
     await waitForAbsence(alpha, 'session-1');
@@ -61,11 +64,15 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
 });
 
 test('the status follows a rename, and a name unseen for longer than the queue TTL comes back with none', async () => {
-  const hub = await startHub({ queueTtlMs: 400 });
+  // A fake clock: "unseen for longer than the TTL" is the hub's clock moving past it once the hub has seen the
+  // session leave, never a real-time sleep racing the hub's processing of the close on a loaded machine.
+  let now = Date.parse('2026-10-08T12:00:00Z');
+  const hub = await startHub({ queueTtlMs: 60_000, now: () => new Date(now) });
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
+    await beta.waitForPresence(['alpha', 'beta']);
     const statusOf = statusIn(alpha);
     await beta.call('status', { text: 'pool-7: integrate' });
     await beta.call('rename', { name: 'pool-7' });
@@ -74,7 +81,8 @@ test('the status follows a rename, and a name unseen for longer than the queue T
     // a name unseen for longer than the queue TTL is history: its old line is not restored —
     // and a reconnect right after that finds nothing either (the stale line was dropped, not parked)
     await beta.close();
-    await sleep(500);
+    await waitForAbsence(alpha, 'pool-7');
+    now += 61_000;
     beta = await spawnSpoke({ hub, name: 'pool-7', sessionId: 'sess-b' });
     await alpha.waitForPresence(['pool-7']);
     assert.equal(await statusOf('pool-7'), null);
@@ -99,6 +107,8 @@ test('a heartbeat keeps a long-lived session inside the status window; a session
   let quiet = await spawnSpoke({ hub, name: 'quiet', sessionId: 'sess-q' }); // the default 30 s heartbeat: no ping during this test
   try {
     await alpha.waitForPresence(['alpha', 'beta', 'quiet']);
+    await beta.waitForPresence(['beta']);
+    await quiet.waitForPresence(['quiet']);
     await beta.call('status', { text: 'still here' });
     await quiet.call('status', { text: 'went quiet' });
     now += 61_000; // both hellos are now older than the window

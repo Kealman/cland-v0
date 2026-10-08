@@ -330,3 +330,81 @@ test('a session entering waiting for approval is an approval within one event, w
   const idle = await eventually('the idle notification', async () => (await inbox(ui)).notifications.find((n) => n.kind === 'idle' && n.session === 'impl-1'));
   assert.equal(idle.text, 'impl-1 [Implementer] idle 1 min');
 });
+
+test('a launched session that renamed itself is one approval, with its attach command (review of #33)', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+  const attach = (launched.value as { process: { attach: string } }).process.attach;
+  const present = (name: string) => eventually(`${name} idle`, async () => ((await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' })).sessions.find((s) => s.name === name && s.state === 'idle') ? true : undefined));
+  await present('impl-1');
+  // the session renames itself in a turn (the fake does what the text says)
+  await ok(ui, { type: 'topic.send', topic: 'general', text: 'rename to pool-1', to: ['impl-1'] });
+  await present('pool-1');
+
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
+  const listed = await inboxEvent(ui, (i) => i.approvals.length > 0, mark);
+  assert.equal(listed.approvals.length, 1, JSON.stringify(listed.approvals));
+  assert.equal(listed.approvals[0]?.attach, attach);
+  assert.equal(listed.needsYou, 1);
+});
+
+test('retention keeps an unanswered ask and its message; an answered one goes with its message (review of #33)', async (t) => {
+  let clock = Date.parse('2026-10-01T00:00:00Z');
+  const hub = await hubFor(t, { now: () => new Date(clock), retentionMs: 60_000 });
+  const coord = await spoke(t, hub, 'coord', 'coordinator');
+  await coord.waitForPresence(['coord']);
+  const ui = await connectWsUi(t, hub);
+  await ok(ui, { type: 'subscribe' });
+  const open = await ask(coord, 'general', 'Still open?', ['yes']);
+  const done = await ask(coord, 'general', 'Answered soon?', ['yes']);
+  await ok(ui, { type: 'topic.answer', ask: done.ask, option: 1 });
+
+  clock += 120_000;
+  hub.prune();
+  const after = await inbox(ui);
+  assert.deepEqual(after.asks.map((a) => a.id), [open.ask], 'the open ask is still in the inbox');
+  assert.deepEqual((await history(ui, 'general')).map((m) => m.id), [open.ask], 'its message is kept; the rest went');
+  assert.equal((await topicOf(ui, 'general')).status, 'waiting for human');
+  // and it can still be answered
+  const answered = await ok<{ message: TopicMessage }>(ui, { type: 'topic.answer', ask: open.ask, option: 1 });
+  assert.equal(answered.message.answerTo, open.ask);
+  assert.equal((await inbox(ui)).asks.length, 0);
+});
+
+test('deleting a topic with an open ask refreshes the subscribed inbox (review of #33)', async (t) => {
+  const hub = await hubFor(t);
+  const coord = await spoke(t, hub, 'coord', 'coordinator');
+  await coord.waitForPresence(['coord']);
+  const ui = await connectWsUi(t, hub);
+  await ok(ui, { type: 'subscribe' });
+  const topic = (await ok<{ topic: Topic }>(ui, { type: 'topic.create', title: 'Doomed' })).topic;
+  const asked = await ask(coord, topic.id, 'Keep it?', ['no']);
+  await inboxEvent(ui, (i) => i.asks.some((a) => a.id === asked.ask));
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'topic.delete', topic: topic.id });
+  const refreshed = await inboxEvent(ui, (i) => i.asks.length === 0, mark);
+  assert.equal(refreshed.needsYou, 0);
+});
+
+test('a verdict written as text (no structured argument) is a notification like any verdict (review of #33)', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  await ok(ui, { type: 'subscribe' });
+  await ok(ui, { type: 'task.create', title: 'Textual verdict' });
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'task.comment', item: 'T-1', text: 'verdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-7\n\nAll green.', as: { name: 'qa-1', role: 'qa' } });
+  const listed = await inboxEvent(ui, (i) => i.notifications.some((n) => n.kind === 'verdict'), mark);
+  const verdict = listed.notifications.find((n) => n.kind === 'verdict') as Notification;
+  assert.equal(verdict.text, 'T-1 qa clear · qa-1 · run q-7');
+  assert.equal(verdict.result, 'clear');
+  // a plain comment is no notification
+  await ok(ui, { type: 'task.comment', item: 'T-1', text: 'Just a note.', as: { name: 'qa-1', role: 'qa' } });
+  assert.equal((await inbox(ui)).notifications.filter((n) => n.kind === 'verdict').length, 1);
+});
