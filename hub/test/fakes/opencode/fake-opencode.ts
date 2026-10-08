@@ -2,6 +2,7 @@
 // `opencode serve` speaks it (v2.0.24's routes and event shapes; only what the adapter uses):
 //
 //   opencode --version                      `opencode v2.0.24-fake`
+//   opencode auth list --standalone --format json   one provider with credentials; FAKE_OPENCODE_NO_AUTH=1: `[]`
 //   opencode serve --hostname h --port 0    an HTTP server; prints `server listening on http://h:<port>`. HTTP Basic
 //       with the user `opencode` and OPENCODE_PASSWORD. It reads OPENCODE_CONFIG and starts its local MCP servers
 //       (`mcp.servers.<name>: {type: local, command[], environment}`) when a session is first touched, as the real
@@ -61,6 +62,11 @@ const readJson = <T>(file: string): T | null => {
 async function main(args: string[]): Promise<number> {
   if (args.includes('--version') || args.includes('-v')) {
     process.stdout.write('opencode v2.0.24-fake\n');
+    return 0;
+  }
+  if (args[0] === 'auth' && args[1] === 'list') {
+    const providers = process.env.FAKE_OPENCODE_NO_AUTH === '1' ? [] : [{ id: 'fake', name: 'Fake Provider', connections: [{ type: 'env', name: 'FAKE_API_KEY' }] }];
+    process.stdout.write(`${JSON.stringify(providers, null, 2)}\n`);
     return 0;
   }
   if (args[0] === 'serve') return serve(args.slice(1));
