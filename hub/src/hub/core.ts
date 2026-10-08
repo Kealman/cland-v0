@@ -101,6 +101,9 @@ export type CoreOptions = {
 
 /** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
  *  delivered to (nobody by default: the record is for reading), and its typed facts. */
+/** The `meta` key holding the id of the last journalled lifecycle notice recorded in Agents. */
+export const AGENTS_JOURNAL_CHECKPOINT = 'agents-journal-checkpoint';
+
 export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown>; id?: string };
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
@@ -546,6 +549,9 @@ export class HubCore {
       this.#now().getTime(),
     );
     this.#store.touchTopic(topic.id, message.ts);
+    // a notice with an id of its own is a journalled lifecycle event's: the checkpoint the journal's replay starts
+    // after, kept apart from the messages retention prunes
+    if (notice.id !== undefined) this.#store.setMeta(AGENTS_JOURNAL_CHECKPOINT, notice.id);
     return message;
   }
 

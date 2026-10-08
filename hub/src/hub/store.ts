@@ -86,6 +86,10 @@ create table if not exists assignees (
   name text not null,
   session_id text
 );
+create table if not exists meta (
+  key text primary key,
+  value text not null
+);
 create table if not exists launch_reservations (
   name text primary key,
   role text not null,
@@ -372,6 +376,16 @@ export class Store implements HygieneMemory {
         )
         .all(session, notice) as Row[]
     ).map((r) => r.message_id as string);
+  }
+
+  /** One value the hub keeps beside its rows (the Agents journal's checkpoint), or null. */
+  meta(key: string): string | null {
+    const row = this.#db.prepare('select value from meta where key = ?').get(key) as Row | undefined;
+    return (row?.value as string | undefined) ?? null;
+  }
+
+  setMeta(key: string, value: string): void {
+    this.#db.prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
   }
 
   /** A launch reserved `role` for `name` (what the name held before: `previous`); cleared once its process row is
