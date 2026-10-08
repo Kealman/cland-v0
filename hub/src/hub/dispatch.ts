@@ -23,6 +23,7 @@ import {
   type RoleClause,
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
+import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
@@ -60,6 +61,15 @@ export type DispatcherOptions = {
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
   tracker?: Tracker;
 };
+
+/** A refused request's result: the reason, and hygiene's typed refusal when it was hygiene. */
+const failure = (id: string, err: unknown): HubFrame => ({
+  type: 'result',
+  id,
+  ok: false,
+  error: err instanceof Error ? err.message : String(err),
+  ...(err instanceof HygieneError ? { refusal: err.refusal } : {}),
+});
 
 export const secretMatches = (given: string, secret: string): boolean => {
   const a = Buffer.from(given);
@@ -196,7 +206,7 @@ export class Dispatcher {
             break;
         }
       } catch (err) {
-        peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+        peer.send(failure(frame.id, err));
       }
     };
 
@@ -214,7 +224,7 @@ export class Dispatcher {
           case 'topic.history':
             return answer(core.topicHistory(frame.topic, frame.limit));
           case 'topic.send': {
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to);
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo);
             return answer({ message, outcomes });
           }
           case 'topic.rename':
@@ -236,6 +246,8 @@ export class Dispatcher {
             return answer({ session: core.clearRole(frame.session) });
           case 'role.list':
             return answer(core.roleList());
+          case 'hygiene.unmute':
+            return answer(core.unmute(frame.a, frame.b));
           case 'subscribe':
             if (!unsubscribe) {
               unsubscribe = core.subscribe((event) => {
@@ -246,7 +258,7 @@ export class Dispatcher {
             return answer({ subscribed: true });
         }
       } catch (err) {
-        peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+        peer.send(failure(frame.id, err));
         return;
       }
       const control = this.#options.control;

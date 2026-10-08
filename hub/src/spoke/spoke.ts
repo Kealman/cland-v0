@@ -120,6 +120,9 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   };
   if (message.fromRole !== undefined) meta.from_role = message.fromRole;
   if (message.replyTo !== undefined) meta.reply_to = message.replyTo;
+  // a hub notice: its kind (`mute`, …) and its typed facts (a mute's refusal: code, rule, until, pair)
+  if (message.kind !== undefined) meta.kind = message.kind;
+  if (message.detail !== undefined) meta.detail = JSON.stringify(message.detail);
   if (topic) {
     meta.topic = topic.id;
     meta.topic_title = topic.title;
@@ -248,7 +251,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: false, error: `unknown tool ${req.params.name}` }, true);
       }
     } catch (err) {
-      return text({ ok: false, error: err instanceof Error ? err.message : String(err) }, true);
+      const refusal = err instanceof Error && 'refusal' in err ? (err as Error & { refusal: unknown }).refusal : undefined;
+      return text({ ok: false, error: err instanceof Error ? err.message : String(err), ...(refusal ? { refusal } : {}) }, true);
     }
   });
 

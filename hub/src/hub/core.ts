@@ -7,6 +7,7 @@ import {
   UPDATE_HINT,
   type Hello,
   type HubEvent,
+  type HygieneRefusal,
   type Message,
   type Presence,
   type RefusalCode,
@@ -25,7 +26,7 @@ import type { RolesSource } from '../roles/config.ts';
 import { clauseText, revokedText } from '../roles/clause.ts';
 import { resolveTag } from '../address.ts';
 import { Store } from './store.ts';
-import { Hygiene, type LoopBreaker, type RateLimit } from './hygiene.ts';
+import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
 import type { LogFn } from '../log.ts';
 
@@ -86,6 +87,10 @@ export type CoreOptions = {
   /** The tracker as a topic's binding sees it (`topic.create` with an item); absent, a binding is refused. */
   items?: TopicItems;
 };
+
+/** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
+ *  delivered to (nobody by default: the record is for reading), and its typed facts. */
+export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown> };
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
 export const COORDINATOR = 'coordinator';
@@ -398,6 +403,44 @@ export class HubCore {
     this.#send(notice, name);
   }
 
+  /**
+   * Record a hub notice in a topic (Agents by default): the one path every lifecycle record takes (`agents-topic.ts`
+   * maps the hub's domain events to it; the loop breaker's mute and #30's permission refusals call it directly).
+   * Subscribers see it as a `message` event with its `kind`; `to` also delivers it to those sessions. Returns its id.
+   */
+  noticeInTopic(topicId: string, notice: TopicNotice): string | null {
+    const topic = this.#store.topic(topicId);
+    if (!topic) return null;
+    const to = [...new Set(notice.to ?? [])];
+    const message: Message = {
+      id: randomUUID(),
+      from: 'hub',
+      fromKind: 'hub',
+      via: 'hub',
+      to,
+      text: notice.text,
+      ts: this.#now().toISOString(),
+      topic: topic.id,
+      kind: notice.kind,
+      ...(notice.detail ? { detail: notice.detail } : {}),
+    };
+    this.#store.record(
+      message,
+      to.map((session) => ({ session, state: 'queued' as const })),
+      this.#now().getTime(),
+    );
+    this.#store.touchTopic(topic.id, message.ts);
+    this.#emitMessage(message);
+    for (const n of to) this.#send(message, n);
+    return message.id;
+  }
+
+  /** A session as it is shown everywhere: `name [Role]` with the role it holds (live, else as remembered). */
+  label(name: string): string {
+    const c = this.#live.get(name);
+    return withRole(name, c ? c.role : this.#store.roleOf(name));
+  }
+
   setStatus(name: string, text: string): void {
     const c = this.#live.get(name);
     if (!c) throw new Error(`unknown session ${name}`);
@@ -581,7 +624,7 @@ export class HubCore {
   /**
    * Record the session's role clause (or, with `previous`, its revocation) as a hub notice to it: it rides the
    * delivery pipeline (queued → delivered on the spoke's ack → injected by the session's adapter). A newer notice
-   * supersedes what an older one still waits for. The log is the journal of every delivery until #34.
+   * supersedes what an older one still waits for. Journalled with its deliveries.
    */
   #recordClause(c: Connection, reason: string, previous?: string | null, injected = false): string | null {
     if (!this.#roles) return null;
@@ -592,7 +635,7 @@ export class HubCore {
     const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [c.name], text, ts: this.#now().toISOString() };
     this.#store.record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);
     this.#roleNotices.set(message.id, clause);
-    // TODO(#34): the journal; until it exists, the hub's log records each delivery
+    // journalled with every delivery (`journal.ts`)
     this.#log({ event: c.role !== null ? 'role-clause' : 'role-revoked', session: c.name, sessionId: c.sessionId, role: c.role, previous: previous ?? null, reason, id: message.id, superseded: superseded.length });
     return message.id;
   }
@@ -856,12 +899,19 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[]): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
-    // Agents is the record of what agents send each other (spec 4.5): the human reads it, never writes in it
-    if (topic.id === AGENTS.id) throw new Error(`${topic.title} is read-only: it records what agents send each other; write in General or another topic`);
+    if (topic.id === AGENTS.id) {
+      // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
+      // as a reply to an agent's message, which addresses that message's sender
+      if (replyTo === undefined) throw new Error(`${topic.title} is read-only: it records what agents send each other; reply to a message there, or write in General or another topic`);
+      const original = this.#store.message(replyTo);
+      if (!original || original.topic !== AGENTS.id) throw new Error(`no message "${replyTo}" in ${topic.title} to reply to`);
+      if (original.fromKind !== 'agent') throw new Error(`a hub notice has no sender to answer: reply to an agent's message in ${topic.title}`);
+      to = [original.from];
+    }
     const size = this.#hygiene.sizeRefusal(text);
-    if (size) throw new Error(size);
+    if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });
     if (!text.trim()) throw new Error('an empty message is not sent');
     const nowMs = this.#now().getTime();
     let tags: string[];
@@ -887,6 +937,7 @@ export class HubCore {
       to: [...sessions, ...placeholders],
       text,
       ts: this.#now().toISOString(),
+      ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
     };
     this.#store.record(
@@ -896,6 +947,8 @@ export class HubCore {
     );
     this.#store.touchTopic(topic.id, message.ts);
     this.#store.markTopicRead(topic.id, message.id);
+    // a person wrote to these sessions: their pairs count afresh (the loop breaker mutes a pair with no human between)
+    for (const n of sessions) this.#hygiene.humanTouched(this.#identity(n));
     this.#emitMessage(message);
     this.#move(topic, 'human', 'a human message');
     this.#publishTopics();
@@ -906,7 +959,7 @@ export class HubCore {
       outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} offline — queued` } : { to: tag, outcome: 'delivered' });
     }
     for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
-    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     const stage = this.#store.stage(message.id);
     return { message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
   }
@@ -924,27 +977,43 @@ export class HubCore {
     const topicRef: TopicRef = { id: topic.id, title: topic.title };
     const nowMs = this.#now().getTime();
     const size = this.#hygiene.sizeRefusal(text);
-    if (size) throw new Error(size);
+    if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });
     const self = this.#identity(from);
     const rate = this.#hygiene.rateRefusal(self, nowMs);
-    if (rate) throw new Error(rate);
+    if (rate) {
+      this.#log({ event: 'rate-limited', session: from });
+      throw new HygieneError(rate, { code: 'hygiene', rule: 'rate' });
+    }
     const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders');
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     for (const { tag, reason } of empty) outcomes.push({ to: tag, outcome: 'empty', reason });
     // the loop breaker: a muted pair refuses; a pair crossing the threshold gets muted and refuses
-    const refused = new Map<string, string>();
+    const refused = new Map<string, { reason: string; refusal: HygieneRefusal }>();
+    const loopRefusal = (other: string): HygieneRefusal => {
+      const until = this.#hygiene.mutedUntil(self, other, nowMs);
+      return { code: 'hygiene', rule: 'loop', ...(until !== null ? { until: new Date(until).toISOString() } : {}) };
+    };
     for (const n of sessions) {
       const other = this.#identity(n);
       const muted = this.#hygiene.muteRefusal(self, other, nowMs, [from, n]);
       if (muted) {
-        refused.set(n, muted);
+        refused.set(n, { reason: muted, refusal: loopRefusal(other) });
         continue;
       }
       const until = this.#hygiene.countPair(self, other, nowMs);
       if (until !== null) {
-        refused.set(n, this.#hygiene.muteRefusal(self, other, nowMs, [from, n]) as string);
-        // TODO(#23): tell the human in the UI; until then the mute is only journalled.
-        this.#log({ event: 'loop-breaker', pair: [from, n].sort().join('|'), until: new Date(until).toISOString() });
+        const reason = this.#hygiene.muteRefusal(self, other, nowMs, [from, n]) as string;
+        const refusal = loopRefusal(other);
+        refused.set(n, { reason, refusal });
+        const pair = [from, n].sort();
+        this.#log({ event: 'loop-breaker', pair: pair.join('|'), until: new Date(until).toISOString() });
+        // both parties get the typed refusal, and Agents records the mute: lifted by the cool-down or `cland hub unmute`
+        this.noticeInTopic(AGENTS.id, {
+          kind: 'mute',
+          to: pair,
+          text: `${this.label(pair[0] as string)} ↔ ${this.label(pair[1] as string)} muted: ${reason.replace(/^loop breaker: \S+ ↔ \S+ /, '')}; lift it early with \`cland hub unmute ${pair.join(' ')}\``,
+          detail: { ...refusal, pair },
+        });
       }
     }
     for (const n of refused.keys()) sessions.delete(n);
@@ -975,7 +1044,8 @@ export class HubCore {
     for (const [tag, names] of tagOf) {
       const blocked = names.filter((n) => refused.has(n));
       if (blocked.length === names.length) {
-        outcomes.push({ to: tag, outcome: 'refused', reason: refused.get(blocked[0] as string) as string });
+        const r = refused.get(blocked[0] as string) as { reason: string; refusal: HygieneRefusal };
+        outcomes.push({ to: tag, outcome: 'refused', reason: r.reason, refusal: r.refusal });
         continue;
       }
       const queued = names.filter((n) => states.get(n) === 'queued');
@@ -987,7 +1057,24 @@ export class HubCore {
       this.#log({ event: 'send-refused', from, to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
       return { message, outcomes, topic: topicRef };
     }
-    this.#log({ event: 'send', id: message.id, from, to: message.to, topic: topic.id, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    this.#log({ event: 'send', id: message.id, from, to: message.to, topic: topic.id, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     return { message, outcomes, topic: topicRef };
+  }
+
+  /**
+   * A person lifts the loop breaker's mute of two sessions (by name; `cland hub unmute`, the UI's `hygiene.unmute`):
+   * the pair's mute and count go, and Agents records it. Whether a mute was running.
+   */
+  unmute(a: string, b: string, by = HUMAN): { lifted: boolean; pair: [string, string] } {
+    const [x, y] = [HubCore.#normalized([a])[0], HubCore.#normalized([b])[0]];
+    if (!x || !y) throw new Error('unmute needs two session names');
+    if (x === y) throw new Error('unmute needs two different sessions');
+    const known = new Set([...this.#live.keys(), ...this.#store.sessionNames()]);
+    for (const n of [x, y]) if (!known.has(n)) throw new Error(`no session named "${n}" is known to this hub`);
+    const pair = [x, y].sort() as [string, string];
+    const lifted = this.#hygiene.unmute(this.#identity(x), this.#identity(y));
+    this.#log({ event: 'unmuted', pair: pair.join('|'), lifted, by });
+    if (lifted) this.noticeInTopic(AGENTS.id, { kind: 'unmute', to: pair, text: `${this.label(pair[0])} ↔ ${this.label(pair[1])} unmuted by ${by}: they may write to each other again`, detail: { pair } });
+    return { lifted, pair };
   }
 }

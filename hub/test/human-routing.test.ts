@@ -145,7 +145,7 @@ test('the human cannot write into Agents; an agent-to-agent send still lands the
   await ui.request({ type: 'subscribe' });
   const refused = await ui.request({ type: 'topic.send', topic: 'agents', text: 'let me in' });
   assert.equal(refused.ok, false);
-  assert.equal(refused.error, 'Agents is read-only: it records what agents send each other; write in General or another topic');
+  assert.equal(refused.error, 'Agents is read-only: it records what agents send each other; reply to a message there, or write in General or another topic');
   const empty = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.deepEqual((empty.value as { messages: unknown[] }).messages, []);
   assert.equal(ui.frames.some((f) => f.type === 'message'), false);

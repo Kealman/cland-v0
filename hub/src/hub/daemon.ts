@@ -18,6 +18,8 @@ import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { RolesFile } from '../roles/config.ts';
 import { readProjectConfig } from '../init/config.ts';
+import { Journal, journalPath } from './journal.ts';
+import { agentsRecord } from './agents-topic.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -37,7 +39,7 @@ export type Daemon = {
 };
 
 export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode } = {}): Promise<Daemon> {
-  const log = options.log ?? (() => {});
+  const processLog = options.log ?? (() => {});
   const listen = options.listen ?? 'required';
   const l = layout(root);
   mkdirSync(l.dir, { recursive: true });
@@ -58,6 +60,12 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     lock.release();
     throw err;
   }
+  // the journal (`.cland/journal.jsonl`), appended to across restarts, and the Agents record: both fed by the log
+  // closure every part of the hub logs through, so a domain event is journalled and recorded by being logged
+  const journal = new Journal(journalPath(l.dir));
+  const agents = agentsRecord();
+  const log: LogFn = agents.tap(journal.tap(processLog));
+  journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root });
 
   const startedAt = new Date();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
@@ -100,9 +108,11 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   } catch (err) {
     roles.stop();
     tracker.stop();
+    journal.close();
     lock.release();
     throw err;
   }
+  agents.attach(hub.core);
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
@@ -117,6 +127,8 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       roles.stop();
       // the discovery file and then the lock go last: a successor can only start once this hub is gone
       removeDiscovery(l.discovery, process.pid);
+      journal.write({ event: 'hub-stopped', pid: process.pid });
+      journal.close();
       lock.release();
       log({ event: 'stopped' });
       resolveStopped();
@@ -136,6 +148,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
         await hub.close();
         tracker.stop();
         roles.stop();
+        journal.close();
         lock.release();
         throw err;
       }

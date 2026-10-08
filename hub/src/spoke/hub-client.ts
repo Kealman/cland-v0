@@ -325,7 +325,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         this.#pending.delete(frame.id);
         clearTimeout(p.timer);
         if (frame.ok) p.resolve(frame.value);
-        else p.reject(new Error(frame.error));
+        else p.reject(Object.assign(new Error(frame.error), frame.refusal ? { refusal: frame.refusal } : {}));
         break;
       }
       case 'error':

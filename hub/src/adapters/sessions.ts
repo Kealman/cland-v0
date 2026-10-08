@@ -312,7 +312,7 @@ export class Sessions {
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
     this.#table.update(p.name, { status: 'exited' });
-    // TODO(#34): the journal; until it exists, the hub's log carries the event
+    // journalled (`journal.ts`) and recorded in Agents as a death (`agents-topic.ts`)
     this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail });
     this.#core.setSessionState(sessionId, p.name, 'unknown', 'process');
     this.#vacate(p, 'its harness exited');

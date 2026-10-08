@@ -3,7 +3,9 @@
 // harness session id, never its name, which a rename changes); names appear only in the reasons. With a memory (the hub's store) every change is
 // written through, so a restarted hub keeps a running mute, a pair's count and a session's rate window.
 //
-// TODO(config): the thresholds are constants for now; a later ticket moves them into the project's config.
+// The constants below are the defaults (BCAS's); a project's `.cland/config.toml` `[hygiene]` overrides them at hub
+// start (`src/init/config.ts`, read by the daemon).
+import type { HygieneRefusal } from '../protocol.ts';
 
 export type RateLimit = { max: number; windowMs: number };
 export type LoopBreaker = { max: number; windowMs: number; muteMs: number };
@@ -11,6 +13,16 @@ export type LoopBreaker = { max: number; windowMs: number; muteMs: number };
 export const RATE_LIMIT: RateLimit = { max: 30, windowMs: 10 * 60 * 1000 };
 export const LOOP_BREAKER: LoopBreaker = { max: 20, windowMs: 5 * 60 * 1000, muteMs: 10 * 60 * 1000 };
 export const MAX_TEXT_BYTES = 8 * 1024;
+
+/** A send hygiene refused as a whole (the size cap, the rate limit): the reason, and the typed refusal the
+ *  request's result carries (`{ code: 'hygiene', rule }`). */
+export class HygieneError extends Error {
+  readonly refusal: HygieneRefusal;
+  constructor(message: string, refusal: HygieneRefusal) {
+    super(message);
+    this.refusal = refusal;
+  }
+}
 
 /** One piece of hygiene's state: a session's send instants, a pair's instants, or a pair's mute end. */
 export type HygieneRow = { kind: 'outbound' | 'pair' | 'mute'; key: string; value: string };
@@ -98,6 +110,12 @@ export class Hygiene {
     // A hard cool-down, not "waiting for a human message": a message from a person only resets the count
     // for the NEXT window, so a comment in a real loop cannot reopen it; lifting it early is `unmute`.
     return `loop breaker: ${names[0]} ↔ ${names[1]} exchanged more than ${this.#loop.max} messages in ${minutes(this.#loop.windowMs)} min with no human in between — a hard ${minutes(this.#loop.muteMs)}-min cool-down, muted until ${new Date(until).toISOString()}`;
+  }
+
+  /** When a running mute of the pair ends (ms epoch), or null. */
+  mutedUntil(a: string, b: string, now: number): number | null {
+    const until = this.#muted.get(pairKey(a, b));
+    return until !== undefined && until > now ? until : null;
   }
 
   /** Count an agent-to-agent message; when it crosses the threshold the pair is muted and the mute's end is returned. */
