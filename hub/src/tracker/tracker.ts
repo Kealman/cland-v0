@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
-import { TrackerIndex, type Claim, type IndexedItem, type ListFilter } from './index-db.ts';
+import { TrackerIndex, type Claim, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
   COMMENTS_HEADING,
   fileNameOf,
@@ -55,7 +55,11 @@ export type ItemView = IndexedItem & {
   github?: GithubRef;
 };
 
-export type ItemSummary = IndexedItem & { claim: Claim | null };
+/** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
+export type ItemSummary = IndexedItem & { claim: Claim | null; verdicts: IndexedVerdict[] };
+
+/** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
+export type ItemChange = { id: string; item: ItemSummary | null };
 
 export type CreateInput = {
   title: string;
@@ -112,6 +116,8 @@ export class Tracker {
   readonly #writePauseMs: number;
   /** Told when an item closes (the hub's close, an edit to `closed`, a hand edit): its topic closes too (spec 4.5). */
   readonly #closedListeners = new Set<(id: string) => void>();
+  /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
+  readonly #changeListeners = new Set<(change: ItemChange) => void>();
 
   constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number }) {
     this.#root = options.root;
@@ -127,6 +133,25 @@ export class Tracker {
   onClosed(listener: (id: string) => void): () => void {
     this.#closedListeners.add(listener);
     return () => this.#closedListeners.delete(listener);
+  }
+
+  /** Listen to index changes; returns the unsubscribe. */
+  onChange(listener: (change: ItemChange) => void): () => void {
+    this.#changeListeners.add(listener);
+    return () => this.#changeListeners.delete(listener);
+  }
+
+  #changed(id: string): void {
+    if (this.#changeListeners.size === 0) return;
+    const indexed = this.#index.get(id);
+    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), verdicts: this.#index.verdicts().get(id) ?? [] } : null;
+    for (const listener of [...this.#changeListeners]) {
+      try {
+        listener({ id, item });
+      } catch (err) {
+        this.#log({ event: 'task-change-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
   }
 
   #closed(id: string): void {
@@ -222,7 +247,10 @@ export class Tracker {
     }
     const id = item.fm.id;
     // the id moved out of this file (someone rewrote it by hand): the old row goes
-    if (knownId && knownId !== id) this.#index.remove(knownId);
+    if (knownId && knownId !== id) {
+      this.#index.remove(knownId);
+      this.#changed(knownId);
+    }
     const previous = this.#index.metaOf(id);
     if (previous && previous.file !== name && existsSync(join(this.#dir, previous.file))) {
       this.#log({ event: 'task-duplicate-id', id, files: [previous.file, name], indexed: name });
@@ -234,6 +262,7 @@ export class Tracker {
     const wasOpen = this.#index.get(id)?.state === 'open';
     this.#index.put(item, { file: name, hash, source: 'hand', indexedAt: now });
     this.#log({ event: 'task-reindexed', id, file: name, source: 'hand' });
+    this.#changed(id);
     if (wasOpen && item.fm.state === 'closed') this.#closed(id);
   }
 
@@ -242,6 +271,7 @@ export class Tracker {
     if (!id) return;
     this.#index.remove(id);
     this.#log({ event: 'task-removed', id, file: name });
+    this.#changed(id);
   }
 
   // ---------------------------------------------------------------- reading
@@ -279,7 +309,8 @@ export class Tracker {
 
   list(filter: ListFilter = {}): ItemSummary[] {
     const claims = this.#index.claims();
-    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null }));
+    const verdicts = this.#index.verdicts();
+    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, verdicts: verdicts.get(i.id) ?? [] }));
   }
 
   // ---------------------------------------------------------------- writing
@@ -304,6 +335,7 @@ export class Tracker {
     const before = read ? hashOrNull(() => readFileSync(path, 'utf8')) : null;
     renameSync(tmp, path);
     this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+    this.#changed(written.fm.id);
     if (read) {
       const replaced = hashOrNull(() => readWhole(read.fd));
       if (before !== read.hash || replaced !== read.hash) {
@@ -456,6 +488,7 @@ export class Tracker {
     if (!claim) return;
     this.#index.setClaim(id, null);
     this.#log({ event: 'task-released', id, session: claim.session, reason: 'closed' });
+    this.#changed(id);
   }
 
   link(actor: Actor, rawId: string, input: LinkInput): ItemView {
@@ -521,6 +554,7 @@ export class Tracker {
       if (held) {
         this.#index.setClaim(id, null);
         this.#log({ event: 'task-released', id, session: held.session, sessionId: held.sessionId, by: actor.name });
+        this.#changed(id);
       }
       return { id, claim: null };
     }
@@ -529,10 +563,12 @@ export class Tracker {
       if (held.session === actor.name && held.role === actor.role) return { id, claim: held };
       const renamed: Claim = { ...held, session: actor.name, role: actor.role };
       this.#index.setClaim(id, renamed);
+      this.#changed(id);
       return { id, claim: renamed };
     }
     const claim: Claim = { session: actor.name, sessionId: actor.id, role: actor.role, claimedAt: this.#now().toISOString() };
     this.#index.setClaim(id, claim);
+    this.#changed(id);
     this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: actor.id, role: actor.role, ...(other ? { took: held.session } : {}) });
     return { id, claim };
   }

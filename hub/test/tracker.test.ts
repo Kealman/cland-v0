@@ -3,7 +3,7 @@
 // index (through `task list` / `task view`) and the hub's log.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
@@ -127,7 +127,6 @@ test('a hand edit of an item file is re-indexed within a second', async (t) => {
   // a file removed by hand leaves the index
   await writeFile(join(tasksDir(root), 'T-2-second.md'), '---\nid: T-2\ntitle: Second\n---\n');
   await eventually(1000, async () => assert.equal((await json<{ items: Summary[] }>(root, 'list')).items.length, 2));
-  const { rm } = await import('node:fs/promises');
   await rm(join(tasksDir(root), 'T-2-second.md'));
   await eventually(1000, async () => assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.id), ['T-1']));
 });
@@ -366,6 +365,50 @@ test('the task frames work over the Unix socket as the CLI sends them', async (t
   assert.deepEqual(((await s.next()) as { value: { items: Summary[] } }).value.items.map((i) => i.id), ['T-1']);
   s.send({ type: 'task.view', id: 'v1', item: 'T-2' });
   assert.deepEqual(await s.next(), { type: 'result', id: 'v1', ok: false, error: 'no item T-2' });
+});
+
+test('a subscribed UI hears a `task` event on every index change; task.list carries the verdicts', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const s = await connectSocket(discovery.socket);
+  t.after(() => s.close());
+  s.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
+  assert.equal((await s.next()).type, 'welcome');
+  s.send({ type: 'subscribe', id: 's1' });
+  assert.deepEqual(await s.next(), { type: 'result', id: 's1', ok: true, value: { subscribed: true } });
+  type TaskEvent = { type: 'task'; id: string; item: (Summary & { verdicts: Array<{ verdict: string; result: string; run: string }> }) | null };
+  const nextTask = async (): Promise<TaskEvent> => {
+    for (;;) {
+      const f = (await s.next()) as { type: string };
+      if (f.type === 'task') return f as TaskEvent;
+    }
+  };
+
+  // a hub write
+  ok(await cland(root, 'task', 'create', 'Evented'));
+  let ev = await nextTask();
+  assert.equal(ev.id, 'T-1');
+  assert.equal(ev.item?.title, 'Evented');
+  assert.deepEqual(ev.item?.verdicts, []);
+  // a verdict
+  ok(await cland(root, 'task', 'comment', 'T-1', 'Two findings.', '--verdict', 'review', '--result', 'not clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
+  ev = await nextTask();
+  assert.deepEqual(ev.item?.verdicts.map((v) => [v.verdict, v.result, v.run]), [['review', 'not clear', 'r-1']]);
+  const list = await json<{ items: Array<Summary & { verdicts: Array<{ verdict: string; result: string; by: string }> }> }>(root, 'list');
+  assert.deepEqual(list.items[0]?.verdicts.map((v) => [v.verdict, v.result, v.by]), [['review', 'not clear', 'rev-1 [reviewer]']]);
+  // a claim
+  ok(await cland(root, 'task', 'claim', 'T-1', '--as', 'impl-1', '--role', 'implementer'));
+  ev = await nextTask();
+  assert.equal(ev.item?.claim?.session, 'impl-1');
+  // a hand edit, read by the watcher
+  const file = join(tasksDir(root), (await itemFiles(root))[0] ?? '');
+  await writeFile(file, (await readFile(file, 'utf8')).replace('title: Evented', 'title: Edited by hand'));
+  ev = await nextTask();
+  assert.equal(ev.item?.title, 'Edited by hand');
+  // a file removed
+  await rm(file);
+  ev = await nextTask();
+  assert.deepEqual(ev, { type: 'task', id: 'T-1', item: null });
 });
 
 test('the task.* tools work through a spoke over MCP, acting as the spoke\'s session', async (t) => {

@@ -76,6 +76,9 @@ export type IndexedItem = {
   file: string;
 };
 
+/** A verdict as the index holds it: the verdict comment's header, its author and time. */
+export type IndexedVerdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string; author: string; at: string };
+
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
 /** A claim: who holds it by identity (`sessionId`, stable across renames) and by the name it had then (`session`). */
@@ -230,6 +233,19 @@ export class TrackerIndex {
       updated: r.updated as string,
       file: r.file as string,
     };
+  }
+
+  /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
+  verdicts(): Map<string, IndexedVerdict[]> {
+    const rows = this.#db.prepare('select item_id, verdict, result, by, run, author, at from tracker_verdicts order by item_id, seq').all() as Row[];
+    const out = new Map<string, IndexedVerdict[]>();
+    for (const r of rows) {
+      const id = r.item_id as string;
+      const list = out.get(id) ?? [];
+      list.push({ verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string });
+      out.set(id, list);
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------- claims
