@@ -1,7 +1,7 @@
 // The Claude Code adapter (spec 4.3, research `harness-surfaces` §1). Claude Code has no server a host can
 // join; everything comes from inside each session or from its own CLI:
 //
-//   spawn    `claude --bg --session-id <uuid> --name <name> [--model m] --mcp-config <json> --settings <json>
+//   spawn    `claude --bg --session-id <uuid> --name <name> [--model m] [--effort e] --mcp-config <json> --settings <json>
 //            --plugin-dir <cland mod>` in the session's cwd. The MCP config starts the spoke with the session's
 //            identity; the settings add the cland hooks and the variables the mod reads. Both are passed inline:
 //            nothing is written into the project. The hub's secret is never on the command line — the spoke,
@@ -244,7 +244,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return /claude attach (\S+)/.exec(stdout)?.[1]?.replace(/[`'".,]+$/, '') ?? /\(([0-9a-f]{6,})\)/.exec(stdout)?.[1] ?? /\b([0-9a-f]{8})\b/.exec(stdout)?.[1] ?? null;
   }
 
-  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean): Promise<HarnessProcess> {
+  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null): Promise<HarnessProcess> {
     // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
     // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
     const args = [
@@ -253,6 +253,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       '--name',
       p.name,
       ...(p.model ? ['--model', p.model] : []),
+      ...(effort ? ['--effort', effort] : []),
       ...this.#sessionFlags(p.name, p.role, p.sessionId),
     ];
     const r = await this.#run(args, p.cwd);
@@ -277,7 +278,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false);
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, request.effort ?? null);
   }
 
   attachCommand(p: HarnessProcess): string {

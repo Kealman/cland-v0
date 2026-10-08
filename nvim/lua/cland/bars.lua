@@ -1,0 +1,269 @@
+-- The bars (spec section 5). The top bar is the tabline: one full-width row, no window to guard against
+-- focus, `:only` or CTRL-W. It shows the project, the centre view's title, the Coordinator chip with its
+-- state (or "no coordinator"), the "needs you" count and the sessions count. The status line (global,
+-- `laststatus=3`) shows the mode, the centre view's context, the hub's state, the sessions and key
+-- hints. Every window's winbar is its panel header.
+local api = vim.api
+local state = require('cland.state')
+local hl = require('cland.hl')
+
+local M = {}
+
+--- {text, hl, click} chunks as a statusline-format string.
+function M.stl(chunks)
+  local out = {}
+  for _, c in ipairs(chunks) do
+    local piece = '%#' .. (c[2] or 'StatusLine') .. '#' .. tostring(c[1]):gsub('%%', '%%%%')
+    if c[3] then
+      piece = '%' .. c[3] .. '@v:lua.ClandTopClick@' .. piece .. '%X'
+    end
+    out[#out + 1] = piece
+  end
+  return table.concat(out)
+end
+
+local function width(chunks)
+  local w = 0
+  for _, c in ipairs(chunks) do
+    w = w + api.nvim_strwidth(tostring(c[1]))
+  end
+  return w
+end
+
+local function views()
+  return require('cland.views')
+end
+
+-- Top bar ---------------------------------------------------------------------------------------------
+
+function M.topbar()
+  local S = state.S
+  local left = {
+    { ' cland ', 'ClandBrand' },
+    { S.project .. ' ', 'ClandDimBar' },
+    { '│ ', 'ClandFaintBar' },
+    { views().title(S.ui.view), 'ClandTextBar' },
+  }
+  local right = {}
+  local coord = state.coordinator()
+  if coord then
+    local st = hl.SESSION[coord.state] or hl.SESSION.unknown
+    local words = st[3]
+    if state.reliability(coord) == 'heuristic' then
+      words = words .. ' (heuristic)'
+    end
+    right[#right + 1] = { ' ', 'ClandChip', 1 }
+    right[#right + 1] = { st[1], st[2] .. 'Chip', 1 }
+    right[#right + 1] = { ' ' .. coord.name .. ' ', 'ClandTextChip', 1 }
+    local meta = 'Coordinator · '
+    if vim.o.columns >= 150 and coord.harness then
+      meta = meta .. (require('cland.panels').HARNESS[coord.harness] or coord.harness) .. (coord.model and (' · ' .. coord.model) or '') .. ' · '
+    end
+    right[#right + 1] = { meta .. words .. ' ', 'ClandDimChip', 1 }
+  else
+    right[#right + 1] = { ' ▲ no coordinator · messages queue in the hub ', 'ClandChipWarn', 1 }
+  end
+  right[#right + 1] = { '  ', 'TabLineFill' }
+  local n = state.needs_you()
+  if n > 0 then
+    right[#right + 1] = { ' ▲', 'ClandAmberChip', 2 }
+    right[#right + 1] = { ' needs you ', 'ClandTextChip', 2 }
+    right[#right + 1] = { ' ' .. n .. ' ', 'ClandChipBadge', 2 }
+  else
+    right[#right + 1] = { ' ✓ needs you 0 ', 'ClandGreenChip', 2 }
+  end
+  right[#right + 1] = { '  ', 'TabLineFill' }
+  local c = state.counts()
+  right[#right + 1] = { ' sessions ', 'ClandTextChip', 3 }
+  right[#right + 1] = { ' ' .. c.live .. ' ', 'ClandChipBadgeN', 3 }
+  if c.waiting > 0 then
+    right[#right + 1] = { ' ' .. c.waiting .. '▲', 'ClandAmberChip', 3 }
+  end
+  if c.down > 0 then
+    right[#right + 1] = { ' ' .. c.down .. '✗', 'ClandRedChip', 3 }
+  end
+  right[#right + 1] = { ' ', 'ClandChip', 3 }
+  right[#right + 1] = { ' ', 'TabLineFill' }
+  return M.stl(left) .. '%<%#TabLineFill#%=' .. M.stl(right)
+end
+
+--- The top bar's chips are clickable: the Coordinator attaches it, "needs you" opens the inbox,
+--- "sessions" the sessions panel.
+function _G.ClandTopClick(minwid)
+  vim.schedule(function()
+    local layout = require('cland.layout')
+    local ui = state.S.ui
+    if minwid == 1 then
+      local coord = state.coordinator()
+      if coord then
+        layout.show({ kind = 'session', id = coord.name }, { insert = true })
+      elseif ui.right ~= 'sessions' then
+        layout.right_panel('sessions')
+      end
+    elseif minwid == 2 and ui.right ~= 'inbox' then
+      layout.right_panel('inbox')
+    elseif minwid == 3 and ui.right ~= 'sessions' then
+      layout.right_panel('sessions')
+    end
+  end)
+end
+
+-- Status line -----------------------------------------------------------------------------------------
+
+--- The centre view's context: the left part of the status line, always naming the view.
+function M.context()
+  local v = state.S.ui.view
+  local title = views().title(v)
+  if v.kind == 'thread' then
+    if v.id == 'agents' then
+      return 'Agents · topic · agent-to-agent messages'
+    end
+    local coord = state.coordinator()
+    return title .. ' · topic open · to @coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues)')
+  elseif v.kind == 'session' then
+    local s = state.session(v.id)
+    local t = require('cland.sessions').term(v.id)
+    local how = t and 'attached' or 'not attached'
+    if not s then
+      return v.id .. ' · session · ' .. how
+    end
+    return v.id .. ' · session · ' .. how .. ' · ' .. (s.live and s.state or 'down') .. (s.item and (' · ' .. s.item) or '')
+  elseif v.kind == 'item' then
+    local it = state.item(v.id)
+    return v.id .. ' · item' .. (it and (' · ' .. it.state .. (it.claim and (' · claim ' .. it.claim.session) or '')) or '')
+  elseif v.kind == 'board' then
+    return 'Board · ' .. #state.S.items .. ' items'
+  elseif v.kind == 'log' then
+    return 'Agents log'
+  elseif v.kind == 'inbox' then
+    return 'Inbox · full width · ' .. state.needs_you() .. ' need you'
+  end
+  return title
+end
+
+local MODES = {
+  n = { ' NORMAL ', 'ClandModeN' },
+  i = { ' INSERT ', 'ClandModeI' },
+  t = { ' TERMINAL ', 'ClandModeT' },
+  c = { ' COMMAND ', 'ClandModeN' },
+  v = { ' VISUAL ', 'ClandModeN' },
+  V = { ' V-LINE ', 'ClandModeN' },
+  nt = { ' NORMAL ', 'ClandModeN' },
+}
+
+local HUB_WORDS = {
+  connected = { 'hub: connected', 'ClandDimBar' },
+  connecting = { 'hub: connecting', 'ClandAmberBar' },
+  starting = { 'hub: starting', 'ClandAmberBar' },
+  disconnected = { 'hub: reconnecting', 'ClandAmberBar' },
+  waiting = { 'hub: none running', 'ClandAmberBar' },
+  failed = { 'hub: failed', 'ClandRedBar' },
+  refused = { 'hub: refused', 'ClandRedBar' },
+}
+
+function M.status()
+  local mode = api.nvim_get_mode().mode
+  local m = MODES[mode] or MODES[mode:sub(1, 1)] or { ' ' .. mode .. ' ', 'ClandModeN' }
+  local hub = HUB_WORDS[state.S.hub.state] or { 'hub: ' .. state.S.hub.state, 'ClandDimBar' }
+  local c = state.counts()
+  local left = {
+    m,
+    { ' ' .. M.context() .. ' ', 'ClandTextBar' },
+    { '│ ', 'ClandFaintBar' },
+    hub,
+    { ' │ ', 'ClandFaintBar' },
+    { ('sessions: %d busy · %d waiting · %d idle'):format(c.busy, c.waiting, c.idle), 'ClandDimBar' },
+  }
+  if state.S.ui.preset then
+    left[#left + 1] = { ' │ ', 'ClandFaintBar' }
+    left[#left + 1] = { 'preset ' .. state.S.ui.preset, 'ClandBlueBar' }
+  end
+  local flash = state.S.flash
+  if flash and vim.uv.now() - flash.at < 8000 then
+    left[#left + 1] = { ' │ ', 'ClandFaintBar' }
+    left[#left + 1] = { flash.text, flash.group }
+  end
+  local hint
+  local role = vim.b.cland_role
+  if mode == 't' then
+    hint = 'keys go to the session · C-\\ C-n leaves · then ␣␣ back'
+  elseif role == 'composer' and mode == 'i' then
+    hint = 'Enter sends · S-Enter newline · Esc leaves'
+  else
+    hint = '␣i ␣s ␣t ␣n panels · ␣p pick · ␣␣ back · gi gt gs'
+  end
+  local room = vim.o.columns - width(left) - 1
+  if api.nvim_strwidth(hint) + 1 > room then
+    hint = room > 2 and vim.fn.strcharpart(hint, 0, room - 2) .. '…' or ''
+  end
+  return M.stl(left) .. '%<%#StatusLine#%=' .. M.stl({ { hint .. ' ', 'ClandDimBar' } })
+end
+
+-- Winbars: the panel headers ----------------------------------------------------------------------------
+
+local function head(win, label, right)
+  local focused = win == api.nvim_get_current_win()
+  return M.stl({ { ' ' .. label .. ' ', focused and 'ClandHeadFocus' or 'ClandHead' } }) .. '%<%#WinBar#%=' .. M.stl(right or {}) .. '%#WinBar# '
+end
+
+function M.winbar(win)
+  local buf = api.nvim_win_get_buf(win)
+  local role = vim.b[buf].cland_role
+  if role == 'items' then
+    return head(win, 'ITEMS', { { #state.S.items .. ' items', 'ClandDimBar' } })
+  elseif role == 'sessions' then
+    local c = state.counts()
+    return head(win, 'SESSIONS', { { c.live .. ' live · ' .. c.waiting .. ' waiting' .. (c.down > 0 and (' · ' .. c.down .. ' down') or ''), 'ClandDimBar' } })
+  elseif role == 'topics' then
+    return head(win, 'TOPICS', { { #state.S.topics .. ' topics', 'ClandDimBar' } })
+  elseif role == 'inbox' then
+    return head(win, 'INBOX', { { 'nothing needs you', 'ClandGreenBar' } })
+  elseif role == 'thread' then
+    local t = state.topic(vim.b[buf].cland_topic)
+    return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', { { 'topic open', 'ClandTealBar' } })
+  elseif role == 'composer' then
+    local coord = state.coordinator()
+    return head(win, 'to: Coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues it)'), { { 'Enter sends · S-Enter newline', 'ClandDimBar' } })
+  elseif role == 'session' then
+    local name = vim.b[buf].cland_session
+    local s = state.session(name)
+    if not s then
+      return head(win, name or 'session')
+    end
+    local g, ghl = require('cland.panels').session_glyph(s)
+    return head(win, s.label, { { g .. ' ' .. require('cland.panels').session_meta(s), ghl .. 'Bar' }, { s.item and (' · ' .. s.item) or '', 'ClandDimBar' } })
+  elseif role == 'item' or role == 'board' or role == 'log' or role == 'inbox_full' then
+    return head(win, views().title(state.S.ui.view):upper(), { { '␣␣ back', 'ClandDimBar' } })
+  end
+  return ''
+end
+
+function _G.ClandTopBar()
+  local ok, res = pcall(M.topbar)
+  return ok and res or (' top bar error: ' .. tostring(res):gsub('%%', '%%%%'))
+end
+
+function _G.ClandStatus()
+  local ok, res = pcall(M.status)
+  return ok and res or (' status line error: ' .. tostring(res):gsub('%%', '%%%%'))
+end
+
+function _G.ClandWinbar()
+  local ok, res = pcall(M.winbar, vim.g.statusline_winid)
+  return ok and res or (' winbar error: ' .. tostring(res):gsub('%%', '%%%%'))
+end
+
+function M.setup()
+  vim.o.tabline = '%!v:lua.ClandTopBar()'
+  vim.o.showtabline = 2
+  vim.o.laststatus = 3
+  vim.o.statusline = '%!v:lua.ClandStatus()'
+  vim.o.winbar = '%!v:lua.ClandWinbar()'
+end
+
+function M.redraw()
+  pcall(vim.cmd, 'redrawstatus!')
+  pcall(vim.cmd, 'redrawtabline')
+end
+
+return M

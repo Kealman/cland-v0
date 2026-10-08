@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -21,7 +21,8 @@ async function status(ui: FrameClient): Promise<Status> {
 }
 
 async function launch(ui: FrameClient, name: string, extra: Record<string, unknown> = {}): Promise<Harness> {
-  const r = await ui.request({ type: 'session.launch', name, ...extra }, 30_000);
+  // the Claude Code harness whatever the role's launch default (roles.toml) names
+  const r = await ui.request({ type: 'session.launch', name, harness: 'claude-code', ...extra }, 30_000);
   assert.equal(r.ok, true, r.error);
   return (r.value as { process: Harness }).process;
 }
@@ -60,8 +61,12 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
+  const launchMark = ui.frames.length;
   const launched = await launch(ui, 'coord', { role: 'coordinator', model: 'claude-fake-1' });
   assert.match(await hubLog(root), /"event":"session-launched".*"early":1/, 'the early SessionStart was kept and replayed');
+  // the session's first turn is its role clause, injected as soon as the launch's bridge and SessionStart are in
+  await clauseAnswered(ui, 'coord');
+  await aTurn(ui, 'coord', launchMark);
   assert.equal(launched.harness, 'claude-code');
   assert.equal(launched.status, 'running');
   assert.match(launched.harnessId ?? '', /^[0-9a-f]{8}$/);
@@ -95,7 +100,7 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   const stages = async () => ui.frames.filter((f) => f.type === 'delivery' && f.message === id).map((f) => f.stage);
   await eventually('injected', async () => ((await stages()).includes('injected') ? true : undefined));
   assert.deepEqual(await stages(), ['delivered', 'injected']);
-  const reply = (await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'coord', 15_000)) as { message: { text: string; topic: string; replyTo?: string } };
+  const reply = (await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'coord' && (f.message as { replyTo?: string }).replyTo === id, 15_000)) as { message: { text: string; topic: string; replyTo?: string } };
   assert.equal(reply.message.text, 'pong: Reply with the single word pong');
   assert.equal(reply.message.topic, 'general');
   assert.equal(reply.message.replyTo, id);
@@ -167,7 +172,7 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'are you back?', to: ['impl-1'] });
   const id = (sent.value as { message: { id: string } }).message.id;
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
-  assert.ok(!(await hubLog(root)).includes('"inject-unconfirmed"'), 'injected at once, through the new process');
+  assert.ok(!(await hubLog(root)).includes(`"inject-unconfirmed","session":"impl-1","id":"${id}"`), 'injected at once, through the new process');
 });
 
 test('an inject the harness never confirmed stays delivered, is logged, and is retried at the next idle', async (t) => {
@@ -179,18 +184,19 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
   await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
 
-  const first = ((await ui.request({ type: 'topic.send', topic: 'general', text: 'first' })).value as { message: { id: string } }).message.id;
-  await eventually('the unconfirmed inject logged', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${first}"`) ? true : undefined));
-  const stageOf = async (id: string) => ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage?: string }> }).messages.find((m) => m.id === id)?.stage;
-  assert.equal(await stageOf(first), 'delivered', 'not confirmed: still delivered');
+  // the first turn a launched session gets is its role clause, a hub notice with no topic: the fake drops it
+  const clause = await eventually('the clause recorded', async () => /"event":"role-clause","session":"coord"[^\n]*"id":"([^"]+)"/.exec(await hubLog(root))?.[1]);
+  await eventually('the unconfirmed inject logged', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
+  const injected = async () => (await hubLog(root)).includes(`"event":"injected","id":"${clause}"`);
   await sleep(1000); // polls keep finding the session idle: that is no new idle, nothing is retried
-  assert.equal(await stageOf(first), 'delivered');
+  assert.equal(await injected(), false, 'not confirmed: still delivered');
 
   // the next turn ends idle: what waited is injected again, and this time confirmed
-  await ui.request({ type: 'topic.send', topic: 'general', text: 'second' });
+  const first = ((await ui.request({ type: 'topic.send', topic: 'general', text: 'first' })).value as { message: { id: string } }).message.id;
   await ui.waitFor((f) => f.type === 'delivery' && f.message === first && f.stage === 'injected', 15_000);
+  await eventually('the clause injected on the retry', async () => ((await injected()) ? true : undefined));
+  await clauseAnswered(ui, 'coord');
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first', 15_000);
-  assert.equal(await stageOf(first), 'injected');
 });
 
 test('after a hub restart, resume re-finds the running session through the process table and state reporting continues', async (t) => {
@@ -215,7 +221,8 @@ test('after a hub restart, resume re-finds the running session through the proce
   assert.equal(resumed.status, 'running');
   assert.equal(resumed.pid, launched.pid);
   assert.equal(resumed.sessionId, launched.sessionId);
-  assert.match(await hubLog(root), /"event":"session-resumed","session":"coord"/);
+  // a late hook of the launch's clause turn can make the row idle before the resume itself is logged
+  await eventually('the resume logged', async () => (/"event":"session-resumed","session":"coord"/.test(await hubLog(root)) ? true : undefined));
   await presentAs(ui2, 'coord', 'idle');
 
   // hooks and the mod reach the new hub: a message is injected and the turn's states arrive
@@ -233,9 +240,9 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const unknownHarness = await ui.request({ type: 'session.launch', name: 'x', harness: 'codex' });
+  const unknownHarness = await ui.request({ type: 'session.launch', name: 'x', harness: 'nope' });
   assert.equal(unknownHarness.ok, false);
-  assert.match(unknownHarness.error ?? '', /no adapter for harness "codex"/);
+  assert.match(unknownHarness.error ?? '', /no adapter for harness "nope"/);
   const badRole = await ui.request({ type: 'session.launch', name: 'x', role: 'boss' });
   assert.match(badRole.error ?? '', /unknown role "boss"/);
   const attach = await ui.request({ type: 'session.attach', session: 'nobody' });
@@ -244,7 +251,9 @@ test('a message for a session with no adapter stays delivered; an unknown sessio
   const signal = await ui.request({ type: 'session.signal', session: 'nobody', event: 'turn-start' });
   assert.deepEqual(signal.value, { applied: false });
 
-  // a session nobody launched (a spoke started by hand): accepted is as far as its messages go, its state unknown
+  // a session nobody launched (a spoke started by hand, with a role the human assigned): accepted is as far as its
+  // messages go, its state unknown
+  assert.equal((await ui.request({ type: 'role.set', session: 'plain', role: 'implementer' })).ok, true);
   const plain = await spawnSpoke({ discover: true, cwd: root, name: 'plain', sessionId: 'sess-plain' });
   t.after(() => plain.close());
   await presentAs(ui, 'plain', 'unknown');

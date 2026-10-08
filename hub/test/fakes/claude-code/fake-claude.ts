@@ -1,7 +1,7 @@
 // A fake Claude Code: the harness process boundary the Claude Code adapter is tested against. It honours the
 // surfaces the adapter uses, and nothing else:
 //
-//   claude --bg [--session-id <uuid> | --resume <uuid>] [--name n] [--model m] --mcp-config <json> --settings <json> --plugin-dir <dir>
+//   claude --bg [--session-id <uuid> | --resume <uuid>] [--name n] [--model m] [--effort e] --mcp-config <json> --settings <json> --plugin-dir <dir>
 //       starts a detached session process and prints what 2.1.294 prints (`backgrounded · <id> · <name> …`,
 //       `claude attach <id>`). Like the real one, it takes `--session-id` and does not use it: the session's id is
 //       its own, starting with the background id.
@@ -40,7 +40,7 @@ mkdirSync(SESSIONS, { recursive: true });
 mkdirSync(JOBS, { recursive: true });
 const SELF = fileURLToPath(import.meta.url);
 
-type Job = { id: string; sessionId: string; name: string | null; model: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
+type Job = { id: string; sessionId: string; name: string | null; model: string | null; effort: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
 type McpConfig = { mcpServers?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }> };
 type HookEntry = { matcher?: string; hooks: Array<{ type: string; command: string; async?: boolean }> };
 type Settings = { hooks?: Record<string, HookEntry[]>; env?: Record<string, string> };
@@ -119,6 +119,7 @@ async function startBackground(args: string[]): Promise<number> {
     sessionId: previous?.sessionId ?? `${id}${crypto.randomUUID().slice(8)}`,
     name: flag(args, '--name', '-n') ?? null,
     model: flag(args, '--model') ?? null,
+    effort: flag(args, '--effort') ?? null,
     cwd: process.cwd(),
     resume: resumeOf !== undefined,
     mcp: jsonArg<McpConfig>(flag(args, '--mcp-config')),

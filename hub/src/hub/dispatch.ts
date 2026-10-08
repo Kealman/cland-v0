@@ -20,6 +20,7 @@ import {
   type HubStatus,
   type Message,
   type RefusalCode,
+  type RoleClause,
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
@@ -125,7 +126,12 @@ export class Dispatcher {
           peer.send({ type: 'deliver', id: message.id, message, ...(topic ? { topic } : {}) });
           return true;
         };
-        const result = core.hello(frame, deliver, (reason, code) => peer.close(code ?? 4001, reason));
+        const deliverRole = (message: Message, clause: RoleClause): boolean => {
+          if (!peer.isOpen()) return false;
+          peer.send({ type: 'role', id: message.id, message, ...clause });
+          return true;
+        };
+        const result = core.hello(frame, deliver, (reason, code) => peer.close(code ?? 4001, reason), deliverRole);
         if (!result.ok) {
           log({ event: 'refused', edge: transport.edge, code: result.code, requested: frame.name ?? null });
           return refuse(result.code, result.message);
@@ -210,6 +216,12 @@ export class Dispatcher {
           case 'topic.delete':
             core.deleteTopic(frame.topic);
             return answer({ deleted: frame.topic });
+          case 'role.set':
+            return answer({ session: core.assignRole(frame.session, frame.role) });
+          case 'role.clear':
+            return answer({ session: core.clearRole(frame.session) });
+          case 'role.list':
+            return answer(core.roleList());
           case 'subscribe':
             if (!unsubscribe) {
               unsubscribe = core.subscribe((event) => {
@@ -230,7 +242,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'hub.status':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence() } satisfies HubStatus });
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator() } satisfies HubStatus });
           break;
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });

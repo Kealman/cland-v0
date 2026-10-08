@@ -212,6 +212,9 @@ export function decode(buf: Buffer, offset = 0): { value: unknown; offset: numbe
 
 export type Rpc = {
   request: <T = unknown>(method: string, ...params: unknown[]) => Promise<T>;
+  /** Called for each notification Neovim sends (`[2, method, params]`), such as a UI's redraw batches. */
+  onNotification: (fn: (method: string, params: unknown[]) => void) => void;
+  closed: Promise<void>;
   close: () => void;
 };
 
@@ -224,6 +227,7 @@ export async function connectRpc(path: string, timeoutMs = 10_000): Promise<Rpc>
   let nextId = 1;
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
   let buffer = Buffer.alloc(0);
+  const listeners: Array<(method: string, params: unknown[]) => void> = [];
   socket.on('data', (chunk: Buffer) => {
     buffer = Buffer.concat([buffer, chunk]);
     for (;;) {
@@ -236,8 +240,10 @@ export async function connectRpc(path: string, timeoutMs = 10_000): Promise<Rpc>
       }
       buffer = buffer.subarray(decoded.offset);
       const msg = decoded.value as unknown[];
-      // [1, id, error, result]; notifications ([2, …]) such as UI redraws are ignored
-      if (msg[0] === 1) {
+      // [1, id, error, result]; notifications [2, method, params] go to the listeners
+      if (msg[0] === 2) {
+        for (const fn of listeners) fn(msg[1] as string, msg[2] as unknown[]);
+      } else if (msg[0] === 1) {
         const p = pending.get(msg[1] as number);
         if (!p) continue;
         pending.delete(msg[1] as number);
@@ -248,7 +254,10 @@ export async function connectRpc(path: string, timeoutMs = 10_000): Promise<Rpc>
     }
   });
   socket.on('error', () => {});
+  let markClosed: () => void = () => {};
+  const closed = new Promise<void>((resolve) => (markClosed = resolve));
   socket.on('close', () => {
+    markClosed();
     for (const p of pending.values()) {
       clearTimeout(p.timer);
       p.reject(new Error('nvim closed the RPC socket'));
@@ -266,6 +275,8 @@ export async function connectRpc(path: string, timeoutMs = 10_000): Promise<Rpc>
         pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
         socket.write(encode([0, id, method, params]));
       }),
+    onNotification: (fn) => listeners.push(fn),
+    closed,
     close: () => socket.destroy(),
   };
 }

@@ -16,10 +16,10 @@ test('cland --version prints the version of the hub package', () => {
   }
 });
 
-test('cland with no command prints the help; an unknown command is a usage error', () => {
+test('cland with no command off a terminal prints the help; an unknown command is a usage error', () => {
   const help = run();
   assert.equal(help.status, 0);
-  assert.match(help.stdout, /usage: cland <command>/);
+  assert.match(help.stdout, /usage: cland \[<command>\]/);
   const bad = run('serve');
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /unknown command "serve"/);

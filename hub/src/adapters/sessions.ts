@@ -12,17 +12,18 @@
 //   launch: a signal or a bridge names the launch it comes from (the cland session id the hooks and the mod
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
-import { nameRefusal, ROLE_NAMES } from '../names.ts';
+import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { AdapterHost, Capabilities, HarnessAdapter, HarnessProcess, InjectFrame, StateSignal } from './contract.ts';
 import { ProcessTable } from './processes.ts';
+import { clauseText } from '../roles/clause.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
-export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string };
+export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null };
 
 export type SessionsOptions = {
   core: HubCore;
@@ -45,14 +46,21 @@ export class Sessions {
   /** By session id: when the last applied signal happened, and when the last push signal arrived. */
   readonly #lastAt = new Map<string, number>();
   readonly #lastPush = new Map<string, number>();
-  /** Injects in flight, `<session id>:<message id>`: a retry never doubles one. A retry asked for while one
-   *  is in flight is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
-  readonly #inflight = new Map<string, { again: boolean }>();
+  /** Injects in flight, `<session id>:<message id>`, with when each went out: a retry never doubles one. A
+   *  retry asked for while one is in flight — by an idle the harness fired after it went out, or a bridge
+   *  that connected — is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
+  readonly #inflight = new Map<string, { sentAt: number; again: boolean }>();
   /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
    *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
   readonly #launching = new Map<string, SignalFrame[]>();
   /** Bridges that connected during their session's launch: registered once the row is written. */
   readonly #earlyBridges = new Map<string, Array<() => void>>();
+  /** The role each launch in progress is for: its spoke's hello may beat the process-table row. */
+  readonly #launchRoles = new Map<string, string>();
+  /** Launches whose first turn carried the clause, until the session's first hello. */
+  readonly #clauseCarried = new Set<string>();
+  /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
+  #vacating = false;
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -61,6 +69,24 @@ export class Sessions {
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
+    // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
+    this.#core.launchedRole(
+      (name, sessionId) => this.#launchRoles.get(name) ?? this.#table.bySessionId(sessionId)?.role ?? null,
+      // taken once: a reconnect gets the clause again, injected
+      (name) => this.#clauseCarried.delete(name),
+    );
+    // the human's assignment or revocation is what a relaunch starts with
+    this.#unsubscribe = this.#core.subscribe((event) => {
+      if (event.type !== 'session.role' || this.#vacating) return;
+      if (this.#table.get(event.session)) this.#table.update(event.session, { role: event.role });
+    });
+  }
+
+  readonly #unsubscribe: () => void;
+
+  /** The live Coordinator, or null ("no coordinator"). */
+  coordinator(): string | null {
+    return this.#core.coordinator();
   }
 
   /** The callbacks an adapter is built with, bound to this hub. */
@@ -97,6 +123,7 @@ export class Sessions {
       name: p.name,
       harness: p.harness,
       role: p.role,
+      label: withRole(p.name, p.role),
       model: p.model,
       cwd: p.cwd,
       pid: p.pid,
@@ -133,28 +160,43 @@ export class Sessions {
     if (refusal) throw new Error(refusal);
     const role = request.role ?? null;
     if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
+    const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
+    const harness = request.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
+    const forHarness = defaults !== null && defaults.harness === harness;
+    const model = request.model ?? (forHarness ? defaults.model : null);
+    const effort = request.effort ?? (forHarness ? defaults.effort : null);
+    if (role !== null && this.#core.roles?.get().get(role)?.exclusive) {
+      const holder = this.#core.roleList().roles.find((r) => r.role === role)?.holders.find((h) => h.name !== request.name);
+      if (holder) throw new Error(`role "${role}" is held by ${holder.label} (${holder.live ? 'live' : 'offline'}): one session holds it at a time — clear it first with \`cland role clear ${holder.name}\``);
+    }
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
-    const adapter = this.adapter(request.harness ?? DEFAULT_HARNESS);
+    const adapter = this.adapter(harness);
     this.#launching.set(request.name, []);
+    if (role !== null) this.#launchRoles.set(request.name, role);
+    const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
+    if (clause !== null && adapter.clauseAtSpawn) this.#clauseCarried.add(request.name);
     let early: SignalFrame[] = [];
     let p: HarnessProcess;
     try {
-      p = await adapter.spawn({ name: request.name, role, model: request.model ?? null, cwd: request.cwd ?? this.#root });
+      p = await adapter.spawn({ name: request.name, role, model, cwd: request.cwd ?? this.#root, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}) });
       this.#table.put(p);
     } catch (err) {
       this.#earlyBridges.delete(request.name);
+      this.#clauseCarried.delete(request.name);
       throw err;
     } finally {
       early = this.#launching.get(request.name) ?? [];
       this.#launching.delete(request.name);
+      this.#launchRoles.delete(request.name);
     }
     this.#lastAt.delete(p.sessionId);
     this.#lastPush.delete(p.sessionId);
     adapter.watch(p);
-    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, role: p.role, early: early.length });
+    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, early: early.length });
     // the bridges first: the early SessionStart's idle retries what the spoke accepted, through them
     for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
     this.#earlyBridges.delete(p.name);
@@ -174,6 +216,7 @@ export class Sessions {
     this.#table.update(name, { status: 'stopped' });
     this.#core.setSessionState(p.sessionId, name, 'unknown', 'stopped');
     this.#log({ event: 'session-stopped', session: name, harness: p.harness });
+    this.#vacate(p, 'its session was stopped');
     return this.view(this.#process(name));
   }
 
@@ -271,7 +314,7 @@ export class Sessions {
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
     const changed = this.#core.setSessionState(sessionId, name, signal.state, signal.source);
     // the next idle — a transition, not every poll that finds it idle — retries what was never confirmed
-    if (signal.state === 'idle' && changed) this.#retry(p);
+    if (signal.state === 'idle' && changed) this.#retry(p, signal.at);
     return changed;
   }
 
@@ -282,6 +325,17 @@ export class Sessions {
     // TODO(#34): the journal; until it exists, the hub's log carries the event
     this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail });
     this.#core.setSessionState(sessionId, p.name, 'unknown', 'process');
+    this.#vacate(p, 'its harness exited');
+  }
+
+  /** A dead holder leaves its role vacant (spec 4.4); the process table keeps it for a relaunch. */
+  #vacate(p: HarnessProcess, reason: string): void {
+    this.#vacating = true;
+    try {
+      this.#core.vacateRole(this.#core.connectionOf(p.sessionId)?.name ?? p.name, reason);
+    } finally {
+      this.#vacating = false;
+    }
   }
 
   // ---------------------------------------------------------------- the bridge and inject
@@ -327,26 +381,28 @@ export class Sessions {
   }
 
   /** Everything the session's spoke accepted and its adapter has not confirmed: injected again. */
-  #retry(p: HarnessProcess): void {
+  #retry(p: HarnessProcess, at?: number): void {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
-    for (const m of this.#core.store.uninjected(name)) this.#inject(p.sessionId, m.id);
+    for (const m of this.#core.store.uninjected(name)) this.#inject(p.sessionId, m.id, at);
   }
 
-  #inject(sessionId: string, messageId: string): void {
+  /** `at`: when the idle that asks for this happened; an idle from before an inject in flight went out is no
+   *  news to it (that inject already counted on it). */
+  #inject(sessionId: string, messageId: string, at?: number): void {
     const p = this.#table.bySessionId(sessionId);
     // a session no adapter launched has nobody to inject: its messages stay `delivered`
     if (!p || p.status !== 'running') return;
     const key = `${sessionId}:${messageId}`;
     const inflight = this.#inflight.get(key);
     if (inflight) {
-      inflight.again = true;
+      if (at === undefined || at > inflight.sentAt) inflight.again = true;
       return;
     }
     const message = this.#core.store.message(messageId);
     if (!message) return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
-    const flight = { again: false };
+    const flight = { sentAt: Date.now(), again: false };
     this.#inflight.set(key, flight);
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
     adapter
@@ -366,5 +422,7 @@ export class Sessions {
   close(): void {
     for (const a of this.#adapters.values()) a.close();
     this.#core.onDelivered(null);
+    this.#core.launchedRole(null);
+    this.#unsubscribe();
   }
 }

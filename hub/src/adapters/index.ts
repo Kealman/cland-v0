@@ -2,12 +2,13 @@
 // Timings come from the environment, for tests: CLAND_ADAPTER_POLL_MS (the polled fallback and the liveness
 // check), CLAND_INJECT_TIMEOUT_MS (how long an inject waits for its confirmation), CLAND_PUSH_TRUST_MS (how
 // long a hook's signal outranks a poll), CLAND_STOP_GRACE_MS (how long a Claude Code stop waits for the pid to go,
-// per step). CLAND_CLAUDE_BIN names the `claude` executable, CLAND_OPENCODE_BIN the
-// `opencode` one.
+// per step). CLAND_CLAUDE_BIN names the `claude` executable, CLAND_OPENCODE_BIN the `opencode` one,
+// CLAND_CODEX_BIN the `codex` one.
 import { fileURLToPath } from 'node:url';
 import type { HubCore } from '../hub/core.ts';
 import type { LogFn } from '../log.ts';
 import { ClaudeCodeAdapter } from './claude-code.ts';
+import { CodexAdapter } from './codex.ts';
 import { OpenCodeAdapter } from './opencode.ts';
 import { ProcessTable } from './processes.ts';
 import { Sessions } from './sessions.ts';
@@ -43,6 +44,14 @@ export function projectSessions(options: { core: HubCore; root: string; db: stri
   sessions.register(
     new OpenCodeAdapter(host, {
       ...(env.CLAND_OPENCODE_BIN ? { bin: env.CLAND_OPENCODE_BIN } : {}),
+      ...(pollMs ? { pollMs } : {}),
+      ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
+      env,
+    }),
+  );
+  sessions.register(
+    new CodexAdapter(host, {
+      ...(env.CLAND_CODEX_BIN ? { bin: env.CLAND_CODEX_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
       ...(injectTimeoutMs ? { injectTimeoutMs } : {}),
       env,

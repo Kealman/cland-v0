@@ -55,10 +55,10 @@ export function githubCommentId(c: Comment): number | null {
 export function escapeText(text: string): string {
   return text
     .replace(/\r\n?/g, '\n')
+    .trim() // before escaping: trimming afterwards could uncover a header that was hidden behind leading whitespace
     .split('\n')
     .map((line) => (line.trim() === COMMENTS_HEADING || /^### .+ · \S+\s*$/.test(line) ? `\\${line}` : line))
-    .join('\n')
-    .trim();
+    .join('\n');
 }
 
 const key = (r: IssueRef): string => `${r.repo.toLowerCase()}#${r.number}`;

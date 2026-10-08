@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { cland, connectSocket, killDaemon, pidAlive, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { assignRole, cland, connectSocket, killDaemon, pidAlive, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);
@@ -77,7 +77,9 @@ test('a spoke started in the project with no hub environment connects through th
   assert.match(human.stdout, new RegExp(`^hub running for ${root}\\n`));
   assert.match(human.stdout, new RegExp(`pid +${status.pid}\\n`));
   assert.match(human.stdout, /uptime +\d+s/);
-  assert.match(human.stdout, /sessions: 1\n {2}alpha {2}\(implementer\)/);
+  // the name shows with its role, as everywhere (spec 4.4)
+  assert.match(human.stdout, /sessions: 1\n {2}alpha \[Implementer\] {2}\[unknown\]\n/);
+  assert.match(human.stdout, /\nno coordinator\n/);
 });
 
 test('a wrong secret is refused on the WebSocket and on the Unix socket; the right one is welcomed', async (t) => {
@@ -180,10 +182,15 @@ test('both edges speak one protocol: a spoke hello over the Unix socket, a clien
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
 
+  await assignRole(root, 'sock', 'implementer');
   const spoke = await connectSocket(discovery.socket);
   t.after(() => spoke.close());
   spoke.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, sessionId: 'sess-sock', cwd: root, name: 'sock' });
   assert.equal((await spoke.next()).name, 'sock');
+  // the role's clause comes first, as a hub event the spoke acks
+  const clause = await spoke.next();
+  assert.equal(clause.type, 'role');
+  spoke.send({ type: 'ack', id: clause.id });
   spoke.send({ type: 'who', id: 'w1' });
   const who = (await spoke.next()) as { value: { me: string; sessions: Array<{ name: string }> } };
   assert.equal(who.value.me, 'sock');

@@ -9,6 +9,9 @@ local M = {}
 
 M.PROTOCOL = 2
 local MAX_RETRY_MS = 5000
+--- Failed socket connects in a row after which `cland hub start` runs: a `hub.json` left by a hub that was
+--- killed or a machine that rebooted names a socket nobody serves, and `hub start` replaces it.
+M.STALE_AFTER = 3
 
 local Client = {}
 Client.__index = Client
@@ -42,11 +45,13 @@ function M.new(opts)
     detail = nil,
     buffer = '',
     retry_ms = 250,
+    failures = 0,
     stderr = '',
   }, Client)
 end
 
---- Events: `state` (state, detail), `connected` (), `message` (event frame), `delivery` (event frame).
+--- Events: `state` (state, detail), `connected` (), and the pushed frames `message`, `delivery` and
+--- `session.state` (the event frame).
 function Client:on(event, fn)
   self.handlers[event] = self.handlers[event] or {}
   table.insert(self.handlers[event], fn)
@@ -123,23 +128,15 @@ function Client:_connect()
     return self:_spawn()
   end
   local discovery = read_json(self.root .. '/.cland/hub.json')
-  if not (discovery and type(discovery.socket) == 'string' and type(discovery.secret) == 'string') then
+  local usable = discovery and type(discovery.socket) == 'string' and type(discovery.secret) == 'string'
+  if not usable or self.failures >= M.STALE_AFTER then
     if self.autostart and not self.autostarted and self.cli then
-      self.autostarted = true
-      self:_set_state('starting', 'no hub runs for this project: starting one')
-      local cmd = vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'start' })
-      vim.system(cmd, { cwd = self.root, text = true }, function(out)
-        vim.schedule(function()
-          if out.code ~= 0 then
-            self:_set_state('failed', 'cland hub start failed: ' .. first_line(out.stderr ~= '' and out.stderr or out.stdout))
-          end
-          self:_retry()
-        end)
-      end)
-      return
+      return self:_hub_start(usable and 'the hub in hub.json does not answer: starting one' or 'no hub runs for this project: starting one')
     end
-    self:_set_state('waiting', 'no hub runs for this project (cland hub start)')
-    return self:_retry()
+    if not usable then
+      self:_set_state('waiting', 'no hub runs for this project (cland hub start)')
+      return self:_retry()
+    end
   end
   local pipe = uv.new_pipe(false)
   self.pipe = pipe
@@ -151,6 +148,7 @@ function Client:_connect()
         return
       end
       if err then
+        self.failures = self.failures + 1
         return self:_lost('cannot reach the hub: ' .. err)
       end
       pipe:read_start(function(read_err, chunk)
@@ -170,6 +168,26 @@ function Client:_connect()
       self:_write({ type = 'hello', protocol = M.PROTOCOL, secret = discovery.secret, client = 'nvim' })
     end)
   end)
+end
+
+--- `cland hub start`, once per streak of failures; it replaces a stale hub.json and reports a live hub.
+function Client:_hub_start(why)
+  self.autostarted = true
+  self.failures = 0
+  self:_set_state('starting', why)
+  local cmd = vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'start' })
+  local ok = pcall(vim.system, cmd, { cwd = self.root, text = true }, function(out)
+    vim.schedule(function()
+      if out.code ~= 0 then
+        self:_set_state('failed', 'cland hub start failed: ' .. first_line(out.stderr ~= '' and out.stderr or out.stdout))
+      end
+      self:_retry()
+    end)
+  end)
+  if not ok then
+    self:_set_state('failed', 'cannot run cland hub start')
+    self:_retry()
+  end
 end
 
 function Client:_spawn()
@@ -230,6 +248,7 @@ function Client:_frame(frame)
   if t == 'welcome' then
     self.retry_ms = 250
     self.autostarted = false
+    self.failures = 0
     self:_set_state('connected', nil)
     self:request({ type = 'subscribe' }, function(err)
       if err then
@@ -249,7 +268,7 @@ function Client:_frame(frame)
         cb(frame.error or 'failed')
       end
     end
-  elseif t == 'message' or t == 'delivery' then
+  elseif t == 'message' or t == 'delivery' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' then
     self:_emit(t, frame)
   end
 end

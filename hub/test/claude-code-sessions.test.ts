@@ -8,7 +8,7 @@ import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
@@ -36,6 +36,22 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
   eventually(`${name} present as ${state}`, async () => ((await status(ui)).sessions.find((s) => s.name === name)?.state === state ? true : undefined));
 
 const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+
+/** A launched session's first turn, its role clause, is over: answered, and a pushed busy then idle seen after
+ *  `mark` (the turn's late signals can no longer move the state: a later idle outranks them). */
+async function clauseTurnDone(ui: FrameClient, name: string, mark: number): Promise<void> {
+  await clauseAnswered(ui, name);
+  await eventually(`${name}: the clause turn's busy, then idle`, () => {
+    const events = ui.frames.slice(mark).filter((f) => f.type === 'session.state' && f.session === name);
+    const busy = events.findIndex((e) => e.state === 'busy' && e.source !== 'poll');
+    return busy >= 0 && events.slice(busy + 1).some((e) => e.state === 'idle') ? true : undefined;
+  });
+  await presentAs(ui, name, 'idle');
+}
+
+/** The id of the role clause the hub recorded for `name` (the latest one). */
+const clauseId = (root: string, name: string) =>
+  eventually(`the clause of ${name} recorded`, async () => [...(await hubLog(root)).matchAll(new RegExp(`"event":"role-clause","session":"${name}"[^\\n]*"id":"([^"]+)"`, 'g'))].at(-1)?.[1]);
 
 const sendGeneral = async (ui: FrameClient, text: string): Promise<string> => {
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text });
@@ -68,8 +84,9 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const mark = ui.frames.length;
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await presentAs(ui, 'coord', 'idle');
+  await clauseTurnDone(ui, 'coord', mark);
 
   // the Stop of a turn fires first, but its process takes 1.5 s to start; the next turn's start fires after it
   const stop = hook(root, 'turn-end', { session: 'coord', launch: launched.sessionId, slowStartMs: 1500 });
@@ -86,13 +103,15 @@ test('a signal from an earlier launch under the same name changes nothing of the
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const first = await launch(ui, 'impl-1', { role: 'implementer' });
+  const first = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
   await presentAs(ui, 'impl-1', 'idle');
   await killDaemon(first.pid as number);
   await eventually('the first process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
 
-  const second = await launch(ui, 'impl-1', { role: 'implementer' });
-  await presentAs(ui, 'impl-1', 'idle');
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const mark = ui.frames.length;
+  const second = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
+  await clauseTurnDone(ui, 'impl-1', mark);
   const row = await harness(ui, 'impl-1');
   assert.equal(row.sessionId, second.sessionId);
 
@@ -110,7 +129,7 @@ test('a late SessionStart does not revive a session whose process is gone', asyn
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  const launched = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
   await presentAs(ui, 'impl-1', 'idle');
   await killDaemon(launched.pid as number);
   await eventually('the process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
@@ -145,12 +164,13 @@ test('an idle that comes while an inject waits for its confirmation retries it o
   await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
 
-  const first = await sendGeneral(ui, 'first'); // dropped inside the harness: never confirmed
-  const second = await sendGeneral(ui, 'second'); // its turn ends idle while the first still waits
+  // the first prompt, the role clause, is dropped inside the harness: never confirmed, it waits 3 s
+  const clause = await clauseId(root, 'coord');
+  const second = await sendGeneral(ui, 'second'); // its turn ends idle while the clause still waits
   await injected(ui, second);
-  // no other turn, no other trigger: the idle that came during the first's wait is not lost
-  await injected(ui, first);
-  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first', 15_000);
+  // no other turn, no other trigger: the idle that came during the clause's wait is not lost
+  await eventually('the clause injected', async () => ((await hubLog(root)).includes(`"event":"injected","id":"${clause}"`) ? true : undefined));
+  await clauseAnswered(ui, 'coord');
 });
 
 test('a session renamed while a message waits for its inject still gets it, and its confirmation counts', async (t) => {
@@ -162,14 +182,15 @@ test('a session renamed while a message waits for its inject still gets it, and 
   await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
 
-  const first = await sendGeneral(ui, 'first'); // dropped: delivered, never injected
-  await eventually('the first inject given up', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${first}"`) ? true : undefined));
+  // the first prompt, the role clause, is dropped inside the harness: delivered, never injected
+  const clause = await clauseId(root, 'coord');
+  await eventually('the clause inject given up', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
   const rename = await sendGeneral(ui, 'rename to pool-1'); // the session renames itself in this turn
   await injected(ui, rename);
   await presentAs(ui, 'pool-1', 'idle');
-  await injected(ui, first);
-  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage?: string }> };
-  assert.equal(history.messages.find((m) => m.id === first)?.stage, 'injected');
+  // retried at the next idle under the new name, and its confirmation finds it
+  await eventually('the clause injected', async () => ((await hubLog(root)).includes(`"event":"injected","id":"${clause}","session":"pool-1"`) ? true : undefined));
+  await clauseAnswered(ui, 'pool-1');
 });
 
 test('resume never adopts another session that reuses the pid: no identity match, no resume', async (t) => {

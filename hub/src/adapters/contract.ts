@@ -47,6 +47,13 @@ export type SpawnRequest = {
   /** The model to run; the harness's default when null. */
   model: string | null;
   cwd: string;
+  /** The reasoning effort (roles.toml's launch default); the harness's default when absent. An adapter whose
+   *  harness takes none ignores it. */
+  effort?: string | null;
+  /** The role's clause as the holder reads it, for an adapter that must give a new session a first turn (Codex:
+   *  a thread has no rollout before one). An adapter that uses it declares `clauseAtSpawn`, and the hub does not
+   *  inject the clause again at the session's first hello. */
+  clause?: string | null;
 };
 
 /** A state signal from the harness, with where it came from and when it happened (ms epoch): an older signal
@@ -83,6 +90,8 @@ export type ResumeResult = { found: true; process: HarnessProcess; state: Sessio
 export interface HarnessAdapter {
   readonly harness: string;
   readonly capabilities: Capabilities;
+  /** The launch's first turn carries the role's clause (`SpawnRequest.clause`). */
+  readonly clauseAtSpawn?: boolean;
   /** Launch a session; resolves once the harness process runs, with its process-table row. */
   spawn(request: SpawnRequest): Promise<HarnessProcess>;
   /** The command a terminal runs to attach to the live session (a string, so a UI re-runs it intact). */

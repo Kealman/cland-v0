@@ -9,7 +9,7 @@ import { mkdtemp, readdir, readFile, realpath, rm, stat } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, connectUi, eventually, killDaemon, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -118,6 +118,8 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.equal(config.mcp.servers.cland.environment.CLAND_DELIVERY, 'adapter');
   assert.equal(await readFile(join(root, '.cland', 'opencode', '.gitignore'), 'utf8').then((s) => s.split('\n').includes('*')), true);
   assert.equal((await stat(join(root, '.cland', 'opencode', 'impl', 'password'))).mode & 0o077, 0, 'the password file is private');
+  // the first turn is the role clause the hub delivered
+  await clauseAnswered(ui, 'impl');
   const present = await presentAs(ui, 'impl', 'idle');
   assert.equal(present.role, 'implementer');
   assert.equal(present.sessionId, launched.sessionId);
@@ -152,7 +154,8 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.equal(history.messages.find((m) => m.id === id)?.stage, 'injected');
   // queued (the session was idle), as the envelope with the line that names the way back
   const prompts = await fake.prompts(launched.harnessSessionId as string);
-  assert.match(prompts, /^prompt queue: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool/);
+  assert.match(prompts, /^prompt queue: <channel source="cland" from="hub" from_kind="hub"[^\n]*>\ncland hub: you hold the role Implementer/);
+  assert.match(prompts, /\nprompt queue: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool/);
 
   // busy during the turn, idle after, from the event stream
   await presentAs(ui, 'impl', 'idle');
@@ -179,7 +182,9 @@ test('a message sent while the session works steers the running turn; one sent w
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'implementer', model: 'opencode/fake-paid' });
   assert.equal(launched.model, 'opencode/fake-paid');
+  await clauseAnswered(ui, 'impl');
   await presentAs(ui, 'impl', 'idle');
+  const clauseTurn = stateEvents(ui, 'impl').length;
 
   const first = await sendGeneral(ui, 'take your time with this one');
   await presentAs(ui, 'impl', 'busy');
@@ -189,10 +194,11 @@ test('a message sent while the session works steers the running turn; one sent w
   await replyTo(ui, 'impl', 'pong: and this too');
   await presentAs(ui, 'impl', 'idle');
   const prompts = (await fake.prompts(launched.harnessSessionId as string)).split('\n').filter((l) => l.startsWith('prompt '));
-  assert.match(prompts[0] as string, /^prompt queue: /);
-  assert.match(prompts[1] as string, /^prompt steer \(running\): /, 'the second steered the running turn');
+  // the role clause was the first prompt
+  assert.match(prompts[1] as string, /^prompt queue: /);
+  assert.match(prompts[2] as string, /^prompt steer \(running\): /, 'the second steered the running turn');
   // one turn answered both: busy once, then idle
-  const states = stateEvents(ui, 'impl').map((e) => e.state);
+  const states = stateEvents(ui, 'impl').slice(clauseTurn).map((e) => e.state);
   assert.deepEqual(states.slice(states.indexOf('busy')), ['busy', 'idle']);
 });
 
@@ -203,11 +209,13 @@ test('a pending permission is waiting for approval within one event, and the rep
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await clauseAnswered(ui, 'impl');
   await presentAs(ui, 'impl', 'idle');
+  const clauseTurn = stateEvents(ui, 'impl').length;
 
   await sendGeneral(ui, 'this one needs approval');
   await presentAs(ui, 'impl', 'waiting for approval');
-  const asked = stateEvents(ui, 'impl').map((e) => e.state);
+  const asked = stateEvents(ui, 'impl').slice(clauseTurn).map((e) => e.state);
   // permission.asked is the event right after busy: no state in between
   assert.deepEqual(asked.slice(asked.indexOf('busy')), ['busy', 'waiting for approval']);
   const pending = (await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`)) as { data: Array<{ id: string }> };

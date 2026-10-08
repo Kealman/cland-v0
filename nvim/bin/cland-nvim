@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Start cland's Neovim client for a project (spec 4.1, ADR 0005):
 #   nvim/bin/cland-nvim [project-dir] [nvim args…]
-# The project defaults to the current directory; the client walks up to its root (.git or .cland).
+# The project defaults to the current directory; the launcher walks up to its root (.git or .cland) and
+# starts Neovim there, so it works from any directory inside the project.
 # The Neovim release pinned in nvim/NVIM_VERSION is downloaded into .cache/ on first use and checked
 # against nvim/NVIM_SHA256SUMS; CLAND_NVIM names another binary. CLAND_HUB_TRANSPORT=stdio spawns the
 # hub as the client's child instead of using the project's hub socket.
@@ -14,6 +15,16 @@ if [[ $# -gt 0 && -d "$1" ]]; then
   root="$(cd "$1" && pwd)"
   shift
 fi
+
+# the project root, as the hub finds it: the nearest ancestor holding .git or .cland, else the directory
+dir="$root"
+while [[ "$dir" != "/" ]]; do
+  if [[ -e "$dir/.git" || -d "$dir/.cland" ]]; then
+    root="$dir"
+    break
+  fi
+  dir="$(dirname "$dir")"
+done
 
 nvim_bin="$(node "$NVIM_DIR/bin/nvim-path.ts")"
 

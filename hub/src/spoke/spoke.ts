@@ -8,7 +8,8 @@
 //     walking up from the cwd), re-read before every reconnect (a restarted hub listens on a new port)
 //   CLAND_SESSION_ID    the harness session id; a restart of the same session takes its name back
 //   CLAND_SESSION_NAME  the name to ask for; absent → the hub generates one
-//   CLAND_ROLE          the role the session runs under
+//   CLAND_ROLE          the role the session asks for; a project's hub grants it only to a session it launched for
+//                       that role, else the session needs a role the human assigned (`cland role set`)
 //   CLAND_DELIVERY      `adapter`: the session's harness adapter injects what the spoke accepts (#24), so the spoke
 //                       only acks; otherwise the spoke delivers into the session as a Claude Code channel event
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS, CLAND_HUB_REQUEST_TIMEOUT_MS   timings, for tests
@@ -63,9 +64,10 @@ const TOOLS = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'The new session\'s name (lowercase letters, digits, hyphens)' },
-        role: { type: 'string', description: 'The role it runs under (coordinator, implementer, reviewer, qa)' },
-        model: { type: 'string', description: 'The model; the harness default when absent' },
-        harness: { type: 'string', description: 'The harness; `claude-code` (the default) is the only one yet' },
+        role: { type: 'string', description: 'The role it runs under (coordinator, implementer, reviewer, qa); its launch defaults in .cland/roles.toml fill the harness, model and effort not given' },
+        model: { type: 'string', description: "The model; the role's default, else the harness's, when absent" },
+        harness: { type: 'string', description: "The harness (`claude-code`, `opencode`); the role's default, else `claude-code`, when absent" },
+        effort: { type: 'string', description: "The reasoning effort (Claude Code: low … max); the role's default when absent" },
       },
       required: ['name'],
     },
@@ -203,6 +205,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
               ...(typeof args.role === 'string' ? { role: args.role } : {}),
               ...(typeof args.model === 'string' ? { model: args.model } : {}),
               ...(typeof args.harness === 'string' ? { harness: args.harness } : {}),
+              ...(typeof args.effort === 'string' ? { effort: args.effort } : {}),
             },
             60_000,
           )) as Record<string, unknown>;
@@ -264,6 +267,13 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
   hub.on('deliver', (message, topic) => {
     if (adapterDelivers) return;
     deliverToSession(server, message, topic).catch((err: unknown) => log(`could not deliver ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
+  });
+  // the role clause is a hub event like a message: the adapter injects it, or the channel carries it
+  hub.on('role', (message, clause) => {
+    if (adapterDelivers) return;
+    server
+      .notification({ method: 'notifications/claude/channel', params: { content: message.text, meta: { ...metaOf(message), kind: 'role', role: clause.role ?? '' } } })
+      .catch((err: unknown) => log(`could not deliver the role clause ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
   });
   hub.start();
   return { server, hub };
