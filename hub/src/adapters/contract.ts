@@ -34,6 +34,9 @@ export type HarnessProcess = {
   /** The conversation's id (Claude Code: the session UUID); also the spoke's `CLAND_SESSION_ID`, so the hub
    *  maps the harness, its hooks and its spoke to one session. */
   sessionId: string;
+  /** The harness's own conversation id where it chose one itself (Claude Code's `--bg` does not take `--session-id`):
+   *  what `--resume` takes and what its hooks carry as `session_id`. */
+  harnessSessionId: string | null;
   startedAt: string;
   status: 'running' | 'exited' | 'stopped';
 };
@@ -129,7 +132,20 @@ export function envelope(message: Message, topic: TopicRef | null): string {
     ...(topic ? ([['topic', topic.id], ['topic_title', topic.title]] as Array<[string, string]>) : message.topic !== undefined ? ([['topic', message.topic]] as Array<[string, string]>) : []),
   ];
   const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  return `<channel ${attrs.map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}>\n${message.text}\n</channel>`;
+  return `<channel ${attrs.map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}>\n${message.text}\n</channel>\n${replyHint(message, topic)}`;
+}
+
+/**
+ * One line after the envelope that names the way back. The spoke's MCP instructions say the same, but a prompt
+ * submitted by the mod reads as a plain turn: in the first real smoke (Claude Code 2.1.294, Haiku) the model
+ * answered in its terminal, where nobody sees it.
+ */
+export function replyHint(message: Message, topic: TopicRef | null): string {
+  const topicId = topic?.id ?? message.topic;
+  const where = topicId !== undefined ? `topic "${topicId}"` : 'no topic';
+  if (message.fromKind === 'human') return `To answer, call the cland \`send\` tool with ${where} and no \`to\`; text printed in this terminal reaches no one.`;
+  if (message.fromKind === 'agent') return `To answer, call the cland \`send\` tool with to ["${message.from}"], ${where} and reply_to "${message.id}"; text printed in this terminal reaches no one.`;
+  return 'This is a notice from the cland hub; text printed in this terminal reaches no one.';
 }
 
 /** The message id an envelope carries, or null: a turn whose prompt carries one confirms that message. */

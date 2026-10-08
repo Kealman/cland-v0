@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { clandWith, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
-type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
+type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 type StateEvent = { type: 'session.state'; session: string; state: string; source: string };
 
@@ -40,19 +40,24 @@ const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log')
 test('a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod', async (t) => {
   const root = await tempProject(t);
   // the polled fallback slowed down: every state asserted here must come from a push (a hook, the mod)
-  const fake = await fakeClaude(t, { pollMs: 10_000 });
+  // and `--bg` returns after the session's SessionStart hook already posted (seen with the real harness)
+  const fake = await fakeClaude(t, { pollMs: 10_000, lateBg: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
   const launched = await launch(ui, 'coord', { role: 'coordinator', model: 'claude-fake-1' });
+  assert.match(await hubLog(root), /"event":"session-launched".*"early":1/, 'the early SessionStart was kept and replayed');
   assert.equal(launched.harness, 'claude-code');
   assert.equal(launched.status, 'running');
   assert.match(launched.harnessId ?? '', /^[0-9a-f]{8}$/);
   assert.equal(typeof launched.pid, 'number');
   assert.equal(launched.attach, `claude attach ${launched.harnessId}`);
+  // like the real `--bg`, the fake picks its own session id: the hub records it beside its own
   const [listed] = await fake.sessions();
-  assert.equal(listed?.sessionId, launched.sessionId, 'the fake runs the session under the id the hub chose');
+  assert.equal(listed?.sessionId, launched.harnessSessionId);
+  assert.ok(launched.harnessSessionId?.startsWith(launched.harnessId as string));
+  assert.notEqual(launched.harnessSessionId, launched.sessionId);
 
   // SessionStart (a hook) makes it idle; the spoke connected under the launch's name, role and session id
   const present = await presentAs(ui, 'coord', 'idle');
@@ -81,6 +86,9 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   assert.equal(reply.message.replyTo, id);
   const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage?: string }> };
   assert.equal(history.messages.find((m) => m.id === id)?.stage, 'injected');
+  // the prompt the harness got: the envelope, and the line that names the way back
+  const prompt = await fake.log(launched.harnessId as string);
+  assert.match(prompt, /submitted: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool with topic "general" and no `to`; text printed in this terminal reaches no one\./);
 
   // busy during the turn, idle after: pushed by the hooks and the mod
   await presentAs(ui, 'coord', 'idle');
@@ -120,9 +128,9 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   });
 });
 
-test('a crashed Claude Code process: the state turns unknown and the hub logs it once', async (t) => {
+test('a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
+  const fake = await fakeClaude(t, { lateBg: true });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -138,6 +146,15 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const logged = (await hubLog(root)).split('\n').filter((l) => l.includes('"harness-exited"'));
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl-1"/);
+
+  // the same name again: its hooks and its mod, arriving before the launch returns, belong to the new process
+  const again = await launch(ui, 'impl-1', { role: 'implementer' });
+  assert.notEqual(again.sessionId, launched.sessionId);
+  await presentAs(ui, 'impl-1', 'idle');
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'are you back?', to: ['impl-1'] });
+  const id = (sent.value as { message: { id: string } }).message.id;
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  assert.ok(!(await hubLog(root)).includes('"inject-unconfirmed"'), 'injected at once, through the new process');
 });
 
 test('an inject the harness never confirmed stays delivered, is logged, and is retried at the next idle', async (t) => {

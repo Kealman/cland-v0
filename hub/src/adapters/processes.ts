@@ -13,6 +13,7 @@ create table if not exists harness_processes (
   pid integer,
   harness_id text,
   session_id text not null,
+  harness_session_id text,
   started_at text not null,
   status text not null
 );
@@ -30,6 +31,7 @@ const toProcess = (r: Row): HarnessProcess => ({
   pid: (r.pid as number | null) ?? null,
   harnessId: (r.harness_id as string | null) ?? null,
   sessionId: r.session_id as string,
+  harnessSessionId: (r.harness_session_id as string | null) ?? null,
   startedAt: r.started_at as string,
   status: r.status as HarnessProcess['status'],
 });
@@ -41,6 +43,9 @@ export class ProcessTable {
     this.#db = new DatabaseSync(path);
     this.#db.exec('pragma journal_mode = wal; pragma busy_timeout = 2000;');
     this.#db.exec(SCHEMA);
+    // additive, as the store's own migrations: a table written before the column existed grows in place
+    const columns = new Set((this.#db.prepare('pragma table_info(harness_processes)').all() as Row[]).map((r) => r.name as string));
+    if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
   }
 
   close(): void {
@@ -51,17 +56,17 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, started_at, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
-           harness_id = excluded.harness_id, session_id = excluded.session_id, started_at = excluded.started_at, status = excluded.status`,
+           harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.startedAt, p.status);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status);
   }
 
-  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'model' | 'status'>>): void {
+  update(name: string, change: Partial<Pick<HarnessProcess, 'pid' | 'harnessId' | 'harnessSessionId' | 'model' | 'status'>>): void {
     const sets: string[] = [];
     const values: Array<string | number | null> = [];
-    const column = { pid: 'pid', harnessId: 'harness_id', model: 'model', status: 'status' } as const;
+    const column = { pid: 'pid', harnessId: 'harness_id', harnessSessionId: 'harness_session_id', model: 'model', status: 'status' } as const;
     for (const [k, v] of Object.entries(change) as Array<[keyof typeof column, string | number | null]>) {
       sets.push(`${column[k]} = ?`);
       values.push(v);
@@ -74,8 +79,9 @@ export class ProcessTable {
     return row ? toProcess(row) : null;
   }
 
+  /** By cland's session id, or the harness's own. */
   bySessionId(sessionId: string): HarnessProcess | null {
-    const row = this.#db.prepare('select * from harness_processes where session_id = ?').get(sessionId) as Row | undefined;
+    const row = this.#db.prepare('select * from harness_processes where session_id = ? or harness_session_id = ? order by started_at desc limit 1').get(sessionId, sessionId) as Row | undefined;
     return row ? toProcess(row) : null;
   }
 

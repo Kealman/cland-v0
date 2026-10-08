@@ -2,7 +2,9 @@
 // surfaces the adapter uses, and nothing else:
 //
 //   claude --bg [--session-id <uuid> | --resume <uuid>] [--name n] [--model m] --mcp-config <json> --settings <json> --plugin-dir <dir>
-//       starts a detached session process and prints `Started background session <id> · claude attach <id>`.
+//       starts a detached session process and prints what 2.1.294 prints (`backgrounded · <id> · <name> …`,
+//       `claude attach <id>`). Like the real one, it takes `--session-id` and does not use it: the session's id is
+//       its own, starting with the background id.
 //       The session starts the configured MCP server (the real spoke, which connects to the real hub), runs the
 //       settings hooks (`cland hook …`) as Claude Code does — the JSON payload on stdin, `async` ones not awaited —
 //       and loads the plugin's hooks module (the real cland mod) against a small `$`: env, settings, process.run,
@@ -15,6 +17,7 @@
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
 //
+// FAKE_CLAUDE_LATE_BG=1 makes `--bg` return only after the session's SessionStart hook ran.
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
 // how long a turn "thinks" (default 300).
@@ -108,7 +111,7 @@ async function startBackground(args: string[]): Promise<number> {
   const id = previous?.id ?? randomBytes(4).toString('hex');
   const job: Job = {
     id,
-    sessionId: resumeOf ?? flag(args, '--session-id') ?? crypto.randomUUID(),
+    sessionId: previous?.sessionId ?? `${id}${crypto.randomUUID().slice(8)}`,
     name: flag(args, '--name', '-n') ?? null,
     model: flag(args, '--model') ?? null,
     cwd: process.cwd(),
@@ -127,7 +130,12 @@ async function startBackground(args: string[]): Promise<number> {
     if (s && s.pid === child.pid) break;
     await new Promise((r) => setTimeout(r, 20));
   }
-  process.stdout.write(`Started background session ${id} · claude attach ${id}\n`);
+  // FAKE_CLAUDE_LATE_BG=1: return only once the session ran its SessionStart hook, as the real one can
+  if (process.env.FAKE_CLAUDE_LATE_BG === '1') {
+    while (Date.now() < deadline && !readFileSync(join(JOBS, `${id}.log`), { encoding: 'utf8', flag: 'a+' }).includes('session ready')) await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  process.stdout.write(`backgrounded · ${id} · ${job.name ?? 'session'} (idle — send a prompt to start)\n  claude attach ${id}    open in this terminal\n  claude stop ${id}      stop this session\n`);
   return 0;
 }
 
@@ -310,6 +318,7 @@ async function runSession(id: string): Promise<number> {
       wake = null;
       continue;
     }
+    log(`submitted: ${next.text}`);
     const turnId = randomBytes(4).toString('hex');
     const started = Date.now();
     setStatus('busy');

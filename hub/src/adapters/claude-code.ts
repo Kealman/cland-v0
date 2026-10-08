@@ -190,9 +190,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
   }
 
-  #find(entries: AgentEntry[], p: Pick<HarnessProcess, 'sessionId' | 'harnessId' | 'pid'>): AgentEntry | undefined {
+  #find(entries: AgentEntry[], p: Pick<HarnessProcess, 'sessionId' | 'harnessSessionId' | 'harnessId' | 'pid'>): AgentEntry | undefined {
     return (
-      entries.find((e) => e.sessionId === p.sessionId) ??
+      entries.find((e) => e.sessionId === (p.harnessSessionId ?? p.sessionId)) ??
       (p.harnessId ? entries.find((e) => e.id === p.harnessId) : undefined) ??
       (p.pid !== null ? entries.find((e) => e.pid === p.pid) : undefined)
     );
@@ -235,9 +235,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean): Promise<HarnessProcess> {
+    // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
+    // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
     const args = [
       '--bg',
-      ...(resume ? ['--resume', p.sessionId] : ['--session-id', p.sessionId]),
+      ...(resume ? ['--resume', p.harnessSessionId ?? p.sessionId] : ['--session-id', p.sessionId]),
       '--name',
       p.name,
       ...(p.model ? ['--model', p.model] : []),
@@ -253,7 +255,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const deadline = Date.now() + this.#spawnDeadlineMs;
     while (Date.now() < deadline) {
       const entries = await this.#agents();
-      found = entries ? this.#find(entries, { sessionId: p.sessionId, harnessId, pid: null }) : undefined;
+      found = entries ? this.#find(entries, { sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, harnessId, pid: null }) : undefined;
       if (found?.pid !== undefined) {
         pid = found.pid;
         break;
@@ -261,11 +263,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       await new Promise((resolve) => setTimeout(resolve, Math.min(250, this.#pollMs)));
     }
     if (pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
-    return { ...p, pid, harnessId: harnessId ?? found?.id ?? null, startedAt: new Date().toISOString(), status: 'running' };
+    return { ...p, pid, harnessId: harnessId ?? found?.id ?? null, harnessSessionId: found?.sessionId ?? p.harnessSessionId, startedAt: new Date().toISOString(), status: 'running' };
   }
 
   spawn(request: SpawnRequest): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID() }, false);
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -396,11 +398,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const pid = entry?.pid ?? p.pid;
     // the same session: listed under its own session id (or background id), with a live process
     if (entry && pid !== null && pid !== undefined && pidAlive(pid)) {
-      const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, status: 'running' };
+      const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
       return { found: true, process, state: stateOfAgent(entry) };
     }
     if (!options.relaunch) return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
-    const process = await this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId }, true);
+    const process = await this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true);
     return { found: true, process, state: 'unknown' };
   }
 

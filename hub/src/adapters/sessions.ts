@@ -15,6 +15,9 @@ import type { LogFn } from '../log.ts';
 import type { AdapterHost, Capabilities, HarnessAdapter, HarnessProcess, InjectFrame, StateSignal } from './contract.ts';
 import { ProcessTable } from './processes.ts';
 
+/** A signal posted from inside a session (`cland hook <event>`). */
+export type SignalFrame = { session?: string; sessionId?: string; event: string; at?: number; payload?: Record<string, unknown> };
+
 export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string };
 
 export type SessionsOptions = {
@@ -40,6 +43,11 @@ export class Sessions {
   readonly #lastPush = new Map<string, number>();
   /** Injects in flight, `<session id>:<message id>`: a retry never doubles one. */
   readonly #inflight = new Set<string>();
+  /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
+   *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
+  readonly #launching = new Map<string, SignalFrame[]>();
+  /** Bridges that connected during their session's launch: registered once the row is written. */
+  readonly #earlyBridges = new Map<string, Array<() => void>>();
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -89,6 +97,7 @@ export class Sessions {
       pid: p.pid,
       harnessId: p.harnessId,
       sessionId: p.sessionId,
+      harnessSessionId: p.harnessSessionId,
       startedAt: p.startedAt,
       status: p.status,
       state: p.status === 'running' ? this.#core.sessionState(p.sessionId) : 'unknown',
@@ -122,14 +131,29 @@ export class Sessions {
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
+    if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     const adapter = this.adapter(request.harness ?? DEFAULT_HARNESS);
-    const p = await adapter.spawn({ name: request.name, role, model: request.model ?? null, cwd: request.cwd ?? this.#root });
-    this.#table.put(p);
+    this.#launching.set(request.name, []);
+    let early: SignalFrame[] = [];
+    let p: HarnessProcess;
+    try {
+      p = await adapter.spawn({ name: request.name, role, model: request.model ?? null, cwd: request.cwd ?? this.#root });
+      this.#table.put(p);
+    } catch (err) {
+      this.#earlyBridges.delete(request.name);
+      throw err;
+    } finally {
+      early = this.#launching.get(request.name) ?? [];
+      this.#launching.delete(request.name);
+    }
     this.#lastAt.delete(p.sessionId);
     this.#lastPush.delete(p.sessionId);
     adapter.watch(p);
-    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, model: p.model, role: p.role });
-    return this.view(p);
+    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, role: p.role, early: early.length });
+    for (const frame of early) this.signal(frame);
+    for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
+    this.#earlyBridges.delete(p.name);
+    return this.view(this.#table.get(p.name) ?? p);
   }
 
   attachCommand(name: string): string {
@@ -187,7 +211,12 @@ export class Sessions {
    * `cland hook <event>` posted a signal: a state, the model, usage, a confirmed inject. A signal for a session
    * the hub did not launch is logged and ignored (its state stays `unknown`).
    */
-  signal(frame: { session?: string; sessionId?: string; event: string; at?: number; payload?: Record<string, unknown> }): { applied: boolean; state?: SessionState } {
+  signal(frame: SignalFrame): { applied: boolean; state?: SessionState; buffered?: true } {
+    const launching = frame.session !== undefined ? this.#launching.get(frame.session) : undefined;
+    if (launching) {
+      launching.push(frame);
+      return { applied: false, buffered: true };
+    }
     const p = this.#signalled(frame.session, frame.sessionId);
     if (!p) {
       this.#log({ event: 'signal-unmatched', session: frame.session ?? null, hookEvent: frame.event });
@@ -200,6 +229,9 @@ export class Sessions {
       if (id) this.#confirm(p, id);
       return { applied: true };
     }
+    // the harness's own conversation id, as its hooks carry it (a `/clear` starts a new one)
+    const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
+    if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
     const meaning = adapter.interpret(frame.event, payload);
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
@@ -247,6 +279,19 @@ export class Sessions {
 
   /** An in-session bridge (the mod) connected for `session`; returns its disconnect. What waited is retried. */
   bridge(session: string, send: (frame: InjectFrame) => boolean): () => void {
+    if (this.#launching.has(session)) {
+      // the mod can connect before the launch returns: the row it belongs to is not written yet
+      let disconnect: (() => void) | null = null;
+      let closed = false;
+      const connect = () => {
+        if (!closed) disconnect = this.bridge(session, send);
+      };
+      this.#earlyBridges.set(session, [...(this.#earlyBridges.get(session) ?? []), connect]);
+      return () => {
+        closed = true;
+        disconnect?.();
+      };
+    }
     const p = this.#process(session);
     const adapter = this.adapter(p.harness);
     if (!adapter.bridge) throw new Error(`the ${p.harness} adapter takes no bridge`);
