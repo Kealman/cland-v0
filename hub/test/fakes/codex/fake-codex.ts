@@ -15,6 +15,11 @@
 //       status line to "idle" through the spoke's `status` tool (the hub must not take it for the state), then asks
 //       for a command approval (`item/commandExecution/requestApproval` to the subscribers, status
 //       `active [waitingOnApproval]`) and waits for a client's answer, SIGUSR1, or the file `approve` in FAKE_CODEX_HOME.
+//       Scripted review and QA (#41): when FAKE_CODEX_HOME holds `verdicts.json` ({"review"?: Script, "qa"?: Script},
+//       Script = {result, text, run}) and a message's first line is `review request T-n` or `qa request T-n`, the
+//       answer is what the Reviewer and QA clauses ask for instead of the pong: a `task.comment` on T-n with the
+//       verdict header, then a `send` back to the sender: `<kind> <result> T-n (run <run>)`, or, when the hub refused
+//       the comment, `<kind> refused T-n: <error>`.
 //   codex resume --remote unix://PATH --cd DIR THREAD
 //       exits 2 when any `-c`/`--config`/`--profile`/`-p`/`--enable`/`--disable` is on its command line (the
 //       embedded-mode trap); otherwise joins the thread with `thread/resume` and prints
@@ -45,6 +50,16 @@ const readJson = <T>(file: string): T | null => {
 const flag = (args: string[], name: string) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
+};
+
+type VerdictKind = 'review' | 'qa';
+type VerdictScript = { result: 'clear' | 'not clear'; text: string; run: string };
+const parseJson = <T>(text: string | null): T | null => {
+  try {
+    return text === null ? null : (JSON.parse(text) as T);
+  } catch {
+    return null;
+  }
 };
 
 type Status = { type: 'idle' } | { type: 'notLoaded' } | { type: 'active'; activeFlags: string[] };
@@ -236,7 +251,20 @@ async function appServer(args: string[]): Promise<number> {
       }
       const topic = /\btopic="([^"]+)"/.exec(item.text)?.[1];
       const msgId = /\bmsg_id="([^"]+)"/.exec(item.text)?.[1];
-      await callTool('send', { text: `pong: ${body}`, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
+      const where = { ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) };
+      const request = /^(review|qa) request (T-\d+)\b/.exec(body);
+      const script = request ? readJson<Partial<Record<VerdictKind, VerdictScript>>>(join(HOME, 'verdicts.json'))?.[request[1] as VerdictKind] : undefined;
+      if (request && script) {
+        const kind = request[1] as VerdictKind;
+        const itemId = request[2] as string;
+        const from = /\bfrom="([^"]+)"/.exec(item.text)?.[1] ?? 'coordinator';
+        const answer = await callTool('task.comment', { id: itemId, verdict: kind, result: script.result, run: script.run, text: script.text });
+        const parsed = parseJson<{ ok: boolean; error?: string }>(answer);
+        const report = parsed?.ok ? `${kind} ${script.result} ${itemId} (run ${script.run})` : `${kind} refused ${itemId}: ${parsed?.error ?? answer ?? 'no answer'}`;
+        await callTool('send', { to: [from], text: report, ...where });
+        continue;
+      }
+      await callTool('send', { text: `pong: ${body}`, ...where });
     }
     t.tokens += 12;
     const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 0, outputTokens: 2, reasoningOutputTokens: 0 };
