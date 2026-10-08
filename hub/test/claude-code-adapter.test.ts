@@ -26,7 +26,20 @@ async function launch(ui: FrameClient, name: string, extra: Record<string, unkno
   return (r.value as { process: Harness }).process;
 }
 
-const stateEvents = (ui: FrameClient, session: string): StateEvent[] => ui.frames.filter((f): f is StateEvent => f.type === 'session.state' && f.session === session);
+const stateEvents = (ui: FrameClient, session: string, since = 0): StateEvent[] => ui.frames.slice(since).filter((f): f is StateEvent => f.type === 'session.state' && f.session === session);
+
+/**
+ * A turn as the UI sees it, from the frames after `mark`: a busy pushed by a hook or the mod, then an idle.
+ * The turn's state signals come from processes of their own (`cland hook`), so they can reach the hub after
+ * the reply and after the inject's confirmation; the session was idle before the turn, so only these
+ * frames — never the current state — show that the turn was reported.
+ */
+const aTurn = (ui: FrameClient, session: string, mark: number) =>
+  eventually(`${session}: a pushed busy, then idle`, () => {
+    const events = stateEvents(ui, session, mark);
+    const busy = events.findIndex((e) => e.state === 'busy' && e.source !== 'poll');
+    return busy >= 0 && events.slice(busy + 1).some((e) => e.state === 'idle') ? events : undefined;
+  });
 
 /** The session shows in presence (its spoke connected) with this state. */
 const presentAs = (ui: FrameClient, name: string, state: string) =>
@@ -41,7 +54,8 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   const root = await tempProject(t);
   // the polled fallback slowed down: every state asserted here must come from a push (a hook, the mod)
   // and `--bg` returns after the session's SessionStart hook already posted (seen with the real harness)
-  const fake = await fakeClaude(t, { pollMs: 10_000, lateBg: true });
+  // a turn long enough that its busy is still news when a hook's process (a node start) reports it
+  const fake = await fakeClaude(t, { pollMs: 10_000, lateBg: true, turnMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
@@ -74,6 +88,7 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   assert.equal(two, one);
 
   // the human writes in General: the coordinator gets it, the mod submits it, the reply comes back
+  const mark = ui.frames.length;
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'Reply with the single word pong' });
   assert.equal(sent.ok, true, sent.error);
   const id = (sent.value as { message: { id: string } }).message.id;
@@ -91,11 +106,9 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   assert.match(prompt, /submitted: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool with topic "general" and no `to`; text printed in this terminal reaches no one\./);
 
   // busy during the turn, idle after: pushed by the hooks and the mod
+  const turn = await aTurn(ui, 'coord', mark);
   await presentAs(ui, 'coord', 'idle');
-  const turn = stateEvents(ui, 'coord').map((e) => e.state);
-  assert.ok(turn.includes('busy'), `a busy state was published: ${JSON.stringify(turn)}`);
-  assert.equal(turn.at(-1), 'idle');
-  const busy = stateEvents(ui, 'coord').find((e) => e.state === 'busy');
+  const busy = turn.find((e) => e.state === 'busy');
   assert.ok(busy && ['hook', 'mod'].includes(busy.source), `busy came from ${busy?.source}`);
 
   // the turn's model and usage, from the mod's turn.complete
@@ -183,7 +196,7 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
 test('after a hub restart, resume re-finds the running session through the process table and state reporting continues', async (t) => {
   const root = await tempProject(t);
   // a slow poll: after the restart the states must come from the hooks and the mod, not the fallback
-  const fake = await fakeClaude(t, { pollMs: 10_000 });
+  const fake = await fakeClaude(t, { pollMs: 10_000, turnMs: 1000 });
   const first = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, first.discovery);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
@@ -206,12 +219,13 @@ test('after a hub restart, resume re-finds the running session through the proce
   await presentAs(ui2, 'coord', 'idle');
 
   // hooks and the mod reach the new hub: a message is injected and the turn's states arrive
+  const mark = ui2.frames.length;
   const sent = await ui2.request({ type: 'topic.send', topic: 'general', text: 'still there?' });
   const id = (sent.value as { message: { id: string } }).message.id;
   await ui2.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
   await ui2.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: still there?', 15_000);
+  await aTurn(ui2, 'coord', mark); // busy pushed after the restart, then idle
   await presentAs(ui2, 'coord', 'idle');
-  assert.ok(stateEvents(ui2, 'coord').some((e) => e.state === 'busy' && e.source !== 'poll'), 'busy pushed after the restart');
 });
 
 test('a message for a session with no adapter stays delivered; an unknown session or harness is refused', async (t) => {
