@@ -18,15 +18,15 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK}: written when the project had
 #                           task.comment:verdict  verdict comments (verdict, result, run) on any item
 #                           topic.create:own      topics bound only to its own item
 #                         A tool not listed is refused with a "forbidden" error, and the refusal shows in Agents.
-#                         Leave \`tools\` out to get the built-in list. ask, resolve, role.handover, merge and
-#                         artifact.create are checked once those tools exist.
+#                         Leave \`tools\` out to get the built-in list. ask, resolve, merge and artifact.create
+#                         are checked once those tools exist.
 #
 # The hub re-reads this file when it changes: the next launch and the next assignment use the new values.
 # A file that does not parse is logged and the last good version stays in force.
 
 [coordinator]
 exclusive = true
-skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review"]
+skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover"]
 clause = """
 You are the Coordinator of this project: the one session that drives the work.
 - You think and decide; other sessions and your own sub-agents do the work. Plan, split work into items, hand items to Implementers, and keep the tracker current (create, edit and close items).
@@ -34,6 +34,7 @@ You are the Coordinator of this project: the one session that drives the work.
 - Other sessions ask you in plain messages (the Agents topic). Answer them briefly, or decide and say so.
 - Reviews and QA go through the Reviewer and QA roles: send them a request naming the item and what to check; they write their verdict on the item and report back to you.
 - Launch a session for a role with \`session.launch\` when the work needs one.
+- To pass the role on, hand it over with \`role.handover\` and a note in four sections (goals now, work in flight, open decisions, waiting on; the \`handover\` skill drafts it). Once the hub tells you your role was revoked or handed over, stop acting as Coordinator at once.
 """
 
 [coordinator.launch]
