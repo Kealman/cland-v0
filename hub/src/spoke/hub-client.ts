@@ -71,6 +71,8 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   #fatal = false;
   #heartbeat: NodeJS.Timeout | null = null;
   #missedHeartbeats = 0;
+  /** Armed when the hello goes out, cleared by the hub's answer: the liveness check before heartbeats start. */
+  #welcomeTimer: NodeJS.Timeout | null = null;
   /** The ids of the messages already handed to the session: a re-sent deliver is acked again, never emitted twice. */
   readonly #seen = new Set<string>();
   readonly #options: HubClientOptions;
@@ -116,6 +118,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
     this.#stopped = true;
     if (this.#timer) clearTimeout(this.#timer);
     this.#stopHeartbeat();
+    this.#clearWelcomeTimer();
     this.#ws?.close();
   }
 
@@ -214,6 +217,15 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
       const name = this.#requestedName ?? this.#acceptedName;
       if (name !== undefined) hello.name = name;
       ws.send(JSON.stringify(hello));
+      // The heartbeat starts only with the welcome: until then this deadline is the liveness check. A hub
+      // that took the connection and stays silent is left, and the close schedules the reconnect.
+      const within = this.#options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+      this.#welcomeTimer = setTimeout(() => {
+        if (this.#ws !== ws || this.#state.kind === 'connected') return;
+        this.#log(`the hub did not welcome this spoke within ${within / 1000} s — closing the connection and reconnecting`);
+        ws.terminate();
+      }, within);
+      this.#welcomeTimer.unref();
     });
 
     ws.on('message', (data) => {
@@ -228,6 +240,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
     ws.on('close', (code, reason) => {
       this.#ws = null;
       this.#stopHeartbeat();
+      this.#clearWelcomeTimer();
       const why = reason.toString() || `code ${code}`;
       for (const [id, p] of this.#pending) {
         clearTimeout(p.timer);
@@ -265,7 +278,14 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
     });
   }
 
+  #clearWelcomeTimer(): void {
+    if (this.#welcomeTimer) clearTimeout(this.#welcomeTimer);
+    this.#welcomeTimer = null;
+  }
+
   #onFrame(frame: HubFrame): void {
+    // the hub answered the hello, one way or the other
+    if (frame.type === 'welcome' || frame.type === 'error') this.#clearWelcomeTimer();
     switch (frame.type) {
       case 'welcome':
         this.#attempt = 0;
@@ -283,7 +303,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
           this.#seen.add(frame.id);
           if (this.#seen.size > SEEN_LIMIT) this.#seen.delete(this.#seen.values().next().value as string);
           this.emit('deliver', frame.message);
-        }
+        } else this.#log(`message ${frame.id} was sent again; acked again, not handed to the session twice`);
         // accepted (spec 4.2, `delivered`): the hub stops re-sending it
         if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(JSON.stringify({ type: 'ack', id: frame.id } satisfies Ack));
         break;

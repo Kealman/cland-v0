@@ -27,7 +27,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/tracker/requests.ts` | The `task.*` request frames and their handler, called from the dispatcher for spokes and clients alike. |
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve`. |
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
-| `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats. |
+| `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
 | `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send`, `who`, `status`, `rename`, `history` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
 | `bin/cland.ts` | The `cland` CLI: `hub …`, `task …`, `--version`, `--help`. |
