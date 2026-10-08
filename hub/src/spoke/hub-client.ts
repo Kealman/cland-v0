@@ -332,6 +332,8 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         this.#lastRefusal = frame.message;
         this.#setState({ kind: 'refused', code: frame.code, message: frame.message });
         if (frame.code === 'version') this.#fatal = true;
+        // no role yet: the human assigns one (`cland role set`), and the next retry gets in
+        if (frame.code === 'no-role') this.#log(`refused by the hub: ${frame.message}`);
         if (frame.code === 'bad-name' && this.#requestedName !== undefined) {
           // Reserved or malformed: no retry can help — take a generated name instead.
           this.#log(`requested name "${this.#requestedName}" refused (${frame.message}) — asking the hub for a generated one`);

@@ -462,6 +462,8 @@ export type FakeClaude = {
   sessions: () => Promise<Array<{ pid: number; id: string; sessionId: string; status: string; waitingFor?: string; name: string | null }>>;
   /** What one fake session logged (hooks that failed, tool calls, the mod's bridge). */
   log: (id: string) => Promise<string>;
+  /** How a background session was started: the flags `claude --bg` was given. */
+  job: (id: string) => Promise<{ name: string | null; model: string | null; effort: string | null }>;
 };
 
 export async function fakeClaude(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; dropFirst?: boolean; lateBg?: boolean } = {}): Promise<FakeClaude> {
@@ -490,7 +492,13 @@ export async function fakeClaude(t: TestContext, timings: { pollMs?: number; inj
     for (const s of await sessions()) await killDaemon(s.pid);
     await rm(home, { recursive: true, force: true });
   });
-  return { env, home, sessions, log: async (id) => readFile(join(home, 'jobs', `${id}.log`), 'utf8').catch(() => '') };
+  return {
+    env,
+    home,
+    sessions,
+    log: async (id) => readFile(join(home, 'jobs', `${id}.log`), 'utf8').catch(() => ''),
+    job: async (id) => JSON.parse(await readFile(join(home, 'jobs', `${id}.json`), 'utf8')) as { name: string | null; model: string | null; effort: string | null },
+  };
 }
 
 /**

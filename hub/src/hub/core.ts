@@ -247,7 +247,7 @@ export class HubCore {
     }
     this.#log({ event: 'hello', name, sessionId: hello.sessionId, role });
     // the clause goes out with what waited (flushQueued, after the welcome), ahead of it
-    if (this.#roles && role !== null) this.#recordClause(connection, fresh ? 'assigned at launch' : 'reconnect');
+    if (this.#roles && role !== null) this.#recordClause(connection, fresh ? 'assigned at launch' : 'hello');
     if (fresh) this.#emitRole(name, role, null, 'launch');
     this.#announceCoordinator();
     return { ok: true, name, connection };

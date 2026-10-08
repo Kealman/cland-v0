@@ -64,9 +64,10 @@ const TOOLS = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'The new session\'s name (lowercase letters, digits, hyphens)' },
-        role: { type: 'string', description: 'The role it runs under (coordinator, implementer, reviewer, qa)' },
-        model: { type: 'string', description: 'The model; the harness default when absent' },
-        harness: { type: 'string', description: 'The harness; `claude-code` (the default) is the only one yet' },
+        role: { type: 'string', description: 'The role it runs under (coordinator, implementer, reviewer, qa); its launch defaults in .cland/roles.toml fill the harness, model and effort not given' },
+        model: { type: 'string', description: "The model; the role's default, else the harness's, when absent" },
+        harness: { type: 'string', description: "The harness (`claude-code`, `opencode`); the role's default, else `claude-code`, when absent" },
+        effort: { type: 'string', description: "The reasoning effort (Claude Code: low … max); the role's default when absent" },
       },
       required: ['name'],
     },
@@ -204,6 +205,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
               ...(typeof args.role === 'string' ? { role: args.role } : {}),
               ...(typeof args.model === 'string' ? { model: args.model } : {}),
               ...(typeof args.harness === 'string' ? { harness: args.harness } : {}),
+              ...(typeof args.effort === 'string' ? { effort: args.effort } : {}),
             },
             60_000,
           )) as Record<string, unknown>;
