@@ -15,6 +15,11 @@ export type HubClientOptions = {
   hello: Omit<Hello, 'type' | 'protocol'>;
   /** Base reconnect delay, ms (doubles up to 30 s). */
   reconnectMs?: number;
+  /** How long a request waits for its reply before it fails, ms. */
+  requestTimeoutMs?: number;
+  /** The heartbeat interval while connected, ms; absent means no heartbeat. Each ping must be answered
+   *  within one interval; MISSED_HEARTBEATS unanswered in a row close the socket, and the spoke reconnects. */
+  heartbeatMs?: number;
   log?: (line: string) => void;
 };
 
@@ -33,7 +38,16 @@ export const NAME_RETRIES = 5;
 /** How many delivered message ids a spoke remembers to recognise a re-send. */
 const SEEN_LIMIT = 1000;
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
+/** The default request deadline: the hub is on loopback, so a reply this late means it is stuck. */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
+/** Unanswered heartbeats in a row after which the hub counts as gone and the spoke reconnects. */
+export const MISSED_HEARTBEATS = 2;
+
+/** A request whose reply did not come within its deadline. */
+export class ReplyTimeout extends Error {}
+
+type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
 
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -54,6 +68,8 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   #timer: NodeJS.Timeout | null = null;
   #lastRefusal: string | null = null;
   #fatal = false;
+  #heartbeat: NodeJS.Timeout | null = null;
+  #missedHeartbeats = 0;
   /** The ids of the messages already handed to the session: a re-sent deliver is acked again, never emitted twice. */
   readonly #seen = new Set<string>();
   readonly #options: HubClientOptions;
@@ -98,25 +114,62 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   stop(): void {
     this.#stopped = true;
     if (this.#timer) clearTimeout(this.#timer);
+    this.#stopHeartbeat();
     this.#ws?.close();
   }
 
-  /** Send a request and await its result; rejects at once when there is no connection. */
-  request(frame: DistributiveOmit<SpokeRequest, 'id'>): Promise<unknown> {
+  /** Send a request and await its result; rejects at once when there is no connection, and with a
+   *  ReplyTimeout when no reply comes within the deadline. */
+  request(frame: DistributiveOmit<SpokeRequest, 'id'>, timeoutMs = this.#options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS): Promise<unknown> {
     if (this.#state.kind !== 'connected' || !this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error(this.describeOutage()));
     }
     const id = randomUUID();
     const ws = this.#ws;
     return new Promise((resolve, reject) => {
-      this.#pending.set(id, { resolve, reject });
+      const timer = setTimeout(() => {
+        if (!this.#pending.delete(id)) return;
+        reject(new ReplyTimeout(`the hub did not answer within ${timeoutMs / 1000} s`));
+      }, timeoutMs);
+      this.#pending.set(id, { resolve, reject, timer });
       ws.send(JSON.stringify({ ...frame, id }), (err) => {
-        if (err) {
-          this.#pending.delete(id);
+        if (err && this.#pending.delete(id)) {
+          clearTimeout(timer);
           reject(err);
         }
       });
     });
+  }
+
+  /** While connected: a ping each interval, answered within it; too many unanswered and the socket is cut. */
+  #startHeartbeat(ws: WebSocket): void {
+    this.#stopHeartbeat();
+    const every = this.#options.heartbeatMs;
+    if (every === undefined) return;
+    this.#missedHeartbeats = 0;
+    this.#heartbeat = setInterval(() => {
+      if (this.#ws !== ws || ws.readyState !== WebSocket.OPEN) return;
+      this.request({ type: 'ping' }, every).then(
+        () => {
+          this.#missedHeartbeats = 0;
+        },
+        (err: unknown) => {
+          if (!(err instanceof ReplyTimeout) || this.#ws !== ws) return;
+          this.#missedHeartbeats += 1;
+          if (this.#missedHeartbeats < MISSED_HEARTBEATS) return;
+          this.#log(`the hub missed ${this.#missedHeartbeats} heartbeat replies — closing the connection and reconnecting`);
+          this.#stopHeartbeat();
+          // no close handshake with a peer that stopped answering: the close event schedules the reconnect
+          ws.terminate();
+        },
+      );
+    }, every);
+    this.#heartbeat.unref();
+  }
+
+  #stopHeartbeat(): void {
+    if (this.#heartbeat) clearInterval(this.#heartbeat);
+    this.#heartbeat = null;
   }
 
   /** One sentence for a tool result when the hub cannot be reached. */
@@ -173,8 +226,10 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
 
     ws.on('close', (code, reason) => {
       this.#ws = null;
+      this.#stopHeartbeat();
       const why = reason.toString() || `code ${code}`;
       for (const [id, p] of this.#pending) {
+        clearTimeout(p.timer);
         p.reject(new Error(`the hub connection closed (${why}) before the reply`));
         this.#pending.delete(id);
       }
@@ -219,6 +274,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
         if (this.#state.kind === 'refused' && this.#state.code === 'unauthorized') this.#lastRefusal = null;
         this.#acceptedName = frame.name;
         this.#setState({ kind: 'connected', name: frame.name, ...(frame.role ? { role: frame.role } : {}) });
+        if (this.#ws) this.#startHeartbeat(this.#ws);
         this.#log(`connected to the hub as ${frame.name}${frame.role ? ` (${frame.role})` : ''} (${frame.presence.length} online)`);
         break;
       case 'deliver':
@@ -234,6 +290,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
         const p = this.#pending.get(frame.id);
         if (!p) return;
         this.#pending.delete(frame.id);
+        clearTimeout(p.timer);
         if (frame.ok) p.resolve(frame.value);
         else p.reject(new Error(frame.error));
         break;

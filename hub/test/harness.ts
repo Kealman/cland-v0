@@ -47,6 +47,8 @@ export type SpokeOptions = {
   sessionId?: string;
   cwd?: string;
   heartbeatMs?: number;
+  /** How long a request waits for the hub's reply (CLAND_HUB_REQUEST_TIMEOUT_MS). */
+  requestTimeoutMs?: number;
 };
 
 export type Session = {
@@ -80,6 +82,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     env.CLAND_HUB_URL = options.hub.url;
     env.CLAND_HUB_SECRET = options.secret ?? TEST_SECRET;
   }
+  if (options.requestTimeoutMs !== undefined) env.CLAND_HUB_REQUEST_TIMEOUT_MS = String(options.requestTimeoutMs);
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
   const transport = new StdioClientTransport({ command: process.execPath, args: [SPOKE_ENTRY], env, cwd: options.cwd ?? workDir, stderr: 'pipe' });

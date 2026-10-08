@@ -227,3 +227,56 @@ test('a spoke acks every deliver and hands a message re-sent under the same id t
     await new Promise<void>((resolve) => wss.close(() => resolve()));
   }
 });
+
+/** A hub that welcomes every hello and then never answers anything: alive on the wire, dead in the protocol. */
+const silentHub = async () => {
+  const { WebSocketServer } = await import('ws');
+  const wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await new Promise<void>((resolve) => wss.once('listening', () => resolve()));
+  let hellos = 0;
+  wss.on('connection', (ws) => {
+    ws.on('message', (d) => {
+      if ((JSON.parse(String(d)) as { type: string }).type !== 'hello') return;
+      hellos += 1;
+      ws.send(JSON.stringify({ type: 'welcome', name: 'alpha', presence: [] }));
+    });
+  });
+  return {
+    url: `ws://127.0.0.1:${(wss.address() as { port: number }).port}`,
+    hellos: () => hellos,
+    close: async () => {
+      for (const c of wss.clients) c.terminate();
+      await new Promise<void>((resolve) => wss.close(() => resolve()));
+    },
+  };
+};
+
+test('a request the hub never answers fails at its deadline instead of hanging the tool call', async () => {
+  const hub = await silentHub();
+  const spoke = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', requestTimeoutMs: 300 });
+  try {
+    await until(async () => hub.hellos(), (n) => n >= 1);
+    await new Promise((r) => setTimeout(r, 100)); // the welcome is in
+    const started = Date.now();
+    const who = await spoke.call<{ ok: boolean; error?: string }>('who');
+    assert.equal(who.ok, false);
+    assert.match(who.error ?? '', /the hub did not answer within 0\.3 s/);
+    assert.ok(Date.now() - started < 3000, 'bounded by the deadline');
+  } finally {
+    await spoke.close();
+    await hub.close();
+  }
+});
+
+test('a spoke whose heartbeats go unanswered closes the connection and reconnects', async () => {
+  const hub = await silentHub();
+  const spoke = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 100 });
+  try {
+    const hellos = await until(async () => hub.hellos(), (n) => n >= 2, 5000);
+    assert.ok(hellos >= 2, `a fresh hello after the missed heartbeats (saw ${hellos})`);
+    assert.match(spoke.log(), /missed 2 heartbeat replies/);
+  } finally {
+    await spoke.close();
+    await hub.close();
+  }
+});

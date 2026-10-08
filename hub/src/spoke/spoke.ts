@@ -9,14 +9,14 @@
 //   CLAND_SESSION_ID    the harness session id; a restart of the same session takes its name back
 //   CLAND_SESSION_NAME  the name to ask for; absent → the hub generates one
 //   CLAND_ROLE          the role the session runs under
-//   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS   timings, for tests
+//   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS, CLAND_HUB_REQUEST_TIMEOUT_MS   timings, for tests
 // TODO(#24): the adapters launch sessions in the project, where discovery finds the hub.
 import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
-import { HubClient } from './hub-client.ts';
+import { HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
 import { HEARTBEAT_MS, type Message, type SendOutcome } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 
@@ -200,6 +200,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     secret,
     ...(endpoint ? { endpoint } : {}),
     reconnectMs: positive(env.CLAND_HUB_RECONNECT_MS, 1000),
+    heartbeatMs: positive(env.CLAND_HUB_HEARTBEAT_MS, HEARTBEAT_MS),
+    requestTimeoutMs: positive(env.CLAND_HUB_REQUEST_TIMEOUT_MS, REQUEST_TIMEOUT_MS),
     log,
     hello: {
       // a session with no id gets a random one: two such spokes must never look like one session
@@ -209,11 +211,6 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
       ...(role ? { role } : {}),
     },
   });
-  const heartbeat = setInterval(() => {
-    if (!hub || hub.state.kind !== 'connected') return;
-    hub.request({ type: 'ping' }).catch(() => {});
-  }, positive(env.CLAND_HUB_HEARTBEAT_MS, HEARTBEAT_MS));
-  heartbeat.unref();
   hub.on('deliver', (message) => {
     deliverToSession(server, message).catch((err: unknown) => log(`could not deliver ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
   });
