@@ -4,6 +4,7 @@ import { HUB_USAGE, runHub } from '../src/cli/hub.ts';
 import { TASK_USAGE, runTask } from '../src/cli/task.ts';
 import { SESSION_USAGE, runSession } from '../src/cli/session.ts';
 import { ROLE_USAGE, runRole } from '../src/cli/role.ts';
+import { INBOX_USAGE, runInbox, TOPIC_USAGE, runTopic } from '../src/cli/inbox.ts';
 import { HOOK_USAGE, runHook } from '../src/cli/hook.ts';
 import { OPEN_USAGE, runOpen } from '../src/cli/open.ts';
 import { INIT_USAGE, runInit, runUpdate } from '../src/cli/init.ts';
@@ -16,7 +17,7 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${OPEN_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${ROLE_USAGE}${HOOK_USAGE}  --version, -v   print the version
+${OPEN_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${ROLE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -87,6 +88,22 @@ switch (command) {
   case 'role':
     try {
       process.exitCode = await runRole(rest);
+    } catch (err) {
+      process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exitCode = 1;
+    }
+    break;
+  case 'inbox':
+    try {
+      process.exitCode = await runInbox(rest);
+    } catch (err) {
+      process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exitCode = 1;
+    }
+    break;
+  case 'topic':
+    try {
+      process.exitCode = await runTopic(rest);
     } catch (err) {
       process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exitCode = 1;
