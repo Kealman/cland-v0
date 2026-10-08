@@ -2,11 +2,11 @@
 id: T-28
 kind: task
 title: Session launcher and the sessions panel
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-25
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:14Z
-updated: 2026-10-08T13:17:15.602Z
+updated: 2026-10-08T18:56:26.191Z
 github:
   repo: Kealman/cland-v0
   number: 28
@@ -37,3 +37,11 @@ From the workbench, the human launches a session of any of the three harnesses w
 - [ ] The panel shows `unknown` for a session whose process died and a journal event is written
 - [ ] The picker's sessions kind filters by name, role and harness and attaches on Enter
 - [ ] Headless tests cover launch, attach command resolution, stop and the capability display against fake harnesses
+
+## Comments
+
+### Kealman · 2026-10-08T15:36:44Z
+
+<!-- github-comment: 6063462263 -->
+
+Done on main (f1da25f, ab20ea2, merged at 187e7c7): the launcher form (Space-l) with role defaults from role.list, the sessions panel rows name [Role] / harness · model · state (heuristic) · usage, Enter/C-v attach, x stop with an in-panel confirmation, c capability table, the picker's sessions kind (waiting first, filters by name/role/harness); 6 stub-hub tests and a real-hub test launching the three fakes. No hub changes needed.

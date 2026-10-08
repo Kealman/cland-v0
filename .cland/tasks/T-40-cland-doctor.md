@@ -2,18 +2,18 @@
 id: T-40
 kind: task
 title: cland doctor
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-39
 topic: null
 branch: null
 created: 2026-10-08T11:55:41Z
-updated: 2026-10-08T13:17:15.607Z
+updated: 2026-10-08T18:56:26.198Z
 github:
   repo: Kealman/cland-v0
   number: 40
@@ -34,3 +34,11 @@ Part of #19. Spec section 4.9; decision https://github.com/Kealman/cland-v0/issu
 - [ ] A harness version outside the tested range is reported as a warning, not a failure
 - [ ] The output is plain text suitable for pasting into an item comment
 - [ ] Tests fake each failure condition and assert the report
+
+## Comments
+
+### Kealman · 2026-10-08T15:55:52Z
+
+<!-- github-comment: 6063813651 -->
+
+Done on main (8f4b971..364a3ab, merged at 730b221): cland doctor with 20 checks (harness binaries, versions against tested ranges as warn, auth probes via claude auth status / codex login status / opencode auth list, gh, the pinned Neovim, the hub and discovery/secret/lock, roles.toml and config.toml parsing, skills symlink and manifest, hooks, mod, docs, AGENTS.md block), plain text or --json, exit 1 on fail; 14 tests against fakes. Open: a stdio-only hub (--no-listen) reports as fail.

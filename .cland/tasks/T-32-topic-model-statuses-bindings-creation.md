@@ -2,11 +2,11 @@
 id: T-32
 kind: task
 title: "Topic model: statuses, bindings, creation and mentions"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-25
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:41Z
-updated: 2026-10-08T13:17:15.604Z
+updated: 2026-10-08T18:56:26.194Z
 github:
   repo: Kealman/cland-v0
   number: 32
@@ -36,3 +36,11 @@ The full topic model on top of General: a topic has a title, a status (`open`, `
 - [ ] A message to a vacant Coordinator is queued and delivered when a Coordinator is assigned; the topic shows the warning meanwhile
 - [ ] An agent-created topic requires a title; a second topic for the same unit of work is refused
 - [ ] The topics panel and picker show statuses, unread counts and pinning as in the design; headless tests assert the screen
+
+## Comments
+
+### Kealman · 2026-10-08T15:36:50Z
+
+<!-- github-comment: 6063463992 -->
+
+Done on main (65f312c..de88db4, merged at 79e09c3): topic statuses by direction and resolve/close/reopen, one binding per item and per topic, topic.create (agents and the human), @role/@name mentions, the vacant-role warning, unread counts and topic.read, the topic event; the topics panel grouping/pinning/badges, the picker's topics kind, the thread header; 6 hub tests and 5 shell tests. Open: waiting for human is set by asks (#33); task.link --topic does not bind.

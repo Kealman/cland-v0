@@ -6,7 +6,7 @@ state: open
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-31
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-08T13:17:15.607Z
+updated: 2026-10-08T18:56:26.199Z
 github:
   repo: Kealman/cland-v0
   number: 42

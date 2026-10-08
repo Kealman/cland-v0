@@ -2,18 +2,18 @@
 id: T-25
 kind: task
 title: Workbench shell in Neovim
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-24
 topic: null
 branch: null
 created: 2026-10-08T11:53:51Z
-updated: 2026-10-08T13:17:15.601Z
+updated: 2026-10-08T18:56:26.189Z
 github:
   repo: Kealman/cland-v0
   number: 25
@@ -35,3 +35,68 @@ The real shell in `nvim/`, replacing the minimal client of the General ticket: a
 - [ ] Shift+Enter inserts a newline in the composer and reaches a harness TUI in a terminal buffer as the kitty CSI-u sequence; pasting text with tabs into a terminal buffer keeps the tabs
 - [ ] No hit-enter prompt can be triggered by hub events; UI updates land while the user is typing
 - [ ] Headless tests drive the shell with `nvim_input` and assert `screenstring()` for each panel toggle and view switch against a stub hub over stdio
+
+## Comments
+
+### Kealman · 2026-10-08T14:21:34Z
+
+<!-- github-comment: 6061948436 -->
+
+## Manual smoke (acceptance criterion 1)
+
+Real hub in a temporary project (`git init`), `cland session launch coord --role coordinator --model opus` against the fake Claude Code from `hub/test/fakes/claude-code/` (first on `PATH`), then `cland` (no command, on a terminal) in a tmux pane of 160x45. Captured with `tmux capture-pane -p`; runs of empty rows are squeezed.
+
+### 1. `cland` opens the workbench on General, the launched session in the sessions panel
+
+```
+ cland demo │ General                                                         ○ coord Coordinator · Claude Code · opus · idle    ✓ needs you 0    sessions  1
+ General · to @coordinator                                                                                  topic open │ SESSIONS            1 live · 0 waiting
+ No messages in General yet.                                                                                           │ ○ coord  coordinator              free
+                                                                                                                       │   Claude Code · opus · idle
+                                                                                                                       │
+      … 33 more rows like the one above
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ to: Coordinator (coord)                                                                 Enter sends · S-Enter newline │
+› Message General…  Enter sends · Shift+Enter newline                                                                  │
+                                                                                                                       │
+                                                                                                                       │ ↵ attach · gi item · gt topic
+ INSERT  General · topic open · to @coordinator (coord) │ hub: connected │ sessions: 0 busy · 0 waiting · 1 idle     Enter sends · S-Enter newline · Esc leaves
+```
+
+### 2. `Esc`, `␣s ␣s` (focus the panel), `gg`, Enter: the session attached in the centre through `claude attach <id>`, Terminal mode
+
+The fake's `attach` prints one line and exits; the real one stays attached.
+
+```
+ cland demo │ coord [coordinator]                                             ○ coord Coordinator · Claude Code · opus · idle    ✓ needs you 0    sessions  1
+ coord · coordinator                                                                       ○ Claude Code · opus · idle │ SESSIONS            1 live · 0 waiting
+fake claude attached to 133848b7 (coord)                                                                               │ ○ coord  coordinator              free
+                                                                                                                       │   Claude Code · opus · idle
+[Process exited 0]                                                                                                     │
+                                                                                                                       │
+      … 36 more rows like the one above
+                                                                                                                       │ ↵ attach · gi item · gt topic
+ TERMINAL  coord · session · attached · idle │ hub: connected │ sessions: 0 busy · 0 waiting · 1 idle    keys go to the session · C-\ C-n leaves · then ␣␣ back
+```
+
+### 3. `C-\ C-n`, `:restart`: the new Neovim re-runs the attach command; the session itself is untouched
+
+`:echo getpid()` before and after a second `:restart`: `nvim pid 80164` then `nvim pid 82800`. `cland session list` after the restarts: `coord  claude-code  running  [idle]  (coordinator)  opus  pid 79110`, the pid it was launched with.
+
+```
+ cland demo │ coord [coordinator]                                             ○ coord Coordinator · Claude Code · opus · idle    ✓ needs you 0    sessions  1
+ coord · coordinator                                                                       ○ Claude Code · opus · idle │ SESSIONS            1 live · 0 waiting
+fake claude attached to 133848b7 (coord)                                                                               │ ○ coord  coordinator              free
+                                                                                                                       │   Claude Code · opus · idle
+[Process exited 0]                                                                                                     │
+                                                                                                                       │
+      … 36 more rows like the one above
+                                                                                                                       │ ↵ attach · gi item · gt topic
+ NORMAL  coord · session · attached · idle │ hub: connected │ sessions: 0 busy · 0 waiting · 1 idle           ␣i ␣s ␣t ␣n panels · ␣p pick · ␣␣ back · gi gt gs
+```
+
+### Kealman · 2026-10-08T14:45:46Z
+
+<!-- github-comment: 6062426768 -->
+
+Done on main (c375810..5f04496, merged at 3a16ec3): the workbench shell in nvim/ (tabline top bar with the Coordinator chip, status line, centre views with thread/session and placeholders, left items panel, right panel inbox/sessions/topics with toggles, floating picker, gi/gt/gs, presets, cland open, real :restart re-attach), 21 headless tests against a stub hub over stdio; smoke captures in the issue. Three nvim review findings fixed (draft kept on refusal, stale hub.json autostart, launcher path escaping). Open: panels write the role lower-case while the hub now sends a capitalised label.

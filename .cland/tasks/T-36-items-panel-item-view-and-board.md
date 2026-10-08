@@ -2,11 +2,11 @@
 id: T-36
 kind: task
 title: Items panel, item view and board
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-35
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:12Z
-updated: 2026-10-08T13:17:15.605Z
+updated: 2026-10-08T18:56:26.196Z
 github:
   repo: Kealman/cland-v0
   number: 36
@@ -36,3 +36,11 @@ The items panel on the left: a tree of epics and items with status glyphs, the c
 - [ ] From an item, `gt` opens its topic (creating none; the topic appears when the first message about the item arrives) and `gs` attaches the claiming session; from a topic, `gi` opens the bound item
 - [ ] The board's columns derive from state, claims and verdicts without a stored workflow status
 - [ ] Headless tests assert the panel, the view and the board text for a fixture set of items against a real hub
+
+## Comments
+
+### Kealman · 2026-10-08T15:55:49Z
+
+<!-- github-comment: 6063812980 -->
+
+Done on main (ca0aa9c..862c81e, merged at c6d9a9a): the items panel as a tree with glyphs, claim and ask badge, filters all/in work/needs you/done/map with the wayfinder grouping, the item view with the fields column, body, verdicts and comments (e opens the file), the board derived from state/claims/labels/verdicts (rule in nvim/README.md), the picker's items kind, gi/gt/gs both ways, task events on index changes; 7 nvim tests incl. a real-hub within-a-second check. Open: cost column shows — until an adapter reports cost; the items filter is not kept across :restart.

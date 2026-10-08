@@ -2,18 +2,18 @@
 id: T-33
 kind: task
 title: Asks and the inbox
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-32
 topic: null
 branch: null
 created: 2026-10-08T11:54:50Z
-updated: 2026-10-08T13:17:15.604Z
+updated: 2026-10-08T18:56:26.194Z
 github:
   repo: Kealman/cland-v0
   number: 33
@@ -35,3 +35,11 @@ Ask is a message kind the Coordinator posts into a topic: a question with number
 - [ ] A session entering `waiting for approval` appears under approvals within one event and disappears when the state changes; Enter attaches it
 - [ ] Notifications dismiss with `d` and `D` and never block anything; asks and approvals cannot be dismissed
 - [ ] The "needs you" count equals asks plus approvals plus waiting topics; headless tests assert the inbox sections and the count
+
+## Comments
+
+### Kealman · 2026-10-08T16:19:36Z
+
+<!-- github-comment: 6064240565 -->
+
+Done on main (b6756f9..7276787, merged at b6fe6e8): ask as a message kind (Coordinator only, via the permission table), topic.answer with answer_to, waiting for human while an ask is open, resolve/close cancel asks, inbox.list with asks/approvals/waiting topics/notifications and dismiss, needsYou in hub.status, the inbox panel and full-width view, the ask card in the thread; 7 hub + 7 nvim tests. Open: no cland topic answer CLI; session death notifications untested.

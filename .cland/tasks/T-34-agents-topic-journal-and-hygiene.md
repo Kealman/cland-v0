@@ -2,18 +2,18 @@
 id: T-34
 kind: task
 title: Agents topic, journal and hygiene
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-32
 topic: null
 branch: null
 created: 2026-10-08T11:54:58Z
-updated: 2026-10-08T13:17:15.605Z
+updated: 2026-10-08T18:56:26.195Z
 github:
   repo: Kealman/cland-v0
   number: 34
@@ -35,3 +35,11 @@ Every agent-to-agent message and every lifecycle event (session start and stop, 
 - [ ] Changing a threshold in `config.toml` takes effect on the next hub start
 - [ ] The journal file contains every event and audit line as JSON lines and is append-only across restarts
 - [ ] Tests cover the breaker, persistence of mutes and the Agents view against a real hub
+
+## Comments
+
+### Kealman · 2026-10-08T16:19:39Z
+
+<!-- github-comment: 6064241370 -->
+
+Done on main (cec2d80..68a24b7, merged at 9e36de2): Agents as the record with lifecycle notices by kind, reply-in-Agents addressing the original sender, .cland/journal.jsonl append-only with every domain event and the audit records, cland hub journal, hygiene thresholds from config.toml with typed refusals, mutes persisted across restarts, cland hub unmute, the Agents log view in nvim; 4 hub + 2 nvim tests. Open: Space-a is bound to the log while spec 5 reserves it for the artifacts picker (to be remapped).

@@ -2,18 +2,18 @@
 id: T-29
 kind: task
 title: Roles config and clause delivery
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-28
 topic: null
 branch: null
 created: 2026-10-08T11:54:20Z
-updated: 2026-10-08T13:17:15.603Z
+updated: 2026-10-08T18:56:26.192Z
 github:
   repo: Kealman/cland-v0
   number: 29
@@ -35,3 +35,11 @@ Part of #19. Spec section 4.4; ADR 0001; decision https://github.com/Kealman/cla
 - [ ] A session launched for a role uses the role's launch defaults from `roles.toml`; editing the file changes the next launch
 - [ ] The sessions panel, the picker and the top bar show the role with the name
 - [ ] Tests cover assignment, exclusivity, clause redelivery on reconnect and the vacancy warning against fake harnesses
+
+## Comments
+
+### Kealman · 2026-10-08T14:45:53Z
+
+<!-- github-comment: 6062429036 -->
+
+Done on main (4aa29d3..3bcb9d3 plus the UI wiring in 3a16ec3): .cland/roles.toml with clauses, skills, launch defaults and permission lists (smol-toml, reloaded on edit), hub-held roles (role.set/clear/list frames and cland role CLI), the clause delivered as a hub notice on assignment and every hello, Coordinator exclusivity, role.vacant/role.filled events and the coordinator field in hub.status, roleless hellos refused, name shown with role; the shell's chip shows 'no coordinator' on the event (stub-hub test). Open: effort not stored for relaunch; clearing a role leaves the live session connected until its next reconnect; roles enforced only on a project hub.

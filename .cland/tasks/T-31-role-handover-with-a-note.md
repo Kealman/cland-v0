@@ -2,18 +2,18 @@
 id: T-31
 kind: task
 title: Role handover with a note
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
-assignee: null
+assignee: Kealman
 parent: T-19
 blocked_by:
   - T-30
 topic: null
 branch: null
 created: 2026-10-08T11:54:34Z
-updated: 2026-10-08T13:17:15.603Z
+updated: 2026-10-08T18:56:26.193Z
 github:
   repo: Kealman/cland-v0
   number: 31
@@ -34,3 +34,11 @@ The Coordinator hands its role to another session with `role.handover`, carrying
 - [ ] A handover without a note from the Coordinator is refused; from the human it is allowed
 - [ ] After the handover, B's `history` and the role-state query return the topics waiting for an agent and the claims held by the role
 - [ ] Tests cover handover, refusal without a note, revocation mid-turn and the state pull against fake harnesses
+
+## Comments
+
+### Kealman · 2026-10-08T15:55:47Z
+
+<!-- github-comment: 6063812208 -->
+
+Done on main (9537d08..454e2c1, merged at 3cca2c6): role.handover with a four-section note (refused when incomplete), atomic move with claims re-pointed, clause plus note to the new holder and a revocation to the old one, both notices in Agents, role.set with a note or --move for the human, role.state (note, waiting topics, asks placeholder, claims), history by topic, the handover skill. 4 tests. Open: a handover to a launched-but-unconnected session is implemented but untested.
