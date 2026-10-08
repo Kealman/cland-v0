@@ -20,12 +20,17 @@ export type LockHolder = {
 /** A breaker that crashed mid-break leaves its guard behind; past this age the guard is ignored. */
 const BREAK_GUARD_STALE_MS = 10_000;
 
-/** The start time of a live process, as `ps` prints it; null when it is gone or `ps` cannot say. */
+/** `ps -o lstart=`'s answer as the lock stores it; null when it said nothing. */
+export const parseStarted = (stdout: string): string | null => stdout.trim().replace(/\s+/g, ' ') || null;
+
+/** How long the daemon's own `ps` probe may take before it counts as "cannot say". */
+const PS_TIMEOUT_MS = 3000;
+
+/** The start time of a live process, as `ps` prints it; null when it is gone or `ps` cannot say (in time). */
 export function processStarted(pid: number): string | null {
-  const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8' });
-  if (r.status !== 0) return null;
-  const s = r.stdout.trim().replace(/\s+/g, ' ');
-  return s || null;
+  const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: PS_TIMEOUT_MS, killSignal: 'SIGKILL' });
+  if (r.status !== 0 || r.error) return null;
+  return parseStarted(r.stdout);
 }
 
 export function readLock(path: string): LockHolder | null {
@@ -38,19 +43,30 @@ export function readLock(path: string): LockHolder | null {
   }
 }
 
+// `ps` failing for a live pid says nothing either way: keep the lock rather than break a live hub's
+const sameProcess = (holder: LockHolder, now: string | null): boolean => holder.started === null || now === null || now === holder.started;
+
 /** Whether the process the lock names is still the one that took it. */
 export function holderAlive(holder: LockHolder): boolean {
   if (!pidAlive(holder.pid)) return false;
-  if (holder.started === null) return true;
-  const now = processStarted(holder.pid);
-  // `ps` failing for a live pid says nothing either way: keep the lock rather than break a live hub's
-  return now === null || now === holder.started;
+  return holder.started === null || sameProcess(holder, processStarted(holder.pid));
 }
 
 /** The live holder of the lock at `path`, or null when nobody (live) holds it. */
 export function liveHolder(path: string): LockHolder | null {
   const holder = readLock(path);
   return holder && holderAlive(holder) ? holder : null;
+}
+
+/**
+ * `liveHolder` without blocking: the start-time probe is `startedOf`, which the caller bounds (`cland doctor` runs
+ * `ps` with a deadline and kills its process group when it passes). A probe that cannot say counts as the holder.
+ */
+export async function liveHolderAsync(path: string, startedOf: (pid: number) => Promise<string | null>): Promise<LockHolder | null> {
+  const holder = readLock(path);
+  if (!holder || !pidAlive(holder.pid)) return null;
+  if (holder.started === null) return holder;
+  return sameProcess(holder, await startedOf(holder.pid)) ? holder : null;
 }
 
 /** Create `path` with `text`, whole, only if it does not exist yet; false when it does. */

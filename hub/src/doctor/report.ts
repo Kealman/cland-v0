@@ -48,8 +48,18 @@ export function render(checks: readonly Check[], header: string, colour: boolean
 
 export type RunResult = { code: number | null; stdout: string; stderr: string; error?: string };
 
-/** Run `bin args`, never throwing: a missing binary, a crash or the timeout come back as `error`. Stdin is closed. */
-export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = 20_000): Promise<RunResult> {
+/** A probe's deadline: `fallbackMs`, or `CLAND_DOCTOR_PROBE_TIMEOUT_MS` (tests that fake a tool that never answers). */
+export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number => {
+  const n = Number(env.CLAND_DOCTOR_PROBE_TIMEOUT_MS);
+  return Number.isFinite(n) && n > 0 ? n : fallbackMs;
+};
+
+/**
+ * Run `bin args`, never throwing: a missing binary, a crash or the timeout come back as `error`. Stdin is closed.
+ * The child leads its own process group: past the deadline the whole group is killed and the pipes are closed, so a
+ * grandchild holding stdout open (a wrapper script's real tool) neither outlives the check nor keeps it waiting.
+ */
+export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000)): Promise<RunResult> {
   return new Promise((done) => {
     let stdout = '';
     let stderr = '';
@@ -62,13 +72,19 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
     };
     let child;
     try {
-      child = spawn(bin, args, { env, stdio: ['ignore', 'pipe', 'pipe'] });
+      child = spawn(bin, args, { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     } catch (err) {
       finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err) });
       return;
     }
     const timer = setTimeout(() => {
-      child.kill('SIGKILL');
+      try {
+        if (child.pid !== undefined) process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        child.kill('SIGKILL');
+      }
+      child.stdout.destroy();
+      child.stderr.destroy();
       finish({ code: null, stdout, stderr, error: `no answer within ${timeoutMs / 1000} s` });
     }, timeoutMs);
     child.stdout.setEncoding('utf8').on('data', (c: string) => (stdout += c));

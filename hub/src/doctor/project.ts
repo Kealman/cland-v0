@@ -6,16 +6,16 @@ import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSyn
 import { basename, join, relative, resolve } from 'node:path';
 import { HOOK_EVENTS, MOD_DIR } from '../adapters/claude-code.ts';
 import { askHub } from '../cli/socket-client.ts';
-import { liveHolder } from '../hub/lock.ts';
+import { liveHolderAsync, parseStarted } from '../hub/lock.ts';
 import { parseConfig } from '../init/config.ts';
 import { isManagedFile, readText } from '../init/files.ts';
 import { BLOCK_END, DOCS } from '../init/instructions.ts';
-import { MANIFEST, SKILLS_SOURCE } from '../init/skills.ts';
+import { MANIFEST, readManifest, SKILLS_SOURCE } from '../init/skills.ts';
 import { CLAND_DIR, layout, pidAlive, readDiscovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
 import { parseRoles } from '../roles/config.ts';
 import { VERSION } from '../version.ts';
-import { fail, ok, warn, type Check } from './report.ts';
+import { fail, ok, probeTimeout, run, warn, type Check } from './report.ts';
 
 const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/\s*\n\s*/g, ' ').trim();
 
@@ -33,7 +33,11 @@ async function checkHub(l: Layout): Promise<Check[]> {
   const rel = (p: string) => relative(l.root, p);
   const text = readText(l.discovery);
   const d = text === null ? null : readDiscovery(l.discovery);
-  const holder = liveHolder(l.lock);
+  // the lock's holder, its start time asked of `ps` with a deadline: a hung `ps` cannot hold the doctor up
+  const holder = await liveHolderAsync(l.lock, async (pid) => {
+    const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], process.env, probeTimeout(process.env, 3000));
+    return r.code === 0 && r.error === undefined ? parseStarted(r.stdout) : null;
+  });
   const out: Check[] = [];
   let running = false;
 
@@ -51,6 +55,13 @@ async function checkHub(l: Layout): Promise<Check[]> {
     out.push(fail('hub', `${rel(l.discovery)} is not a valid discovery file (socket, port, secret, pid, version)`, fix));
     out.push(fail('hub.json', 'not valid JSON with socket, port, secret, pid and version', fix));
     running = holder !== null;
+  } else if (holder && holder.pid !== d.pid && !pidAlive(d.pid)) {
+    // a live hub holds the lock, but the file names another (dead) pid: nothing can reach the live hub, and
+    // `cland hub start` cannot replace it
+    const fix = `kill ${holder.pid} (the hub holding the lock, unreachable through the stale file), then rm ${rel(l.discovery)} and cland hub start`;
+    out.push(fail('hub', `pid ${holder.pid} holds ${rel(l.lock)}, but ${rel(l.discovery)} names pid ${d.pid}, which is gone: sessions and the CLI cannot find the hub`, fix));
+    out.push(fail('hub.json', `stale: names pid ${d.pid}, which is gone, while pid ${holder.pid} holds the hub lock`, fix));
+    running = true;
   } else if (!pidAlive(d.pid)) {
     out.push(warn('hub', `not running: ${rel(l.discovery)} names pid ${d.pid}, which is gone`, 'cland hub start (it replaces the stale file)'));
     out.push(warn('hub.json', `stale: pid ${d.pid} is gone`, 'cland hub start'));
@@ -75,6 +86,11 @@ async function checkHub(l: Layout): Promise<Check[]> {
       running = true;
       out.push(fail('hub', `pid ${d.pid} holds the lock but does not answer on ${d.socket} (${why})`, 'cland hub stop, then cland hub start'));
       out.push(ok('hub.json', `valid, names pid ${d.pid}`));
+    } else if (holder) {
+      const fix = `kill ${holder.pid} (the hub holding the lock, unreachable through the stale file), then rm ${rel(l.discovery)} and cland hub start`;
+      running = true;
+      out.push(fail('hub', `pid ${holder.pid} holds ${rel(l.lock)}, but ${rel(l.discovery)} names pid ${d.pid}, which is not this project's hub: sessions and the CLI cannot find the hub`, fix));
+      out.push(fail('hub.json', `stale: names pid ${d.pid} while pid ${holder.pid} holds the hub lock`, fix));
     } else {
       out.push(warn('hub', `not running: pid ${d.pid} named by ${rel(l.discovery)} is not this project's hub (it does not hold the lock)`, 'cland hub start (it replaces the stale file)'));
       out.push(warn('hub.json', `stale: pid ${d.pid} is not this project's hub`, 'cland hub start'));
@@ -141,6 +157,15 @@ const real = (path: string): string | null => {
   }
 };
 
+/** Whether `path` is a usable skill: a folder (or a link to one) holding a `SKILL.md` file. */
+const isSkill = (path: string): boolean => {
+  try {
+    return statSync(path).isDirectory() && statSync(join(path, 'SKILL.md')).isFile();
+  } catch {
+    return false;
+  }
+};
+
 /** `skills` (the link Claude Code reads them through) and `skills manifest`. */
 function checkSkills(root: string): Check[] {
   const target = join(root, '.agents', 'skills');
@@ -152,19 +177,12 @@ function checkSkills(root: string): Check[] {
   let managed: string[] = [];
   if (own) out.push(ok('skills manifest', "cland's own repository: .agents/skills/ is the skills' source"));
   else {
-    const text = readText(join(target, MANIFEST));
-    let skills: Record<string, unknown> | null = null;
-    try {
-      const m = text === null ? null : (JSON.parse(text) as { skills?: unknown });
-      if (m && typeof m.skills === 'object' && m.skills !== null) skills = m.skills as Record<string, unknown>;
-    } catch {
-      /* below */
-    }
-    if (text === null) out.push(fail('skills manifest', `.agents/skills/${MANIFEST} is missing`, 'cland update'));
-    else if (!skills) out.push(fail('skills manifest', `.agents/skills/${MANIFEST} is not valid`, `remove it, then cland update`));
+    const read = readManifest(target);
+    if (read.kind === 'absent') out.push(fail('skills manifest', `.agents/skills/${MANIFEST} is missing`, 'cland update'));
+    else if (read.kind === 'invalid') out.push(fail('skills manifest', `.agents/skills/${MANIFEST} is not valid: ${read.why}`, `fix it, or remove it and the skills it listed, then cland update`));
     else {
-      managed = Object.keys(skills);
-      const missing = managed.filter((n) => !existsSync(join(target, n, 'SKILL.md')));
+      managed = Object.keys(read.manifest.skills);
+      const missing = managed.filter((n) => !isSkill(join(target, n)));
       out.push(missing.length ? fail('skills manifest', `lists ${missing.length} skill${missing.length === 1 ? '' : 's'} missing from .agents/skills/: ${missing.join(', ')}`, 'cland update') : ok('skills manifest', `present: ${managed.length} skills`));
     }
   }
@@ -183,14 +201,17 @@ function checkSkills(root: string): Check[] {
     // the project's own folder: one symlink per cland skill
     const broken: string[] = [];
     const absent: string[] = [];
+    const unusable: string[] = [];
     for (const name of managed) {
       const each = join(link, name);
       const ek = kind(each);
       if (ek === null) absent.push(name);
       else if (ek === 'link' && real(each) === null) broken.push(name);
+      else if (!isSkill(each)) unusable.push(name);
     }
     const own = readdirSync(link).filter((n) => !managed.includes(n)).length;
     if (broken.length) out.push(fail('skills', `.claude/skills/ has broken skill symlinks: ${broken.join(', ')}`, `remove ${broken.map((n) => `.claude/skills/${n}`).join(' ')}, then cland update`));
+    else if (unusable.length) out.push(fail('skills', `.claude/skills/ has entries that are not a folder holding SKILL.md: ${unusable.join(', ')}`, `remove ${unusable.map((n) => `.claude/skills/${n}`).join(' ')}, then cland update`));
     else if (absent.length) out.push(fail('skills', `.claude/skills/ (the project's own folder) lacks links to ${absent.join(', ')}`, 'cland update'));
     else out.push(ok('skills', `.claude/skills/ is the project's own folder, with a link per cland skill (${managed.length})${own ? ` and ${own} of its own` : ''}`));
   }
