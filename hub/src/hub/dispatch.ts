@@ -6,7 +6,7 @@
 // names the client). A transport that authenticated the peer already (the WebSocket's bearer header) says
 // so; otherwise the hello must carry the project's secret.
 import { timingSafeEqual } from 'node:crypto';
-import type { Connection, HubCore } from './core.ts';
+import { UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
 import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
@@ -22,7 +22,7 @@ import {
   type RefusalCode,
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { actorOf, answerTask, isTaskRequest } from '../tracker/requests.ts';
+import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
@@ -208,11 +208,11 @@ export class Dispatcher {
           }
           if (isAck(frame)) return core.ack(connection, frame.id);
           // a spoke always acts as its own session
-          if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, { name: connection.name, role: connection.role }));
+          if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, sessionActor(connection, UNKNOWN_SESSION)));
           return spokeRequest(frame, name as string);
         }
         // a client's frame may name who it acts as
-        if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, actorOf(frame, 'human')));
+        if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, 'client'));
         clientRequest(frame);
       },
       closed: () => {

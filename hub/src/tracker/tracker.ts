@@ -37,8 +37,11 @@ export const DEBOUNCE_MS = 100;
 /** A hand edit landing this soon after the hub wrote the same item is reported as a conflict. */
 export const CONCURRENT_MS = 2000;
 
-/** Who asks: a session (by name, with its role) or a person at the CLI. */
-export type Actor = { name: string; role: string | null };
+/**
+ * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
+ * stable across renames, or `human` / `cli:<name>` for the CLI; `name` and `role` are what files show.
+ */
+export type Actor = { id: string; name: string; role: string | null };
 
 export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
@@ -409,21 +412,28 @@ export class Tracker {
   claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}): { id: string; claim: Claim | null } {
     const { id } = this.#require(rawId);
     const held = this.#index.claimOf(id);
-    const other = held && held.session !== actor.name;
+    // held by identity, never by name: a name moves with a rename and can be taken by another session
+    const other = held && held.sessionId !== actor.id;
     if (other && !options.force) {
       throw new TrackerError(`${id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''} since ${held.claimedAt}; force takes it over`);
     }
     if (options.release) {
       if (held) {
         this.#index.setClaim(id, null);
-        this.#log({ event: 'task-released', id, session: held.session, by: actor.name });
+        this.#log({ event: 'task-released', id, session: held.session, sessionId: held.sessionId, by: actor.name });
       }
       return { id, claim: null };
     }
-    if (held && !other) return { id, claim: held };
-    const claim: Claim = { session: actor.name, role: actor.role, claimedAt: this.#now().toISOString() };
+    if (held && !other) {
+      // the holder again, perhaps renamed since: the claim keeps its time and shows the name it has now
+      if (held.session === actor.name && held.role === actor.role) return { id, claim: held };
+      const renamed: Claim = { ...held, session: actor.name, role: actor.role };
+      this.#index.setClaim(id, renamed);
+      return { id, claim: renamed };
+    }
+    const claim: Claim = { session: actor.name, sessionId: actor.id, role: actor.role, claimedAt: this.#now().toISOString() };
     this.#index.setClaim(id, claim);
-    this.#log({ event: 'task-claimed', id, session: actor.name, role: actor.role, ...(other ? { took: held.session } : {}) });
+    this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: actor.id, role: actor.role, ...(other ? { took: held.session } : {}) });
     return { id, claim };
   }
 }
