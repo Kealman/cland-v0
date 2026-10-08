@@ -25,6 +25,105 @@ function M.topic(id)
   return tv
 end
 
+-- Topic actions (spec 4.5): the human creates, closes and resolves topics and reads them -------------------
+
+--- The topic the human means: the row under the cursor in a topics panel, else the thread in the centre.
+function M.current_topic()
+  local buf = api.nvim_get_current_buf()
+  if vim.b[buf].cland_role == 'topics' then
+    local info = require('cland.panels').row_at(buf, api.nvim_win_get_cursor(0)[1])
+    if info and info.topic then
+      return info.topic
+    end
+  end
+  local v = state.S.ui.view
+  return v.kind == 'thread' and v.id or nil
+end
+
+local function request(frame, done)
+  if not (M.client and M.client:connected()) then
+    state.say(frame.type .. ': the hub is not connected', 'ClandRedBar')
+    return
+  end
+  M.client:request(frame, function(err, value)
+    if err then
+      return state.say(frame.type .. ': ' .. tostring(err), 'ClandRedBar')
+    end
+    if value and value.topic then
+      state.upsert_topic(value.topic)
+    end
+    if done then
+      done(value and value.topic)
+    end
+  end)
+end
+
+--- The human read topic `id` (its thread is in view): the hub clears its unread count.
+function M.mark_read(id, up_to)
+  local t = state.topic(id)
+  if not t or (tonumber(t.unread) or 0) == 0 and not up_to then
+    return
+  end
+  t.unread = 0
+  state.changed()
+  if M.client and M.client:connected() then
+    M.client:request({ type = 'topic.read', topic = id, upTo = up_to }, function(err, value)
+      if not err and value and value.topic then
+        state.upsert_topic(value.topic)
+      end
+    end)
+  end
+end
+
+--- A new topic with `title`, opened in the centre once the hub made it.
+function M.create_topic(title)
+  title = vim.trim(title or '')
+  if title == '' then
+    return state.say('a topic needs a title: :Cland topic new <title>', 'ClandRedBar')
+  end
+  request({ type = 'topic.create', title = title }, function(topic)
+    if topic then
+      state.say('topic opened: ' .. topic.title)
+      require('cland.layout').show({ kind = 'thread', id = topic.id })
+    end
+  end)
+end
+
+--- Ask for a title, then create the topic.
+function M.prompt_topic()
+  vim.ui.input({ prompt = 'New topic: ' }, function(title)
+    if title and vim.trim(title) ~= '' then
+      M.create_topic(title)
+    end
+  end)
+end
+
+--- Close topic `id` (default: the one the human means); a new message reopens it.
+function M.close_topic(id)
+  id = id or M.current_topic()
+  if not id then
+    return state.say('no topic here to close', 'ClandRedBar')
+  end
+  request({ type = 'topic.close', topic = id }, function(topic)
+    if topic then
+      state.say('closed: ' .. topic.title)
+    end
+  end)
+end
+
+--- Clear topic `id`'s wait back to open.
+function M.resolve_topic(id)
+  id = id or M.current_topic()
+  if not id then
+    return state.say('no topic here to resolve', 'ClandRedBar')
+  end
+  request({ type = 'topic.resolve', topic = id }, function(topic)
+    if topic then
+      state.say('resolved: ' .. topic.title .. ' is open')
+    end
+  end)
+end
+
 M.TITLES = {
   board = 'Board',
   log = 'Agents log',

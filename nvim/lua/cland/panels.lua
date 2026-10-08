@@ -177,28 +177,64 @@ end
 
 -- Topics ----------------------------------------------------------------------------------------------
 
+--- A topic's glyph and its colour (spec 4.5): amber when it waits for the human, teal while open, the half
+--- glyph while it waits for an agent, a hollow one when closed; Agents is a log.
+function M.topic_glyph(t)
+  if t.id == 'agents' then
+    return '≡', 'ClandDim'
+  elseif t.status == 'waiting for human' then
+    return '●', 'ClandAmber'
+  elseif t.status == 'waiting for agent' then
+    return '◐', 'ClandTeal'
+  elseif t.status == 'closed' then
+    return '○', 'ClandDim'
+  end
+  return '●', 'ClandTeal'
+end
+
+--- The right side of a topic's row: the warning glyph, then the unread badge (amber when it needs the human).
+function M.topic_marks(t)
+  local right = {}
+  if state.warning(t) then
+    right[#right + 1] = { '▲', 'ClandRed' }
+  end
+  local n = tonumber(t.unread) or 0
+  if n > 0 then
+    if #right > 0 then
+      right[#right + 1] = { ' ' }
+    end
+    right[#right + 1] = { ' ' .. n .. ' ', t.status == 'waiting for human' and 'ClandBadge' or 'ClandBadgeN' }
+  elseif t.id == 'agents' then
+    right[#right + 1] = { 'log', 'ClandFaint' }
+  end
+  if #right > 0 then
+    right[#right + 1] = { ' ' }
+  end
+  return right
+end
+
 local function render_topics(c)
   local v = state.S.ui.view
-  local groups = { { 'needs you', {} }, { 'open', {} }, { 'closed', {} } }
-  for _, t in ipairs(state.S.topics) do
-    local g = t.status == 'waiting for human' and 1 or (t.status == 'closed' and 3 or 2)
-    table.insert(groups[g][2], t)
-  end
   if #state.S.topics == 0 then
     c:add({ { ' No topics yet (the hub is not connected).', 'ClandDim' } })
   end
-  for _, g in ipairs(groups) do
-    if #g[2] > 0 then
-      c:add({ { ' ' .. g[1]:upper() .. ' · ' .. #g[2], 'ClandSection' } })
-      for _, t in ipairs(g[2]) do
+  for _, g in ipairs(state.topic_groups()) do
+    if #g.topics > 0 then
+      c:add({ { ' ' .. g.name:upper() .. ' · ' .. #g.topics, g.name == 'needs you' and 'ClandAmber' or 'ClandSection' } })
+      for _, t in ipairs(g.topics) do
         local cur = v.kind == 'thread' and v.id == t.id
-        local glyph = t.id == 'agents' and '≡' or (t.status == 'closed' and '○' or '●')
-        local ghl = t.status == 'closed' and 'ClandDim' or (t.id == 'agents' and 'ClandDim' or 'ClandTeal')
-        c:add({ { cur and '▎' or ' ', 'ClandBlue' }, { glyph, ghl }, { ' ' .. t.title, cur and 'ClandBold' or nil } }, t.id == 'agents' and { { 'log ', 'ClandFaint' } } or nil, { topic = t.id })
+        local glyph, ghl = M.topic_glyph(t)
+        local left = { { cur and '▎' or ' ', 'ClandBlue' }, { glyph, ghl }, { ' ' } }
+        -- the binding, unless the title already says it
+        if t.item and t.item ~= vim.NIL and not tostring(t.title):find(t.item, 1, true) then
+          left[#left + 1] = { t.item .. ' ', 'ClandDim' }
+        end
+        left[#left + 1] = { t.title, cur and 'ClandBold' or (t.status == 'closed' and 'ClandDim' or nil) }
+        c:add(left, M.topic_marks(t), { topic = t.id })
       end
     end
   end
-  return { ' ↵ open · gi item · gs session' }
+  return { ' ↵ open · n new · c close · r resolve' }
 end
 
 -- Items -----------------------------------------------------------------------------------------------
@@ -267,6 +303,19 @@ function M.buf(kind, slot)
   vim.keymap.set('n', '<2-LeftMouse>', function()
     open_row(b)
   end, { buffer = b, silent = true })
+  if kind == 'topics' then
+    local views = require('cland.views')
+    local function topic_key(lhs, fn, desc)
+      vim.keymap.set('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
+    end
+    topic_key('n', views.prompt_topic, 'new topic')
+    topic_key('c', function()
+      views.close_topic()
+    end, 'close the topic')
+    topic_key('r', function()
+      views.resolve_topic()
+    end, 'resolve the topic')
+  end
   return b
 end
 

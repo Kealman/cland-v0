@@ -119,7 +119,10 @@ function M.context()
       return 'Agents · topic · agent-to-agent messages'
     end
     local coord = state.coordinator()
-    return title .. ' · topic open · to @coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues)')
+    local t = state.topic(v.id)
+    local status = t and t.status or 'open'
+    local item = t and t.item and t.item ~= vim.NIL and (' · ' .. t.item) or ''
+    return title .. item .. ' · topic ' .. status .. ' · to @coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues)')
   elseif v.kind == 'session' then
     local s = state.session(v.id)
     local t = require('cland.sessions').term(v.id)
@@ -206,6 +209,25 @@ local function head(win, label, right)
   return M.stl({ { ' ' .. label .. ' ', focused and 'ClandHeadFocus' or 'ClandHead' } }) .. '%<%#WinBar#%=' .. M.stl(right or {}) .. '%#WinBar# '
 end
 
+--- The thread header's right side (spec 4.5): the binding, the warning, the status.
+function M.thread_marks(t)
+  if not t then
+    return { { 'topic', 'ClandDimBar' } }
+  end
+  local out = {}
+  if t.item and t.item ~= vim.NIL then
+    out[#out + 1] = { t.item .. '  ', 'ClandBlueBar' }
+  end
+  local warning = state.warning(t)
+  if warning then
+    out[#out + 1] = { '▲ ' .. warning .. '  ', 'ClandRedBar' }
+  end
+  local status = t.status or 'open'
+  local group = status == 'waiting for human' and 'ClandAmberBar' or (status == 'closed' and 'ClandDimBar' or 'ClandTealBar')
+  out[#out + 1] = { status == 'waiting for human' and 'waiting for you' or ('topic ' .. status), group }
+  return out
+end
+
 function M.winbar(win)
   local buf = api.nvim_win_get_buf(win)
   local role = vim.b[buf].cland_role
@@ -215,12 +237,13 @@ function M.winbar(win)
     local c = state.counts()
     return head(win, 'SESSIONS', { { c.live .. ' live · ' .. c.waiting .. ' waiting' .. (c.down > 0 and (' · ' .. c.down .. ' down') or ''), 'ClandDimBar' } })
   elseif role == 'topics' then
-    return head(win, 'TOPICS', { { #state.S.topics .. ' topics', 'ClandDimBar' } })
+    local unread = state.unread_total()
+    return head(win, 'TOPICS', { { #state.S.topics .. ' topics' .. (unread > 0 and (' · ' .. unread .. ' unread') or ''), 'ClandDimBar' } })
   elseif role == 'inbox' then
     return head(win, 'INBOX', { { 'nothing needs you', 'ClandGreenBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)
-    return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', { { 'topic open', 'ClandTealBar' } })
+    return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', M.thread_marks(t))
   elseif role == 'composer' then
     local coord = state.coordinator()
     return head(win, 'to: Coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues it)'), { { 'Enter sends · S-Enter newline', 'ClandDimBar' } })

@@ -372,3 +372,150 @@ test(':restart re-attaches the session terminals instead of ending the sessions'
   assert.equal(attaches(after), 1);
   assert.equal(basename(c.root), 'proj-shell');
 });
+
+// ------------------------------------------------------------------ the topic model (#32)
+
+const topic = (id: string, title: string, status: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  title,
+  status,
+  standing: id === 'general' || id === 'agents',
+  createdAt: ts(0),
+  updatedAt: ts(0),
+  item: null,
+  unread: 0,
+  lastMessageAt: ts(1),
+  ...extra,
+});
+
+/** General and Agents, a topic waiting for the human, an open one with unread messages, one waiting for a vacant
+ *  Coordinator bound to T-12, and a closed one, in the hub's order. */
+function withTopics(s: Scenario): void {
+  s.topics = [
+    topic('general', 'General', 'open'),
+    topic('agents', 'Agents', 'open'),
+    topic('topic-1', 'Spoke reconnect: flaky', 'waiting for human', { unread: 2 }),
+    topic('topic-4', 'Codex adapter', 'open', { unread: 3 }),
+    topic('topic-2', 'Daemon hello', 'waiting for agent', { item: 'T-12', warning: 'no coordinator' }),
+    topic('topic-3', 'cland task CLI', 'closed'),
+  ];
+  s.items = (s.items ?? []).map((it) => (it.id === 'T-12' ? { ...it, topic: 'topic-2' } : it));
+}
+
+/** Each row of the screen from its last vertical separator on: the right panel. */
+const rightOf = (text: string): string =>
+  text
+    .split('\n')
+    .map((l) => {
+      const i = l.lastIndexOf('│');
+      return i < 0 ? '' : l.slice(i + 1);
+    })
+    .join('\n');
+
+const requestsOf = async (c: Shell, type: string) => ((await c.control({ requests: true })).requests as Array<Record<string, unknown>>).filter((f) => f.type === type);
+
+test('the topics panel groups needs you, open and closed, pins what waits for the human, shows unread badges and the warning glyph; Enter opens and reads', { skip }, async (t) => {
+  const c = await startShell(t, withTopics);
+  await c.input('<Esc><Space>t');
+  const s = await c.waitScreen((x) => x.includes('TOPICS') && x.includes('NEEDS YOU · 1'), 'the topics panel');
+  const panel = rightOf(s);
+  const order = ['NEEDS YOU · 1', 'Spoke reconnect: flaky', 'OPEN · 4', '● General', '≡ Agents', 'Codex adapter', 'Daemon hello', 'CLOSED · 1', 'cland task CLI'].map((w) => panel.indexOf(w));
+  assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
+  assert.deepEqual([...order].sort((a, b) => a - b), order, `grouped, needs you pinned on top:\n${panel}`);
+  assert.match(panel, /● Spoke reconnect: flaky +2 /, 'an unread badge');
+  assert.match(panel, /● Codex adapter +3 /);
+  assert.match(panel, /◐ T-12 Daemon hello +▲ /, 'waiting for an agent, bound, with the warning glyph');
+  assert.match(panel, /○ cland task CLI/);
+  assert.match(panel, /≡ Agents +log/);
+  assert.match(s, /TOPICS +6 topics · 5 unread/);
+  assert.match(topBar(s), /▲ needs you {2}1 /, 'the topic waiting for the human counts as needing you');
+
+  // Enter on the pinned topic opens its thread; reading it clears the badge
+  await c.input('<Space>t<Space>t');
+  await c.waitScreen((x) => x.includes('TOPICS'), 'the panel again, focused');
+  await c.input('gg/Spoke<CR><CR>');
+  const opened = await c.waitScreen((x) => statusLine(x).includes('Spoke reconnect: flaky · topic waiting for human'), 'the thread');
+  assert.match(topBar(opened), /│ Spoke reconnect: flaky/);
+  await c.waitScreen((x) => /● Spoke reconnect: flaky/.test(rightOf(x)) && !/Spoke reconnect: flaky +2 /.test(rightOf(x)), 'the badge gone');
+  assert.deepEqual((await requestsOf(c, 'topic.read')).map((f) => f.topic), ['topic-1']);
+});
+
+test('a message event raises the unread badge of a topic out of view, and opening it reads it', { skip }, async (t) => {
+  const c = await startShell(t, withTopics);
+  await c.input('<Esc><Space>t');
+  await c.waitScreen((x) => /● Codex adapter +3 /.test(rightOf(x)), 'three unread');
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-4', title: 'Codex adapter' }, message: { id: 'n1', from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', via: 'session', to: [], text: 'the thread resumes', ts: ts(20), topic: 'topic-4' } } });
+  await c.waitScreen((x) => /● Codex adapter +4 /.test(rightOf(x)), 'four unread');
+  // a message in the thread in view is read as it arrives
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: { id: 'g1', from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', via: 'session', to: [], text: 'read at once', ts: ts(21), topic: 'general' } } });
+  await c.waitScreen((x) => centreOf(x).includes('read at once'), 'the message in General');
+  assert.doesNotMatch(rightOf((await c.screen()).join('\n')), /● General +1 /);
+  assert.deepEqual((await requestsOf(c, 'topic.read')).map((f) => [f.topic, f.upTo]), [['general', 'g1']]);
+  await c.input(':Cland view thread topic-4<CR>');
+  await c.waitScreen((x) => topBar(x).includes('│ Codex adapter') && !/Codex adapter +4 /.test(rightOf(x)), 'read once in view');
+  assert.deepEqual((await requestsOf(c, 'topic.read')).map((f) => f.topic), ['general', 'topic-4']);
+});
+
+test('a topic is created from the panel (n) and with :Cland topic new, closed with :Cland topic close and c in the panel, resolved with ␣r', { skip }, async (t) => {
+  const c = await startShell(t, withTopics);
+  await c.input('<Esc><Space>t');
+  await c.waitScreen((x) => x.includes('TOPICS'), 'the panel, focused');
+  await c.input('n');
+  await c.waitScreen((x) => x.includes('New topic:'), 'the title prompt');
+  await c.input('Pick a free model<CR>');
+  let s = await c.waitScreen((x) => topBar(x).includes('│ Pick a free model') && statusLine(x).includes('Pick a free model · topic open'), 'the new topic in the centre');
+  assert.match(rightOf(s), /● Pick a free model/);
+  await c.input('<Esc>:Cland topic new Second one, by command<CR>');
+  await c.waitScreen((x) => topBar(x).includes('│ Second one, by command'), 'the second topic');
+  assert.deepEqual((await requestsOf(c, 'topic.create')).map((f) => f.title), ['Pick a free model', 'Second one, by command']);
+
+  // :Cland topic close closes the topic in view: it moves to CLOSED
+  await c.input('<Esc>:Cland topic close<CR>');
+  s = await c.waitScreen((x) => rightOf(x).includes('CLOSED · 2') && statusLine(x).includes('Second one, by command · topic closed'), 'closed');
+  assert.ok(rightOf(s).indexOf('CLOSED · 2') < rightOf(s).indexOf('○ Second one, by command'));
+  // c on a row in the panel closes that one
+  await c.input('<Space>t<Space>t');
+  await c.waitScreen((x) => x.includes('TOPICS'), 'the panel, focused');
+  await c.input('gg/Pick a free<CR>c');
+  await c.waitScreen((x) => rightOf(x).includes('CLOSED · 3'), 'the row closed');
+  assert.deepEqual((await requestsOf(c, 'topic.close')).map((f) => f.topic), ['topic-8', 'topic-7']);
+
+  // ␣r from a thread clears its wait
+  await c.input(':Cland view thread topic-2<CR><Esc><Space>r');
+  await c.waitScreen((x) => statusLine(x).includes('Daemon hello · T-12 · topic open'), 'resolved');
+  assert.deepEqual((await requestsOf(c, 'topic.resolve')).map((f) => f.topic), ['topic-2']);
+});
+
+test('the thread header shows the status, the binding and the warning; a topic event changes it; gi opens the bound item', { skip }, async (t) => {
+  const c = await startShell(t, withTopics);
+  await c.input('<Esc>:Cland view thread topic-2<CR>');
+  let s = await c.waitScreen((x) => x.includes('Daemon hello · to @coordinator'), 'the thread of topic-2');
+  const header = s.split('\n').find((l) => l.includes('Daemon hello · to @coordinator')) as string;
+  assert.match(header, /Daemon hello · to @coordinator +T-12 {2}▲ no coordinator {2}topic waiting for agent/);
+  assert.match(statusLine(s), /Daemon hello · T-12 · topic waiting for agent/);
+
+  // the Coordinator took the message and answered: the hub's topic event
+  await c.control({ emit: { type: 'topic', topic: topic('topic-2', 'Daemon hello', 'open', { item: 'T-12' }) } });
+  s = await c.waitScreen((x) => /Daemon hello · to @coordinator +T-12 {2}topic open/.test(x), 'the header after the event');
+  assert.doesNotMatch(s, /no coordinator {2}topic/);
+
+  // gi from the bound topic: its item; gt from the item: back to its topic
+  await c.input('<Esc>gi');
+  await c.waitScreen((x) => statusLine(x).includes('T-12 · item'), 'the item view of T-12');
+  await c.input('gt');
+  await c.waitScreen((x) => statusLine(x).includes('Daemon hello · T-12 · topic open'), 'back to the topic');
+});
+
+test("the picker's topics kind lists needs you first, with the binding, the warning and the unread count, and filters by title", { skip }, async (t) => {
+  const c = await startShell(t, withTopics);
+  await c.input('<Esc><Space>p');
+  let s = await c.waitScreen((x) => x.includes('pick ›') && x.includes('↵ open thread'), 'the picker on topics');
+  const first = s.indexOf('● Spoke reconnect: flaky');
+  assert.ok(first >= 0 && first < s.indexOf('● General') && s.indexOf('● General') < s.indexOf('○ cland task CLI'), `needs you first:\n${s}`);
+  assert.match(s, /● Spoke reconnect: flaky .*needs you · 2 unread/);
+  assert.match(s, /◐ Daemon hello .*T-12 · ▲ no coordinator · waiting for agent/);
+  await c.input('codex');
+  s = await c.waitScreen((x) => /● Codex adapter .*open · 3 unread/.test(x) && !x.includes('Daemon hello'), 'filtered by title');
+  await c.input('<CR>');
+  await c.waitScreen((x) => topBar(x).includes('│ Codex adapter'), 'the thread opened');
+});

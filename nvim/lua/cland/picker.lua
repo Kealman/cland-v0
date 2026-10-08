@@ -10,10 +10,28 @@ local ns = api.nvim_create_namespace('cland.picker')
 
 M.KINDS = { 'topics', 'sessions' }
 
+--- The topics as the panel groups them: needs you first, then open, then closed (Pickers.dc.html); the title
+--- is what typing filters. The right side: the binding, the warning, the status, the unread count.
 local function topic_entries()
+  local panels = require('cland.panels')
   local out = {}
-  for _, t in ipairs(state.S.topics) do
-    out[#out + 1] = { glyph = t.id == 'agents' and '≡' or '●', ghl = t.id == 'agents' and 'ClandDim' or 'ClandTeal', key = t.title, right = t.status or 'open', value = t.id }
+  for _, g in ipairs(state.topic_groups()) do
+    for _, t in ipairs(g.topics) do
+      local glyph, ghl = panels.topic_glyph(t)
+      local right = {}
+      if t.item and t.item ~= vim.NIL then
+        right[#right + 1] = t.item
+      end
+      if state.warning(t) then
+        right[#right + 1] = '▲ ' .. state.warning(t)
+      end
+      right[#right + 1] = t.id == 'agents' and 'log' or (t.status == 'waiting for human' and 'needs you' or (t.status or 'open'))
+      local n = tonumber(t.unread) or 0
+      if n > 0 then
+        right[#right + 1] = n .. ' unread'
+      end
+      out[#out + 1] = { glyph = glyph, ghl = ghl, key = t.title, right = table.concat(right, ' · '), value = t.id }
+    end
   end
   return out
 end
@@ -58,7 +76,7 @@ local function title(p)
 end
 
 local FOOTER = {
-  topics = ' ↵ open thread · Tab kind · Esc close ',
+  topics = ' ↵ open thread · needs you first · Tab kind · Esc close · :Cland topic new <title> ',
   sessions = ' ↵ attach in centre · Tab kind · Esc close ',
 }
 

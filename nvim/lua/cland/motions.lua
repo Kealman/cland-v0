@@ -3,8 +3,8 @@
 --   1. a reference under the cursor: an item id (`T-12`), a topic's title or id, a session's name;
 --   2. the row under the cursor in a panel (an item, a session, a topic);
 --   3. the centre view itself (a thread is its topic, a session view its session, an item view its item).
--- Then the dispatch: from a session to its claimed item, from an item to the session claiming it; a topic
--- is bound to no item until topic bindings exist (#32), and a topic's session is its Coordinator.
+-- Then the dispatch: from a session to its claimed item, from an item to the session claiming it, from a topic
+-- to the item it is bound to (#32) and back; a topic's session is its Coordinator.
 local api = vim.api
 local state = require('cland.state')
 
@@ -99,6 +99,12 @@ function M.item_of(s)
   if s.session then
     return state.item_of_session(s.session)
   end
+  if s.topic then
+    local t = state.topic(s.topic)
+    if t and t.item and t.item ~= vim.NIL then
+      return t.item
+    end
+  end
 end
 
 function M.topic_of(s)
@@ -106,9 +112,12 @@ function M.topic_of(s)
     return s.topic
   end
   local it = s.item and state.item(s.item) or (s.session and state.item(state.item_of_session(s.session) or ''))
-  if it and it.topic then
+  if it and it.topic and it.topic ~= vim.NIL then
     return it.topic
   end
+  local id = s.item or (s.session and state.item_of_session(s.session))
+  local bound = id and state.topic_of_item(id)
+  return bound and bound.id or nil
 end
 
 function M.session_of(s)
