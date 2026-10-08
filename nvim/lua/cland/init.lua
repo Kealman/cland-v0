@@ -386,7 +386,9 @@ local function autocmds()
     group = group,
     callback = function()
       if vim.v.exitreason == 'restart' then
-        require('cland.restart').save(state.snapshot())
+        local snap = state.snapshot()
+        snap.splits = layout.split_sessions()
+        require('cland.restart').save(snap)
       end
     end,
   })
@@ -421,8 +423,16 @@ end
 
 local function reattach(snap)
   local sessions = require('cland.sessions')
+  local split = {}
+  -- the C-v splits come back as splits beside the centre, the focus left where the restore put it
+  for _, name in ipairs(snap.splits or {}) do
+    if not split[name] then
+      split[name] = true
+      require('cland.layout').show_split({ kind = 'session', id = name }, { focus = false })
+    end
+  end
   for _, name in ipairs(snap.attached or {}) do
-    if not (state.S.ui.view.kind == 'session' and state.S.ui.view.id == name) then
+    if not split[name] and not (state.S.ui.view.kind == 'session' and state.S.ui.view.id == name) then
       sessions.reattach(name)
     end
   end

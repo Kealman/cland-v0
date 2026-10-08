@@ -428,6 +428,29 @@ test(':restart re-attaches the session terminals instead of ending the sessions'
   assert.equal(basename(c.root), 'proj-shell');
 });
 
+test(':restart restores a C-v split attachment as a split beside the centre, not a hidden terminal', { skip }, async (t) => {
+  const c = await startShell(t);
+  await onSessionRow(c, 'impl-1');
+  await c.input('<C-v>');
+  await c.waitScreen((x) => x.includes('attached impl-1') && statusLine(x).includes('TERMINAL'), 'impl-1 in a split');
+  const moved = c.restarted();
+  await c.input('<C-\\><C-n>:restart<CR>');
+  await moved;
+  const s = await c.waitScreen((x) => x.includes('attached impl-1') && topBar(x).includes('│ General') && x.includes('Starting T-12'), 'the split attached again beside General', 20_000);
+  assert.match(s, /SESSIONS/, 'the panels as they were');
+  const wins = await c.lua<Array<{ name: string; term: boolean; session: string | null }>>(`
+    local out = {}
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local b = vim.api.nvim_win_get_buf(w)
+      if vim.api.nvim_win_get_config(w).relative == '' then
+        out[#out + 1] = { name = vim.api.nvim_buf_get_name(b), term = vim.bo[b].buftype == 'terminal', session = vim.b[b].cland_session or vim.NIL }
+      end
+    end
+    return out`);
+  assert.ok(wins.some((w) => w.name === 'cland://topic/general'), `the centre shows General: ${JSON.stringify(wins)}`);
+  assert.deepEqual(wins.filter((w) => w.term).map((w) => w.session), ['impl-1'], `one split terminal, impl-1: ${JSON.stringify(wins)}`);
+});
+
 // The session launcher and the sessions panel (#28) ---------------------------------------------------
 
 type Req = Record<string, unknown> & { type: string };

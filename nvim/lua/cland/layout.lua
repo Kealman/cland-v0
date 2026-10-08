@@ -341,27 +341,44 @@ function M.show(view, opts)
 end
 
 --- C-v on a session: attach it in a vertical split beside the centre, in Terminal mode. The centre view
---- stays what it was; closing the split ends only that attach client.
-function M.show_split(view)
+--- stays what it was; closing the split ends only that attach client. The split is remembered (M.win.splits)
+--- so that `:restart` brings it back as a split. opts.focus = false (a restore) leaves the focus where it is.
+function M.show_split(view, opts)
+  opts = opts or {}
+  local enter = opts.focus ~= false
   local c = M.centre()
   local scratch = api.nvim_create_buf(false, true)
   vim.bo[scratch].bufhidden = 'wipe'
-  local w = api.nvim_open_win(scratch, true, { split = 'right', win = c })
+  local w = api.nvim_open_win(scratch, enter, { split = 'right', win = c })
   centre_opts(w, 'session')
+  M.win.splits = M.win.splits or {}
+  M.win.splits[w] = view.id
   local buf = require('cland.sessions').show_in(w, view.id, {
     on_attached = function(win)
       centre_opts(win, 'session')
       M.fix()
-      if api.nvim_get_current_win() == win then
+      if enter and api.nvim_get_current_win() == win then
         M.enter_terminal(win)
       end
     end,
   })
-  if vim.bo[buf].buftype == 'terminal' then
+  if enter and vim.bo[buf].buftype == 'terminal' then
     M.enter_terminal(w)
   end
   state.changed()
   return w
+end
+
+--- The sessions shown in C-v splits now, in window order: what `:restart` restores as splits.
+function M.split_sessions()
+  local out = {}
+  for _, w in ipairs(api.nvim_tabpage_list_wins(0)) do
+    local name = (M.win.splits or {})[w]
+    if name and api.nvim_win_is_valid(w) and vim.b[api.nvim_win_get_buf(w)].cland_session == name then
+      out[#out + 1] = name
+    end
+  end
+  return out
 end
 
 --- ␣␣: the previous centre view; twice returns, like CTRL-^.
@@ -461,6 +478,8 @@ function M.on_win_closed(win)
     M.win.composer = nil
   elseif win == M.win.centre then
     M.win.centre = nil
+  elseif M.win.splits and M.win.splits[win] then
+    M.win.splits[win] = nil
   else
     return
   end
