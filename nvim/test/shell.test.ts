@@ -1128,9 +1128,13 @@ function withInbox(s: Scenario): void {
   };
 }
 
-test('the Agents log (␣a, :Cland view log) lists messages with sender [Role] → addressee and notices with kind glyphs, and follows message events', { skip }, async (t) => {
+test('the Agents log (␣L, :Cland view log) lists messages with sender [Role] → addressee and notices with kind glyphs, and follows message events', { skip }, async (t) => {
   const c = await startShell(t, withAgentsLog);
+  // ␣a is the picker on artifacts (spec 5), which slice 2 brings: it says so and changes nothing
   await c.input('<Esc><Space>a');
+  await c.waitScreen((x) => statusLine(x).includes('artifacts: slice 2'), 'the artifacts hint');
+  assert.match(topBar((await c.screen()).join('\n')), /│ General/);
+  await c.input('<Space>L');
   let s = await c.waitScreen((x) => topBar(x).includes('│ Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents log');
   const centre = centreOf(s);
   assert.match(centre, /read-only log: lifecycle events and agent-to-agent messages · r on a message replies to its sender/);
@@ -1143,8 +1147,8 @@ test('the Agents log (␣a, :Cland view log) lists messages with sender [Role] �
   // the hub's message event for agents adds a row
   await c.control({ emit: { type: 'message', topic: { id: 'agents', title: 'Agents' }, message: { id: 'n4', from: 'hub', fromKind: 'hub', via: 'hub', to: [], text: 'impl-1 [Implementer] stopped', ts: ts(5), topic: 'agents', kind: 'session-stop' } } });
   s = await c.waitScreen((x) => centreOf(x).includes('■ impl-1 [Implementer] stopped'), 'the new notice');
-  // ␣a again returns; :Cland view log and Agents as a thread open the log
-  await c.input('<Space>a');
+  // ␣L again returns; :Cland view log and Agents as a thread open the log
+  await c.input('<Space>L');
   await c.waitScreen((x) => topBar(x).includes('│ General'), 'back to General');
   await c.input('<Esc>:Cland view log<CR>');
   await c.waitScreen((x) => topBar(x).includes('│ Agents log'), 'the log by command');
@@ -1157,7 +1161,7 @@ test('the Agents log (␣a, :Cland view log) lists messages with sender [Role] �
 
 test('r on a message in the Agents log prepares a reply to its sender; the hub gets topic.send with replyTo; r on a notice says it has no sender', { skip }, async (t) => {
   const c = await startShell(t, withAgentsLog);
-  await c.input('<Esc><Space>a');
+  await c.input('<Esc><Space>L');
   await c.waitScreen((x) => centreOf(x).includes('T-12 claimed.'), 'the Agents log');
   // a notice first: nothing to answer
   await c.input('gg/claimed T-12<CR>r');

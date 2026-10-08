@@ -182,10 +182,11 @@ M.HELP = {
   'Panels    ␣i items (left) · ␣n inbox · ␣s sessions · ␣t topics (right; the active key hides it)',
   'Items     1 all · 2 in work · 3 needs you · 4 done · 5 map (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
-  'Centre    ␣g General · ␣a Agents log · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
-  'Agents    ␣a the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
+  'Centre    ␣g General · ␣L Agents log · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
+  'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
   'Pick      ␣p items · topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
+  '          ␣a artifacts: slice 2',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
@@ -246,7 +247,11 @@ local function keymaps()
   map('<leader>b', function()
     layout.toggle_view({ kind = 'board' })
   end, 'board')
+  -- ␣a is the picker on artifacts (spec 5), which slice 2 brings; the Agents log is ␣L
   map('<leader>a', function()
+    state.say('artifacts: slice 2 · ␣p picks items, topics and sessions · ␣L the Agents log')
+  end, 'artifacts (slice 2)')
+  map('<leader>L', function()
     layout.toggle_view({ kind = 'log' })
   end, 'the Agents log')
   map('<leader>g', function()
