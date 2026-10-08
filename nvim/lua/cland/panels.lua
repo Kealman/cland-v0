@@ -2,7 +2,7 @@
 -- (␣t) on the right, topics also docked above it (␣T). Each panel is a scratch buffer drawn from the
 -- state; a row knows what it shows (item, session, topic), which Enter and the motions read.
 --
--- Today: items from `task.list` (the tree, filters and badges are #36); sessions from `session.list` and
+-- Items from `task.list` and the `task` event (the tree, filters and badges: items.lua); sessions from `session.list` and
 -- the connected spokes, their states with the adapter's `heuristic` qualifier; topics from `topic.list`;
 -- the inbox is an empty placeholder until asks exist (#33).
 local api = vim.api
@@ -239,19 +239,9 @@ end
 
 -- Items -----------------------------------------------------------------------------------------------
 
+-- the tree, the filters and the badges live in items.lua (#36)
 local function render_items(c)
-  if #state.S.items == 0 then
-    c:add({ { ' ' .. (state.S.items_note or 'No items in .cland/tasks yet.'), 'ClandDim' } })
-  end
-  for _, it in ipairs(state.S.items) do
-    local g = it.state == 'closed' and hl.ITEM.closed or (it.claim and hl.ITEM.claimed or hl.ITEM.open)
-    c:add(
-      { { ' ' }, { g[1], g[2] }, { ' ' }, { it.id, 'ClandDim' }, { ' ' .. it.title, it.state == 'closed' and 'ClandDim' or nil } },
-      it.claim and { { it.claim.session .. ' ', 'ClandTeal' } } or nil,
-      { item = it.id }
-    )
-  end
-  return { ' ↵ open · gt topic · gs session' }
+  return require('cland.items').render(c)
 end
 
 -- Inbox -----------------------------------------------------------------------------------------------
@@ -303,6 +293,9 @@ function M.buf(kind, slot)
   vim.keymap.set('n', '<2-LeftMouse>', function()
     open_row(b)
   end, { buffer = b, silent = true })
+  if kind == 'items' then
+    require('cland.items').keys(b)
+  end
   if kind == 'topics' then
     local views = require('cland.views')
     local function topic_key(lhs, fn, desc)

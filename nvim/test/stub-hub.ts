@@ -102,6 +102,12 @@ function answer(f: Frame) {
       return ok(f.id, { sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}) });
     case 'task.list':
       return ok(f.id, { items: scenario.items ?? [] });
+    case 'task.view': {
+      // the whole item: a scenario item may carry `body` and `comments` beside its summary fields
+      const item = scenario.items?.find((i) => i.id === f.item);
+      if (!item) return fail(f.id, `no item ${String(f.item)}`);
+      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...item, path: `.cland/tasks/${String(item.file)}` } });
+    }
     default:
       return fail(f.id, `the stub hub does not answer ${String(f.type)}`);
   }

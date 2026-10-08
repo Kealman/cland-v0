@@ -1,7 +1,7 @@
--- The centre views other than the session terminal: one topic view per topic (thread and composer), and
--- the placeholders of the views later tickets fill (the item view and the board #36, the Agents log
--- #34, the inbox full width #33). A placeholder already names its view, so the view switch, the top
--- bar, the status line and `␣␣` work on it today.
+-- The centre views other than the session terminal: one topic view per topic (thread and composer), the
+-- item view and the board (item_view.lua, board.lua, #36), and the placeholders of the views later tickets
+-- fill (the Agents log #34, the inbox full width #33). A placeholder already names its view, so the view
+-- switch, the top bar, the status line and `␣␣` work on it today.
 local api = vim.api
 local state = require('cland.state')
 
@@ -149,8 +149,14 @@ local function key(v)
   return v.kind .. (v.id and (':' .. v.id) or '')
 end
 
---- The buffer of a placeholder view (item, board, log, inbox).
+--- The buffer of a centre view other than a thread or a session: the item view and the board (#36), else a
+--- placeholder (log, inbox).
 function M.placeholder(v)
+  if v.kind == 'item' and v.id then
+    return require('cland.item_view').render(v.id)
+  elseif v.kind == 'board' then
+    return require('cland.board').render()
+  end
   local k = key(v)
   local b = M.bufs[k]
   if not (b and api.nvim_buf_is_valid(b)) then
@@ -169,36 +175,7 @@ function M.placeholder(v)
 end
 
 local function lines_for(v)
-  if v.kind == 'item' then
-    local it = state.item(v.id)
-    local out = { '' }
-    if it then
-      out[#out + 1] = ' ' .. it.id .. ' · ' .. it.kind .. ' · ' .. it.state
-      out[#out + 1] = ' ' .. it.title
-      out[#out + 1] = ''
-      if it.claim then
-        out[#out + 1] = ' claim     ' .. it.claim.session
-      end
-      if it.parent then
-        out[#out + 1] = ' parent    ' .. it.parent
-      end
-      if it.labels and #it.labels > 0 then
-        out[#out + 1] = ' labels    ' .. table.concat(it.labels, ', ')
-      end
-      if it.blocked_by and #it.blocked_by > 0 then
-        out[#out + 1] = ' blocked   ' .. table.concat(it.blocked_by, ', ')
-      end
-      out[#out + 1] = ' file      ' .. (it.file or '')
-    else
-      out[#out + 1] = ' ' .. v.id .. ': no such item in the tracker'
-    end
-    out[#out + 1] = ''
-    out[#out + 1] = ' The item view (fields, verdicts, comments) comes with #36.'
-    out[#out + 1] = ' gt its topic · gs its session · ␣␣ back'
-    return out
-  elseif v.kind == 'board' then
-    return { '', ' Board', '', ' The board (backlog, planned, in progress, review, qa, done) comes with #36.', ' ␣b or ␣␣ back' }
-  elseif v.kind == 'log' then
+  if v.kind == 'log' then
     return { '', ' Agents log', '', ' The Agents log (lifecycle events, agent-to-agent messages) comes with #34.', ' The Agents topic opens as a thread from the topics panel (␣t).', ' ␣␣ back' }
   elseif v.kind == 'inbox' then
     return { '', ' Inbox · full width', '', ' Nothing needs you.', '', ' Asks, approvals and notifications come with #33.', ' ␣N or ␣␣ back' }
@@ -207,6 +184,11 @@ local function lines_for(v)
 end
 
 function M.render_placeholder(v)
+  if v.kind == 'item' and v.id then
+    return require('cland.item_view').render(v.id)
+  elseif v.kind == 'board' then
+    return require('cland.board').render()
+  end
   local b = M.bufs[key(v)]
   if not (b and api.nvim_buf_is_valid(b)) then
     return
