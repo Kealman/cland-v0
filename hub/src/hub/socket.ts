@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { createServer, type Socket } from 'node:net';
 import type { Dispatcher } from './dispatch.ts';
 import { MAX_FRAME_BYTES } from '../protocol.ts';
+import { lineReader } from './lines.ts';
 import type { LogFn } from '../log.ts';
 
 export type SocketEdgeOptions = {
@@ -23,7 +24,6 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
   const server = createServer((socket) => {
     clients.add(socket);
     socket.setEncoding('utf8');
-    let buffer = '';
     const conversation = options.dispatcher.open(
       {
         send: (frame) => {
@@ -36,20 +36,18 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
       { authenticated: false, edge: 'socket' },
     );
 
-    socket.on('data', (chunk: string) => {
-      buffer += chunk;
-      if (Buffer.byteLength(buffer) > MAX_FRAME_BYTES) {
-        log({ event: 'refused', edge: 'socket', code: 'frame-too-large' });
-        socket.destroy();
-        return;
-      }
-      let nl: number;
-      while ((nl = buffer.indexOf('\n')) >= 0 && !socket.destroyed) {
-        const line = buffer.slice(0, nl).trim();
-        buffer = buffer.slice(nl + 1);
-        if (line) conversation.receive(line);
-      }
-    });
+    socket.on(
+      'data',
+      lineReader({
+        maxBytes: MAX_FRAME_BYTES,
+        onLine: (line) => conversation.receive(line),
+        onTooLarge: () => {
+          log({ event: 'refused', edge: 'socket', code: 'frame-too-large' });
+          socket.destroy();
+        },
+        isOpen: () => !socket.destroyed,
+      }),
+    );
     socket.on('close', () => {
       clients.delete(socket);
       conversation.closed();
@@ -68,9 +66,16 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
     server.once('error', reject);
     server.listen(staging, () => resolve());
   });
-  // only this user may even try the secret
-  chmodSync(staging, 0o600);
-  renameSync(staging, options.path);
+  try {
+    // only this user may even try the secret
+    chmodSync(staging, 0o600);
+    renameSync(staging, options.path);
+  } catch (err) {
+    // not in place: nothing this edge bound may outlive the failure
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    rmSync(staging, { force: true });
+    throw err;
+  }
   // the file this edge bound: on close, only that file is removed
   const bound = lstatSync(options.path);
   log({ event: 'listening', socket: options.path });

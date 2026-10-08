@@ -234,13 +234,29 @@ export class Store implements HygieneMemory {
     else this.#db.prepare('insert into hygiene (kind, key, value) values (?, ?, ?) on conflict (kind, key) do update set value = excluded.value').run(kind, key, value);
   }
 
-  /** Record a message and the state of each addressee's delivery. */
+  /** Run `fn` in one transaction: all of its writes land, or none does. */
+  #transaction<T>(fn: () => T): T {
+    this.#db.exec('begin immediate');
+    try {
+      const result = fn();
+      this.#db.exec('commit');
+      return result;
+    } catch (err) {
+      this.#db.exec('rollback');
+      throw err;
+    }
+  }
+
+  /** Record a message and the state of each addressee's delivery, together: a message is never stored with
+   *  only some of its deliveries. */
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number): void {
-    this.#db
-      .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now, message.topic ?? null);
-    const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
-    for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
+    this.#transaction(() => {
+      this.#db
+        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(message.id, message.from, message.fromKind, message.fromRole ?? null, message.via, JSON.stringify(message.to), message.text, message.replyTo ?? null, message.ts, now, message.topic ?? null);
+      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
+      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
+    });
   }
 
   /** One stored message by its hub id, or null. */
@@ -290,8 +306,21 @@ export class Store implements HygieneMemory {
    * A session took a role: what waited for the role while nobody held it (deliveries addressed to the
    * placeholder `@<role>`) now waits for that session. Returns how many moved.
    */
-  claimRoleQueue(role: string, session: string): number {
-    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(session, `@${role}`).changes);
+  claimRoleQueue(role: string, session: string): { moved: number; merged: string[] } {
+    return this.#moveQueuedTo(`@${role}`, session);
+  }
+
+  /**
+   * What still waits for `from` waits for `to`. A message that already has a delivery for `to` keeps that
+   * one row: the queued row of `from` is consumed into it, so one ack clears the message for both. Returns
+   * how many rows moved and the ids of the messages merged (their stage may have changed).
+   */
+  #moveQueuedTo(from: string, to: string): { moved: number; merged: string[] } {
+    return this.#transaction(() => {
+      const moved = Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(to, from).changes);
+      const merged = (this.#db.prepare("delete from deliveries where session = ? and state = 'queued' returning message_id").all(from) as Row[]).map((r) => r.message_id as string);
+      return { moved, merged };
+    });
   }
 
   /** The stage of a message over all its deliveries; undefined when it had no addressee. */
@@ -339,9 +368,10 @@ export class Store implements HygieneMemory {
     });
   }
 
-  /** A rename: what still waits for the old name (in flight to the live session) waits for the new one. */
-  moveQueued(from: string, to: string): void {
-    this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(to, from);
+  /** A rename: what still waits for the old name (in flight to the live session) waits for the new one; a
+   *  message that had both names keeps its delivery to the new one. Returns the ids of those merged. */
+  moveQueued(from: string, to: string): string[] {
+    return this.#moveQueuedTo(from, to).merged;
   }
 
   /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */
