@@ -7,7 +7,7 @@
 //            `POST /api/session {title, model, location}` creates the session; the model is a launch parameter,
 //            else a free one the server lists (`GET /api/model`). The process table keeps the server's pid, its
 //            url (`harnessId`) and the session's id (`harnessSessionId`, `ses_…`).
-//   attach   the OpenCode TUI as a client of that server, on that session: `opencode --server <url> --session <id>`,
+//   attach   the OpenCode TUI as a client of that server, on that session, in its directory: `opencode --server <url> --session <id> <cwd>`,
 //            with the password read from its file into `OPENCODE_PASSWORD` (never on the command line).
 //   inject   `POST /api/session/{id}/prompt {text, delivery}`: `steer` while the session runs a turn, `queue`
 //            otherwise. The server's reply is the durably admitted inbox item: that is the confirmation.
@@ -173,7 +173,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
   attachCommand(p: HarnessProcess): string {
     const bin = this.#bin === 'opencode' ? 'opencode' : bare(this.#bin);
     const password = this.#files(p.name).password;
-    return `OPENCODE_PASSWORD="$(cat ${sq(password)})" ${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')}`;
+    // in the session's directory: a TUI elsewhere makes the server open an instance there, whose MCP servers start a
+    // second spoke for the session, which replaces the one the session's tool calls go through
+    return `OPENCODE_PASSWORD="$(cat ${sq(password)})" ${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')} ${sq(p.cwd)}`;
   }
 
   // ---------------------------------------------------------------- inject

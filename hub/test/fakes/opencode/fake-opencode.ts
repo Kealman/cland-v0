@@ -15,7 +15,8 @@
 //       GET  /api/session/{id}/form, POST …/form/{frm}/reply, DELETE …/form/{frm}
 //       GET  /api/model                         one paid model and one free (`opencode/fake-free`); none in the
 //                                               first 400 ms, as a real server's catalog loads after it listens
-//   opencode --server <url> --session <id>  the TUI: prints `fake opencode TUI on <url> session <id> (<title>)`.
+//   opencode --server <url> --session <id> [dir]  the TUI: prints `fake opencode TUI on <url> session <id> (<title>) in <dir>`
+//                                                 (dir: the argument, else its cwd).
 //
 // A turn: `session.execution.started`, then per input `session.inbox.delivered`, `session.step.started {model}`,
 // FAKE_OPENCODE_TURN_MS of "thinking" (default 300; a text containing "take your time" thinks 2000 ms), the answer
@@ -71,14 +72,19 @@ async function main(args: string[]): Promise<number> {
   }
   if (args[0] === 'serve') return serve(args.slice(1));
   const server = flag(args, '--server');
-  if (server) return tui(server, flag(args, '--session', '-s'));
+  if (server) {
+    // the directory the TUI works in: its positional argument, else its cwd (the real server opens an instance there)
+    const valued = new Set(['--server', '--session', '-s', '--prompt']);
+    const dir = args.find((a, i) => !a.startsWith('-') && !valued.has(args[i - 1] ?? ''));
+    return tui(server, flag(args, '--session', '-s'), dir ?? process.cwd());
+  }
   process.stderr.write(`fake opencode: unsupported invocation ${JSON.stringify(args)}\n`);
   return 1;
 }
 
 // ------------------------------------------------------------------ the TUI client
 
-async function tui(url: string, session: string | undefined): Promise<number> {
+async function tui(url: string, session: string | undefined, dir: string): Promise<number> {
   const headers = process.env.OPENCODE_PASSWORD ? { authorization: `Basic ${Buffer.from(`opencode:${process.env.OPENCODE_PASSWORD}`).toString('base64')}` } : undefined;
   const res = await fetch(`${url}/api/session/${session ?? ''}`, headers ? { headers } : {}).catch((err: Error) => ({ ok: false, status: 0, text: async () => err.message }) as const);
   if (!res.ok) {
@@ -86,7 +92,7 @@ async function tui(url: string, session: string | undefined): Promise<number> {
     return 1;
   }
   const info = ((await (res as Response).json()) as { data: SessionInfo }).data;
-  process.stdout.write(`fake opencode TUI on ${url} session ${info.id} (${info.title})\n`);
+  process.stdout.write(`fake opencode TUI on ${url} session ${info.id} (${info.title}) in ${dir}\n`);
   return 0;
 }
 

@@ -137,12 +137,14 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
     states: { busy: 'reliable', idle: 'reliable', 'waiting for approval': 'heuristic', 'waiting for human': 'heuristic' },
   });
 
-  // attach: the OpenCode TUI against that server and session; the password comes from its file, not the command line
+  // attach: the OpenCode TUI against that server and session; the password comes from its file, not the command line.
+  // The TUI is started in the session's directory, whatever the attaching terminal's: a TUI in another directory makes
+  // the server open an instance there, whose MCP servers start a second spoke for the session (T-42's run).
   const attach = (await ui.request({ type: 'session.attach', session: 'impl' })).value as { command: string };
   assert.equal(attach.command, launched.attach);
-  assert.equal(attach.command, `OPENCODE_PASSWORD="$(cat '${join(root, '.cland', 'opencode', 'impl', 'password')}')" opencode --server ${launched.harnessId} --session ${launched.harnessSessionId}`);
-  const tuiOut = await new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { env: { ...process.env, ...fake.env } }, (_e, stdout, stderr) => resolve(stdout + stderr)));
-  assert.equal(tuiOut, `fake opencode TUI on ${launched.harnessId} session ${launched.harnessSessionId} (impl)\n`);
+  assert.equal(attach.command, `OPENCODE_PASSWORD="$(cat '${join(root, '.cland', 'opencode', 'impl', 'password')}')" opencode --server ${launched.harnessId} --session ${launched.harnessSessionId} '${root}'`);
+  const tuiOut = await new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { cwd: tmpdir(), env: { ...process.env, ...fake.env } }, (_e, stdout, stderr) => resolve(stdout + stderr)));
+  assert.equal(tuiOut, `fake opencode TUI on ${launched.harnessId} session ${launched.harnessSessionId} (impl) in ${root}\n`);
 
   // the human writes in General: the prompt API admits it (injected), the answer comes through the spoke
   const id = await sendGeneral(ui, 'Reply with the single word pong');
