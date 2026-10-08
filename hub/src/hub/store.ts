@@ -77,6 +77,11 @@ create table if not exists notifications (
   result text,
   dismissed integer not null default 0
 );
+create table if not exists assignees (
+  item text primary key,
+  name text not null,
+  session_id text
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -107,6 +112,11 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'topics', column: 'read_rowid', type: 'integer not null default 0' },
   /** The ask a human message answers (#33). */
   { table: 'messages', column: 'answer_to', type: 'text' },
+  /** The session id behind a delivery's addressee name when it was recorded (or when a role's queue was claimed):
+   *  what a grant tied to a delivery (the mention rule) is checked against, never the name. */
+  { table: 'deliveries', column: 'session_id', type: 'text' },
+  /** The sender's session id, for an agent's message: a reply finds the sender after a rename. */
+  { table: 'messages', column: 'from_session_id', type: 'text' },
 ];
 
 /** Indexes over added columns: created after the migration, when the column surely exists. */
@@ -401,8 +411,10 @@ export class Store implements HygieneMemory {
           message.detail ? JSON.stringify(message.detail) : null,
           message.answerTo ?? null,
         );
-      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
-      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
+      if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
+      // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
+      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?))');
+      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session);
     });
   }
 
@@ -465,7 +477,10 @@ export class Store implements HygieneMemory {
    * placeholder `@<role>`) now waits for that session. Returns how many moved.
    */
   claimRoleQueue(role: string, session: string): { moved: number; merged: string[] } {
-    return this.#moveQueuedTo(`@${role}`, session);
+    const r = this.#moveQueuedTo(`@${role}`, session);
+    // the deliveries it took are this session's: by its id, as every other delivery
+    if (r.moved) this.#db.prepare("update deliveries set session_id = (select session_id from sessions where name = ?) where session = ? and session_id is null and state = 'queued'").run(session, session);
+    return r;
   }
 
   /**
@@ -542,6 +557,37 @@ export class Store implements HygieneMemory {
     if (upTo !== undefined && !row) throw new Error(`no message "${upTo}" in this topic`);
     const r = Number(row?.r ?? 0);
     this.#db.prepare('update topics set read_rowid = max(coalesce(read_rowid, 0), ?) where id = ?').run(r, id);
+  }
+
+  /** The deliveries of the topic's latest human message: each addressee's name and the session id it was recorded
+   *  for (null for a role's unclaimed placeholder, or a row older than the column). */
+  lastHumanDeliveries(topic: string): Array<{ session: string; sessionId: string | null }> {
+    return (
+      this.#db
+        .prepare(
+          `select d.session, d.session_id from deliveries d where d.message_id = (
+             select id from messages where topic = ? and from_kind = 'human' order by created_at desc, rowid desc limit 1)`,
+        )
+        .all(topic) as Row[]
+    ).map((r) => ({ session: r.session as string, sessionId: (r.session_id as string | null) ?? null }));
+  }
+
+  /** The session id an agent's message was sent from, or null (a hub notice, the human, a row older than the column). */
+  senderSessionId(messageId: string): string | null {
+    const row = this.#db.prepare('select from_session_id from messages where id = ?').get(messageId) as Row | undefined;
+    return (row?.from_session_id as string | null | undefined) ?? null;
+  }
+
+  /** The session an item was assigned to by the hub (its name then, and its session id when the hub knew it). */
+  assigneeOf(item: string): { name: string; sessionId: string | null } | null {
+    const row = this.#db.prepare('select name, session_id from assignees where item = ?').get(item) as Row | undefined;
+    return row ? { name: row.name as string, sessionId: (row.session_id as string | null) ?? null } : null;
+  }
+
+  /** Bind an item's assignee to a session (null name: the item has none). */
+  bindAssignee(item: string, name: string | null, sessionId: string | null): void {
+    if (name === null) this.#db.prepare('delete from assignees where item = ?').run(item);
+    else this.#db.prepare('insert into assignees (item, name, session_id) values (?, ?, ?) on conflict (item) do update set name = excluded.name, session_id = excluded.session_id').run(item, name, sessionId);
   }
 
   /** Who the topic's latest human message was delivered to (a role's placeholder once claimed is its holder). */

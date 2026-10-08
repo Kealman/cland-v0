@@ -225,21 +225,21 @@ test('task claim records a claim in the hub only; task view shows the assignee a
 
 test('a claim belongs to the session, not its name: a rename keeps it, and whoever takes the old name gets none of it', async (t) => {
   const root = await project(t);
-  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', role: 'implementer' });
+  // only the Coordinator renames (spec 4.4: names never change); an Implementer claims only its own item
+  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', role: 'coordinator' });
   t.after(() => alpha.close());
-  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-b' });
-  t.after(() => beta.close());
-  await alpha.waitForPresence(['alpha', 'beta']);
-  // assigned to alpha: an Implementer claims only its own item (spec 4.4)
+  await alpha.waitForPresence(['alpha']);
   ok(await cland(root, 'task', 'create', 'Held', '--assignee', 'alpha'));
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
 
   assert.deepEqual(await alpha.call('rename', { name: 'alpha-2' }), { ok: true, name: 'alpha-2' });
-  assert.deepEqual(await beta.call('rename', { name: 'alpha' }), { ok: true, name: 'alpha' });
-  // the session now called alpha is not the one that claimed under that name
-  const taken = await beta.call<{ ok: boolean; error?: string }>('task.claim', { id: 'T-1' });
+  // another session takes the old name: it is not the one that claimed, nor the one T-1 was assigned to
+  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-b', role: 'implementer' });
+  t.after(() => beta.close());
+  await alpha.waitForPresence(['alpha', 'alpha-2']);
+  const taken = await beta.call<{ ok: boolean; error?: string; code?: string }>('task.claim', { id: 'T-1' });
   assert.equal(taken.ok, false, JSON.stringify(taken));
-  assert.match(taken.error ?? '', /T-1 is claimed by alpha \(implementer\)/);
+  assert.equal(taken.code, 'forbidden', JSON.stringify(taken));
   const released = await beta.call<{ ok: boolean; error?: string }>('task.claim', { id: 'T-1', release: true });
   assert.equal(released.ok, false, JSON.stringify(released));
   assert.equal((await json<{ item: View }>(root, 'view', 'T-1')).item.claim?.session, 'alpha');
@@ -250,11 +250,11 @@ test('a claim belongs to the session, not its name: a rename keeps it, and whoev
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1', release: true })).ok, true);
   assert.equal((await json<{ item: View }>(root, 'view', 'T-1')).item.claim, null);
 
-  // a CLI actor is not a session: acting as a session's name holds nothing of that session's
-  assert.equal((await beta.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
+  // the CLI acting as a session's name is that session, held to its role: the Implementer now called alpha
+  assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
   const cli = await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha', '--release');
   assert.equal(cli.code, 1, cli.stdout);
-  assert.match(cli.stderr, /T-1 is claimed by alpha/);
+  assert.match(cli.stderr, /forbidden: task\.claim/);
 });
 
 test('a CLI actor whose name or role is not one the hub knows is refused, and nothing is written', async (t) => {
@@ -311,11 +311,12 @@ test('a verdict comment is stored in the file with its header and is queryable t
 test('the index holds what the file says: a plain comment that reads back as a verdict is a verdict to view and list alike', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', 'Shaped'));
+  // the header is parsed into a verdict whose `by` is who wrote it, never what the text claims
   ok(await cland(root, 'task', 'comment', 'T-1', 'verdict: review\nresult: clear\nby: rev-9 [reviewer]\nrun: r-9\n\nwritten as a plain comment', '--as', 'alice'));
   const view = await json<{ item: View }>(root, 'view', 'T-1');
   const inView = view.item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]);
   const listed = (await json<{ items: Summary[] }>(root, 'list', '--verdict', 'review=clear')).items.map((i) => i.id);
-  assert.deepEqual({ inView, listed }, { inView: [['review', 'clear', 'rev-9 [reviewer]', 'r-9']], listed: ['T-1'] });
+  assert.deepEqual({ inView, listed }, { inView: [['review', 'clear', 'alice', 'r-9']], listed: ['T-1'] });
 });
 
 test('edit, close and link change the file; bad references are refused', async (t) => {

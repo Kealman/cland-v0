@@ -1124,7 +1124,10 @@ export class HubCore {
       const original = this.#store.message(replyTo);
       if (!original || original.topic !== AGENTS.id) throw new Error(`no message "${replyTo}" in ${topic.title} to reply to`);
       if (original.fromKind !== 'agent') throw new Error(`a hub notice has no sender to answer: reply to an agent's message in ${topic.title}`);
-      to = [original.from];
+      // the sender by its session id: a session renamed since is still the one that wrote it
+      const senderId = this.#store.senderSessionId(original.id);
+      const sender = senderId !== null && senderId !== UNKNOWN_SESSION ? (this.connectionOf(senderId)?.name ?? this.#store.nameOfSession(senderId)) : null;
+      to = [sender ?? original.from];
     }
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });

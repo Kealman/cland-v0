@@ -181,9 +181,10 @@ test('every row of the permission table, for every role, over MCP: allowed calls
     ] satisfies Case[])
       await check(root, ui, who, c);
   }
-  // every role may rename (the table grants it to all four); shown for the Reviewer, and back
-  await check(root, ui, rev, { tool: 'rename', args: { name: 'rev-b' } });
-  await check(root, ui, { ...rev, name: 'rev-b', label: 'rev-b [Reviewer]' }, { tool: 'rename', args: { name: 'rev' } });
+  // names never change (spec 4.4): only the Coordinator renames, and back
+  await check(root, ui, rev, { tool: 'rename', args: { name: 'rev-b' }, forbidden: 'rename', reason: /Reviewer may not use rename/ });
+  await check(root, ui, coord, { tool: 'rename', args: { name: 'coord-b' } });
+  await check(root, ui, { ...coord, name: 'coord-b', label: 'coord-b [Coordinator]' }, { tool: 'rename', args: { name: 'coord' } });
 
   // a session with no role (its role revoked while it is connected): every tool refused
   assert.equal((await ui.request({ type: 'role.clear', session: 'gone' })).ok, true);
@@ -437,7 +438,7 @@ test('roles.toml is the table: an edited permission list is in force on the next
   // the human gives the Reviewer the human's ear and closing, and takes `who` away
   const file = join(root, '.cland', 'roles.toml');
   const text = await readFile(file, 'utf8');
-  const reviewerList = 'tools = ["send:agents", "task.comment:verdict", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]';
+  const reviewerList = 'tools = ["send:agents", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]';
   assert.ok(text.includes(reviewerList));
   const edited = text.replace(reviewerList, 'tools = ["send:agents", "send:human", "task.comment:verdict", "task.close", "history", "status"]');
   await writeFile(file, edited);

@@ -73,9 +73,11 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
     'rename',
     ...READS,
   ],
-  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'artifact.create', 'rename', ...READS],
-  reviewer: ['send:agents', 'task.comment:verdict', 'artifact.create', 'rename', ...READS],
-  qa: ['send:agents', 'task.comment:verdict', 'artifact.create', 'rename', ...READS],
+  // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
+  // assignments are held by session id)
+  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'artifact.create', ...READS],
+  reviewer: ['send:agents', 'task.comment:verdict', 'artifact.create', ...READS],
+  qa: ['send:agents', 'task.comment:verdict', 'artifact.create', ...READS],
 };
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */
@@ -103,6 +105,8 @@ export type ToolCall = {
   mentioned?: () => boolean;
   /** `task.comment`: the comment carries a verdict. */
   verdict?: boolean;
+  /** `task.comment` with a verdict: its kind (`review`, `qa`). */
+  verdictKind?: string;
   /** The item the call is on (`task.*`), or the one a new topic binds to (`topic.create`). */
   item?: string | null;
   /** Whether `item` is the caller's own item; undefined when it does not exist (the tool's own error says so). */
@@ -120,6 +124,11 @@ const label = (role: string) => ROLE_LABELS[role] ?? role;
 export function decide(role: string | null, grants: readonly string[] | undefined, call: ToolCall): Decision {
   const { tool } = call;
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
+  // a Reviewer records review verdicts and QA records QA verdicts, whatever else its list grants
+  const own = role === 'reviewer' ? 'review' : role === 'qa' ? 'qa' : null;
+  if (tool === 'task.comment' && call.verdict && own !== null && call.verdictKind !== undefined && call.verdictKind !== own) {
+    return { ok: false, permission: 'task.comment:verdict', reason: `${label(role)} may write only ${own === 'qa' ? 'QA' : 'review'} verdicts` };
+  }
   const list = grants ?? [];
   const has = (g: string) => list.includes(g);
   if (has(tool)) return { ok: true };

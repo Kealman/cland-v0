@@ -10,7 +10,7 @@
 // holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
 // in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
 import { timingSafeEqual } from 'node:crypto';
-import { AGENTS, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
+import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { withRole } from '../names.ts';
@@ -32,7 +32,7 @@ import {
 import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
-import { readsAsVerdict } from '../tracker/item.ts';
+import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
@@ -74,6 +74,9 @@ export type DispatcherOptions = {
 
 /** Who the UI's and the CLI's calls are audited as. */
 const HUMAN_SESSION = 'human';
+
+/** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
+type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
 
 export const secretMatches = (given: string, secret: string): boolean => {
   const a = Buffer.from(given);
@@ -124,7 +127,7 @@ export class Dispatcher {
    * the typed error, and posted to the Agents topic. A hub with no role definitions (no project) checks nothing;
    * a frame that is no tool the table knows goes on to its own "unknown request" answer.
    */
-  #permitted(connection: Connection, frame: Record<string, unknown>, peer: Peer): boolean {
+  #permitted(connection: Caller, frame: Record<string, unknown>, peer: Peer): boolean {
     const core = this.#options.core;
     const roles = core.roles;
     if (!roles) return true;
@@ -148,14 +151,69 @@ export class Dispatcher {
    * Whether the human's latest message in the `send`'s topic (General by default, as for any message to the human)
    * was delivered to the caller, by its name or as a holder of its role (spec 4.5: the mention pulled it in).
    */
-  #mentioned(connection: Connection, frame: Record<string, unknown>): boolean {
+  #mentioned(connection: Caller, frame: Record<string, unknown>): boolean {
     const topic = typeof frame.topic === 'string' && frame.topic !== '' ? frame.topic : GENERAL.id;
-    const addressees = this.#options.core.store.lastHumanAddressees(topic);
-    return addressees.includes(connection.name) || (connection.role !== null && addressees.includes(connection.role));
+    // by the session id each delivery was recorded for: another session that took the name later inherits nothing
+    return this.#options.core.store
+      .lastHumanDeliveries(topic)
+      .some((d) => (d.sessionId !== null ? d.sessionId === connection.sessionId : d.session === connection.name) || (connection.role !== null && d.session === connection.role));
+  }
+
+  /**
+   * The session a client's task frame acts as (`as`, the CLI's `--as` or `$CLAND_SESSION_NAME`), when it is one the
+   * hub knows: by its session id (`as.sessionId`, `$CLAND_SESSION_ID`), else by a name a session holds or held. Its
+   * role is the hub's, never the frame's. Null for the human, and for a name no session ever had (a CLI actor).
+   */
+  #asSession(frame: Record<string, unknown>): Caller | null {
+    const core = this.#options.core;
+    if (!core.roles) return null;
+    const as = frame.as as { name?: unknown; sessionId?: unknown } | undefined;
+    if (!as || typeof as !== 'object' || typeof as.name !== 'string' || as.name === HUMAN_SESSION) return null;
+    const sessionId = typeof as.sessionId === 'string' && as.sessionId !== '' ? as.sessionId : null;
+    if (sessionId !== null) {
+      const live = core.connectionOf(sessionId);
+      if (live) return { name: live.name, sessionId, role: live.role };
+      const known = core.store.nameOfSession(sessionId);
+      return { name: known ?? as.name, sessionId, role: known !== null ? core.store.roleOf(known) : null };
+    }
+    const present = core.presence().find((p) => p.name === as.name);
+    if (present) return { name: present.name, sessionId: present.sessionId, role: present.role };
+    const id = core.store.sessionIdOf(as.name);
+    const role = core.store.roleOf(as.name);
+    if (id === null && role === null) return null;
+    return { name: as.name, sessionId: id ?? UNKNOWN_SESSION, role };
+  }
+
+  /**
+   * A comment whose text carries a verdict header is a verdict: its fields are taken from the header and its `by` is
+   * the caller's (the tracker writes it from the actor), never the one the text claims. A text that would still read
+   * as a verdict after its header is refused. Returns an error, or null.
+   */
+  static #verdictFromText(frame: Record<string, unknown>): string | null {
+    if (frame.type !== 'task.comment' || frame.verdict !== undefined || typeof frame.text !== 'string' || !readsAsVerdict(frame.text)) return null;
+    const v = verdictOfText(frame.text);
+    if (!v) return null;
+    if (readsAsVerdict(v.text)) return 'a verdict comment carries one verdict header: its text may not start with another';
+    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run };
+    frame.text = v.text;
+    return null;
+  }
+
+  /** After a task write that set an assignee: the item is bound to the assignee's session id, when the hub knows it
+   *  (a rename never moves an assignment; another session taking the name later does not own the item). */
+  #bindAssignee(frame: Record<string, unknown>, result: HubFrame): void {
+    if (result.type !== 'result' || !result.ok || (frame.type !== 'task.create' && frame.type !== 'task.edit') || !('assignee' in frame)) return;
+    const item = (result.value as { item?: { id?: string } } | undefined)?.item?.id;
+    if (typeof item !== 'string') return;
+    const core = this.#options.core;
+    const name = typeof frame.assignee === 'string' && frame.assignee.trim() !== '' ? frame.assignee.trim() : null;
+    if (name === null) return core.store.bindAssignee(item, null, null);
+    const id = core.presence().find((p) => p.name === name)?.sessionId ?? core.store.sessionIdOf(name);
+    core.store.bindAssignee(item, name, id !== null && id !== UNKNOWN_SESSION ? id : null);
   }
 
   /** The table's view of a spoke frame, or null when it is no tool the table knows. */
-  #toolCall(connection: Connection, frame: Record<string, unknown>): ToolCall | null {
+  #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
     // listing the launched sessions goes with launching them
     const tool = type === 'session.list' ? 'session.launch' : type;
@@ -171,7 +229,17 @@ export class Dispatcher {
         return undefined; // no such item: the tool says so itself
       }
       const actor = sessionActor(connection, UNKNOWN_SESSION);
-      return view.claim?.sessionId === actor.id || (view.assignee !== null && view.assignee === connection.name);
+      if (view.claim?.sessionId === actor.id) return true;
+      if (view.assignee === null) return false;
+      // the assignee as the hub bound it, by session id: a rename, or another session taking the name, moves nothing
+      const store = this.#options.core.store;
+      const bound = store.assigneeOf(view.id);
+      if (bound && bound.name === view.assignee && bound.sessionId !== null) return bound.sessionId === actor.id;
+      // an assignee the hub never bound to a session (a hand edit, an import, a name no session held yet): the first
+      // session under that name to act on it is bound to it
+      if (view.assignee !== connection.name) return false;
+      store.bindAssignee(view.id, view.assignee, actor.id);
+      return true;
     };
     return {
       tool,
@@ -179,7 +247,12 @@ export class Dispatcher {
       own,
       ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
-      ...(tool === 'task.comment' ? { verdict: (typeof frame.verdict === 'object' && frame.verdict !== null) || (typeof frame.text === 'string' && readsAsVerdict(frame.text)) } : {}),
+      ...(tool === 'task.comment'
+        ? {
+            verdict: (typeof frame.verdict === 'object' && frame.verdict !== null) || (typeof frame.text === 'string' && readsAsVerdict(frame.text)),
+            ...(typeof frame.verdict === 'object' && frame.verdict !== null && typeof (frame.verdict as { verdict?: unknown }).verdict === 'string' ? { verdictKind: (frame.verdict as { verdict: string }).verdict } : {}),
+          }
+        : {}),
     };
   }
 
@@ -276,6 +349,13 @@ export class Dispatcher {
       }
       if (isClientHello(frame)) {
         if (frame.protocol !== PROTOCOL_VERSION) return refuse('version', `protocol ${frame.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}`);
+        // the human's side comes over the Unix socket or stdio: the spokes' WebSocket never makes a client (with
+        // the spokes' bearer secret, a session would otherwise act as the human, unrestricted by its role). A hub with
+        // no human side (`createHub`, no `control`: the in-process hub of the tests) has no other way in for a client.
+        if (transport.edge === 'websocket' && this.#options.control !== undefined) {
+          log({ event: 'refused', edge: transport.edge, code: 'unauthorized', client: frame.client });
+          return refuse('unauthorized', "a client connects over the hub's Unix socket or stdio, not the spokes' WebSocket");
+        }
         kind = 'client';
         client = frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
@@ -323,6 +403,12 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { status: connection?.status ?? null } });
             break;
           case 'rename': {
+            // names never change (spec 4.4): only the Coordinator renames, whatever a roles.toml grants
+            if (core.roles && connection?.role !== COORDINATOR) {
+              const reason = 'names never change: only the Coordinator renames';
+              peer.send({ type: 'result', id: frame.id, ok: false, error: `forbidden: rename (${reason})`, code: 'forbidden', permission: 'rename', role: connection?.role ?? null, reason });
+              break;
+            }
             const r = core.rename(me, frame.name);
             if (r.ok) {
               name = r.name;
@@ -461,19 +547,43 @@ export class Dispatcher {
           // the heartbeat is not a tool call
           if (frame.type !== 'ping') {
             audit(frame.id, { session: connection.name, sessionId: connection.sessionId, role: connection.role, tool: String(frame.type), args: summarize(frame) });
+            const bad = Dispatcher.#verdictFromText(frame);
+            if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
             if (!this.#permitted(connection, frame, peer)) return;
           }
           // a spoke always acts as its own session
-          if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, sessionActor(connection, UNKNOWN_SESSION)));
+          if (isTaskRequest(frame)) {
+            const result = answerTask(this.#options.tracker, frame, sessionActor(connection, UNKNOWN_SESSION));
+            this.#bindAssignee(frame, result);
+            return peer.send(result);
+          }
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           return spokeRequest(frame, name as string);
+        }
+        // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
+        // exactly as the session's own tool call would be
+        const as = isTaskRequest(frame) ? this.#asSession(frame) : null;
+        if (as !== null && isTaskRequest(frame)) {
+          audit(frame.id, { session: as.name, sessionId: as.sessionId, role: as.role, tool: String(frame.type), args: summarize(frame), client });
+          const bad = Dispatcher.#verdictFromText(frame);
+          if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
+          if (!this.#permitted(as, frame, peer)) return;
+          const result = answerTask(this.#options.tracker, frame, sessionActor(as, UNKNOWN_SESSION));
+          this.#bindAssignee(frame, result);
+          return peer.send(result);
         }
         // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
         if (frame.type !== 'session.signal' && frame.type !== 'session.bridge') {
           audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
         }
-        // a client's frame may name who it acts as
-        if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, 'client'));
+        // a client's frame may name who it acts as (a name no session holds: written as it, unrestricted)
+        if (isTaskRequest(frame)) {
+          const bad = Dispatcher.#verdictFromText(frame);
+          if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
+          const result = answerTask(this.#options.tracker, frame, 'client');
+          this.#bindAssignee(frame, result);
+          return peer.send(result);
+        }
         if (isSessionRequest(frame)) return session(frame);
         clientRequest(frame);
       },

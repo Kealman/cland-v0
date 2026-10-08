@@ -179,6 +179,13 @@ function parseComments(lines: string[]): Comment[] {
   return comments;
 }
 
+/** A comment text whose first lines are a verdict header, split into the verdict's fields and the rest (its `by`,
+ *  whatever it says, is not kept: the hub writes who recorded it). Null when it does not read as a verdict. */
+export function verdictOfText(text: string): { verdict: VerdictKind; result: VerdictResult; run: string; text: string } | null {
+  const c = commentOf('', '', text.trim());
+  return c.verdict ? { verdict: c.verdict.verdict, result: c.verdict.result, run: c.verdict.run, text: c.text } : null;
+}
+
 /** Whether a comment's text reads back as a verdict (its first lines a verdict header), as every reader takes it. */
 export const readsAsVerdict = (text: string): boolean => commentOf('', '', text.trim()).verdict !== undefined;
 
