@@ -10,8 +10,10 @@
 //   task.comment:verdict verdict comments (the verdict header: verdict, result, run) on any item
 //   topic.create:own     a topic only bound to the session's own item
 // The session's own item is one it claims (the tracker's live claim, by session id) or whose `assignee` is its name.
-// Tools that have no frame yet (`ask`, `role.handover`, `merge`, `artifact.create`) are in the table already: they
-// are checked the day their frame arrives, through the same `decide`. `resolve` and `topic.create` (#32) have theirs.
+// Tools that have no frame yet (`ask`, `merge`, `artifact.create`) are in the table already: they are checked the
+// day their frame arrives, through the same `decide`. `resolve` and `topic.create` (#32) have theirs; `role.handover`
+// (#31) is the Coordinator's; `role.state` is no table tool: a session reads the state of the role it holds (the
+// dispatcher checks).
 import { ROLE_LABELS } from '../names.ts';
 
 /** Every tool the table knows: today's spoke frames and the ones still to come. */

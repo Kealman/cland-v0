@@ -34,6 +34,8 @@ import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts'
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
+import { handOver, roleState, type HandoverContext } from '../roles/handover.ts';
+import { NoteIncomplete } from '../roles/note.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -90,6 +92,21 @@ export class Dispatcher {
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+  }
+
+  /** What a handover and `role.state` read beyond the core (#31): the tracker's claims, the launched sessions. */
+  #handover(): HandoverContext {
+    return {
+      core: this.#options.core,
+      tracker: this.#options.tracker,
+      launched: (name) => this.#sessions?.list().find((p) => p.name === name && p.status === 'running') ?? null,
+    };
+  }
+
+  /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
+  static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };
+    return { type: 'result', id, ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 
   get core(): HubCore {
@@ -263,8 +280,27 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { me, sessions: core.presence() } });
             break;
           case 'history':
-            peer.send({ type: 'result', id: frame.id, ok: true, value: { messages: core.history(me, frame.limit, frame.with) } });
+            // with a topic: that topic's messages (a new role holder reads the topics waiting for it, #31)
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { messages: frame.topic !== undefined ? core.topicHistory(frame.topic, frame.limit).messages : core.history(me, frame.limit, frame.with) } });
             break;
+          case 'role.handover': {
+            const role = connection?.role ?? null;
+            if (role === null) throw new Error('this session holds no role to hand over');
+            const holder = handOver(this.#handover(), { role, from: me, to: frame.to, by: me, note: frame.note, noteRequired: true, then: frame.then ?? null, requireKnown: true });
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { session: holder } });
+            break;
+          }
+          case 'role.state': {
+            // a session reads the state of the role it holds: what it continues from
+            const role = frame.role ?? connection?.role ?? null;
+            if (role === null || role !== connection?.role) {
+              const reason = role === null ? 'a session with no role has no role state' : 'a session reads only the state of the role it holds';
+              peer.send({ type: 'result', id: frame.id, ok: false, error: `forbidden: role.state (${reason})`, code: 'forbidden', permission: 'role.state', role: connection?.role ?? null, reason });
+              break;
+            }
+            peer.send({ type: 'result', id: frame.id, ok: true, value: roleState(this.#handover(), role) });
+            break;
+          }
           case 'status':
             core.setStatus(me, frame.text);
             peer.send({ type: 'result', id: frame.id, ok: true, value: { status: connection?.status ?? null } });
@@ -294,7 +330,7 @@ export class Dispatcher {
             break;
         }
       } catch (err) {
-        peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+        peer.send(Dispatcher.#failure(frame.id, err));
       }
     };
 
@@ -329,7 +365,14 @@ export class Dispatcher {
           case 'topic.read':
             return answer({ topic: core.readTopic(frame.topic, frame.upTo) });
           case 'role.set':
+            // with a note, or `move`: the role moves to the session from its holder, as a handover (#31); the note is optional
+            if (frame.note !== undefined || frame.move === true) {
+              const from = core.holderOf(frame.role, frame.session);
+              return answer({ session: handOver(this.#handover(), { role: frame.role, from, to: frame.session, by: 'human', note: frame.note, noteRequired: false, requireKnown: false }) });
+            }
             return answer({ session: core.assignRole(frame.session, frame.role) });
+          case 'role.state':
+            return answer(roleState(this.#handover(), frame.role));
           case 'role.clear':
             return answer({ session: core.clearRole(frame.session) });
           case 'role.list':
@@ -352,7 +395,7 @@ export class Dispatcher {
             return answer({ subscribed: true });
         }
       } catch (err) {
-        peer.send({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+        peer.send(Dispatcher.#failure(frame.id, err));
         return;
       }
       const control = this.#options.control;

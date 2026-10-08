@@ -5,6 +5,7 @@ import {
   PROTOCOL_VERSION,
   REPLACED_CLOSE_CODE,
   UPDATE_HINT,
+  type HandoverNote,
   type Hello,
   type HubEvent,
   type Message,
@@ -23,6 +24,7 @@ import {
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
 import { clauseText, revokedText } from '../roles/clause.ts';
+import { isRoleRecord, noteText, renderNote, type RoleRecord } from '../roles/note.ts';
 import { resolveTag } from '../address.ts';
 import { Store } from './store.ts';
 import { Hygiene, type LoopBreaker, type RateLimit } from './hygiene.ts';
@@ -490,12 +492,13 @@ export class HubCore {
 
   /** Another session (live, or remembered within the queue's TTL) holding an exclusive role, as `name [Role]`
    *  with where it is; null when the role is not exclusive or free. */
-  #exclusiveHolder(role: string, except: string): string | null {
+  #exclusiveHolder(role: string, except: string | readonly string[]): string | null {
     if (!this.#roles?.get().get(role)?.exclusive) return null;
-    const live = [...this.#live.values()].find((c) => c.role === role && c.name !== except);
+    const skip = new Set(typeof except === 'string' ? [except] : except);
+    const live = [...this.#live.values()].find((c) => c.role === role && !skip.has(c.name));
     if (live) return `${withRole(live.name, role)} (live)`;
     const since = this.#now().getTime() - this.#queueTtlMs;
-    const offline = this.#store.sessionsWithRole(role, since).find((n) => n !== except && !this.#live.has(n));
+    const offline = this.#store.sessionsWithRole(role, since).find((n) => !skip.has(n) && !this.#live.has(n));
     return offline ? `${withRole(offline, role)} (offline)` : null;
   }
 
@@ -563,6 +566,83 @@ export class HubCore {
     this.#announceCoordinator();
   }
 
+  /** The session holding an exclusive role, live or remembered within the queue's TTL (other than `except`), or null. */
+  holderOf(role: string, except?: string): string | null {
+    if (!this.#roles?.get().get(role)?.exclusive) return null;
+    const live = [...this.#live.values()].find((c) => c.role === role && c.name !== except);
+    if (live) return live.name;
+    const since = this.#now().getTime() - this.#queueTtlMs;
+    return this.#store.sessionsWithRole(role, since).find((n) => n !== except && !this.#live.has(n)) ?? null;
+  }
+
+  /**
+   * A role moves to `to` (#31): from its holder `from` (a handover by the holder, or the human's reassignment), or
+   * from nobody. In one store transaction `from` loses it (or keeps `then`, an Implementer) and `to` takes it, with
+   * the role's record (the note, the move). `beforeCommit` runs first (the tracker's claims, another connection) and
+   * returns its undo, run when the transaction fails. Then: `to` gets its clause with the note, `from` its
+   * revocation (`reason: "handover"`), the Agents topic both notices, subscribers the `session.role` events and the
+   * Coordinator's `role.filled`. All synchronous: no frame is read between the checks and the last event.
+   */
+  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; beforeCommit?: () => () => void }): RoleHolder {
+    const { role, from, to, by, note, then } = move;
+    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const refusal = nameRefusal(to, this.#reserved);
+    if (refusal) throw new Error(refusal);
+    if (from === to) throw new Error(`${withRole(to, role)} already holds the role`);
+    if (then !== null && (!ROLE_NAMES.includes(then) || then === role || this.#roles?.get().get(then)?.exclusive)) throw new Error(`a handover may leave the previous holder an Implementer (then: "implementer"), not "${then}"`);
+    const taken = this.#exclusiveHolder(role, from === null ? [to] : [to, from]);
+    if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
+    const cFrom = from !== null ? this.#live.get(from) : undefined;
+    const cTo = this.#live.get(to);
+    const fromRole = from === null ? null : cFrom ? cFrom.role : this.#store.roleOf(from);
+    if (from !== null && fromRole !== role) throw new Error(`${withRole(from, fromRole)} does not hold the role ${ROLE_LABELS[role] ?? role}`);
+    const previous = cTo ? cTo.role : this.#store.roleOf(to);
+    const at = this.#now().toISOString();
+    const stored = this.#store.roleRecord(role);
+    const before: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
+    const record: RoleRecord = {
+      note: note ? { sections: note, from: by, to, at } : before.note,
+      handover: { from, to, by, at },
+    };
+    const undo = move.beforeCommit?.() ?? (() => {});
+    try {
+      this.#store.transaction(() => {
+        if (from !== null) this.#store.rememberRole(from, then);
+        if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
+        this.#store.rememberRole(to, role);
+        this.#store.saveRoleRecord(role, record);
+      });
+    } catch (err) {
+      undo();
+      throw err;
+    }
+    if (cFrom) cFrom.role = then;
+    if (cTo) cTo.role = role;
+    this.#log({ event: 'role-handover', role, from, to, by, note: note !== null, then, live: cTo !== undefined });
+    if (cTo) {
+      const { moved, merged } = this.#store.claimRoleQueue(role, to);
+      if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name: to, role, count: moved + merged.length });
+      for (const id of merged) this.#emitStage(id);
+      this.#recordClause(cTo, 'handover', previous);
+      this.flushQueued(to);
+    }
+    if (from !== null) {
+      if (cFrom) {
+        const id = this.#recordClause(cFrom, `handed over to ${to}`, role, false, { reason: 'handover', to });
+        if (id) this.#send(this.#store.message(id) as Message, from);
+      } else if (this.#store.dropNotices(from, ROLE_NOTICE).length) this.#log({ event: 'role-notices-dropped', session: from, reason: 'handover' });
+    }
+    const roleLabel = ROLE_LABELS[role] ?? role;
+    const fromLabel = from !== null ? withRole(from, role) : null;
+    const handed = by === HUMAN ? `the human moved the ${roleLabel} role${fromLabel ? ` from ${fromLabel}` : ''} to ${to}` : `${fromLabel ?? by} handed the ${roleLabel} role over to ${to}`;
+    this.noticeInTopic(AGENTS.id, note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`);
+    this.noticeInTopic(AGENTS.id, `${withRole(to, role)} took over the ${roleLabel} role${from !== null ? ` from ${from}` : ''}.`);
+    if (from !== null) this.#emitRole(from, then, role, 'handover');
+    this.#emitRole(to, role, previous, 'handover');
+    this.#announceCoordinator();
+    return this.#holder(to);
+  }
+
   #holder(name: string): RoleHolder {
     const c = this.#live.get(name);
     const role = c ? c.role : this.#store.roleOf(name);
@@ -595,11 +675,22 @@ export class HubCore {
    * delivery pipeline (queued → delivered on the spoke's ack → injected by the session's adapter). A newer notice
    * supersedes what an older one still waits for. The log is the journal of every delivery until #34.
    */
-  #recordClause(c: Connection, reason: string, previous?: string | null, injected = false): string | null {
+  #recordClause(c: Connection, reason: string, previous?: string | null, injected = false, extra: Pick<RoleClause, 'reason' | 'to'> = {}): string | null {
     if (!this.#roles) return null;
     const definition = c.role !== null ? this.#roles.get().get(c.role) : undefined;
     const clause: RoleClause = c.role !== null ? { role: c.role, clause: definition?.clause ?? '', skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
-    const text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
+    Object.assign(clause, extra);
+    let text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
+    // the role came with a note for this holder (#31): it rides with the clause, at the handover and on every reconnect
+    const stored = c.role !== null ? this.#store.roleRecord(c.role) : null;
+    const note = isRoleRecord(stored) && stored.note?.to === c.name ? stored.note : null;
+    if (note) {
+      clause.note = note.sections;
+      clause.from = note.from;
+      text = `${text}\n\n${noteText(note.from, note.sections)}`;
+    }
+    // kept on a new role after a handover (then: implementer): which role went where
+    if (c.role !== null && extra.reason === 'handover' && previous) text = `cland hub: you handed the role ${ROLE_LABELS[previous] ?? previous} over to ${extra.to ?? 'another session'}: stop acting as ${ROLE_LABELS[previous] ?? previous}.\n\n${text}`;
     const superseded = this.#store.dropNotices(c.name, ROLE_NOTICE);
     const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [c.name], text, ts: this.#now().toISOString() };
     this.#store.record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);

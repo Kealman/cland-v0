@@ -46,13 +46,15 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/roles/config.ts` | `.cland/roles.toml`: parsed (smol-toml), written with the defaults when missing, watched and read again when it changed. |
 | `src/roles/default-roles.ts` | The default `roles.toml`: the four roles' clauses, skills, launch defaults, permissions. |
 | `src/roles/clause.ts` | The text a holder reads when its clause (or its revocation) is delivered. |
+| `src/roles/note.ts` | The handover note: its four sections, read from an object or from Markdown headings, the typed refusal naming what is missing, its rendering. |
+| `src/roles/handover.ts` | A role's handover (`role.handover`, the human's `role.set` with a note or `move`): the claims move with the role, the core moves it; the role's state for its holder (`role.state`). |
 | `src/roles/permissions.ts` | The permission table: the tools each role may use and how far (scopes), seeded from spec 4.4; `decide`, which the dispatcher asks on every spoke tool call. |
 | `src/hub/audit.ts` | The audit record (every tool call, allowed or refused), its argument summary, and reading it back from the hub's log (`cland hub audit`). |
 | `src/cli/open.ts` | `cland open [dir]`, and `cland` with no command on a terminal: the project's hub started if none runs, then the workbench (`nvim/bin/cland-nvim`) on the project's root. |
 | `src/cli/hook.ts` | `cland hook <event>`, run from inside a launched session by its hooks and the mod; `cland hook bridge`, the mod's connection to the hub. |
 | `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
-| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `who`, `status`, `rename`, `history`, `session.launch` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
+| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `who`, `status`, `rename`, `history` (a session's traffic, or a topic's with `topic`), `session.launch`, `role.handover`, `role.state` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
 | `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
@@ -101,7 +103,7 @@ One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (th
 
 | Role | Launch defaults | Skills |
 | --- | --- | --- |
-| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | wayfinder, to-spec, to-tickets, triage, grilling, code-review |
+| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
 | Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | implement, tdd, diagnosing-bugs |
 | Reviewer | codex, `gpt-6.1-sol`, effort `high` | code-review |
 | QA | codex, `gpt-6-astra`, effort `high` | diagnosing-bugs |
@@ -110,7 +112,7 @@ The hub watches the file and reads it again before each launch and assignment wh
 
 ### Assignment
 
-- **The human** assigns with `role.set` (UI) or `cland role set <session> <role>`, and revokes with `role.clear` or `cland role clear <session>`. A live session gets its clause at once (and what was queued for the role); a name not connected yet gets the role when a session takes the name. A role follows the name: a session that reconnects under it has it back.
+- **The human** assigns with `role.set` (UI) or `cland role set <session> <role>`, and revokes with `role.clear` or `cland role clear <session>`. With a note or `move` the role moves from its holder (see Handover). A live session gets its clause at once (and what was queued for the role); a name not connected yet gets the role when a session takes the name. A role follows the name: a session that reconnects under it has it back.
 - **A launch for a role** (`session.launch` with `role`) fills what it does not give from the role's launch defaults: the harness, and the model and effort when the harness is the role's. The launched session's hello is granted that role.
 - **`CLAND_ROLE`** is only a request: a hello whose name holds no role and that the hub did not launch for one is refused with `{"type":"error","code":"no-role","message":"no role: \"rev-1\" holds none … — assign one with `cland role set rev-1 <coordinator|implementer|reviewer|qa>`; the session connects on its next retry"}`. The spoke keeps retrying with its backoff and logs the refusal; once the human assigns the role it connects.
 - **Coordinator is exclusive.** Assigning it, or launching for it, while another session holds it (live, or remembered within the queue's TTL) is refused, naming the holder: `role "coordinator" is held by coord [Coordinator] (live): one session holds it at a time — clear it first with `cland role clear coord``.
@@ -135,6 +137,10 @@ An adapter whose new session needs a first turn (Codex: a thread has no rollout 
 | `{"type":"role.set","id":…,"session":…,"role":…}` | `{"session":RoleHolder}` | UI, CLI |
 | `{"type":"role.clear","id":…,"session":…}` | `{"session":RoleHolder}` | UI, CLI |
 | `{"type":"role.list","id":…}` | `{"roles":[{"role","label","exclusive","skills","launch","holders":[RoleHolder…]}…],"coordinator"}` | UI, CLI |
+| `{"type":"role.set","id":…,"session":…,"role":…,"note"?:…,"move"?:true}` | `{"session":RoleHolder}`: the role moves from its holder (Handover) | UI, CLI |
+| `{"type":"role.state","id":…,"role":…}` | `RoleState` (Handover) | UI, CLI |
+| `{"type":"role.handover","id":…,"to":…,"note":…,"then"?:"implementer"}` | `{"session":RoleHolder}` | spokes whose role grants `role.handover` (the Coordinator) |
+| `{"type":"role.state","id":…,"role"?:…}` | `RoleState` of the caller's own role | spokes holding a role |
 
 `RoleHolder` is `{"name","role","label","live"}`, where `label` is the name with its role, `rev-1 [Reviewer]`. `hub.status` and `session.list` carry `"coordinator"`: the live holder's name, or `null` for "no coordinator". Presence (`who`, `hub.status`) and `HarnessProcess` carry `label` beside `role`.
 
@@ -146,13 +152,38 @@ Events, after `subscribe`:
 {"type":"role.filled","role":"coordinator","session":"coord","ts":"…"}
 ```
 
-`session.role` comes when a role is assigned, cleared (`role` null), granted at launch, or vacated by its holder's death. `role.vacant` comes when no live session holds the Coordinator any more (cleared, disconnected, dead), right after the change that caused it; `role.filled` when one holds it again. At a hub's start there is no event: `hub.status` says it.
+`session.role` comes when a role is assigned, cleared (`role` null), granted at launch, handed over (`reason` `handover`, one event for each side), or vacated by its holder's death. `role.vacant` comes when no live session holds the Coordinator any more (cleared, disconnected, dead), right after the change that caused it; `role.filled` when one holds it again. At a hub's start there is no event: `hub.status` says it.
 
 | Command | What it does |
 | --- | --- |
-| `cland role set <session> <role>` | Assigns the role; prints `rev-1 [Reviewer]: role set` (`(offline)` when the session is not connected). |
+| `cland role set <session> <role> [--note-file <file>] [--move]` | Assigns the role; prints `rev-1 [Reviewer]: role set` (`(offline)` when the session is not connected). `--note-file` (a Markdown note) or `--move` moves the Coordinator from its holder (Handover). |
 | `cland role clear <session>` | Revokes the session's role. |
 | `cland role list` | Each role with its launch defaults and holders, and the coordinator or `no coordinator`; `--json` for the raw value. |
+
+### Handover
+
+A role moves between sessions as hub state, never as a transcript (spec 4.4, ADR 0001, decision #10). The Coordinator hands its own role over with the spoke tool `role.handover {to, note, then?}` (only the Coordinator's table grants it); the human moves a role with `role.set` and a `note` or `move: true` (a plain `role.set` of a Coordinator someone holds is still refused).
+
+- **The note** has four sections, each non-empty: goals now, work in flight, open decisions, waiting on. It is an object `{"goals_now","work_in_flight","open_decisions","waiting_on"}` or Markdown with those four headings (any level, any case). It is mandatory for `role.handover` and optional for the human. A note that misses a section is refused, naming it: `{"ok":false,"error":"handover refused: the note has no \"waiting on\" section — …","code":"note-incomplete","missing":["waiting_on"]}`. The `handover` skill (`.agents/skills/handover`) drafts it.
+- **The receiver** must be a session the hub knows for `role.handover`: live, or launched by the hub and running. It may hold another role (it is replaced: one role per session). The human may name any session, as with `role.set`. Coordinator exclusivity holds: a third session holding it refuses the move.
+- **The move** is one store transaction: the previous holder loses the role (or becomes an Implementer with `then: "implementer"`), the receiver takes it, and the role's record (the note, who moved it to whom, when) is written in `role_state` in `hub.db`. The tracker claims the previous holder held (by session id) are re-pointed to the receiver's session id just before it, in the tracker's own statement, and put back if the transaction fails; `task view` shows the receiver. Everything runs in one synchronous step: no frame is read between the checks and the last event.
+- **The receiver** gets its clause with the note in one `role` frame, `{"type":"role","role":"coordinator","clause":…,"skills":[…],"note":{…},"from":"coord","message":{…}}`; the message text is the clause, then `Handover note from coord:` and the note as Markdown. The note rides with every later clause delivery to that holder (its reconnects) until the role moves again. A spoke that delivers itself adds `handover_from` to the channel event's meta.
+- **The previous holder** gets the revocation, `{"type":"role","role":null,"reason":"handover","to":"next",…}` (`cland hub: coord no longer holds the role Coordinator (handed over to next). Stop acting as Coordinator…`; meta `reason`, `handed_to`), and every later call is refused `forbidden` as a session with no role. It stays connected until its next reconnect, which is refused (no role), as for any revocation. With `then: "implementer"` it gets the Implementer clause instead, headed `you handed the role Coordinator over to next: stop acting as Coordinator.`
+- **The Agents topic** gets two hub notices: `coord [Coordinator] handed the Coordinator role over to next, with a handover note:` and the note (`the human moved the Coordinator role from coord [Coordinator] to next, with no note.` when the human did), then `next [Coordinator] took over the Coordinator role from coord.`
+- **Subscribers** get `session.role` for the previous holder and the receiver (`reason` `handover`), and `role.filled` for the new Coordinator; `hub.status.coordinator` names it. The audit log records the call (`args.to`, the note only as `noteChars`; the human's as `role.set`).
+
+**The role's state** is pulled on demand: `role.state` (a spoke reads its own role's; the UI and CLI any role):
+
+```json
+{"role":"coordinator","label":"Coordinator","holders":[RoleHolder…],
+ "note":{"sections":{…},"markdown":"## Goals now…","from":"coord","to":"next","at":"…"},
+ "handover":{"from":"coord","to":"next","by":"coord","at":"…"},
+ "waiting":[{"topic":{"id":"general","title":"General"},"status":"waiting for agent","reason":"status","pending":1,"last":"…"}],
+ "asks":[],
+ "claims":[{"item":"T-1","title":"…","session":"next","sessionId":"…","claimedAt":"…"}]}
+```
+
+`waiting` lists the topics waiting for the role: first those whose status is `waiting for agent` (#32) and whose latest human message was delivered to the role's holders (`reason` `status`), else those where a message addressed to the role, or to one of its holders, the current ones and the one it moved from, is newer than their last word in the topic (`reason` `addressed`, `pending` such messages). `asks` is empty until asks exist (#33). `claims` are the tracker claims held by the role's holders. `history` with a `topic` returns that topic's messages, so the new holder reads a waiting topic without the old session's transcript.
 
 ### Permissions
 
@@ -176,7 +207,7 @@ The session's own item is one it claims (the tracker's claim, held by session id
 | Reviewer, QA | `send:agents`, `task.comment:verdict`, `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
 | no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
 
-`ask`, `role.handover`, `merge` and `artifact.create` have no frame yet: a spoke's frame for one is checked like any other, and an allowed one is then answered "unknown request type". `task.import` is the human's (the CLI). The heartbeat (`ping`) and acks are not tool calls. A hub with no project (no `roles.toml`) checks nothing. The UI and the CLI act as the human, whom the table does not restrict.
+`ask`, `merge` and `artifact.create` have no frame yet (`role.handover` has, see Handover; `role.state` is no table tool: a spoke reads only its own role's state): a spoke's frame for one is checked like any other, and an allowed one is then answered "unknown request type". `task.import` is the human's (the CLI). The heartbeat (`ping`) and acks are not tool calls. A hub with no project (no `roles.toml`) checks nothing. The UI and the CLI act as the human, whom the table does not restrict.
 
 A refused call is answered with a typed result, which the spoke hands the model as the tool's result (`isError`), and the hub posts a notice into the Agents topic, which the UI shows there:
 
@@ -195,14 +226,14 @@ Every tool call the hub answers, a spoke's (allowed or refused) or the human's t
 {"ts":"…","event":"audit","session":"human","sessionId":null,"role":"human","tool":"topic.send","args":{"to":["impl-1"],"topic":"general","textChars":42},"outcome":"ok","client":"ui"}
 ```
 
-`outcome` is `ok`, `forbidden` or `error` (with `error`, what the tool answered). `args` keeps what the call was about (item ids, addressees, topic ids, names, flags; a CLI's `as`) and free text only as its length (`textChars`, `bodyChars`, `titleChars`, `commentChars`): never a message's text. `session` is the name at call time, `role` the role the hub held then. The hooks' `session.signal` and `session.bridge` are plumbing, not audited. The decision #13 rule on sub-agents (they may not call hub tools through their parent's spoke) is not enforceable over one MCP connection: the audit is how a violation shows.
+`outcome` is `ok`, `forbidden` or `error` (with `error`, what the tool answered). `args` keeps what the call was about (item ids, addressees, topic ids, names, flags; a CLI's `as`) and free text only as its length (`textChars`, `bodyChars`, `titleChars`, `commentChars`, a handover's `noteChars`): never a message's text. `session` is the name at call time, `role` the role the hub held then. The hooks' `session.signal` and `session.bridge` are plumbing, not audited. The decision #13 rule on sub-agents (they may not call hub tools through their parent's spoke) is not enforceable over one MCP connection: the audit is how a violation shows.
 
 `cland hub audit [--session <name>] [--since <ISO time | 30s, 15m, 2h, 1d>] [--json]` prints the records, oldest first: one line each (`ts  rev-1 [reviewer]  task.close  item=T-12  forbidden task.close (…)`), or one JSON object per line. `--session human` selects the human's calls.
 
 ## Not here yet
 
 - **The rest of the human side.** Asks and their `waiting for human` (#33); `task.link --topic` writes the item's field only, it binds no topic; a loop-breaker mute is still only journalled, not shown in the UI.
-- **Roles, the rest.** Handover and the Coordinator's role requests come later; their permissions (`role.handover`) are in the table already. The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
+- **Roles, the rest.** The Coordinator's role requests come later. A handover's `waiting` reads the topics `waiting for agent` (#32), and `asks` once asks exist (#33). The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 
 ## cland init and cland update

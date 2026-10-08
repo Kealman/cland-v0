@@ -49,6 +49,10 @@ create table if not exists topics (
   created_at text not null,
   updated_at text not null
 );
+create table if not exists role_state (
+  role text primary key,
+  value text not null
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -276,6 +280,22 @@ export class Store implements HygieneMemory {
   saveHygiene(kind: HygieneRow['kind'], key: string, value: string | null): void {
     if (value === null) this.#db.prepare('delete from hygiene where kind = ? and key = ?').run(kind, key);
     else this.#db.prepare('insert into hygiene (kind, key, value) values (?, ?, ?) on conflict (kind, key) do update set value = excluded.value').run(kind, key, value);
+  }
+
+  /** A role's state as the hub keeps it (#31: its handover note and its latest move), as JSON, or null. */
+  roleRecord(role: string): unknown {
+    const row = this.#db.prepare('select value from role_state where role = ?').get(role) as Row | undefined;
+    return row ? (JSON.parse(row.value as string) as unknown) : null;
+  }
+
+  saveRoleRecord(role: string, value: unknown): void {
+    this.#db.prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
+  }
+
+  /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does. `fn` must not record
+   *  messages (`record` has a transaction of its own). */
+  transaction<T>(fn: () => T): T {
+    return this.#transaction(fn);
   }
 
   /** Run `fn` in one transaction: all of its writes land, or none does. */

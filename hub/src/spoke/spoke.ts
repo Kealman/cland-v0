@@ -18,9 +18,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
-import { Forbidden, HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
+import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
-import { HEARTBEAT_MS, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
+import { HEARTBEAT_MS, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 
 const VERSION = '0.1.0';
@@ -98,8 +98,39 @@ const TOOLS = [
       properties: {
         limit: { type: 'number', description: 'How many, at most 50 (default 50)' },
         with: { type: 'string', description: 'Only messages exchanged with this session' },
+        topic: { type: 'string', description: "A topic id: that topic's latest messages instead of your own traffic (the topics `role.state` lists as waiting)" },
       },
     },
+  },
+  {
+    name: 'role.handover',
+    description:
+      'Hand your role (the Coordinator) to another session, live or launched, with a handover note: the next holder continues from the note and the hub, never from your transcript. The note needs four non-empty sections: goals now, work in flight, open decisions, waiting on (an object with those keys, or Markdown with those headings; the `handover` skill drafts it). The role moves at once, your claims move with it, and you get a "role revoked" event: from then on stop acting in the role.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'The session that takes the role' },
+        note: {
+          description: 'The handover note: { goals_now, work_in_flight, open_decisions, waiting_on }, or Markdown with the headings "Goals now", "Work in flight", "Open decisions", "Waiting on"',
+          anyOf: [
+            { type: 'string' },
+            {
+              type: 'object',
+              properties: { goals_now: { type: 'string' }, work_in_flight: { type: 'string' }, open_decisions: { type: 'string' }, waiting_on: { type: 'string' } },
+              required: ['goals_now', 'work_in_flight', 'open_decisions', 'waiting_on'],
+            },
+          ],
+        },
+        then: { type: 'string', enum: ['implementer'], description: 'Stay on as an Implementer instead of keeping no role' },
+      },
+      required: ['to', 'note'],
+    },
+  },
+  {
+    name: 'role.state',
+    description:
+      "Your role's state as the hub keeps it: the latest handover note, the topics waiting for the role (read one with `history` and its `topic`), the open asks, and the tracker claims you hold. Pull it when you take over a role.",
+    inputSchema: { type: 'object', properties: {} },
   },
 ] as const;
 
@@ -222,8 +253,23 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
             type: 'history',
             ...(typeof args.limit === 'number' ? { limit: args.limit } : {}),
             ...(typeof args.with === 'string' ? { with: args.with } : {}),
+            ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),
           })) as { messages: Message[] };
           return text({ ok: true, messages: value.messages.map((m) => ({ ...metaOf(m), text: m.text })) });
+        }
+        case 'role.handover': {
+          if (typeof args.to !== 'string') return text({ ok: false, error: 'role.handover needs `to`' }, true);
+          const value = (await hub.request({
+            type: 'role.handover',
+            to: args.to,
+            ...(typeof args.note === 'string' || (typeof args.note === 'object' && args.note !== null) ? { note: args.note as HandoverNote | string } : {}),
+            ...(typeof args.then === 'string' ? { then: args.then } : {}),
+          })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'role.state': {
+          const value = (await hub.request({ type: 'role.state' })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
         }
         case 'session.launch': {
           if (typeof args.name !== 'string') return text({ ok: false, error: 'session.launch needs `name`' }, true);
@@ -250,6 +296,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     } catch (err) {
       // a refusal by the hub's permission table reaches the model typed: what was missing, for which role, why
       if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
+      if (err instanceof Refused) return text({ ok: false, error: err.message, code: err.code, ...(err.missing ? { missing: err.missing } : {}) }, true);
       return text({ ok: false, error: err instanceof Error ? err.message : String(err) }, true);
     }
   });
@@ -303,7 +350,21 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
   hub.on('role', (message, clause) => {
     if (adapterDelivers) return;
     server
-      .notification({ method: 'notifications/claude/channel', params: { content: message.text, meta: { ...metaOf(message), kind: 'role', role: clause.role ?? '' } } })
+      .notification({
+        method: 'notifications/claude/channel',
+        params: {
+          content: message.text,
+          meta: {
+            ...metaOf(message),
+            kind: 'role',
+            role: clause.role ?? '',
+            // a handover (#31): the note is in the text; who held the role, or where it went
+            ...(clause.note ? { handover_from: clause.from ?? '' } : {}),
+            ...(clause.reason !== undefined ? { reason: clause.reason } : {}),
+            ...(clause.to !== undefined ? { handed_to: clause.to } : {}),
+          },
+        },
+      })
       .catch((err: unknown) => log(`could not deliver the role clause ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
   });
   hub.start();

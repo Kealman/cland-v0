@@ -113,7 +113,41 @@ export type HubEvent =
 
 /** A role's clause as the hub delivers it to the holder (spec 4.4): on assignment and on every reconnect.
  *  `role` null: the session's role was revoked. */
-export type RoleClause = { role: string | null; clause: string; skills: string[] };
+export type RoleClause = {
+  role: string | null;
+  clause: string;
+  skills: string[];
+  /** The handover note the role came with (#31): to the new holder, on the handover and on its reconnects. */
+  note?: HandoverNote;
+  /** Who held the role before: with `note`, the session that wrote it (`human` when the human did). */
+  from?: string;
+  /** On a revocation: why (`handover`: the role moved to `to`). */
+  reason?: string;
+  /** On a revocation by handover: the session that holds the role now. */
+  to?: string;
+};
+
+/** The handover note (spec 4.4, decision #10): four sections, each non-empty text. */
+export type HandoverNote = { goals_now: string; work_in_flight: string; open_decisions: string; waiting_on: string };
+
+/** A role's state as its holder pulls it (`role.state`, #31): what a new holder continues from. */
+export type RoleState = {
+  role: string;
+  label: string;
+  /** The role's holders (live, or remembered within the queue's TTL). */
+  holders: RoleHolder[];
+  /** The latest handover note of the role, or null; `to` is the holder it was written for. */
+  note: { sections: HandoverNote; markdown: string; from: string; to: string; at: string } | null;
+  /** The latest move of the role (a handover by its holder, or the human's reassignment). */
+  handover: { from: string | null; to: string; by: string; at: string } | null;
+  /** The topics waiting for the role: their status says so (`waiting for agent`), or a message addressed to the role or
+   *  its holders (current and previous) is newer than their last word in it. `reason` says which. */
+  waiting: Array<{ topic: TopicRef; status: TopicStatus; reason: 'status' | 'addressed'; pending: number; last: string }>;
+  /** Open asks addressed to the role: none until asks exist (#33). */
+  asks: unknown[];
+  /** The tracker claims held by the role's holders. */
+  claims: Array<{ item: string; title: string; session: string; sessionId: string; claimedAt: string }>;
+};
 
 export type Hello = {
   type: 'hello';
@@ -131,13 +165,18 @@ export type SpokeRequest =
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
   | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string }
   | { type: 'who'; id: string }
-  | { type: 'history'; id: string; limit?: number; with?: string }
+  /** `topic`: that topic's latest messages instead of the session's own traffic. */
+  | { type: 'history'; id: string; limit?: number; with?: string; topic?: string }
   | { type: 'status'; id: string; text: string }
   | { type: 'rename'; id: string; name: string }
   /** Open a topic, with a title and optionally bound to an item: `{ topic: Topic }`. */
   | { type: 'topic.create'; id: string; title: string; item?: string }
   /** Clear a topic's wait (`waiting for human` or `waiting for agent`) back to `open`: `{ topic: Topic }`. */
   | { type: 'resolve'; id: string; topic: string }
+  /** The Coordinator hands its role to `to` with a note (#31); `then: "implementer"` keeps the caller as an Implementer. */
+  | { type: 'role.handover'; id: string; to: string; note?: HandoverNote | string; then?: string }
+  /** The state of the caller's role (`role` defaults to it): `RoleState`. */
+  | { type: 'role.state'; id: string; role?: string }
   /** The heartbeat. */
   | { type: 'ping'; id: string };
 
@@ -159,7 +198,7 @@ export type HubFrame =
   | { type: 'result'; id: string; ok: true; value: unknown }
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. */
-  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden'; permission?: string; role?: string | null; reason?: string }
+  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden' | 'note-incomplete'; permission?: string; role?: string | null; reason?: string; missing?: string[] }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
@@ -201,7 +240,11 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
     case 'ping':
       return true;
     case 'history':
-      return (f.limit === undefined || typeof f.limit === 'number') && (f.with === undefined || typeof f.with === 'string');
+      return (f.limit === undefined || typeof f.limit === 'number') && (f.with === undefined || typeof f.with === 'string') && (f.topic === undefined || typeof f.topic === 'string');
+    case 'role.handover':
+      return typeof f.to === 'string' && (typeof f.note === 'string' || isObject(f.note) || f.note === undefined) && (f.then === undefined || typeof f.then === 'string');
+    case 'role.state':
+      return f.role === undefined || typeof f.role === 'string';
     case 'status':
       return typeof f.text === 'string';
     case 'rename':
@@ -277,7 +320,9 @@ export type ClientRequest =
   /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
   | { type: 'subscribe'; id: string }
   /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
-  | { type: 'role.set'; id: string; session: string; role: string }
+  | { type: 'role.set'; id: string; session: string; role: string; note?: HandoverNote | string; move?: boolean }
+  /** A role's state, as its holder would pull it: `RoleState`. */
+  | { type: 'role.state'; id: string; role: string }
   /** The human revokes a session's role: `{ session: RoleHolder }`. */
   | { type: 'role.clear'; id: string; session: string }
   /** The roles, their definitions and holders: `RoleList`. */
@@ -346,7 +391,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'role.list':
       return true;
     case 'role.set':
-      return typeof f.session === 'string' && typeof f.role === 'string';
+      return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean');
+    case 'role.state':
+      return typeof f.role === 'string';
     case 'role.clear':
       return typeof f.session === 'string';
     case 'topic.history':

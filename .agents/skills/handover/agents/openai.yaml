@@ -1,0 +1,5 @@
+interface:
+  display_name: "Handover"
+  short_description: "Hand the Coordinator role over with a note"
+policy:
+  allow_implicit_invocation: false

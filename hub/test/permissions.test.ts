@@ -262,10 +262,10 @@ test('role.set changes what a session may do on its next call, without a reconne
 });
 
 // ------------------------------------------------------------------ the tools with no MCP tool yet
-// `ask`, `role.handover`, `merge`, `artifact.create` and `task.import` are in the table before their frames exist:
-// a spoke's raw frame is checked like any other. Allowed, it reaches the dispatcher's "unknown request type" (an
-// `error` in the audit); refused, it is `forbidden`. `resolve` and `topic.create` (#32) go through the same rows
-// with their frames: allowed, they succeed.
+// `ask`, `merge`, `artifact.create` and `task.import` are in the table before their frames exist: a spoke's raw
+// frame is checked like any other. Allowed, it reaches the dispatcher's "unknown request type" (an `error` in the
+// audit); refused, it is `forbidden`. `resolve` and `topic.create` (#32) and `role.handover` (#31) go through the
+// same rows with their frames.
 
 /** A spoke speaking the hub's frames itself over the WebSocket, as a session whose role the human assigned. */
 async function rawSpoke(t: TestContext, discovery: Discovery, name: string, cwd: string): Promise<Caller & { ws: WebSocket }> {
@@ -328,7 +328,8 @@ test('the tools still to come are checked through the same table: one session, i
         future('resolve', { topic: 'general' }),
         future('topic.create', { title: 'Free topic' }),
         future('topic.create', { title: 'Bound', item: 'T-2' }),
-        { ...future('role.handover', { to: 'x' }), error: unknown },
+        // role.handover exists (#31): allowed by the table, then refused for a receiver the hub does not know
+        { ...future('role.handover', { to: 'x', note: { goals_now: 'g', work_in_flight: 'w', open_decisions: 'o', waiting_on: 'n' } }), error: /"x" is not a session the hub knows/ },
         { ...future('merge', { item: 'T-2' }), error: unknown },
         { ...future('artifact.create', { name: 'a' }), error: unknown },
         { ...future('task.import', { repo: 'o/r' }), forbidden: 'task.import' },
