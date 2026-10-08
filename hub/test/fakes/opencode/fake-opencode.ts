@@ -12,7 +12,8 @@
 //       POST /api/session/{id}/prompt {text, delivery: steer|queue} → {data: {id: msg_…, delivery, …}}
 //       GET  /api/session/{id}/permission, POST …/permission/{per}/reply {decision}
 //       GET  /api/session/{id}/form, POST …/form/{frm}/reply, DELETE …/form/{frm}
-//       GET  /api/model                         one paid model and one free (`opencode/fake-free`)
+//       GET  /api/model                         one paid model and one free (`opencode/fake-free`); none in the
+//                                               first 400 ms, as a real server's catalog loads after it listens
 //   opencode --server <url> --session <id>  the TUI: prints `fake opencode TUI on <url> session <id> (<title>)`.
 //
 // A turn: `session.execution.started`, then per input `session.inbox.delivered`, `session.step.started {model}`,
@@ -194,6 +195,7 @@ async function serve(args: string[]): Promise<number> {
   };
   const notFound = (res: ServerResponse, id: string) => send(res, 404, { _tag: 'SessionNotFoundError', sessionID: id, message: `Session not found: ${id}` });
 
+  const started = Date.now();
   const server = createServer(async (req, res) => {
     try {
       const expected = `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
@@ -212,6 +214,8 @@ async function serve(args: string[]): Promise<number> {
         });
         return;
       }
+      // like the real one, a fresh server lists no model until its catalog has loaded
+      if (url.pathname === '/api/model' && method === 'GET' && Date.now() - started < 400) return send(res, 200, { data: [] });
       if (url.pathname === '/api/model' && method === 'GET')
         return send(res, 200, {
           data: [

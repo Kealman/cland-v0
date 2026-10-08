@@ -130,7 +130,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       let model: ModelRef | null = p.model ? parseModel(p.model) : null;
       let session = p.harnessSessionId ? await client.session(p.harnessSessionId) : null;
       if (!session) {
-        if (!model) model = pickFreeModel(await client.models().catch(() => []));
+        if (!model) model = await this.#freeModel(client);
         session = await client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd });
       }
       const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
@@ -140,6 +140,17 @@ export class OpenCodeAdapter implements HarnessAdapter {
       // a server whose session could not be made is of no use: it does not outlive the failed launch
       if (pidAlive(pid)) process.kill(pid, 'SIGTERM');
       throw err;
+    }
+  }
+
+  /** A free model from the server's catalog. A fresh server lists none until its catalog has loaded (observed with
+   *  v2.0.24: an empty list for the first moments), so an empty answer is asked again for a while. */
+  async #freeModel(client: OpenCodeClient): Promise<ModelRef | null> {
+    const deadline = Date.now() + 10_000;
+    for (;;) {
+      const models = await client.models().catch(() => []);
+      if (models.length || Date.now() > deadline) return pickFreeModel(models);
+      await new Promise((r) => setTimeout(r, 200));
     }
   }
 
