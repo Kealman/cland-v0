@@ -162,3 +162,41 @@ test('a frame over the size limit closes the socket before it is parsed', async 
     await hub.close();
   }
 });
+
+test('a rename does not reset the rate window: the limit follows the session, not its name', async () => {
+  const hub = await startHub({ rateLimit: { max: 2, windowMs: 60_000 } });
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  try {
+    await alpha.waitForPresence(['alpha', 'beta']);
+    for (let i = 1; i <= 2; i += 1) assert.equal((await alpha.call<Send>('send', { to: ['beta'], text: `m${i}` })).ok, true);
+    assert.equal((await alpha.call<{ ok: boolean }>('rename', { name: 'alpha-2' })).ok, true);
+    const third = await alpha.call<Send>('send', { to: ['beta'], text: 'm3 under a new name' });
+    assert.equal(third.ok, false);
+    assert.match(third.error ?? '', /^rate limit: 2 messages/);
+  } finally {
+    await alpha.close();
+    await beta.close();
+    await hub.close();
+  }
+});
+
+test('a rename does not lift a mute: the loop breaker follows the pair of sessions, and names them as they are now', async () => {
+  const hub = await startHub({ loopBreaker: { max: 2, windowMs: 60_000, muteMs: 60_000 }, rateLimit: { max: 100, windowMs: 60_000 } });
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  try {
+    await alpha.waitForPresence(['alpha', 'beta']);
+    await alpha.call<Send>('send', { to: ['beta'], text: 'one' });
+    await beta.call<Send>('send', { to: ['alpha'], text: 'two' });
+    assert.equal((await alpha.call<Send>('send', { to: ['beta'], text: 'three' })).outcomes?.[0]?.outcome, 'refused');
+    assert.equal((await alpha.call<{ ok: boolean }>('rename', { name: 'alpha-2' })).ok, true);
+    const after = await alpha.call<Send>('send', { to: ['beta'], text: 'four, renamed' });
+    assert.equal(after.outcomes?.[0]?.outcome, 'refused');
+    assert.match(after.outcomes?.[0]?.reason ?? '', /^loop breaker: alpha-2 ↔ beta /);
+  } finally {
+    await alpha.close();
+    await beta.close();
+    await hub.close();
+  }
+});

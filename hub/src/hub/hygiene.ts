@@ -1,5 +1,6 @@
 // Hygiene: the rate limit per session, the loop breaker per pair, the size cap. Pure bookkeeping
-// over a clock: the core asks it and acts on the answer. With a memory (the hub's store) every change is
+// over a clock: the core asks it and acts on the answer. Every key is a session's stable identity (its
+// harness session id, never its name, which a rename changes); names appear only in the reasons. With a memory (the hub's store) every change is
 // written through, so a restarted hub keeps a running mute, a pair's count and a session's rate window.
 //
 // TODO(config): the thresholds are constants for now; a later ticket moves them into the project's config.
@@ -83,8 +84,9 @@ export class Hygiene {
     return null;
   }
 
-  /** Why a pair may not talk now, or null. An expired mute is forgotten on the way. */
-  muteRefusal(a: string, b: string, now: number): string | null {
+  /** Why a pair may not talk now, or null. An expired mute is forgotten on the way. `names` are what the
+   *  reason calls the two sessions (their current names); the keys by default. */
+  muteRefusal(a: string, b: string, now: number, names: readonly [string, string] = [a, b]): string | null {
     const key = pairKey(a, b);
     const until = this.#muted.get(key);
     if (until === undefined) return null;
@@ -95,7 +97,7 @@ export class Hygiene {
     }
     // A hard cool-down, not "waiting for a human message": a message from a person only resets the count
     // for the NEXT window, so a comment in a real loop cannot reopen it; lifting it early is `unmute`.
-    return `loop breaker: ${a} ↔ ${b} exchanged more than ${this.#loop.max} messages in ${minutes(this.#loop.windowMs)} min with no human in between — a hard ${minutes(this.#loop.muteMs)}-min cool-down, muted until ${new Date(until).toISOString()}`;
+    return `loop breaker: ${names[0]} ↔ ${names[1]} exchanged more than ${this.#loop.max} messages in ${minutes(this.#loop.windowMs)} min with no human in between — a hard ${minutes(this.#loop.muteMs)}-min cool-down, muted until ${new Date(until).toISOString()}`;
   }
 
   /** Count an agent-to-agent message; when it crosses the threshold the pair is muted and the mute's end is returned. */

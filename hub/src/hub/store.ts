@@ -13,7 +13,8 @@ create table if not exists sessions (
   name text primary key,
   last_seen integer not null,
   status text,
-  role text
+  role text,
+  session_id text
 );
 create table if not exists messages (
   id text primary key,
@@ -54,6 +55,7 @@ create table if not exists hygiene (
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
   { table: 'sessions', column: 'status', type: 'text' },
   { table: 'sessions', column: 'role', type: 'text' },
+  { table: 'sessions', column: 'session_id', type: 'text' },
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
 ];
@@ -142,6 +144,16 @@ export class Store implements HygieneMemory {
   statusOf(name: string, since = 0): string | null {
     const row = this.#db.prepare('select status from sessions where name = ? and last_seen >= ?').get(name, since) as Row | undefined;
     return (row?.status as string | null | undefined) ?? null;
+  }
+
+  /** The harness session behind a name: hygiene is keyed by it, so a rename changes nothing there. */
+  rememberSessionId(name: string, sessionId: string): void {
+    this.#db.prepare('update sessions set session_id = ? where name = ?').run(sessionId, name);
+  }
+
+  sessionIdOf(name: string): string | null {
+    const row = this.#db.prepare('select session_id from sessions where name = ?').get(name) as Row | undefined;
+    return (row?.session_id as string | null | undefined) ?? null;
   }
 
   rememberRole(name: string, role: string | null): void {

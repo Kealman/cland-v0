@@ -121,6 +121,7 @@ export class HubCore {
     }
     this.#live.set(name, connection);
     this.#store.rememberSession(name, this.#now().getTime());
+    this.#store.rememberSessionId(name, hello.sessionId);
     // The row equals the connection from here on: a line the hello did not inherit is gone for good.
     this.#store.rememberStatus(name, connection.status);
     this.#store.rememberRole(name, connection.role);
@@ -185,6 +186,7 @@ export class HubCore {
     this.#live.set(to, c);
     this.#store.forgetSession(from);
     this.#store.rememberSession(to, this.#now().getTime());
+    this.#store.rememberSessionId(to, c.sessionId);
     this.#store.rememberStatus(to, c.status);
     this.#store.rememberRole(to, c.role);
     this.#log({ event: 'rename', from, to });
@@ -213,6 +215,15 @@ export class HubCore {
   }
 
   // ---------------------------------------------------------------- routing
+
+  /**
+   * The identity hygiene counts a session under: its harness session id, which survives a rename (a name
+   * does not). A session that gave no usable id (`unknown`) is counted under its name, as nothing better exists.
+   */
+  #identity(name: string): string {
+    const id = this.#live.get(name)?.sessionId ?? this.#store.sessionIdOf(name);
+    return id && id !== 'unknown' ? `id:${id}` : `name:${name}`;
+  }
 
   /** Deliver to a session now, or queue it: the delivery state for the record. */
   #deliverOrQueue(message: Message, name: string): DeliveryState {
@@ -294,7 +305,8 @@ export class HubCore {
     const nowMs = this.#now().getTime();
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new Error(size);
-    const rate = this.#hygiene.rateRefusal(from, nowMs);
+    const self = this.#identity(from);
+    const rate = this.#hygiene.rateRefusal(self, nowMs);
     if (rate) throw new Error(rate);
     const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(to, from);
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
@@ -302,14 +314,15 @@ export class HubCore {
     // the loop breaker: a muted pair refuses; a pair crossing the threshold gets muted and refuses
     const refused = new Map<string, string>();
     for (const n of sessions) {
-      const muted = this.#hygiene.muteRefusal(from, n, nowMs);
+      const other = this.#identity(n);
+      const muted = this.#hygiene.muteRefusal(self, other, nowMs, [from, n]);
       if (muted) {
         refused.set(n, muted);
         continue;
       }
-      const until = this.#hygiene.countPair(from, n, nowMs);
+      const until = this.#hygiene.countPair(self, other, nowMs);
       if (until !== null) {
-        refused.set(n, this.#hygiene.muteRefusal(from, n, nowMs) as string);
+        refused.set(n, this.#hygiene.muteRefusal(self, other, nowMs, [from, n]) as string);
         // TODO(#23): tell the human in the UI; until then the mute is only journalled.
         this.#log({ event: 'loop-breaker', pair: [from, n].sort().join('|'), until: new Date(until).toISOString() });
       }
