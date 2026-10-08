@@ -6,9 +6,9 @@ Issue #21 moved the reusable core of the BCAS driver hub into `hub/` (ADR 0003).
 
 | BCAS source | cland module | What changed |
 | --- | --- | --- |
-| `src/protocol.ts` | `hub/src/protocol.ts` | Only `hello`, `welcome`, `error`, `result`, `deliver` and the requests `send`, `who`, `status`, `rename`, `history`, `ping`. The hello carries a session id, a cwd, an optional name and an optional role. |
+| `src/protocol.ts` | `hub/src/protocol.ts` | Only `hello`, `welcome`, `error`, `result`, `deliver` and the requests `send`, `who`, `status`, `rename`, `history`, `ping`. The hello carries a session id, a cwd, an optional name and an optional role. Added after the extraction (protocol 2): `deliver` carries the message id and the spoke answers with an `ack`, because spec 4.2 counts a message delivered only once the spoke accepted it. |
 | `src/address.ts` | `hub/src/address.ts` | `@name`, `@all`, `@glob*`, and `@role` in place of groups and human handles. |
-| `src/names.ts` | `hub/src/names.ts` | Generated names are `session-<n>`; the role names are reserved. |
+| `src/names.ts` | `hub/src/names.ts` | Generated names are `session-<n>`; the role names are reserved. The session id, not the name, is the identity: a generated name is never reused for another session (see `hub/README.md`, "Identity and delivery"). |
 | `src/hub/store.ts` | `hub/src/hub/store.ts` | Sessions, messages and deliveries only; the migration mechanism is kept as a list of added columns. |
 | `src/hub/hygiene.ts` | `hub/src/hub/hygiene.ts` | Unchanged in substance. |
 | `src/hub/core.ts` | `hub/src/hub/core.ts` | Presence, names, same-session takeover, routing and store-and-forward; everything else removed. |
