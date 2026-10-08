@@ -24,6 +24,8 @@ import {
 import type { LogFn } from '../log.ts';
 import { actorOf, answerTask, isTaskRequest } from '../tracker/requests.ts';
 import type { Tracker } from '../tracker/tracker.ts';
+import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
+import type { Sessions } from '../adapters/sessions.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -67,10 +69,16 @@ export const secretMatches = (given: string, secret: string): boolean => {
 export class Dispatcher {
   readonly #options: DispatcherOptions;
   readonly #log: LogFn;
+  /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
+  #sessions: Sessions | undefined;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
+  }
+
+  useSessions(sessions: Sessions | undefined): void {
+    this.#sessions = sessions;
   }
 
   get core(): HubCore {
@@ -86,6 +94,12 @@ export class Dispatcher {
     let connection: Connection | null = null;
     /** A client's event subscription, ended when the connection closes. */
     let unsubscribe: (() => void) | null = null;
+    /** What else ends with the connection (an in-session bridge). */
+    const onClose: Array<() => void> = [];
+    const session = (frame: Parameters<typeof answerSession>[1]) =>
+      void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }).then((result) => {
+        if (peer.isOpen()) peer.send(result);
+      });
 
     const refuse = (code: RefusalCode, message: string) => {
       if (done) return;
@@ -241,10 +255,12 @@ export class Dispatcher {
           if (isAck(frame)) return core.ack(connection, frame.id);
           // a spoke always acts as its own session
           if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, { name: connection.name, role: connection.role }));
+          if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           return spokeRequest(frame, name as string);
         }
         // a client's frame may name who it acts as
         if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, actorOf(frame, 'human')));
+        if (isSessionRequest(frame)) return session(frame);
         clientRequest(frame);
       },
       closed: () => {
@@ -252,6 +268,7 @@ export class Dispatcher {
         clearTimeout(helloTimer);
         unsubscribe?.();
         unsubscribe = null;
+        for (const fn of onClose.splice(0)) fn();
         if (connection !== null) core.disconnect(connection);
       },
     };

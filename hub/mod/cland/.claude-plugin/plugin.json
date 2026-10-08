@@ -1,0 +1,5 @@
+{
+  "name": "cland",
+  "version": "0.1.0",
+  "description": "cland's mod for sessions the hub launched: submits the hub's messages as turns and reports turn starts and ends."
+}

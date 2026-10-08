@@ -2,13 +2,15 @@
 // The cland CLI.
 import { HUB_USAGE, runHub } from '../src/cli/hub.ts';
 import { TASK_USAGE, runTask } from '../src/cli/task.ts';
+import { SESSION_USAGE, runSession } from '../src/cli/session.ts';
+import { HOOK_USAGE, runHook } from '../src/cli/hook.ts';
 import { VERSION } from '../src/version.ts';
 
 const usage = `cland ${VERSION}
 
 usage: cland <command>
 
-${HUB_USAGE}${TASK_USAGE}  --version, -v   print the version
+${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${HOOK_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -39,6 +41,23 @@ switch (command) {
     } catch (err) {
       process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exitCode = 1;
+    }
+    break;
+  case 'session':
+    try {
+      process.exitCode = await runSession(rest);
+    } catch (err) {
+      process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exitCode = 1;
+    }
+    break;
+  case 'hook':
+    // never fails the harness that runs it
+    try {
+      process.exitCode = await runHook(rest);
+    } catch (err) {
+      process.stderr.write(`cland hook: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exitCode = 0;
     }
     break;
   default:

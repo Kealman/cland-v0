@@ -4,13 +4,14 @@
 // Configuration comes from the environment the adapter launches the session with:
 //   CLAND_HUB_URL       the hub's WebSocket url (loopback)
 //   CLAND_HUB_SECRET    the per-project secret
-//     both absent: the hub is found through `.cland/hub.json`, the nearest one walking up from the cwd,
-//     re-read before every reconnect (a restarted hub listens on a new port)
+//     both absent: the hub is found through `.cland/hub.json` (CLAND_HUB_FILE names it, else the nearest one
+//     walking up from the cwd), re-read before every reconnect (a restarted hub listens on a new port)
 //   CLAND_SESSION_ID    the harness session id; a restart of the same session takes its name back
 //   CLAND_SESSION_NAME  the name to ask for; absent → the hub generates one
 //   CLAND_ROLE          the role the session runs under
+//   CLAND_DELIVERY      `adapter`: the session's harness adapter injects what the spoke accepts (#24), so the spoke
+//                       only acks; otherwise the spoke delivers into the session as a Claude Code channel event
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS, CLAND_HUB_REQUEST_TIMEOUT_MS   timings, for tests
-// TODO(#24): the adapters launch sessions in the project, where discovery finds the hub.
 import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -53,6 +54,21 @@ const TOOLS = [
     name: 'rename',
     description: 'Take another name. Lowercase letters, digits, hyphens, 1–24 chars; reserved: all, hub and the role names; a name another live session holds is refused.',
     inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+  },
+  {
+    name: 'session.launch',
+    description:
+      'Launch a new harness session through the hub (its process runs in the background; the human attaches to it from the UI). Returns the session with its state and the command that attaches a terminal to it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'The new session\'s name (lowercase letters, digits, hyphens)' },
+        role: { type: 'string', description: 'The role it runs under (coordinator, implementer, reviewer, qa)' },
+        model: { type: 'string', description: 'The model; the harness default when absent' },
+        harness: { type: 'string', description: 'The harness; `claude-code` (the default) is the only one yet' },
+      },
+      required: ['name'],
+    },
   },
   {
     name: 'history',
@@ -118,7 +134,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
   let secret = env.CLAND_HUB_SECRET?.trim();
   // No hub in the environment: the project's discovery file, read again before every connect.
   let endpoint: (() => { url: string; secret: string } | null) | undefined;
-  const discoveryFile = !url && !secret ? findDiscovery(process.cwd()) : null;
+  const discoveryFile = !url && !secret ? env.CLAND_HUB_FILE?.trim() || findDiscovery(process.cwd()) : null;
   if (discoveryFile) {
     endpoint = () => {
       const d = readDiscovery(discoveryFile);
@@ -178,6 +194,20 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           })) as { messages: Message[] };
           return text({ ok: true, messages: value.messages.map((m) => ({ ...metaOf(m), text: m.text })) });
         }
+        case 'session.launch': {
+          if (typeof args.name !== 'string') return text({ ok: false, error: 'session.launch needs `name`' }, true);
+          const value = (await hub.request(
+            {
+              type: 'session.launch',
+              name: args.name,
+              ...(typeof args.role === 'string' ? { role: args.role } : {}),
+              ...(typeof args.model === 'string' ? { model: args.model } : {}),
+              ...(typeof args.harness === 'string' ? { harness: args.harness } : {}),
+            },
+            60_000,
+          )) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         default:
           if (TASK_TOOL_NAMES.has(req.params.name)) {
             const value = (await hub.request(taskFrame(req.params.name, args))) as Record<string, unknown>;
@@ -228,7 +258,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
       ...(role ? { role } : {}),
     },
   });
+  // a session launched by an adapter is injected by it; the spoke's ack is the `delivered` stage
+  const adapterDelivers = env.CLAND_DELIVERY?.trim() === 'adapter';
+  if (adapterDelivers) log('delivery into the session is the adapter\'s (CLAND_DELIVERY=adapter): accepting only');
   hub.on('deliver', (message, topic) => {
+    if (adapterDelivers) return;
     deliverToSession(server, message, topic).catch((err: unknown) => log(`could not deliver ${message.id} to the session: ${err instanceof Error ? err.message : String(err)}`));
   });
   hub.start();

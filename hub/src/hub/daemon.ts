@@ -8,6 +8,7 @@ import { ensureSkeleton, layout, pidAlive, readDiscovery, removeDiscovery, write
 import { VERSION } from '../version.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
+import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 
 export type Daemon = {
   layout: Layout;
@@ -31,6 +32,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
   const tracker = new Tracker({ root, db: l.db, log });
   let hub!: Hub;
+  let adapters: ProjectSessions | null = null;
   try {
     tracker.start();
     hub = await createHub({
@@ -41,7 +43,16 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
       log,
       tracker,
       control: {
-        status: () => ({ pid: process.pid, port: hub.port, socket: l.socket, version: VERSION, root, startedAt: startedAt.toISOString(), uptimeMs: Date.now() - startedAt.getTime() }),
+        status: () => ({
+          pid: process.pid,
+          port: hub.port,
+          socket: l.socket,
+          version: VERSION,
+          root,
+          startedAt: startedAt.toISOString(),
+          uptimeMs: Date.now() - startedAt.getTime(),
+          harnesses: adapters?.sessions.list() ?? [],
+        }),
         stop: () => void stop(),
       },
     });
@@ -59,6 +70,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
       // the discovery file goes first: from here on nobody is sent to a hub on its way out
       removeDiscovery(l.discovery, process.pid);
       await edge?.close();
+      adapters?.close();
       await hub.close();
       tracker.stop();
       log({ event: 'stopped' });
@@ -75,8 +87,13 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
     throw err;
   }
 
+  // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
+  adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log });
+  hub.dispatcher.useSessions(adapters.sessions);
+
   const discovery: Discovery = { socket: l.socket, port: hub.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: hub.port, socket: l.socket, pid: process.pid });
+  void adapters.sessions.resumeAll();
   return { layout: l, discovery, hub, stopped, stop };
 }
