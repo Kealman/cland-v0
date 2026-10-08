@@ -1,0 +1,466 @@
+{
+  "repos/acme/widgets/issues?state=open&per_page=100": [
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/6",
+      "html_url": "https://github.com/acme/widgets/issues/6",
+      "number": 6,
+      "title": "Widgets: the map",
+      "body": "The map.",
+      "state": "open",
+      "labels": [
+        {
+          "name": "wayfinder:map"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 0,
+      "created_at": "2026-01-06T10:00:00Z",
+      "updated_at": "2026-01-06T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/5",
+      "html_url": "https://github.com/acme/widgets/issues/5",
+      "number": 5,
+      "title": "Add CI",
+      "body": "A pull request.",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "assignees": [],
+      "comments": 1,
+      "created_at": "2026-01-05T10:00:00Z",
+      "updated_at": "2026-01-05T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      },
+      "pull_request": {
+        "url": "https://api.github.com/repos/acme/widgets/pulls/5"
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/3",
+      "html_url": "https://github.com/acme/widgets/issues/3",
+      "number": 3,
+      "title": "Render widgets",
+      "body": "Render them.",
+      "state": "open",
+      "labels": [
+        {
+          "name": "ready-for-agent"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 0,
+      "created_at": "2026-01-03T10:00:00Z",
+      "updated_at": "2026-01-03T10:00:00Z",
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "issue_dependencies_summary": {
+        "blocked_by": 2,
+        "total_blocked_by": 2,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/2",
+      "html_url": "https://github.com/acme/widgets/issues/2",
+      "number": 2,
+      "title": "Parse widgets",
+      "body": "Parse them.\n\n### bob · 2026-01-01T00:00:00Z\n\nnot a comment header",
+      "state": "open",
+      "labels": [
+        {
+          "name": "ready-for-agent"
+        }
+      ],
+      "assignee": {
+        "login": "alice"
+      },
+      "assignees": [
+        {
+          "login": "alice"
+        }
+      ],
+      "comments": 2,
+      "created_at": "2026-01-02T10:00:00Z",
+      "updated_at": "2026-01-02T10:00:00Z",
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "html_url": "https://github.com/acme/widgets/issues/1",
+      "number": 1,
+      "title": "Epic: widgets",
+      "body": "The widgets epic.\r\n\r\n## Comments\r\n\r\nThat heading is part of the body.",
+      "state": "open",
+      "labels": [
+        {
+          "name": "epic"
+        },
+        {
+          "name": "slice-1"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 1,
+      "created_at": "2026-01-01T10:00:00Z",
+      "updated_at": "2026-01-01T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    }
+  ],
+  "repos/acme/widgets/issues?state=all&per_page=100": [
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/6",
+      "html_url": "https://github.com/acme/widgets/issues/6",
+      "number": 6,
+      "title": "Widgets: the map",
+      "body": "The map.",
+      "state": "open",
+      "labels": [
+        {
+          "name": "wayfinder:map"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 0,
+      "created_at": "2026-01-06T10:00:00Z",
+      "updated_at": "2026-01-06T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/5",
+      "html_url": "https://github.com/acme/widgets/issues/5",
+      "number": 5,
+      "title": "Add CI",
+      "body": "A pull request.",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "assignees": [],
+      "comments": 1,
+      "created_at": "2026-01-05T10:00:00Z",
+      "updated_at": "2026-01-05T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      },
+      "pull_request": {
+        "url": "https://api.github.com/repos/acme/widgets/pulls/5"
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/4",
+      "html_url": "https://github.com/acme/widgets/issues/4",
+      "number": 4,
+      "title": "Research: old spike",
+      "body": "What did we learn?",
+      "state": "closed",
+      "labels": [
+        {
+          "name": "wayfinder:research"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 1,
+      "created_at": "2026-01-04T10:00:00Z",
+      "updated_at": "2026-01-04T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/3",
+      "html_url": "https://github.com/acme/widgets/issues/3",
+      "number": 3,
+      "title": "Render widgets",
+      "body": "Render them.",
+      "state": "open",
+      "labels": [
+        {
+          "name": "ready-for-agent"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 0,
+      "created_at": "2026-01-03T10:00:00Z",
+      "updated_at": "2026-01-03T10:00:00Z",
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "issue_dependencies_summary": {
+        "blocked_by": 2,
+        "total_blocked_by": 2,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/2",
+      "html_url": "https://github.com/acme/widgets/issues/2",
+      "number": 2,
+      "title": "Parse widgets",
+      "body": "Parse them.\n\n### bob · 2026-01-01T00:00:00Z\n\nnot a comment header",
+      "state": "open",
+      "labels": [
+        {
+          "name": "ready-for-agent"
+        }
+      ],
+      "assignee": {
+        "login": "alice"
+      },
+      "assignees": [
+        {
+          "login": "alice"
+        }
+      ],
+      "comments": 2,
+      "created_at": "2026-01-02T10:00:00Z",
+      "updated_at": "2026-01-02T10:00:00Z",
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "html_url": "https://github.com/acme/widgets/issues/1",
+      "number": 1,
+      "title": "Epic: widgets",
+      "body": "The widgets epic.\r\n\r\n## Comments\r\n\r\nThat heading is part of the body.",
+      "state": "open",
+      "labels": [
+        {
+          "name": "epic"
+        },
+        {
+          "name": "slice-1"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 1,
+      "created_at": "2026-01-01T10:00:00Z",
+      "updated_at": "2026-01-01T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    }
+  ],
+  "repos/acme/widgets/issues/1/comments?per_page=100": [
+    {
+      "id": 1001,
+      "html_url": "https://github.com/acme/widgets/issues/1#issuecomment-1001",
+      "user": {
+        "login": "alice"
+      },
+      "created_at": "2026-01-02T09:00:00Z",
+      "updated_at": "2026-01-02T09:00:00Z",
+      "body": "Kick-off."
+    }
+  ],
+  "repos/acme/widgets/issues/2/comments?per_page=100": [
+    {
+      "id": 2001,
+      "html_url": "https://github.com/acme/widgets/issues/2#issuecomment-2001",
+      "user": {
+        "login": "bob"
+      },
+      "created_at": "2026-01-03T09:00:00Z",
+      "updated_at": "2026-01-03T09:00:00Z",
+      "body": "Started.\r\nverdict: review"
+    },
+    {
+      "id": 2002,
+      "html_url": "https://github.com/acme/widgets/issues/2#issuecomment-2002",
+      "user": {
+        "login": "alice"
+      },
+      "created_at": "2026-01-03T10:30:00Z",
+      "updated_at": "2026-01-03T10:30:00Z",
+      "body": "Looks good."
+    }
+  ],
+  "repos/acme/widgets/issues/4/comments?per_page=100": [
+    {
+      "id": 4001,
+      "html_url": "https://github.com/acme/widgets/issues/4#issuecomment-4001",
+      "user": {
+        "login": "carol"
+      },
+      "created_at": "2026-01-04T12:00:00Z",
+      "updated_at": "2026-01-04T12:00:00Z",
+      "body": "Done, see the notes."
+    }
+  ],
+  "repos/acme/widgets/issues/3/dependencies/blocked_by?per_page=100": [
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/2",
+      "html_url": "https://github.com/acme/widgets/issues/2",
+      "number": 2,
+      "title": "Parse widgets",
+      "body": "Parse them.\n\n### bob · 2026-01-01T00:00:00Z\n\nnot a comment header",
+      "state": "open",
+      "labels": [
+        {
+          "name": "ready-for-agent"
+        }
+      ],
+      "assignee": {
+        "login": "alice"
+      },
+      "assignees": [
+        {
+          "login": "alice"
+        }
+      ],
+      "comments": 2,
+      "created_at": "2026-01-02T10:00:00Z",
+      "updated_at": "2026-01-02T10:00:00Z",
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/1",
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/acme/widgets/issues/4",
+      "html_url": "https://github.com/acme/widgets/issues/4",
+      "number": 4,
+      "title": "Research: old spike",
+      "body": "What did we learn?",
+      "state": "closed",
+      "labels": [
+        {
+          "name": "wayfinder:research"
+        }
+      ],
+      "assignee": null,
+      "assignees": [],
+      "comments": 1,
+      "created_at": "2026-01-04T10:00:00Z",
+      "updated_at": "2026-01-04T10:00:00Z",
+      "parent_issue_url": null,
+      "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "total_blocked_by": 0,
+        "blocking": 0,
+        "total_blocking": 0
+      },
+      "sub_issues_summary": {
+        "total": 0,
+        "completed": 0,
+        "percent_completed": 0
+      }
+    }
+  ]
+}

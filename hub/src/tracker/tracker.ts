@@ -23,6 +23,7 @@ import {
   STATES,
   VERDICT_KINDS,
   type Comment,
+  type GithubRef,
   type Item,
   type Kind,
   type State,
@@ -47,6 +48,8 @@ export type ItemView = IndexedItem & {
   comments: Comment[];
   verdicts: Array<Verdict & { author: string; at: string }>;
   claim: Claim | null;
+  /** The GitHub issue the item was imported from, when it was. */
+  github?: GithubRef;
 };
 
 export type ItemSummary = IndexedItem & { claim: Claim | null };
@@ -403,6 +406,42 @@ export class Tracker {
       if (input.topic !== undefined) fm.topic = input.topic || null;
       if (input.branch !== undefined) fm.branch = input.branch || null;
     });
+  }
+
+  // ---------------------------------------------------------------- imports
+
+  /** Every readable item file with its text, parsed (the GitHub import finds its items by their `github` reference). */
+  files(): Array<{ file: string; text: string; item: Item }> {
+    const out: Array<{ file: string; text: string; item: Item }> = [];
+    for (const file of this.#itemFiles()) {
+      try {
+        const text = readFileSync(join(this.#dir, file), 'utf8');
+        out.push({ file, text, item: parseItem(text, file) });
+      } catch {
+        /* gone or unreadable: the watcher reports it */
+      }
+    }
+    return out;
+  }
+
+  /** Reserve the next item id before its file exists (an import numbers a whole batch before it links it). */
+  reserveId(): string {
+    const maxFile = Math.max(0, ...readdirSync(this.#dir).map((n) => fileNumber(n) ?? 0));
+    return this.#index.allocate(maxFile);
+  }
+
+  /**
+   * Write an item built outside the tracker's own operations (`cland task import-github`). `existing` is the
+   * file it replaces, with that file's text, or null for a new item. Nothing is written when the text would
+   * not change, so `updated` moves only with a real change.
+   */
+  writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null): 'created' | 'updated' | 'unchanged' {
+    if (existing && serializeItem(item) === existing.text) return 'unchanged';
+    item.fm.updated = this.#now().toISOString();
+    const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
+    this.#write(file, item);
+    this.#log({ event: 'task-written', id: item.fm.id, file, op, by: actor.name });
+    return existing ? 'updated' : 'created';
   }
 
   /** Take (or with `release`, let go of) the live hold on an item. Only the hub knows of it; the file is untouched. */

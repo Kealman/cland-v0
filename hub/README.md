@@ -23,9 +23,11 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/tracker/item.ts` | The item file format: frontmatter, body, comments, verdicts; parse (lenient for hand edits) and serialize. |
 | `src/tracker/index-db.ts` | The tracker's index (items, labels, blockers, verdicts), its id high-water mark and the claims: tables of their own in `hub.db`, through a connection of their own. |
 | `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` and re-indexes hand edits, holds claims. |
+| `src/tracker/import-github.ts` | The hub's side of the GitHub import (`task.import`): issues to items, found again by their `github` reference, written only when their text changes. |
 | `src/tracker/requests.ts` | The `task.*` request frames and their handler, called from the dispatcher for spokes and clients alike. |
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve`. |
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
+| `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats. |
 | `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send`, `who`, `status`, `rename`, `history` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
@@ -155,8 +157,20 @@ A comment is headed `### <author> · <ISO time>`; one whose first lines are `ver
 | `cland task close <id> [--comment]` | `task.close` | Closes the item. |
 | `cland task link <id> [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
 | `cland task claim <id> [--release] [--force]` | `task.claim` | Takes or releases the claim. |
+| `cland task import-github [--repo owner/name] [--all]` | — (`task.import` frames) | Imports GitHub Issues as items (below). |
 
 The frames are `{"type":"task.<op>","id":"<request id>","item":"T-1",…}` with fields named as in the frontmatter (`labels`, `blocked_by`, `add_labels`, …); a CLI frame may carry `"as":{"name":…,"role":…}`, a spoke's always acts as its own session. The tools take the item as `id`.
+
+### Importing GitHub Issues
+
+`cland task import-github [--repo owner/name] [--all]` is the one-shot bootstrap of the tracker from a repository's GitHub Issues (spec 6). It reads GitHub through the `gh` CLI with the user's own login (no token is stored anywhere): the issues (pull requests skipped; open ones, closed too with `--all`; the repository defaults to the `origin` remote), each issue's comments and its `blocked_by` dependencies; the parent comes from the issue's sub-issue relation. The hub then writes one item per issue:
+
+- `kind` from the labels: `epic` → `epic`, `wayfinder:map` → `map`, any other `wayfinder:*` → `question`, else `task`; `title`, `state`, `labels`, `assignee` (the first assignee) and `created` as on GitHub; the body verbatim (CRLF made LF, and a line the file format would read as structure, `## Comments` or a `### <author> · <time>` header, escaped with a backslash).
+- `parent` and `blocked_by` mapped to the items of those issues; an edge to an issue that has no item (a closed one without `--all`) is kept as `github:#<n>` and resolves on a later run that imports it.
+- Comments as `### <login> · <GitHub time>`, each opening with `<!-- github-comment: <id> -->`.
+- An optional `github: {repo, number, url}` in the frontmatter, kept through every write and otherwise ignored by the hub.
+
+It is idempotent: a re-run finds each item by its `github` reference, rewrites title, body, labels, state, assignee, kind and edges from GitHub, appends only the comments whose id it does not hold yet, and keeps what GitHub does not own (`topic`, `branch`, local comments, the id and the file name). An item whose text would not change is not written, so with GitHub unchanged the files stay byte-identical and `updated` does not move. It prints the counts (created, updated, unchanged, comments added) and one line per issue (`--json` for the raw summary).
 
 ## Running
 
