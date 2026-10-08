@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-08T18:56:26.199Z
+updated: 2026-10-08T19:49:46.272Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -40,3 +40,145 @@ Slice 1 is done when the human runs a real task of the cland project itself insi
 - [ ] At least one ask was raised by the Coordinator and answered from the inbox; at least one role handover or reconnect happened without losing the thread
 - [ ] Every blocker found is either fixed in this ticket or filed as an item with a link here
 - [ ] The human confirms in a comment that cland replaced the previous set of tools for that task
+
+## Comments
+
+### coord · 2026-10-08T19:02:21.936Z
+
+Dogfooding run started 2026-10-08 18:57Z: the human launched the Coordinator (`coord`, Claude Code, claude-fable-5-1) from the CLI; `cland doctor` 20 ok, 0 fail. The real item is T-43 (cland inbox and cland topic answer), topic `topic-1`, branch `t/T-43-cland-inbox-topic-answer` in the worktree `.cland/worktrees/T-43` the human prepared.
+
+Blockers found while preparing the run, filed as items:
+- T-44: the `cland` CLI run inside a worktree of the project does not find the hub (`projectRoot` stops at the worktree's own `.cland/`; only the spoke and `cland hook` honour `CLAND_HUB_FILE`). Workaround for this run: the Implementer uses its spoke tools; CLI calls go from the repo root.
+- T-45: the Coordinator's `session.launch` spoke tool has no `cwd`, while the hub frame and `cland session launch --cwd` have it. Workaround for this run: the Coordinator launches the Implementer through the CLI with `--cwd`, which the audit records as `human`.
+
+First ask raised by the Coordinator: 810294e2 in topic-1 (which Implementer to launch), 19:02Z.
+
+### coord · 2026-10-08T19:05:07.655Z
+
+Criterion "an ask raised by the Coordinator and answered from the inbox": met. Ask 810294e2 (topic-1, "which Implementer to launch") was answered from the Neovim inbox at 2026-10-08 19:02:51Z with option 1 (journal: `ask-answered`, client `nvim`). The human's General message of 19:00:01Z had given the same decision in words; the Coordinator's `resolve` of topic-1 at 19:03:22Z found nothing open any more. Observed: the human's messages of 19:00:01Z and 19:02:51Z reached the Coordinator's harness only at its next idle turns (19:02Z and 19:04Z), after the Coordinator's own messages that answered them in substance; delivery into a busy Claude Code session waits for an idle turn.
+
+Implementer launched 19:03:23Z: impl-43, OpenCode, model `opencode/exo-free`, in `.cland/worktrees/T-43`; its spoke said hello, took the clause and the brief (all `injected`).
+
+### coord · 2026-10-08T19:10:45.599Z
+
+Blocker found by the human, filed as T-46: the OpenCode adapter picked `opencode/exo-free` as the first free model, which is deprecated upstream while still listed as active; every turn of impl-43 failed and neither the hub nor the inbox reported it (the Coordinator's watch on the journal saw nothing either). Workaround for this run: `[implementer.launch] model = "opencode/big-pickle"` in roles.toml (the hub re-read it; impl-43b launched on that model at 19:10Z). Time lost: about 7 minutes (19:03Z to 19:10Z).
+
+### coord · 2026-10-08T19:13:18.433Z
+
+Blocker found by the human (item filed by the human, id to follow): attaching the OpenCode TUI to a launched session starts a second spoke, which replaces the first; the session's cland tools then fail with "this spoke was replaced". Hit impl-43b at 19:12Z (the human relaunched it, tools work again) and, per the journal, impl-43 as well: `replaced` for impl-43 at 19:03:31.118Z, one second after `session.attach` at 19:03:30.818Z. Workaround for this run: `cland session resume <name> --relaunch` after an attach, before the session uses its tools.
+
+### coord · 2026-10-08T19:14:39.409Z
+
+Correction to the previous comment: the second-spoke bug (an OpenCode TUI attach starting a spoke that replaced the session's) is fixed on `main` in 128fd6e by the human (the attach now runs the TUI in the session's directory); no item for it. The deprecated free model remains T-46. Note for the merge: `main` moved past the T-43 branch point (31057a3) during the run.
+
+### coord · 2026-10-08T19:21:28.751Z
+
+Handover rehearsal, 2026-10-08 19:20Z: the human launched coord-2 (Claude Code, claude-fable-5-1, no role) and asked coord to hand the Coordinator role over with the four-section note. coord hands over through `role.handover` and stops; coord-2 continues T-43 from the note and the hub (topic-1, impl-43b at work, review and QA still ahead). Whether the thread survived (criterion 2) shows in coord-2's first actions.
+
+### coord-2 · 2026-10-08T19:22:49.452Z
+
+Handover rehearsal, outcome: coord-2 took the Coordinator role at 19:21:56Z from the note and the hub alone (`role.state`, `history` of topic-1 and General, `task.view` T-42 and T-43). The thread survived: impl-43b's done report (19:21:52Z, four seconds before the handover) was found in topic-1, the branch verified from the repo root (one commit 47e9359 on `t/T-43-cland-inbox-topic-answer`, four files, merge-base 31057a3), and the run continues: Reviewer rev-43 (Codex, gpt-6.1-sol) launched at about 19:24Z. Criterion "at least one role handover ... without losing the thread": met. Implementer time on T-43: 19:10Z launch to 19:21Z report, about 11 minutes, on opencode/big-pickle.
+
+### coord-2 · 2026-10-08T19:29:54.251Z
+
+Review through the Reviewer role (Codex, gpt-6.1-sol, session rev-43, launched with the spoke's `session.launch` at 19:22:49Z, the root checkout; the diff read with `git diff main...t/T-43-cland-inbox-topic-answer`): `review not clear` at 19:24:55Z (one medium: the CLI rejected option 0 and negatives itself instead of letting the hub refuse them, verdict rev-2026-10-08-43-1); the finding went to impl-43b in topic-1, its fix 699f031 came at 19:27:31Z; `review clear` at 19:28:30Z (verdict rev-2026-10-08-43-2). One loop, about 6 minutes end to end, the verdicts written on T-43 by the role.
+
+QA through the QA role (Codex, gpt-6-astra, session qa-43) launched 19:29:08Z from the repo root with `node hub/bin/cland.ts session launch qa-43 --role qa --cwd .cland/worktrees/T-43 --json` (the spoke's launch has no cwd, T-45). Checked before the brief: the branch's CLI run from the repo root as `node .cland/worktrees/T-43/hub/bin/cland.ts inbox` reaches the project's hub (T-44 bites only when the worktree is the cwd). Observed, not a finding: the inbox shows every launch and verdict as a notification while `needs you` counts only asks, approvals and waiting topics (by design, hub/src/hub/inbox.ts).
+
+### coord-2 · 2026-10-08T19:45:10.549Z
+
+QA through the QA role: `qa clear T-43` at 19:44:24Z (verdict qa-2026-10-08-43-1 on T-43, qa-43, Codex gpt-6-astra, in the worktree). It ran typecheck and the full suite (292 pass: 235 hub, 57 Neovim), the four asks-cli tests, the branch's `cland inbox`, `inbox --json` and the `topic answer` refusals against the project's live hub from the repo root, the help text and the README. QA time: 19:29Z launch to 19:44Z verdict, about 15 minutes, of which a first run lost to the Codex sandbox: `listen EPERM` on 127.0.0.1 for the test hub and `connect EPERM` for the project's hub socket; the rerun with socket access passed. Observation for the QA role's launch (not filed; the clause already warns about sockets): a Codex QA session needs socket access from the start when the checks talk to a hub.
+
+Criterion "one real item from claim to verdicts entirely inside cland, with the three harnesses in their roles": met at 19:44Z (Claude Code Coordinator, OpenCode Implementer, Codex Reviewer and QA; claim 19:12Z, verdicts 19:24Z, 19:28Z, 19:44Z). The merge ask to the human raised at about 19:46Z in topic-1; the dry-run merge of the branch into main (128fd6e) is clean, main's only change on a touched file since the branch point is one README line.
+
+### coord-2 · 2026-10-08T19:47:17.417Z
+
+Merge: the ask 73f423d7 (topic-1, "merge now or hold") was answered from the Neovim inbox at 19:45:22Z with option 1 (journal: `ask-answered`, client `nvim`); the human merged at 19:46:30Z as ba8b5b8 (`Merge T-43: cland inbox and cland topic answer`, onto 8c6a2e5), not pushed at the time of this comment. T-43 closed at about 19:48Z. Also in the journal: QA's refusal check of 19:37Z against the live hub is audited as `topic.answer` by `human` with client `cli`, the first use of the new command on the project's own hub.
+
+Run record, 2026-10-08: start 18:57Z (the human launched coord), merge 19:46:30Z: about 50 minutes end to end. Of it: about 7 minutes lost to the deprecated free model (T-46), about 2 minutes to the second-spoke attach bug (fixed on main in 128fd6e), 11 minutes Implementer (impl-43b), 6 minutes the review loop (rev-43, one finding), 15 minutes QA (qa-43, including a sandbox rerun), and the handover rehearsal coord to coord-2 at 19:21Z in between. Blockers: T-44, T-45, T-46 filed (open, ready-for-agent, children of T-19); the attach bug fixed. Criteria 1 to 3 met as recorded above; criterion 4 (the human's confirmation in a comment) is asked for in General.
+
+### coord-2 · 2026-10-08T19:48:42.701Z
+
+Rehearsal note, 19:48Z: this run of 2026-10-08 18:57Z to 19:48Z was a rehearsal; the human side (General and the two inbox answers) was played by an agent preparing T-42. So the record above shows the mechanics working end to end (claim to verdicts in the three harnesses, two asks answered through the Neovim inbox, a Coordinator handover without losing the thread, the blockers filed, T-43 merged as ba8b5b8), but criterion 4 (the human's confirmation that cland replaced the previous tools) and the decision on T-44/T-45/T-46 before slice 1 closes are not taken here: the human decides and confirms when repeating the run. The ask 908cf011 in General was withdrawn for that reason. State left behind: T-43 closed and merged on main (not pushed); sessions impl-43b, rev-43 and qa-43 idle; worktree .cland/worktrees/T-43 and branch t/T-43-cland-inbox-topic-answer in place; Coordinator role with coord-2.
+
+### human · 2026-10-08T19:49:46.272Z
+
+## Dogfooding rehearsal, 2026-10-08: T-43 taken from claim to merge inside cland
+
+An agent ran this rehearsal end to end with the real harnesses, acting as the human through the hub's UI frames and the real Neovim workbench (headless, driven by `nvim_input`, read with `screenstring()`). Criterion 4, the human's own confirmation, is still open: the human repeats the run with the checklist at the end.
+
+**Item.** T-43 "cland inbox and cland topic answer: answer an ask from the CLI" (parent T-19), the open point of T-33. Merged to main as `ba8b5b8`, closed by the Coordinator.
+
+**Provisioning.** `cland init` on the repo (`dda8b48`): managed `.cland/` files, the AGENTS.md block, the Claude Code project hooks; the repo's own `docs/agents/*` and `.agents/skills` kept; idempotent on a second run. `cland doctor`: 18 ok, 2 warn (hub not started yet, secret not written yet), 0 fail. `cland` on the PATH through a symlink, documented in `hub/README.md`. The items were refreshed from GitHub with `import-github --all` (`31057a3`): T-23 to T-42 had stale states.
+
+### Roles and sessions
+
+| Session | Role | Harness, model |
+| --- | --- | --- |
+| coord | Coordinator until the handover | Claude Code, claude-fable-5-1, effort max |
+| coord-2 | Coordinator after the handover | Claude Code, claude-fable-5-1, effort max |
+| impl-43 | Implementer, failed | OpenCode, opencode/exo-free (picked by the adapter) |
+| impl-43b | Implementer | OpenCode, opencode/big-pickle, in `.cland/worktrees/T-43` |
+| rev-43 | Reviewer | Codex, gpt-6.1-sol, effort high |
+| qa-43 | QA | Codex, gpt-6-astra, effort high, in the worktree |
+
+### Timeline (UTC)
+
+- 18:56 hub started; 18:57:30 `coord` launched (4.7 s), clause delivered as its first turn.
+- 19:00:01 human in General: take T-43, Implementer on OpenCode in the worktree, review and QA through the roles, one ask before merging, the human merges.
+- 19:01:49 ask 1 from coord in the T-43 topic: which Implementer to launch (4 options). 19:02:51 answered from the Neovim inbox (full width, `1` on the row): `topic.answer` with `answerTo`, inbox count 1 to 0.
+- 19:03:23 `impl-43` launched; every turn failed upstream (blocker A). 19:09:36 stopped by the human; model pinned.
+- 19:10:14 `impl-43b` launched on big-pickle. 19:10:53 the human's TUI attach started a second spoke that replaced the session's (blocker B). 19:12:33 relaunched (`session resume --relaunch`, same OpenCode conversation); 19:12:42 claimed T-43.
+- 19:20:00 human: hand over to `coord-2`. 19:21:49 `role.handover` with a four-section note; 19:21:56 `coord-2` live as Coordinator (role vacant 7 s while its spoke retried). The old holder acknowledged the revocation and stopped acting; stopped at 19:23.
+- 19:21:52 impl-43b reported `47e9359`, addressed to `coord` three seconds after the handover; `coord-2` picked it up from the note and `role.state`, no thread lost.
+- 19:22:49 `rev-43` launched by coord-2 (spoke `session.launch`); 19:24:55 **review not clear** (medium: `inbox.ts:77` refused option 0 locally instead of letting the hub refuse it). 19:27:31 fix `699f031`; 19:28:30 **review clear**.
+- 19:29:08 `qa-43` launched in the worktree; four approvals by the human (blocker C); 19:44:24 **qa clear**: typecheck and 292 tests (235 hub + 57 nvim), live `cland inbox` text and JSON, error paths, README.
+- 19:45:10 ask 2 from coord-2: merge now or hold. 19:45:22 answered from the Neovim inbox with `1`.
+- 19:46:30 merged by the human: `git merge --no-ff` as `ba8b5b8`, not pushed. 19:47:17 T-43 closed by coord-2, claim released.
+- From the human's request to the item closed: 47 min. Implementation 9 min, review 2 min + 1 min, QA 15 min.
+
+**Where the verdicts show.** `cland task view T-43` lists the three verdicts; the headless workbench's item view shows `✓ review clear · rev-43 [Reviewer] · rev-2026-10-08-43-2`, `✓ qa clear · qa-43 [QA] · qa-2026-10-08-43-1` and, under earlier, `✗ review not clear · rev-2026-10-08-43-1`; the board had the card in QA with `✓ review ✓ qa` before the close.
+
+### Usage, as the adapters report it
+
+| Session | Tokens | Note |
+| --- | --- | --- |
+| rev-43 | 1,556,962 total, 1,481,344 cached input, 4,454 output | Codex running total |
+| qa-43 | 781,918 total, 725,376 cached input, 2,965 output | Codex running total |
+| impl-43b | 55,282 input, 124 output, cost 0 | last step only (free model) |
+| coord, coord-2 | 3,773 and 658 output on their last turn | last turn only |
+
+Codex's weekly rate limit stood at 13 % after the run. Claude Code and OpenCode report only the latest turn or step, so session totals are not available (T-47).
+
+### Blockers and findings
+
+- **A. Default free OpenCode model deprecated, failure silent.** The adapter picked `opencode/exo-free`, listed active but deprecated upstream; every turn failed and nobody was told. Worked around in `8c6a2e5` (roles.toml pins `opencode/big-pickle`); filed as T-46 (GitHub #45).
+- **B. OpenCode TUI attach started a second spoke.** Attaching from another directory made the server open a second instance whose MCP servers started a spoke under the same session id, replacing the live one; every cland tool call then failed with `this spoke was replaced`. Fixed test-first in `128fd6e`: the attach command runs the TUI in the session's directory.
+- **C. Codex QA sandbox refuses Unix sockets.** `cland inbox` and `npm test` fail with `EPERM` and need the human's approval one by one; no prefix approval is safe. Filed as T-48 (GitHub #47).
+- **D. CLI from a worktree does not find the hub.** Filed by the Coordinator as T-44 (GitHub #43).
+- **E. The spoke's `session.launch` has no `cwd`.** The Coordinator had to launch in the worktree through the CLI. Filed by the Coordinator as T-45 (GitHub #44).
+- **F. Usage means different things per adapter.** Filed as T-47 (GitHub #46).
+- Minor, not filed: a human's `session resume --relaunch` is announced in Agents as "re-found after a hub restart"; a long ask question is cut to one line in the inbox; after a handover to a session launched without a role, the role is vacant until that session's spoke retries (7 s here); Codex's first attach shows an update prompt (to 0.161.0, outside the tested range: skip it) and a folder-trust prompt; the launched Claude Code sessions ran in the user's default "auto mode" permission setting.
+
+### Commits
+
+`dda8b48` cland init on the repo · `31057a3` items refreshed, T-43 created · `128fd6e` OpenCode attach in the session's directory · `8c6a2e5` Implementer model pinned · `47e9359`, `699f031` T-43 by impl-43b · `ba8b5b8` the merge · a last commit with the tracker files the run wrote. Tests on main after the merge: 235 hub + 57 nvim, all pass.
+
+### Repeating it (the human, for criterion 4)
+
+```sh
+cland hub start
+git worktree add .cland/worktrees/T-<n> -b t/T-<n>-<slug>
+cland session launch coord --role coordinator
+cland                                    # the workbench: General, the inbox (␣n / ␣N), the board (␣b)
+# in General: take T-<n>, Implementer in the worktree, review and QA through the roles, ask me before merging
+# answer each ask in the inbox with 1-9 (or: cland inbox; cland topic answer <ask> <n>)
+cland session launch coord-2 --harness claude-code --model claude-fable-5-1 --effort max
+# in General: hand the Coordinator role over to coord-2 (or: cland role set coord-2 coordinator --move)
+cland session list                       # approvals show as waiting for approval: ↵ on the session attaches it
+cland task view T-<n>                    # the verdicts
+git merge --no-ff t/T-<n>-<slug>
+cland session stop <each>; cland hub stop
+```
+
+Then a comment on T-42 (and #42) saying whether cland replaced the previous tools for that task.
