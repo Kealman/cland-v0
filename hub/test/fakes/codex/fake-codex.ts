@@ -26,8 +26,8 @@
 //       embedded-mode trap); otherwise joins the thread with `thread/resume` and prints
 //       `fake codex attached to thread <id> (<status>) in <dir>`.
 //
-//   Failure modes for the hub's robustness tests: FAKE_CODEX_FAIL_FIRST_TURN=1 refuses a thread's first turn (a launch
-//   that fails after the spoke connected); a message whose text contains "lose the answer" runs as a turn but its
+//   Failure modes for the hub's robustness tests: FAKE_CODEX_FAIL_FIRST_TURN=1 refuses a thread's first turn once the
+//   spoke is in the hub (its `who` answers: a launch that fails after the session said hello); a message whose text contains "lose the answer" runs as a turn but its
 //   `turn/start` (or `turn/steer`) result is never sent, the first time only (an ambiguous inject); SIGUSR2 drops every
 //   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
 //   app-server lives). A body `rename to <name>` calls the spoke's `rename` tool before the pong. Each `turn/start`
@@ -339,7 +339,12 @@ async function appServer(args: string[]): Promise<number> {
         const t = threads.get(params.threadId as string);
         if (!t) return { error: { code: -32600, message: `thread not loaded: ${String(params.threadId)}` } };
         const text = textOf(params);
-        if (process.env.FAKE_CODEX_FAIL_FIRST_TURN === '1' && t.turns === 0 && !t.turnId) return { error: { code: -32603, message: 'the model refused the first turn (FAKE_CODEX_FAIL_FIRST_TURN)' } };
+        if (process.env.FAKE_CODEX_FAIL_FIRST_TURN === '1' && t.turns === 0 && !t.turnId) {
+          // the turn fails once the spoke is in the hub (its `who` answers): a failure after the session said hello
+          const deadline = Date.now() + 15_000;
+          while (Date.now() < deadline && parseJson<{ ok?: boolean }>(await callTool('who', {}))?.ok !== true) await sleep(50);
+          return { error: { code: -32603, message: 'the model refused the first turn (FAKE_CODEX_FAIL_FIRST_TURN)' } };
+        }
         const lose = loseOnce(text);
         if (t.turnId) {
           // an active turn: turn/start steers it

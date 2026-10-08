@@ -62,20 +62,35 @@ const sendGeneral = async (ui: FrameClient, text: string): Promise<string> => {
 const injected = (ui: FrameClient, id: string, timeoutMs = 15_000) => ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', timeoutMs);
 
 /**
- * One `cland hook <event>` as a harness runs it, the payload on stdin; resolves when it exited (it waits for
- * the hub's answer). `slowStartMs` holds the process up before `cland` runs, as a loaded machine does.
+ * One `cland hook <event>` as a harness runs it, the payload on stdin; `done` resolves when it exited (it waits for
+ * the hub's answer). `slowStartMs` holds the process up before `cland` runs, as a loaded machine does; `started`
+ * resolves once the process is running (its start time, the signal's time, is behind it), whatever the machine's load.
  */
-function hook(root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; slowStartMs?: number }): Promise<void> {
+function hook(root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; slowStartMs?: number }): { started: Promise<void>; done: Promise<void> } {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
-  if (o.slowStartMs) env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`const t = Date.now(); while (Date.now() - t < ${o.slowStartMs});`)}`;
+  const MARK = 'cland-test-hook-started';
+  env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`process.stderr.write(${JSON.stringify(`${MARK}\n`)}); const t = Date.now(); while (Date.now() - t < ${o.slowStartMs ?? 0});`)}`;
   const args = [CLI_ENTRY, 'hook', event, '--session', o.session, ...(o.launch ? ['--launch', o.launch] : []), '--hub-file', join(root, '.cland', 'hub.json')];
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'inherit'] });
+  let markStarted!: () => void;
+  const started = new Promise<void>((resolve) => (markStarted = resolve));
+  const done = new Promise<void>((resolve, reject) => {
+    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'pipe'] });
+    let err = '';
+    child.stderr.on('data', (c: Buffer) => {
+      err += String(c);
+      if (err.includes(MARK)) markStarted();
+      const rest = String(c).replace(`${MARK}\n`, '');
+      if (rest) process.stderr.write(rest);
+    });
     child.on('error', reject);
-    child.on('close', () => resolve());
+    child.on('close', () => {
+      markStarted();
+      resolve();
+    });
     child.stdin.end(JSON.stringify(o.payload ?? {}));
   });
+  return { started, done };
 }
 
 test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
@@ -90,10 +105,11 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
 
   // the Stop of a turn fires first, but its process takes 1.5 s to start; the next turn's start fires after it
   const stop = hook(root, 'turn-end', { session: 'coord', launch: launched.sessionId, slowStartMs: 1500 });
+  await stop.started; // the harness fired it: its process runs (and stalls)
   await sleep(150); // the gap between the two events the harness fired
-  await hook(root, 'turn-start', { session: 'coord', launch: launched.sessionId });
+  await hook(root, 'turn-start', { session: 'coord', launch: launched.sessionId }).done;
   await presentAs(ui, 'coord', 'busy');
-  await stop;
+  await stop.done;
   assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
   assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
 });
@@ -117,8 +133,8 @@ test('a signal from an earlier launch under the same name changes nothing of the
   assert.equal(row.sessionId, second.sessionId);
 
   // the first launch's hooks, late: its own conversation id, a turn start
-  await hook(root, 'session-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } });
-  await hook(root, 'turn-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } });
+  await hook(root, 'session-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
+  await hook(root, 'turn-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
   const after = await harness(ui, 'impl-1');
   assert.equal(after.harnessSessionId, row.harnessSessionId, "the replacement keeps its own conversation id");
   assert.equal(after.state, 'idle', 'and its own state');
@@ -135,7 +151,7 @@ test('a late SessionStart does not revive a session whose process is gone', asyn
   await killDaemon(launched.pid as number);
   await eventually('the process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
 
-  await hook(root, 'session-start', { session: 'impl-1', launch: launched.sessionId, payload: { session_id: launched.harnessSessionId } });
+  await hook(root, 'session-start', { session: 'impl-1', launch: launched.sessionId, payload: { session_id: launched.harnessSessionId } }).done;
   const row = await harness(ui, 'impl-1');
   assert.equal(row.status, 'exited');
   assert.equal(row.state, 'unknown');
