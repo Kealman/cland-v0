@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-08T19:49:46.272Z
+updated: 2026-10-08T19:52:40.702Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -182,3 +182,7 @@ cland session stop <each>; cland hub stop
 ```
 
 Then a comment on T-42 (and #42) saying whether cland replaced the previous tools for that task.
+
+### human · 2026-10-08T19:52:40.702Z
+
+Addendum to the run log: .cland/run (the Codex adapter's sockets) was not in the managed .cland/.gitignore; fixed test-first in c2c9664. Final counts on main: typecheck clean, 235 hub + 57 nvim tests pass.
