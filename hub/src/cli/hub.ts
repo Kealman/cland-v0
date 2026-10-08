@@ -11,6 +11,7 @@ import type { HubStatus } from '../protocol.ts';
 import { withRole } from '../names.ts';
 import { askHub, probe } from './socket-client.ts';
 import { liveHolder } from '../hub/lock.ts';
+import { formatAudit, parseSince, readAudit, type AuditFilter } from '../hub/audit.ts';
 
 const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
 /** How long `start` waits for the daemon to answer, and `stop` for it to exit. */
@@ -24,6 +25,8 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
                   --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
                     when the listeners cannot bind (a sandbox), it goes on over stdio alone
                   --stdio --no-listen: stdio alone, binding nothing
+  hub audit       every tool call the hub answered, allowed or refused (.cland/log/hub.log)
+                  --session <name> (human: the UI and the CLI), --since <ISO time | 30m, 2h, 1d>, --json
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
@@ -213,6 +216,46 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
   return 0;
 }
 
+/** `cland hub audit`: the audit records in the hub's log, oldest first; one JSON object per line with `--json`. */
+function audit(root: string, args: string[], io: Io): number {
+  const filter: AuditFilter = {};
+  let json = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    const value = (): string | null => {
+      const v = args[i + 1];
+      i++;
+      return v === undefined || v.startsWith('--') ? null : v;
+    };
+    if (a === '--json') json = true;
+    else if (a === '--session') {
+      const v = value();
+      if (v === null) return usageError(io, '--session needs a session name');
+      filter.session = v;
+    } else if (a === '--since') {
+      const v = value();
+      const since = v === null ? null : parseSince(v);
+      if (since === null) return usageError(io, `--since needs an ISO time or a span such as 30m, 2h, 1d${v ? ` (not "${v}")` : ''}`);
+      filter.since = since;
+    } else return usageError(io, `unknown argument "${a}"`);
+  }
+  let text = '';
+  try {
+    text = readFileSync(layout(root).log, 'utf8');
+  } catch {
+    /* no log yet: no calls */
+  }
+  const records = readAudit(text, filter);
+  for (const r of records) io.out(json ? `${JSON.stringify(r)}\n` : `${formatAudit(r)}\n`);
+  if (!json && !records.length) io.out('no tool calls recorded\n');
+  return 0;
+}
+
+const usageError = (io: Io, why: string): number => {
+  io.err(`cland: hub audit: ${why}\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
+  return 2;
+};
+
 /** `cland hub <sub> [flags]`; the process exit code. */
 export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio): Promise<number> {
   const [sub, ...rest] = args;
@@ -224,6 +267,8 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
       return status(root, rest.includes('--json'), io);
     case 'stop':
       return stop(root, io);
+    case 'audit':
+      return audit(root, rest, io);
     case 'serve':
       return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'), !rest.includes('--no-listen'), io);
     default:

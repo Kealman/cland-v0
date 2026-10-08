@@ -5,8 +5,15 @@
 // A conversation is a spoke (its hello carries a session id) or a client — the UI, the CLI — (its hello
 // names the client). A transport that authenticated the peer already (the WebSocket's bearer header) says
 // so; otherwise the hello must carry the project's secret.
+//
+// Every spoke tool call passes the permission table here (spec 4.4, `roles/permissions.ts`), by the role the hub
+// holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
+// in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
 import { timingSafeEqual } from 'node:crypto';
-import { UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
+import { AGENTS, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
+import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
+import { decide, KNOWN_TOOLS, type ToolCall } from '../roles/permissions.ts';
+import { withRole } from '../names.ts';
 import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
@@ -61,6 +68,9 @@ export type DispatcherOptions = {
   tracker?: Tracker;
 };
 
+/** Who the UI's and the CLI's calls are audited as. */
+const HUMAN_SESSION = 'human';
+
 export const secretMatches = (given: string, secret: string): boolean => {
   const a = Buffer.from(given);
   const b = Buffer.from(secret);
@@ -86,9 +96,95 @@ export class Dispatcher {
     return this.#options.core;
   }
 
-  open(peer: Peer, transport: { authenticated: boolean; edge: string }): Conversation {
+  /**
+   * The permission table on one spoke frame (spec 4.4): true when it may go on. A refusal is answered here, with
+   * the typed error, and posted to the Agents topic. A hub with no role definitions (no project) checks nothing;
+   * a frame that is no tool the table knows goes on to its own "unknown request" answer.
+   */
+  #permitted(connection: Connection, frame: Record<string, unknown>, peer: Peer): boolean {
+    const core = this.#options.core;
+    const roles = core.roles;
+    if (!roles) return true;
+    const call = this.#toolCall(connection, frame);
+    if (!call) return true;
+    const grants = connection.role === null ? undefined : roles.get().get(connection.role)?.permissions.tools;
+    const decision = decide(connection.role, grants, call);
+    if (decision.ok) return true;
+    const { permission, reason } = decision;
+    peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
+    const target = call.tool === 'send' ? (call.toHuman ? ' to the human' : '') : typeof call.item === 'string' ? ` ${call.item}` : '';
+    try {
+      core.noticeInTopic(AGENTS.id, `${withRole(connection.name, connection.role)} tried ${String(frame.type)}${target}: forbidden (${reason})`);
+    } catch (err) {
+      this.#log({ event: 'notice-failed', error: err instanceof Error ? err.message : String(err) });
+    }
+    return false;
+  }
+
+  /** The table's view of a spoke frame, or null when it is no tool the table knows. */
+  #toolCall(connection: Connection, frame: Record<string, unknown>): ToolCall | null {
+    const type = String(frame.type);
+    // listing the launched sessions goes with launching them
+    const tool = type === 'session.list' ? 'session.launch' : type;
+    if (!KNOWN_TOOLS.includes(tool)) return null;
+    const item = typeof frame.item === 'string' ? frame.item : null;
+    const tracker = this.#options.tracker;
+    const own = (): boolean | undefined => {
+      if (!tracker || item === null) return false;
+      let view;
+      try {
+        view = tracker.view(item);
+      } catch {
+        return undefined; // no such item: the tool says so itself
+      }
+      const actor = sessionActor(connection, UNKNOWN_SESSION);
+      return view.claim?.sessionId === actor.id || (view.assignee !== null && view.assignee === connection.name);
+    };
+    return {
+      tool,
+      item,
+      own,
+      ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0 } : {}),
+      ...(tool === 'task.comment' ? { verdict: typeof frame.verdict === 'object' && frame.verdict !== null } : {}),
+    };
+  }
+
+  open(wire: Peer, transport: { authenticated: boolean; edge: string }): Conversation {
     const core = this.#options.core;
     const log = this.#log;
+    /** The calls in flight, by request id, waiting for their result to be audited. */
+    const audits = new Map<string, Array<Omit<AuditRecord, 'ts' | 'event' | 'outcome'>>>();
+    const settle = (frame: HubFrame) => {
+      if (frame.type !== 'result') return;
+      const queue = audits.get(frame.id);
+      const base = queue?.shift();
+      if (!base) return;
+      if (!queue?.length) audits.delete(frame.id);
+      const outcome: AuditOutcome = frame.ok ? 'ok' : frame.code === 'forbidden' ? 'forbidden' : 'error';
+      log({
+        event: 'audit',
+        ...base,
+        outcome,
+        ...(!frame.ok && frame.code === 'forbidden' ? { permission: frame.permission, reason: frame.reason } : {}),
+        ...(!frame.ok && outcome === 'error' ? { error: frame.error.slice(0, 200) } : {}),
+      });
+    };
+    const audit = (id: unknown, base: Omit<AuditRecord, 'ts' | 'event' | 'outcome'>) => {
+      if (typeof id !== 'string') return;
+      const queue = audits.get(id) ?? [];
+      queue.push(base);
+      audits.set(id, queue);
+    };
+    // every result passes the audit on its way out
+    const peer: Peer = {
+      send: (frame) => {
+        settle(frame);
+        wire.send(frame);
+      },
+      close: (code, reason) => wire.close(code, reason),
+      isOpen: () => wire.isOpen(),
+    };
+    let client = '';
     let kind: 'spoke' | 'client' | null = null;
     let done = false;
     let name: string | null = null;
@@ -100,6 +196,7 @@ export class Dispatcher {
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }).then((result) => {
         if (peer.isOpen()) peer.send(result);
+        else settle(result);
       });
 
     const refuse = (code: RefusalCode, message: string) => {
@@ -146,6 +243,7 @@ export class Dispatcher {
       if (isClientHello(frame)) {
         if (frame.protocol !== PROTOCOL_VERSION) return refuse('version', `protocol ${frame.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}`);
         kind = 'client';
+        client = frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
         peer.send({ type: 'welcome', name: frame.client, presence: core.presence() });
         return;
@@ -279,10 +377,19 @@ export class Dispatcher {
             return;
           }
           if (isAck(frame)) return core.ack(connection, frame.id);
+          // the heartbeat is not a tool call
+          if (frame.type !== 'ping') {
+            audit(frame.id, { session: connection.name, sessionId: connection.sessionId, role: connection.role, tool: String(frame.type), args: summarize(frame) });
+            if (!this.#permitted(connection, frame, peer)) return;
+          }
           // a spoke always acts as its own session
           if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, sessionActor(connection, UNKNOWN_SESSION)));
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           return spokeRequest(frame, name as string);
+        }
+        // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
+        if (frame.type !== 'session.signal' && frame.type !== 'session.bridge') {
+          audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
         }
         // a client's frame may name who it acts as
         if (isTaskRequest(frame)) return peer.send(answerTask(this.#options.tracker, frame, 'client'));
@@ -291,6 +398,8 @@ export class Dispatcher {
       },
       closed: () => {
         done = true;
+        for (const queue of audits.values()) for (const base of queue) log({ event: 'audit', ...base, outcome: 'error', error: 'the connection closed before the answer' });
+        audits.clear();
         clearTimeout(helloTimer);
         unsubscribe?.();
         unsubscribe = null;

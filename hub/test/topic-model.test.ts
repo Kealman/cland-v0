@@ -4,6 +4,7 @@
 // scripted spokes over MCP and a UI client speaking the frames; nothing inside either side is reached into.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { fixedRoles } from '../src/roles/config.ts';
 import { connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 import type { Hub } from '../src/hub/server.ts';
 
@@ -11,13 +12,19 @@ type Topic = { id: string; title: string; status: string; standing: boolean; ite
 type TopicMessage = { id: string; topic: string; from: string; to: string[]; text: string; stage?: string };
 type Outcome = { to: string; outcome: string; reason?: string };
 
+/** An in-process hub enforcing the default permission table (#30), as a project's hub does. */
 async function hubFor(t: TestContext): Promise<Hub> {
-  const hub = await startHub();
+  const hub = await startHub({ roles: fixedRoles() });
   t.after(() => hub.close());
   return hub;
 }
 
+/** A scripted session; with `role`, the human assigns it first (`role.set`), as a hub with a role table requires. */
 async function spoke(t: TestContext, hub: Hub, name: string, role?: string): Promise<Session> {
+  if (role) {
+    const human = await connectWsUi(t, hub);
+    await ok(human, { type: 'role.set', session: name, role });
+  }
   const s = await spawnSpoke({ hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
   t.after(() => s.close());
   return s;
@@ -116,9 +123,12 @@ test('@reviewer in the text reaches the Reviewer holder, whose reply lands in th
   assert.equal(asked.params.meta?.topic, topic.id);
   assert.equal((await topicOf(ui, topic.id)).status, 'waiting for agent');
 
-  // the reviewer answers in the topic the event came from
+  // the reviewer answers in the topic the event came from; only the Coordinator writes to the human (spec 4.4,
+  // #30), so the Reviewer addresses the Coordinator there, and the answer still answers the wait
+  const direct = await rev.call<{ ok: boolean; code?: string; permission?: string }>('send', { topic: asked.params.meta?.topic, text: 'it holds' });
+  assert.deepEqual([direct.ok, direct.code, direct.permission], [false, 'forbidden', 'send:human']);
   const mark = ui.frames.length;
-  await rev.call('send', { topic: asked.params.meta?.topic, text: 'it holds', reply_to: asked.params.meta?.msg_id });
+  await rev.call('send', { topic: asked.params.meta?.topic, to: ['coordinator'], text: 'it holds', reply_to: asked.params.meta?.msg_id });
   const answer = (await ui.waitFor((f) => f.type === 'message' && (f.message as TopicMessage).from === 'rev-1')) as { topic: { id: string }; message: TopicMessage };
   assert.equal(answer.topic.id, topic.id);
   await topicEvent(ui, topic.id, (x) => x.status === 'open', mark);
@@ -165,9 +175,10 @@ test('a message to a vacant Coordinator is queued: the topic waits for an agent 
   assert.equal(waiting.warning, 'no coordinator');
   assert.equal((await topicOf(ui, topic.id)).warning, 'no coordinator');
 
-  // a session joins without a role: nothing changes; the human assigns it the Coordinator: it takes the message
+  // a session without a role stays off the hub: nothing changes; the human assigns it the Coordinator: it
+  // connects on its next retry and takes the message
   const coord = await spoke(t, hub, 'coord');
-  await coord.waitForPresence(['coord']);
+  await sleep(300);
   assert.equal((await topicOf(ui, topic.id)).warning, 'no coordinator');
   const mark = ui.frames.length;
   await ok(ui, { type: 'role.set', session: 'coord', role: 'coordinator' });

@@ -152,7 +152,9 @@ export type HubFrame =
    *  like a `deliver`; the message's text is what the model reads. */
   | ({ type: 'role'; id: string; message: Message } & RoleClause)
   | { type: 'result'; id: string; ok: true; value: unknown }
-  | { type: 'result'; id: string; ok: false; error: string }
+  /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
+   *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. */
+  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden'; permission?: string; role?: string | null; reason?: string }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }

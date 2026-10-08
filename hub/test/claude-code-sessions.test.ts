@@ -103,14 +103,15 @@ test('a signal from an earlier launch under the same name changes nothing of the
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  const first = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
+  // the Coordinator: the fake answers its clause to the human, which only the Coordinator may (#30)
+  const first = await launch(ui, 'impl-1', { role: 'coordinator', harness: 'claude-code' });
   await presentAs(ui, 'impl-1', 'idle');
   await killDaemon(first.pid as number);
   await eventually('the first process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
 
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const mark = ui.frames.length;
-  const second = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
+  const second = await launch(ui, 'impl-1', { role: 'coordinator', harness: 'claude-code' });
   await clauseTurnDone(ui, 'impl-1', mark);
   const row = await harness(ui, 'impl-1');
   assert.equal(row.sessionId, second.sessionId);

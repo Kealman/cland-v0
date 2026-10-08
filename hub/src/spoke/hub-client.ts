@@ -49,6 +49,19 @@ export const MISSED_HEARTBEATS = 2;
 /** A request whose reply did not come within its deadline. */
 export class ReplyTimeout extends Error {}
 
+/** A request the hub's permission table refused (spec 4.4): the typed error the tool hands the model. */
+export class Forbidden extends Error {
+  readonly permission: string;
+  readonly role: string | null;
+  readonly reason: string;
+  constructor(message: string, permission: string, role: string | null, reason: string) {
+    super(message);
+    this.permission = permission;
+    this.role = role;
+    this.reason = reason;
+  }
+}
+
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
 
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
@@ -325,6 +338,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         this.#pending.delete(frame.id);
         clearTimeout(p.timer);
         if (frame.ok) p.resolve(frame.value);
+        else if (frame.code === 'forbidden') p.reject(new Forbidden(frame.error, frame.permission ?? '', frame.role ?? null, frame.reason ?? ''));
         else p.reject(new Error(frame.error));
         break;
       }

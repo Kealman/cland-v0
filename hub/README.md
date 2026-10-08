@@ -37,7 +37,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` and re-indexes hand edits, holds claims. |
 | `src/tracker/import-github.ts` | The hub's side of the GitHub import (`task.import`): issues to items, found again by their `github` reference, written only when their text changes. |
 | `src/tracker/requests.ts` | The `task.*` request frames and their handler, called from the dispatcher for spokes and clients alike. |
-| `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve [--stdio]`. |
+| `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve [--stdio]`, `audit`. |
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
 | `src/cli/session.ts` | `cland session launch`, `list`, `attach`, `stop`, `resume`. |
 | `src/cli/role.ts` | `cland role set`, `clear`, `list`. |
@@ -46,6 +46,8 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/roles/config.ts` | `.cland/roles.toml`: parsed (smol-toml), written with the defaults when missing, watched and read again when it changed. |
 | `src/roles/default-roles.ts` | The default `roles.toml`: the four roles' clauses, skills, launch defaults, permissions. |
 | `src/roles/clause.ts` | The text a holder reads when its clause (or its revocation) is delivered. |
+| `src/roles/permissions.ts` | The permission table: the tools each role may use and how far (scopes), seeded from spec 4.4; `decide`, which the dispatcher asks on every spoke tool call. |
+| `src/hub/audit.ts` | The audit record (every tool call, allowed or refused), its argument summary, and reading it back from the hub's log (`cland hub audit`). |
 | `src/cli/open.ts` | `cland open [dir]`, and `cland` with no command on a terminal: the project's hub started if none runs, then the workbench (`nvim/bin/cland-nvim`) on the project's root. |
 | `src/cli/hook.ts` | `cland hook <event>`, run from inside a launched session by its hooks and the mod; `cland hook bridge`, the mod's connection to the hub. |
 | `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
@@ -81,11 +83,11 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an id, a title, a status, a `standing` flag, at most one bound item, creation and activity times. Every message belongs to one, and the `deliver` frame carries it as `"topic":{"id":…,"title":…,"item":…}` (`item` only when bound; the spoke shows them as `topic`, `topic_title` and `topic_item` on the channel event).
 
 - **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming, deleting or closing them is refused. The system creates no other topic.
-- **Creation.** The human creates a topic from the UI (`topic.create`), an agent with the `topic.create` tool; a title is required (at most 200 characters). The id is `topic-<n>`. `item` binds the topic to a unit of work: the item must exist and be open, and has one topic at most, so a second `topic.create` for it is refused with the topic it has (`T-1 already has a topic: "…" (topic-1); one topic per unit of work: write there`). The binding is written into the item's file (`topic: topic-1`) through the tracker. A hub with no project has no tracker and refuses a binding. A topic with no message yet is listed last (a task's topic appears with its first message).
-- **Status** follows the direction of the messages (`src/hub/topics.ts`): a human message makes the topic `waiting for agent`; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask, #33, is answered by the human); a message from an agent the human's latest message addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open`: the `resolve` tool (meant for the Coordinator; who may call it is #30's) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. `ask` (#33) will make it `waiting for human`, and closing will cancel its open asks. Agents keeps `open`.
+- **Creation.** The human creates a topic from the UI (`topic.create`), an agent with the `topic.create` tool (the Coordinator any topic, an Implementer only one bound to its own item: the permission table below); a title is required (at most 200 characters). The id is `topic-<n>`. `item` binds the topic to a unit of work: the item must exist and be open, and has one topic at most, so a second `topic.create` for it is refused with the topic it has (`T-1 already has a topic: "…" (topic-1); one topic per unit of work: write there`). The binding is written into the item's file (`topic: topic-1`) through the tracker. A hub with no project has no tracker and refuses a binding. A topic with no message yet is listed last (a task's topic appears with its first message).
+- **Status** follows the direction of the messages (`src/hub/topics.ts`): a human message makes the topic `waiting for agent`; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask, #33, is answered by the human); a message from an agent the human's latest message addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open`: the `resolve` tool (the Coordinator's, by the permission table) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. `ask` (#33) will make it `waiting for human`, and closing will cancel its open asks. Agents keeps `open`.
 - **The warning.** While a message in a topic waits for a role nobody holds (a delivery queued under `@coordinator`), the topic carries `"warning":"no coordinator"` (`no reviewer`, … for another role). It clears when a session takes the role (its hello, or the human's `role.set`) and the queued delivery moves to it.
 - **Unread.** The human's unread count per topic is the messages from others since the human last read it: the UI sends `topic.read` when the thread is in view, and a message the human writes reads what came before it. It never moves back. Agents have no unread concept.
-- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses `to` when given, else its mentions: `@coordinator`, `@implementer`, `@reviewer`, `@qa` reach the role's live holders, `@<session-name>` that session (a session the hub knows); with no mention, the Coordinator. `@all` and globs stay text for the human; a mention that names no session and no role is reported as `unknown` and addresses nobody. Each address counts once, with or without its `@`. The addressed party answers with `send` and the topic's id, so the reply lands in the same topic.
+- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses `to` when given, else its mentions: `@coordinator`, `@implementer`, `@reviewer`, `@qa` reach the role's live holders, `@<session-name>` that session (a session the hub knows); with no mention, the Coordinator. `@all` and globs stay text for the human; a mention that names no session and no role is reported as `unknown` and addresses nobody. Each address counts once, with or without its `@`. The addressed party answers with `send` and the topic's id, so the reply lands in the same topic; a party other than the Coordinator answers to the Coordinator there (`to: ["coordinator"]`), since only the Coordinator writes to the human.
 - **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
 - **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
@@ -95,7 +97,7 @@ A session holds at most one role: Coordinator, Implementer, Reviewer or QA (spec
 
 ### `.cland/roles.toml`
 
-One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default), and `[<role>.permissions]` `tools`, recorded for #30 and not enforced yet. A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:
+One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default), and `[<role>.permissions]` `tools`, the permission list the hub enforces (see Permissions below; a role table without `tools` gets the built-in list). A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:
 
 | Role | Launch defaults | Skills |
 | --- | --- | --- |
@@ -152,12 +154,56 @@ Events, after `subscribe`:
 | `cland role clear <session>` | Revokes the session's role. |
 | `cland role list` | Each role with its launch defaults and holders, and the coordinator or `no coordinator`; `--json` for the raw value. |
 
+### Permissions
+
+The hub checks every spoke tool call against the calling session's role, as the hub holds it at that moment (spec 4.4): a `role.set` or `role.clear` changes what the session may do on its very next call, with no reconnect. The table is `[<role>.permissions] tools` in `roles.toml`; the built-in one (`src/roles/permissions.ts`) is what the defaults write. A grant is `tool` (all of it) or `tool:scope` (only that part):
+
+| Scope | Allows |
+| --- | --- |
+| `send:agents` | `send` to sessions (names, globs, roles, `all`) |
+| `send:human` | `send` with no `to`: to the human (`send` alone grants both) |
+| `task.claim:own` | claiming or releasing only the session's own item |
+| `task.comment:own` | plain comments (not verdicts) only on the session's own item |
+| `task.comment:verdict` | verdict comments (`verdict`, `result`, `run`) on any item |
+| `topic.create:own` | a topic only bound to the session's own item |
+
+The session's own item is one it claims (the tracker's claim, held by session id) or whose `assignee` is its name. An unknown tool or scope makes the file unreadable (the last good version stays in force). The defaults:
+
+| Role | Tools |
+| --- | --- |
+| Coordinator | `send`, `ask`, `resolve`, `topic.create`, `task.create`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.comment`, `session.launch` (and `session.list`), `role.handover`, `merge`, `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Implementer | `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Reviewer, QA | `send:agents`, `task.comment:verdict`, `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
+| no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
+
+`ask`, `role.handover`, `merge` and `artifact.create` have no frame yet: a spoke's frame for one is checked like any other, and an allowed one is then answered "unknown request type". `task.import` is the human's (the CLI). The heartbeat (`ping`) and acks are not tool calls. A hub with no project (no `roles.toml`) checks nothing. The UI and the CLI act as the human, whom the table does not restrict.
+
+A refused call is answered with a typed result, which the spoke hands the model as the tool's result (`isError`), and the hub posts a notice into the Agents topic, which the UI shows there:
+
+```json
+{"type":"result","id":"…","ok":false,"error":"forbidden: task.comment (Reviewer may only comment verdicts)","code":"forbidden","permission":"task.comment","role":"reviewer","reason":"Reviewer may only comment verdicts"}
+```
+
+`rev-1 [Reviewer] tried task.close T-12: forbidden (Reviewer may not use task.close)` (a hub message in `agents`, `from: "hub"`, addressed to nobody). `permission` names what was missing: `send:human`, `task.comment:verdict`, or the tool itself.
+
+### The audit log
+
+Every tool call the hub answers, a spoke's (allowed or refused) or the human's through the UI or the CLI, is an `audit` event in the hub's log (`.cland/log/hub.log`) until the journal (#34) takes it over in this shape:
+
+```json
+{"ts":"…","event":"audit","session":"rev-1","sessionId":"…","role":"reviewer","tool":"task.close","args":{"item":"T-12"},"outcome":"forbidden","permission":"task.close","reason":"Reviewer may not use task.close"}
+{"ts":"…","event":"audit","session":"human","sessionId":null,"role":"human","tool":"topic.send","args":{"to":["impl-1"],"topic":"general","textChars":42},"outcome":"ok","client":"ui"}
+```
+
+`outcome` is `ok`, `forbidden` or `error` (with `error`, what the tool answered). `args` keeps what the call was about (item ids, addressees, topic ids, names, flags; a CLI's `as`) and free text only as its length (`textChars`, `bodyChars`, `titleChars`, `commentChars`): never a message's text. `session` is the name at call time, `role` the role the hub held then. The hooks' `session.signal` and `session.bridge` are plumbing, not audited. The decision #13 rule on sub-agents (they may not call hub tools through their parent's spoke) is not enforceable over one MCP connection: the audit is how a violation shows.
+
+`cland hub audit [--session <name>] [--since <ISO time | 30s, 15m, 2h, 1d>] [--json]` prints the records, oldest first: one line each (`ts  rev-1 [reviewer]  task.close  item=T-12  forbidden task.close (…)`), or one JSON object per line. `--session human` selects the human's calls.
+
 ## Not here yet
 
 - **The rest of the human side.** Asks and their `waiting for human` (#33); `task.link --topic` writes the item's field only, it binds no topic; a loop-breaker mute is still only journalled, not shown in the UI.
-- **Roles, the rest.** Permissions per role are recorded in `roles.toml` but not enforced (#30); handover and the Coordinator's role requests come later. The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
+- **Roles, the rest.** Handover and the Coordinator's role requests come later; their permissions (`role.handover`) are in the table already. The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
-- **Adapters.** Permissions on `session.launch` (#30): anyone may launch for now.
 
 ## cland init and cland update
 
@@ -196,6 +242,7 @@ Run from a project's root, or anywhere inside it. The project root is the neares
 | `cland hub serve` | The hub in the foreground, logging JSON lines to stderr. This is what `start` runs. SIGTERM and SIGINT stop it gracefully. |
 | `cland hub serve --stdio` | The same, and also the UI's frames on stdin and stdout for the parent that spawned it (`--transport stdio` works too). Stdout carries frames only; the hub stops when stdin ends. It is still the project's hub: it binds the socket and writes `hub.json`, so sessions find it. When either listener cannot bind (a sandbox that forbids it, spec 4.2), it logs `listen-failed`, closes the other and goes on over stdio alone (below). |
 | `cland hub serve --stdio --no-listen` | Stdio alone: binds nothing. |
+| `cland hub audit` | The audit records in `.cland/log/hub.log`, oldest first; `--session <name>`, `--since <ISO time or 30m, 2h, 1d>`, `--json`. Reads the file: no hub needs to run. See Roles, The audit log. |
 
 A stdio hub without listeners still takes the project's lock: the store is one hub's alone. It writes no `hub.json` (nobody could reach it), plugs in no adapters (so `session.*` requests are refused: a launched session could never connect), and `hub.status` shows port 0 and an empty socket. While another hub holds the lock, `serve --stdio` does not proxy to it: it exits 1 before any frame, with `cland: a hub already runs for <root> (pid <n> holds …)` on stderr. A UI then talks to that hub over its socket, or stops it first.
 
@@ -366,8 +413,8 @@ What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/s
 
 | Request | Result `value` | Who |
 | --- | --- | --- |
-| `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"effort"?,"cwd"?}` | `{"process":HarnessProcess}`; a role's launch defaults fill the rest | UI, CLI, spokes (anyone until #30) |
-| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities,"codex":Capabilities},"coordinator"}` | UI, CLI, spokes |
+| `{"type":"session.launch","id":…,"name":…,"role"?,"model"?,"harness"?,"effort"?,"cwd"?}` | `{"process":HarnessProcess}`; a role's launch defaults fill the rest | UI, CLI, spokes whose role grants `session.launch` (the Coordinator) |
+| `{"type":"session.list","id":…}` | `{"processes":[HarnessProcess…],"adapters":{"claude-code":Capabilities,"opencode":Capabilities,"codex":Capabilities},"coordinator"}` | UI, CLI, spokes whose role grants `session.launch` |
 | `{"type":"session.attach","id":…,"session":…}` | `{"command":"claude attach 1a2b3c4d"}` | UI, CLI |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true}` | `{"found","reason"?,"process"}` | UI, CLI |

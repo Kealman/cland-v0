@@ -212,7 +212,8 @@ test('a Codex app-server that dies: the state turns unknown and the hub logs it 
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  // the Coordinator: the fake answers the human, which only the Coordinator may
+  const launched = await launch(ui, 'impl-1', { role: 'coordinator' });
   await presentAs(ui, 'impl-1', 'idle');
 
   await killDaemon(launched.pid as number);

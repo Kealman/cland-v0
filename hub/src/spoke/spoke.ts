@@ -18,7 +18,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
-import { HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
+import { Forbidden, HubClient, REQUEST_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { HEARTBEAT_MS, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
@@ -44,7 +44,7 @@ const TOOLS = [
   {
     name: 'topic.create',
     description:
-      "Open a topic for the human when a question has no fitting one (usually bound to your item). A title is required; `item` binds it to a unit of work (T-12), which has one topic at most. The topic shows in the human's list with its first message: write into it with send(topic).",
+      "Open a topic for the human when a question has no fitting one (usually bound to your item). A title is required; `item` binds it to a unit of work (T-12), which has one topic at most. The topic shows in the human's list with its first message: write into it with send(topic). The Coordinator may open any topic; an Implementer only one bound to its own item.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -56,7 +56,7 @@ const TOOLS = [
   },
   {
     name: 'resolve',
-    description: "Clear a topic's wait (waiting for agent, waiting for human) back to open, when nothing in it waits any more.",
+    description: "Clear a topic's wait (waiting for agent, waiting for human) back to open, when nothing in it waits any more. The Coordinator's tool.",
     inputSchema: { type: 'object', properties: { topic: { type: 'string', description: 'The topic id' } }, required: ['topic'] },
   },
   {
@@ -248,6 +248,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: false, error: `unknown tool ${req.params.name}` }, true);
       }
     } catch (err) {
+      // a refusal by the hub's permission table reaches the model typed: what was missing, for which role, why
+      if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
       return text({ ok: false, error: err instanceof Error ? err.message : String(err) }, true);
     }
   });

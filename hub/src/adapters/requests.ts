@@ -1,7 +1,7 @@
 // The `session.*` frames: launching and managing harness sessions (UI, CLI, spokes), and the signals and
 // bridge that come from inside a launched session (`cland hook`). Called from the dispatcher.
 //
-//   session.launch  {name, role?, model?, harness?, cwd?, effort?} → {process}   anyone may launch until #30; a role's
+//   session.launch  {name, role?, model?, harness?, cwd?, effort?} → {process}   the human, and a spoke whose role grants it; a role's
 //                                                              launch defaults (roles.toml) fill what is not given
 //   session.list    {}                                         → {processes, adapters: {<harness>: capabilities}, coordinator}
 //   session.attach  {session}                                  → {command}
@@ -25,7 +25,7 @@ export type SessionRequest =
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
 
-/** What a spoke may ask: launching is open to every session until permissions (#30); the rest is the UI's and the hooks'. */
+/** What a spoke may ask, when its role grants `session.launch` (the permission table, `roles/permissions.ts`); the rest is the UI's and the hooks'. */
 export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list']);
 
 const optString = (v: unknown) => v === undefined || typeof v === 'string';

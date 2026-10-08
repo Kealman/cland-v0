@@ -1,5 +1,5 @@
 // The project's role definitions, `.cland/roles.toml` (spec 4.4, ADR 0001): per role a clause, skills, launch
-// defaults and the permission list (#30 enforces it). Written with the defaults when missing, never rewritten;
+// defaults and the permission list (enforced by the hub on every spoke tool call: `permissions.ts`). Written with the defaults when missing, never rewritten;
 // watched, and read again before each use when it changed on disk, so the next launch or assignment uses
 // what the human last saved. A file that does not parse is logged and the last good version stays in force.
 import { existsSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
@@ -8,6 +8,7 @@ import { parse } from 'smol-toml';
 import { ROLE_NAMES } from '../names.ts';
 import type { LogFn } from '../log.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
+import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
 
 export type LaunchDefaults = {
   harness: string;
@@ -24,7 +25,8 @@ export type RoleDefinition = {
   clause: string;
   skills: string[];
   launch: LaunchDefaults;
-  /** The spoke tools the role may use. Recorded only: enforced from #30 on. */
+  /** The spoke tools the role may use, as grants (`tool` or `tool:scope`, see `permissions.ts`); enforced by the
+   *  dispatcher on every call. A role table with no `tools` list gets the built-in table's. */
   permissions: { tools: string[] };
 };
 
@@ -43,6 +45,17 @@ const optString = (v: unknown, where: string): string | null => {
   if (v === undefined) return null;
   if (typeof v !== 'string') throw new Error(`${where} must be a string`);
   return v.trim() || null;
+};
+
+/** A role's grants: each one checked against the table's tools and scopes; absent → the built-in list. */
+const grants = (v: unknown, role: string): string[] => {
+  if (v === undefined) return [...(DEFAULT_PERMISSIONS[role] ?? [])];
+  const list = strings(v, `${role}.permissions.tools`).map((g) => g.trim());
+  for (const g of list) {
+    const refusal = grantRefusal(g, `${role}.permissions.tools`);
+    if (refusal) throw new Error(refusal);
+  }
+  return [...new Set(list)];
 };
 
 /** Parse the file's text. Throws with the place that is wrong; a role the file leaves out takes its default. */
@@ -72,7 +85,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
       clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
       skills: strings(t.skills, `${role}.skills`),
       launch: { harness, model: optString(launch.model, `${role}.launch.model`), effort: optString(launch.effort, `${role}.launch.effort`) },
-      permissions: { tools: strings(permissions.tools, `${role}.permissions.tools`) },
+      permissions: { tools: grants(permissions.tools, role) },
     });
   }
   return out;

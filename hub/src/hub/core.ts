@@ -398,6 +398,16 @@ export class HubCore {
     this.#send(notice, name);
   }
 
+  /** A hub notice in a topic (a refused tool call in Agents): recorded and shown to subscribers, addressed to nobody. */
+  noticeInTopic(topicId: string, text: string): Message {
+    const topic = this.#topicOrThrow(topicId);
+    const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [], text, ts: this.#now().toISOString(), topic: topic.id };
+    this.#store.record(message, [], this.#now().getTime());
+    this.#store.touchTopic(topic.id, message.ts);
+    this.#emitMessage(message);
+    return message;
+  }
+
   setStatus(name: string, text: string): void {
     const c = this.#live.get(name);
     if (!c) throw new Error(`unknown session ${name}`);

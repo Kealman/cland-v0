@@ -11,7 +11,16 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #   exclusive    one holder at most (the Coordinator)
 #   [<role>.launch]       what \`cland session launch --role <role>\` uses when no harness or model is given:
 #                         harness (claude-code | codex | opencode), model ("" = the harness's default), effort
-#   [<role>.permissions]  the spoke tools the role may use; recorded here, enforced by the hub from #30 on
+#   [<role>.permissions]  tools: the spoke tools the role may use, enforced by the hub on every call. A grant is
+#                         "tool" (all of it) or "tool:scope" (only that part):
+#                           send:agents           to sessions only;  send:human  to the human (send with no \`to\`)
+#                           task.claim:own        claim only its own item (claimed by it, or assigned to it)
+#                           task.comment:own      plain comments only on its own item
+#                           task.comment:verdict  verdict comments (verdict, result, run) on any item
+#                           topic.create:own      topics bound only to its own item
+#                         A tool not listed is refused with a "forbidden" error, and the refusal shows in Agents.
+#                         Leave \`tools\` out to get the built-in list. ask, resolve, role.handover, merge and
+#                         artifact.create are checked once those tools exist.
 #
 # The hub re-reads this file when it changes: the next launch and the next assignment use the new values.
 # A file that does not parse is logged and the last good version stays in force.
@@ -34,7 +43,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "role.handover", "merge", "artifact.create", "history", "who", "status"]
+tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "role.handover", "merge", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
@@ -53,7 +62,7 @@ model = ""
 effort = ""
 
 [implementer.permissions]
-tools = ["send", "topic.create", "task.claim", "task.comment", "task.view", "task.list", "artifact.create", "history", "who", "status"]
+tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 
 [reviewer]
 skills = ["code-review"]
@@ -70,7 +79,7 @@ model = "gpt-6.1-sol"
 effort = "high"
 
 [reviewer.permissions]
-tools = ["send", "history", "who", "status", "task.view", "task.list", "task.comment", "artifact.create"]
+tools = ["send:agents", "task.comment:verdict", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 
 [qa]
 skills = ["diagnosing-bugs"]
@@ -87,5 +96,5 @@ model = "gpt-6-astra"
 effort = "high"
 
 [qa.permissions]
-tools = ["send", "history", "who", "status", "task.view", "task.list", "task.comment", "artifact.create"]
+tools = ["send:agents", "task.comment:verdict", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 `;
