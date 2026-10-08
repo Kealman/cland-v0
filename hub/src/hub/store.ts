@@ -2,6 +2,7 @@
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
 import type { Message } from '../protocol.ts';
+import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 
 /** A delivery to one addressee: delivered at once, queued for an offline session, or dropped past the TTL. */
 export type DeliveryState = 'delivered' | 'queued' | 'dropped';
@@ -37,6 +38,12 @@ create table if not exists deliveries (
   primary key (message_id, session)
 );
 create index if not exists deliveries_session on deliveries (session, state, queued_at);
+create table if not exists hygiene (
+  kind text not null,
+  key text not null,
+  value text not null,
+  primary key (kind, key)
+);
 `;
 
 /**
@@ -72,7 +79,7 @@ const toKnown = (r: Row): KnownSession => ({
   role: (r.role as string | null) ?? null,
 });
 
-export class Store {
+export class Store implements HygieneMemory {
   readonly #db: DatabaseSync;
 
   constructor(path: string = ':memory:') {
@@ -144,6 +151,17 @@ export class Store {
   /** The names holding a role, seen since `since` — a role as a tag resolves to these. */
   sessionsWithRole(role: string, since = 0): string[] {
     return (this.#db.prepare('select name from sessions where role = ? and last_seen >= ? order by name').all(role, since) as Row[]).map((r) => r.name as string);
+  }
+
+  /** Hygiene's state, as it last wrote it: rate windows, pair counts, mutes. */
+  hygieneRows(): HygieneRow[] {
+    return (this.#db.prepare('select kind, key, value from hygiene').all() as Row[]).map((r) => ({ kind: r.kind as HygieneRow['kind'], key: r.key as string, value: r.value as string }));
+  }
+
+  /** One piece of hygiene's state; null forgets it. */
+  saveHygiene(kind: HygieneRow['kind'], key: string, value: string | null): void {
+    if (value === null) this.#db.prepare('delete from hygiene where kind = ? and key = ?').run(kind, key);
+    else this.#db.prepare('insert into hygiene (kind, key, value) values (?, ?, ?) on conflict (kind, key) do update set value = excluded.value').run(kind, key, value);
   }
 
   /** Record a message and the state of each addressee's delivery. */

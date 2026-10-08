@@ -63,6 +63,7 @@ export class HubCore {
       ...(options.rateLimit ? { rateLimit: options.rateLimit } : {}),
       ...(options.loopBreaker ? { loopBreaker: options.loopBreaker } : {}),
       ...(options.maxTextBytes !== undefined ? { maxTextBytes: options.maxTextBytes } : {}),
+      memory: this.#store,
     });
   }
 

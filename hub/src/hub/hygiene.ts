@@ -1,5 +1,6 @@
 // Hygiene: the rate limit per session, the loop breaker per pair, the size cap. Pure bookkeeping
-// over a clock: the core asks it and acts on the answer.
+// over a clock: the core asks it and acts on the answer. With a memory (the hub's store) every change is
+// written through, so a restarted hub keeps a running mute, a pair's count and a session's rate window.
 //
 // TODO(config): the thresholds are constants for now; a later ticket moves them into the project's config.
 
@@ -9,6 +10,15 @@ export type LoopBreaker = { max: number; windowMs: number; muteMs: number };
 export const RATE_LIMIT: RateLimit = { max: 30, windowMs: 10 * 60 * 1000 };
 export const LOOP_BREAKER: LoopBreaker = { max: 20, windowMs: 5 * 60 * 1000, muteMs: 10 * 60 * 1000 };
 export const MAX_TEXT_BYTES = 8 * 1024;
+
+/** One piece of hygiene's state: a session's send instants, a pair's instants, or a pair's mute end. */
+export type HygieneRow = { kind: 'outbound' | 'pair' | 'mute'; key: string; value: string };
+
+/** Where hygiene keeps its state across restarts. */
+export interface HygieneMemory {
+  hygieneRows(): HygieneRow[];
+  saveHygiene(kind: HygieneRow['kind'], key: string, value: string | null): void;
+}
 
 export const pairKey = (a: string, b: string): string => [a, b].sort().join('|');
 const minutes = (ms: number): number => Math.round(ms / 60_000);
@@ -20,11 +30,31 @@ export class Hygiene {
   readonly #outbound = new Map<string, number[]>(); // session → send instants in the window
   readonly #pairs = new Map<string, number[]>(); // pair → agent-to-agent instants in the window
   readonly #muted = new Map<string, number>(); // pair → muted until
+  readonly #memory: HygieneMemory | null;
 
-  constructor(options: { rateLimit?: RateLimit; loopBreaker?: LoopBreaker; maxTextBytes?: number } = {}) {
+  constructor(options: { rateLimit?: RateLimit; loopBreaker?: LoopBreaker; maxTextBytes?: number; memory?: HygieneMemory } = {}) {
     this.#rate = options.rateLimit ?? RATE_LIMIT;
     this.#loop = options.loopBreaker ?? LOOP_BREAKER;
     this.#maxBytes = options.maxTextBytes ?? MAX_TEXT_BYTES;
+    this.#memory = options.memory ?? null;
+    for (const row of this.#memory?.hygieneRows() ?? []) {
+      try {
+        const value: unknown = JSON.parse(row.value);
+        if (row.kind === 'mute' && typeof value === 'number') this.#muted.set(row.key, value);
+        else if (Array.isArray(value) && value.every((v) => typeof v === 'number')) (row.kind === 'pair' ? this.#pairs : this.#outbound).set(row.key, value);
+      } catch {
+        /* an unreadable row is no state */
+      }
+    }
+  }
+
+  /** Write one map entry through to the memory (or forget it there when it is gone here). */
+  #save(kind: HygieneRow['kind'], key: string): void {
+    if (!this.#memory) return;
+    const map = kind === 'mute' ? this.#muted : kind === 'pair' ? this.#pairs : this.#outbound;
+    const value = map.get(key);
+    const empty = value === undefined || (Array.isArray(value) && value.length === 0);
+    this.#memory.saveHygiene(kind, key, empty ? null : JSON.stringify(value));
   }
 
   /** The reason a text may not be sent at all, or null. */
@@ -45,9 +75,11 @@ export class Hygiene {
     const stamps = (this.#outbound.get(session) ?? []).filter((t) => now - t < this.#rate.windowMs);
     this.#outbound.set(session, stamps);
     if (stamps.length >= this.#rate.max) {
+      this.#save('outbound', session);
       return `rate limit: ${this.#rate.max} messages in ${minutes(this.#rate.windowMs)} min — the window frees at ${new Date((stamps[0] as number) + this.#rate.windowMs).toISOString()}`;
     }
     stamps.push(now);
+    this.#save('outbound', session);
     return null;
   }
 
@@ -58,6 +90,7 @@ export class Hygiene {
     if (until === undefined) return null;
     if (until <= now) {
       this.#muted.delete(key);
+      this.#save('mute', key);
       return null;
     }
     // A hard cool-down, not "waiting for a human message": a message from a person only resets the count
@@ -71,10 +104,15 @@ export class Hygiene {
     const stamps = (this.#pairs.get(key) ?? []).filter((t) => now - t < this.#loop.windowMs);
     stamps.push(now);
     this.#pairs.set(key, stamps);
-    if (stamps.length <= this.#loop.max) return null;
+    if (stamps.length <= this.#loop.max) {
+      this.#save('pair', key);
+      return null;
+    }
     const until = now + this.#loop.muteMs;
     this.#muted.set(key, until);
     this.#pairs.delete(key);
+    this.#save('mute', key);
+    this.#save('pair', key);
     return until;
   }
 
@@ -82,12 +120,19 @@ export class Hygiene {
   unmute(a: string, b: string): boolean {
     const key = pairKey(a, b);
     this.#pairs.delete(key);
-    return this.#muted.delete(key);
+    const lifted = this.#muted.delete(key);
+    this.#save('pair', key);
+    this.#save('mute', key);
+    return lifted;
   }
 
   /** A human wrote to a session: every pair it is in starts counting afresh. The mute itself runs its course. */
   humanTouched(session: string): void {
-    for (const key of [...this.#pairs.keys()]) if (key.split('|').includes(session)) this.#pairs.delete(key);
+    for (const key of [...this.#pairs.keys()]) {
+      if (!key.split('|').includes(session)) continue;
+      this.#pairs.delete(key);
+      this.#save('pair', key);
+    }
   }
 
   get loopBreaker(): LoopBreaker {
