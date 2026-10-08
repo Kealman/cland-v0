@@ -3,8 +3,10 @@
 -- state; a row knows what it shows (item, session, topic), which Enter and the motions read.
 --
 -- Today: items from `task.list` (the tree, filters and badges are #36); sessions from `session.list` and
--- the connected spokes, their states with the adapter's `heuristic` qualifier; topics from `topic.list`;
--- the inbox is an empty placeholder until asks exist (#33).
+-- the connected spokes (#28): name [Role], harness, model, the state with the adapter's `heuristic`
+-- qualifier, usage where the adapter reports it, the claimed item; `unknown` once the process is gone. Its
+-- keys: l launches, C-v attaches in a split, x stops after a confirmation line, c shows the capability
+-- table. Topics from `topic.list`; the inbox is an empty placeholder until asks exist (#33).
 local api = vim.api
 local state = require('cland.state')
 local hl = require('cland.hl')
@@ -179,7 +181,7 @@ function M.session_meta_parts(s)
     head[#head + 1] = s.model
   end
   local tail = M.session_words(s)
-  local usage = M.usage_text(s.usage)
+  local usage = s.live and M.usage_text(s.usage) or nil
   if usage then
     tail = tail .. ' · ' .. usage
   end

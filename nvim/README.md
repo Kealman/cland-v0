@@ -1,6 +1,6 @@
 # nvim
 
-The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. Later tickets fill what is a placeholder today: the items panel's tree, the item view and the board (#36), the inbox (#33), the Agents log (#34), the session launcher (#28), the picker's items and artifacts.
+The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. Later tickets fill what is a placeholder today: the items panel's tree, the item view and the board (#36), the inbox (#33), the Agents log (#34), the picker's items and artifacts.
 
 ## Starting it
 
@@ -33,9 +33,11 @@ The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that or
 - **The status line** (global) always starts with the centre view's context, then the hub's state (`connected`, `reconnecting`, `starting`, …), the sessions by state, the active preset and the latest notice. cland's notices go there, never to the message area: `vim.notify` is replaced.
 - **The centre** shows one view at a time: a topic thread with its composer, a session terminal, or a placeholder for the item view, the board, the Agents log and the inbox full width. `␣␣` returns to the previous one.
 - **Panels.** Items on the left (from `task.list`: a state glyph, the id, the title, the claim). On the right one of: the inbox (a placeholder), sessions (name, role, harness, model, the state with `(heuristic)` when the adapter's capability table says so, the claimed item) and topics (`topic.list`). Topics can also dock above the right panel. Opening the workbench shows General with the sessions panel.
+- **Sessions** (#28). The panel shows one row per session: the name with its role (`rev-1 [Reviewer]`, the hub's `label`), the claimed item (or `free`), then the harness, the model, the state with `(heuristic)` when the adapter's capability table says so, and the usage where the adapter reports it (`$1.80` or `12.3k tok`). A launched session whose process died shows `✗ … unknown · died` (the hub's log has `harness-exited`), one stopped `× … unknown · stopped`. The last launch or stop, or what the hub refused, is a notice atop the panel. The panel follows `session.state` and `session.role` events and the periodic refresh.
+- **The launcher** (`␣l`, or `l` in the sessions panel, or `:Cland launch [name]`) is a floating form: name, role, harness (`claude-code` \| `codex` \| `opencode`), model, directory (the project root) and effort, one line each. Typing a role (or `C-n`/`C-p` on the role and harness lines) fills the harness, model and effort from the role's launch defaults (`role.list`, from `.cland/roles.toml`); a harness other than the role's clears the model and effort meant for the role's. `Tab`/`S-Tab` move between fields, `Enter` sends `session.launch` (empty fields are left to the hub), `Esc` cancels. What the hub refuses (a name in use, the Coordinator held, an unknown harness) shows under the fields and atop the panel; the form stays open to fix it. With no role the first `Enter` warns that the hub will refuse the session's spoke until one is assigned, and the second launches.
 - **Session terminals** only attach: the terminal runs the command `session.attach` returns (`claude attach <id>`), never the harness. Closing the terminal or quitting ends the attach client, not the session. A session terminal is never below three rows.
 - **`:restart`** writes the layout and the attached sessions to `stdpath('state')/restart/<project hash>.json` (ExitPre, `v:exitreason` "restart"). The new instance reads them back (`v:startreason` "restart"), builds the shell again over the Vim session `:restart` sources (SessionLoadPost; `'sessionoptions'` is only `curdir`, so no terminal is re-run from it), and runs the attach commands again.
-- **Hub data** comes from `topic.list`, `topic.history`, `session.list`, `hub.status` (sessions nobody launched) and `task.list` on every connect and every 5 s (`CLAND_REFRESH_MS`), and from the `message`, `delivery`, `session.state`, `session.role`, `role.vacant` and `role.filled` events. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
+- **Hub data** comes from `topic.list`, `topic.history`, `session.list`, `hub.status` (sessions nobody launched), `role.list` (the launch defaults) and `task.list` on every connect and every 5 s (`CLAND_REFRESH_MS`), and from the `message`, `delivery`, `session.state`, `session.role`, `role.vacant` and `role.filled` events. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
 
 ### Keys
 
@@ -50,8 +52,10 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣g` `␣c` | anywhere | General; the composer of the current thread, in Insert mode. |
 | `␣␣` | anywhere | The previous centre view; twice returns, like `CTRL-^`. |
 | `gi` `gt` `gs` | any panel or view | The item, topic or session of the reference under the cursor (`T-12`, a topic's title, a session's name), else of the row, else of the centre view. A session's item is the one it claims, an item's session the one claiming it, a topic's session its Coordinator. `gs` shows the session in Normal mode. |
-| `␣p` | anywhere | The picker over topics and sessions: type to filter (fuzzy), `Tab` and `S-Tab` switch the kind, `↵` opens (a session attaches in Terminal mode), `Esc` closes. |
+| `␣p` | anywhere | The picker over topics and sessions: type to filter (fuzzy), `Tab` and `S-Tab` switch the kind, `↵` opens (a session attaches in Terminal mode), `Esc` closes. Sessions waiting for the human come first; the filter matches the name, the role and the harness. |
 | `↵` | panels | Open the row in the centre: a session attaches in Terminal mode, a topic opens its thread, an item its view. |
+| `␣l` | anywhere | The session launcher (above). |
+| `l` `C-v` `x` `c` | sessions panel | Launch a session; attach the row's session in a vertical split beside the centre (Terminal mode; the centre view stays); stop it, after a line in the panel asks (`y` stops through `session.stop`, `n` or `Esc` keeps it); its adapter's capability table in a float (each state signal and optional capability as `reliable`, `heuristic` or `none`; `q` closes). |
 | `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. |
 | `C-\ C-n` | session terminal | Leave Terminal mode; until then every key goes to the session. |
 
@@ -62,6 +66,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `:Cland preset charting`, `watch`, `steady` | Examples of the three stages, never modes. charting: items beside General, the right panel hidden. watch: items, General, topics docked above the inbox. steady: the board and the inbox. Everything still toggles afterwards. |
 | `:Cland view thread <topic>`, `session <name>`, `item <id>`, `board`, `log`, `inbox` | A centre view. |
 | `:Cland panel items`, `inbox`, `sessions`, `topics`, `dock` | The panel keys as a command. |
+| `:Cland launch [name]` | The session launcher, the name filled in. |
 | `:Cland refresh`, `:Cland help` | Ask the hub again; the keys. |
 
 ## The pinned Neovim
@@ -96,7 +101,8 @@ In `init.lua`, and in the shell:
 | `lua/cland/bars.lua` | The top bar (tabline), the status line, the panel headers (winbars), with the bar-background twins of the highlight groups. |
 | `lua/cland/panels.lua` | The items, sessions, topics and inbox panels: drawn from the state, each row knowing what it shows; `↵` opens it. |
 | `lua/cland/views.lua` | One topic view per topic, and the placeholder views (item, board, Agents log, inbox full width). |
-| `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. |
+| `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. The panel's stop (`session.stop` after the confirmation line) and the capability table float. |
+| `lua/cland/launcher.lua` | The session launcher form: the fields, the role's launch defaults, `session.launch` and its refusals. |
 | `lua/cland/picker.lua` | The floating picker over topics and sessions. |
 | `lua/cland/motions.lua` | `gi`, `gt`, `gs`: the reference under the cursor, the row, or the view, then the dispatch. |
 | `lua/cland/restart.lua` | The restart snapshot file. |
@@ -114,7 +120,8 @@ npm run test:nvim          # from the repository root; `npm test` runs it after 
 Every test starts the real client headless as `nvim --clean -u nvim/init.lua --headless --listen <socket>`, under `NVIM_APPNAME=cland`, attaches a 160x45 UI over msgpack-RPC (`test/rpc.ts`), drives it with `nvim_input` and reads the screen back with `screenstring()` (`test/harness.ts`). When a test runs `:restart`, the harness follows the UI's `restart` event to the new server, as a terminal UI does.
 
 - `test/client.test.ts` runs against a real hub (`cland hub start`) in a temporary project and connects real spokes over MCP: sending, delivery stages, Shift+Enter in the composer, the stdio transport, a clean configuration, autostart (also over a stale `hub.json`), following a hub restart.
-- `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the picker, `gi`/`gt`/`gs`, the presets, an event while typing, a burst of events without a hit-enter prompt, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, and a real `:restart` re-attaching the session terminal.
+- `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the picker, `gi`/`gt`/`gs`, the presets, an event while typing, a burst of events without a hit-enter prompt, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, a real `:restart` re-attaching the session terminal, and the sessions (#28): the launcher's frame with typed values and role defaults, refusals in the form and the panel, the roleless warning, `C-v`, `x` with its confirmation line and `session.stop`, `c`, `unknown` from an event and from a dead process, the picker's order and filters.
+- `test/sessions.test.ts` runs against a real hub with the three fake harnesses of `hub/test/fakes` first on the PATH: Claude Code, Codex and OpenCode sessions launched from the launcher, each in the panel with the model chosen and a live state, attached with Enter (each fake's attach client prints its own line in the terminal), a killed one `unknown · died` with `harness-exited` in the hub's log, and `x` `y` stopping one (`session-stopped`).
 - `test/nvim-path.test.ts`: the resolver from a path with a space, `#` and `%`.
 
 The binary comes from `CLAND_NVIM`, else the cache, else a download as above. When none of these works, for example offline with an empty cache, the client tests are skipped with the reason.

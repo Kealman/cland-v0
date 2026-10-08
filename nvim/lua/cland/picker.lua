@@ -1,7 +1,8 @@
 -- The one floating picker (spec section 5, Pickers.dc.html): `␣p` over topics and sessions (items and
 -- artifacts join with #36 and the artifacts ticket). Two floats: a one-line input titled with the kinds,
 -- and the list. Tab and Shift+Tab switch the kind, typing filters fuzzily (matchfuzzypos), Up/Down or
--- C-n/C-p move, Enter opens, Esc closes.
+-- C-n/C-p move, Enter opens, Esc closes. The sessions kind lists the sessions waiting for the human first and
+-- matches the label, the role and the harness, so a name, a role or a harness narrows it.
 local api = vim.api
 local state = require('cland.state')
 

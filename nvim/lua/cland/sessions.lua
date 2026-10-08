@@ -1,7 +1,8 @@
 -- Session terminals (spec 4.1, ADR 0005). A terminal buffer only attaches: it runs the adapter's attach
 -- command (`session.attach`, e.g. `claude attach <id>`), never the harness itself, so closing the terminal,
 -- quitting Neovim or `:restart` ends the attach client and leaves the session to the hub. After a restart
--- the shell runs the attach command again for every session that was attached.
+-- the shell runs the attach command again for every session that was attached. Also the sessions panel's
+-- stop (`session.stop` after a confirmation line in the panel) and the capability table float.
 local api = vim.api
 local state = require('cland.state')
 

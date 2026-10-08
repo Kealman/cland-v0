@@ -4,7 +4,9 @@
 // scripted scenario. The client spawns it through CLAND_COMMAND as `<stub> hub serve --stdio`.
 //
 //   CLAND_STUB_SCENARIO  a JSON file: topics, messages per topic, processes, adapters, presence, items,
-//                        attach commands per session, and how topic.send answers (ok | refuse | hold)
+//                        attach commands per session, roles, and how topic.send answers (ok | refuse | hold),
+//                        session.launch (adds an idle process, or launchError) and session.stop (marks it
+//                        stopped and emits session.state unknown, or stopError)
 //   CLAND_STUB_CONTROL   a Unix socket the test drives it through, one JSON line per command:
 //                        {"emit": frame}       push an event frame to the client
 //                        {"set": {...}}        replace parts of the scenario (processes, items, send, …)
