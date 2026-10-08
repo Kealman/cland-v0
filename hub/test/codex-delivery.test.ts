@@ -101,3 +101,28 @@ test("the launch's effort reaches the app-server with the first turn", async (t)
   await idle(ui, 'impl-1');
   assert.match(await fake.log(given.pid as number), /turn\/start input effort=low/);
 });
+
+for (const [what, text] of [
+  ['an answer that is not JSON', 'please garble the answer'],
+  ['a connection dropped instead of the answer', 'please drop the connection'],
+] as const) {
+  test(`${what} after turn/start was accepted is uncertain: the turn is never replayed`, async (t) => {
+    const root = await tempProject(t);
+    const fake = await fakeCodex(t, { env: { FAKE_CODEX_REFUSE_MS: '300' } });
+    const { discovery } = await startDaemon(t, root, fake.env);
+    const ui = await connectUi(t, discovery);
+    assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+    const coord = await launch(ui, 'coord', { role: 'coordinator' });
+    await idle(ui, 'coord');
+
+    const id = await send(ui, text, 'coord');
+    await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`, 15_000);
+    await eventually('uncertain', async () => ((await hubLog(root)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
+    // the connection is back and the session idle: nothing is replayed
+    await idle(ui, 'coord');
+    await sleep(1500);
+    assert.equal(pongs(ui, text), 1, 'the message ran once');
+    assert.equal(((await fake.log(coord.pid as number)).match(new RegExp(`item: <channel [^\\n]*>\\n${text}`, 'g')) ?? []).length, 1);
+    assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
+  });
+}

@@ -3,7 +3,8 @@
 // plain JSON lines on the socket get no answer; the socket speaks WebSocket.
 //
 // A request that got no answer is ambiguous (the server may have accepted it): callers never replay a turn on
-// their own after a timeout or a disconnect.
+// their own after a timeout, a disconnect, a socket error or a frame that is not JSON (all `RpcNoAnswer`). Only a
+// request that could not be written (not connected, or its write failed) is a plain, retryable Error.
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
 
@@ -53,13 +54,14 @@ export class AppServerClient extends EventEmitter {
       try {
         frame = JSON.parse(String(data));
       } catch {
-        this.#fail(new Error('the app-server sent a frame that is not JSON'));
+        this.#fail(new RpcNoAnswer('the app-server sent a frame that is not JSON; a pending request may have been accepted'));
         socket.close(1002);
         return;
       }
       this.#receive(frame);
     });
-    socket.on('error', (err) => this.#fail(err));
+    // every pending request was written: whatever breaks the connection now, the server may have acted on it
+    socket.on('error', (err) => this.#fail(new RpcNoAnswer(`the app-server connection failed (${err.message}); a pending request may have been accepted`)));
     socket.on('close', () => {
       this.#closed = true;
       this.#fail(new RpcNoAnswer('the app-server connection closed; a pending request may have been accepted'));
@@ -112,6 +114,7 @@ export class AppServerClient extends EventEmitter {
         reject(new RpcNoAnswer(`the app-server did not answer ${method} within ${timeoutMs} ms; it may have accepted it`));
       }, timeoutMs);
       this.#pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
+      // a write that failed never reached the server whole: that one alone stays retryable (a plain Error)
       this.#socket.send(JSON.stringify({ id, method, params }), (err) => {
         if (err) this.#reject(id, err);
       });
