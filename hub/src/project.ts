@@ -29,6 +29,7 @@ export const GITIGNORE = `${MANAGED_MARK} — rewritten by cland; remove this li
 # Volatile hub state: never committed. tasks/, roles.toml and config.toml are.
 hub.db*
 hub.json
+hub.lock*
 hub.sock
 secret
 journal.jsonl
@@ -48,6 +49,8 @@ export type Layout = {
   db: string;
   secret: string;
   discovery: string;
+  /** The hub's lock: held by the one hub serving the project, from before it prepares anything until it is gone. */
+  lock: string;
   gitignore: string;
   logDir: string;
   log: string;
@@ -65,6 +68,7 @@ export function layout(root: string): Layout {
     db: join(dir, 'hub.db'),
     secret: join(dir, 'secret'),
     discovery: join(dir, 'hub.json'),
+    lock: join(dir, 'hub.lock'),
     gitignore: join(dir, '.gitignore'),
     logDir: join(dir, 'log'),
     log: join(dir, 'log', 'hub.log'),

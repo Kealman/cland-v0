@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWith, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -190,7 +190,7 @@ test('after a hub restart, resume re-finds the running session through the proce
   await presentAs(ui, 'coord', 'idle');
   ui.close();
 
-  assert.equal((await clandWith(root, fake.env, 'hub', 'stop')).code, 0);
+  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
   assert.equal((await fake.sessions()).length, 1, 'the session outlives the hub');
   const second = await startDaemon(t, root, fake.env);
   assert.notEqual(second.discovery.pid, first.discovery.pid);

@@ -2,6 +2,8 @@
 // (Unix socket). Field names follow the item's frontmatter (`blocked_by`), so a frame reads like the file.
 import { KINDS, parseVerdictFilter, STATES, type Kind, type State } from './item.ts';
 import type { HubFrame } from '../protocol.ts';
+import { nameRefusal, ROLE_NAMES } from '../names.ts';
+import type { Connection } from '../hub/core.ts';
 import { TrackerError, type Actor, type Tracker, type VerdictInput } from './tracker.ts';
 import { importIssues, type ImportRequest } from './import-github.ts';
 
@@ -121,27 +123,49 @@ export function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: A
   }
 }
 
-/** The actor a CLI frame names, or the human. */
-export function actorOf(frame: TaskRequest, fallback: string): Actor {
+/** The person at the CLI when a frame names nobody. */
+export const HUMAN = 'human';
+
+/**
+ * The actor a CLI frame names (`as`), or the human. The name and the role land in the item file (a comment's
+ * header, a verdict's `by:`), so they are held to the session-name grammar and the role names: anything else
+ * is refused, never written. A CLI actor is not a session: its identity is `cli:<name>` (`human` for the human).
+ */
+export function actorOf(frame: TaskRequest): Actor {
   const a = frame.as as unknown;
-  if (typeof a === 'object' && a !== null && isStr((a as ActorField).name) && (a as ActorField).name.trim()) {
-    const role = (a as ActorField).role;
-    return { name: (a as ActorField).name.trim(), role: isStr(role) && role.trim() ? role.trim() : null };
+  if (a === undefined || a === null) return { id: HUMAN, name: HUMAN, role: null };
+  if (typeof a !== 'object' || !isStr((a as ActorField).name)) throw new TrackerError('`as` must be { name, role? }');
+  const name = (a as ActorField).name;
+  const role = (a as ActorField).role ?? null;
+  if (name !== HUMAN) {
+    const refusal = nameRefusal(name);
+    // quoted as JSON: the refused text itself is never echoed raw
+    if (refusal) throw new TrackerError(`cannot act as ${JSON.stringify(name)}: ${refusal.replace(`name "${name}"`, 'the name')}`);
   }
-  return { name: fallback, role: null };
+  if (role !== null && !(isStr(role) && ROLE_NAMES.includes(role))) throw new TrackerError(`role ${JSON.stringify(role)} is not one of ${ROLE_NAMES.join(', ')}`);
+  return { id: name === HUMAN ? HUMAN : `cli:${name}`, name, role };
 }
+
+/** The actor a spoke's frame acts as: always its own session, held by its session id (by its name when it gave none). */
+export const sessionActor = (c: Pick<Connection, 'name' | 'sessionId' | 'role'>, unknownId: string): Actor => ({
+  id: c.sessionId === unknownId ? `name:${c.name}` : c.sessionId,
+  name: c.name,
+  role: c.role,
+});
 
 /** A request's error for the wire: a TrackerError's own message, anything else prefixed. */
 export const taskErrorMessage = (err: unknown): string => (err instanceof TrackerError ? err.message : `tracker failure: ${err instanceof Error ? err.message : String(err)}`);
 
 /**
  * The result frame for one task request: the edges call this and send what it returns. `tracker` is
- * absent on a hub started without a project (the in-process test hub).
+ * absent on a hub started without a project (the in-process test hub). `actor` is a spoke's session, or
+ * `client` for a frame from the UI or the CLI, which acts as its `as` field.
  */
-export function answerTask(tracker: Tracker | undefined, frame: TaskRequest, actor: Actor): HubFrame {
+export function answerTask(tracker: Tracker | undefined, frame: TaskRequest, actor: Actor | 'client'): HubFrame {
   if (!tracker) return { type: 'result', id: frame.id, ok: false, error: 'this hub has no tracker: it was started without a project (`cland hub start` serves one)' };
   try {
-    return { type: 'result', id: frame.id, ok: true, value: handleTaskRequest(tracker, frame, actor) };
+    // a client's frame names who it acts as, checked here so a bad one is a failed result like any other
+    return { type: 'result', id: frame.id, ok: true, value: handleTaskRequest(tracker, frame, actor === 'client' ? actorOf(frame) : actor) };
   } catch (err) {
     return { type: 'result', id: frame.id, ok: false, error: taskErrorMessage(err) };
   }

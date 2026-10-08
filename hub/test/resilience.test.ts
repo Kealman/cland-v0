@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import type { Socket } from 'node:net';
-import { DOCUMENTED_TOOLS, SPOKE_ENTRY, startHub, spawnSpoke, TEST_SECRET } from './harness.ts';
+import { cland, DOCUMENTED_TOOLS, SPOKE_ENTRY, startDaemon, startHub, spawnSpoke, tempProject, TEST_SECRET, waitForAbsence } from './harness.ts';
 import { createHub } from '../src/hub/server.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 
@@ -187,7 +187,13 @@ test('a replaced spoke whose socket is still closing cannot act under the name i
     await until(async () => fresh.frames.some((f) => f.id === 'f1'), (ok) => ok);
     raw.write(maskedTextFrame(JSON.stringify({ type: 'status', id: 's1', text: 'stale overwrite' })));
     await new Promise((r) => setTimeout(r, 200));
-    assert.equal(hub.core.presence().find((p) => p.name === 'alpha')?.status, 'the fresh one', 'the replaced socket changed nothing');
+    // asked over the wire, as any session would
+    fresh.ws.send(JSON.stringify({ type: 'who', id: 'w1' }));
+    const who = await until(
+      async () => fresh.frames.find((f) => f.id === 'w1') as { value: { sessions: Array<{ name: string; status: string | null }> } } | undefined,
+      (f) => f !== undefined,
+    );
+    assert.equal(who?.value.sessions.find((p) => p.name === 'alpha')?.status, 'the fresh one', 'the replaced socket changed nothing');
   } finally {
     stale.ws.terminate();
     fresh.ws.terminate();
@@ -196,87 +202,118 @@ test('a replaced spoke whose socket is still closing cannot act under the name i
 });
 
 test('a spoke acks every deliver and hands a message re-sent under the same id to its session once', async () => {
-  // a minimal hub over the real wire: welcome, then the same deliver twice
-  const { WebSocketServer } = await import('ws');
-  const wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
-  await new Promise<void>((resolve) => wss.once('listening', () => resolve()));
-  const acks: string[] = [];
-  const message = { id: 'm-1', from: 'alpha', fromKind: 'agent', via: 'session', to: ['beta'], text: 'only once, please', ts: new Date().toISOString() };
-  wss.on('connection', (ws) => {
-    ws.on('message', (d) => {
-      const f = JSON.parse(String(d)) as { type: string; id?: string };
-      if (f.type === 'hello') {
-        ws.send(JSON.stringify({ type: 'welcome', name: 'beta', presence: [] }));
-        ws.send(JSON.stringify({ type: 'deliver', id: message.id, message }));
-        ws.send(JSON.stringify({ type: 'deliver', id: message.id, message }));
-      }
-      if (f.type === 'ack' && f.id) acks.push(f.id);
-    });
-  });
-  const port = (wss.address() as { port: number }).port;
-  const spoke = await spawnSpoke({ hub: { url: `ws://127.0.0.1:${port}` }, name: 'beta', sessionId: 'sess-b' });
+  // The real hub re-sends a message whose ack it never got. Beta's spoke is paused, so the deliver waits
+  // unread in its socket while the hub's heartbeat sweep drops that socket; resumed, the spoke reads the
+  // first copy (its ack goes to a socket the hub has closed), reconnects, and is sent the message again.
+  const events: Array<Record<string, unknown>> = [];
+  const hub = await startHub({ heartbeatMs: 100, log: (e) => void events.push(e) });
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 40 });
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', heartbeatMs: 40 });
+  let paused = false;
   try {
-    await until(async () => acks.length, (n) => n >= 2);
-    assert.deepEqual(acks, ['m-1', 'm-1'], 'both copies acked');
-    await spoke.waitForEvent((e) => e.params.content === 'only once, please');
+    await alpha.waitForPresence(['alpha', 'beta']);
+    process.kill(beta.pid, 'SIGSTOP');
+    paused = true;
+    const sent = await alpha.call<{ outcomes: Array<{ outcome: string }> }>('send', { to: ['beta'], text: 'only once, please' });
+    assert.equal(sent.outcomes[0]?.outcome, 'delivered', 'the frame went out on the open socket');
+    await waitForAbsence(alpha, 'beta');
+    process.kill(beta.pid, 'SIGCONT');
+    paused = false;
+
+    await beta.waitForEvent((e) => e.params.content === 'only once, please');
+    await alpha.waitForPresence(['beta']);
+    const id = await until(
+      async () => events.find((e) => e.event === 'acked' && e.session === 'beta')?.id,
+      (v) => v !== undefined,
+    );
+    assert.ok(id, 'the second copy was acked');
+    assert.ok(
+      events.some((e) => e.event === 'flushed' && e.session === 'beta'),
+      'the hub sent the unacked message again on the next hello',
+    );
+    await until(async () => beta.log(), (log) => new RegExp(`message ${String(id)} was sent again`).test(log));
+    assert.match(beta.log(), new RegExp(`message ${String(id)} was sent again; acked again`), 'the spoke received both copies');
     await new Promise((r) => setTimeout(r, 100));
-    assert.equal(spoke.events.length, 1, 'the session saw it once');
+    assert.equal(beta.events.filter((e) => e.params.content === 'only once, please').length, 1, 'the session saw it once');
   } finally {
-    await spoke.close();
-    for (const c of wss.clients) c.terminate();
-    await new Promise<void>((resolve) => wss.close(() => resolve()));
+    if (paused) process.kill(beta.pid, 'SIGCONT');
+    await alpha.close();
+    await beta.close();
+    await hub.close();
   }
 });
 
-/** A hub that welcomes every hello and then never answers anything: alive on the wire, dead in the protocol. */
-const silentHub = async () => {
+/** A paused (SIGSTOP) process answers nothing: its sockets stay open, every frame to it goes unread. */
+const pause = (pid: number) => process.kill(pid, 'SIGSTOP');
+const resume = (pid: number) => {
+  try {
+    process.kill(pid, 'SIGCONT');
+  } catch {
+    /* gone already: the test's cleanup killed it */
+  }
+};
+
+test('a request the hub never answers fails at its deadline instead of hanging the tool call', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', requestTimeoutMs: 300 });
+  t.after(() => spoke.close());
+  await spoke.waitForPresence(['alpha']);
+  pause(discovery.pid);
+  t.after(() => resume(discovery.pid));
+  const started = Date.now();
+  const who = await spoke.call<{ ok: boolean; error?: string }>('who');
+  assert.equal(who.ok, false);
+  assert.match(who.error ?? '', /the hub did not answer within 0\.3 s/);
+  assert.ok(Date.now() - started < 3000, 'bounded by the deadline');
+  resume(discovery.pid);
+  // the hub is back: the same spoke works again
+  await spoke.waitForPresence(['alpha']);
+});
+
+test('a spoke whose heartbeats go unanswered closes the connection and reconnects', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 100 });
+  t.after(() => spoke.close());
+  await spoke.waitForPresence(['alpha']);
+  const before = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout) as { sessions: Array<{ name: string; connectedAt: string }> };
+  pause(discovery.pid);
+  t.after(() => resume(discovery.pid));
+  await until(async () => spoke.log(), (log) => /missed 2 heartbeat replies/.test(log));
+  assert.match(spoke.log(), /missed 2 heartbeat replies/);
+  resume(discovery.pid);
+  // a fresh hello: the hub shows alpha connected again, since a later time
+  const after = await until(
+    async () => JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout) as { sessions: Array<{ name: string; connectedAt: string }> },
+    (s) => s.sessions.some((p) => p.name === 'alpha' && p.connectedAt > (before.sessions[0]?.connectedAt ?? '')),
+    10_000,
+  );
+  assert.deepEqual(after.sessions.map((p) => p.name), ['alpha']);
+  assert.ok((after.sessions[0]?.connectedAt ?? '') > (before.sessions[0]?.connectedAt ?? ''), JSON.stringify({ before, after }));
+});
+
+test('a hub that takes the connection but never welcomes it is left at the welcome deadline, and the spoke reconnects', async () => {
+  // Scripted on purpose: the real hub always answers a hello (with a welcome or a refusal) as soon as it
+  // runs, and a paused one never completes the WebSocket upgrade. Only a scripted peer upgrades and then
+  // stays silent.
   const { WebSocketServer } = await import('ws');
   const wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
   await new Promise<void>((resolve) => wss.once('listening', () => resolve()));
   let hellos = 0;
   wss.on('connection', (ws) => {
     ws.on('message', (d) => {
-      if ((JSON.parse(String(d)) as { type: string }).type !== 'hello') return;
-      hellos += 1;
-      ws.send(JSON.stringify({ type: 'welcome', name: 'alpha', presence: [] }));
+      if ((JSON.parse(String(d)) as { type: string }).type === 'hello') hellos += 1;
     });
   });
-  return {
-    url: `ws://127.0.0.1:${(wss.address() as { port: number }).port}`,
-    hellos: () => hellos,
-    close: async () => {
-      for (const c of wss.clients) c.terminate();
-      await new Promise<void>((resolve) => wss.close(() => resolve()));
-    },
-  };
-};
-
-test('a request the hub never answers fails at its deadline instead of hanging the tool call', async () => {
-  const hub = await silentHub();
-  const spoke = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', requestTimeoutMs: 300 });
+  const spoke = await spawnSpoke({ hub: { url: `ws://127.0.0.1:${(wss.address() as { port: number }).port}` }, name: 'alpha', sessionId: 'sess-a', requestTimeoutMs: 300 });
   try {
-    await until(async () => hub.hellos(), (n) => n >= 1);
-    await new Promise((r) => setTimeout(r, 100)); // the welcome is in
-    const started = Date.now();
-    const who = await spoke.call<{ ok: boolean; error?: string }>('who');
-    assert.equal(who.ok, false);
-    assert.match(who.error ?? '', /the hub did not answer within 0\.3 s/);
-    assert.ok(Date.now() - started < 3000, 'bounded by the deadline');
+    const seen = await until(async () => hellos, (n) => n >= 2, 5000);
+    assert.ok(seen >= 2, `a fresh hello after the welcome deadline (saw ${seen})`);
+    assert.match(spoke.log(), /did not welcome .* within 0\.3 s/);
   } finally {
     await spoke.close();
-    await hub.close();
-  }
-});
-
-test('a spoke whose heartbeats go unanswered closes the connection and reconnects', async () => {
-  const hub = await silentHub();
-  const spoke = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 100 });
-  try {
-    const hellos = await until(async () => hub.hellos(), (n) => n >= 2, 5000);
-    assert.ok(hellos >= 2, `a fresh hello after the missed heartbeats (saw ${hellos})`);
-    assert.match(spoke.log(), /missed 2 heartbeat replies/);
-  } finally {
-    await spoke.close();
-    await hub.close();
+    for (const c of wss.clients) c.terminate();
+    await new Promise<void>((resolve) => wss.close(() => resolve()));
   }
 });

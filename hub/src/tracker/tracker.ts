@@ -6,7 +6,7 @@
 // Hand edits are picked up by a watcher on the folder (debounced) and re-indexed; last writer wins.
 // Nothing is ever committed.
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 import { TrackerIndex, type Claim, type IndexedItem, type ListFilter } from './index-db.ts';
 import {
@@ -38,8 +38,11 @@ export const DEBOUNCE_MS = 100;
 /** A hand edit landing this soon after the hub wrote the same item is reported as a conflict. */
 export const CONCURRENT_MS = 2000;
 
-/** Who asks: a session (by name, with its role) or a person at the CLI. */
-export type Actor = { name: string; role: string | null };
+/**
+ * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
+ * stable across renames, or `human` / `cli:<name>` for the CLI; `name` and `role` are what files show.
+ */
+export type Actor = { id: string; name: string; role: string | null };
 
 export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
@@ -105,8 +108,12 @@ export class Tracker {
   readonly #pending = new Map<string, NodeJS.Timeout>();
   #rescanTimer: NodeJS.Timeout | null = null;
 
-  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date }) {
+  /** Tests only: how long a write holds still between its temporary file and the rename (0: not at all). */
+  readonly #writePauseMs: number;
+
+  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number }) {
     this.#root = options.root;
+    this.#writePauseMs = options.writePauseMs ?? 0;
     this.#dir = join(options.root, TASKS_REL);
     this.#log = options.log ?? (() => {});
     this.#now = options.now ?? (() => new Date());
@@ -257,13 +264,39 @@ export class Tracker {
 
   // ---------------------------------------------------------------- writing
 
-  #write(name: string, item: Item): void {
+  /**
+   * Write an item's file atomically and index it. `read` is what a change was made from: the hash of the
+   * text read and the descriptor it was read through. A hand edit can land between that read and the
+   * rename — written to the path (an editor's save-by-rename, or in place before the rename) or into the
+   * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
+   * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
+   */
+  #write(name: string, item: Item, read?: { id: string; op: string; hash: string; fd: number }): void {
     const text = serializeItem(item);
+    // what is indexed is what the file says — the text read back the way a reader (and a rescan) reads it,
+    // not the object it was written from: a comment whose text reads back as a verdict is one, everywhere
+    const written = parseItem(text, name);
     const path = join(this.#dir, name);
     const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
     writeFileSync(tmp, text);
+    // a hand edit landing in this window is what the checks around the rename are for; tests widen it
+    if (this.#writePauseMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, this.#writePauseMs);
+    const before = read ? hashOrNull(() => readFileSync(path, 'utf8')) : null;
     renameSync(tmp, path);
-    this.#index.put(item, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+    this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+    if (read) {
+      const replaced = hashOrNull(() => readWhole(read.fd));
+      if (before !== read.hash || replaced !== read.hash) {
+        this.#log({
+          event: 'task-conflict',
+          id: read.id,
+          file: name,
+          winner: 'hub',
+          op: read.op,
+          note: 'a hand edit landed while the hub was writing this item and was overwritten by the hub write; last writer wins',
+        });
+      }
+    }
   }
 
   /**
@@ -274,25 +307,32 @@ export class Tracker {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let text: string;
+    // held open until the write is done: the file it reads is the one the rename replaces
+    let fd: number;
     try {
-      text = readFileSync(path, 'utf8');
+      fd = openSync(path, 'r');
+      text = readWhole(fd);
     } catch {
       this.#dropFile(file);
       throw new TrackerError(`no item ${id} (its file ${join(TASKS_REL, file)} is gone)`);
     }
-    const meta = this.#index.metaOf(id);
-    let item: Item;
     try {
-      item = parseItem(text, file);
-    } catch (err) {
-      throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`);
+      const meta = this.#index.metaOf(id);
+      let item: Item;
+      try {
+        item = parseItem(text, file);
+      } catch (err) {
+        throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`);
+      }
+      if (meta && meta.hash !== hashOf(text)) {
+        this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
+      }
+      change(item);
+      item.fm.updated = this.#now().toISOString();
+      this.#write(file, item, { id, op, hash: hashOf(text), fd });
+    } finally {
+      closeSync(fd);
     }
-    if (meta && meta.hash !== hashOf(text)) {
-      this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
-    }
-    change(item);
-    item.fm.updated = this.#now().toISOString();
-    this.#write(file, item);
     this.#log({ event: 'task-written', id, file, op, by: actor.name });
     return this.view(id);
   }
@@ -448,22 +488,51 @@ export class Tracker {
   claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}): { id: string; claim: Claim | null } {
     const { id } = this.#require(rawId);
     const held = this.#index.claimOf(id);
-    const other = held && held.session !== actor.name;
+    // held by identity, never by name: a name moves with a rename and can be taken by another session
+    const other = held && held.sessionId !== actor.id;
     if (other && !options.force) {
       throw new TrackerError(`${id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''} since ${held.claimedAt}; force takes it over`);
     }
     if (options.release) {
       if (held) {
         this.#index.setClaim(id, null);
-        this.#log({ event: 'task-released', id, session: held.session, by: actor.name });
+        this.#log({ event: 'task-released', id, session: held.session, sessionId: held.sessionId, by: actor.name });
       }
       return { id, claim: null };
     }
-    if (held && !other) return { id, claim: held };
-    const claim: Claim = { session: actor.name, role: actor.role, claimedAt: this.#now().toISOString() };
+    if (held && !other) {
+      // the holder again, perhaps renamed since: the claim keeps its time and shows the name it has now
+      if (held.session === actor.name && held.role === actor.role) return { id, claim: held };
+      const renamed: Claim = { ...held, session: actor.name, role: actor.role };
+      this.#index.setClaim(id, renamed);
+      return { id, claim: renamed };
+    }
+    const claim: Claim = { session: actor.name, sessionId: actor.id, role: actor.role, claimedAt: this.#now().toISOString() };
     this.#index.setClaim(id, claim);
-    this.#log({ event: 'task-claimed', id, session: actor.name, role: actor.role, ...(other ? { took: held.session } : {}) });
+    this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: actor.id, role: actor.role, ...(other ? { took: held.session } : {}) });
     return { id, claim };
+  }
+}
+
+/** The whole file behind `fd`, from its start, as it is now. */
+function readWhole(fd: number): string {
+  const size = fstatSync(fd).size;
+  const buf = Buffer.alloc(size);
+  let off = 0;
+  while (off < size) {
+    const n = readSync(fd, buf, off, size - off, off);
+    if (n === 0) break;
+    off += n;
+  }
+  return buf.subarray(0, off).toString('utf8');
+}
+
+/** The hash of what `read` returns, or null when it cannot be read (gone). */
+function hashOrNull(read: () => string): string | null {
+  try {
+    return hashOf(read());
+  } catch {
+    return null;
   }
 }
 

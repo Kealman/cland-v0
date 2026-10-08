@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { cland, connectSocket, pidAlive, readDiscovery, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectSocket, killDaemon, pidAlive, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);
@@ -212,4 +213,91 @@ test('both edges speak one protocol: a spoke hello over the Unix socket, a clien
   assert.equal(status.ok, true);
   assert.equal(status.value.pid, discovery.pid);
   assert.deepEqual(status.value.sessions.map((s) => s.name), ['sock']);
+});
+
+test('two cland hub start at the same instant leave exactly one hub, and both report it', async (t) => {
+  const root = await tempProject(t);
+  const results = await Promise.all([cland(root, 'hub', 'start'), cland(root, 'hub', 'start')]);
+  // every hub either start left behind is killed when the test ends
+  for (const r of results) {
+    const pid = Number(/pid +(\d+)/.exec(r.stdout)?.[1]);
+    if (pid) t.after(() => killDaemon(pid));
+  }
+  const discovery = await readDiscovery(root);
+  t.after(() => killDaemon(discovery.pid));
+  for (const r of results) assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`);
+  const pids = results.map((r) => Number(/pid +(\d+)/.exec(r.stdout)?.[1]));
+  assert.deepEqual(pids, [discovery.pid, discovery.pid], results.map((r) => r.stdout).join('\n'));
+  assert.ok(pidAlive(discovery.pid));
+  // the hub.json hub answers on its socket, and only one hub ever got as far as serving
+  const status = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout) as { pid: number };
+  assert.equal(status.pid, discovery.pid);
+  const log = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+  assert.equal(log.split('\n').filter((l) => l.includes('"event":"serving"')).length, 1, log);
+  // the lock names the hub that runs
+  assert.equal((JSON.parse(await readFile(join(root, '.cland', 'hub.lock'), 'utf8')) as { pid: number }).pid, discovery.pid);
+});
+
+test('cland hub stop never signals a process that is not the project\'s hub: it only removes the hub.json naming it', async (t) => {
+  const root = await tempProject(t);
+  // a live process that is no hub at all — a reused pid, as far as hub.json can tell
+  const stranger = spawn('sleep', ['30'], { stdio: 'ignore' });
+  t.after(() => stranger.kill('SIGKILL'));
+  const pid = stranger.pid as number;
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const bogus = { socket: join(root, '.cland', 'hub.sock'), port: 1, secret: 'x'.repeat(64), pid, version: '0.1.0' };
+  for (const lock of [null, { pid, started: 'Thu Jan  1 00:00:00 1970' }]) {
+    await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify(bogus));
+    if (lock) await writeFile(join(root, '.cland', 'hub.lock'), JSON.stringify(lock));
+    const stopped = await cland(root, 'hub', 'stop');
+    assert.equal(stopped.code, 0, stopped.stderr);
+    assert.match(stopped.stdout, new RegExp(`pid ${pid} .*is not this project's hub`));
+    await sleep(100);
+    assert.ok(pidAlive(pid), 'the stranger was left alone');
+    await assert.rejects(stat(join(root, '.cland', 'hub.json')), { code: 'ENOENT' });
+  }
+  // and `start` treats such a hub.json as stale instead of refusing
+  await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify(bogus));
+  const { result } = await startDaemon(t, root);
+  assert.match(result.stdout, /hub started for/);
+  assert.ok(pidAlive(pid));
+});
+
+test('a stopping hub leaves alone a socket that is no longer the one it bound, and hub.json goes only at the end', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  // someone else's socket now stands at the path (the old hub's file was replaced under it)
+  await rm(discovery.socket);
+  const other = createServer((c) => c.destroy());
+  await new Promise<void>((resolve) => other.listen(discovery.socket, () => resolve()));
+  t.after(() => other.close());
+  const otherIno = (await stat(discovery.socket)).ino;
+
+  const stopped = await cland(root, 'hub', 'stop');
+  assert.equal(stopped.code, 0, stopped.stderr);
+  assert.match(stopped.stdout, new RegExp(`hub stopped for ${root} \\(pid ${discovery.pid}\\)`));
+  assert.equal(pidAlive(discovery.pid), false);
+  assert.equal((await stat(discovery.socket)).ino, otherIno, "the other socket's file is still there");
+  await assert.rejects(stat(join(root, '.cland', 'hub.json')), { code: 'ENOENT' });
+  const log = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+  const events = log.split('\n').filter((l) => l.startsWith('{')).map((l) => (JSON.parse(l) as { event: string }).event);
+  assert.deepEqual(events.slice(-3), ['stopping', 'socket-kept', 'stopped']);
+});
+
+test('a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start', async (t) => {
+  const root = await tempProject(t);
+  const lockFile = join(root, '.cland', 'hub.lock');
+  const first = await startDaemon(t, root);
+  await killDaemon(first.discovery.pid);
+  assert.equal((JSON.parse(await readFile(lockFile, 'utf8')) as { pid: number }).pid, first.discovery.pid, 'a killed hub leaves its lock');
+  const second = await startDaemon(t, root);
+  assert.notEqual(second.discovery.pid, first.discovery.pid);
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await assert.rejects(stat(lockFile), { code: 'ENOENT' }, 'a stopped hub releases its lock');
+
+  // a live pid that is not the process which took the lock: the start time tells them apart
+  await writeFile(lockFile, JSON.stringify({ pid: process.pid, started: 'Thu Jan  1 00:00:00 1970' }));
+  const third = await startDaemon(t, root);
+  assert.match(third.result.stdout, /hub started for/);
+  assert.equal((JSON.parse(await readFile(lockFile, 'utf8')) as { pid: number }).pid, third.discovery.pid);
 });

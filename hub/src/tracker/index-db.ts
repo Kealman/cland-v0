@@ -48,7 +48,8 @@ create table if not exists tracker_claims (
   item_id text primary key,
   session text not null,
   role text,
-  claimed_at text not null
+  claimed_at text not null,
+  session_id text
 );
 create table if not exists tracker_meta (
   key text primary key,
@@ -77,7 +78,8 @@ export type IndexedItem = {
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
-export type Claim = { session: string; role: string | null; claimedAt: string };
+/** A claim: who holds it by identity (`sessionId`, stable across renames) and by the name it had then (`session`). */
+export type Claim = { session: string; sessionId: string; role: string | null; claimedAt: string };
 
 export type ListFilter = {
   state?: State;
@@ -98,6 +100,9 @@ export class TrackerIndex {
     this.#db = new DatabaseSync(path);
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;');
     this.#db.exec(SCHEMA);
+    // additive, for a file written before claims carried the session id
+    const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
+    if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
   }
 
   close(): void {
@@ -230,20 +235,30 @@ export class TrackerIndex {
   // ---------------------------------------------------------------- claims
 
   claimOf(id: string): Claim | null {
-    const r = this.#db.prepare('select session, role, claimed_at from tracker_claims where item_id = ?').get(id) as Row | undefined;
-    return r ? { session: r.session as string, role: (r.role as string | null) ?? null, claimedAt: r.claimed_at as string } : null;
+    const r = this.#db.prepare('select session, session_id, role, claimed_at from tracker_claims where item_id = ?').get(id) as Row | undefined;
+    return r ? claimOfRow(r) : null;
   }
 
   claims(): Map<string, Claim> {
-    const rows = this.#db.prepare('select item_id, session, role, claimed_at from tracker_claims').all() as Row[];
-    return new Map(rows.map((r) => [r.item_id as string, { session: r.session as string, role: (r.role as string | null) ?? null, claimedAt: r.claimed_at as string }]));
+    const rows = this.#db.prepare('select item_id, session, session_id, role, claimed_at from tracker_claims').all() as Row[];
+    return new Map(rows.map((r) => [r.item_id as string, claimOfRow(r)]));
   }
 
   setClaim(id: string, claim: Claim | null): void {
     if (claim === null) this.#db.prepare('delete from tracker_claims where item_id = ?').run(id);
     else
       this.#db
-        .prepare('insert into tracker_claims (item_id, session, role, claimed_at) values (?, ?, ?, ?) on conflict (item_id) do update set session = excluded.session, role = excluded.role, claimed_at = excluded.claimed_at')
-        .run(id, claim.session, claim.role, claim.claimedAt);
+        .prepare(
+          'insert into tracker_claims (item_id, session, session_id, role, claimed_at) values (?, ?, ?, ?, ?) on conflict (item_id) do update set session = excluded.session, session_id = excluded.session_id, role = excluded.role, claimed_at = excluded.claimed_at',
+        )
+        .run(id, claim.session, claim.sessionId, claim.role, claim.claimedAt);
   }
 }
+
+/** A claim row; one from before claims carried the session id is held by the name it was taken under. */
+const claimOfRow = (r: Row): Claim => ({
+  session: r.session as string,
+  sessionId: (r.session_id as string | null) ?? `name:${r.session as string}`,
+  role: (r.role as string | null) ?? null,
+  claimedAt: r.claimed_at as string,
+});

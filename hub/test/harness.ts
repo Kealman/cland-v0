@@ -61,6 +61,8 @@ export type Session = {
   call: <T = unknown>(name: string, args?: Record<string, unknown>) => Promise<T>;
   /** Everything this spoke has written to stderr, for a failing assertion to quote. */
   log: () => string;
+  /** The spoke's process id: a test may pause it (SIGSTOP) to make it fall silent on the wire. */
+  pid: number;
   close: () => Promise<void>;
 };
 
@@ -144,6 +146,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     client,
     events,
     log: () => log,
+    pid: transport.pid as number,
     waitForEvent,
     waitForPresence,
     call,
@@ -177,11 +180,11 @@ export type CliResult = { code: number | null; stdout: string; stderr: string };
 
 /** Run `cland <args>` in `cwd` as its own process, with no `CLAND_*` variable from the test's environment. */
 export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
-  return clandWith(cwd, {}, ...args);
+  return clandWithEnv(cwd, {}, ...args);
 }
 
-/** `cland <args>` with `extra` over the cleaned environment (a daemon that launches a fake harness, its timings). */
-export function clandWith(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
+/** `cland` with `extra` added to its environment: a test timing such as CLAND_TEST_TASK_WRITE_PAUSE_MS, or a daemon that launches a fake harness. */
+export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   Object.assign(env, extra);
@@ -218,7 +221,7 @@ export const pidAlive = (pid: number): boolean => {
  * Registered before the start returns, so even a failing assertion right after cannot leak a process.
  */
 export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}): Promise<{ result: CliResult; discovery: Discovery }> {
-  const result = await clandWith(root, env, 'hub', 'start');
+  const result = await clandWithEnv(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;
   try {
     discovery = await readDiscovery(root);
