@@ -1,0 +1,3 @@
+#!/bin/sh
+# A fake Claude Code for the adapter's tests: see fake-claude.ts.
+exec node "$(dirname "$0")/fake-claude.ts" "$@"

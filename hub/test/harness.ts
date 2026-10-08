@@ -18,7 +18,7 @@ import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
 /** The tools the spoke serves — the one list every surface assertion reads. */
-export const DOCUMENTED_TOOLS = ['history', 'rename', 'send', 'status', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.edit', 'task.link', 'task.list', 'task.view', 'who'] as const;
+export const DOCUMENTED_TOOLS = ['history', 'rename', 'send', 'session.launch', 'status', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.edit', 'task.link', 'task.list', 'task.view', 'who'] as const;
 
 export const ChannelEvent = z.object({
   method: z.literal('notifications/claude/channel'),
@@ -177,8 +177,14 @@ export type CliResult = { code: number | null; stdout: string; stderr: string };
 
 /** Run `cland <args>` in `cwd` as its own process, with no `CLAND_*` variable from the test's environment. */
 export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
+  return clandWith(cwd, {}, ...args);
+}
+
+/** `cland <args>` with `extra` over the cleaned environment (a daemon that launches a fake harness, its timings). */
+export function clandWith(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  Object.assign(env, extra);
   return new Promise((resolve, reject) => {
     execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 }, (err, stdout, stderr) => {
       if (err && typeof err.code !== 'number') reject(err);
@@ -211,8 +217,8 @@ export const pidAlive = (pid: number): boolean => {
  * `cland hub start` in `root`; the daemon it leaves behind is killed when the test ends, whatever happened.
  * Registered before the start returns, so even a failing assertion right after cannot leak a process.
  */
-export async function startDaemon(t: TestContext, root: string): Promise<{ result: CliResult; discovery: Discovery }> {
-  const result = await cland(root, 'hub', 'start');
+export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}): Promise<{ result: CliResult; discovery: Discovery }> {
+  const result = await clandWith(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;
   try {
     discovery = await readDiscovery(root);
@@ -387,4 +393,64 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
   const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
   if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
   return ui;
+}
+
+// ------------------------------------------------------------------ the harness process seam
+// A fake Claude Code (`test/fakes/claude-code/claude`) first on the PATH of a daemon, so the Claude Code adapter
+// launches it as it would launch the real one. Its sessions are killed when the test ends.
+
+export const FAKE_CLAUDE_DIR = fileURLToPath(new URL('./fakes/claude-code', import.meta.url));
+
+export type FakeClaude = {
+  /** The environment a daemon is started with: the fake first on the PATH, fast adapter timings. */
+  env: Record<string, string>;
+  home: string;
+  /** The fake's live sessions, as `claude agents --json` lists them. */
+  sessions: () => Promise<Array<{ pid: number; id: string; sessionId: string; status: string; waitingFor?: string; name: string | null }>>;
+  /** What one fake session logged (hooks that failed, tool calls, the mod's bridge). */
+  log: (id: string) => Promise<string>;
+};
+
+export async function fakeClaude(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; dropFirst?: boolean } = {}): Promise<FakeClaude> {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
+  const env = {
+    PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
+    FAKE_CLAUDE_HOME: home,
+    FAKE_CLAUDE_TURN_MS: String(timings.turnMs ?? 300),
+    CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 200),
+    CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
+    CLAND_PUSH_TRUST_MS: String(timings.pushTrustMs ?? 1000),
+    ...(timings.dropFirst ? { FAKE_CLAUDE_DROP_FIRST: '1' } : {}),
+  };
+  const sessions = async () => {
+    const out = await new Promise<string>((resolve) =>
+      execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['agents', '--json'], { env: { ...process.env, ...env }, encoding: 'utf8' }, (_err, stdout) => resolve(stdout)),
+    );
+    try {
+      return JSON.parse(out) as Awaited<ReturnType<FakeClaude['sessions']>>;
+    } catch {
+      return [];
+    }
+  };
+  t.after(async () => {
+    for (const s of await sessions()) await killDaemon(s.pid);
+    await rm(home, { recursive: true, force: true });
+  });
+  return { env, home, sessions, log: async (id) => readFile(join(home, 'jobs', `${id}.log`), 'utf8').catch(() => '') };
+}
+
+/** Poll until `check` returns a value (not undefined), or fail with what was last seen. */
+export async function eventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, timeoutMs = 15_000): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let last: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const v = await check();
+      if (v !== undefined) return v;
+    } catch (err) {
+      last = err;
+    }
+    await sleep(50);
+  }
+  throw new Error(`${what}: not within ${timeoutMs} ms${last ? ` (last error: ${String(last)})` : ''}`);
 }
