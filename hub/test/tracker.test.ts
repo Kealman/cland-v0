@@ -169,6 +169,29 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
   assert.ok(conflicts.some((e) => e.winner === 'hub'), JSON.stringify(conflicts));
 });
 
+test('a hand edit landing while the hub is writing the same item is overwritten, and the hub logs the conflict', async (t) => {
+  const root = await tempProject(t);
+  // every hub write holds still for a while between its temporary file and the rename
+  await startDaemon(t, root, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '1500' });
+  ok(await cland(root, 'task', 'create', 'Overlapped'));
+  const file = join(tasksDir(root), 'T-1-overlapped.md');
+
+  const writing = cland(root, 'task', 'comment', 'T-1', 'from the hub');
+  // the hub has read the file and written its new version aside: the hand edit lands now, before the rename
+  await eventually(5000, async () => assert.ok((await readdir(tasksDir(root))).some((n) => n.endsWith('.tmp'))));
+  await writeFile(file, (await readFile(file, 'utf8')).replace('title: Overlapped', 'title: Hand in between'));
+  ok(await writing);
+
+  const final = await readFile(file, 'utf8');
+  assert.match(final, /title: Overlapped/, 'the hub wrote last');
+  assert.match(final, /from the hub/);
+  const conflicts = (await hubLog(root)).filter((e) => e.event === 'task-conflict' && e.id === 'T-1');
+  assert.ok(
+    conflicts.some((e) => e.winner === 'hub' && e.op === 'comment' && /overwr/.test(String(e.note))),
+    JSON.stringify(conflicts),
+  );
+});
+
 test('task claim records a claim in the hub only; task view shows the assignee and the claim', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', 'Claimable', '--assignee', 'alice'));

@@ -43,7 +43,8 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
 
   const startedAt = new Date();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
-  const tracker = new Tracker({ root, db: l.db, log });
+  const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
+  const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}) });
   let hub!: Hub;
   try {
     tracker.start();

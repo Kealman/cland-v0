@@ -177,8 +177,14 @@ export type CliResult = { code: number | null; stdout: string; stderr: string };
 
 /** Run `cland <args>` in `cwd` as its own process, with no `CLAND_*` variable from the test's environment. */
 export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
+  return clandWithEnv(cwd, {}, ...args);
+}
+
+/** `cland` with `extra` added to its environment (a test timing such as CLAND_TEST_TASK_WRITE_PAUSE_MS). */
+export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  Object.assign(env, extra);
   return new Promise((resolve, reject) => {
     execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 }, (err, stdout, stderr) => {
       if (err && typeof err.code !== 'number') reject(err);
@@ -211,8 +217,8 @@ export const pidAlive = (pid: number): boolean => {
  * `cland hub start` in `root`; the daemon it leaves behind is killed when the test ends, whatever happened.
  * Registered before the start returns, so even a failing assertion right after cannot leak a process.
  */
-export async function startDaemon(t: TestContext, root: string): Promise<{ result: CliResult; discovery: Discovery }> {
-  const result = await cland(root, 'hub', 'start');
+export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}): Promise<{ result: CliResult; discovery: Discovery }> {
+  const result = await clandWithEnv(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;
   try {
     discovery = await readDiscovery(root);
