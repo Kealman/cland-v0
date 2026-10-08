@@ -17,6 +17,7 @@ import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { RolesFile } from '../roles/config.ts';
+import { readProjectConfig } from '../init/config.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -64,6 +65,9 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log);
+  // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
+  const config = readProjectConfig(l.config, root);
+  if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
   let hub!: HubBase;
   let adapters: ProjectSessions | null = null;
   let ws: WebSocketEdge | null = null;
@@ -75,6 +79,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       secret,
       store: new Store(l.db),
       log,
+      ...(config ? { rateLimit: config.hygiene.rateLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
       tracker,
       roles,
       control: {

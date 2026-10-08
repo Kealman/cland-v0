@@ -1,0 +1,55 @@
+// `cland init [dir]` and `cland update [dir]` (spec 4.9): provision a project, or refresh what cland manages in it
+// after a version change. Both are idempotent and need no hub; see `src/init/provision.ts` for the managed set.
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { provision } from '../init/provision.ts';
+import type { Change } from '../init/files.ts';
+import { CLAND_DIR, projectRoot } from '../project.ts';
+import { VERSION } from '../version.ts';
+
+export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the one around the current directory) for cland: .cland/,
+                  skills, docs/agents/, AGENTS.md's block, the Claude Code hooks; idempotent (--json for JSON)
+  update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
+`;
+
+function describe(changes: Change[], root: string, command: string): string {
+  const lines = [`cland ${command} ${VERSION} in ${root}`];
+  const shown = changes.filter((c) => c.action !== 'unchanged');
+  // the skills on one line per action: `created .agents/skills/ (38 skills)`
+  const skill = (c: Change) => /^\.agents\/skills\/[^/.][^/]*$/.test(c.path) && !c.note;
+  const skills = new Map<string, number>();
+  for (const c of shown) {
+    if (skill(c)) {
+      const n = skills.get(c.action) ?? 0;
+      skills.set(c.action, n + 1);
+      if (n === 0) lines.push(`\0${c.action}`);
+      continue;
+    }
+    lines.push(`  ${c.action.padEnd(9)} ${c.path}${c.note ? `  (${c.note})` : ''}`);
+  }
+  for (const [i, line] of lines.entries()) {
+    if (!line.startsWith('\0')) continue;
+    const action = line.slice(1);
+    const n = skills.get(action) ?? 0;
+    lines[i] = `  ${action.padEnd(9)} .agents/skills/  (${n} skill${n === 1 ? '' : 's'})`;
+  }
+  const unchanged = changes.length - shown.length;
+  if (!shown.some((c) => c.action !== 'kept')) lines.push('  nothing to change: every managed part is current');
+  else if (unchanged) lines.push(`  ${unchanged} managed part${unchanged === 1 ? '' : 's'} already current`);
+  return lines.join('\n');
+}
+
+async function run(command: 'init' | 'update', args: string[], cwd: string): Promise<number> {
+  const json = args.includes('--json');
+  const [dir, extra] = args.filter((a) => !a.startsWith('--'));
+  if (extra !== undefined) throw new Error(`usage: cland ${command} [dir]`);
+  const root = dir === undefined ? projectRoot(cwd) : resolve(cwd, dir);
+  if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
+  if (command === 'update' && !existsSync(resolve(root, CLAND_DIR))) throw new Error(`${root} has no ${CLAND_DIR}/: run \`cland init\` first`);
+  const changes = provision(root);
+  process.stdout.write(json ? `${JSON.stringify({ root, version: VERSION, changes })}\n` : `${describe(changes, root, command)}\n`);
+  return 0;
+}
+
+export const runInit = (args: string[], cwd: string = process.cwd()): Promise<number> => run('init', args, cwd);
+export const runUpdate = (args: string[], cwd: string = process.cwd()): Promise<number> => run('update', args, cwd);
