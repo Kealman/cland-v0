@@ -262,8 +262,8 @@ test('role.set changes what a session may do on its next call, without a reconne
 });
 
 // ------------------------------------------------------------------ the tools with no MCP tool yet
-// `ask`, `resolve`, `topic.create`, `role.handover`, `merge`, `artifact.create` and `task.import` are in the table
-// before their frames exist: a spoke's raw frame is checked like any other. Allowed, it reaches the dispatcher's
+// `ask`, `resolve`, `topic.create`, `merge`, `artifact.create` and `task.import` are in the table
+// before their frames exist (`role.handover` has its frame since #31): a spoke's raw frame is checked like any other. Allowed, it reaches the dispatcher's
 // "unknown request type" (an `error` in the audit); refused, it is `forbidden`.
 
 /** A spoke speaking the hub's frames itself over the WebSocket, as a session whose role the human assigned. */
@@ -326,7 +326,8 @@ test('the tools still to come are checked through the same table: one session, i
         { ...future('resolve', { topic: 'general' }), error: unknown },
         { ...future('topic.create', { title: 'Free topic' }), error: unknown },
         { ...future('topic.create', { title: 'Bound', item: 'T-2' }), error: unknown },
-        { ...future('role.handover', { to: 'x' }), error: unknown },
+        // role.handover exists (#31): allowed by the table, then refused for a receiver the hub does not know
+        { ...future('role.handover', { to: 'x', note: { goals_now: 'g', work_in_flight: 'w', open_decisions: 'o', waiting_on: 'n' } }), error: /"x" is not a session the hub knows/ },
         { ...future('merge', { item: 'T-2' }), error: unknown },
         { ...future('artifact.create', { name: 'a' }), error: unknown },
         { ...future('task.import', { repo: 'o/r' }), forbidden: 'task.import' },
