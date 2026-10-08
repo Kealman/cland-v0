@@ -160,7 +160,7 @@ export class Dispatcher {
     // listing the launched sessions goes with launching them
     const tool = type === 'session.list' ? 'session.launch' : type;
     if (!KNOWN_TOOLS.includes(tool)) return null;
-    const item = typeof frame.item === 'string' ? frame.item : null;
+    const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
     const tracker = this.#options.tracker;
     const own = (): boolean | undefined => {
       if (!tracker || item === null) return false;

@@ -941,7 +941,8 @@ export class HubCore {
     if (!clean) throw new TopicRefusal('a topic needs a title');
     if (clean.length > 200) throw new TopicRefusal('a topic title is at most 200 characters');
     let bound: string | null = null;
-    if (item !== undefined && item.trim() !== '') {
+    if (item !== undefined && item !== null && (typeof item !== 'string' || item.trim() === '')) throw new TopicRefusal('`item` is blank: name the item to bind (T-<n>), or leave it out');
+    if (item !== undefined && item !== null) {
       if (!this.#items) throw new TopicRefusal("this hub has no tracker: a topic is bound to an item only on a project's hub");
       const found = this.#items.check(item.trim());
       bound = found.id;
