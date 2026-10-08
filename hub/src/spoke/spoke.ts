@@ -29,7 +29,7 @@ const TOOLS = [
   {
     name: 'send',
     description:
-      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from). With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events — and is recorded in the topic (Agents unless `topic` names another).',
+      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); only the Coordinator writes to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events — and is recorded in the topic (Agents unless `topic` names another).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -44,7 +44,7 @@ const TOOLS = [
   {
     name: 'topic.create',
     description:
-      "Open a topic for the human when a question has no fitting one (usually bound to your item). A title is required; `item` binds it to a unit of work (T-12), which has one topic at most. The topic shows in the human's list with its first message: write into it with send(topic). The Coordinator may open any topic; an Implementer only one bound to its own item.",
+      "Open a topic: the Coordinator any topic, an Implementer only one bound to its own item (Reviewer and QA open none; questions for the human go to the Coordinator with send). A title is required; `item` binds it to a unit of work (T-12), which has one topic at most. The topic shows in the human's list with its first message: write into it with send(topic).",
     inputSchema: {
       type: 'object',
       properties: {

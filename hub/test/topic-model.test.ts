@@ -123,19 +123,19 @@ test('@reviewer in the text reaches the Reviewer holder, whose reply lands in th
   assert.equal(asked.params.meta?.topic, topic.id);
   assert.equal((await topicOf(ui, topic.id)).status, 'waiting for agent');
 
-  // the reviewer answers in the topic the event came from; only the Coordinator writes to the human (spec 4.4,
-  // #30), so the Reviewer addresses the Coordinator there, and the answer still answers the wait
-  const direct = await rev.call<{ ok: boolean; code?: string; permission?: string }>('send', { topic: asked.params.meta?.topic, text: 'it holds' });
-  assert.deepEqual([direct.ok, direct.code, direct.permission], [false, 'forbidden', 'send:human']);
+  // the reviewer answers the human in the topic the event came from: a session the human's latest message there
+  // mentioned may reply to the human in that topic (spec 4.4 and 4.5), and the reply answers the wait
   const mark = ui.frames.length;
-  await rev.call('send', { topic: asked.params.meta?.topic, to: ['coordinator'], text: 'it holds', reply_to: asked.params.meta?.msg_id });
+  const direct = await rev.call<{ ok: boolean; error?: string }>('send', { topic: asked.params.meta?.topic, text: 'it holds', reply_to: asked.params.meta?.msg_id });
+  assert.equal(direct.ok, true, direct.error);
   const answer = (await ui.waitFor((f) => f.type === 'message' && (f.message as TopicMessage).from === 'rev-1')) as { topic: { id: string }; message: TopicMessage };
   assert.equal(answer.topic.id, topic.id);
+  assert.deepEqual(answer.message.to, [], 'the reply is to the human');
   await topicEvent(ui, topic.id, (x) => x.status === 'open', mark);
   const history = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: topic.id });
-  assert.deepEqual(history.messages.map((m) => [m.from, m.text]), [
-    ['human', '@reviewer does the diff hold?'],
-    ['rev-1', 'it holds'],
+  assert.deepEqual(history.messages.map((m) => [m.from, m.to, m.text]), [
+    ['human', ['rev-1'], '@reviewer does the diff hold?'],
+    ['rev-1', [], 'it holds'],
   ]);
 
   // a session by name; the Coordinator heard none of it

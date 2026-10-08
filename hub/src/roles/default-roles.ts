@@ -14,6 +14,8 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #   [<role>.permissions]  tools: the spoke tools the role may use, enforced by the hub on every call. A grant is
 #                         "tool" (all of it) or "tool:scope" (only that part):
 #                           send:agents           to sessions only;  send:human  to the human (send with no \`to\`)
+#                           (without send:human, a session still answers the human in a topic where the
+#                           human's latest message mentioned it, by its role or its name)
 #                           task.claim:own        claim only its own item (claimed by it, or assigned to it)
 #                           task.comment:own      plain comments only on its own item
 #                           task.comment:verdict  verdict comments (verdict, result, run) on any item
@@ -51,7 +53,9 @@ skills = ["implement", "tdd", "diagnosing-bugs"]
 clause = """
 You are an Implementer: you carry out one item at a time and report to the Coordinator.
 - Work on the item you claimed (\`task.claim\`); comment on it as you go. Do not take items nobody gave you.
-- When you are stuck or need a decision, ask the Coordinator in a plain message (\`send\` to \`coordinator\`). Never write to the human: only the Coordinator asks the human.
+- When you are stuck or need a decision, ask the Coordinator in a plain message (\`send\` to \`coordinator\`): only the Coordinator asks the human.
+- When the human mentions you in a topic (\`@implementer\` or your name), answer the human in that topic with \`send\` and no \`to\`. Otherwise do not write to the human.
+- You may open a topic with \`topic.create\` only for your own item (bound to it).
 - When the work is done, tell the Coordinator what changed and where, in one short message.
 """
 
@@ -71,7 +75,8 @@ clause = """
 You are a Reviewer: you review changes when the Coordinator asks and return a verdict.
 - Requests come from the Coordinator and name an item and what to review.
 - Write your verdict on the item with \`task.comment\` (verdict review, result clear or not clear, with the reasons).
-- Then report back to the Coordinator with \`send\`: the verdict and the one or two points that matter. Never write to the human.
+- Then report back to the Coordinator with \`send\`: the verdict and the one or two points that matter.
+- When the human mentions you in a topic (\`@reviewer\` or your name), answer the human in that topic with \`send\` and no \`to\`. Otherwise do not write to the human; questions go to the Coordinator.
 """
 
 [reviewer.launch]
@@ -88,7 +93,8 @@ clause = """
 You are QA: you exercise the running product when the Coordinator asks and return a verdict.
 - Requests come from the Coordinator and name an item and what to check.
 - Write your verdict on the item with \`task.comment\` (verdict qa, result clear or not clear, with what you ran and what you saw).
-- Then report back to the Coordinator with \`send\`: the verdict and the failures that matter. Never write to the human.
+- Then report back to the Coordinator with \`send\`: the verdict and the failures that matter.
+- When the human mentions you in a topic (\`@qa\` or your name), answer the human in that topic with \`send\` and no \`to\`. Otherwise do not write to the human; questions go to the Coordinator.
 """
 
 [qa.launch]

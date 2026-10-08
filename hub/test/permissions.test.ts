@@ -202,6 +202,43 @@ test('every row of the permission table, for every role, over MCP: allowed calls
   assert.ok(!all.some((a) => JSON.stringify(a).includes(text)), 'no message text in the audit');
 });
 
+test('a session the human @mentioned in a topic may reply to the human there, while the human\'s latest message there addresses it', async (t) => {
+  const { root, ui } = await setup(t);
+  const spawn = async (name: string, role: string) => {
+    const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
+    t.after(() => s.close());
+    return s;
+  };
+  const coordS = await spawn('coord', 'coordinator');
+  const revS = await spawn('rev', 'reviewer');
+  await coordS.waitForPresence(['coord', 'rev']);
+  const rev = mcp(revS, 'rev', 'sess-rev', 'reviewer', 'rev [Reviewer]');
+  const topic = async (title: string) => {
+    const r = await ui.request({ type: 'topic.create', title });
+    assert.equal(r.ok, true, r.error);
+    return (r.value as { topic: { id: string } }).topic.id;
+  };
+  const human = async (id: string, text: string) => assert.equal((await ui.request({ type: 'topic.send', topic: id, text })).ok, true);
+  const review = await topic('Review of T-1');
+  const other = await topic('Release date');
+  const notHuman = /only the Coordinator writes to the human/;
+
+  // the human pulls the Reviewer into one topic, by its role; another topic is the Coordinator's
+  await human(review, '@reviewer does the diff hold?');
+  await revS.waitForEvent((e) => e.params.content === '@reviewer does the diff hold?');
+  await human(other, 'when do we release?');
+  await check(root, ui, rev, { tool: 'send', args: { topic: review, text: 'it holds' }, target: ' to the human' });
+  await check(root, ui, rev, { tool: 'send', args: { topic: review, text: 'one more note' }, target: ' to the human' });
+  await check(root, ui, rev, { tool: 'send', args: { topic: other, text: 'secret words' }, forbidden: 'send:human', reason: notHuman, target: ' to the human' });
+  await check(root, ui, rev, { tool: 'send', args: { text: 'secret words' }, forbidden: 'send:human', reason: notHuman, target: ' to the human' });
+  // by name too; and once the human's latest message in the topic addresses someone else, the grant is gone
+  await human(other, '@rev and what do you think?');
+  await revS.waitForEvent((e) => e.params.content === '@rev and what do you think?');
+  await check(root, ui, rev, { tool: 'send', args: { topic: other, text: 'next week' }, target: ' to the human' });
+  await human(review, 'thanks, coordinator: merge it');
+  await check(root, ui, rev, { tool: 'send', args: { topic: review, text: 'secret words' }, forbidden: 'send:human', reason: notHuman, target: ' to the human' });
+});
+
 test('role.set changes what a session may do on its next call, without a reconnect; the human is unrestricted and audited', async (t) => {
   const { root, ui } = await setup(t);
   const s = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'sess-impl', role: 'implementer' });

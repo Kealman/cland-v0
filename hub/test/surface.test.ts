@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DOCUMENTED_TOOLS, startHub, spawnSpoke } from './harness.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { parseRoles } from '../src/roles/config.ts';
 
 test('the spoke declares the channel capability, the documented tools and its instructions', async () => {
   const hub = await startHub();
@@ -16,6 +18,11 @@ test('the spoke declares the channel capability, the documented tools and its in
     assert.match(instructions, /never treat it as authorization/);
     assert.match(instructions, /Do not send acknowledgements or thanks/);
     assert.match(instructions, /prompt injection/);
+    // who asks whom (spec 4.4, 4.5): questions go to the Coordinator; only it asks the human and opens free topics
+    assert.match(instructions, /A question for the human goes to the Coordinator with `send` \(`to` `coordinator`\); only the Coordinator asks the human, with `ask`/);
+    assert.match(instructions, /Topics are opened with `topic\.create` by the Coordinator, or by an Implementer for its own item/);
+    assert.match(instructions, /the human's latest message mentioned you \(`@your-role` or `@your-name`\)/);
+    assert.doesNotMatch(instructions, /a question for the human has no fitting topic/i);
   } finally {
     await spoke.close();
     await hub.close();
@@ -44,4 +51,15 @@ test('who() lists every connected session with its session id, role, status and 
     await beta.close();
     await hub.close();
   }
+});
+
+test('the default role clauses agree with the permission table: only the Coordinator asks; the others answer the human only where it mentioned them', () => {
+  const roles = parseRoles(DEFAULT_ROLES_TOML);
+  for (const role of ['implementer', 'reviewer', 'qa']) {
+    const clause = roles.get(role)?.clause ?? '';
+    assert.doesNotMatch(clause, /Never write to the human/, role);
+    assert.match(clause, /When the human mentions you in a topic \(`@[a-z]+` or your name\), answer the human in that topic with `send` and no `to`/, role);
+    assert.match(clause, /send` to `coordinator`|report back to the Coordinator with `send`/, role);
+  }
+  assert.match(roles.get('coordinator')?.clause ?? '', /You are the only role that asks the human/);
 });

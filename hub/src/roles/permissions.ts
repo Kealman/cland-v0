@@ -4,7 +4,9 @@
 //
 // A grant is `tool` (the tool, all of it) or `tool:scope` (only that part of it). Scopes:
 //   send:agents          to sessions (names, globs, roles, `all`), never to the human
-//   send:human           to the human (a `send` with no `to`)
+//   send:human           to the human (a `send` with no `to`). A session without it may still reply to the human
+//                        in a topic while the human's latest message there addressed it or its role (spec 4.5:
+//                        `@role` and `@name` pull it in), as long as the role has some `send` grant
 //   task.claim:own       claim or release only the session's own item
 //   task.comment:own     plain comments (not verdicts) only on the session's own item
 //   task.comment:verdict verdict comments (the verdict header: verdict, result, run) on any item
@@ -96,6 +98,9 @@ export type ToolCall = {
   tool: string;
   /** `send`: no addressee, so the message is for the human. */
   toHuman?: boolean;
+  /** `send` to the human: whether the human's latest message in the target topic addressed the caller (by name or
+   *  by its role), which lets it reply there without `send:human`. */
+  mentioned?: () => boolean;
   /** `task.comment`: the comment carries a verdict. */
   verdict?: boolean;
   /** The item the call is on (`task.*`), or the one a new topic binds to (`topic.create`). */
@@ -126,7 +131,8 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   switch (tool) {
     case 'send':
       if (call.toHuman) {
-        return has('send:human') ? { ok: true } : { ok: false, permission: 'send:human', reason: `only the Coordinator writes to the human: ${who} sends to the coordinator instead` };
+        if (has('send:human') || call.mentioned?.()) return { ok: true };
+        return { ok: false, permission: 'send:human', reason: `only the Coordinator writes to the human, and a session the human's latest message in the topic mentioned: ${who} sends to the coordinator instead` };
       }
       return has('send:agents') ? { ok: true } : { ok: false, permission: 'send:agents', reason: `${who} may write only to the human` };
     case 'task.comment': {

@@ -10,7 +10,7 @@
 // holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
 // in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
 import { timingSafeEqual } from 'node:crypto';
-import { AGENTS, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
+import { AGENTS, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, type ToolCall } from '../roles/permissions.ts';
 import { withRole } from '../names.ts';
@@ -138,6 +138,16 @@ export class Dispatcher {
     return false;
   }
 
+  /**
+   * Whether the human's latest message in the `send`'s topic (General by default, as for any message to the human)
+   * was delivered to the caller, by its name or as a holder of its role (spec 4.5: the mention pulled it in).
+   */
+  #mentioned(connection: Connection, frame: Record<string, unknown>): boolean {
+    const topic = typeof frame.topic === 'string' && frame.topic !== '' ? frame.topic : GENERAL.id;
+    const addressees = this.#options.core.store.lastHumanAddressees(topic);
+    return addressees.includes(connection.name) || (connection.role !== null && addressees.includes(connection.role));
+  }
+
   /** The table's view of a spoke frame, or null when it is no tool the table knows. */
   #toolCall(connection: Connection, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
@@ -161,7 +171,7 @@ export class Dispatcher {
       tool,
       item,
       own,
-      ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0 } : {}),
+      ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
       ...(tool === 'task.comment' ? { verdict: typeof frame.verdict === 'object' && frame.verdict !== null } : {}),
     };
   }
