@@ -12,12 +12,16 @@
 //       the answer is a `send` through the spoke ("pong: <text>") into the message's topic; Stop and `turn.complete`.
 //       A prompt containing "needs approval" first sets the model's own status line to "idle" through the spoke's
 //       `status` tool (the hub must not take it for the state), then raises a PermissionRequest and waits for
-//       SIGUSR1 (the approval), then PostToolUse.
+//       SIGUSR1 (the approval), then PostToolUse. A prompt that is "rename to <name>" calls the spoke's `rename`
+//       tool first.
 //   claude agents --json   the live sessions (pid, id, sessionId, cwd, kind, status, waitingFor)
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
 //
-// FAKE_CLAUDE_LATE_BG=1 makes `--bg` return only after the session's SessionStart hook ran.
+// FAKE_CLAUDE_LATE_BG=1 makes `--bg` return only after the session's SessionStart hook ran; =bridged, only after
+// the mod's bridge was also answered by the hub.
+// FAKE_CLAUDE_STOP_CRASH=1 makes `claude stop` die by a signal without stopping anything.
+// FAKE_CLAUDE_IGNORE_TERM=1 makes the session ignore SIGTERM (only SIGKILL ends it).
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
 // how long a turn "thinks" (default 300).
@@ -131,8 +135,10 @@ async function startBackground(args: string[]): Promise<number> {
     await new Promise((r) => setTimeout(r, 20));
   }
   // FAKE_CLAUDE_LATE_BG=1: return only once the session ran its SessionStart hook, as the real one can
-  if (process.env.FAKE_CLAUDE_LATE_BG === '1') {
-    while (Date.now() < deadline && !readFileSync(join(JOBS, `${id}.log`), { encoding: 'utf8', flag: 'a+' }).includes('session ready')) await new Promise((r) => setTimeout(r, 20));
+  const late = process.env.FAKE_CLAUDE_LATE_BG;
+  if (late === '1' || late === 'bridged') {
+    const marker = late === 'bridged' ? 'mod bridge bridged' : 'session ready';
+    while (Date.now() < deadline && !readFileSync(join(JOBS, `${id}.log`), { encoding: 'utf8', flag: 'a+' }).includes(marker)) await new Promise((r) => setTimeout(r, 20));
     await new Promise((r) => setTimeout(r, 300));
   }
   process.stdout.write(`backgrounded · ${id} · ${job.name ?? 'session'} (idle — send a prompt to start)\n  claude attach ${id}    open in this terminal\n  claude stop ${id}      stop this session\n`);
@@ -234,7 +240,11 @@ async function runSession(id: string): Promise<number> {
           notify?.();
           notify = null;
         };
-        child.stdout?.on('data', (c: Buffer) => (pieces.push({ stream: 'stdout', text: String(c) }), push()));
+        child.stdout?.on('data', (c: Buffer) => {
+          if (String(c).includes('"type":"bridged"')) log('mod bridge bridged');
+          pieces.push({ stream: 'stdout', text: String(c) });
+          push();
+        });
         child.stderr?.on('data', (c: Buffer) => {
           log(`[spawned ${argv.slice(2, 4).join(' ')}] ${String(c).trim()}`);
           pieces.push({ stream: 'stderr', text: String(c) });
@@ -327,6 +337,8 @@ async function runSession(id: string): Promise<number> {
     next.started();
     await new Promise((r) => setTimeout(r, turnMs));
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(next.text)?.[1] ?? next.text;
+    const rename = /^rename to (\S+)$/.exec(body.trim());
+    if (rename) await callTool('rename', { name: rename[1] });
     if (body.includes('needs approval')) {
       await callTool('status', { text: 'idle' });
       setStatus('waiting', 'permission prompt');

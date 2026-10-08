@@ -45,8 +45,9 @@ export class Sessions {
   /** By session id: when the last applied signal happened, and when the last push signal arrived. */
   readonly #lastAt = new Map<string, number>();
   readonly #lastPush = new Map<string, number>();
-  /** Injects in flight, `<session id>:<message id>`: a retry never doubles one. */
-  readonly #inflight = new Set<string>();
+  /** Injects in flight, `<session id>:<message id>`: a retry never doubles one. A retry asked for while one
+   *  is in flight is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
+  readonly #inflight = new Map<string, { again: boolean }>();
   /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
    *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
   readonly #launching = new Map<string, SignalFrame[]>();
@@ -154,9 +155,10 @@ export class Sessions {
     this.#lastPush.delete(p.sessionId);
     adapter.watch(p);
     this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, role: p.role, early: early.length });
-    for (const frame of early) this.signal(frame);
+    // the bridges first: the early SessionStart's idle retries what the spoke accepted, through them
     for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
     this.#earlyBridges.delete(p.name);
+    for (const frame of early) this.signal(frame);
     return this.view(this.#table.get(p.name) ?? p);
   }
 
@@ -335,18 +337,30 @@ export class Sessions {
     // a session no adapter launched has nobody to inject: its messages stay `delivered`
     if (!p || p.status !== 'running') return;
     const key = `${sessionId}:${messageId}`;
-    if (this.#inflight.has(key)) return;
+    const inflight = this.#inflight.get(key);
+    if (inflight) {
+      inflight.again = true;
+      return;
+    }
     const message = this.#core.store.message(messageId);
     if (!message) return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
-    this.#inflight.add(key);
+    const flight = { again: false };
+    this.#inflight.set(key, flight);
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
     adapter
       .inject(p, message, topic)
       .then(() => this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name))
       .catch((err: unknown) => this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error: err instanceof Error ? err.message : String(err) }))
-      .finally(() => this.#inflight.delete(key));
+      .finally(() => {
+        this.#inflight.delete(key);
+        // a retry was asked for meanwhile (a bridge connected, the session went idle): made now, if the
+        // message still waits for this session
+        if (!flight.again) return;
+        const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
+        if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId);
+      });
   }
 
   close(): void {

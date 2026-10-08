@@ -327,8 +327,10 @@ export class HubCore {
     this.#live.delete(from);
     c.name = to;
     this.#live.set(to, c);
-    // deliveries still in flight to this session follow it, so its acks find them
+    // deliveries still in flight to this session follow it, so its acks find them — and so do the ones its
+    // spoke accepted and its adapter has not injected yet, so the confirmation and the retry find them
     const merged = this.#store.moveQueued(from, to);
+    this.#store.moveUninjected(from, to);
     this.#store.forgetSession(from);
     for (const id of merged) this.#emitStage(id);
     this.#store.rememberSession(to, this.#now().getTime());

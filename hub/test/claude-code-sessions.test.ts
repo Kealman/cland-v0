@@ -121,3 +121,54 @@ test('a late SessionStart does not revive a session whose process is gone', asyn
   assert.equal(row.state, 'unknown');
 });
 
+test("a message the spoke accepted during the launch is injected once the launch's early bridge and SessionStart are in", async (t) => {
+  const root = await tempProject(t);
+  // `--bg` returns only after the SessionStart hook ran and the mod's bridge was answered: both wait for the row
+  const fake = await fakeClaude(t, { lateBg: 'bridged' });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  // no coordinator yet: the message waits for the role, and the launching session's spoke takes it
+  const id = await sendGeneral(ui, 'waiting for you');
+  await launch(ui, 'coord', { role: 'coordinator' });
+  assert.match(await hubLog(root), /"event":"session-launched".*"early":1/, 'the early SessionStart was replayed');
+  await injected(ui, id);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: waiting for you', 15_000);
+});
+
+test('an idle that comes while an inject waits for its confirmation retries it once that inject gave up', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { injectTimeoutMs: 3000, dropFirst: true });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+
+  const first = await sendGeneral(ui, 'first'); // dropped inside the harness: never confirmed
+  const second = await sendGeneral(ui, 'second'); // its turn ends idle while the first still waits
+  await injected(ui, second);
+  // no other turn, no other trigger: the idle that came during the first's wait is not lost
+  await injected(ui, first);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first', 15_000);
+});
+
+test('a session renamed while a message waits for its inject still gets it, and its confirmation counts', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+
+  const first = await sendGeneral(ui, 'first'); // dropped: delivered, never injected
+  await eventually('the first inject given up', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${first}"`) ? true : undefined));
+  const rename = await sendGeneral(ui, 'rename to pool-1'); // the session renames itself in this turn
+  await injected(ui, rename);
+  await presentAs(ui, 'pool-1', 'idle');
+  await injected(ui, first);
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage?: string }> };
+  assert.equal(history.messages.find((m) => m.id === first)?.stage, 'injected');
+});
+

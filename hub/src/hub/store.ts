@@ -374,6 +374,12 @@ export class Store implements HygieneMemory {
     return this.#moveQueuedTo(from, to).merged;
   }
 
+  /** What `from`'s spoke accepted and its adapter has not confirmed (`delivered`) is `to`'s now: the same session
+   *  renamed. A message that already has a delivery for `to` keeps that one. Returns how many rows moved. */
+  moveUninjected(from: string, to: string): number {
+    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'delivered'").run(to, from).changes);
+  }
+
   /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */
   prune(now: number, retentionMs: number): number {
     return Number(this.#db.prepare('delete from messages where created_at < ?').run(now - retentionMs).changes);

@@ -438,7 +438,10 @@ export type FakeClaude = {
   log: (id: string) => Promise<string>;
 };
 
-export async function fakeClaude(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; dropFirst?: boolean; lateBg?: boolean } = {}): Promise<FakeClaude> {
+export async function fakeClaude(
+  t: TestContext,
+  timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
+): Promise<FakeClaude> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
@@ -448,7 +451,10 @@ export async function fakeClaude(t: TestContext, timings: { pollMs?: number; inj
     CLAND_INJECT_TIMEOUT_MS: String(timings.injectTimeoutMs ?? 5000),
     CLAND_PUSH_TRUST_MS: String(timings.pushTrustMs ?? 1000),
     ...(timings.dropFirst ? { FAKE_CLAUDE_DROP_FIRST: '1' } : {}),
-    ...(timings.lateBg ? { FAKE_CLAUDE_LATE_BG: '1' } : {}),
+    ...(timings.lateBg ? { FAKE_CLAUDE_LATE_BG: timings.lateBg === 'bridged' ? 'bridged' : '1' } : {}),
+    ...(timings.stopCrash ? { FAKE_CLAUDE_STOP_CRASH: '1' } : {}),
+    ...(timings.ignoreTerm ? { FAKE_CLAUDE_IGNORE_TERM: '1' } : {}),
+    ...(timings.stopGraceMs ? { CLAND_STOP_GRACE_MS: String(timings.stopGraceMs) } : {}),
   };
   const sessions = async () => {
     const out = await new Promise<string>((resolve) =>
