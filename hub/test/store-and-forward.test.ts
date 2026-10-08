@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startHub, spawnSpoke, sleep, waitForAbsence } from './harness.ts';
+import WebSocket from 'ws';
+import { startHub, spawnSpoke, sleep, waitForAbsence, TEST_SECRET } from './harness.ts';
+import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { createHub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
 
@@ -165,6 +167,63 @@ test('history filtered to one counterpart finds an older exchange behind a burst
     await alpha.close();
     await beta.close();
     await gamma.close();
+    await hub.close();
+  }
+});
+
+test('a delivery stays queued until the spoke acks it: an unacked message is sent again on the next connect, an acked one never', async () => {
+  const hub = await startHub();
+  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  /** beta as a raw session: hello, then collect delivers; acks only when told to. */
+  const connectBeta = (ack: boolean): Promise<{ ws: WebSocket; delivers: Array<{ id: string; message: { id: string; text: string } }> }> =>
+    new Promise((resolve, reject) => {
+      const ws = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
+      const delivers: Array<{ id: string; message: { id: string; text: string } }> = [];
+      ws.on('error', reject);
+      ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, cwd: '/w', sessionId: 'sess-b', name: 'beta' })));
+      ws.on('message', (d) => {
+        const f = JSON.parse(String(d)) as { type: string; id: string; message: { id: string; text: string } };
+        if (f.type === 'welcome') resolve({ ws, delivers });
+        if (f.type === 'deliver') {
+          delivers.push(f);
+          if (ack) ws.send(JSON.stringify({ type: 'ack', id: f.id }));
+        }
+      });
+    });
+  const closeRaw = (ws: WebSocket) => new Promise<void>((resolve) => {
+    ws.once('close', () => resolve());
+    ws.close();
+  });
+  const waitFor = async (cond: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!cond() && Date.now() < deadline) await sleep(20);
+    assert.ok(cond());
+  };
+  try {
+    let beta = await connectBeta(false);
+    await alpha.waitForPresence(['alpha', 'beta']);
+    const sent = await alpha.call<Send>('send', { to: ['beta'], text: 'please confirm' });
+    assert.equal(sent.outcomes[0]?.outcome, 'delivered');
+    await waitFor(() => beta.delivers.length === 1);
+    assert.equal(beta.delivers[0]?.id, beta.delivers[0]?.message.id, 'the deliver frame carries the message id to ack');
+    await closeRaw(beta.ws);
+    await waitForAbsence(alpha, 'beta');
+
+    // never acked: still queued, so the next connect gets it again
+    beta = await connectBeta(true);
+    await waitFor(() => beta.delivers.length === 1);
+    assert.equal(beta.delivers[0]?.message.text, 'please confirm');
+    await sleep(100); // the ack is on its way
+    await closeRaw(beta.ws);
+    await waitForAbsence(alpha, 'beta');
+
+    // acked: delivered, never sent again
+    beta = await connectBeta(true);
+    await sleep(200);
+    assert.equal(beta.delivers.length, 0);
+    await closeRaw(beta.ws);
+  } finally {
+    await alpha.close();
     await hub.close();
   }
 });

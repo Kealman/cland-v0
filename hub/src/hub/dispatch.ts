@@ -10,6 +10,7 @@ import type { Connection, HubCore } from './core.ts';
 import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
+  isAck,
   isClientHello,
   isClientRequest,
   isHello,
@@ -98,7 +99,12 @@ export class Dispatcher {
         return refuse('unauthorized', "the secret does not match this project's hub");
       }
       if (isHello(frame)) {
-        const result = core.hello(frame, (message: Message) => peer.send({ type: 'deliver', message }), (reason, code) => peer.close(code ?? 4001, reason));
+        const deliver = (message: Message): boolean => {
+          if (!peer.isOpen()) return false;
+          peer.send({ type: 'deliver', id: message.id, message });
+          return true;
+        };
+        const result = core.hello(frame, deliver, (reason, code) => peer.close(code ?? 4001, reason));
         if (!result.ok) {
           log({ event: 'refused', edge: transport.edge, code: result.code, requested: frame.name ?? null });
           return refuse(result.code, result.message);
@@ -196,6 +202,7 @@ export class Dispatcher {
             log({ event: 'stale-frame', edge: transport.edge, name, type: frame.type });
             return;
           }
+          if (isAck(frame)) return core.ack(connection, frame.id);
           return spokeRequest(frame, name as string);
         }
         clientRequest(frame);

@@ -49,15 +49,18 @@ test('a sessions table written by an older hub gains the status and role columns
   }
 });
 
-test('store-and-forward: a queued delivery is taken once, in order, and one past the TTL is dropped', () => {
+test('store-and-forward: a queued delivery is handed over in order until it is acked, and one past the TTL is dropped', () => {
   const store = new Store();
   store.record(message('a', 'alpha', ['beta'], 'first'), [{ session: 'beta', state: 'queued' }], 1_000);
   store.record(message('b', 'alpha', ['beta'], 'second'), [{ session: 'beta', state: 'queued' }], 5_000);
   store.record(message('c', 'alpha', ['gamma'], 'not for beta'), [{ session: 'gamma', state: 'delivered' }], 5_000);
-  const taken = store.takeQueued('beta', 6_000, 4_500);
+  const taken = store.pendingFor('beta', 6_000, 4_500);
   assert.deepEqual(taken.dropped.map((m) => m.text), ['first'], 'queued 5 s ago, the TTL is 4.5 s');
   assert.deepEqual(taken.deliver.map((m) => m.text), ['second']);
-  assert.deepEqual(store.takeQueued('beta', 6_000, 4_500), { deliver: [], dropped: [] }, 'nothing is handed over twice');
+  assert.deepEqual(store.pendingFor('beta', 6_000, 4_500).deliver.map((m) => m.text), ['second'], 'unacked, it is handed over again');
+  assert.equal(store.markDelivered('b', 'beta', 6_100), true);
+  assert.equal(store.markDelivered('b', 'beta', 6_200), false, 'a repeat ack changes nothing');
+  assert.deepEqual(store.pendingFor('beta', 6_000, 4_500), { deliver: [], dropped: [] }, 'nothing is handed over after the ack');
   store.close();
 });
 
@@ -66,6 +69,6 @@ test('prune deletes messages older than the retention window with their deliveri
   store.record(message('old', 'alpha', ['beta'], 'old news'), [{ session: 'beta', state: 'queued' }], 1_000);
   store.record(message('new', 'alpha', ['beta'], 'fresh'), [{ session: 'beta', state: 'queued' }], 9_000);
   assert.equal(store.prune(10_000, 5_000), 1);
-  assert.deepEqual(store.takeQueued('beta', 10_000, 60_000).deliver.map((m) => m.text), ['fresh'], 'the pruned message took its queued delivery with it');
+  assert.deepEqual(store.pendingFor('beta', 10_000, 60_000).deliver.map((m) => m.text), ['fresh'], 'the pruned message took its queued delivery with it');
   store.close();
 });

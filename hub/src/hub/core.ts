@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { PROTOCOL_VERSION, REPLACED_CLOSE_CODE, UPDATE_HINT, type Hello, type Message, type Presence, type RefusalCode, type SendOutcome } from '../protocol.ts';
 import { generatedName, nameRefusal, ROLE_NAMES } from '../names.ts';
 import { resolveTag } from '../address.ts';
-import { Store, type DeliveryState } from './store.ts';
+import { Store } from './store.ts';
 import { Hygiene, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import type { LogFn } from '../log.ts';
 
@@ -23,7 +23,8 @@ export type Connection = {
   connectedAt: string;
   status: string | null;
   role: string | null;
-  deliver: (message: Message) => void;
+  /** Send the message to the spoke; false when the socket is no longer open (it stays queued). */
+  deliver: (message: Message) => boolean;
   /** Close this session's socket: a kick (4001 — the spoke reconnects) or a replacement (4002 — it does not). */
   close: (reason: string, code?: number) => void;
 };
@@ -75,7 +76,7 @@ export class HubCore {
 
   // ---------------------------------------------------------------- presence
 
-  hello(hello: Hello, deliver: (message: Message) => void, close: (reason: string, code?: number) => void = () => {}): HelloResult {
+  hello(hello: Hello, deliver: (message: Message) => boolean, close: (reason: string, code?: number) => void = () => {}): HelloResult {
     if (hello.protocol !== PROTOCOL_VERSION) {
       return { ok: false, code: 'version', message: `protocol ${hello.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}` };
     }
@@ -142,14 +143,21 @@ export class HubCore {
     return { ok: true, name, connection };
   }
 
-  /** After the welcome: hand a session what waited for it, oldest first; drop what waited too long. */
+  /** After the welcome: hand a session what waited for it, oldest first; drop what waited too long. A message
+   *  stays queued until the spoke acks it, so what a previous socket never acked is sent again here. */
   flushQueued(name: string): void {
     const connection = this.#live.get(name);
     if (!connection) return;
-    const { deliver, dropped } = this.#store.takeQueued(name, this.#now().getTime(), this.#queueTtlMs);
+    const { deliver, dropped } = this.#store.pendingFor(name, this.#now().getTime(), this.#queueTtlMs);
     for (const message of dropped) this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
     for (const message of deliver) connection.deliver(message);
     if (deliver.length) this.#log({ event: 'flushed', session: name, count: deliver.length });
+  }
+
+  /** The spoke accepted a message: its delivery moves from queued to delivered. A stale connection acks nothing. */
+  ack(connection: Connection, messageId: string): void {
+    if (!this.isCurrent(connection)) return;
+    if (this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) this.#log({ event: 'acked', id: messageId, session: connection.name });
   }
 
   /** A socket closed. Only the connection that owns the name is removed: a stale close must never
@@ -172,8 +180,8 @@ export class HubCore {
   /** A hub-kind message to one session: delivered now or queued, and recorded. */
   notify(name: string, text: string): void {
     const notice: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [name], text, ts: this.#now().toISOString() };
-    const state = this.#deliverOrQueue(notice, name);
-    this.#store.record(notice, [{ session: name, state }], this.#now().getTime());
+    this.#store.record(notice, [{ session: name, state: 'queued' }], this.#now().getTime());
+    this.#send(notice, name);
   }
 
   setStatus(name: string, text: string): void {
@@ -202,6 +210,8 @@ export class HubCore {
     this.#live.delete(from);
     c.name = to;
     this.#live.set(to, c);
+    // deliveries still in flight to this session follow it, so its acks find them
+    this.#store.moveQueued(from, to);
     this.#store.forgetSession(from);
     this.#store.rememberSession(to, this.#now().getTime());
     this.#store.rememberSessionId(to, c.sessionId);
@@ -243,14 +253,10 @@ export class HubCore {
     return id && id !== UNKNOWN_SESSION ? `id:${id}` : `name:${name}`;
   }
 
-  /** Deliver to a session now, or queue it: the delivery state for the record. */
-  #deliverOrQueue(message: Message, name: string): DeliveryState {
-    const live = this.#live.get(name);
-    if (live) {
-      live.deliver(message);
-      return 'delivered';
-    }
-    return 'queued';
+  /** Send to a session now if it is connected: whether the frame went out on an open socket. The record says
+   *  `queued` either way until the spoke's ack; an unsent or unacked message goes out again on its next hello. */
+  #send(message: Message, name: string): boolean {
+    return this.#live.get(name)?.deliver(message) ?? false;
   }
 
   /** A session the hub has seen within the queue's own TTL — beyond it a name is history, not an addressee. */
@@ -357,8 +363,10 @@ export class HubCore {
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
       ...(replyTo !== undefined ? { replyTo } : {}),
     };
-    const states = new Map<string, DeliveryState>();
-    for (const n of sessions) states.set(n, this.#deliverOrQueue(message, n));
+    // recorded before it is sent: an ack can never arrive for a delivery the store does not know
+    if (sessions.size > 0) this.#store.record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
+    const states = new Map<string, 'sent' | 'queued'>();
+    for (const n of sessions) states.set(n, this.#send(message, n) ? 'sent' : 'queued');
     for (const [tag, names] of tagOf) {
       const blocked = names.filter((n) => refused.has(n));
       if (blocked.length === names.length) {
@@ -374,7 +382,6 @@ export class HubCore {
       this.#log({ event: 'send-refused', from, to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
       return { message, outcomes };
     }
-    this.#store.record(message, [...states].map(([session, state]) => ({ session, state })), nowMs);
     this.#log({ event: 'send', id: message.id, from, to: message.to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     return { message, outcomes };
   }

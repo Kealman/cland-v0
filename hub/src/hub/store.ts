@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { Message } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 
-/** A delivery to one addressee: delivered at once, queued for an offline session, or dropped past the TTL. */
+/** A delivery to one addressee: queued until its spoke acks it (delivered), or dropped past the TTL. */
 export type DeliveryState = 'delivered' | 'queued' | 'dropped';
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 
@@ -203,8 +203,9 @@ export class Store implements HygieneMemory {
     return row ? toMessage(row) : null;
   }
 
-  /** The messages waiting for a session, oldest first; those past the TTL are marked dropped and returned separately. */
-  takeQueued(session: string, now: number, ttlMs: number): { deliver: Message[]; dropped: Message[] } {
+  /** The messages waiting for a session, oldest first; those past the TTL are marked dropped and returned
+   *  separately. The rest stay queued: only the spoke's ack marks one delivered (`markDelivered`). */
+  pendingFor(session: string, now: number, ttlMs: number): { deliver: Message[]; dropped: Message[] } {
     const rows = this.#db
       .prepare('select m.*, d.queued_at as queued_at from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = ? order by d.queued_at, m.created_at')
       .all(session, 'queued') as Row[];
@@ -216,12 +217,19 @@ export class Store implements HygieneMemory {
       if (now - (row.queued_at as number) > ttlMs) {
         mark.run('dropped', null, message.id, session);
         dropped.push(message);
-      } else {
-        mark.run('delivered', now, message.id, session);
-        deliver.push(message);
-      }
+      } else deliver.push(message);
     }
     return { deliver, dropped };
+  }
+
+  /** The session's spoke accepted the message; false when there was no queued delivery of it (a repeat ack). */
+  markDelivered(messageId: string, session: string, now: number): boolean {
+    return this.#db.prepare("update deliveries set state = 'delivered', delivered_at = ? where message_id = ? and session = ? and state = 'queued'").run(now, messageId, session).changes > 0;
+  }
+
+  /** A rename: what still waits for the old name (in flight to the live session) waits for the new one. */
+  moveQueued(from: string, to: string): void {
+    this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(to, from);
   }
 
   /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */

@@ -4,7 +4,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
-import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type HubFrame, type Message, type Presence, type RefusalCode, type SpokeRequest } from '../protocol.ts';
+import { isHubFrame, parseFrame, PROTOCOL_VERSION, REPLACED_CLOSE_CODE, type Hello, type Ack, type HubFrame, type Message, type Presence, type RefusalCode, type SpokeRequest } from '../protocol.ts';
 
 export type HubClientOptions = {
   url: string;
@@ -30,6 +30,9 @@ export type ConnectionState =
  *  that is really gone frees the name within a few reconnect delays; a live one elsewhere does not. */
 export const NAME_RETRIES = 5;
 
+/** How many delivered message ids a spoke remembers to recognise a re-send. */
+const SEEN_LIMIT = 1000;
+
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
@@ -51,6 +54,8 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
   #timer: NodeJS.Timeout | null = null;
   #lastRefusal: string | null = null;
   #fatal = false;
+  /** The ids of the messages already handed to the session: a re-sent deliver is acked again, never emitted twice. */
+  readonly #seen = new Set<string>();
   readonly #options: HubClientOptions;
   /** The hello's fixed fields — the requested name is kept apart, because a refusal changes it. */
   readonly #hello: Omit<HubClientOptions['hello'], 'name'>;
@@ -217,7 +222,13 @@ export class HubClient extends EventEmitter<{ deliver: [Message]; state: [Connec
         this.#log(`connected to the hub as ${frame.name}${frame.role ? ` (${frame.role})` : ''} (${frame.presence.length} online)`);
         break;
       case 'deliver':
-        this.emit('deliver', frame.message);
+        if (!this.#seen.has(frame.id)) {
+          this.#seen.add(frame.id);
+          if (this.#seen.size > SEEN_LIMIT) this.#seen.delete(this.#seen.values().next().value as string);
+          this.emit('deliver', frame.message);
+        }
+        // accepted (spec 4.2, `delivered`): the hub stops re-sending it
+        if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(JSON.stringify({ type: 'ack', id: frame.id } satisfies Ack));
         break;
       case 'result': {
         const p = this.#pending.get(frame.id);

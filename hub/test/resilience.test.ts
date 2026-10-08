@@ -194,3 +194,36 @@ test('a replaced spoke whose socket is still closing cannot act under the name i
     await hub.close();
   }
 });
+
+test('a spoke acks every deliver and hands a message re-sent under the same id to its session once', async () => {
+  // a minimal hub over the real wire: welcome, then the same deliver twice
+  const { WebSocketServer } = await import('ws');
+  const wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await new Promise<void>((resolve) => wss.once('listening', () => resolve()));
+  const acks: string[] = [];
+  const message = { id: 'm-1', from: 'alpha', fromKind: 'agent', via: 'session', to: ['beta'], text: 'only once, please', ts: new Date().toISOString() };
+  wss.on('connection', (ws) => {
+    ws.on('message', (d) => {
+      const f = JSON.parse(String(d)) as { type: string; id?: string };
+      if (f.type === 'hello') {
+        ws.send(JSON.stringify({ type: 'welcome', name: 'beta', presence: [] }));
+        ws.send(JSON.stringify({ type: 'deliver', id: message.id, message }));
+        ws.send(JSON.stringify({ type: 'deliver', id: message.id, message }));
+      }
+      if (f.type === 'ack' && f.id) acks.push(f.id);
+    });
+  });
+  const port = (wss.address() as { port: number }).port;
+  const spoke = await spawnSpoke({ hub: { url: `ws://127.0.0.1:${port}` }, name: 'beta', sessionId: 'sess-b' });
+  try {
+    await until(async () => acks.length, (n) => n >= 2);
+    assert.deepEqual(acks, ['m-1', 'm-1'], 'both copies acked');
+    await spoke.waitForEvent((e) => e.params.content === 'only once, please');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(spoke.events.length, 1, 'the session saw it once');
+  } finally {
+    await spoke.close();
+    for (const c of wss.clients) c.terminate();
+    await new Promise<void>((resolve) => wss.close(() => resolve()));
+  }
+});

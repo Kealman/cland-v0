@@ -1,7 +1,7 @@
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
 // Frames travel as JSON text over one WebSocket per spoke.
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** The spoke's heartbeat interval; the hub closes a socket silent for two of them. */
 export const HEARTBEAT_MS = 30_000;
@@ -66,13 +66,17 @@ export type SpokeRequest =
   /** The heartbeat. */
   | { type: 'ping'; id: string };
 
-export type SpokeFrame = Hello | SpokeRequest;
+/** The spoke accepted a delivered message (spec 4.2, `delivered`): the hub stops re-sending it. No reply. */
+export type Ack = { type: 'ack'; id: string };
+
+export type SpokeFrame = Hello | SpokeRequest | Ack;
 
 export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name' | 'bad-hello';
 
 export type HubFrame =
   | { type: 'welcome'; name: string; presence: Presence[]; role?: string }
-  | { type: 'deliver'; message: Message }
+  /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice. */
+  | { type: 'deliver'; id: string; message: Message }
   | { type: 'result'; id: string; ok: true; value: unknown }
   | { type: 'result'; id: string; ok: false; error: string }
   | { type: 'error'; code: RefusalCode; message: string };
@@ -102,6 +106,10 @@ export function isHello(f: Record<string, unknown>): f is Hello {
   );
 }
 
+export function isAck(f: Record<string, unknown>): f is Ack {
+  return f.type === 'ack' && typeof f.id === 'string';
+}
+
 export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
@@ -126,7 +134,7 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
     case 'welcome':
       return typeof f.name === 'string' && Array.isArray(f.presence);
     case 'deliver':
-      return isObject(f.message) && typeof f.message.id === 'string' && typeof f.message.text === 'string';
+      return typeof f.id === 'string' && isObject(f.message) && typeof f.message.id === 'string' && typeof f.message.text === 'string';
     case 'result':
       return typeof f.id === 'string' && typeof f.ok === 'boolean';
     case 'error':
