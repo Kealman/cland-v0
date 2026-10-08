@@ -27,10 +27,13 @@ import type { RolesSource } from '../roles/config.ts';
 import { clauseText, revokedText } from '../roles/clause.ts';
 import { isRoleRecord, noteText, renderNote, type RoleRecord } from '../roles/note.ts';
 import { resolveTag } from '../address.ts';
+import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
 import type { LogFn } from '../log.ts';
+import { Asks } from './asks.ts';
+import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
 
 /** How long a message waits for an offline session; also how long a name stays known after its last sign of life. */
 export const QUEUE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -88,6 +91,8 @@ export type CoreOptions = {
   roles?: RolesSource;
   /** The tracker as a topic's binding sees it (`topic.create` with an item); absent, a binding is refused. */
   items?: TopicItems;
+  /** How long a session stays idle before the inbox notes it, ms (default 30 min; 0: never). */
+  idleNotifyMs?: number;
 };
 
 /** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
@@ -127,6 +132,10 @@ export class HubCore {
   #items: TopicItems | null;
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
   readonly #publishedTopics = new Map<string, string>();
+  /** The Coordinator's asks to the human (#33). */
+  readonly asks: Asks;
+  /** The human's inbox (#33): open asks, approvals, waiting topics, notifications. */
+  readonly inbox: InboxBoard;
 
   constructor(options: CoreOptions = {}) {
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
@@ -146,6 +155,37 @@ export class HubCore {
     const now = this.#now().toISOString();
     for (const t of STANDING_TOPICS) this.#store.ensureTopic(t.id, t.title, true, now);
     for (const t of this.#store.topics()) this.#publishedTopics.set(t.id, HubCore.#topicSignature(t));
+    this.asks = new Asks({
+      store: this.#store,
+      now: this.#now,
+      log: this.#log,
+      emit: (e) => this.#emit(e),
+      emitMessage: (m) => this.#emitMessage(m),
+      publishTopics: () => this.#publishTopics(),
+      move: (t, m, why) => void this.#move(t, m, why),
+      topic: (id) => this.#topicOrThrow(id),
+      sizeRefusal: (text) => this.#hygiene.sizeRefusal(text),
+      role: (name) => this.#live.get(name)?.role ?? null,
+      // the permission table's word on `ask` (#30): the role's grants, or the default table on a hub with no roles
+      mayAsk: (role) => decide(role, role === null ? undefined : (this.#roles?.get().get(role)?.permissions.tools ?? DEFAULT_PERMISSIONS[role]), { tool: 'ask' }),
+      sendFromHuman: (topic, text, to, answerTo) => this.sendFromHuman(topic, text, to, undefined, answerTo),
+      // an ask withdrawn or cancelled: a notice in its topic to the asker, through the one notice path
+      noteTo: (topic, session, text) => {
+        if (this.noticeInTopic(topic, { kind: 'ask-closed', text, to: [session] }) === null) throw new Error(`no topic "${topic}"`);
+      },
+    });
+    this.inbox = new InboxBoard({
+      store: this.#store,
+      now: this.#now,
+      log: this.#log,
+      emit: (e) => this.#emit(e),
+      topics: () => this.#store.topics(),
+      presence: () => this.presence(),
+      stateOf: (id) => this.sessionState(id),
+      idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
+    });
+    // the inbox hears every event first: what changes a section, what is a notification
+    this.#listeners.add((e) => this.inbox.observe(e));
   }
 
   // ---------------------------------------------------------------- events
@@ -172,7 +212,8 @@ export class HubCore {
     const topic = this.topicRef(message.topic);
     if (!topic) return;
     const stage = this.#store.stage(message.id);
-    this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) } });
+    const ask = this.asks.card(message.id);
+    this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
   }
 
   get store(): Store {
@@ -879,7 +920,9 @@ export class HubCore {
   /** Move a topic's status (spec 4.5); Agents has none to move. */
   #move(topic: Topic, move: TopicMove, why: string): TopicStatus {
     if (topic.id === AGENTS.id) return topic.status;
-    const next = nextStatus(topic.status, move);
+    let next = nextStatus(topic.status, move);
+    // an open ask keeps its topic waiting for the human (spec 4.5): only answering, resolve or close end that
+    if (next !== 'closed' && next !== 'waiting for human' && this.asks.openIn(topic.id)) next = 'waiting for human';
     if (next !== topic.status) {
       this.#store.setTopicStatus(topic.id, next);
       this.#log({ event: 'topic-status', topic: topic.id, from: topic.status, to: next, why });
@@ -925,7 +968,8 @@ export class HubCore {
   closeTopic(id: string, why = 'closed by the human'): Topic {
     const topic = this.#topicOrThrow(id);
     if (topic.standing) throw new TopicRefusal(`${topic.title} is a standing topic: it cannot be closed`);
-    // TODO(#33): open asks in the topic are cancelled with a system note
+    // its open asks are cancelled, and each asker is told (#33)
+    this.asks.cancel(topic.id, `the topic "${topic.title}" was ${why}`);
     this.#move(topic, 'close', why);
     this.#publishTopics();
     return this.#topicOrThrow(id);
@@ -935,6 +979,9 @@ export class HubCore {
   resolveTopic(id: string, by = HUMAN): Topic {
     const topic = this.#topicOrThrow(id);
     if (topic.id === AGENTS.id) throw new TopicRefusal(`${topic.title} has no status to resolve: it is a record of what agents send each other`);
+    nextStatus(topic.status, 'resolve'); // a closed topic is refused before anything moves
+    // resolve withdraws the topic's open asks (#33)
+    this.asks.withdraw(topic.id, by);
     this.#move(topic, 'resolve', `resolved by ${by}`);
     this.#publishTopics();
     return this.#topicOrThrow(id);
@@ -952,7 +999,8 @@ export class HubCore {
   itemClosed(item: string): void {
     const topic = this.#store.topicOfItem(item);
     if (!topic || topic.status === 'closed') return;
-    // TODO(#33): open asks in the topic are cancelled with a system note
+    // its open asks are cancelled, and each asker is told (#33)
+    this.asks.cancel(topic.id, `${item} was closed`);
     this.#move(topic, 'close', `${item} closed`);
     this.#publishTopics();
   }
@@ -992,7 +1040,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -1032,6 +1080,7 @@ export class HubCore {
       ts: this.#now().toISOString(),
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
+      ...(answerTo !== undefined ? { answerTo } : {}),
     };
     this.#store.record(
       message,
@@ -1052,7 +1101,7 @@ export class HubCore {
       outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} offline — queued` } : { to: tag, outcome: 'delivered' });
     }
     for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
-    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     const stage = this.#store.stage(message.id);
     return { message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
   }

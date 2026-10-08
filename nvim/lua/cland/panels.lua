@@ -6,7 +6,7 @@
 -- `session.list` and the connected spokes (#28): name [Role], harness, model, the state with the adapter's
 -- `heuristic` qualifier, usage where the adapter reports it, the claimed item; `unknown` once the process is
 -- gone. Its keys: l launches, C-v attaches in a split, x stops after a confirmation line, c shows the
--- capability table. Topics from `topic.list`; the inbox is an empty placeholder until asks exist (#33).
+-- capability table. Topics from `topic.list`; the inbox (`inbox.lua`, #33).
 local api = vim.api
 local state = require('cland.state')
 local hl = require('cland.hl')
@@ -113,6 +113,8 @@ function Canvas:apply(buf)
   end
   return self.info
 end
+
+M.canvas = canvas
 
 --- What the row under the cursor of `buf` shows: {item=}, {session=} or {topic=}; nil on other rows.
 function M.row_at(buf, row)
@@ -346,11 +348,7 @@ end
 -- Inbox -----------------------------------------------------------------------------------------------
 
 local function render_inbox(c)
-  c:add({ { ' ✓ nothing needs you', 'ClandGreen' } })
-  c:add({})
-  c:add({ { ' Asks, approvals and notifications', 'ClandFaint' } })
-  c:add({ { ' come with #33.', 'ClandFaint' } })
-  return { ' ␣N full width' }
+  return require('cland.inbox').render(c, false)
 end
 
 local RENDER = { sessions = render_sessions, topics = render_topics, items = render_items, inbox = render_inbox }
@@ -421,6 +419,8 @@ function M.buf(kind, slot)
     require('cland.items').keys(b)
   elseif kind == 'sessions' then
     M.session_keys(b)
+  elseif kind == 'inbox' then
+    require('cland.inbox').keys(b)
   elseif kind == 'topics' then
     local views = require('cland.views')
     local function topic_key(lhs, fn, desc)

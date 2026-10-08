@@ -19,6 +19,20 @@ function M.new(client, topic)
         view.thread:set_notice('not sent: ' .. (client.detail or 'the hub is not connected'), 'ClandRed')
         return done('not connected')
       end
+      -- a free answer to an ask (#33): `i` on its card or its inbox row armed the composer
+      local answering = view.composer.answering
+      if answering then
+        view.composer:answer_to(nil)
+        return client:request({ type = 'topic.answer', ask = answering.ask, text = text }, function(err)
+          if err then
+            view.composer:answer_to(answering.ask, answering.question)
+            view.thread:set_notice('not answered: ' .. err, 'ClandRed')
+          else
+            require('cland.state').answered(answering.ask)
+          end
+          done(err)
+        end)
+      end
       client:request({ type = 'topic.send', topic = topic.id, text = text }, function(err)
         if err then
           view.thread:set_notice('not sent: ' .. err, 'ClandRed')
@@ -52,6 +66,22 @@ function M.new(client, topic)
     if event.topic == topic.id then
       view.thread:set_stage(event.message, event.stage)
     end
+  end)
+  -- an ask's card changed (#33); an ask no longer open takes no free answer
+  client:on('ask', function(event)
+    if event.topic == topic.id then
+      view.thread:set_card(event.ask, event.card)
+      local a = view.composer.answering
+      if a and a.ask == event.ask and type(event.card) == 'table' and event.card.state ~= 'open' then
+        view.composer:answer_to(nil)
+      end
+    end
+  end)
+  -- 1-9 and i on an open ask's card; i elsewhere in the thread is the composer
+  require('cland.ask_card').keys(view.thread.buf, function(row)
+    return view.thread:ask_at(row)
+  end, function()
+    require('cland.layout').show({ kind = 'thread', id = topic.id }, { insert = true })
   end)
   return view
 end

@@ -12,7 +12,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
-import { decide, KNOWN_TOOLS, type ToolCall } from '../roles/permissions.ts';
+import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { withRole } from '../names.ts';
 import {
   PROTOCOL_VERSION,
@@ -93,6 +93,8 @@ export class Dispatcher {
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+    // the inbox's approvals are the launched sessions waiting for approval, with their attach commands (#33)
+    this.#options.core.inbox.useProcesses(sessions ? () => sessions.list() : null);
   }
 
   /** What a handover and `role.state` read beyond the core (#31): the tracker's claims, the launched sessions. */
@@ -107,6 +109,7 @@ export class Dispatcher {
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
     if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };
+    if (err instanceof ToolForbidden) return { type: 'result', id, ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason };
     // hygiene's typed refusal rides along (#34)
     return { type: 'result', id, ok: false, error: err instanceof Error ? err.message : String(err), ...(err instanceof HygieneError ? { refusal: err.refusal } : {}) };
   }
@@ -340,6 +343,9 @@ export class Dispatcher {
           case 'resolve':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.resolveTopic(frame.topic, me) } });
             break;
+          case 'ask':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: core.asks.ask(me, frame.topic, frame.question, frame.options, frame.free) });
+            break;
         }
       } catch (err) {
         peer.send(Dispatcher.#failure(frame.id, err));
@@ -391,6 +397,14 @@ export class Dispatcher {
             return answer(core.roleList());
           case 'hygiene.unmute':
             return answer(core.unmute(frame.a, frame.b));
+          case 'topic.answer':
+            return answer(core.asks.answer(frame.ask, frame.option, frame.text));
+          case 'inbox.list':
+            return answer(core.inbox.list());
+          case 'inbox.dismiss':
+            return answer(core.inbox.dismiss(frame.notification));
+          case 'inbox.dismiss_all':
+            return answer(core.inbox.dismissAll());
           case 'subscribe':
             if (!unsubscribe) {
               const fromCore = core.subscribe((event) => {
@@ -419,7 +433,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'hub.status':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator() } satisfies HubStatus });
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou() } satisfies HubStatus });
           break;
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });

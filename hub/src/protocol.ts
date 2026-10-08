@@ -61,6 +61,8 @@ export type Message = {
   kind?: string;
   /** The notice's facts, typed by its kind: a mute carries its `HygieneRefusal` and the pair. */
   detail?: Record<string, unknown>;
+  /** The human's answer to an ask (#33): the ask's message id. */
+  answerTo?: string;
 };
 
 /** Why hygiene refused a send (spec 4.2): the size cap, the session's rate limit, or the pair's loop breaker
@@ -97,8 +99,52 @@ export type TopicRef = { id: string; title: string; item?: string | null };
  *  `injected` once every addressee's adapter confirmed the turn; `dropped` when it waited past the TTL. */
 export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
 
-/** A message as a topic shows it: its stage is present when it had addressees. */
-export type TopicMessage = Message & { topic: string; stage?: DeliveryStage };
+/** A message as a topic shows it: its stage is present when it had addressees; `ask` when it is an ask (#33). */
+export type TopicMessage = Message & { topic: string; stage?: DeliveryStage; ask?: AskCard };
+
+// ------------------------------------------------------------------ asks and the inbox (spec 4.5 and 5, #33)
+
+/** An ask's life: open until the human answers it, the Coordinator withdraws it (`resolve`), or the topic or its
+ *  item closes (cancelled). */
+export type AskState = 'open' | 'answered' | 'withdrawn' | 'cancelled';
+
+/** An ask as its message carries it: the question is the message's text. */
+export type AskCard = {
+  question: string;
+  /** The numbered options, 1 first; may be empty when only a free answer makes sense. */
+  options: string[];
+  /** Whether a free answer is welcome beside the options. */
+  free: boolean;
+  state: AskState;
+  /** The answer's message id, once answered. */
+  answer?: string;
+  /** The option the human chose (1-based), absent for a free answer. */
+  option?: number;
+};
+
+/** An open ask as the inbox lists it. */
+export type InboxAsk = { id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; label: string; ts: string };
+
+/** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
+export type InboxApproval = { session: string; label: string; harness: string | null; since: string | null; attach: string | null };
+
+export type NotificationKind = 'verdict' | 'role' | 'death' | 'idle';
+
+/** Something worth the human's eye from the journal (until #34, the hub's own events): dismissable, never blocking. */
+export type InboxNotification = {
+  id: string;
+  kind: NotificationKind;
+  text: string;
+  ts: string;
+  item?: string;
+  session?: string;
+  /** `verdict`: `clear` or `not clear`. */
+  result?: string;
+  dismissed: boolean;
+};
+
+/** The inbox (spec 5): what only the human can unblock first, in this order; `needsYou` = asks + approvals + waiting. */
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
 
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
@@ -112,6 +158,10 @@ export type HubEvent =
   | { type: 'session.role'; session: string; role: string | null; previous: string | null; reason: string; ts: string }
   /** A topic changed: created, its status, its warning, its binding or the human's unread count. */
   | { type: 'topic'; topic: Topic }
+  /** An ask's state changed (answered, withdrawn, cancelled): the thread's card follows it. */
+  | { type: 'ask'; topic: string; ask: string; card: AskCard }
+  /** The inbox changed (an ask, an approval, a waiting topic, a notification): all of it, as `inbox.list` answers. */
+  | { type: 'inbox'; inbox: Inbox }
   /** No live session holds the Coordinator any more: the UI shows "no coordinator". */
   | { type: 'role.vacant'; role: 'coordinator'; ts: string }
   /** A live session holds the Coordinator again. */
@@ -152,8 +202,8 @@ export type RoleState = {
   /** The topics waiting for the role: their status says so (`waiting for agent`), or a message addressed to the role or
    *  its holders (current and previous) is newer than their last word in it. `reason` says which. */
   waiting: Array<{ topic: TopicRef; status: TopicStatus; reason: 'status' | 'addressed'; pending: number; last: string }>;
-  /** Open asks addressed to the role: none until asks exist (#33). */
-  asks: unknown[];
+  /** The open asks the role put to the human (#33): asked by its holders, or by the holder it moved from. */
+  asks: InboxAsk[];
   /** The tracker claims held by the role's holders. */
   claims: Array<{ item: string; title: string; session: string; sessionId: string; claimedAt: string }>;
 };
@@ -180,12 +230,14 @@ export type SpokeRequest =
   | { type: 'rename'; id: string; name: string }
   /** Open a topic, with a title and optionally bound to an item: `{ topic: Topic }`. */
   | { type: 'topic.create'; id: string; title: string; item?: string }
-  /** Clear a topic's wait (`waiting for human` or `waiting for agent`) back to `open`: `{ topic: Topic }`. */
+  /** Clear a topic's wait (`waiting for human` or `waiting for agent`) back to `open`, withdrawing its open asks: `{ topic: Topic }`. */
   | { type: 'resolve'; id: string; topic: string }
   /** The Coordinator hands its role to `to` with a note (#31); `then: "implementer"` keeps the caller as an Implementer. */
   | { type: 'role.handover'; id: string; to: string; note?: HandoverNote | string; then?: string }
   /** The state of the caller's role (`role` defaults to it): `RoleState`. */
   | { type: 'role.state'; id: string; role?: string }
+  /** Ask the human (the Coordinator only): a question with numbered options and room for a free answer. `{ ask, topic }` */
+  | { type: 'ask'; id: string; topic: string; question: string; options: string[]; free?: boolean }
   /** The heartbeat. */
   | { type: 'ping'; id: string };
 
@@ -262,6 +314,14 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
     case 'resolve':
       return typeof f.topic === 'string';
+    case 'ask':
+      return (
+        typeof f.topic === 'string' &&
+        typeof f.question === 'string' &&
+        Array.isArray(f.options) &&
+        f.options.every((o) => typeof o === 'string') &&
+        (f.free === undefined || typeof f.free === 'boolean')
+      );
     case 'send':
       return (
         (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
@@ -338,7 +398,16 @@ export type ClientRequest =
   /** The roles, their definitions and holders: `RoleList`. */
   | { type: 'role.list'; id: string }
   /** A person lifts the loop breaker's mute of a pair of sessions (by name): `{ lifted: boolean, pair: [a, b] }`. */
-  | { type: 'hygiene.unmute'; id: string; a: string; b: string };
+  | { type: 'hygiene.unmute'; id: string; a: string; b: string }
+
+  /** The human answers an ask with an option (1-based) or a free text: `{ message: TopicMessage, outcomes }`. */
+  | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string }
+  /** The inbox: `Inbox`. */
+  | { type: 'inbox.list'; id: string }
+  /** Dismiss one notification: `Inbox`. Asks and approvals are not dismissable. */
+  | { type: 'inbox.dismiss'; id: string; notification: string }
+  /** Dismiss every notification: `Inbox`. */
+  | { type: 'inbox.dismiss_all'; id: string };
 
 /** A session and its role as the role frames answer. */
 export type RoleHolder = { name: string; role: string | null; label: string; live: boolean };
@@ -362,6 +431,8 @@ export type HubStatus = {
   coordinator?: string | null;
   /** The harness processes the hub launched (its process table), each with its state. */
   harnesses?: HarnessProcessView[];
+  /** The top bar's "needs you" count: open asks, sessions waiting for approval, topics waiting for the human (#33). */
+  needsYou?: number;
 };
 
 /** A row of the hub's process table as clients see it. */
@@ -401,7 +472,13 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.list':
     case 'subscribe':
     case 'role.list':
+    case 'inbox.list':
+    case 'inbox.dismiss_all':
       return true;
+    case 'inbox.dismiss':
+      return typeof f.notification === 'string';
+    case 'topic.answer':
+      return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string');
     case 'role.set':
       return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean');
     case 'role.state':

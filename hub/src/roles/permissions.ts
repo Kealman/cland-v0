@@ -12,8 +12,8 @@
 //   task.comment:verdict verdict comments (the verdict header: verdict, result, run) on any item
 //   topic.create:own     a topic only bound to the session's own item
 // The session's own item is one it claims (the tracker's live claim, by session id) or whose `assignee` is its name.
-// Tools that have no frame yet (`ask`, `merge`, `artifact.create`) are in the table already: they are checked the
-// day their frame arrives, through the same `decide`. `resolve` and `topic.create` (#32) have theirs; `role.handover`
+// Tools that have no frame yet (`merge`, `artifact.create`) are in the table already: they are checked the
+// day their frame arrives, through the same `decide`; `ask` (#33) has its frame. `resolve` and `topic.create` (#32) have theirs; `role.handover`
 // (#31) is the Coordinator's; `role.state` is no table tool: a session reads the state of the role it holds (the
 // dispatcher checks).
 import { ROLE_LABELS } from '../names.ts';
@@ -126,6 +126,8 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   const scoped = list.filter((g) => g.startsWith(`${tool}:`));
   const who = label(role);
   if (!scoped.length) {
+    // asking the human is the Coordinator's (spec 4.4): the one rule, here; the asks module checks nothing itself
+    if (tool === 'ask') return { ok: false, permission: tool, reason: `only the Coordinator asks the human: ${who} may not ask; send the question to the coordinator instead` };
     return { ok: false, permission: tool, reason: `${who} may not use ${tool}` };
   }
   switch (tool) {
@@ -156,5 +158,21 @@ export function decide(role: string | null, grants: readonly string[] | undefine
     }
     default:
       return { ok: false, permission: tool, reason: `${who} may not use ${tool}` };
+  }
+}
+
+/**
+ * A call the table refused, thrown by a handler that applies the table itself (`ask` on a hub with no role
+ * definitions, #33): the dispatcher answers it with the same typed shape as its own refusals.
+ */
+export class ToolForbidden extends Error {
+  readonly permission: string;
+  readonly role: string | null;
+  readonly reason: string;
+  constructor(role: string | null, permission: string, reason: string) {
+    super(`forbidden: ${permission} (${reason})`);
+    this.permission = permission;
+    this.role = role;
+    this.reason = reason;
   }
 }

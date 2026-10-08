@@ -33,6 +33,8 @@ export type Scenario = {
   launchError?: string;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
   stopError?: string;
+  /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event. */
+  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>> };
 };
 
 type Frame = Record<string, unknown> & { type?: string; id?: string };
@@ -98,6 +100,48 @@ function acceptSend(f: Frame) {
   ok(f.id, { message, outcomes: [] });
 }
 
+/** The inbox as the hub answers it, with its "needs you" count. */
+function inboxValue(): Record<string, unknown> {
+  const ib = scenario.inbox ?? {};
+  const asks = ib.asks ?? [];
+  const approvals = ib.approvals ?? [];
+  const waiting = ib.waiting ?? [];
+  return { asks, approvals, waiting, notifications: ib.notifications ?? [], needsYou: asks.length + approvals.length + waiting.length };
+}
+
+/** The human answers an ask: the answer message (with answerTo, to the asker), the card answered, the row gone. */
+function answerAsk(f: Frame) {
+  const id = String(f.ask);
+  let topicId: string | undefined;
+  let ask: Record<string, unknown> | undefined;
+  for (const [topic, list] of Object.entries(scenario.messages ?? {})) {
+    const found = list.find((m) => m.id === id);
+    if (found) {
+      topicId = topic;
+      ask = found;
+    }
+  }
+  const row = scenario.inbox?.asks?.find((a) => a.id === id);
+  topicId ??= (row?.topic as { id?: string } | undefined)?.id;
+  const card = (ask?.ask ?? { question: row?.question, options: row?.options ?? [], free: row?.free ?? true, state: 'open' }) as Record<string, unknown>;
+  if (!topicId || card.state !== 'open') return fail(f.id, `the ask "${id}" takes no answer`);
+  const options = (card.options as string[]) ?? [];
+  const option = typeof f.option === 'number' ? f.option : undefined;
+  const text = option !== undefined ? options[option - 1] : typeof f.text === 'string' ? f.text.trim() : '';
+  if (!text) return fail(f.id, option !== undefined ? `option ${option} is not one of 1-${options.length}` : 'an answer needs an option or a text');
+  const from = String(ask?.from ?? row?.from ?? 'coordinator');
+  const message = { id: randomUUID(), from: 'human', fromKind: 'human', via: 'hub', to: [from], text, ts: now(), topic: topicId, answerTo: id, stage: 'queued' };
+  const answered = { ...card, state: 'answered', answer: message.id, ...(option !== undefined ? { option } : {}) };
+  if (ask) ask.ask = answered;
+  (scenario.messages ??= {})[topicId] = [...(scenario.messages?.[topicId] ?? []), message];
+  if (scenario.inbox?.asks) scenario.inbox.asks = scenario.inbox.asks.filter((a) => a.id !== id);
+  const topic = scenario.topics?.find((t) => t.id === topicId);
+  write({ type: 'message', topic: { id: topicId, title: topic?.title ?? topicId }, message });
+  write({ type: 'ask', topic: topicId, ask: id, card: answered });
+  write({ type: 'inbox', inbox: inboxValue() });
+  ok(f.id, { message, outcomes: [] });
+}
+
 function answer(f: Frame) {
   requests.push(f);
   switch (f.type) {
@@ -158,7 +202,21 @@ function answer(f: Frame) {
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status':
-      return ok(f.id, { sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}) });
+      return ok(f.id, { sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+    case 'inbox.list':
+      return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');
+    case 'topic.answer':
+      return answerAsk(f);
+    case 'inbox.dismiss':
+    case 'inbox.dismiss_all': {
+      const ib = (scenario.inbox ??= {});
+      if (f.type === 'inbox.dismiss') {
+        if (!(ib.notifications ?? []).some((n) => n.id === f.notification)) return fail(f.id, `no notification "${String(f.notification)}"`);
+        ib.notifications = (ib.notifications ?? []).filter((n) => n.id !== f.notification);
+      } else ib.notifications = [];
+      write({ type: 'inbox', inbox: inboxValue() });
+      return ok(f.id, inboxValue());
+    }
     case 'task.list':
       return ok(f.id, { items: scenario.items ?? [] });
     case 'task.view': {

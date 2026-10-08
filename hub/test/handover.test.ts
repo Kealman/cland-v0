@@ -82,6 +82,10 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   // the Agents topic: a message to the Coordinator that A answered is not waiting
   assert.equal((await b.call<Result>('send', { to: ['coordinator'], text: 'T-2 is blocked' })).ok, true);
   assert.equal((await a.call<Result>('send', { to: ['next'], text: 'Noted.' })).ok, true);
+  // and A has asked the human something (#33) in a topic of its own, still open at the handover
+  const release = (await ui.request({ type: 'topic.create', title: 'Release' })).value as { topic: { id: string } };
+  const question = await a.call<Result & { ask: string }>('ask', { topic: release.topic.id, question: 'Ship on Friday?', options: ['yes', 'no'] });
+  assert.equal(question.ok, true, question.error);
 
   const before = ui.frames.length;
   const handed = await a.call<Result & { session?: { label: string } }>('role.handover', { to: 'next', note: NOTE_MD });
@@ -105,6 +109,12 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   // Agents: both notices, the note recorded with the first
   await agentsNotice(ui, /^coord \[Coordinator\] handed the Coordinator role over to next, with a handover note:\n\n## Goals now\n\nShip the tracker import/);
   await agentsNotice(ui, 'next [Coordinator] took over the Coordinator role from coord.');
+  // the inbox: one role notification for the handover, from its Agents notice, none from its two session.role events
+  const notes = await eventually('the handover notification', async () => {
+    const n = ((await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> }).notifications;
+    return n.some((x) => /handed the Coordinator role over/.test(x.text)) ? n : undefined;
+  });
+  assert.deepEqual(notes.filter((x) => x.kind === 'role' && /handover/.test(x.text)).map((x) => x.text), ['coord [Coordinator] handed the Coordinator role over to next, with a handover note']);
   // the UI's events: both sessions' roles, the Coordinator filled by B; and the status
   await ui.waitFor((f) => f.type === 'role.filled' && f.session === 'next');
   const roleEvents = ui.frames.slice(before).filter((f) => f.type === 'session.role' || f.type === 'role.filled' || f.type === 'role.vacant');
@@ -128,7 +138,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   const after = await a.call<Result>('send', { text: 'still here' });
   assert.deepEqual([after.ok, after.code, after.role], [false, 'forbidden', null]);
 
-  // the state pull: the waiting topic, the claim (moved to B), the note, no asks yet
+  // the state pull: the waiting topic, the claim (moved to B), the note, the open ask
   const state = await b.call<Result & RoleState>('role.state');
   assert.equal(state.ok, true, state.error);
   assert.equal(state.role, 'coordinator');
@@ -143,7 +153,8 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   const revState = await rev.call<Result & RoleState>('role.state');
   assert.equal(revState.ok, true, revState.error);
   assert.deepEqual(revState.waiting, []);
-  assert.deepEqual(state.asks, []);
+  // the open ask A put to the human is the role's: B inherits it, and the human's answer reaches B (#33)
+  assert.deepEqual(state.asks.map((x) => [x.id, x.from, x.question]), [[question.ask, 'coord', 'Ship on Friday?']]);
   assert.deepEqual(state.claims.map((c) => [c.item, c.session, c.sessionId]), [['T-1', 'next', 'sess-next']]);
   assert.deepEqual([state.note?.from, state.note?.to, state.note?.sections.waiting_on], ['coord', 'next', 'The human, on the General question about the release date.']);
   assert.deepEqual([state.handover?.from, state.handover?.to, state.handover?.by], ['coord', 'next', 'coord']);
@@ -151,6 +162,11 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   const viaUi = (await ui.request({ type: 'role.state', role: 'coordinator' })).value as RoleState;
   assert.deepEqual(viaUi.claims, state.claims);
   assert.deepEqual(viaUi.waiting, state.waiting);
+  // the human answers A's ask: the answer reaches B, which holds the role A asked as
+  const answered = await ui.request({ type: 'topic.answer', ask: question.ask, option: 1 });
+  assert.equal(answered.ok, true, answered.error);
+  const answer = await b.waitForEvent((e) => e.params.meta?.answer_to === question.ask, 15_000);
+  assert.equal(answer.params.content, 'yes');
   // task view shows B's claim; B's history on the waiting topic has the human's question
   const view = await b.call<Result & { item: { claim: { session: string; sessionId: string } | null } }>('task.view', { id: 'T-1' });
   assert.deepEqual([view.item.claim?.session, view.item.claim?.sessionId], ['next', 'sess-next']);

@@ -118,6 +118,8 @@ export class Tracker {
   readonly #closedListeners = new Set<(id: string) => void>();
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
+  /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
+  readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict) => void>();
 
   constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number }) {
     this.#root = options.root;
@@ -152,6 +154,12 @@ export class Tracker {
         this.#log({ event: 'task-change-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
       }
     }
+  }
+
+  /** Listen to verdict comments written through the hub; returns the unsubscribe. */
+  onVerdict(listener: (id: string, author: string, verdict: Verdict) => void): () => void {
+    this.#verdictListeners.add(listener);
+    return () => this.#verdictListeners.delete(listener);
   }
 
   #closed(id: string): void {
@@ -443,9 +451,19 @@ export class Tracker {
       if (!verdict.run?.trim() || /\n/.test(verdict.run)) throw new TrackerError('a verdict needs a run id (one line)');
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
     }
-    return this.#mutate(rawId, actor, verdict ? 'verdict' : 'comment', (item) => {
+    const view = this.#mutate(rawId, actor, verdict ? 'verdict' : 'comment', (item) => {
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
     });
+    if (v) {
+      for (const listener of [...this.#verdictListeners]) {
+        try {
+          listener(view.id, actor.name, v);
+        } catch (err) {
+          this.#log({ event: 'task-verdict-listener-failed', id: view.id, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+    }
+    return view;
   }
 
   edit(actor: Actor, rawId: string, input: EditInput): ItemView {

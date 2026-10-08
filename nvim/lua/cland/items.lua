@@ -1,7 +1,7 @@
 -- The items (spec section 5, #36): what the panel, the item view, the board and the picker derive from the
 -- tracker's summaries (`task.list`, the `task` event). Nothing here is stored: every status, filter, map group
 -- and board column is computed from an item's state, claim, assignee, labels, blocking edges and verdicts,
--- and from the bound topic (an ask waits there until the inbox, #33).
+-- and from the open asks in the bound topic (the inbox, #33).
 --
 -- The panel (␣i): a tree of epics and items by `parent`, orphans at the root, ordered by id; filters all,
 -- in work, needs you, done and map, set with 1–5 or cycled with f / F.
@@ -115,10 +115,19 @@ function M.topic(it)
   return state.topic_of_item(it.id)
 end
 
---- Open asks on the item's topic. Until the inbox (#33) an ask is the topic waiting for the human.
+--- Open asks on the item's topic: the inbox's asks (#33) in the topic bound to it.
 function M.asks(it)
   local t = M.topic(it)
-  return (t and t.status == 'waiting for human') and 1 or 0
+  if not t then
+    return 0
+  end
+  local n = 0
+  for _, a in ipairs((state.S.inbox or {}).asks or {}) do
+    if type(a.topic) == 'table' and a.topic.id == t.id then
+      n = n + 1
+    end
+  end
+  return n
 end
 
 --- Open, and an ask waits on it or its latest review or QA verdict is not clear.

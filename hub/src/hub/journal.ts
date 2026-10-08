@@ -61,6 +61,12 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'task-released',
   'task-conflict',
   'task-removed',
+  // asks and the inbox (#33)
+  'ask',
+  'ask-answered',
+  'ask-withdrawn',
+  'ask-cancelled',
+  'notification',
   // hygiene
   'loop-breaker',
   'unmuted',

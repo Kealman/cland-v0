@@ -51,8 +51,16 @@ function Composer:placeholder()
   if #lines ~= 1 or lines[1] ~= M.PROMPT then
     return
   end
-  local hint = 'Message ' .. self.topic.title .. '…  Enter sends · Shift+Enter newline'
+  local hint = self.answering and ('Your answer to: ' .. self.answering.question .. '  Enter sends it as the answer')
+    or ('Message ' .. self.topic.title .. '…  Enter sends · Shift+Enter newline')
   pcall(api.nvim_buf_set_extmark, buf, ns, 0, #M.PROMPT, { virt_text = { { hint, 'ClandFaint' } }, virt_text_pos = 'inline' })
+end
+
+--- Arm the composer for a free answer to ask `ask` (#33): the next Enter sends its text as the answer. nil disarms.
+function Composer:answer_to(ask, question)
+  self.answering = ask and { ask = ask, question = question or '' } or nil
+  self:placeholder()
+  require('cland.state').changed()
 end
 
 --- The text after the prompt, all lines.

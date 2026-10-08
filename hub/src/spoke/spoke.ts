@@ -60,6 +60,21 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { topic: { type: 'string', description: 'The topic id' } }, required: ['topic'] },
   },
   {
+    name: 'ask',
+    description:
+      "Ask the human a question in a topic (the Coordinator only): numbered options (at most 9; the human answers with a key) and, unless `free` is false, room for a free answer. The topic waits for the human until the answer arrives as an event with `answer_to` set to this ask's id (and from_kind=\"human\"). `resolve` on the topic withdraws open asks; closing the topic cancels them. Several asks may be open at once.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'The topic id to ask in (General is `general`)' },
+        question: { type: 'string', description: 'The question, self-contained' },
+        options: { type: 'array', items: { type: 'string' }, description: 'The options, one line each, in order (1 first); may be empty when only a free answer fits' },
+        free: { type: 'boolean', description: 'Whether a free answer is welcome beside the options (default true)' },
+      },
+      required: ['topic', 'question', 'options'],
+    },
+  },
+  {
     name: 'who',
     description: 'List the sessions connected to the hub: name, role, status, connected since.',
     inputSchema: { type: 'object', properties: {} },
@@ -154,6 +169,7 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   // a hub notice: its kind (`mute`, …) and its typed facts (a mute's refusal: code, rule, until, pair)
   if (message.kind !== undefined) meta.kind = message.kind;
   if (message.detail !== undefined) meta.detail = JSON.stringify(message.detail);
+  if (message.answerTo !== undefined) meta.answer_to = message.answerTo;
   if (topic) {
     meta.topic = topic.id;
     meta.topic_title = topic.title;
@@ -233,6 +249,12 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
         case 'resolve': {
           if (typeof args.topic !== 'string') return text({ ok: false, error: 'resolve needs `topic`' }, true);
           const value = (await hub.request({ type: 'resolve', topic: args.topic })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'ask': {
+          if (typeof args.topic !== 'string' || typeof args.question !== 'string') return text({ ok: false, error: 'ask needs `topic` and `question`' }, true);
+          const options = Array.isArray(args.options) ? args.options.filter((o): o is string => typeof o === 'string') : [];
+          const value = (await hub.request({ type: 'ask', topic: args.topic, question: args.question, options, ...(typeof args.free === 'boolean' ? { free: args.free } : {}) })) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'who': {

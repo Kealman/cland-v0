@@ -64,7 +64,7 @@ function M.context()
   local buf = api.nvim_get_current_buf()
   local role = vim.b[buf].cland_role
   local row = api.nvim_win_get_cursor(0)[1]
-  if role == 'items' or role == 'sessions' or role == 'topics' then
+  if role == 'items' or role == 'sessions' or role == 'topics' or role == 'inbox' or role == 'inbox_full' then
     local info = require('cland.panels').row_at(buf, row)
     if info then
       return info

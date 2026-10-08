@@ -696,7 +696,7 @@ const item = (id: string, kind: string, title: string, extra: Record<string, unk
 const claimBy = (session: string, role = 'implementer') => ({ session, sessionId: `${session}-id`, role, claimedAt: ts(1) });
 const verdict = (kind: string, result: string, run: string, min: number) => ({ verdict: kind, result, by: `${kind === 'qa' ? 'qa-1 [qa]' : 'rev-1 [reviewer]'}`, run, author: kind === 'qa' ? 'qa-1' : 'rev-1', at: ts(min) });
 
-/** An epic with three children (claimed with an ask waiting on its topic; a not-clear review; closed with clear
+/** An epic with three children (claimed with two asks open in its topic; a not-clear review; closed with clear
  *  verdicts), a map with a decided, a frontier, a blocked and an assigned child, an item past review, one assigned
  *  to the human, and the base T-12 (claimed by impl-1) and T-13. */
 function withItems(s: Scenario): void {
@@ -707,6 +707,9 @@ function withItems(s: Scenario): void {
     topic('agents', 'Agents', 'open'),
     topic('topic-2', 'Items panel work', 'waiting for human', { item: 'T-2' }),
   ];
+  // the ask badge counts the open asks in the bound topic (#33), not the topic's status
+  const openAsk = (id: string, question: string) => ({ id, topic: { id: 'topic-2', title: 'Items panel work', item: 'T-2' }, question, options: ['yes', 'no'], free: true, from: 'coord-1', label: 'coord-1 [Coordinator]', ts: ts(1) });
+  s.inbox = { asks: [openAsk('a-2', 'Tree or flat list?'), openAsk('a-3', 'Show closed items?')], approvals: [], waiting: [], notifications: [] };
   s.items = [
     item('T-1', 'epic', 'Workbench shell'),
     item('T-2', 'task', 'Items panel', { parent: 'T-1', claim: claimBy('impl-2'), topic: 'topic-2', branch: 't/2-items-panel', labels: ['ui', 'slice-1'] }),
@@ -758,7 +761,7 @@ test('the items panel: a tree of epics and maps with status glyphs, the claim ri
   const panel = leftOf(s);
   // the tree: children under their parent, indented, ordered by id; orphans at the root
   assert.match(panel, /^ ○ T-1 Workbench shell +1\/3 $/m, 'an epic with its progress');
-  assert.match(panel, /^ {3}◆ T-2 Items panel +impl-2 {2}1 {2}$/m, 'claimed, with the ask badge of its topic waiting for the human: needs you');
+  assert.match(panel, /^ {3}◆ T-2 Items panel +impl-2 {2}2 {2}$/m, 'claimed, with the ask badge counting the two open asks in its topic: needs you');
   assert.match(panel, /^ {3}◆ T-3 Board view +$/m, 'a not-clear review verdict: needs you');
   assert.match(panel, /^ {3}● T-4 Item view +$/m, 'closed');
   assert.match(panel, /^ ○ T-5 Slice 2 map +1\/4 $/m);
@@ -975,6 +978,37 @@ function withAgentsLog(s: Scenario): void {
   };
 }
 
+// ------------------------------------------------------------------ asks and the inbox (#33)
+
+const ASK_OPTIONS = ['the name recorded by the spoke', 'the harness session id', 'ask me later'];
+
+/** An open ask in topic-1 (bound to T-12), an approval, a topic waiting without an ask, three notifications. */
+function withInbox(s: Scenario): void {
+  s.topics = [
+    topic('general', 'General', 'open'),
+    topic('agents', 'Agents', 'open'),
+    topic('topic-1', 'Spoke identity', 'waiting for human', { item: 'T-12' }),
+    topic('topic-5', 'Spoke reconnect: flaky test', 'waiting for human', { unread: 2 }),
+  ];
+  s.messages = {
+    ...s.messages,
+    'topic-1': [
+      { id: 'a1', from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', via: 'session', to: [], text: 'Which should win?', ts: ts(1), topic: 'topic-1', ask: { question: 'Which should win?', options: ASK_OPTIONS, free: true, state: 'open' } },
+    ],
+  };
+  s.processes = [proc('coord-1', 'coordinator', 'busy'), proc('impl-1', 'implementer', 'waiting for approval', 'sonnet')];
+  s.inbox = {
+    asks: [{ id: 'a1', topic: { id: 'topic-1', title: 'Spoke identity', item: 'T-12' }, question: 'Which should win?', options: ASK_OPTIONS, free: true, from: 'coord-1', label: 'coord-1 [Coordinator]', ts: ts(1) }],
+    approvals: [{ session: 'impl-1', label: 'impl-1 [Implementer]', harness: 'claude-code', since: ts(2), attach: 'claude attach impl-1-bg' }],
+    waiting: [topic('topic-5', 'Spoke reconnect: flaky test', 'waiting for human', { unread: 2 })],
+    notifications: [
+      { id: 'n1', kind: 'verdict', text: 'T-19 review not clear · rev-1', ts: ts(3), item: 'T-19', session: 'rev-1', result: 'not clear', dismissed: false },
+      { id: 'n2', kind: 'role', text: 'rev-1 is Reviewer: assigned', ts: ts(4), session: 'rev-1', dismissed: false },
+      { id: 'n3', kind: 'death', text: 'impl-3 [Implementer] died: its harness exited', ts: ts(5), session: 'impl-3', dismissed: false },
+    ],
+  };
+}
+
 test('the Agents log (␣a, :Cland view log) lists messages with sender [Role] → addressee and notices with kind glyphs, and follows message events', { skip }, async (t) => {
   const c = await startShell(t, withAgentsLog);
   await c.input('<Esc><Space>a');
@@ -1025,4 +1059,129 @@ test('r on a message in the Agents log prepares a reply to its sender; the hub g
   );
   // the reply shows in the log, addressed to the sender, and the composer is gone
   await c.waitScreen((x) => centreOf(x).includes('you → impl-1 [Implementer]  keep T-12 small') && !x.includes('↩ reply to'), 'the reply in the log');
+});
+
+/** The inbox in the right panel, focused. */
+async function openInbox(c: Shell): Promise<string> {
+  await c.input('<Esc><Space>n');
+  return c.waitScreen((x) => x.includes('INBOX') && rightOf(x).includes('NOTIFICATIONS'), 'the inbox panel');
+}
+
+test('the inbox lists asks, approvals, waiting topics and notifications in that order; the top bar counts what needs the human', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  const s = await openInbox(c);
+  const panel = rightOf(s);
+  const order = [
+    'ASKS · ANSWER HERE',
+    '? T-12',
+    'Which should win?',
+    '1  the name recorded by the',
+    '2  the harness session id',
+    '3  ask me later',
+    'i free answer · ↵ open the topic',
+    'APPROVALS · ANSWER IN THE SESSI',
+    '▲ impl-1 [Implementer]',
+    'WAITING FOR YOU · TOPICS',
+    '● Spoke reconnect: flaky te',
+    'NOTIFICATIONS · d dismiss · D all',
+    '✗ T-19 review not clear · rev-1',
+    '↔ rev-1 is Reviewer: assigned',
+    '! impl-3 [Implementer] died',
+  ].map((w) => panel.indexOf(w));
+  assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
+  assert.deepEqual([...order].sort((a, b) => a - b), order, `in the design's order:\n${panel}`);
+  assert.match(s, /INBOX +3 need you/);
+  assert.match(topBar(s), /▲ needs you {2}3 /, 'asks + approvals + waiting topics, from the hub');
+  assert.match(statusLine(s), /1-9 answer · i free answer/);
+});
+
+test('2 on an ask row answers with option 2: topic.answer goes out, the row leaves and the count drops; d on an ask does nothing', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await openInbox(c);
+  // d on an ask: nothing is dismissed, a hint says why
+  await c.input('gg/Which should<CR>d');
+  let s = await c.waitScreen((x) => statusLine(x).includes('asks and approvals are not dismissed'), 'the hint');
+  assert.match(rightOf(s), /Which should win\?/);
+  assert.deepEqual(await requestsOf(c, 'inbox.dismiss'), []);
+  await c.input('2');
+  s = await c.waitScreen((x) => !rightOf(x).includes('Which should win?') && topBar(x).includes('needs you  2 '), 'the ask answered');
+  assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option, f.text]), [['a1', 2, undefined]]);
+  assert.doesNotMatch(rightOf(s), /ASKS · ANSWER HERE/);
+  assert.match(rightOf(s), /APPROVALS/);
+  assert.equal(await c.mode(), 'n', 'answering never leaves the inbox');
+});
+
+test('i on an ask opens its topic with the composer armed: Enter sends the text as the free answer', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await openInbox(c);
+  await c.input('gg/ask me later<CR>i');
+  let s = await c.waitScreen((x) => topBar(x).includes('│ Spoke identity') && x.includes('answer to: Which should win?'), 'the composer armed in the topic');
+  assert.equal(await c.mode(), 'i');
+  await c.input('keep both behind a flag<CR>');
+  s = await c.waitScreen((x) => centreOf(x).includes('keep both behind a flag') && !rightOf(x).includes('Which should win?'), 'the free answer sent');
+  assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option, f.text]), [['a1', undefined, 'keep both behind a flag']]);
+  assert.deepEqual(await requestsOf(c, 'topic.send'), [], 'an answer, not a plain message');
+  // the composer is a plain composer again
+  await c.waitScreen((x) => x.includes('to: Coordinator'), 'the composer disarmed');
+  assert.match(s, /answered in your words/);
+});
+
+test('Enter on an approval attaches the session in the centre', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await openInbox(c);
+  await c.input('gg/impl-1 \\[Impl<CR><CR>');
+  const s = await c.waitScreen((x) => x.includes('attached impl-1') && statusLine(x).includes('impl-1 · session'), 'impl-1 attached');
+  assert.match(topBar(s), /│ impl-1 \[Implementer\]/);
+  assert.deepEqual((await requestsOf(c, 'session.attach')).map((f) => f.session), ['impl-1']);
+});
+
+test('d dismisses the notification under the cursor, D all of them; asks and approvals stay', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await openInbox(c);
+  await c.input('gg/rev-1 is Reviewer<CR>d');
+  let s = await c.waitScreen((x) => !rightOf(x).includes('rev-1 is Reviewer') && rightOf(x).includes('T-19 review not clear'), 'one dismissed');
+  assert.deepEqual((await requestsOf(c, 'inbox.dismiss')).map((f) => f.notification), ['n2']);
+  await c.input('D');
+  s = await c.waitScreen((x) => !rightOf(x).includes('NOTIFICATIONS'), 'all dismissed');
+  assert.equal((await requestsOf(c, 'inbox.dismiss_all')).length, 1);
+  assert.match(rightOf(s), /Which should win\?/);
+  assert.match(rightOf(s), /▲ impl-1 \[Implementer\]/);
+  assert.match(topBar(s), /needs you {2}3 /, 'notifications never counted');
+});
+
+test('the ask card in the thread: the question, numbered options and the free-answer hint; 2 on it answers, and the answer shows beneath', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await c.input('<Esc>:Cland view thread topic-1<CR>');
+  let s = await c.waitScreen((x) => x.includes('┃ 2  the harness session id'), 'the card');
+  const card = ['coord-1  coordinator', '┃ Which should win?', '┃ 1  the name recorded by the spoke', '┃ 2  the harness session id', '┃ 3  ask me later', '┃ 1-9 answers · free answer: i'].map((w) => s.indexOf(w));
+  assert.ok(card.every((at) => at >= 0), `the card:\n${s}`);
+  assert.deepEqual([...card].sort((a, b) => a - b), card);
+  assert.match(s, /ask · ▲ waiting for you/);
+  await c.input('<Esc><C-w>k');
+  await c.waitScreen((x) => statusLine(x).includes('NORMAL'), 'Normal mode in the thread');
+  await c.input('gg/the harness<CR>2');
+  s = await c.waitScreen((x) => x.includes('┃ ✓ 2  the harness session id') && x.includes('ask · ✓ answered'), 'the card answered');
+  assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 2]]);
+  // the answer message under the card
+  const at = s.indexOf('┃ answered with 2');
+  const you = s.indexOf(' you  ', at);
+  assert.ok(at >= 0 && you > at && s.indexOf('the harness session id', you) > you, `the answer beneath the card:\n${s}`);
+  assert.match(topBar(s), /needs you {2}2 /);
+});
+
+test('the inbox full width (␣N) shows the same sections and acts the same', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await c.input('<Esc><Space>N');
+  let s = await c.waitScreen((x) => statusLine(x).includes('Inbox · full width') && centreOf(x).includes('NOTIFICATIONS'), 'the inbox full width');
+  const centre = centreOf(s);
+  const order = ['ASKS · ANSWER HERE', '1  the name recorded by the spoke', 'APPROVALS', 'WAITING FOR YOU', 'NOTIFICATIONS'].map((w) => centre.indexOf(w));
+  assert.ok(order.every((at) => at >= 0), centre);
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+  assert.match(s, /INBOX · FULL WIDTH/);
+  await c.input('gg/ask me later<CR>3');
+  s = await c.waitScreen((x) => !centreOf(x).includes('ASKS · ANSWER HERE') && centreOf(x).includes('APPROVALS'), 'answered with 3');
+  assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 3]]);
+  // an inbox event replaces the rows
+  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } } });
+  s = await c.waitScreen((x) => centreOf(x).includes('✓ nothing needs you') && topBar(x).includes('✓ needs you 0'), 'an empty inbox');
 });

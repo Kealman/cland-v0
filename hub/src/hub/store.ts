@@ -1,7 +1,7 @@
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
-import type { DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import { vacancyWarning } from './topics.ts';
 
@@ -53,6 +53,30 @@ create table if not exists role_state (
   role text primary key,
   value text not null
 );
+create table if not exists asks (
+  id text primary key,
+  topic text not null,
+  from_name text not null,
+  question text not null,
+  options_json text not null,
+  free integer not null,
+  state text not null,
+  answer_id text,
+  option integer,
+  ts text not null,
+  closed_at text
+);
+create index if not exists asks_open on asks (state, topic);
+create table if not exists notifications (
+  id text primary key,
+  kind text not null,
+  text text not null,
+  ts text not null,
+  item text,
+  session text,
+  result text,
+  dismissed integer not null default 0
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -81,6 +105,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'topics', column: 'item', type: 'text' },
   /** The rowid of the last message the human read in the topic (`topic.read`); 0: none. */
   { table: 'topics', column: 'read_rowid', type: 'integer not null default 0' },
+  /** The ask a human message answers (#33). */
+  { table: 'messages', column: 'answer_to', type: 'text' },
 ];
 
 /** Indexes over added columns: created after the migration, when the column surely exists. */
@@ -104,6 +130,44 @@ const toMessage = (row: Row): Message => ({
   ...(row.topic !== null && row.topic !== undefined ? { topic: row.topic as string } : {}),
   ...(typeof row.notice === 'string' ? { kind: row.notice } : {}),
   ...(typeof row.notice_detail === 'string' ? { detail: JSON.parse(row.notice_detail) as Record<string, unknown> } : {}),
+  ...(row.answer_to !== null && row.answer_to !== undefined ? { answerTo: row.answer_to as string } : {}),
+});
+
+/** An ask's row in the `asks` table (#33). */
+export type AskRow = AskCard & { id: string; topic: string; from: string; ts: string };
+
+const toAsk = (row: Row): AskRow => ({
+  id: row.id as string,
+  topic: row.topic as string,
+  from: row.from_name as string,
+  ts: row.ts as string,
+  question: row.question as string,
+  options: JSON.parse(row.options_json as string) as string[],
+  free: row.free === 1,
+  state: row.state as AskState,
+  ...(row.answer_id !== null && row.answer_id !== undefined ? { answer: row.answer_id as string } : {}),
+  ...(row.option !== null && row.option !== undefined ? { option: Number(row.option) } : {}),
+});
+
+/** The card an ask's message carries. */
+export const cardOf = (a: AskRow): AskCard => ({
+  question: a.question,
+  options: a.options,
+  free: a.free,
+  state: a.state,
+  ...(a.answer !== undefined ? { answer: a.answer } : {}),
+  ...(a.option !== undefined ? { option: a.option } : {}),
+});
+
+const toNotification = (row: Row): InboxNotification => ({
+  id: row.id as string,
+  kind: row.kind as NotificationKind,
+  text: row.text as string,
+  ts: row.ts as string,
+  ...(row.item !== null && row.item !== undefined ? { item: row.item as string } : {}),
+  ...(row.session !== null && row.session !== undefined ? { session: row.session as string } : {}),
+  ...(row.result !== null && row.result !== undefined ? { result: row.result as string } : {}),
+  dismissed: row.dismissed === 1,
 });
 
 const toTopic = (row: Row): Topic => {
@@ -320,7 +384,7 @@ export class Store implements HygieneMemory {
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null): void {
     this.#transaction(() => {
       this.#db
-        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail, answer_to) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(
           message.id,
           message.from,
@@ -335,6 +399,7 @@ export class Store implements HygieneMemory {
           message.topic ?? null,
           notice ?? message.kind ?? null,
           message.detail ? JSON.stringify(message.detail) : null,
+          message.answerTo ?? null,
         );
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at) values (?, ?, ?, ?, ?)');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null);
@@ -491,6 +556,7 @@ export class Store implements HygieneMemory {
   /** The topic and its messages go; their deliveries go by the foreign key. */
   deleteTopic(id: string): void {
     this.#db.prepare('delete from messages where topic = ?').run(id);
+    this.#db.prepare('delete from asks where topic = ?').run(id);
     this.#db.prepare('delete from topics where id = ?').run(id);
   }
 
@@ -499,8 +565,66 @@ export class Store implements HygieneMemory {
     const rows = this.#db.prepare('select * from messages where topic = ? order by created_at desc, rowid desc limit ?').all(topic, limit) as Row[];
     return rows.reverse().map((row) => {
       const stage = this.stage(row.id as string);
-      return { ...toMessage(row), topic, ...(stage ? { stage } : {}) };
+      const ask = this.ask(row.id as string);
+      return { ...toMessage(row), topic, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
     });
+  }
+
+  // ---------------------------------------------------------------- asks (#33)
+
+  createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string }): void {
+    this.#db
+      .prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts) values (?, ?, ?, ?, ?, ?, 'open', ?)")
+      .run(a.id, a.topic, a.from, a.question, JSON.stringify(a.options), a.free ? 1 : 0, a.ts);
+  }
+
+  ask(id: string): AskRow | null {
+    const row = this.#db.prepare('select * from asks where id = ?').get(id) as Row | undefined;
+    return row ? toAsk(row) : null;
+  }
+
+  /** The open asks, oldest first; of one topic when given. */
+  openAsks(topic?: string): AskRow[] {
+    const rows = (topic === undefined ? this.#db.prepare("select * from asks where state = 'open' order by ts, rowid").all() : this.#db.prepare("select * from asks where state = 'open' and topic = ? order by ts, rowid").all(topic)) as Row[];
+    return rows.map(toAsk);
+  }
+
+  /** An open ask leaves `open` (answered, withdrawn, cancelled); false when it was no longer open. */
+  closeAsk(id: string, state: Exclude<AskState, 'open'>, at: string, answer?: { id: string; option?: number }): boolean {
+    return this.#db.prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, id).changes > 0;
+  }
+
+  /** An answer that could not be sent: the ask is open again. */
+  reopenAsk(id: string): void {
+    this.#db.prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null where id = ?").run(id);
+  }
+
+  /** The answer's message id, once it is recorded. */
+  setAskAnswer(id: string, answer: string): void {
+    this.#db.prepare('update asks set answer_id = ? where id = ?').run(answer, id);
+  }
+
+  // ---------------------------------------------------------------- notifications (#33)
+
+  addNotification(n: { id: string; kind: NotificationKind; text: string; ts: string; item?: string; session?: string; result?: string }): void {
+    this.#db
+      .prepare('insert into notifications (id, kind, text, ts, item, session, result) values (?, ?, ?, ?, ?, ?, ?)')
+      .run(n.id, n.kind, n.text, n.ts, n.item ?? null, n.session ?? null, n.result ?? null);
+  }
+
+  /** The notifications not dismissed, oldest first. */
+  notifications(): InboxNotification[] {
+    return (this.#db.prepare('select * from notifications where dismissed = 0 order by ts, rowid').all() as Row[]).map(toNotification);
+  }
+
+  /** Dismiss one notification (all of them without an id); returns how many were dismissed. */
+  dismissNotifications(id?: string): number {
+    const r = id === undefined ? this.#db.prepare('update notifications set dismissed = 1 where dismissed = 0').run() : this.#db.prepare('update notifications set dismissed = 1 where id = ? and dismissed = 0').run(id);
+    return Number(r.changes);
+  }
+
+  notificationExists(id: string): boolean {
+    return this.#db.prepare('select 1 from notifications where id = ?').get(id) !== undefined;
   }
 
   /** A rename: what still waits for the old name (in flight to the live session) waits for the new one; a
@@ -517,7 +641,10 @@ export class Store implements HygieneMemory {
 
   /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */
   prune(now: number, retentionMs: number): number {
-    return Number(this.#db.prepare('delete from messages where created_at < ?').run(now - retentionMs).changes);
+    const gone = Number(this.#db.prepare('delete from messages where created_at < ?').run(now - retentionMs).changes);
+    // an ask goes with its message
+    if (gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
+    return gone;
   }
 
   /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only.

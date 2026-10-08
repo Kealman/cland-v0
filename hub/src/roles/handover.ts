@@ -66,8 +66,7 @@ export function handOver(
 const WAITING_WINDOW = 200;
 
 /**
- * The role's state for its holder (#31): its latest note and move, the topics waiting for it, its open asks (none
- * until #33), the claims its holders hold. A topic waits for the role when its status says so (`waiting for agent`,
+ * The role's state for its holder (#31): its latest note and move, the topics waiting for it, its open asks (#33), the claims its holders hold. A topic waits for the role when its status says so (`waiting for agent`,
  * #32) and the human's latest message in it was delivered to the role's holders, or when a message addressed to the role or to one of its holders, the current ones and the one it moved from,
  * is newer than their last word in the topic.
  */
@@ -116,7 +115,9 @@ export function roleState(ctx: HandoverContext, role: string): RoleState {
     note: record.note ? { ...record.note, markdown: renderNote(record.note.sections) } : null,
     handover: record.handover,
     waiting,
-    asks: [],
+    // the open asks the role put to the human (#33), by its holders or the one it moved from: a new Coordinator
+    // inherits its predecessor's questions
+    asks: core.inbox.list().asks.filter((a) => names.has(a.from)),
     claims,
   };
 }

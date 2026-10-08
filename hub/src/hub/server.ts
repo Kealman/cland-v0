@@ -60,6 +60,8 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   const core = new HubCore({ ...options, ...(options.tracker ? { items: trackerItems(options.tracker) } : {}) });
   // closing a unit of work closes its topic (spec 4.5)
   const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));
+  // a verdict comment is an inbox notification (#33)
+  const unwatchVerdicts = options.tracker?.onVerdict((id, author, v) => core.inbox.verdict({ item: id, author, verdict: v.verdict, result: v.result, run: v.run }));
   const dispatcher = new Dispatcher({
     core,
     secret: options.secret,
@@ -78,6 +80,8 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     close: async () => {
       clearInterval(pruneTimer);
       unwatchItems?.();
+      unwatchVerdicts?.();
+      core.inbox.close();
       core.store.close();
     },
   };
