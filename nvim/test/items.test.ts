@@ -86,7 +86,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   assert.match(s, /◆ T-3 · open · needs you · task/);
   assert.match(s, /parent {5}T-1 Workbench shell/);
   assert.match(s, /Six columns derived from the item\./);
-  assert.match(s, /✗ review not clear · by rev-1 \[reviewer\] · run r-2/);
+  assert.match(s, /✗ review not clear · by rev-1 \[Reviewer\] · run r-2/);
   assert.match(s, /Ready for review\./);
   assert.match(s, /\.cland\/tasks\/T-3-board-view\.md/);
 

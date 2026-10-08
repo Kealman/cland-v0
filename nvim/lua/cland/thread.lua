@@ -148,9 +148,11 @@ function Thread:render()
     local name = mine and 'you' or tostring(m.from)
     local header = ' ' .. name
     local hmarks = { { col = 1, opts = { end_col = 1 + #name, hl_group = 'ClandBold' } } }
-    if m.fromRole then
-      local s = #header + 2
-      header = header .. '  ' .. m.fromRole
+    if m.fromRole and m.fromRole ~= vim.NIL and not mine then
+      -- name [Role], as everywhere (spec 4.4): the role's label, never its key
+      local role = require('cland.state').label(name, m.fromRole):sub(#name + 1)
+      local s = #header
+      header = header .. role
       table.insert(hmarks, { col = s, opts = { end_col = #header, hl_group = 'ClandTeal' } })
     end
     local s = #header + 2

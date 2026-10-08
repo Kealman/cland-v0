@@ -171,6 +171,17 @@ function M.verdict_rows(verdicts)
   return latest, earlier
 end
 
+--- A verdict's `by:` as the file holds it (`rev-1 [reviewer]`, the role's key) shown as everywhere: `rev-1 [Reviewer]`.
+function M.by(by)
+  by = tostring(by or '?')
+  local name, role = by:match('^(.-)%s*%[(.-)%]$')
+  if not name or name == '' then
+    return by
+  end
+  local def = state.role_def(role)
+  return state.label(name, def and def.role or role)
+end
+
 -- Lines are lists of {text, hl} chunks.
 local function body_lines(it, d, width)
   local L = {}
@@ -240,7 +251,7 @@ local function body_lines(it, d, width)
   local function verdict(v, old)
     local ok = v.result == 'clear'
     local head = (ok and '✓ ' or '✗ ') .. v.verdict .. ' ' .. v.result
-    add({ { ' ' .. head, old and 'ClandDim' or (ok and 'ClandGreen' or 'ClandRed') }, { ' · by ' .. (v.by or v.author or '?') .. ' · run ' .. (v.run or '') .. ' · ' .. hhmm(v.at), 'ClandDim' } })
+    add({ { ' ' .. head, old and 'ClandDim' or (ok and 'ClandGreen' or 'ClandRed') }, { ' · by ' .. M.by(v.by or v.author) .. ' · run ' .. (v.run or '') .. ' · ' .. hhmm(v.at), 'ClandDim' } })
   end
   for _, v in ipairs(latest) do
     verdict(v, false)

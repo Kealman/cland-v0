@@ -966,8 +966,8 @@ test('the item view: the title line, the fields column beside the body, the verd
   assert.match(s, /^ - backlog /m);
   // the verdicts: the latest of each kind on top, the earlier below
   assert.match(s, /^ VERDICTS · 2 /m);
-  const latest = at(/^ ✗ review not clear · by rev-1 \[reviewer\] · run r-2 · /);
-  const earlier = at(/^ ✓ review clear · by rev-1 \[reviewer\] · run r-1 · /);
+  const latest = at(/^ ✗ review not clear · by rev-1 \[Reviewer\] · run r-2 · /);
+  const earlier = at(/^ ✓ review clear · by rev-1 \[Reviewer\] · run r-1 · /);
   assert.ok(latest > 0 && earlier > latest && at(/^ earlier /) === latest + 1, 'the latest verdict first');
   // the comments, a verdict comment marked
   assert.match(s, /^ impl-2 {2}\d{4}-\d\d-\d\d \d\d:\d\d +/m);
@@ -1217,6 +1217,8 @@ test('the inbox lists asks, approvals, waiting topics and notifications in that 
   const c = await startShell(t, withInbox);
   const s = await openInbox(c);
   const panel = rightOf(s);
+  // the asker as everywhere: name [Role], the hub's label
+  assert.match(panel, /\? T-12 +coord-1 \[Coordinator\] · /);
   const order = [
     'ASKS · ANSWER HERE',
     '? T-12',
@@ -1299,7 +1301,7 @@ test('the ask card in the thread: the question, numbered options and the free-an
   const c = await startShell(t, withInbox);
   await c.input('<Esc>:Cland view thread topic-1<CR>');
   let s = await c.waitScreen((x) => x.includes('┃ 2  the harness session id'), 'the card');
-  const card = ['coord-1  coordinator', '┃ Which should win?', '┃ 1  the name recorded by the spoke', '┃ 2  the harness session id', '┃ 3  ask me later', '┃ 1-9 answers · free answer: i'].map((w) => s.indexOf(w));
+  const card = [`coord-1 [Coordinator]  ${clockOf(ts(1))}`, '┃ Which should win?', '┃ 1  the name recorded by the spoke', '┃ 2  the harness session id', '┃ 3  ask me later', '┃ 1-9 answers · free answer: i'].map((w) => s.indexOf(w));
   assert.ok(card.every((at) => at >= 0), `the card:\n${s}`);
   assert.deepEqual([...card].sort((a, b) => a - b), card);
   assert.match(s, /ask · ▲ waiting for you/);

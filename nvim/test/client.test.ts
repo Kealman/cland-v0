@@ -44,7 +44,7 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
   const [last] = (await coord.call<{ messages: Array<{ ts: string; text: string }> }>('history', { limit: 1 })).messages;
   assert.equal(last?.text, 'hello, human');
   const screen = await c.waitScreen((s) => centreOf(s).includes('hello, human'), 'the reply');
-  assert.match(centreOf(screen), new RegExp(`^ coord {2}coordinator {2}${clock(last?.ts ?? '')} *$`, 'm'), 'sender, role and local time');
+  assert.match(centreOf(screen), new RegExp(`^ coord \\[Coordinator\\] {2}${clock(last?.ts ?? '')} *$`, 'm'), 'sender [Role] and local time');
   assert.match(centreOf(screen), /^ hello, human *$/m);
   // the human's message keeps its stage; the agent's has none
   assert.match(centreOf(screen), /^ you {2}\d\d:\d\d +✓ delivered $/m);

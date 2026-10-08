@@ -51,7 +51,7 @@ function M.render(c, full)
     for _, a in ipairs(ib.asks) do
       local ask = { id = a.id, topic = a.topic and a.topic.id, question = a.question, options = a.options or {}, free = a.free }
       local where = a.topic and ((a.topic.item and a.topic.item ~= vim.NIL) and a.topic.item or a.topic.title) or ''
-      c:add({ { ' ? ', 'ClandAmber' }, { where, 'ClandBlue' } }, { { tostring(a.from or '') .. ' · ' .. clock(a.ts) .. ' ', 'ClandDim' } }, { ask = ask, topic = ask.topic, session = a.from })
+      c:add({ { ' ? ', 'ClandAmber' }, { where, 'ClandBlue' } }, { { tostring(a.label or state.label(a.from or '', a.fromRole)) .. ' · ' .. clock(a.ts) .. ' ', 'ClandDim' } }, { ask = ask, topic = ask.topic, session = a.from })
       for _, l in ipairs(ask_card.split(a.question)) do
         c:add({ { '   ' .. l, 'ClandBold' } }, nil, { ask = ask, topic = ask.topic, session = a.from })
       end
