@@ -2,9 +2,13 @@
 // `hub.db`, the WebSocket edge for spokes and the Unix socket edge for the UI bound, and the discovery file
 // written last — a client that reads `hub.json` finds a hub that answers. Shutdown runs it backwards: the
 // edges close, `hub.json` goes, and the lock is released last, so no successor binds before this hub is gone.
+//
+// A hub serving a UI over its stdio may run without the listeners (spec 4.2: sandboxed QA runs, where
+// binding is forbidden). It still takes the lock — the store is one hub's alone — but writes no `hub.json`
+// and plugs in no adapters: nothing could reach it, so it launches nothing.
 import { mkdirSync } from 'node:fs';
 import { Store } from './store.ts';
-import { createHub, type Hub } from './server.ts';
+import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
 import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
 import { acquireLock, HubLocked } from './lock.ts';
@@ -13,17 +17,26 @@ import { Tracker } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 
+/**
+ * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
+ * `required` fails the start when either cannot bind; `optional` tries, and when either fails closes both
+ * and goes on without them (a stdio hub in a sandbox); `never` binds nothing.
+ */
+export type ListenMode = 'required' | 'optional' | 'never';
+
 export type Daemon = {
   layout: Layout;
-  discovery: Discovery;
-  hub: Hub;
+  /** What `hub.json` says; null when the hub has no listeners (and so wrote no `hub.json`). */
+  discovery: Discovery | null;
+  hub: HubBase;
   /** Resolves once the daemon has stopped (by `stop`, or by a client's `hub.stop`). */
   stopped: Promise<void>;
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { log?: LogFn } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode } = {}): Promise<Daemon> {
   const log = options.log ?? (() => {});
+  const listen = options.listen ?? 'required';
   const l = layout(root);
   mkdirSync(l.dir, { recursive: true });
   // before anything is prepared: a second hub must not even write the secret
@@ -31,7 +44,9 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   try {
     lock = acquireLock(l.lock);
   } catch (err) {
-    if (err instanceof HubLocked) throw new Error(`a hub already runs for ${root} (pid ${err.holder.pid} holds ${l.lock})`);
+    if (err instanceof HubLocked) {
+      throw new Error(`a hub already runs for ${root} (pid ${err.holder.pid} holds ${l.lock}); talk to it over its socket, or stop it first with \`cland hub stop\``);
+    }
     throw err;
   }
   let secret: string;
@@ -46,22 +61,23 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
   const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
   const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}) });
-  let hub!: Hub;
+  let hub!: HubBase;
   let adapters: ProjectSessions | null = null;
+  let ws: WebSocketEdge | null = null;
+  let edge: SocketEdge | null = null;
   try {
     tracker.start();
-    hub = await createHub({
-      port: 0,
-      host: '127.0.0.1',
+    hub = createHubBase({
       secret,
       store: new Store(l.db),
       log,
       tracker,
       control: {
+        // without listeners: port 0 and no socket
         status: () => ({
           pid: process.pid,
-          port: hub.port,
-          socket: l.socket,
+          port: ws?.port ?? 0,
+          socket: edge ? l.socket : '',
           version: VERSION,
           root,
           startedAt: startedAt.toISOString(),
@@ -79,11 +95,11 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
-  let edge: SocketEdge | null = null;
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
       log({ event: 'stopping' });
       await edge?.close();
+      await ws?.close();
       adapters?.close();
       await hub.close();
       tracker.stop();
@@ -96,22 +112,36 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
     return stopping;
   };
 
-  try {
-    edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
-  } catch (err) {
-    await hub.close();
-    tracker.stop();
-    lock.release();
-    throw err;
+  if (listen !== 'never') {
+    try {
+      ws = await createWebSocketEdge(hub.dispatcher, { port: 0, host: '127.0.0.1', secret, log });
+      edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
+    } catch (err) {
+      // both listeners or none: a hub.json naming only half of them would send its readers to a dead end
+      await ws?.close();
+      ws = null;
+      if (listen === 'required') {
+        await hub.close();
+        tracker.stop();
+        lock.release();
+        throw err;
+      }
+      log({ event: 'listen-failed', error: err instanceof Error ? err.message : String(err), serving: 'stdio only' });
+    }
+  }
+
+  if (ws === null || edge === null) {
+    log({ event: 'serving', root, pid: process.pid, listeners: false });
+    return { layout: l, discovery: null, hub, stopped, stop };
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log });
   hub.dispatcher.useSessions(adapters.sessions);
 
-  const discovery: Discovery = { socket: l.socket, port: hub.port, secret, pid: process.pid, version: VERSION };
+  const discovery: Discovery = { socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);
-  log({ event: 'serving', root, port: hub.port, socket: l.socket, pid: process.pid });
+  log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   void adapters.sessions.resumeAll();
   return { layout: l, discovery, hub, stopped, stop };
 }

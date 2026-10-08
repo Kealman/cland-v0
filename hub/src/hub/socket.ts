@@ -66,9 +66,16 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
     server.once('error', reject);
     server.listen(staging, () => resolve());
   });
-  // only this user may even try the secret
-  chmodSync(staging, 0o600);
-  renameSync(staging, options.path);
+  try {
+    // only this user may even try the secret
+    chmodSync(staging, 0o600);
+    renameSync(staging, options.path);
+  } catch (err) {
+    // not in place: nothing this edge bound may outlive the failure
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    rmSync(staging, { force: true });
+    throw err;
+  }
   // the file this edge bound: on close, only that file is removed
   const bound = lstatSync(options.path);
   log({ event: 'listening', socket: options.path });

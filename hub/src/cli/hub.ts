@@ -20,7 +20,9 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
   hub status      show the running hub and its connected sessions (--json for JSON)
   hub stop        stop the project's hub
   hub serve       run the hub in the foreground (what start runs)
-                  --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends
+                  --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
+                    when the listeners cannot bind (a sandbox), it goes on over stdio alone
+                  --stdio --no-listen: stdio alone, binding nothing
 `;
 
 type Io = { out: (s: string) => void; err: (s: string) => void };
@@ -183,9 +185,14 @@ async function stop(root: string, io: Io): Promise<number> {
   return 0;
 }
 
-async function serve(root: string, stdio = false): Promise<number> {
+async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Promise<number> {
+  if (!listen && !stdio) {
+    io.err('cland: --no-listen needs --stdio: a hub with neither could not be reached\n');
+    return 2;
+  }
   const log = jsonLinesLog((line) => process.stderr.write(line));
-  const daemon = await serveProject(root, { log });
+  // A stdio hub serves its parent even where listening is forbidden; the project's lock is taken either way.
+  const daemon = await serveProject(root, { log, listen: !listen ? 'never' : stdio ? 'optional' : 'required' });
   if (stdio) {
     // a UI spawned this hub as its child: stdout carries frames only, and the parent leaving stops the hub
     createStdioEdge({ input: process.stdin, output: process.stdout, dispatcher: daemon.hub.dispatcher, log, onEnd: () => void daemon.stop() });
@@ -198,7 +205,8 @@ async function serve(root: string, stdio = false): Promise<number> {
   process.on('SIGINT', onSignal);
   // a daemon has no terminal to lose
   process.on('SIGHUP', () => log({ event: 'signal', signal: 'SIGHUP', ignored: true }));
-  (stdio ? process.stderr : process.stdout).write(`hub serving ${root} on 127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket}${stdio ? ' and stdio' : ''} (pid ${process.pid})\n`);
+  const where = daemon.discovery ? `127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket}${stdio ? ' and stdio' : ''}` : 'stdio only, no listeners';
+  (stdio ? process.stderr : process.stdout).write(`hub serving ${root} on ${where} (pid ${process.pid})\n`);
   await daemon.stopped;
   return 0;
 }
@@ -215,7 +223,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
     case 'stop':
       return stop(root, io);
     case 'serve':
-      return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'));
+      return serve(root, rest.includes('--stdio') || (rest.includes('--transport') && rest[rest.indexOf('--transport') + 1] === 'stdio'), !rest.includes('--no-listen'), io);
     default:
       io.err(`cland: unknown hub command "${sub ?? ''}"\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
       return 2;

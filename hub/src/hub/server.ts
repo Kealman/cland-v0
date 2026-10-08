@@ -9,33 +9,43 @@ import { Dispatcher, secretMatches, type Control } from './dispatch.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { HEARTBEAT_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
-export type HubOptions = CoreOptions & {
-  port: number;
-  /** The interface to bind; loopback by default, and cland never binds anything else (ADR 0003). */
-  host?: string;
+/** What the hub is without any listener: the core, the dispatcher every edge opens conversations on, the prune. */
+export type HubBaseOptions = CoreOptions & {
   secret: string;
   /** How long a fresh socket may stay silent before its hello, ms. */
   helloTimeoutMs?: number;
   /** How often the retention prune runs, ms (default: daily); it also runs at start. */
   pruneEveryMs?: number;
-  /** The spokes' heartbeat interval; a socket silent for two of them is closed (default 30 s). */
-  heartbeatMs?: number;
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
   tracker?: Tracker;
 };
 
-export type Hub = {
-  url: string;
+export type HubOptions = HubBaseOptions & {
   port: number;
+  /** The interface to bind; loopback by default, and cland never binds anything else (ADR 0003). */
+  host?: string;
+  /** The spokes' heartbeat interval; a socket silent for two of them is closed (default 30 s). */
+  heartbeatMs?: number;
+};
+
+export type HubBase = {
   core: HubCore;
-  /** The frame dispatcher every transport shares; another edge (the Unix socket, stdio) opens conversations on it. */
+  /** The frame dispatcher every transport shares; an edge (the WebSocket, the Unix socket, stdio) opens conversations on it. */
   dispatcher: Dispatcher;
   /** Run the retention prune now (the daily job's body). */
   prune: () => number;
+  /** Stop the prune and close the store; close the edges first. */
   close: () => Promise<void>;
 };
+
+export type Hub = HubBase & {
+  url: string;
+  port: number;
+};
+
+export type WebSocketEdge = { url: string; port: number; close: () => Promise<void> };
 
 const bearerMatches = (header: string | undefined, secret: string): boolean => {
   if (!header) return false;
@@ -44,17 +54,37 @@ const bearerMatches = (header: string | undefined, secret: string): boolean => {
   return secretMatches(token, secret);
 };
 
-export async function createHub(options: HubOptions): Promise<Hub> {
+/** The hub with no listener yet: a stdio-only hub is this and nothing more. */
+export function createHubBase(options: HubBaseOptions): HubBase {
   const core = new HubCore(options);
-  const log = options.log ?? (() => {});
   const dispatcher = new Dispatcher({
     core,
     secret: options.secret,
-    log,
+    ...(options.log ? { log: options.log } : {}),
     ...(options.control ? { control: options.control } : {}),
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
   });
+  core.prune();
+  const pruneTimer = setInterval(() => core.prune(), options.pruneEveryMs ?? 24 * 60 * 60 * 1000);
+  pruneTimer.unref();
+  return {
+    core,
+    dispatcher,
+    prune: () => core.prune(),
+    close: async () => {
+      clearInterval(pruneTimer);
+      core.store.close();
+    },
+  };
+}
+
+/** The WebSocket edge for spokes on `host:port`; rejects when it cannot listen, leaving nothing bound. */
+export async function createWebSocketEdge(
+  dispatcher: Dispatcher,
+  options: { port: number; host?: string; secret: string; heartbeatMs?: number; log?: HubBaseOptions['log'] },
+): Promise<WebSocketEdge> {
+  const log = options.log ?? (() => {});
   const http: HttpServer = createServer((_req, res) => {
     res.writeHead(404).end();
   });
@@ -105,19 +135,10 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     });
   });
 
-  try {
-    await new Promise<void>((resolve, reject) => {
-      http.once('error', reject);
-      http.listen(options.port, options.host ?? '127.0.0.1', () => resolve());
-    });
-  } catch (err) {
-    // nothing may outlive a hub that never listened
-    core.store.close();
-    throw err;
-  }
-  core.prune();
-  const pruneTimer = setInterval(() => core.prune(), options.pruneEveryMs ?? 24 * 60 * 60 * 1000);
-  pruneTimer.unref();
+  await new Promise<void>((resolve, reject) => {
+    http.once('error', reject);
+    http.listen(options.port, options.host ?? '127.0.0.1', () => resolve());
+  });
   // Two missed heartbeats: the socket is dead as far as the hub is concerned — close it, which lets a
   // live spoke reconnect with a fresh hello.
   const heartbeatTimer = setInterval(() => {
@@ -137,20 +158,36 @@ export async function createHub(options: HubOptions): Promise<Hub> {
   const host = options.host ?? '127.0.0.1';
   const url = `ws://${host.includes(':') ? `[${host}]` : host}:${address.port}`;
   log({ event: 'listening', url });
-
   return {
     url,
     port: address.port,
-    core,
-    dispatcher,
-    prune: () => core.prune(),
     close: async () => {
-      clearInterval(pruneTimer);
       clearInterval(heartbeatTimer);
       for (const ws of sockets) ws.terminate();
       wss.close();
       await new Promise<void>((resolve) => http.close(() => resolve()));
-      core.store.close();
+    },
+  };
+}
+
+/** A hub listening for spokes on its WebSocket: the base and the edge, closed together. */
+export async function createHub(options: HubOptions): Promise<Hub> {
+  const base = createHubBase(options);
+  let edge: WebSocketEdge;
+  try {
+    edge = await createWebSocketEdge(base.dispatcher, options);
+  } catch (err) {
+    // nothing may outlive a hub that never listened
+    await base.close();
+    throw err;
+  }
+  return {
+    ...base,
+    url: edge.url,
+    port: edge.port,
+    close: async () => {
+      await edge.close();
+      await base.close();
     },
   };
 }
