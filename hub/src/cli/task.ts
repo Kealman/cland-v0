@@ -6,6 +6,7 @@ import { layout, pidAlive, projectRoot, readDiscovery } from '../project.ts';
 import type { Claim } from '../tracker/index-db.ts';
 import type { ItemSummary, ItemView } from '../tracker/tracker.ts';
 import { askHubFrame } from './socket-client.ts';
+import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
 
 export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
@@ -17,7 +18,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-f
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task claim <id> [--release] [--force]
-                  every task command takes --json, and --as <name> [--role r] (default: $CLAND_SESSION_NAME
+${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: $CLAND_SESSION_NAME
                   and $CLAND_ROLE, else "human")
 `;
 
@@ -142,6 +143,7 @@ function viewText(i: ItemView): string {
     `  branch    ${i.branch ?? '-'}`,
     `  created   ${i.created}`,
     `  updated   ${i.updated}`,
+    ...(i.github ? [`  github    ${i.github.repo}#${i.github.number}  ${i.github.url}`] : []),
     `  file      ${i.path}`,
   ];
   if (i.body) lines.push('', i.body);
@@ -196,6 +198,7 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
 /** `cland task <sub> …`; the process exit code. */
 export async function runTask(args: string[], cwd: string = process.cwd(), io: Io = stdio, env: NodeJS.ProcessEnv = process.env): Promise<number> {
   const [sub, ...rest] = args;
+  if (sub === 'import-github') return runImportGithub(rest, cwd, io, env);
   if (!sub || !(sub in OPTIONS)) {
     io.err(`cland: unknown task command "${sub ?? ''}"\n\nusage: cland task <command>\n\n${TASK_USAGE}`);
     return 2;

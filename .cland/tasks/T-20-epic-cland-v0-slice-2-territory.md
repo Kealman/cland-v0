@@ -1,0 +1,88 @@
+---
+id: T-20
+kind: epic
+title: "Epic: cland v0 slice 2, territory, artifacts and the QA lane"
+state: open
+labels:
+  - ready-for-agent
+  - epic
+  - slice-2
+assignee: null
+parent: null
+blocked_by:
+  - T-19
+topic: null
+branch: null
+created: 2026-10-08T11:40:46Z
+updated: 2026-10-08T13:17:15.598Z
+github:
+  repo: Kealman/cland-v0
+  number: 20
+  url: https://github.com/Kealman/cland-v0/issues/20
+---
+
+Spec: `docs/spec/v0.md` on `main` (section 7). Depends on the slice 1 epic #19. ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `0003-hub-is-a-per-project-daemon-from-the-bcas-core.md` (stdio addendum), `0004-agents-work-on-a-local-git-territory.md`. Research: branches `research/git-engines` and `research/qa-astra`. Decisions: https://github.com/Kealman/cland-v0/issues/14 (git strategy), https://github.com/Kealman/cland-v0/issues/9 (artifacts), https://github.com/Kealman/cland-v0/issues/16 (QA research), https://github.com/Kealman/cland-v0/issues/13 (hub, stdio transport).
+
+## Problem Statement
+
+With slice 1 in daily use, agents still work on branches whose remote is GitHub, so their many branches, reviews and merges land in the space meant for humans, and nothing gates a merge on the verdicts the tracker already holds. Prompts are still drafted in loose files and agents still show their work through files in temporary folders. QA runs by hand: there is no scripted way for the QA role to drive cland itself, and a sandboxed QA run cannot reach the hub over its socket.
+
+## Solution
+
+Slice 2 completes cland v0: a local git territory where agents branch, get reviewed and merge behind cland's verdict gate, with releases fast-forwarded to GitHub as one deployable version; artifacts as first-class files with ids, kinds, statuses and a promote action; the QA lane infrastructure (a Lua QA API, a brief format, the `qa` skill, the hub's stdio transport); and the two UI additions decided on the map. v0 is done when the first release of cland leaves for GitHub through `cland release` from inside cland.
+
+## User Stories
+
+1. As the human, I want `cland init` to re-point an existing project so that a local bare repository becomes `origin` and GitHub becomes the remote `github`, reversibly, so that agent traffic stays on my machine.
+2. As the human, I want `main` to mirror GitHub and `dev` to be the agents' integration branch, so that the two audiences never collide.
+3. As the Coordinator, I want cland to create a task branch and a worktree when an item is claimed, so that every Implementer works in isolation.
+4. As an Implementer, I want my session to start in the item's worktree, so that I never touch another task's files.
+5. As the Coordinator, I want `cland merge` to refuse a merge without a clear review verdict from a Reviewer session and, where the item requires it, a clear QA verdict from a QA session, so that the gate git lacks is enforced by cland.
+6. As the Coordinator, I want `cland merge` to land a task on `dev` as one squash commit whose message comes from the item, after a rebase, so that `dev` stays readable.
+7. As the human, I want conflicts on rebase to go back to the Implementer, so that the merge step never resolves them silently.
+8. As the human, I want `cland release` to fast-forward `main` to `dev`, tag it, build release notes from the items' titles and push `main` and the tag to GitHub, so that GitHub receives one deployable version per task history and no pull requests.
+9. As the human, I want collaborators' work on GitHub to come back with a fetch of `main` and a rebase or merge of `dev`, so that both audiences stay in sync.
+10. As the human, I want abandoned items to have their worktree and branch removed after my confirmation, so that the territory stays clean.
+11. As the human, I want tools that push to `origin` on their own to reach only the territory, so that nothing leaks to GitHub by accident.
+12. As the human, I want every artifact to have an id, a kind, a status and an optional topic binding, so that agent output stops piling up in temporary folders.
+13. As the human, I want to draft a long prompt as a prompt artifact in a full Neovim buffer and then send it as a message or attach it, so that the composer is for short messages only.
+14. As an agent, I want `artifact.create` to register a file and announce it in the topic, so that showing the human a diagram or a page is one call.
+15. As the human, I want Markdown and Mermaid artifacts rendered inside Neovim and HTML, SVG and PNG opened in the browser with one key, so that I can look at what agents made without leaving the flow.
+16. As the human, I want to promote an artifact into the repo, so that the ones worth keeping become ordinary project files.
+17. As the human, I want archived artifacts deleted from disk after a configurable period while their index entries remain, so that the folder cleans itself.
+18. As the human, I want a topic's artifacts listed in the UI, so that I find what was shared where.
+19. As the human, I want the Agents topic filterable by item and by session, so that I can follow one thread of agent activity.
+20. As a QA session, I want a scripted way to start cland headless, drive it and read its screen and state, so that I can verify behaviour without a desktop or a terminal app.
+21. As a QA session, I want a brief file format in the repo and a `qa` skill that runs it, so that QA runs are repeatable.
+22. As a QA session, I want the hub reachable over stdio from inside the Codex sandbox, so that a sandboxed run can talk to the hub without a socket.
+23. As the human, I want QA verdicts recorded as structured comments on the item and one line per case in a runs log, so that the merge gate and I can read them.
+24. As the human, I want the first cland release to leave for GitHub through `cland release` from inside cland, so that v0 proves itself on its own repository.
+
+## Implementation Decisions
+
+- Agents work on a local git territory (ADR 0004): the project's `origin` is a bare repository inside `.cland/territory.git`, GitHub is the remote `github`; `main` mirrors GitHub, `dev` integrates, task branches `t/T-123-slug` start from `dev`; one worktree per item under `.cland/worktrees/`, created by cland at claim time and removed after the merge; harnesses do not create their own worktrees (Claude Code's `WorktreeCreate` hook is intercepted).
+- `cland merge` is a hub tool available to the Coordinator; it checks a clear review verdict by a session holding the Reviewer role, a clear QA verdict by the QA role where the item is marked as requiring QA, and a branch rebased on `dev`; otherwise it refuses with the reason. The hub guarantees the reviewer's identity by the calling session's role; no commit signing in v0.
+- `cland release` fast-forwards `main` to `dev`, tags `vX.Y.Z` with a number the human chooses, builds release notes from the titles of the items in `main..dev` into the tag message, and pushes `main` and the tag to `github`. Squashing a release into one commit is rejected.
+- `cland init` in a project whose `origin` is GitHub creates the bare repository, renames `origin` to `github`, adds the bare repository as `origin`, creates `dev` from `main` if absent, pushes nothing, and is reversible with `cland init --undo`.
+- Artifacts live in `.cland/artifacts/` as `A-123-slug.<ext>` with a hub index (id, title, kind, creator, time, topic binding, status); kinds prompt, note, page, diagram, file; statuses draft, sent, shared, archived; not committed unless promoted; closing a topic archives its artifacts; archived files are deleted after a configurable period (default 30 days); bound to topics, never to sessions.
+- The hub gains `artifact.create(kind, title, path | content, topic)`, available to every connected role; role clauses require agents to show things through artifacts, never through files in tmp.
+- The QA lane: `cland --headless --qa <case>` with a Lua QA API, stub harnesses, a JSON state snapshot and the exit code as the verdict; briefs as files in the repo; runs through `/codex:rescue --background --fresh --model gpt-6-astra` or through the QA role; the hub's JSON-lines frames over the stdio of a child process for sandboxed runs (ADR 0003 addendum). tmux and ttyd lanes stay optional for real-TUI and visual cases, with their grants documented in the qa-astra research.
+- The `qa`, `merge` and `release` skills ship with the process layer; the `AGENTS.md` rule becomes: only `cland release` pushes to `github`.
+- UI additions: Agents-topic filters by item and session; the topic's artifact list.
+
+## Testing Decisions
+
+- Same seams as slice 1: the hub's frame protocol as the primary seam, the harness process boundary as the only other one.
+- Git operations are tested against real git on disk: a temporary project with a bare territory, task branches and worktrees; `cland merge` and `cland release` are asserted through the resulting git state (refs, commits, tags) and the verdicts in the item files, never through mocks of git.
+- Artifacts are tested through the hub tools and the files they produce in a temporary cland folder.
+- The QA lane is tested by running a headless cland against a stub hub over stdio and asserting on the screen text and the state snapshot; this doubles as the first scripted QA case.
+- Prior art: the slice 1 suite; the research probes on branch `research/qa-astra` (headless Neovim driven by `nvim_input`, tmux capture, ttyd in Chrome).
+
+## Out of Scope
+
+Everything in the map's fog: a sessions board as a separate screen, cost per item, crew presets, a journal viewer, the build's distribution format, the keymap scheme, inline images in the terminal, GitHub sync of the tracker, the per-item change tour, commit signing per role, a forge (Gitea stays the fallback), remote access, multi-user mode.
+
+## Further Notes
+
+- The git-engines research (branch `research/git-engines`) records why no forge is used and what GitHub's personal-account limits are; the qa-astra research records that Computer Use cannot drive terminal apps and that the Codex sandbox blocks Unix sockets while network is off.
+- v0 is complete when slice 2 is closed and the first release of cland has left for GitHub through `cland release` from inside cland.

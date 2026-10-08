@@ -26,7 +26,12 @@ export type Frontmatter = {
   branch: string | null;
   created: string;
   updated: string;
+  /** Where the item was imported from (`cland task import-github`); absent on items made here. */
+  github?: GithubRef;
 };
+
+/** The GitHub issue an item was imported from: kept through every write, otherwise ignored by the hub. */
+export type GithubRef = { repo: string; number: number; url: string };
 
 export type Verdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string };
 
@@ -138,6 +143,8 @@ export function parseItem(text: string, fileName?: string): Item {
     created: str(r.created) ?? '',
     updated: str(r.updated) ?? '',
   };
+  const github = githubOf(r.github);
+  if (github) fm.github = github;
 
   const rest = src.slice(m[0].length);
   const lines = rest.split('\n');
@@ -145,6 +152,14 @@ export function parseItem(text: string, fileName?: string): Item {
   const body = (at < 0 ? lines : lines.slice(0, at)).join('\n').trim();
   const comments = at < 0 ? [] : parseComments(lines.slice(at + 1));
   return { fm, body, comments };
+}
+
+function githubOf(v: unknown): GithubRef | null {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
+  const g = v as Record<string, unknown>;
+  const number = Number(g.number);
+  if (typeof g.repo !== 'string' || !Number.isInteger(number) || number <= 0) return null;
+  return { repo: g.repo, number, url: str(g.url) ?? '' };
 }
 
 function parseComments(lines: string[]): Comment[] {
@@ -204,6 +219,7 @@ export function serializeItem(item: Item): string {
     branch: fm.branch,
     created: fm.created,
     updated: fm.updated,
+    ...(fm.github ? { github: { repo: fm.github.repo, number: fm.github.number, url: fm.github.url } } : {}),
   };
   const yaml = stringifyYaml(ordered, { lineWidth: 0, flowCollectionPadding: false });
   let out = `---\n${yaml}---\n`;

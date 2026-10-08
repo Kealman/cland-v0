@@ -1,46 +1,63 @@
-# Issue tracker: GitHub
+# Issue tracker: cland
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Issues, specs and tickets for this repo live as **items** in cland's own tracker: one Markdown file per item in `.cland/tasks/` (`T-<n>-<slug>.md`), committed with the work. Use the `cland task` CLI for every operation; in this repo run it as `node hub/bin/cland.ts task …` from the repo root (or put `hub/bin/cland.ts` on PATH as `cland`). It talks to the project's hub, so a hub must be running: if a command says `no hub running`, run `node hub/bin/cland.ts hub start`. Don't write item files by hand when a command can do it.
+
+- An item's id is `T-<n>`. Refer to an item as `T-<n>`: there is no `#<n>` auto-linking. Its file is `.item.path` in `cland task view T-<n> --json`, relative to the repo root.
+- An item's `kind` is `epic`, `spec`, `task`, `question` or `map` (default `task`).
+- Every `cland task` command takes `--json`. Read results with `--json` and `jq`; the plain output is for humans.
+- You act as `$CLAND_SESSION_NAME` (role `$CLAND_ROLE`) when cland launched your session, else as `human`. `--as <name> [--role <r>]` overrides. "Yourself" below means `${CLAND_SESSION_NAME:-human}`.
+
+## GitHub Issues: the human-facing mirror
+
+The items were imported from this repo's GitHub Issues (`Kealman/cland-v0`) with `cland task import-github --all` (#38). The import gave each of issues #1–#42 the item of the same number (`T-23` is #23), so the `#<n>` references in the imported bodies and comments name the same items; items created from now on (`T-43` and up) have no GitHub counterpart. An imported item carries `github: {repo, number, url}` in its frontmatter (`.item.github` in `view --json`).
+
+Until slice 1 is done (epic `T-19`), the GitHub Issues stay as the human-facing mirror:
+
+- The human may still write on GitHub. `node hub/bin/cland.ts task import-github --all` refreshes the items from it: it is idempotent, rewrites title, body, labels, state, assignee, kind, parent and `blocked_by` of every imported item from its issue, appends only the GitHub comments the item does not hold yet, and keeps what GitHub does not own (`topic`, `branch`, local comments). It writes nothing when GitHub has not changed.
+- Because a refresh rewrites those fields, when you close, relabel or re-link an **imported** item, make the same change on its issue (`gh issue close <number>`, `gh issue edit <number> --add-label …`), otherwise the next refresh reverts it. Comments need no mirroring.
+- Create new work as items only, not as GitHub issues.
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments`.
-- **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
-- **Make an issue a sub-issue of a parent**: `gh issue create --parent <parent> ...`, or `gh issue edit <parent> --add-sub-issue <child>` afterwards (`gh` 2.94+). Older `gh`: `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>` (database id, as in **Blocking** below). Without sub-issues, put `Part of #<parent>` at the top of the child body.
-- **Comment on an issue**: `gh issue comment <number> --body "..."`
-- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
-- **Close**: `gh issue close <number> --comment "..."`
-
-Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
+- **Create an item**: `cland task create "<title>" --kind <kind> --label <l> --body-file - <<'EOF'` … `EOF`. `--label` repeats. `--parent T-<p>` and `--blocked-by T-<b>` (repeats) set the edges at creation. The new id is `.item.id` in the `--json` result (`created T-<n>  <path>` in plain output).
+- **Read an item**: `cland task view T-<n> --json`: frontmatter fields, `.item.body`, `.item.comments` (`author`, `at`, `text`), `.item.claim`.
+- **List items**: `cland task list --state open --json`, with `--label <l>` (repeats; every label must match), `--kind <k>`, `--assignee <a>`. Drop `--state` for open and closed items. Results are in id order, i.e. creation order. A summary has every frontmatter field but no body and no comments: `view` each item you need to read in full. Filter further with `jq`, for example items with no label: `cland task list --state open --json | jq '[.items[] | select(.labels == [])]'`.
+- **Make an item a sub-item of a parent**: `--parent T-<p>` on `create`, or `cland task link T-<c> --parent T-<p>` afterwards (`--parent none` clears it). The children of a parent: `cland task list --json | jq '[.items[] | select(.parent == "T-<p>")]'`.
+- **Blocking edges**: native. `--blocked-by T-<b>` on `create`, or `cland task link T-<n> --blocked-by T-<b>` afterwards (repeats; adds to the existing edges); `--unblock T-<b>` removes one. An item is unblocked when every item in its `blocked_by` is closed.
+- **Comment on an item**: `cland task comment T-<n> --body-file - <<'EOF'` … `EOF`, or `cland task comment T-<n> "<text>"` for one line.
+- **Apply / remove labels**: `cland task edit T-<n> --add-label <l> --remove-label <l>` (each repeats). `--label` instead replaces the whole set. Labels need no setup: any string is a label.
+- **Assign**: `cland task edit T-<n> --assignee <name>`; `--assignee none` clears it.
+- **Close**: `cland task close T-<n> --comment "<text>"`. Reopen with `cland task edit T-<n> --state open`.
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
-
-When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr` equivalents:
-
-- **Read a PR**: `gh pr view <number> --comments` and `gh pr diff <number>` for the diff.
-- **List external PRs for triage**: `gh api --paginate 'repos/{owner}/{repo}/pulls?state=open' --jq '.[] | select(.author_association | IN("OWNER","MEMBER","COLLABORATOR") | not) | {number, title, author: .user.login, author_association, labels: [.labels[].name]}'`.
-- **Comment / label / close**: `gh pr comment`, `gh pr edit --add-label`/`--remove-label`, `gh pr close`.
-
-GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
+**PRs as a request surface: no.** cland's tracker has no pull requests; `/triage` works on items only.
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+Create an item with `cland task create`: kind `spec` for a spec, `task` for a ticket, `map` for a wayfinding map. For `/to-tickets` this is a real issue tracker with native blocking, not the local-files mode: publish the tickets in dependency order (blockers first), each with `--blocked-by` for its blockers and, when the source was an existing item, `--parent` for that item. Report each item as `T-<n>` with its title.
 
 ## When a skill says "fetch the relevant ticket"
 
-Read it as in **Read an issue** above.
+`cland task view T-<n> --json`. The id may be given as `T-12` or `12`; for a path such as `.cland/tasks/T-12-some-slug.md`, pass the `T-12` it starts with. A GitHub reference `#12` to an imported issue is the item `T-12`.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+Used by `/wayfinder`. The **map** is a single item with **child** items as tickets. This repo's map is `T-1` (closed: its way is charted; slice 1 is epic `T-19`).
 
-- **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map`.
-- **Child ticket**: an issue linked to the map as a GitHub sub-issue (see **Make an issue a sub-issue of a parent**). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
-- **Blocking**: GitHub's **native issue dependencies**, the canonical, UI-visible representation. Add an edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`, where `<blocker-db-id>` is the blocker's numeric **database id** (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`, _not_ the `#number` or `node_id`). GitHub reports `issue_dependencies_summary.blocked_by` (open blockers only, the live gate). Where dependencies aren't available, fall back to a `Blocked by: #<n>, #<n>` line at the top of the child body. A ticket is unblocked when every blocker is closed.
-- **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
-- **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
-- **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+- **Map**: an item of kind `map`, labelled `wayfinder:map`, holding the Destination / Notes / Decisions-so-far / Not-yet-specified / Out-of-scope body: `cland task create "<effort>" --kind map --label wayfinder:map --body-file - <<'EOF'` … `EOF`. Find maps with `cland task list --kind map`.
+- **Child ticket**: an item with `--parent T-<map>` and the label `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`), kind `question` (kind `task` for a `wayfinder:task` ticket): `cland task create "<question>" --kind question --parent T-<map> --label wayfinder:grilling --body-file - <<'EOF'` … `EOF`.
+- **Blocking**: native `blocked_by` edges, wired in the second pass once every ticket has its id: `cland task link T-<n> --blocked-by T-<b>`. A ticket is unblocked when every blocker is closed.
+- **Frontier query**: the map's open children with no assignee, no claim and no open blocker, in map (id) order; the first line wins:
+
+  ```sh
+  cland task list --json | jq -r --arg map T-<map> '
+    (.items | map({(.id): .state}) | add) as $state
+    | .items[]
+    | select(.parent == $map and .state == "open" and .assignee == null and .claim == null)
+    | select(all(.blocked_by[]; $state[.] == "closed"))
+    | "\(.id)\t\(.title)"'
+  ```
+
+- **Claim**: the session's first write. `cland task claim T-<n>` takes the hub's live hold and is refused when another session holds the item (pick the next frontier ticket then); then `cland task edit T-<n> --assignee "${CLAND_SESSION_NAME:-human}"`. The assignee is the claim the frontier reads.
+- **Resolve**: `cland task comment T-<n> --body-file - <<'EOF'` with the answer, then `cland task close T-<n>`, then append a context pointer (gist + `T-<n>` + the item's path) to the map's Decisions so far: write `cland task view T-<map> --json | jq -r .item.body` to a temporary file, add the line under `## Decisions so far`, and save it back with `cland task edit T-<map> --body-file <file>`. Do the read and the write back to back: another session may be editing the map too.

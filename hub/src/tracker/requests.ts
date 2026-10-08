@@ -3,6 +3,7 @@
 import { KINDS, parseVerdictFilter, STATES, type Kind, type State } from './item.ts';
 import type { HubFrame } from '../protocol.ts';
 import { TrackerError, type Actor, type Tracker, type VerdictInput } from './tracker.ts';
+import { importIssues, type ImportRequest } from './import-github.ts';
 
 export type TaskRequest =
   | {
@@ -38,12 +39,13 @@ export type TaskRequest =
     }
   | { type: 'task.close'; id: string; item: string; comment?: string; as?: ActorField }
   | { type: 'task.link'; id: string; item: string; parent?: string | null; blocked_by?: string[]; unblock?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
-  | { type: 'task.claim'; id: string; item: string; release?: boolean; force?: boolean; as?: ActorField };
+  | { type: 'task.claim'; id: string; item: string; release?: boolean; force?: boolean; as?: ActorField }
+  | (ImportRequest & { as?: ActorField });
 
 /** Who a CLI request acts as; a spoke's requests always act as the spoke's own session. */
 export type ActorField = { name: string; role?: string | null };
 
-export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.claim'] as const;
+export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.claim', 'task.import'] as const;
 
 export function isTaskRequest(f: Record<string, unknown>): f is TaskRequest {
   return typeof f.id === 'string' && (TASK_REQUEST_TYPES as readonly unknown[]).includes(f.type);
@@ -114,6 +116,8 @@ export function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: A
     }
     case 'task.claim':
       return tracker.claim(actor, needItem(f), { release: frame.release === true, force: frame.force === true });
+    case 'task.import':
+      return importIssues(tracker, actor, frame);
   }
 }
 
