@@ -361,6 +361,41 @@ test('a burst of hub events never raises a hit-enter prompt', { skip }, async (t
   assert.equal(await c.mode(), 'i');
   await c.input('still typing');
   await c.waitScreen((x) => x.includes('› still typing'), 'the composer answers');
+
+  // then every kind of event the client handles, 50 of each wave in one write, malformed ones among them,
+  // while the human is typing
+  const item = baseScenario('').items?.[0] ?? {};
+  const wave = (i: number): Array<Record<string, unknown>> => [
+    { type: 'message', topic: { id: i % 2 ? 'general' : 'agents', title: 'x' }, message: { id: `w${i}`, from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', via: 'spoke', to: ['human'], text: `wave ${i}\nsecond line`, ts: ts(12), topic: i % 2 ? 'general' : 'agents' } },
+    { type: 'delivery', topic: 'general', message: `w${i}`, stage: 'injected' },
+    { type: 'topic', topic: { id: 'general', title: 'General', status: i % 3 ? 'open' : 'waiting for human', unread: i, warning: i % 5 ? null : 'no coordinator\nat all' } },
+    { type: 'session.state', session: i % 2 ? 'coord-1' : 'nobody', sessionId: 'x', state: i % 2 ? 'busy' : 'idle', source: 'hook', ts: ts(12) },
+    { type: 'session.role', session: 'impl-1', role: 'implementer', ts: ts(12) },
+    { type: i % 2 ? 'role.vacant' : 'role.filled', role: 'coordinator', session: 'coord-1', ts: ts(12) },
+    { type: 'task', id: 'T-12', item: { ...item, title: `Hub daemon ${i}` } },
+    { type: 'ask', topic: 'general', ask: 'no-such-ask', card: { state: 'answered' } },
+    { type: 'inbox', inbox: { asks: [{ id: 'a9', topic: { id: 'general', title: 'General' }, question: `q ${i}\nwith a second line`, options: ['one\ntwo', 'three'], free: true, from: 'coord-1', ts: ts(12) }], approvals: [], waiting: [], notifications: [{ id: `n${i}`, kind: 'death', text: 'died\nbadly', ts: ts(12) }], needsYou: 1 } },
+    // malformed: a handler must not raise into the message area
+    { type: 'topic', topic: 'not a table' },
+    { type: 'task', id: 'T-99', item: 'nope' },
+    { type: 'inbox', inbox: { asks: 'nope' } },
+    { type: 'session.state' },
+    { type: 'message', topic: { id: 'general' }, message: 'nope' },
+  ];
+  await c.input('<C-u>');
+  await c.input('mid-burst ');
+  for (let k = 0; k < 4; k++) {
+    await c.control({ emits: Array.from({ length: 50 }, (_, i) => wave(k * 50 + i)).flat() });
+  }
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: { id: 'end', from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', via: 'spoke', to: ['human'], text: 'waves done', ts: ts(13), topic: 'general' } } });
+  const after = await c.waitScreen((x) => centreOf(x).includes('waves done'), 'the last wave', 20_000);
+  assert.doesNotMatch(after, /Press ENTER|E\d+:|Error/);
+  assert.equal(await c.mode(), 'i', 'Insert mode in the composer survives the waves');
+  await c.input('and done');
+  await c.waitScreen((x) => x.includes('› mid-burst and done'), 'the composer keeps what was typed');
+  // nothing reached the message area
+  const messages = await c.lua<string>("return vim.api.nvim_exec2('messages', { output = true }).output");
+  assert.equal(messages.trim(), '', `the message area: ${messages}`);
 });
 
 test('Shift+Enter reaches the session terminal as ESC[13;2u; a paste keeps its tabs', { skip }, async (t) => {

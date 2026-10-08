@@ -493,8 +493,17 @@ function M.start(opts)
     end)
   end
 
+  -- a timer's callback that failed says so on the status line, never as an error in the message area
+  local function guarded(fn)
+    return vim.schedule_wrap(function()
+      local ok, err = pcall(fn)
+      if not ok then
+        state.say('cland: ' .. tostring(err), 'ClandRedBar')
+      end
+    end)
+  end
   M.timer = vim.uv.new_timer()
-  M.timer:start(M.REFRESH_MS, M.REFRESH_MS, vim.schedule_wrap(function()
+  M.timer:start(M.REFRESH_MS, M.REFRESH_MS, guarded(function()
     if M.client:connected() then
       refresh_sessions()
       refresh_items()
@@ -503,7 +512,7 @@ function M.start(opts)
   -- while the items are on screen (the panel, the board, an item view) they refresh at least each second,
   -- besides the `task` events
   M.items_timer = vim.uv.new_timer()
-  M.items_timer:start(M.ITEMS_REFRESH_MS, M.ITEMS_REFRESH_MS, vim.schedule_wrap(function()
+  M.items_timer:start(M.ITEMS_REFRESH_MS, M.ITEMS_REFRESH_MS, guarded(function()
     if M.client:connected() and require('cland.items').visible() then
       refresh_items()
     end
