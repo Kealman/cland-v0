@@ -160,6 +160,11 @@ export class HubCore {
     this.#log({ event: 'bye', name: connection.name });
   }
 
+  /** Whether this connection still holds its session's name (a takeover or a close ends that). */
+  isCurrent(connection: Connection): boolean {
+    return this.#live.get(connection.name) === connection;
+  }
+
   presence(): Presence[] {
     return [...this.#live.values()].map((c) => ({ name: c.name, sessionId: c.sessionId, cwd: c.cwd, role: c.role, status: c.status, connectedAt: c.connectedAt }));
   }

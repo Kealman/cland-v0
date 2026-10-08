@@ -82,6 +82,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
         },
         close: (code, reason) => ws.close(code, reason),
+        isOpen: () => ws.readyState === WebSocket.OPEN,
       },
       // the upgrade checked the bearer secret already
       { authenticated: true, edge: 'websocket' },

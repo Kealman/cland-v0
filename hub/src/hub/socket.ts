@@ -30,6 +30,7 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
         },
         // end, not destroy: the frame written just before (a refusal, a result) still goes out
         close: () => socket.end(),
+        isOpen: () => !socket.destroyed && socket.writable,
       },
       { authenticated: false, edge: 'socket' },
     );

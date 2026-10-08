@@ -27,6 +27,8 @@ export type Peer = {
   send: (frame: HubFrame) => void;
   /** End the connection. `code` is a WebSocket close code; a transport without codes ignores it. */
   close: (code: number, reason: string) => void;
+  /** Whether frames from the peer still count: false once the connection is closing. */
+  isOpen: () => boolean;
 };
 
 /** What only the process running the hub can answer: its facts, and stopping it. */
@@ -188,7 +190,14 @@ export class Dispatcher {
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
         if (kind === null) return hello(frame);
-        if (kind === 'spoke') return spokeRequest(frame, name as string);
+        if (kind === 'spoke') {
+          // A replaced or closing socket's buffered frames would act under a name it no longer holds.
+          if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
+            log({ event: 'stale-frame', edge: transport.edge, name, type: frame.type });
+            return;
+          }
+          return spokeRequest(frame, name as string);
+        }
         clientRequest(frame);
       },
       closed: () => {
