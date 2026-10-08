@@ -1,7 +1,8 @@
 -- The one floating picker (spec section 5, Pickers.dc.html): `␣p` over topics and sessions (items and
 -- artifacts join with #36 and the artifacts ticket). Two floats: a one-line input titled with the kinds,
 -- and the list. Tab and Shift+Tab switch the kind, typing filters fuzzily (matchfuzzypos), Up/Down or
--- C-n/C-p move, Enter opens, Esc closes.
+-- C-n/C-p move, Enter opens, Esc closes. The sessions kind lists the sessions waiting for the human first and
+-- matches the label, the role and the harness, so a name, a role or a harness narrows it.
 local api = vim.api
 local state = require('cland.state')
 
@@ -18,13 +19,34 @@ local function topic_entries()
   return out
 end
 
+--- The order of the sessions kind: those waiting for the human first, then busy, idle, unknown, down.
+local function session_rank(s)
+  if not s.live then
+    return 5
+  end
+  if s.state:match('^waiting') then
+    return 1
+  end
+  return ({ busy = 2, idle = 3 })[s.state] or 4
+end
+
+--- Sessions: the key (what the filter matches) is the label, the harness and its id, so typing a name, a
+--- role or a harness narrows the list.
 local function session_entries()
   local panels = require('cland.panels')
   local out = {}
-  for _, s in ipairs(state.sessions()) do
+  for i, s in ipairs(state.sessions()) do
     local g, ghl = panels.session_glyph(s)
-    out[#out + 1] = { glyph = g, ghl = ghl, key = s.label, right = panels.session_meta(s), value = s.name }
+    local harness = s.harness and ((panels.HARNESS[s.harness] or s.harness) .. ' (' .. s.harness .. ')') or 'not launched by cland'
+    local right = (s.model and (s.model .. ' · ') or '') .. panels.session_words(s) .. (s.item and (' · ' .. s.item) or '')
+    out[#out + 1] = { glyph = g, ghl = ghl, key = (s.label or s.name) .. '  ' .. harness, right = right, value = s.name, rank = session_rank(s), i = i }
   end
+  table.sort(out, function(a, b)
+    if a.rank ~= b.rank then
+      return a.rank < b.rank
+    end
+    return a.i < b.i
+  end)
   return out
 end
 
@@ -78,6 +100,22 @@ local function render(p)
     local res = vim.fn.matchfuzzypos(keys, query, { key = 'text' })
     for i, k in ipairs(res[1]) do
       shown[i], pos[i] = p.entries[k.idx], res[2][i]
+    end
+    if p.kind == 'sessions' then
+      -- waiting ones first among the matches too; the fuzzy score orders within a rank
+      local order = {}
+      for i = 1, #shown do
+        order[i] = { e = shown[i], p = pos[i], i = i }
+      end
+      table.sort(order, function(a, b)
+        if a.e.rank ~= b.e.rank then
+          return a.e.rank < b.e.rank
+        end
+        return a.i < b.i
+      end)
+      for i, o in ipairs(order) do
+        shown[i], pos[i] = o.e, o.p
+      end
     end
   end
   p.shown = shown

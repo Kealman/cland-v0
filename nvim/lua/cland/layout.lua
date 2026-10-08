@@ -334,6 +334,30 @@ function M.show(view, opts)
   state.changed()
 end
 
+--- C-v on a session: attach it in a vertical split beside the centre, in Terminal mode. The centre view
+--- stays what it was; closing the split ends only that attach client.
+function M.show_split(view)
+  local c = M.centre()
+  local scratch = api.nvim_create_buf(false, true)
+  vim.bo[scratch].bufhidden = 'wipe'
+  local w = api.nvim_open_win(scratch, true, { split = 'right', win = c })
+  centre_opts(w, 'session')
+  local buf = require('cland.sessions').show_in(w, view.id, {
+    on_attached = function(win)
+      centre_opts(win, 'session')
+      M.fix()
+      if api.nvim_get_current_win() == win then
+        M.enter_terminal(win)
+      end
+    end,
+  })
+  if vim.bo[buf].buftype == 'terminal' then
+    M.enter_terminal(w)
+  end
+  state.changed()
+  return w
+end
+
 --- ␣␣: the previous centre view; twice returns, like CTRL-^.
 function M.back()
   local ui = state.S.ui

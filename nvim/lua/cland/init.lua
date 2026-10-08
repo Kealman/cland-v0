@@ -60,7 +60,16 @@ local function refresh_sessions()
       state.changed()
     end
   end)
+  -- the roles and their launch defaults: the launcher's prefill and the labels
+  M.client:request({ type = 'role.list' }, function(err, value)
+    if not err and value and value.roles then
+      state.S.roles = value.roles
+      state.changed()
+    end
+  end)
 end
+
+M.refresh_sessions = refresh_sessions
 
 local function refresh_items()
   M.client:request({ type = 'task.list' }, function(err, value)
@@ -126,6 +135,7 @@ M.HELP = {
   'Pick      ␣p topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it',
   'Session   ↵ attaches in Terminal mode: keys go to the session, C-\\ C-n leaves',
+  'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
   'Views     :Cland view thread <topic> | session <name> | item <id> | board | log | inbox',
   '',
@@ -190,6 +200,9 @@ local function keymaps()
   map('<leader>p', function()
     picker.open()
   end, 'picker')
+  map('<leader>l', function()
+    require('cland.launcher').open()
+  end, 'launch a session')
   map('<leader><leader>', layout.back, 'previous centre view')
   map('<leader>?', M.help, 'keys')
   map('gi', function()
@@ -225,17 +238,19 @@ local function commands()
       end
     elseif sub == 'refresh' then
       M.refresh()
+    elseif sub == 'launch' then
+      require('cland.launcher').open({ name = a })
     elseif sub == 'help' or not sub then
       M.help()
     else
-      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | refresh | help', 'ClandRedBar')
+      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | refresh | help', 'ClandRedBar')
     end
   end, {
     nargs = '*',
     complete = function(_, line)
       local words = vim.split(line, '%s+', { trimempty = true })
       if #words <= 1 or (#words == 2 and not line:match('%s$')) then
-        return { 'preset', 'view', 'panel', 'refresh', 'help' }
+        return { 'preset', 'view', 'panel', 'launch', 'refresh', 'help' }
       end
       local sub = words[2]
       if sub == 'preset' then

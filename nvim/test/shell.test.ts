@@ -226,7 +226,7 @@ test('the picker: ␣p opens on topics, typing narrows, Tab switches to sessions
   await c.input('<Tab>');
   s = await c.waitScreen((x) => x.includes('↵ attach in centre'), 'the sessions kind');
   await c.input('<C-u>impl');
-  s = await c.waitScreen((x) => /impl-1 \[Implementer\]/.test(x) && !/coord-1 \[Coordinator\] +Claude/.test(x), 'only impl-1');
+  s = await c.waitScreen((x) => /impl-1 \[Implementer\]  Claude Code/.test(x) && !/coord-1 \[Coordinator\]  Claude Code/.test(x), 'only impl-1');
   await c.input('<CR>');
   s = await c.waitScreen((x) => x.includes('attached impl-1') && statusLine(x).includes('TERMINAL  impl-1 · session'), 'impl-1 attached, Terminal mode');
   assert.doesNotMatch(s, /pick ›/, 'the picker closed');
@@ -371,4 +371,157 @@ test(':restart re-attaches the session terminals instead of ending the sessions'
   const after = await c.control({ requests: true });
   assert.equal(attaches(after), 1);
   assert.equal(basename(c.root), 'proj-shell');
+});
+
+// The session launcher and the sessions panel (#28) ---------------------------------------------------
+
+type Req = Record<string, unknown> & { type: string };
+const requestsOf = async (c: Shell, type: string): Promise<Req[]> => ((await c.control({ requests: true })).requests as Req[]).filter((f) => f.type === type);
+
+/** The sessions panel, focused, its cursor on the first row naming `name`. */
+async function onSessionRow(c: Shell, name: string) {
+  await c.input('<Esc><Space>s<Space>s');
+  await c.waitScreen((s) => s.includes('SESSIONS') && statusLine(s).includes('NORMAL'), 'the sessions panel, focused');
+  await c.input(`gg/${name}<CR>`);
+}
+
+test('the launcher: ␣l opens the form, a role fills its launch defaults, typed values win, Enter submits session.launch; the session shows in the panel', { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc><Space>l');
+  await c.waitScreen((x) => x.includes('launch a session') && x.includes('↵ launch'), 'the launcher form');
+  assert.equal(await c.mode(), 'i', 'the form takes typing at once');
+  await c.input('rev-2<Tab>reviewer<Tab>');
+  let s = await c.waitScreen((x) => /harness +codex/.test(x) && /model +gpt-6\.1-sol/.test(x) && /effort +high/.test(x), "the reviewer's launch defaults");
+  assert.match(s, /directory +\/\S+/, 'the working directory defaults to the project root');
+  // over the default model: the typed one goes out
+  await c.input('<Tab><C-u>gpt-x<CR>');
+  s = await c.waitScreen((x) => !x.includes('launch a session') && /rev-2 \[Reviewer\] +free/.test(x), 'rev-2 in the panel');
+  assert.match(s, /Codex · gpt-x · idle/);
+  assert.match(s, /launched rev-2 \[Reviewer\] · Codex ·/);
+  const [frame] = await requestsOf(c, 'session.launch');
+  assert.deepEqual({ ...frame, id: undefined, cwd: undefined }, { type: 'session.launch', id: undefined, name: 'rev-2', role: 'reviewer', harness: 'codex', model: 'gpt-x', effort: 'high', cwd: undefined });
+  assert.match(String(frame?.cwd), /proj-shell$/);
+
+  // a role alone: its defaults are what goes out
+  await c.input('<Esc><Space>l');
+  await c.waitScreen((x) => x.includes('launch a session'), 'the launcher again');
+  await c.input('qa-2<Tab>qa<CR>');
+  await c.waitScreen((x) => /qa-2 \[QA\] +free/.test(x), 'qa-2 in the panel');
+  const second = (await requestsOf(c, 'session.launch'))[1];
+  assert.equal(second?.harness, 'codex');
+  assert.equal(second?.model, 'gpt-6-astra');
+  assert.equal(second?.effort, 'high');
+  // a harness that is not the role's drops the model and effort meant for the role's
+  await c.input('<Esc><Space>l');
+  await c.waitScreen((x) => x.includes('launch a session'), 'the launcher a third time');
+  await c.input('qa-3<Tab>qa<Tab><C-u>opencode<Tab>');
+  s = await c.waitScreen((x) => /harness +opencode/.test(x) && !/model +gpt-6-astra/.test(x) && !/effort +high/.test(x), 'the model cleared for OpenCode');
+  await c.input('<Esc>');
+  await c.waitScreen((x) => !x.includes('launch a session'), 'the form closed with Esc');
+  assert.equal((await requestsOf(c, 'session.launch')).length, 2, 'Esc launches nothing');
+});
+
+test('the launcher shows what the hub refuses in the form and the panel, never a hit-enter prompt; a roleless launch asks first', { skip }, async (t) => {
+  const c = await startShell(t, (s) => {
+    s.launchError = 'role "coordinator" is held by coord-1 [Coordinator] (live): one session holds it at a time';
+  });
+  await c.input('<Esc><Space>l');
+  await c.waitScreen((x) => x.includes('launch a session'), 'the launcher form');
+  await c.input('coord-2<Tab>coordinator<CR>');
+  const s = await c.waitScreen((x) => x.includes('launch coord-2 refused: role'), 'the refusal in the panel');
+  assert.match(s, /launch a session/, 'the form stays open to fix it');
+  assert.match(s, /role "coordinator" is held by coord-1/);
+  assert.doesNotMatch(s, /Press ENTER/);
+  assert.equal(await c.mode(), 'i');
+  // no role: the first Enter warns, the second launches
+  await c.control({ set: { launchError: '' } });
+  await c.input('<Esc><Space>l');
+  await c.waitScreen((x) => x.includes('launch a session'), 'the launcher again');
+  await c.input('loner<CR>');
+  await c.waitScreen((x) => x.includes('Enter again'), 'the roleless warning');
+  assert.equal((await requestsOf(c, 'session.launch')).filter((f) => f.name === 'loner').length, 0);
+  await c.input('<CR>');
+  await c.waitScreen((x) => /loner +free/.test(x), 'loner in the panel');
+  const [frame] = (await requestsOf(c, 'session.launch')).filter((f) => f.name === 'loner');
+  assert.equal(frame?.role, undefined);
+});
+
+test('the sessions panel: c shows the capability table, C-v attaches in a vertical split, l opens the launcher', { skip }, async (t) => {
+  const c = await startShell(t);
+  await onSessionRow(c, 'impl-1');
+  await c.input('c');
+  let s = await c.waitScreen((x) => x.includes('capability table'), 'the capability table');
+  assert.match(s, /impl-1 \[Implementer\] · Claude Code · capability table/);
+  assert.match(s, /waiting for human +heuristic/);
+  assert.match(s, /busy +reliable/);
+  assert.match(s, /approvalRelay +none/);
+  await c.input('q');
+  await c.waitScreen((x) => !x.includes('capability table'), 'the float closed');
+  await c.input('gg/coord-1<CR><C-v>');
+  s = await c.waitScreen((x) => x.includes('keylog ready') && statusLine(x).includes('TERMINAL'), 'coord-1 in a split');
+  const wins = await c.lua<Array<{ name: string; term: boolean }>>(`
+    local out = {}
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local b = vim.api.nvim_win_get_buf(w)
+      if vim.api.nvim_win_get_config(w).relative == '' then
+        out[#out + 1] = { name = vim.api.nvim_buf_get_name(b), term = vim.bo[b].buftype == 'terminal' }
+      end
+    end
+    return out`);
+  assert.ok(wins.some((w) => w.name === 'cland://topic/general'), `the centre still shows General: ${JSON.stringify(wins)}`);
+  assert.equal(wins.filter((w) => w.term).length, 1, 'one terminal window beside it');
+  assert.equal(await c.mode(), 't');
+  // l in the panel opens the launcher
+  await c.input('<C-\\><C-n>');
+  await onSessionRow(c, 'coord-1');
+  await c.input('l');
+  await c.waitScreen((x) => x.includes('launch a session'), 'the launcher from the panel');
+});
+
+test('x asks on a line in the panel; n keeps the session, y sends session.stop and the row turns unknown · stopped', { skip }, async (t) => {
+  const c = await startShell(t);
+  await onSessionRow(c, 'impl-1');
+  await c.input('x');
+  await c.waitScreen((x) => x.includes('stop impl-1? y stops it · n keeps it'), 'the confirmation line');
+  assert.doesNotMatch((await c.screen()).join('\n'), /Press ENTER|\[Y\]es/);
+  await c.input('n');
+  await c.waitScreen((x) => !x.includes('stop impl-1?'), 'kept');
+  assert.equal((await requestsOf(c, 'session.stop')).length, 0);
+  await c.input('gg/impl-1<CR>x');
+  await c.waitScreen((x) => x.includes('stop impl-1?'), 'asked again');
+  await c.input('y');
+  const s = await c.waitScreen((x) => x.includes('impl-1 stopped') && /× impl-1 \[Implementer\]/.test(x) && x.includes('unknown · stopped'), 'the stopped row');
+  assert.doesNotMatch(s, /stop impl-1\?/);
+  const stops = await requestsOf(c, 'session.stop');
+  assert.deepEqual(stops.map((f) => f.session), ['impl-1']);
+});
+
+test('a session.state unknown event shows unknown; a process that died shows unknown · died', { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc>');
+  await c.control({ emit: { type: 'session.state', session: 'coord-1', sessionId: 'coord-1-id', state: 'unknown', source: 'process', ts: ts(5) } });
+  await c.waitScreen((x) => /Claude Code · opus · unknown/.test(x) && /\? coord-1 \[Coordinator\]/.test(x), 'coord-1 unknown');
+  const procs = baseScenario('').processes ?? [];
+  await c.control({ set: { processes: procs.map((p) => (p.name === 'coord-1' ? { ...p, status: 'exited', state: 'unknown', attach: null } : p)) } });
+  await c.waitScreen((x) => /✗ coord-1 \[Coordinator\]/.test(x) && /Claude Code · opus · unknown · died/.test(x), 'coord-1 died, at the next refresh');
+});
+
+test("the picker's sessions kind: waiting ones first, filters by name, role and harness, Enter attaches", { skip }, async (t) => {
+  const c = await startShell(t, (s) => {
+    s.processes = [...(s.processes ?? []), { ...proc('rev-1', 'reviewer', 'idle', 'gpt-6.1-sol'), harness: 'codex' }];
+    s.adapters = { ...s.adapters, codex: { ...CAPS, states: { ...CAPS.states, 'waiting for human': 'reliable' } } };
+    s.attach = { ...s.attach, 'rev-1': `printf 'attached rev-1\\n'; sleep 600` };
+  });
+  await c.input('<Esc><Space>p<Tab>');
+  let s = await c.waitScreen((x) => x.includes('↵ attach in centre') && x.includes('rev-1 [Reviewer]  Codex'), 'the sessions kind');
+  const at = (re: RegExp) => s.split('\n').findIndex((l) => re.test(l));
+  assert.ok(at(/impl-1 \[Implementer\]  Claude Code/) < at(/coord-1 \[Coordinator\]  Claude Code/), 'the waiting session first');
+  assert.ok(at(/coord-1 \[Coordinator\]  Claude Code/) < at(/rev-1 \[Reviewer\]  Codex/), 'busy before idle');
+  assert.match(s, /sonnet · waiting for human \(heuristic\)/);
+  await c.input('codex');
+  s = await c.waitScreen((x) => /rev-1 \[Reviewer\]  Codex/.test(x) && !/impl-1 \[Implementer\]  Claude/.test(x) && !/coord-1 \[Coordinator\]  Claude/.test(x), 'only the Codex session');
+  await c.input('<C-u>Implementer');
+  s = await c.waitScreen((x) => /impl-1 \[Implementer\]  Claude/.test(x) && !/rev-1 \[Reviewer\]  Codex/.test(x) && !/coord-1 \[Coordinator\]  Claude/.test(x), 'only the implementer');
+  await c.input('<C-u>rev<CR>');
+  await c.waitScreen((x) => x.includes('attached rev-1') && statusLine(x).includes('TERMINAL  rev-1 · session'), 'rev-1 attached');
 });

@@ -3,8 +3,10 @@
 -- state; a row knows what it shows (item, session, topic), which Enter and the motions read.
 --
 -- Today: items from `task.list` (the tree, filters and badges are #36); sessions from `session.list` and
--- the connected spokes, their states with the adapter's `heuristic` qualifier; topics from `topic.list`;
--- the inbox is an empty placeholder until asks exist (#33).
+-- the connected spokes (#28): name [Role], harness, model, the state with the adapter's `heuristic`
+-- qualifier, usage where the adapter reports it, the claimed item; `unknown` once the process is gone. Its
+-- keys: l launches, C-v attaches in a split, x stops after a confirmation line, c shows the capability
+-- table. Topics from `topic.list`; the inbox is an empty placeholder until asks exist (#33).
 local api = vim.api
 local state = require('cland.state')
 local hl = require('cland.hl')
@@ -120,24 +122,76 @@ end
 
 -- Sessions --------------------------------------------------------------------------------------------
 
---- "Claude Code · opus · waiting for human (heuristic)": the meta line of a session.
-function M.session_meta(s)
-  local parts = {}
-  if s.harness then
-    parts[#parts + 1] = M.HARNESS[s.harness] or s.harness
-  else
-    parts[#parts + 1] = 'not launched by cland'
+--- "$1.80" or "12.3k tok": what the adapter reports of a session's usage (cost first), or nil.
+function M.usage_text(u)
+  if type(u) ~= 'table' then
+    return nil
   end
-  if s.model then
-    parts[#parts + 1] = s.model
+  local cost = u.cost or u.costUSD or u.cost_usd or u.total_cost_usd
+  if type(cost) == 'number' and cost > 0 then
+    return ('$%.2f'):format(cost)
   end
-  local st = hl.SESSION[s.live and s.state or (s.status or 'unknown')] or hl.SESSION.unknown
+  local tokens
+  local t = type(u.tokens) == 'table' and u.tokens or nil
+  local total = t and type(t.total) == 'table' and t.total or nil
+  if total then
+    tokens = total.totalTokens or total.total_tokens
+  end
+  if not tokens then
+    local sum = 0
+    for _, k in ipairs({ 'inputTokens', 'outputTokens', 'input_tokens', 'output_tokens' }) do
+      if type(u[k]) == 'number' then
+        sum = sum + u[k]
+      end
+    end
+    tokens = sum > 0 and sum or nil
+  end
+  if type(tokens) ~= 'number' then
+    return nil
+  end
+  if tokens >= 1000 then
+    return ('%.1fk tok'):format(tokens / 1000)
+  end
+  return ('%d tok'):format(tokens)
+end
+
+--- The state in words: "waiting for human (heuristic)" when the adapter's capability table says so, and
+--- "unknown · died" or "unknown · stopped" for a launched session whose process is gone.
+function M.session_words(s)
+  if not s.live then
+    return 'unknown · ' .. (s.status == 'stopped' and 'stopped' or 'died')
+  end
+  local st = hl.SESSION[s.state] or hl.SESSION.unknown
   local words = st[3]
-  if s.live and state.reliability(s) == 'heuristic' then
+  if state.reliability(s) == 'heuristic' then
     words = words .. ' (heuristic)'
   end
-  parts[#parts + 1] = words
-  return table.concat(parts, ' · ')
+  return words
+end
+
+--- The meta line of a session in two parts: "Claude Code · opus" and "waiting for human (heuristic) · $1.80".
+function M.session_meta_parts(s)
+  local head = {}
+  if s.harness then
+    head[#head + 1] = M.HARNESS[s.harness] or s.harness
+  else
+    head[#head + 1] = 'not launched by cland'
+  end
+  if s.model then
+    head[#head + 1] = s.model
+  end
+  local tail = M.session_words(s)
+  local usage = s.live and M.usage_text(s.usage) or nil
+  if usage then
+    tail = tail .. ' · ' .. usage
+  end
+  return table.concat(head, ' · '), tail
+end
+
+--- "Claude Code · opus · waiting for human (heuristic)": the meta line of a session.
+function M.session_meta(s)
+  local head, tail = M.session_meta_parts(s)
+  return head .. ' · ' .. tail
 end
 
 function M.session_glyph(s)
@@ -145,34 +199,79 @@ function M.session_glyph(s)
   return st[1], st[2]
 end
 
+--- `text` cut into lines of at most `width` columns, at spaces where it can be.
+function M.wrap(text, width)
+  local out, line = {}, ''
+  for word in tostring(text):gmatch('%S+') do
+    while sw(word) > width do
+      if line ~= '' then
+        out[#out + 1] = line
+        line = ''
+      end
+      local head = vim.fn.strcharpart(word, 0, width)
+      out[#out + 1] = head
+      word = vim.fn.strcharpart(word, vim.fn.strchars(head))
+    end
+    if line == '' then
+      line = word
+    elseif sw(line) + 1 + sw(word) <= width then
+      line = line .. ' ' .. word
+    else
+      out[#out + 1] = line
+      line = word
+    end
+  end
+  if line ~= '' then
+    out[#out + 1] = line
+  end
+  return out
+end
+
+--- A notice on lines of its own, wrapped to the panel.
+local function wrapped(c, text, group)
+  for _, l in ipairs(M.wrap(text, c.width - 2)) do
+    c:add({ { ' ' .. l, group } })
+  end
+end
+
 local function render_sessions(c)
   local list = state.sessions()
+  local confirm = state.S.ui.confirm
+  if confirm then
+    wrapped(c, 'stop ' .. confirm.session .. '? y stops it · n keeps it', 'ClandAmber')
+    c:add({})
+  end
+  local note = state.S.sessions_note
+  if note then
+    wrapped(c, note.text, note.group)
+    c:add({})
+  end
   if #list == 0 then
     c:add({ { ' No sessions yet.', 'ClandDim' } })
-    c:add({ { ' cland session launch <name> starts one.', 'ClandFaint' } })
+    c:add({ { ' l (or ␣l) launches one.', 'ClandFaint' } })
   end
   for _, s in ipairs(list) do
     local g, ghl = M.session_glyph(s)
     local down = not s.live
+    local label = s.label or s.name
+    local role = label:sub(#s.name + 1)
     c:add(
-      { { ' ' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { s.label:sub(#s.name + 1), down and 'ClandDim' or 'ClandTeal' } },
+      { { ' ' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' } },
       { s.item and { s.item .. ' ', 'ClandTeal' } or { 'free ', 'ClandFaint' } },
       { session = s.name }
     )
-    local meta = '   ' .. M.session_meta(s)
+    local head, tail = M.session_meta_parts(s)
     local mhl = down and 'ClandRed' or 'ClandDim'
+    local meta = '   ' .. head .. ' · ' .. tail
     if sw(meta) <= c.width then
       c:add({ { meta, mhl } }, nil, { session = s.name })
     else
       -- too wide for the panel: the state words on a line of their own
-      local head, words = meta:match('^(.*) · ([^·]*)$')
-      c:add({ { head or meta, mhl } }, nil, { session = s.name })
-      if words then
-        c:add({ { '   ' .. words, mhl } }, nil, { session = s.name })
-      end
+      c:add({ { '   ' .. head, mhl } }, nil, { session = s.name })
+      c:add({ { '   ' .. tail, mhl } }, nil, { session = s.name })
     end
   end
-  return { ' ↵ attach · gi item · gt topic' }
+  return { ' ↵ attach · C-v split · c capabilities', ' l launch · x stop · gi item · gt topic' }
 end
 
 -- Topics ----------------------------------------------------------------------------------------------
@@ -247,6 +346,31 @@ local function open_row(buf)
   end
 end
 
+--- The sessions panel's own keys: l launches, C-v attaches in a split, x stops after a confirmation line
+--- in the panel, c shows the adapter's capability table.
+function M.session_keys(b)
+  local function on_row(fn)
+    return function()
+      local info = M.row_at(b, api.nvim_win_get_cursor(0)[1])
+      if info and info.session then
+        fn(info.session)
+      end
+    end
+  end
+  local function map(lhs, fn, desc)
+    vim.keymap.set('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
+  end
+  local sessions = require('cland.sessions')
+  map('l', function()
+    require('cland.launcher').open()
+  end, 'launch a session')
+  map('<C-v>', on_row(function(name)
+    require('cland.layout').show_split({ kind = 'session', id = name })
+  end), 'attach in a vertical split')
+  map('x', on_row(sessions.ask_stop), 'stop the session (asks first)')
+  map('c', on_row(sessions.show_capabilities), "the adapter's capability table")
+end
+
 --- The buffer of panel `kind` ('items', 'sessions', 'topics', 'inbox'); `slot` names a second buffer of
 --- the same kind (the topics dock).
 function M.buf(kind, slot)
@@ -267,6 +391,9 @@ function M.buf(kind, slot)
   vim.keymap.set('n', '<2-LeftMouse>', function()
     open_row(b)
   end, { buffer = b, silent = true })
+  if kind == 'sessions' then
+    M.session_keys(b)
+  end
   return b
 end
 
