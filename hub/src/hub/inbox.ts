@@ -86,6 +86,11 @@ export class InboxBoard {
     this.#changed();
   }
 
+  /** Something the inbox lists changed outside the events it observes (a topic deleted, a prune): publish again. */
+  refresh(): void {
+    this.#changed();
+  }
+
   close(): void {
     this.#closed = true;
     for (const t of this.#idle.values()) clearTimeout(t);

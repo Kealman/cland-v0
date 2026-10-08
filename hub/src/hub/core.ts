@@ -538,7 +538,10 @@ export class HubCore {
   /** Delete what is older than the retention window. */
   prune(): number {
     const gone = this.#store.prune(this.#now().getTime(), this.#retentionMs);
-    if (gone) this.#log({ event: 'pruned', messages: gone });
+    if (gone) {
+      this.#log({ event: 'pruned', messages: gone });
+      this.inbox.refresh();
+    }
     return gone;
   }
 
@@ -1073,6 +1076,8 @@ export class HubCore {
     if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be deleted`);
     this.#store.deleteTopic(id);
     this.#publishedTopics.delete(id);
+    // its asks went with it: the inbox lists them no more
+    this.inbox.refresh();
   }
 
   /**

@@ -353,3 +353,41 @@ test('a launched session that renamed itself is one approval, with its attach co
   assert.equal(listed.approvals[0]?.attach, attach);
   assert.equal(listed.needsYou, 1);
 });
+
+test('retention keeps an unanswered ask and its message; an answered one goes with its message (review of #33)', async (t) => {
+  let clock = Date.parse('2026-10-01T00:00:00Z');
+  const hub = await hubFor(t, { now: () => new Date(clock), retentionMs: 60_000 });
+  const coord = await spoke(t, hub, 'coord', 'coordinator');
+  await coord.waitForPresence(['coord']);
+  const ui = await connectWsUi(t, hub);
+  await ok(ui, { type: 'subscribe' });
+  const open = await ask(coord, 'general', 'Still open?', ['yes']);
+  const done = await ask(coord, 'general', 'Answered soon?', ['yes']);
+  await ok(ui, { type: 'topic.answer', ask: done.ask, option: 1 });
+
+  clock += 120_000;
+  hub.prune();
+  const after = await inbox(ui);
+  assert.deepEqual(after.asks.map((a) => a.id), [open.ask], 'the open ask is still in the inbox');
+  assert.deepEqual((await history(ui, 'general')).map((m) => m.id), [open.ask], 'its message is kept; the rest went');
+  assert.equal((await topicOf(ui, 'general')).status, 'waiting for human');
+  // and it can still be answered
+  const answered = await ok<{ message: TopicMessage }>(ui, { type: 'topic.answer', ask: open.ask, option: 1 });
+  assert.equal(answered.message.answerTo, open.ask);
+  assert.equal((await inbox(ui)).asks.length, 0);
+});
+
+test('deleting a topic with an open ask refreshes the subscribed inbox (review of #33)', async (t) => {
+  const hub = await hubFor(t);
+  const coord = await spoke(t, hub, 'coord', 'coordinator');
+  await coord.waitForPresence(['coord']);
+  const ui = await connectWsUi(t, hub);
+  await ok(ui, { type: 'subscribe' });
+  const topic = (await ok<{ topic: Topic }>(ui, { type: 'topic.create', title: 'Doomed' })).topic;
+  const asked = await ask(coord, topic.id, 'Keep it?', ['no']);
+  await inboxEvent(ui, (i) => i.asks.some((a) => a.id === asked.ask));
+  const mark = ui.frames.length;
+  await ok(ui, { type: 'topic.delete', topic: topic.id });
+  const refreshed = await inboxEvent(ui, (i) => i.asks.length === 0, mark);
+  assert.equal(refreshed.needsYou, 0);
+});

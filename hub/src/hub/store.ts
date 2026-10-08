@@ -671,10 +671,13 @@ export class Store implements HygieneMemory {
     return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'delivered'").run(to, from).changes);
   }
 
-  /** Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went. */
+  /**
+   * Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went.
+   * An ask still open is kept, and its message with it: the human has not answered yet, whatever its age.
+   */
   prune(now: number, retentionMs: number): number {
-    const gone = Number(this.#db.prepare('delete from messages where created_at < ?').run(now - retentionMs).changes);
-    // an ask goes with its message
+    const gone = Number(this.#db.prepare("delete from messages where created_at < ? and id not in (select id from asks where state = 'open')").run(now - retentionMs).changes);
+    // an answered, withdrawn or cancelled ask goes with its message
     if (gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
     return gone;
   }
