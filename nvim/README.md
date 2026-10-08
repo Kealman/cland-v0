@@ -32,10 +32,11 @@ The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that or
 - **The top bar** is the tabline: the project, the centre view's title, the Coordinator chip (the live session holding the role and its state; a red "no coordinator" when none). Sessions show as `name [Role]` everywhere (the panel, the picker, the session view's title and header), from the hub's `label`. The hub's word wins: `coordinator` in `hub.status`, and the `role.vacant` and `role.filled` events (#29), which change the chip at once, the "needs you" count (0 until the inbox, #33) and the live sessions with the waiting and down counts. The chips are clickable.
 - **The status line** (global) always starts with the centre view's context, then the hub's state (`connected`, `reconnecting`, `starting`, …), the sessions by state, the active preset and the latest notice. cland's notices go there, never to the message area: `vim.notify` is replaced.
 - **The centre** shows one view at a time: a topic thread with its composer, a session terminal, or a placeholder for the item view, the board, the Agents log and the inbox full width. `␣␣` returns to the previous one.
-- **Panels.** Items on the left (from `task.list`: a state glyph, the id, the title, the claim). On the right one of: the inbox (a placeholder), sessions (name, role, harness, model, the state with `(heuristic)` when the adapter's capability table says so, the claimed item) and topics (`topic.list`). Topics can also dock above the right panel. Opening the workbench shows General with the sessions panel.
+- **Panels.** Items on the left (from `task.list`: a state glyph, the id, the title, the claim). On the right one of: the inbox (a placeholder), sessions (name, role, harness, model, the state with `(heuristic)` when the adapter's capability table says so, the claimed item) and topics (below). Topics can also dock above the right panel. Opening the workbench shows General with the sessions panel.
+- **Topics** (spec 4.5, #32). The panel groups NEEDS YOU (topics waiting for the human, pinned on top, an amber `●`), OPEN (`●` open, `◐` waiting for an agent) and CLOSED (`○`), in the hub's order (activity) within each; Agents is the `≡` log. A row shows the bound item (`T-12`) unless the title says it, a red `▲` while the topic carries a warning (`no coordinator`), and the unread badge (amber when the topic needs the human); the header counts topics and unread messages. A thread in view is read (`topic.read`) and a `message` event raises the badge of a topic out of view. The thread header shows the binding, the warning and the status (`waiting for you`, `topic waiting for agent`, …); the status line names the binding and the status too. The "needs you" chip counts the topics waiting for the human until the inbox (#33).
 - **Session terminals** only attach: the terminal runs the command `session.attach` returns (`claude attach <id>`), never the harness. Closing the terminal or quitting ends the attach client, not the session. A session terminal is never below three rows.
 - **`:restart`** writes the layout and the attached sessions to `stdpath('state')/restart/<project hash>.json` (ExitPre, `v:exitreason` "restart"). The new instance reads them back (`v:startreason` "restart"), builds the shell again over the Vim session `:restart` sources (SessionLoadPost; `'sessionoptions'` is only `curdir`, so no terminal is re-run from it), and runs the attach commands again.
-- **Hub data** comes from `topic.list`, `topic.history`, `session.list`, `hub.status` (sessions nobody launched) and `task.list` on every connect and every 5 s (`CLAND_REFRESH_MS`), and from the `message`, `delivery`, `session.state`, `session.role`, `role.vacant` and `role.filled` events. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
+- **Hub data** comes from `topic.list`, `topic.history`, `session.list`, `hub.status` (sessions nobody launched) and `task.list` on every connect and every 5 s (`CLAND_REFRESH_MS`), and from the `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant` and `role.filled` events. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
 
 ### Keys
 
@@ -48,11 +49,13 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣T` | anywhere | Topics docked above the right panel, which shows the inbox (the Watch layout). Again: undock. |
 | `␣N` `␣b` | anywhere | The inbox full width, the board in the centre. Again: back. |
 | `␣g` `␣c` | anywhere | General; the composer of the current thread, in Insert mode. |
+| `␣r` | anywhere | Resolve the topic in view (or under the cursor in the topics panel): its wait is cleared to open. |
+| `n` `c` `r` | topics panel | A new topic (asks for the title, then opens it); close the topic under the cursor; resolve it. |
 | `␣␣` | anywhere | The previous centre view; twice returns, like `CTRL-^`. |
-| `gi` `gt` `gs` | any panel or view | The item, topic or session of the reference under the cursor (`T-12`, a topic's title, a session's name), else of the row, else of the centre view. A session's item is the one it claims, an item's session the one claiming it, a topic's session its Coordinator. `gs` shows the session in Normal mode. |
-| `␣p` | anywhere | The picker over topics and sessions: type to filter (fuzzy), `Tab` and `S-Tab` switch the kind, `↵` opens (a session attaches in Terminal mode), `Esc` closes. |
+| `gi` `gt` `gs` | any panel or view | The item, topic or session of the reference under the cursor (`T-12`, a topic's title, a session's name), else of the row, else of the centre view. A session's item is the one it claims, an item's session the one claiming it, a topic's item the one it is bound to (and an item's topic its bound topic), a topic's session its Coordinator. `gs` shows the session in Normal mode. |
+| `␣p` | anywhere | The picker over topics and sessions: type to filter (fuzzy; topics by title, needs you first, each with its binding, warning, status and unread count), `Tab` and `S-Tab` switch the kind, `↵` opens (a session attaches in Terminal mode), `Esc` closes. |
 | `↵` | panels | Open the row in the centre: a session attaches in Terminal mode, a topic opens its thread, an item its view. |
-| `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. |
+| `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. `@reviewer`, `@qa`, … or `@<session>` in the text addresses them instead of the Coordinator. |
 | `C-\ C-n` | session terminal | Leave Terminal mode; until then every key goes to the session. |
 
 ### Commands
@@ -62,6 +65,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `:Cland preset charting`, `watch`, `steady` | Examples of the three stages, never modes. charting: items beside General, the right panel hidden. watch: items, General, topics docked above the inbox. steady: the board and the inbox. Everything still toggles afterwards. |
 | `:Cland view thread <topic>`, `session <name>`, `item <id>`, `board`, `log`, `inbox` | A centre view. |
 | `:Cland panel items`, `inbox`, `sessions`, `topics`, `dock` | The panel keys as a command. |
+| `:Cland topic new <title>`, `close [id]`, `resolve [id]` | Create a topic and open it; close or resolve the topic in view (or the one named). |
 | `:Cland refresh`, `:Cland help` | Ask the hub again; the keys. |
 
 ## The pinned Neovim
@@ -95,7 +99,7 @@ In `init.lua`, and in the shell:
 | `lua/cland/layout.lua` | The windows: panels as top-level splits, the centre and its composer, the view switch and `␣␣`, the presets, the rebuild after a restart. |
 | `lua/cland/bars.lua` | The top bar (tabline), the status line, the panel headers (winbars), with the bar-background twins of the highlight groups. |
 | `lua/cland/panels.lua` | The items, sessions, topics and inbox panels: drawn from the state, each row knowing what it shows; `↵` opens it. |
-| `lua/cland/views.lua` | One topic view per topic, and the placeholder views (item, board, Agents log, inbox full width). |
+| `lua/cland/views.lua` | One topic view per topic, the topic actions (create, close, resolve, read), and the placeholder views (item, board, Agents log, inbox full width). |
 | `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. |
 | `lua/cland/picker.lua` | The floating picker over topics and sessions. |
 | `lua/cland/motions.lua` | `gi`, `gt`, `gs`: the reference under the cursor, the row, or the view, then the dispatch. |
@@ -114,7 +118,7 @@ npm run test:nvim          # from the repository root; `npm test` runs it after 
 Every test starts the real client headless as `nvim --clean -u nvim/init.lua --headless --listen <socket>`, under `NVIM_APPNAME=cland`, attaches a 160x45 UI over msgpack-RPC (`test/rpc.ts`), drives it with `nvim_input` and reads the screen back with `screenstring()` (`test/harness.ts`). When a test runs `:restart`, the harness follows the UI's `restart` event to the new server, as a terminal UI does.
 
 - `test/client.test.ts` runs against a real hub (`cland hub start`) in a temporary project and connects real spokes over MCP: sending, delivery stages, Shift+Enter in the composer, the stdio transport, a clean configuration, autostart (also over a stale `hub.json`), following a hub restart.
-- `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the picker, `gi`/`gt`/`gs`, the presets, an event while typing, a burst of events without a hit-enter prompt, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, and a real `:restart` re-attaching the session terminal.
+- `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the picker, `gi`/`gt`/`gs`, the presets, the topics panel (groups, pinning, unread badges, the warning glyph, Enter, `n`/`c`/`r` and `:Cland topic`), the picker's topics kind, the thread header with the status and the binding, an event while typing, a burst of events without a hit-enter prompt, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, and a real `:restart` re-attaching the session terminal.
 - `test/nvim-path.test.ts`: the resolver from a path with a space, `#` and `%`.
 
 The binary comes from `CLAND_NVIM`, else the cache, else a download as above. When none of these works, for example offline with an empty cache, the client tests are skipped with the reason.

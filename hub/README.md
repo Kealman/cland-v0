@@ -8,11 +8,12 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 | Path | What it is |
 | --- | --- |
-| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `session.state`, `session.role`, `role.vacant` and `role.filled`, the `inject` frame to an in-session bridge; session states and the process table's view. |
+| `src/protocol.ts` | The versioned frames (protocol 2): `hello`, `welcome`, `error`, request `result`, `deliver` and the spoke's `ack` of it, the `role` frame (a role's clause); the heartbeat interval and the frame size limit. The client hello (it carries the secret on the Unix socket), the client requests `hub.status`, `hub.stop`, `topic.*`, `role.*`, `subscribe`, the pushed events `message`, `delivery`, `topic`, `session.state`, `session.role`, `role.vacant` and `role.filled`, the `inject` frame to an in-session bridge; session states and the process table's view. |
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
-| `src/hub/store.ts` | The SQLite store (WAL): sessions, topics, messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
+| `src/hub/topics.ts` | The topic model (spec 4.5): the status moves, the mentions of a human message, the "no coordinator" warning, the port to the tracker a binding goes through. |
+| `src/hub/store.ts` | The SQLite store (WAL): sessions, topics (status, binding, the human's read mark), messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
 | `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
 | `src/hub/core.ts` | Presence, names keyed to session ids, same-session takeover, routing, store-and-forward with acks, the standing topics, the human's messages, each session's state (set only through the adapters), the events subscribed clients receive, each session's role (assignment, the clause's delivery, Coordinator exclusivity and vacancy). Transport-free. |
 | `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests and acks, client requests (`hub.status`, `hub.stop`, `topic.*`, `subscribe`), the `task.*` requests from either, the `session.*` requests (`src/adapters/requests.ts`), refusals. A spoke's frames count only while its socket is open and still holds the session's name. Transport-agnostic: raw frames in, frames out through a peer. |
@@ -47,7 +48,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/hook.ts` | `cland hook <event>`, run from inside a launched session by its hooks and the mod; `cland hook bridge`, the mod's connection to the hub. |
 | `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, stops on a same-session takeover (close code 4002). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
-| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `who`, `status`, `rename`, `history`, `session.launch` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
+| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `who`, `status`, `rename`, `history`, `session.launch` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
 | `bin/cland.ts` | The `cland` CLI: `open`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
@@ -75,10 +76,14 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 
 ## Topics
 
-A topic is a thread in the human's chat with agents (spec 4.5): an id, a title, a status, a `standing` flag, creation and activity times. Every message belongs to one, and the `deliver` frame carries it as `"topic":{"id":…,"title":…}` (the spoke shows it as `topic` and `topic_title` on the channel event).
+A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an id, a title, a status, a `standing` flag, at most one bound item, creation and activity times. Every message belongs to one, and the `deliver` frame carries it as `"topic":{"id":…,"title":…,"item":…}` (`item` only when bound; the spoke shows them as `topic`, `topic_title` and `topic_item` on the channel event).
 
-- **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming or deleting them is refused. No other topic can be created yet (#32); the status is always `open` until the status machine (#32).
-- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses the Coordinator unless `to` names sessions or roles. Each address counts once, with or without its `@`.
+- **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming, deleting or closing them is refused. The system creates no other topic.
+- **Creation.** The human creates a topic from the UI (`topic.create`), an agent with the `topic.create` tool; a title is required (at most 200 characters). The id is `topic-<n>`. `item` binds the topic to a unit of work: the item must exist and be open, and has one topic at most, so a second `topic.create` for it is refused with the topic it has (`T-1 already has a topic: "…" (topic-1); one topic per unit of work: write there`). The binding is written into the item's file (`topic: topic-1`) through the tracker. A hub with no project has no tracker and refuses a binding. A topic with no message yet is listed last (a task's topic appears with its first message).
+- **Status** follows the direction of the messages (`src/hub/topics.ts`): a human message makes the topic `waiting for agent`; an agent's message to the human makes it `open` (a topic `waiting for human` stays so: an ask, #33, is answered by the human); a message from an agent the human's latest message addressed, to other sessions in the topic, answers that wait too (`open`); any message reopens a `closed` topic to the status its direction implies. `resolve` clears a wait back to `open`: the `resolve` tool (meant for the Coordinator; who may call it is #30's) and the UI's `topic.resolve`; a closed topic has nothing to clear and is refused. The human closes a topic (`topic.close`), and closing its bound item (`task.close`, `task.edit --state closed`, a hand edit to `state: closed`) closes it; a message reopens the topic, never the item. `ask` (#33) will make it `waiting for human`, and closing will cancel its open asks. Agents keeps `open`.
+- **The warning.** While a message in a topic waits for a role nobody holds (a delivery queued under `@coordinator`), the topic carries `"warning":"no coordinator"` (`no reviewer`, … for another role). It clears when a session takes the role (its hello, or the human's `role.set`) and the queued delivery moves to it.
+- **Unread.** The human's unread count per topic is the messages from others since the human last read it: the UI sends `topic.read` when the thread is in view, and a message the human writes reads what came before it. It never moves back. Agents have no unread concept.
+- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses `to` when given, else its mentions: `@coordinator`, `@implementer`, `@reviewer`, `@qa` reach the role's live holders, `@<session-name>` that session (a session the hub knows); with no mention, the Coordinator. `@all` and globs stay text for the human; a mention that names no session and no role is reported as `unknown` and addresses nobody. Each address counts once, with or without its `@`. The addressed party answers with `send` and the topic's id, so the reply lands in the same topic.
 - **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
 - **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
@@ -147,7 +152,7 @@ Events, after `subscribe`:
 
 ## Not here yet
 
-- **The rest of the human side.** Topics beyond General and Agents, their statuses and asks (#32); a loop-breaker mute is still only journalled, not shown in the UI.
+- **The rest of the human side.** Asks and their `waiting for human` (#33); `task.link --topic` writes the item's field only, it binds no topic; a loop-breaker mute is still only journalled, not shown in the UI.
 - **Roles, the rest.** Permissions per role are recorded in `roles.toml` but not enforced (#30); handover and the Coordinator's role requests come later. The UI shows the role with the name and the "no coordinator" warning with the workbench shell (#25), from the frames and events below.
 - **The journal.** Tracker conflicts and re-indexes, and a harness process that died (`harness-exited`), go to the hub's JSON-lines log until the journal (#34) exists. A claim stays until released, forced or the item is closed; nothing yet releases it when its session ends.
 - **Adapters.** Permissions on `session.launch` (#30): anyone may launch for now.
@@ -204,14 +209,18 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 
 | Request | Result `value` |
 | --- | --- |
-| `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then by latest activity |
+| `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then those waiting for the human, then by latest activity; a topic with no message last |
 | `{"type":"topic.history","id":…,"topic":"general","limit":50}` | `{"topic":Topic,"messages":[TopicMessage…]}`, oldest first, at most 200 |
-| `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"]}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the Coordinator) |
+| `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"]}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator) |
+| `{"type":"topic.create","id":…,"title":"…","item":"T-12"}` | `{"topic":Topic}`; `item` is optional; refused without a title, or for an item that has a topic |
+| `{"type":"topic.close","id":…,"topic":…}` | `{"topic":Topic}`, `closed`; refused for General and Agents |
+| `{"type":"topic.resolve","id":…,"topic":…}` | `{"topic":Topic}`, `open`; refused for a closed topic and for Agents |
+| `{"type":"topic.read","id":…,"topic":…,"upTo":"<message id>"}` | `{"topic":Topic}` with its `unread`; without `upTo`, up to the latest message |
 | `{"type":"topic.rename","id":…,"topic":…,"title":…}` | `{"topic":Topic}`; refused for General and Agents |
 | `{"type":"topic.delete","id":…,"topic":…}` | `{"deleted":id}`; refused for General and Agents |
 | `{"type":"subscribe","id":…}` | `{"subscribed":true}`; events follow on this connection until it closes |
 
-- `Topic` is `{"id","title","status","standing","createdAt","updatedAt"}`.
+- `Topic` is `{"id","title","status","standing","createdAt","updatedAt","item","unread","lastMessageAt","warning"?}`: `status` is `open`, `waiting for human`, `waiting for agent` or `closed`; `item` the bound item or null; `unread` the human's unread count; `warning` (`no coordinator`) only while a message waits for a role nobody holds.
 - `TopicMessage` is the stored message, `{"id","from","fromKind","fromRole"?,"via","to","text","ts","replyTo"?,"topic","stage"?}`, where `stage` is present when the message had addressees.
 
 Events, pushed after `subscribe`:
@@ -219,12 +228,13 @@ Events, pushed after `subscribe`:
 ```json
 {"type":"message","topic":{"id":"general","title":"General"},"message":{"id":"…","from":"coord","fromKind":"agent","fromRole":"coordinator","text":"…","ts":"…","topic":"general",…}}
 {"type":"delivery","topic":"general","message":"<message id>","stage":"delivered"}
+{"type":"topic","topic":{"id":"topic-1","title":"…","status":"waiting for agent","item":"T-12","unread":0,"warning":"no coordinator",…}}
 {"type":"session.state","session":"coord","sessionId":"…","state":"busy","source":"hook","ts":"…"}
 ```
 
 The role frames (`role.set`, `role.clear`, `role.list`) and events (`session.role`, `role.vacant`, `role.filled`) are under Roles above.
 
-A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below).
+A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `topic` event comes when a topic is created or its status, warning, binding or title changes, and after a `topic.read` (its unread count); a new message alone moves the count without one (the UI counts `message` events). A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below).
 
 ## Adapters and sessions
 
