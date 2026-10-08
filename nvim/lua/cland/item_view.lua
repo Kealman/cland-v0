@@ -12,6 +12,14 @@ local ns = api.nvim_create_namespace('cland.item_view')
 
 function M.setup(client)
   M.client = client
+  -- whatever was fetched before may be stale after a reconnect (an edit while away keeps `updated`), and a
+  -- fetch lost with the connection failed: every item in view is fetched again
+  client:on('connected', function()
+    for id in pairs(M.detail) do
+      M.stale[id] = true
+    end
+    state.changed()
+  end)
 end
 
 local function sw(s)
@@ -91,11 +99,15 @@ function M.fetch(id)
   M.client:request({ type = 'task.view', item = id }, function(err, value)
     M.pending[id] = nil
     if err then
-      M.detail[id] = { error = tostring(err) }
+      -- a failed fetch is not current: the next reconnect, `task` event or change fetches again; what was
+      -- shown before stays, with the error under it
+      local prev = M.detail[id]
+      M.detail[id] = prev and not prev.error and vim.tbl_extend('force', prev, { note = tostring(err) }) or { error = tostring(err) }
+      M.detail[id].failed = true
     elseif value and value.item then
       M.detail[id] = value.item
     else
-      M.detail[id] = { error = 'task.view answered no item' }
+      M.detail[id] = { error = 'task.view answered no item', failed = true }
     end
     -- the summary this fetch answers: a later change to it fetches again
     M.detail[id].seen = asked_at
@@ -179,6 +191,9 @@ local function body_lines(it, d, width)
   elseif d.error then
     add({ { ' ' .. d.error, 'ClandRed' } })
     return L
+  end
+  if d.note then
+    add({ { ' not current: ' .. d.note, 'ClandAmber' } })
   end
   -- the body as Markdown text: headings bold, list markers and quotes kept
   local body = vim.trim(d.body or '')

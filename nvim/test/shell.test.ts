@@ -104,15 +104,28 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
     return new Promise<Record<string, unknown>>((resolve, reject) => {
       const sock = createConnection(controlPath);
       let buf = '';
+      let done = false;
+      const timer = setTimeout(() => {
+        sock.destroy();
+        finish(new Error(`the stub hub never answered ${JSON.stringify(cmd)}`));
+      }, 10_000);
+      const finish = (err: Error | null, value?: Record<string, unknown>) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        if (err) reject(err);
+        else resolve(value ?? {});
+      };
       sock.setEncoding('utf8');
       sock.on('data', (d: string) => {
         buf += d;
         if (buf.includes('\n')) {
           sock.end();
-          resolve(JSON.parse(buf.slice(0, buf.indexOf('\n'))) as Record<string, unknown>);
+          finish(null, JSON.parse(buf.slice(0, buf.indexOf('\n'))) as Record<string, unknown>);
         }
       });
-      sock.on('error', reject);
+      sock.on('error', (err) => finish(err));
+      sock.on('close', () => finish(new Error(`the stub hub closed the control socket without answering ${JSON.stringify(cmd)}`)));
       sock.write(`${JSON.stringify(cmd)}\n`);
     });
   };
@@ -887,6 +900,22 @@ test('an item body with a list indented past the window width renders, and Neovi
   await c.input('<Space>i');
   s = await c.waitScreen((x) => x.includes('ITEMS') && /│ +- deep item/.test(x) && x.includes('after the list'), 'the items panel beside the item view');
   assert.equal(await c.mode(), 'n');
+});
+
+test('the item view after a reconnect: a task.view lost with the hub is fetched again, and a body changed meanwhile shows', { skip }, async (t) => {
+  const withBody = (body: string, hold: boolean) => (s: Scenario) => {
+    s.holdView = hold;
+    s.items = (s.items ?? []).map((i) => (i.id === 'T-12' ? { ...i, body } : i));
+  };
+  const c = await startShell(t, withBody('the first body', true));
+  await c.input('<Esc>:Cland view item T-12<CR>');
+  await c.waitScreen((x) => x.includes('loading the item'), 'the item view waiting for task.view');
+  // the hub goes away with task.view unanswered; the one that comes back has a new body, `updated` unchanged
+  await c.reconnect(withBody('the second body', false));
+  await c.waitScreen((x) => x.includes('the second body') && !x.includes('hub exited'), 'the body fetched again after the reconnect', 5000);
+  // an edit while disconnected, `updated` unchanged again: the reconnect fetches it
+  await c.reconnect(withBody('the third body', false));
+  await c.waitScreen((x) => x.includes('the third body'), 'the body changed while away', 5000);
 });
 
 test('the item view: the title line, the fields column beside the body, the verdicts latest first, the comments', { skip }, async (t) => {
