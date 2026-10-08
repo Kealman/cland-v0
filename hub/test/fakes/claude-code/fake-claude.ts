@@ -17,6 +17,10 @@
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
 //
+// Like the real one, a session also runs the hooks of the project's `.claude/settings.json` (before the `--settings`
+// ones), and reads its instructions: `CLAUDE.md` with its `@<path>` imports, or `AGENTS.md` when there is no
+// `CLAUDE.md` (spec 4.9). What it loaded is written to jobs/<id>.context.json: the instruction files and their text,
+// and the hook commands per event.
 // FAKE_CLAUDE_LATE_BG=1 makes `--bg` return only after the session's SessionStart hook ran.
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
@@ -158,9 +162,26 @@ async function runSession(id: string): Promise<number> {
   };
   setStatus('idle');
 
+  // the hooks: the project's settings, then the `--settings` ones
+  const project = readJson<Settings>(join(job.cwd, '.claude', 'settings.json')) ?? {};
+  const hooksOf = (event: string): HookEntry[] => [...(project.hooks?.[event] ?? []), ...(job.settings.hooks?.[event] ?? [])];
+  // the instructions: CLAUDE.md and what it imports, else AGENTS.md
+  const instructions: Array<{ file: string; text: string }> = [];
+  const claudeMd = join(job.cwd, 'CLAUDE.md');
+  if (existsSync(claudeMd)) {
+    const text = readFileSync(claudeMd, 'utf8');
+    instructions.push({ file: 'CLAUDE.md', text });
+    for (const m of text.matchAll(/^@(\S+)[ \t]*$/gm)) {
+      const file = m[1] as string;
+      if (existsSync(join(job.cwd, file))) instructions.push({ file, text: readFileSync(join(job.cwd, file), 'utf8') });
+    }
+  } else if (existsSync(join(job.cwd, 'AGENTS.md'))) instructions.push({ file: 'AGENTS.md', text: readFileSync(join(job.cwd, 'AGENTS.md'), 'utf8') });
+  const events = new Set([...Object.keys(project.hooks ?? {}), ...Object.keys(job.settings.hooks ?? {})]);
+  writeJson(join(JOBS, `${id}.context.json`), { instructions, hooks: Object.fromEntries([...events].map((e) => [e, hooksOf(e).flatMap((h) => h.hooks.map((x) => x.command))])) });
+
   // the settings hooks: a shell command, the payload on stdin; `async` ones run in the background
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
-    for (const entry of job.settings.hooks?.[event] ?? []) {
+    for (const entry of hooksOf(event)) {
       for (const h of entry.hooks) {
         if (h.type !== 'command') continue;
         const run = new Promise<void>((resolve) => {
