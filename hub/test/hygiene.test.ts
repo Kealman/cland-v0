@@ -13,6 +13,8 @@ test('a chatty session is rate-limited: send refuses with the reason and when th
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
+    // beta's own send below needs beta connected, not only listed by the hub
+    await beta.waitForPresence(['alpha', 'beta']);
     for (let i = 1; i <= 3; i += 1) assert.equal((await alpha.call<Send>('send', { to: ['beta'], text: `m${i}` })).ok, true);
     const fourth = await alpha.call<Send>('send', { to: ['beta'], text: 'm4' });
     assert.equal(fourth.ok, false);
@@ -79,16 +81,21 @@ test('an oversized message is refused with the size, and nothing is delivered', 
 });
 
 test('a socket that misses two heartbeats is closed and the spoke reconnects with a fresh hello', async () => {
-  const hub = await startHub({ heartbeatMs: 100 });
+  // The windows are wide against a loaded machine: the hub cuts a socket silent for two of its 1 s intervals; beta
+  // pings every 250 ms and gives the hub 250 ms per answer (two misses in a row before it leaves on its own), so only
+  // a stall of seconds could cut it, while alpha, whose first ping is 10 s away, is cut within 3 s.
+  const hub = await startHub({ heartbeatMs: 1000 });
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', heartbeatMs: 10_000 }); // never heartbeats in time
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', heartbeatMs: 30 });
+  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', heartbeatMs: 250 });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
-    const connectedAt = async (name: string) => (await beta.call<{ sessions: Array<{ name: string; connectedAt: string }> }>('who')).sessions.find((d) => d.name === name)?.connectedAt;
+    await beta.waitForPresence(['alpha', 'beta']);
+    const connectedAt = async (name: string) => (await beta.call<{ sessions?: Array<{ name: string; connectedAt: string }> }>('who')).sessions?.find((d) => d.name === name)?.connectedAt;
     const before = await connectedAt('alpha');
     const betaBefore = await connectedAt('beta');
-    // the hub closes alpha after two missed heartbeats (≤ 300 ms); alpha reconnects with a fresh hello: poll, never sleep
-    const deadline = Date.now() + 5000;
+    assert.ok(before && betaBefore, 'both connected');
+    // the hub closes alpha after two missed heartbeats (≤ 3 s); alpha reconnects with a fresh hello: poll, never sleep
+    const deadline = Date.now() + 15_000;
     let after: string | undefined;
     while (Date.now() < deadline) {
       after = await connectedAt('alpha');
