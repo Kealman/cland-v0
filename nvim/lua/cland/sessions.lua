@@ -90,14 +90,22 @@ function attach_command(name, cb)
     end)
     return
   end
+  -- one request in flight per session: a view shown twice before the answer waits for the same one
+  M.inflight = M.inflight or {}
+  if M.inflight[name] then
+    table.insert(M.inflight[name], cb)
+    return
+  end
+  M.inflight[name] = { cb }
   M.client:request({ type = 'session.attach', session = name }, function(err, value)
-    if err then
-      return cb(err)
+    local cbs = M.inflight[name] or {}
+    M.inflight[name] = nil
+    if not err and not (value and type(value.command) == 'string' and value.command ~= '') then
+      err = 'the adapter gave no attach command'
     end
-    if not (value and type(value.command) == 'string' and value.command ~= '') then
-      return cb('the adapter gave no attach command')
+    for _, fn in ipairs(cbs) do
+      fn(err, not err and value.command or nil)
     end
-    cb(nil, value.command)
   end)
 end
 

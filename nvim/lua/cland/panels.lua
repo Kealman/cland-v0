@@ -159,7 +159,18 @@ local function render_sessions(c)
       { s.item and { s.item .. ' ', 'ClandTeal' } or { 'free ', 'ClandFaint' } },
       { session = s.name }
     )
-    c:add({ { '   ' .. M.session_meta(s), down and 'ClandRed' or 'ClandDim' } }, nil, { session = s.name })
+    local meta = '   ' .. M.session_meta(s)
+    local mhl = down and 'ClandRed' or 'ClandDim'
+    if sw(meta) <= c.width then
+      c:add({ { meta, mhl } }, nil, { session = s.name })
+    else
+      -- too wide for the panel: the state words on a line of their own
+      local head, words = meta:match('^(.*) · ([^·]*)$')
+      c:add({ { head or meta, mhl } }, nil, { session = s.name })
+      if words then
+        c:add({ { '   ' .. words, mhl } }, nil, { session = s.name })
+      end
+    end
   end
   return { ' ↵ attach · gi item · gt topic' }
 end

@@ -3,8 +3,7 @@
 -- in that order, so nothing from the user's own configuration loads: only the bundled runtime and the
 -- files under nvim/. CLAND_ROOT names the project (default: the current directory); CLAND_HUB_TRANSPORT
 -- is `socket` (the project's hub over `.cland/hub.json`, the default) or `stdio` (a hub spawned as a child).
--- CLAND_COMMAND (a JSON array) replaces the `cland` command the client runs; CLAND_RESTORE=1 reads a
--- restart snapshot without a `:restart` (the tests use both).
+-- CLAND_COMMAND (a JSON array) replaces the `cland` command the client runs (the tests' stub hub).
 local here = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
 vim.opt.runtimepath:prepend(here)
 
@@ -50,6 +49,6 @@ vim.o.fillchars = 'eob: ,vert:│,horiz:─'
 vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
-    require('cland').start({ root = vim.env.CLAND_ROOT, transport = vim.env.CLAND_HUB_TRANSPORT, restore = vim.env.CLAND_RESTORE == '1' })
+    require('cland').start({ root = vim.env.CLAND_ROOT, transport = vim.env.CLAND_HUB_TRANSPORT })
   end,
 })

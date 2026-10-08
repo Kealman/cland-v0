@@ -102,6 +102,7 @@ function M.open_left()
   local panels = mods()
   M.win.left = api.nvim_open_win(panels.buf('items'), false, { split = 'left', win = -1, width = (M.widths()) })
   panel_opts(M.win.left)
+  panels.render('items', M.win.left)
 end
 
 function M.open_right(kind)
@@ -109,16 +110,16 @@ function M.open_right(kind)
   local b = panels.buf(kind)
   if valid(M.win.right) then
     api.nvim_win_set_buf(M.win.right, b)
-    panel_opts(M.win.right)
-    return
-  end
-  local _, rw = M.widths()
-  if valid(M.win.dock) then
-    M.win.right = api.nvim_open_win(b, false, { split = 'below', win = M.win.dock })
   else
-    M.win.right = api.nvim_open_win(b, false, { split = 'right', win = -1, width = rw })
+    local _, rw = M.widths()
+    if valid(M.win.dock) then
+      M.win.right = api.nvim_open_win(b, false, { split = 'below', win = M.win.dock })
+    else
+      M.win.right = api.nvim_open_win(b, false, { split = 'right', win = -1, width = rw })
+    end
   end
   panel_opts(M.win.right)
+  panels.render(kind, M.win.right)
 end
 
 local function dock_height()
@@ -138,6 +139,7 @@ function M.open_dock()
   end
   panel_opts(M.win.dock)
   vim.wo[M.win.dock].winfixheight = true
+  panels.render('topics', M.win.dock)
 end
 
 --- Keep the sizes the design asks for after any layout change; a session terminal never gets below

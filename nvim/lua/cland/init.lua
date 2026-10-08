@@ -252,6 +252,10 @@ local function autocmds()
   api.nvim_create_autocmd('WinClosed', {
     group = group,
     callback = function(ev)
+      -- a Vim session being sourced (after :restart) closes windows the shell then builds again
+      if vim.g.SessionLoad == 1 then
+        return
+      end
       local win = tonumber(ev.match)
       vim.schedule(function()
         layout.on_win_closed(win)

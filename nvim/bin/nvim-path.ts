@@ -5,9 +5,9 @@
 // binary to use instead. Run as a script it prints the binary's path, downloading it first if missing.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const NVIM_DIR = fileURLToPath(new URL('..', import.meta.url));
 export const REPO_ROOT = dirname(NVIM_DIR.replace(/\/$/, ''));
@@ -85,7 +85,19 @@ export async function ensureNvim(env: NodeJS.ProcessEnv = process.env, log: (s: 
   return bin;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/** Whether this module is the script node runs: compared as URLs of real paths (import.meta.url escapes a
+ *  space, `#` or `%`, and names the file after symlinks such as macOS's /var → /private/var). */
+const isMain = (): boolean => {
+  const script = process.argv[1];
+  if (!script) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(script)).href;
+  } catch {
+    return false;
+  }
+};
+
+if (isMain()) {
   ensureNvim(process.env, (s) => process.stderr.write(`cland-nvim: ${s}\n`)).then(
     (bin) => process.stdout.write(`${bin}\n`),
     (err: unknown) => {

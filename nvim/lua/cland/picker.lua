@@ -64,6 +64,7 @@ local FOOTER = {
 
 local function render(p)
   local query = api.nvim_buf_get_lines(p.ibuf, 0, 1, false)[1] or ''
+  p.query = query
   local shown, pos = {}, {}
   if vim.trim(query) == '' then
     for i, e in ipairs(p.entries) do
@@ -162,6 +163,12 @@ function M.open(opts)
     end
   end
   local function choose()
+    -- TextChangedI waits for an empty typeahead: filter on what is typed now
+    local query = api.nvim_buf_get_lines(p.ibuf, 0, 1, false)[1] or ''
+    if query ~= p.query then
+      p.sel = 1
+      render(p)
+    end
     local e = p.shown[p.sel]
     local kind = p.kind
     M.close()

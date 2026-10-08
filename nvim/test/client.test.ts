@@ -3,6 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { cland, killDaemon, readDiscovery, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { NVIM_DIR } from '../bin/nvim-path.ts';
@@ -126,6 +128,22 @@ test('with no hub running, the client starts the project hub and connects to it'
   }
   const status = await cland(root, 'hub', 'status');
   assert.equal(status.code, 0, status.stderr);
+});
+
+test('a stale hub.json (its hub killed, its socket gone) makes the client start a hub after a few failed connects', { skip }, async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const dead = spawnSync(process.execPath, ['-e', '0']).pid;
+  await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, '.cland', 'gone.sock'), port: 1, secret: 'f'.repeat(64), pid: dead, version: '0.0.0' }));
+  const c = await startClient(t, bin, root);
+  try {
+    await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !centreOf(s).includes('▲'), 'General, connected to a hub it started', 30_000);
+  } finally {
+    const d = await readDiscovery(root).catch(() => null);
+    if (d && d.pid !== dead) t.after(() => killDaemon(d.pid));
+  }
+  assert.notEqual((await readDiscovery(root)).pid, dead);
+  assert.equal((await cland(root, 'hub', 'status')).code, 0);
 });
 
 test('the client follows its hub through a restart and keeps the thread', { skip }, async (t) => {
