@@ -174,3 +174,42 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
   const listed = git('status', '--porcelain', '--untracked-files=all', '.cland').stdout.trim().split('\n').map((l) => l.slice(3)).sort();
   assert.deepEqual(listed, ['.cland/.gitignore', '.cland/config.toml', '.cland/roles.toml', '.cland/tasks/T-1.md']);
 });
+
+test('both edges speak one protocol: a spoke hello over the Unix socket, a client status over the WebSocket', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+
+  const spoke = await connectSocket(discovery.socket);
+  t.after(() => spoke.close());
+  spoke.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, sessionId: 'sess-sock', cwd: root, name: 'sock' });
+  assert.equal((await spoke.next()).name, 'sock');
+  spoke.send({ type: 'who', id: 'w1' });
+  const who = (await spoke.next()) as { value: { me: string; sessions: Array<{ name: string }> } };
+  assert.equal(who.value.me, 'sock');
+  assert.deepEqual(who.value.sessions.map((s) => s.name), ['sock']);
+
+  const noSecret = await connectSocket(discovery.socket);
+  noSecret.send({ type: 'hello', protocol: PROTOCOL_VERSION, sessionId: 'sess-x', cwd: root, name: 'intruder' });
+  assert.equal((await noSecret.next()).code, 'unauthorized');
+  await noSecret.closed;
+
+  const frames = await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${discovery.port}`, { headers: { authorization: `Bearer ${discovery.secret}` } });
+    const got: Array<Record<string, unknown>> = [];
+    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'ws-test' })));
+    ws.on('message', (data) => {
+      got.push(JSON.parse(data.toString()) as Record<string, unknown>);
+      if (got.length === 1) ws.send(JSON.stringify({ type: 'hub.status', id: 's1' }));
+      else {
+        ws.close();
+        resolve(got);
+      }
+    });
+    ws.on('error', reject);
+  });
+  assert.equal(frames[0]?.type, 'welcome');
+  const status = frames[1] as { ok: boolean; value: { pid: number; sessions: Array<{ name: string }> } };
+  assert.equal(status.ok, true);
+  assert.equal(status.value.pid, discovery.pid);
+  assert.deepEqual(status.value.sessions.map((s) => s.name), ['sock']);
+});

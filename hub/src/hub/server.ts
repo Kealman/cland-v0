@@ -1,12 +1,12 @@
 // The hub's network edge: one HTTP server, WebSocket upgrades gated by the per-project secret,
-// one socket per spoke, frames parsed and handed to the core.
+// one socket per spoke, every frame handed to the shared dispatcher (`./dispatch.ts`).
 import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket } from 'ws';
-import { HubCore, type Connection, type CoreOptions } from './core.ts';
-import { HEARTBEAT_MS, MAX_FRAME_BYTES, isHello, isSpokeRequest, parseFrame, type HubFrame, type Message, type RefusalCode } from '../protocol.ts';
+import { HubCore, type CoreOptions } from './core.ts';
+import { Dispatcher, secretMatches, type Control } from './dispatch.ts';
+import { HEARTBEAT_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 
 export type HubOptions = CoreOptions & {
   port: number;
@@ -19,12 +19,16 @@ export type HubOptions = CoreOptions & {
   pruneEveryMs?: number;
   /** The spokes' heartbeat interval; a socket silent for two of them is closed (default 30 s). */
   heartbeatMs?: number;
+  /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
+  control?: Control;
 };
 
 export type Hub = {
   url: string;
   port: number;
   core: HubCore;
+  /** The frame dispatcher every transport shares; another edge (the Unix socket, stdio) opens conversations on it. */
+  dispatcher: Dispatcher;
   /** Run the retention prune now (the daily job's body). */
   prune: () => number;
   close: () => Promise<void>;
@@ -34,16 +38,19 @@ const bearerMatches = (header: string | undefined, secret: string): boolean => {
   if (!header) return false;
   const [scheme, token] = header.split(' ', 2);
   if (scheme !== 'Bearer' || !token) return false;
-  const a = Buffer.from(token);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return secretMatches(token, secret);
 };
-
-const refuseFrame = (code: RefusalCode, message: string): HubFrame => ({ type: 'error', code, message });
 
 export async function createHub(options: HubOptions): Promise<Hub> {
   const core = new HubCore(options);
   const log = options.log ?? (() => {});
+  const dispatcher = new Dispatcher({
+    core,
+    secret: options.secret,
+    log,
+    ...(options.control ? { control: options.control } : {}),
+    ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
+  });
   const http: HttpServer = createServer((_req, res) => {
     res.writeHead(404).end();
   });
@@ -65,94 +72,28 @@ export async function createHub(options: HubOptions): Promise<Hub> {
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     sockets.add(ws);
     lastSeen.set(ws, Date.now());
-    let name: string | null = null;
-    let connection: Connection | null = null;
     // Bytes arriving are a live peer: a large frame arriving slowly must not be cut off by the heartbeat sweep.
     req.socket.on('data', () => {
       if (lastSeen.has(ws)) lastSeen.set(ws, Date.now());
     });
-    const sendFrame = (frame: HubFrame) => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
-    };
-    const refuse = (code: RefusalCode, message: string) => {
-      sendFrame(refuseFrame(code, message));
-      ws.close(4000, code);
-    };
-    const helloTimer = setTimeout(() => {
-      if (name === null) refuse('bad-hello', 'no hello received');
-    }, options.helloTimeoutMs ?? 5000);
-
+    const conversation = dispatcher.open(
+      {
+        send: (frame) => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
+        },
+        close: (code, reason) => ws.close(code, reason),
+      },
+      // the upgrade checked the bearer secret already
+      { authenticated: true, edge: 'websocket' },
+    );
     ws.on('message', (data) => {
       lastSeen.set(ws, Date.now());
-      const frame = parseFrame(data.toString());
-      if (!frame) {
-        refuse('bad-hello', 'not a frame');
-        return;
-      }
-      if (name === null) {
-        if (!isHello(frame)) {
-          refuse('bad-hello', 'first frame must be a hello');
-          return;
-        }
-        clearTimeout(helloTimer);
-        const deliver = (message: Message) => sendFrame({ type: 'deliver', message });
-        const result = core.hello(frame, deliver, (reason, code) => ws.close(code ?? 4001, reason));
-        if (!result.ok) {
-          log({ event: 'refused', code: result.code, requested: frame.name ?? null });
-          refuse(result.code, result.message);
-          return;
-        }
-        name = result.name;
-        connection = result.connection;
-        sendFrame({ type: 'welcome', name, presence: core.presence(), ...(connection.role !== null ? { role: connection.role } : {}) });
-        core.flushQueued(name);
-        return;
-      }
-      if (!isSpokeRequest(frame)) {
-        const id = typeof frame.id === 'string' ? frame.id : '?';
-        sendFrame({ type: 'result', id, ok: false, error: `unknown request type "${String(frame.type)}"` });
-        return;
-      }
-      try {
-        switch (frame.type) {
-          case 'who':
-            sendFrame({ type: 'result', id: frame.id, ok: true, value: { me: name, sessions: core.presence() } });
-            break;
-          case 'history':
-            sendFrame({ type: 'result', id: frame.id, ok: true, value: { messages: core.history(name, frame.limit, frame.with) } });
-            break;
-          case 'status':
-            core.setStatus(name, frame.text);
-            sendFrame({ type: 'result', id: frame.id, ok: true, value: { status: connection?.status ?? null } });
-            break;
-          case 'rename': {
-            const r = core.rename(name, frame.name);
-            if (r.ok) {
-              name = r.name;
-              sendFrame({ type: 'result', id: frame.id, ok: true, value: { name: r.name } });
-            } else sendFrame({ type: 'result', id: frame.id, ok: false, error: r.error });
-            break;
-          }
-          case 'ping':
-            core.ping(name);
-            sendFrame({ type: 'result', id: frame.id, ok: true, value: { pong: true } });
-            break;
-          case 'send': {
-            const { outcomes } = core.sendFromSession(name, frame.to, frame.text, frame.replyTo);
-            sendFrame({ type: 'result', id: frame.id, ok: true, value: { outcomes } });
-            break;
-          }
-        }
-      } catch (err) {
-        sendFrame({ type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) });
-      }
+      conversation.receive(data.toString());
     });
-
     ws.on('close', () => {
-      clearTimeout(helloTimer);
       sockets.delete(ws);
       lastSeen.delete(ws);
-      if (connection !== null) core.disconnect(connection);
+      conversation.closed();
     });
     ws.on('error', () => {
       /* close follows; nothing to do */
@@ -196,6 +137,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     url,
     port: address.port,
     core,
+    dispatcher,
     prune: () => core.prune(),
     close: async () => {
       clearInterval(pruneTimer);

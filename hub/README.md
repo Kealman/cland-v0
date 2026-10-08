@@ -13,10 +13,11 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, messages, per-addressee deliveries (queued → delivered, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
-| `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, written through to the store so a restart keeps a mute. The thresholds are constants for now. |
+| `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. The thresholds are constants for now. |
 | `src/hub/core.ts` | Presence, names, same-session takeover, routing, store-and-forward. Transport-free. |
-| `src/hub/server.ts` | The WebSocket edge: secret check, hello timeout, frame size limit, heartbeat sweep. `createHub` starts it with no human side at all. |
-| `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON-lines frames, the secret checked in the hello. |
+| `src/hub/dispatch.ts` | The frame dispatcher every transport shares: hello, spoke requests, client requests (`hub.status`, `hub.stop`), refusals. Transport-agnostic: raw frames in, frames out through a peer. |
+| `src/hub/server.ts` | The WebSocket edge: bearer secret check, frame size limit, heartbeat sweep. `createHub` starts it with no human side at all. |
+| `src/hub/socket.ts` | The Unix socket edge for the UI and the CLI: JSON lines, the secret carried in the hello. |
 | `src/hub/daemon.ts` | The hub serving one project in the background: `.cland/` prepared, store on `hub.db`, both edges bound, `hub.json` written last and removed first. |
 | `src/project.ts` | The `.cland/` layout, the managed `.gitignore`, the secret, the discovery file, finding the project root. |
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve`. |
@@ -72,7 +73,7 @@ The project's `.cland/`:
 
 `port` is the 127.0.0.1 WebSocket port for spokes, chosen free at each start. When `.cland/hub.sock` would exceed the Unix socket path limit (about 104 bytes on macOS), the socket is `cland-<hash of the root>.sock` in the system temp dir, and `socket` names it.
 
-The Unix socket speaks the hub's frames as JSON lines. The first frame is `{"type":"hello","protocol":1,"secret":"…","client":"cli"}`; a wrong secret gets `{"type":"error","code":"unauthorized",…}` and the socket closes. After the `welcome`, a client sends `{"type":"hub.status","id":"…"}` or `{"type":"hub.stop","id":"…"}` and gets a `result` with the same id.
+The Unix socket speaks the hub's frames as JSON lines, through the same dispatcher as the WebSocket: a spoke's hello works there too when it carries the secret, and a client's hello works on the WebSocket. The first frame is `{"type":"hello","protocol":1,"secret":"…","client":"cli"}`; a wrong secret gets `{"type":"error","code":"unauthorized",…}` and the socket closes. After the `welcome`, a client sends `{"type":"hub.status","id":"…"}` or `{"type":"hub.stop","id":"…"}` and gets a `result` with the same id.
 
 ## Running
 

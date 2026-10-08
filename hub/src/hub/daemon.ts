@@ -27,7 +27,18 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   }
 
   const startedAt = new Date();
-  const hub = await createHub({ port: 0, host: '127.0.0.1', secret, store: new Store(l.db), log });
+  let hub!: Hub;
+  hub = await createHub({
+    port: 0,
+    host: '127.0.0.1',
+    secret,
+    store: new Store(l.db),
+    log,
+    control: {
+      status: () => ({ pid: process.pid, port: hub.port, socket: l.socket, version: VERSION, root, startedAt: startedAt.toISOString(), uptimeMs: Date.now() - startedAt.getTime() }),
+      stop: () => void stop(),
+    },
+  });
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
@@ -46,14 +57,7 @@ export async function serveProject(root: string, options: { log?: LogFn } = {}):
   };
 
   try {
-    edge = await createSocketEdge({
-      path: l.socket,
-      secret,
-      core: hub.core,
-      log,
-      status: () => ({ pid: process.pid, port: hub.port, socket: l.socket, version: VERSION, root, startedAt: startedAt.toISOString(), uptimeMs: Date.now() - startedAt.getTime() }),
-      onStop: () => void stop(),
-    });
+    edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
   } catch (err) {
     await hub.close();
     throw err;
