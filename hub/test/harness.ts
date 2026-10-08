@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import type { TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { WebSocket } from 'ws';
 import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 
@@ -393,6 +394,26 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
   );
   t.after(() => ui.close());
   ui.send({ type: 'hello', protocol: 2, secret: discovery.secret, client });
+  const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
+  if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
+  return ui;
+}
+
+/** A UI client on an in-process hub's WebSocket (a client hello works there too), welcomed. */
+export async function connectWsUi(t: TestContext, hub: { url: string }, client = 'ui'): Promise<FrameClient> {
+  const ws = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
+  await new Promise<void>((resolve, reject) => {
+    ws.once('open', () => resolve());
+    ws.once('error', reject);
+  });
+  ws.on('error', () => {});
+  const ui = frameClient(
+    (line) => ws.send(line.trimEnd()),
+    (fn) => ws.on('message', (data) => fn(`${data.toString()}\n`)),
+    () => ws.terminate(),
+  );
+  t.after(() => ui.close());
+  ui.send({ type: 'hello', protocol: 2, client });
   const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
   if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
   return ui;

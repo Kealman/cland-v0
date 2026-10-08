@@ -70,8 +70,9 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 A topic is a thread in the human's chat with agents (spec 4.5): an id, a title, a status, a `standing` flag, creation and activity times. Every message belongs to one, and the `deliver` frame carries it as `"topic":{"id":…,"title":…}` (the spoke shows it as `topic` and `topic_title` on the channel event).
 
 - **General** (`general`) and **Agents** (`agents`) are created at the project's first hub start and are standing: renaming or deleting them is refused. No other topic can be created yet (#32); the status is always `open` until the status machine (#32).
-- **The human** writes through the UI (`topic.send`). The message addresses the Coordinator unless `to` names sessions or roles. A role nobody holds keeps the message queued under the role; the first session to take the role (its hello) gets it, so the stage stays `queued` until a coordinator connects and acks. The sender is `human`, a reserved name.
-- **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents.
+- **The human** writes through the UI (`topic.send`), into any topic but Agents: Agents is read-only, a record of what agents send each other, and a `topic.send` there is refused. The message addresses the Coordinator unless `to` names sessions or roles. Each address counts once, with or without its `@`.
+- **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
+- **A session** writes with `send`: with no `to` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
 ## Not here yet
 
@@ -145,7 +146,7 @@ Events, pushed after `subscribe`:
 {"type":"session.state","session":"coord","sessionId":"…","state":"busy","source":"hook","ts":"…"}
 ```
 
-A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `delivery` event comes when a message's stage changes after the send. A `session.state` event comes when a session's state changes (below).
+A `message` event comes for every message recorded in a topic, the human's own included, before the `topic.send` result. A `delivery` event comes whenever a message's stage changes after the send: an ack, an injection, a delivery dropped past the TTL when its session comes back, or a role's queue merged into a session that already had the message. A `session.state` event comes when a session's state changes (below).
 
 ## Adapters and sessions
 
