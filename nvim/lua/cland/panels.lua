@@ -65,7 +65,8 @@ function Canvas:add(left, right, info)
     col = col + #text
   end
   for _, c in ipairs(left) do
-    local text = c[1]
+    -- a row is one buffer line: a hub text over several lines (a note, a title) shows on one
+    local text = tostring(c[1]):gsub('\r?\n', ' ')
     if used + sw(text) > room then
       text = trunc(text, room - used)
     end

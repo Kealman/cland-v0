@@ -59,12 +59,16 @@ function Thread:add(message)
   self:render()
 end
 
---- Merge a history snapshot: new messages join in time order, known ones only advance.
+--- Merge a history snapshot: new messages join in time order, known ones advance their stage and take the
+--- hub's ask card (an ask answered, withdrawn or cancelled while the client was away is no longer open).
 function Thread:merge(messages)
   for _, m in ipairs(messages or {}) do
     local existing = self.by_id[m.id]
     if existing then
       advance(existing, m.stage)
+      if type(m.ask) == 'table' then
+        existing.ask = vim.deepcopy(m.ask)
+      end
     else
       local copy = vim.deepcopy(m)
       self.by_id[copy.id] = copy

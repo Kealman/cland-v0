@@ -10,6 +10,7 @@
 -- renders through `state.changed()`, so no update ever raises a prompt.
 local api = vim.api
 local state = require('cland.state')
+local ask_card = require('cland.ask_card')
 
 local M = {}
 
@@ -51,9 +52,14 @@ function M.render(c, full)
       local ask = { id = a.id, topic = a.topic and a.topic.id, question = a.question, options = a.options or {}, free = a.free }
       local where = a.topic and ((a.topic.item and a.topic.item ~= vim.NIL) and a.topic.item or a.topic.title) or ''
       c:add({ { ' ? ', 'ClandAmber' }, { where, 'ClandBlue' } }, { { tostring(a.from or '') .. ' · ' .. clock(a.ts) .. ' ', 'ClandDim' } }, { ask = ask, topic = ask.topic, session = a.from })
-      c:add({ { '   ' .. tostring(a.question or ''), 'ClandBold' } }, nil, { ask = ask, topic = ask.topic, session = a.from })
+      for _, l in ipairs(ask_card.split(a.question)) do
+        c:add({ { '   ' .. l, 'ClandBold' } }, nil, { ask = ask, topic = ask.topic, session = a.from })
+      end
       for i, o in ipairs(a.options or {}) do
-        c:add({ { '   ' }, { ' ' .. i .. ' ', 'ClandBadgeN' }, { ' ' .. o } }, nil, { ask = ask, topic = ask.topic, option = i })
+        for k, l in ipairs(ask_card.split(o)) do
+          local badge = k == 1 and { ' ' .. i .. ' ', 'ClandBadgeN' } or { (' '):rep(#tostring(i) + 2) }
+          c:add({ { '   ' }, badge, { ' ' .. l } }, nil, { ask = ask, topic = ask.topic, option = i })
+        end
       end
       c:add({ { '   ' .. (a.free ~= false and 'i free answer · ' or '') .. '↵ open the topic', 'ClandFaint' } }, nil, { ask = ask, topic = ask.topic })
     end

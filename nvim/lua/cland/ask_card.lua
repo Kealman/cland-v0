@@ -17,16 +17,26 @@ M.STATE = {
 
 --- The card's lines under its message header: {text, group, option} entries. `option` is the option a line
 --- shows (1-based). The question itself is the message's text; the card shows it first.
+--- A text the hub may send over several lines (a question, an option), as buffer lines: a buffer line holds no
+--- newline.
+function M.split(text)
+  return vim.split(tostring(text or ''), '\r?\n')
+end
+
 function M.lines(card, question)
   local out = {}
   local open = card.state == 'open'
   local bar = open and 'ClandAmber' or 'ClandDim'
-  out[#out + 1] = { ' ┃ ' .. (question or card.question or ''), open and 'ClandBold' or nil, nil, bar }
+  for _, l in ipairs(M.split(question or card.question)) do
+    out[#out + 1] = { ' ┃ ' .. l, open and 'ClandBold' or nil, nil, bar }
+  end
   for i, o in ipairs(card.options or {}) do
     local chosen = card.state == 'answered' and card.option == i
-    local text = ' ┃ ' .. (chosen and '✓ ' or '') .. i .. '  ' .. o
+    local head = (chosen and '✓ ' or '') .. i .. '  '
     local group = chosen and 'ClandGreen' or (open and nil or 'ClandDim')
-    out[#out + 1] = { text, group, i, bar }
+    for k, l in ipairs(M.split(o)) do
+      out[#out + 1] = { ' ┃ ' .. (k == 1 and head or (' '):rep(vim.fn.strdisplaywidth(head))) .. l, group, i, bar }
+    end
   end
   if open then
     out[#out + 1] = { ' ┃ ' .. (card.free ~= false and '1-9 answers · free answer: i' or '1-9 answers'), 'ClandFaint', nil, bar }

@@ -48,6 +48,12 @@ function M.new(client, topic)
         return view.thread:set_notice('no history: ' .. err)
       end
       view.thread:merge(value.messages)
+      -- a free answer armed for an ask that closed meanwhile goes
+      local a = view.composer.answering
+      local m = a and view.thread.by_id[a.ask]
+      if m and type(m.ask) == 'table' and m.ask.state ~= 'open' then
+        view.composer:answer_to(nil)
+      end
     end)
   end
   client:on('connected', load)

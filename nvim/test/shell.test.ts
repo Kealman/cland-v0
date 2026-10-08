@@ -1288,6 +1288,52 @@ test('the ask card in the thread: the question, numbered options and the free-an
   assert.match(topBar(s), /needs you {2}2 /);
 });
 
+test('a question and options over several lines render as lines in the card and the inbox; a digit on any line of an option answers it', { skip }, async (t) => {
+  const question = 'Which should win?\nThe spoke or the harness.';
+  const options = ['the name recorded\nby the spoke', 'the harness session id', 'ask me later'];
+  const c = await startShell(t, (s) => {
+    withInbox(s);
+    const a1 = s.messages?.['topic-1']?.[0] as Record<string, unknown>;
+    Object.assign(a1, { text: question, ask: { question, options, free: true, state: 'open' } });
+    Object.assign(s.inbox?.asks?.[0] ?? {}, { question, options });
+  });
+  await c.input('<Esc>:Cland view thread topic-1<CR>');
+  let s = await c.waitScreen((x) => x.includes('┃ 2  the harness session id'), 'the card');
+  const card = ['┃ Which should win?', '┃ The spoke or the harness.', '┃ 1  the name recorded', '┃    by the spoke', '┃ 2  the harness session id'].map((w) => s.indexOf(w));
+  assert.ok(card.every((at) => at >= 0), `the card:\n${s}`);
+  assert.deepEqual([...card].sort((a, b) => a - b), card);
+  await c.input('<Space>n');
+  s = await c.waitScreen((x) => rightOf(x).includes('The spoke or the harness.'), 'the inbox with both lines');
+  const panel = rightOf(s);
+  const rows = ['Which should win?', 'The spoke or the harness.', '1  the name recorded', 'by the spoke', '2  the harness session id'].map((w) => panel.indexOf(w));
+  assert.ok(rows.every((at) => at >= 0), `the inbox:\n${panel}`);
+  assert.deepEqual([...rows].sort((a, b) => a - b), rows);
+  assert.doesNotMatch(c.stderr(), /newlines/);
+  // the second line of option 1, in the inbox: 1 answers with it
+  await c.input('gg/by the spoke<CR>1');
+  await c.waitScreen((x) => statusLine(x).includes('answered with 1'), 'answered with 1');
+  assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 1]]);
+});
+
+test('an ask answered while the client was away shows answered after the reconnect, and a digit on it does nothing', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await c.input('<Esc>:Cland view thread topic-1<CR>');
+  await c.waitScreen((x) => x.includes('ask · ▲ waiting for you'), 'the open card');
+  await c.reconnect((s) => {
+    const a1 = s.messages?.['topic-1']?.[0] as Record<string, unknown>;
+    a1.ask = { question: 'Which should win?', options: ASK_OPTIONS, free: true, state: 'answered', option: 3, answer: 'ans-1' };
+    s.messages!['topic-1']!.push({ id: 'ans-1', from: 'human', fromKind: 'human', via: 'cli', to: ['coord-1'], text: 'ask me later', ts: ts(2), topic: 'topic-1', answerTo: 'a1', stage: 'delivered' });
+    s.inbox!.asks = [];
+  });
+  const s = await c.waitScreen((x) => x.includes('ask · ✓ answered') && x.includes('┃ ✓ 3  ask me later'), 'the card answered after the reconnect', 5000);
+  assert.doesNotMatch(s, /1-9 answers · free answer: i/);
+  await c.input('<Esc><C-w>k');
+  await c.waitScreen((x) => statusLine(x).includes('NORMAL'), 'Normal mode in the thread');
+  await c.input('gg/the harness<CR>2');
+  await sleep(300);
+  assert.equal((await requestsOf(c, 'topic.answer')).length, 0, 'no answer to an ask that is no longer open');
+});
+
 test('the inbox full width (␣N) shows the same sections and acts the same', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await c.input('<Esc><Space>N');
