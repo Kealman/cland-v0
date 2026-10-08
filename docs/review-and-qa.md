@@ -20,12 +20,12 @@ The request's first line is conventional, so the UI can style it later; the rest
 
 ```
 review request T-12
-Branch impl/t-12, commits a1b2c3..d4e5f6. Check the acceptance criteria of T-12 and spec 4.7; tests are in hub/test/tracker.test.ts.
+Branch t/T-12-closed-items-release-claims, commits a1b2c3..d4e5f6. Check the acceptance criteria of T-12 and spec 4.7; tests are in hub/test/tracker.test.ts.
 ```
 
 ```
 qa request T-12
-On branch impl/t-12: `cland task list --state open` lists T-12, and the items panel in a headless Neovim shows it.
+On branch t/T-12-closed-items-release-claims: `cland task list --state open` lists T-12, and the items panel in a headless Neovim shows it.
 ```
 
 The report's first line is the verdict and the item, then the points that matter:

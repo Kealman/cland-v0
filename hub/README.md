@@ -157,7 +157,7 @@ The hub checks every spoke tool call against the calling session's role, as the 
 | `send:human` | `send` with no `to`: to the human (`send` alone grants both) |
 | `task.claim:own` | claiming or releasing only the session's own item |
 | `task.comment:own` | plain comments (not verdicts) only on the session's own item |
-| `task.comment:verdict` | verdict comments (`verdict`, `result`, `run`) on any item |
+| `task.comment:verdict` | verdict comments (`verdict`, `result`, `run`, or a text that reads back as a verdict header) on any item |
 | `topic.create:own` | a topic only bound to the session's own item |
 
 The session's own item is one it claims (the tracker's claim, held by session id) or whose `assignee` is its name. An unknown tool or scope makes the file unreadable (the last good version stays in force). The defaults:

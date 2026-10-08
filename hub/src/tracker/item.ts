@@ -179,6 +179,9 @@ function parseComments(lines: string[]): Comment[] {
   return comments;
 }
 
+/** Whether a comment's text reads back as a verdict (its first lines a verdict header), as every reader takes it. */
+export const readsAsVerdict = (text: string): boolean => commentOf('', '', text.trim()).verdict !== undefined;
+
 /** A comment whose first lines are `verdict:`, `result:`, `by:`, `run:` is a verdict; the rest is its text. */
 function commentOf(author: string, at: string, text: string): Comment {
   const lines = text.split('\n');
