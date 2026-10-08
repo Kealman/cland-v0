@@ -656,21 +656,45 @@ export class HubCore {
     if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
     const c = this.#live.get(name);
     const previous = c ? c.role : this.#store.roleOf(name);
-    this.#store.rememberSession(name, this.#now().getTime());
-    this.#store.rememberRole(name, role);
+    const at = this.#now().getTime();
+    // the reservation is recorded with the role: a hub that dies before the launch's process row exists gives it
+    // back at its next start (`releaseInterruptedLaunches`)
+    this.#store.transaction(() => {
+      this.#store.rememberSession(name, at);
+      this.#store.rememberRole(name, role);
+      this.#store.saveReservation(name, role, previous, at);
+    });
     this.#log({ event: 'role-reserved', session: name, role, previous });
     return { previous };
   }
 
+  /** A launch's process row is written: its reservation is the role itself now. */
+  launchSettled(name: string): void {
+    this.#store.dropReservation(name);
+  }
+
   /** A launch failed: the role it reserved (or its early hello took) is rolled back, unless something changed it since. */
-  releaseLaunchRole(name: string, role: string, previous: string | null): void {
+  releaseLaunchRole(name: string, role: string, previous: string | null, reason = 'launch-failed'): void {
+    this.#store.dropReservation(name);
     const c = this.#live.get(name);
     const current = c ? c.role : this.#store.roleOf(name);
     if (current !== role) return;
-    this.#log({ event: 'role-reservation-released', session: name, role, previous });
+    this.#log({ event: 'role-reservation-released', session: name, role, previous, reason });
     if (c) this.#vacate(name, 'its launch failed');
     else this.#store.rememberRole(name, previous);
     this.#announceCoordinator();
+  }
+
+  /**
+   * At the hub's start: a reservation still recorded belongs to a launch the hub died in before its process row was
+   * written. With no process row (`hasProcess`) and no live session under the name, the role goes back to what the
+   * name held before; otherwise the reservation is simply cleared.
+   */
+  releaseInterruptedLaunches(hasProcess: (name: string) => boolean): void {
+    for (const r of this.#store.reservations()) {
+      if (hasProcess(r.name) || this.#live.has(r.name)) this.#store.dropReservation(r.name);
+      else this.releaseLaunchRole(r.name, r.role, r.previous, 'interrupted');
+    }
   }
 
   /** The live session holding the Coordinator, or null: "no coordinator". */

@@ -86,6 +86,12 @@ create table if not exists assignees (
   name text not null,
   session_id text
 );
+create table if not exists launch_reservations (
+  name text primary key,
+  role text not null,
+  previous text,
+  at integer not null
+);
 create table if not exists hygiene (
   kind text not null,
   key text not null,
@@ -366,6 +372,20 @@ export class Store implements HygieneMemory {
         )
         .all(session, notice) as Row[]
     ).map((r) => r.message_id as string);
+  }
+
+  /** A launch reserved `role` for `name` (what the name held before: `previous`); cleared once its process row is
+   *  written or the launch gave the role back. One left at a start belongs to a launch the hub died in. */
+  saveReservation(name: string, role: string, previous: string | null, at: number): void {
+    this.#db.prepare('insert into launch_reservations (name, role, previous, at) values (?, ?, ?, ?) on conflict (name) do update set role = excluded.role, previous = excluded.previous, at = excluded.at').run(name, role, previous, at);
+  }
+
+  dropReservation(name: string): void {
+    this.#db.prepare('delete from launch_reservations where name = ?').run(name);
+  }
+
+  reservations(): Array<{ name: string; role: string; previous: string | null }> {
+    return (this.#db.prepare('select name, role, previous from launch_reservations order by name').all() as Row[]).map((r) => ({ name: r.name as string, role: r.role as string, previous: (r.previous as string | null) ?? null }));
   }
 
   /** The names holding a role, seen since `since` — a role as a tag resolves to these. */
