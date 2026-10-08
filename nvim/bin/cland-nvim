@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Start cland's Neovim client for a project (spec 4.1, ADR 0005):
+#   nvim/bin/cland-nvim [project-dir] [nvim args…]
+# The project defaults to the current directory; the client walks up to its root (.git or .cland).
+# The Neovim release pinned in nvim/NVIM_VERSION is downloaded into .cache/ on first use and checked
+# against nvim/NVIM_SHA256SUMS; CLAND_NVIM names another binary. CLAND_HUB_TRANSPORT=stdio spawns the
+# hub as the client's child instead of using the project's hub socket.
+set -euo pipefail
+
+NVIM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+root="$PWD"
+if [[ $# -gt 0 && -d "$1" ]]; then
+  root="$(cd "$1" && pwd)"
+  shift
+fi
+
+nvim_bin="$(node "$NVIM_DIR/bin/nvim-path.ts")"
+
+cd "$root"
+# NVIM_APPNAME renames every stdpath(); --clean then -u (this order) skips the user's init, plugin/ and
+# pack/ directories and still sources cland's init.lua.
+exec env NVIM_APPNAME=cland CLAND_ROOT="$root" "$nvim_bin" --clean -u "$NVIM_DIR/init.lua" "$@"
