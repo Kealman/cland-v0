@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues for `Kealman/cland-v0`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked as items in cland's own tracker (`.cland/tasks/`, the `cland task` CLI, run as `node hub/bin/cland.ts task …`); GitHub Issues for `Kealman/cland-v0` remain the human-facing mirror until slice 1 is done. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
