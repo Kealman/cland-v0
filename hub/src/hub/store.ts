@@ -137,13 +137,15 @@ create index if not exists messages_seq on messages (topic, seq);
 
 /**
  * The unread watermark's sequence, set up once the columns exist: rows written before it got their rowid (which was
- * the watermark then), the watermark moves to it, and the counter starts above every seq stored, never below.
+ * the watermark then), the watermark moves to it, and the counter starts above every seq stored and every watermark,
+ * never below: a pruned file keeps an old watermark with no message left to show it, and a new message numbered
+ * under it would never be unread.
  */
 const SEQ_SETUP = `
 update messages set seq = rowid where seq is null;
 update topics set read_seq = max(read_seq, coalesce(read_rowid, 0)) where read_rowid > read_seq;
 insert into counters (name, value) values ('message_seq', 0) on conflict (name) do nothing;
-update counters set value = max(value, (select coalesce(max(seq), 0) from messages)) where name = 'message_seq';
+update counters set value = max(value, (select coalesce(max(seq), 0) from messages), (select coalesce(max(read_seq), 0) from topics)) where name = 'message_seq';
 `;
 
 type Row = Record<string, string | number | null>;
