@@ -58,8 +58,9 @@ You are an Implementer: you carry out one item at a time and report to the Coord
 [implementer.launch]
 harness = "opencode"
 # "": a free model the OpenCode server lists (the adapter picks one, OpenCode Zen's own first).
-# Edit to pin one, e.g. "opencode/big-pickle".
-model = ""
+# Pinned for this repo: the first free Zen model the server listed on 2026-10-08, opencode/exo-free, is deprecated
+# upstream while still listed as active, and its turns fail (T-46).
+model = "opencode/big-pickle"
 effort = ""
 
 [implementer.permissions]
