@@ -1,72 +1,85 @@
 #!/usr/bin/env bash
-# PROTOTYPE stand-in (ticket #15): prints a canned harness screen for one fake
-# session of the chat-screen prototype, then hands the terminal to your $SHELL
-# (without rc files, so nothing clears the printout). No harness is started.
-#   fake-harness <session> <role> <harness> <model>
-name="${1:-session}" role="${2:-}" harness="${3:-}" model="${4:-}"
+# PROTOTYPE stand-in (ticket #15, workbench): "attaches" to one fake session.
+# It prints the attach command a real adapter would run (spec 4.3), a canned
+# harness screen, and, when the session waits for approval, the harness's own
+# approval prompt: [y]/[a]/[n] answer it here, in the TUI, and the answer goes
+# back to the workbench as an OSC 777 sequence (Neovim's TermRequest), the way
+# an adapter would report the state change. Then it hands the terminal to your
+# $SHELL without rc files. No harness is started.
+#   fake-harness <session> <role> <harness> <model> <attach command>
+#   env: CLAND_PROTO_APPROVAL (command waiting for approval), CLAND_PROTO_ITEM
+name="${1:-session}" role="${2:-}" harness="${3:-}" model="${4:-}" attach="${5:-}"
+approval="${CLAND_PROTO_APPROVAL:-}"
 B=$'\033[1m' D=$'\033[2m' R=$'\033[0m'
-P=$'\033[38;5;141m' G=$'\033[38;5;114m' Y=$'\033[38;5;221m' C=$'\033[38;5;81m' O=$'\033[38;5;215m'
+P=$'\033[38;5;141m' G=$'\033[38;5;114m' Y=$'\033[38;5;221m' C=$'\033[38;5;80m' O=$'\033[38;5;215m'
+
+printf '%s›%s %s\n\n' "$D" "$R" "${attach:-attach $name}"
 
 case "$name" in
-coord)
+coord-1)
   cat <<EOF
-${O}✻${R} ${B}Claude Code${R} ${D}(fake)${R} · session ${B}coord${R} · Coordinator · fable · max
+${O}✻${R} ${B}Claude Code${R} ${D}(fake)${R} · session ${B}coord-1${R} · Coordinator · fable · max
 ${D}  cwd: the project root · hub: connected (spoke ok)${R}
 
-${D}>${R} [hub] from you in "OpenCode waiting heuristic" (T-15, topic t15):
-  Is a timer heuristic acceptable for v0, or should impl-1 wait for an
-  upstream event?   ${D}(delivered: it enters my next turn)${R}
+${D}>${R} [hub] from you in "General" (topic general):
+  Take T-13 next with impl-2, the Codex adapter. Keep rev-1 on the T-15 review.
+  ${D}(injected: it entered this turn)${R}
 
-${G}●${R} Read(docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md)
-  ${D}⎿  Read 182 lines${R}
-${G}●${R} Bash(cland task view T-12)
-  ${D}⎿  T-12 task open · Hub: replay UI-socket frames after a hub restart
-     verdict review: not clear (review-1 [Reviewer], run r-0412)${R}
-${G}●${R} cland.ask(topic: T-12, "How should I proceed with T-12?", 3 options)
-  ${D}⎿  ask open · the topic waits for the human${R}
-${G}●${R} cland.send(review-1, "Run the ui-socket tests on the branch and report.")
-  ${D}⎿  injected${R}
+${G}●${R} cland.task.claim(T-13, session: impl-2)
+  ${D}⎿  claimed · branch t/T-13-codex-adapter from dev${R}
+${G}●${R} cland.ask(topic: T-12, "Spoke identity on reconnect: which should win?", 3 options)
+  ${D}⎿  ask open · the T-12 topic waits for the human${R}
+${G}●${R} cland.artifact.create(diagram, "spoke reconnect sequence", topic: T-12)
+  ${D}⎿  A-7 shared${R}
 
-${O}✻ Drafting the T-12 follow-up…${R} ${D}(3m 12s · esc to interrupt)${R}
+${O}✻ Planning T-13 with impl-2…${R} ${D}(9m 12s · esc to interrupt)${R}
 EOF
   ;;
 impl-1)
   cat <<EOF
-${G}┃${R} ${B}opencode${R} ${D}(fake)${R} · session ${B}impl-1${R} · Implementer · free-model
-${G}┃${R} T-15 · branch t/T-15-opencode-waiting · worktree .cland/worktrees/T-15
+${G}┃${R} ${B}opencode${R} ${D}(fake)${R} · session ${B}impl-1${R} · Implementer · free model
+${G}┃${R} T-12 · branch t/T-12-hub-spoke-hello · worktree .cland/worktrees/T-12
 
-${D}▣ build${R}  npm test -- adapters/opencode   ${G}✓ 14 passed${R}
-${D}▣ edit${R}   hub/adapters/opencode/state.ts  ${D}+48 -3${R}
+${D}▣ build${R}  npm test -- hub/spoke     ${G}✓ 22 passed${R}
+${D}▣ edit${R}   hub/spoke/hello.ts        ${D}+96 -4${R}
 
-Heuristic: no SSE event for 20 s while a tool call is pending means
-waiting. False positives on long builds. Posted to the T-15 topic.
+The hello works against the stub. Waiting for the human's answer on the
+spoke identity before the real spoke (the ask in the T-12 topic).
 
 ${G}>${R} ${D}(idle: waiting for a delivery from the hub)${R}
 EOF
   ;;
-review-1)
+impl-2)
   cat <<EOF
-${C}>_${R} ${B}Codex${R} ${D}(fake)${R} · session ${B}review-1${R} · Reviewer · gpt-6.1-sol · high
+${O}✻${R} ${B}Claude Code${R} ${D}(fake)${R} · session ${B}impl-2${R} · Implementer · opus · high
+${D}  T-13 · branch t/T-13-codex-adapter · worktree .cland/worktrees/T-13${R}
 
-${D}•${R} Reviewing t/T-12-ui-socket-replay against dev (round 2)
-${D}•${R} Ran git diff dev...t/T-12-ui-socket-replay --stat
-  ${D}└ 4 files changed, 212 insertions(+), 31 deletions(-)${R}
+${G}●${R} Bash(codex app-server --listen unix://.cland/sessions/probe.sock)
+  ${D}⎿  listening${R}
+${G}●${R} Write(hub/adapters/codex/spawn.ts)
+  ${D}⎿  Wrote 118 lines${R}
 
-${Y}▌ Allow Codex to run this command?${R}
-${Y}▌${R}   ${B}node --test hub/test/ui-socket.test.ts${R}
-${Y}▌${R} ${B}› 1. Yes, run it${R}
-${Y}▌${R}   2. Yes, and don't ask again for this command
-${Y}▌${R}   3. No, tell Codex what to do differently
-${D}  (approvals stay in the harness TUI in v0; this is a printout)${R}
+${O}✻ Wiring codex resume --remote…${R} ${D}(6m 03s · esc to interrupt)${R}
+EOF
+  ;;
+rev-1)
+  cat <<EOF
+  ${D}thread${R}   Review of t/T-15-role-clause-delivery against dev (round 1)
+  ${D}model${R}    gpt-6.1-sol · effort high
+  ${D}context${R}  hub event 12:04 · role clause: Reviewer · item T-15
+
+  Reading the diff: 14 files, +612 −88.
+  Running the hub tests to confirm the clause arrives on reconnect…
 EOF
   ;;
 qa-1)
   cat <<EOF
-${C}>_${R} ${B}Codex${R} ${D}(fake)${R} · session ${B}qa-1${R} · QA · gpt-6-astra · high
+  ${D}thread${R}   QA lane setup
+  ${D}model${R}    gpt-6-astra · effort high
+  ${D}context${R}  role clause: QA (Implementer → QA, delivered by the hub)
 
-${D}•${R} Role changed: Implementer → QA ${D}(clause delivered by the hub)${R}
-${D}•${R} Lanes: headless Neovim (nvim_input + screenstring), tmux capture-pane
-${D}•${R} Waiting for a QA request.
+  ${D}•${R} Lanes: headless Neovim (nvim_input + screenstring), tmux capture-pane, ttyd
+  ${D}•${R} Waiting for a QA request.
 
 ${C}›${R} ${D}(idle)${R}
 EOF
@@ -75,6 +88,35 @@ EOF
   printf '%s fake session %s (%s · %s · %s)\n' "$B" "$name" "$role" "$harness" "$model$R"
   ;;
 esac
+
+if [[ -n "$approval" ]]; then
+  cat <<EOF
+
+  ${Y}▲ approval needed${R}  run command:  ${B}${approval}${R}
+                     [y] allow once   [a] always for this session   [n] deny
+
+  ${D}You are inside the harness's own TUI. The answer is given here; the hub only shows the
+  state "waiting for approval" in the items panel, the sessions panel and the inbox.${R}
+EOF
+  while true; do
+    IFS= read -r -s -n 1 key || break
+    case "$key" in
+    y | Y | a | A)
+      [[ "$key" == [aA] ]] && how="always for this session" || how="once"
+      printf '\n  %s✓ allowed %s:%s running %s …\n' "$G" "$how" "$R" "$approval"
+      printf '\033]777;cland;approval=allow\033\\'
+      sleep 1
+      printf '  %s✓ 7 passed (simulated)%s\n' "$G" "$R"
+      break
+      ;;
+    n | N)
+      printf '\n  %s✗ denied:%s tell %s what to do differently\n' "$Y" "$R" "$harness"
+      printf '\033]777;cland;approval=deny\033\\'
+      break
+      ;;
+    esac
+  done
+fi
 
 sh_name="${SHELL##*/}"
 printf '\n%s── PROTOTYPE stand-in: the screen above is canned; below is %s (no rc files), not %s ──%s\n\n' \

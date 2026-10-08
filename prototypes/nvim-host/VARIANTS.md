@@ -1,3 +1,5 @@
+> **Superseded** by [WORKBENCH.md](WORKBENCH.md): the second round builds the design canvas the human approved instead of these four variants.
+
 # Chat screen variants (ticket #15, PROTOTYPE)
 
 A throwaway UI prototype for [#15 "Prototype: the chat screen with topics"](https://github.com/Kealman/cland-v0/issues/15). It is built on the engine prototype of [#11](https://github.com/Kealman/cland-v0/issues/11): Neovim 0.12.5 as the host, ADR 0005. Never merge it.
