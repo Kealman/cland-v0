@@ -1,0 +1,132 @@
+// The items panel, the item view and the board (#36) against a real hub: item files written by hand into
+// `.cland/tasks`, claims taken through `cland task claim`, the hub's index and its `task` events. The panel
+// follows a hand edit within a second; `e` opens the file and a save re-indexes it.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { cland, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { nvimOrSkip, startClient } from './harness.ts';
+
+const nvim = await nvimOrSkip();
+const skip = 'skip' in nvim ? nvim.skip : false;
+const bin = 'bin' in nvim ? nvim.bin : '';
+
+const AT = '2026-10-08T10:00:00.000Z';
+
+/** An item file as the tracker writes it (spec 4.6): frontmatter, the body, the comments. */
+function itemFile(id: string, title: string, fm: Record<string, string> = {}, rest = ''): string {
+  const fields: Record<string, string> = { id, kind: 'task', title, state: 'open', labels: '[]', assignee: 'null', parent: 'null', blocked_by: '[]', topic: 'null', branch: 'null', created: AT, updated: AT, ...fm };
+  return `---\n${Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n')}\n---\n${rest ? `\n${rest}\n` : ''}`;
+}
+
+const verdictComment = (who: string, role: string, kind: string, result: string, run: string, min: number, text: string) =>
+  `### ${who} · 2026-10-08T10:${String(min).padStart(2, '0')}:00.000Z\n\nverdict: ${kind}\nresult: ${result}\nby: ${who} [${role}]\nrun: ${run}\n\n${text}\n`;
+
+const FIXTURE: Record<string, string> = {
+  'T-1-workbench-shell.md': itemFile('T-1', 'Workbench shell', { kind: 'epic' }),
+  'T-2-items-panel.md': itemFile('T-2', 'Items panel', { parent: 'T-1', branch: 't/2-items-panel' }),
+  'T-3-board-view.md': itemFile(
+    'T-3',
+    'Board view',
+    { parent: 'T-1' },
+    `Six columns derived from the item.\n\n## Comments\n\n### impl-1 · 2026-10-08T10:02:00.000Z\n\nReady for review.\n\n${verdictComment('rev-1', 'reviewer', 'review', 'not clear', 'r-2', 5, 'The qa column is missing.')}`,
+  ),
+  'T-4-item-view.md': itemFile('T-4', 'Item view', { parent: 'T-1', state: 'closed' }, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-3', 4, 'Fine.')}\n${verdictComment('qa-1', 'qa', 'qa', 'clear', 'q-1', 6, 'Checked.')}`),
+  'T-5-slice-2-map.md': itemFile('T-5', 'Slice 2 map', { kind: 'map' }),
+  'T-6-which-store.md': itemFile('T-6', 'Which store', { kind: 'question', parent: 'T-5', state: 'closed' }),
+  'T-7-transport.md': itemFile('T-7', 'Transport', { kind: 'question', parent: 'T-5' }),
+  'T-8-auth-scheme.md': itemFile('T-8', 'Auth scheme', { kind: 'question', parent: 'T-5', blocked_by: '[T-7]' }),
+  'T-9-review-passed.md': itemFile('T-9', 'Review passed', {}, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-4', 7, 'Good.')}`),
+};
+
+const leftOf = (text: string): string =>
+  text
+    .split('\n')
+    .map((l) => {
+      const i = l.indexOf('│');
+      return i < 0 ? '' : l.slice(0, i);
+    })
+    .join('\n');
+const statusLine = (s: string) => s.split('\n')[43] ?? '';
+
+test('against a real hub: the tree, the map grouping, the item view and the board from hand-written item files; a hand edit shows within a second; e edits the file and a save re-indexes', { skip }, async (t) => {
+  const root = await tempProject(t);
+  const tasks = join(root, '.cland', 'tasks');
+  await mkdir(tasks, { recursive: true });
+  for (const [name, text] of Object.entries(FIXTURE)) await writeFile(join(tasks, name), text);
+  await startDaemon(t, root);
+  const claimed = await cland(root, 'task', 'claim', 'T-2', '--as', 'impl-1', '--role', 'implementer');
+  assert.equal(claimed.code, 0, claimed.stderr);
+
+  const c = await startClient(t, bin, root);
+  await c.waitScreen((s) => s.includes('General'), 'the workbench');
+  await c.input('<Esc><Space>i');
+  let s = await c.waitScreen((x) => x.includes('T-9 Review passed') && /T-2 Items panel +impl-1/.test(x), 'the items panel with the claim');
+  const panel = leftOf(s);
+  assert.match(panel, /^ ○ T-1 Workbench shell +1\/3 $/m);
+  assert.match(panel, /^ {3}◐ T-2 Items panel +impl-1 $/m);
+  assert.match(panel, /^ {3}◆ T-3 Board view +$/m, 'a not-clear review: needs you');
+  assert.match(panel, /^ {3}● T-4 Item view +$/m);
+  assert.match(panel, /^ {3}◌ T-8 Auth scheme +$/m);
+
+  // the map grouping
+  await c.input('5');
+  s = await c.waitScreen((x) => x.includes('DECIDED · 1'), 'the map filter');
+  const map = leftOf(s)
+    .split('\n')
+    .map((l) => l.trim().replace(/\s+/g, ' '))
+    .filter((l) => /^[○●◐◑◆◌] T-\d+ |^[A-Z][A-Z -]+ · \d+$/.test(l));
+  assert.deepEqual(map, ['○ T-5 Slice 2 map 1/3', 'DECIDED · 1', '● T-6 Which store', 'FRONTIER · 1', '○ T-7 Transport', 'IN WORK BY SUB-AGENTS · 0', 'BLOCKED · 1', '◌ T-8 Auth scheme']);
+  await c.input('1');
+
+  // the item view: the file through task.view
+  await c.input(':Cland view item T-3<CR>');
+  s = await c.waitScreen((x) => x.includes('COMMENTS · 2'), 'the item view of T-3');
+  assert.match(s, /◆ T-3 · open · needs you · task/);
+  assert.match(s, /parent {5}T-1 Workbench shell/);
+  assert.match(s, /Six columns derived from the item\./);
+  assert.match(s, /✗ review not clear · by rev-1 \[reviewer\] · run r-2/);
+  assert.match(s, /Ready for review\./);
+  assert.match(s, /\.cland\/tasks\/T-3-board-view\.md/);
+
+  // the board
+  await c.input('<Space>b');
+  s = await c.waitScreen((x) => x.includes('BACKLOG') && statusLine(x).includes('Board'), 'the board');
+  const rows = s.split('\n');
+  const at = rows.findIndex((r) => r.includes('BACKLOG'));
+  const ids: string[][] = [[], [], [], [], [], []];
+  for (const r of rows.slice(at + 1)) {
+    const cells = r.split('│').slice(1);
+    if (cells.length < 6) break;
+    cells.slice(0, 6).forEach((cell, i) => {
+      const m = /^\s*(T-\d+)/.exec(cell);
+      if (m) ids[i]?.push(m[1] ?? '');
+    });
+  }
+  assert.deepEqual(ids, [['T-7', 'T-8'], [], ['T-2'], ['T-3'], ['T-9'], ['T-4', 'T-6']]);
+
+  // a file written by hand shows in the panel within a second
+  await c.input('<Space>b');
+  await c.waitScreen((x) => !x.includes('BACKLOG'), 'the board closed');
+  const written = Date.now();
+  await writeFile(join(tasks, 'T-10-born-by-hand.md'), itemFile('T-10', 'Born by hand', { parent: 'T-5', kind: 'question' }));
+  await c.waitScreen((x) => /^ {3}○ T-10 Born by hand +$/m.test(leftOf(x)), 'T-10 in the panel', 3000);
+  const took = Date.now() - written;
+  assert.ok(took < 1000, `the panel followed the file in ${took} ms`);
+
+  // e opens the file in a normal buffer; a save re-indexes it
+  await c.input(':Cland view item T-7<CR>');
+  await c.waitScreen((x) => statusLine(x).includes('T-7 · item') && x.includes('COMMENTS · 0'), 'the item view of T-7');
+  await c.input('e');
+  await c.waitScreen((x) => statusLine(x).includes('editing .cland/tasks/T-7-transport.md'), 'the file open');
+  assert.equal(await c.lua<string>('return vim.fn.expand("%:t")'), 'T-7-transport.md');
+  assert.equal(await c.lua<string>('return vim.bo.buftype'), '');
+  await c.input(':%s/^title: Transport$/title: Transport over QUIC/<CR>:w<CR>');
+  const saved = Date.now();
+  await c.waitScreen((x) => /^ {3}○ T-7 Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel', 3000);
+  const took2 = Date.now() - saved;
+  assert.ok(took2 < 1000, `the panel followed the save in ${took2} ms`);
+  const list = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<{ id: string; title: string }> };
+  assert.equal(list.items.find((i) => i.id === 'T-7')?.title, 'Transport over QUIC', 'the hub re-indexed the save');
+});
