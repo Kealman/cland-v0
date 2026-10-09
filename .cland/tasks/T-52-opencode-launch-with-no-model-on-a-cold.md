@@ -4,15 +4,15 @@ kind: task
 title: OpenCode launch with no model on a cold catalog picks the first listed free model before the Zen models arrive
 state: open
 labels:
-  - needs-triage
   - slice-1
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T08:04:42.494Z
-updated: 2026-10-09T08:04:42.494Z
+updated: 2026-10-09T08:35:16.619Z
 ---
 
 ## Parent

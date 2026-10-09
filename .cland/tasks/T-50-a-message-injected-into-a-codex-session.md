@@ -4,15 +4,15 @@ kind: task
 title: A message injected into a Codex session in the last second of its turn is marked injected but never acted on
 state: open
 labels:
-  - needs-triage
   - slice-1
-assignee: null
+  - ready-for-agent
+assignee: impl-48
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-9
+branch: t/T-50-steer-lost-at-turn-end
 created: 2026-10-09T07:04:04.157Z
-updated: 2026-10-09T07:04:04.157Z
+updated: 2026-10-09T08:27:25.720Z
 ---
 
 ## Parent
