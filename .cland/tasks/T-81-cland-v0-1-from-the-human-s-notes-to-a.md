@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T19:50:56.654Z
+updated: 2026-10-09T20:03:22.302Z
 ---
 
 ## Destination
@@ -48,6 +48,9 @@ updated: 2026-10-09T19:50:56.654Z
 - Structured acceptance criteria (T-93, .cland/tasks/T-93-structured-acceptance-criteria.md): criteria stay in the item file as a structured list with stable ids and marks (done by the implementer, verified by a reviewer or QA, failed by a verifier); the merge gate requires every criterion done and verified; the item view and panel rows show the marks.
 - Visibility levels: attention layers across the workbench (T-94, .cland/tasks/T-94-visibility-levels-attention-layers.md): four layers (now, watch, background, archive) with a default placement table for messages, inbox events, sessions, items and artifacts; surfaces show now and watch, fold background and reach archive on request; the human pins or mutes, agents raise only by addressing or asking.
 - Artifacts as a workspace: browser, folders, the human's own artifacts (T-95, .cland/tasks/T-95-artifacts-as-a-workspace-browser-folders.md): an artifact is a file or a folder with an entry file; the human's and Aides' artifacts never auto-archive or delete, agents' follow their topic unless kept; a centre "Artifacts" tree with sections mine, this topic, kept, by role and archived; keep, move and archive tools and a cland artifact CLI.
+- Where the Coordinator's time went in v0: a journal analysis (T-82, .cland/tasks/T-82-where-the-coordinator-s-time-went-in-v0.md; branch research/coordinator-load, docs/research/coordinator-load.md): 740 deliveries landed on one Coordinator, 58% progress notes and acknowledgements, 17% verdicts, 12% ready reports, 7% questions; 54% of message turns did nothing and about 80 turns were pure relays; the queue stayed short outside the hub incidents and waiting was bound to Claude Code's turn boundary; state was polled every 10 s; an item lead per item would take up to 87% of deliveries off the Coordinator, batching progress notes would stop 59% of turn starts, subscriptions would replace the relays and the polls.
+- What the harnesses offer for teams and sub-agents, and what the hub can see (T-83, .cland/tasks/T-83-what-the-harnesses-offer-for-teams-and.md; branch research/harness-teams, docs/research/harness-teams.md): all three harnesses delegate inside one session and never across harnesses; the hub sees Claude Code sub-agents only through hooks and mods, sees every Codex sub-agent thread but cannot drive it, and sees and drives OpenCode children; delegation costs the parent a turn; the research recommends that the hub's hierarchy end at the session, with in-harness sub-agents counted as part of that session's work.
+- Hierarchical multi-agent orchestration: prior art and failure modes (T-84, .cland/tasks/T-84-hierarchical-multi-agent-orchestration.md; branch research/hierarchy-prior-art, docs/research/hierarchy-prior-art.md): every framework is a tree with one top and most stop at one supervising level by design; results come up summarised with documented loss; a question for the human goes to the top; overloaded supervisors and their remedies match the organisational literature; cost and loops are capped in code; the closest prior art to the hub is AG2 v1's hub-and-spoke with per-agent caps on delegation depth and inbox size; three candidate shapes (flat, two-level, N-level) trade the same costs.
 
 ## Not yet specified
 
