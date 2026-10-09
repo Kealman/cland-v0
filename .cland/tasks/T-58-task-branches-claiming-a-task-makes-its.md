@@ -2,7 +2,7 @@
 id: T-58
 kind: task
 title: "task branches: claiming a task makes its branch from dev in its own worktree, and its Implementer launches there"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-16
 branch: t/T-58-task-branches-and-launch-with-item
 created: 2026-10-09T08:34:54.694Z
-updated: 2026-10-09T11:37:48.210Z
+updated: 2026-10-09T12:09:33.356Z
 ---
 
 ## Parent
@@ -168,3 +168,79 @@ Both requested original probes now refuse deletion. A further read-only probe he
 Standards: no documented-standard violations in this delta. Spec: the medium reservation finding remains. Diff check passed. A stable delta typecheck was not obtained: the live worktree was being merged and had conflict markers in dispatch.ts during that attempt (outside the requested delta).
 
 Evidence: A-9, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9-t-58-delta-review-rev-6-58-3-at-3b4b934.md.
+
+### rev-6 · 2026-10-09T11:45:31.857Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-58-4
+commit: 02943dc19ecddb345896bcf83e7a832e81d4b422
+
+medium — hub/src/hub/dispatch.ts:431 (also :642): session.launch's resumed worktree link/claim and worktree.list/prune's resumed reads/checks bypass T-67's timer; later measures only answer delivery, so slow synchronous work after Git is invisible to slow-request and status counters. Thread the resumed timing callback through these worktree operations.
+
+An in-memory probe of the actual Dispatcher advanced guard.now by 400 ms in the launch's link, 400 ms in its claim and 400 ms in the listing's resumed view; all requests succeeded with slow-request=[] and requests.slow=0. The reservation/failure/prune probe now passes, closing rev-6-58-3. Both original stale-listing probes also refuse deletion. Merge resolutions retain QA/worktree CLI dispatch and redelivery/worktree notices. New worktree paths use async Git and async territory locking.
+
+TypeScript noEmit and diff check pass. No suite run; no filesystem changes by the reviewer. Existing session spawnSync('ps') is the Coordinator's T-70 follow-up and is not a T-58 blocker.
+
+Evidence: A-11, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-11-t-58-delta-review-rev-6-58-4-at-02943dc.md.
+
+### rev-6 · 2026-10-09T11:50:41.548Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-58-5
+commit: cbce35e33fa9cf37b4d9c8a80157031c3360fd9f
+
+No high, medium or low findings in the requested delta. Standards: clear. Spec: clear; the timing gap from rev-6-58-4 is closed.
+
+The actual Dispatcher three-stretch probe now logs exactly three slow-request records: branch link and claim under session.launch, and resumed view under worktree.list, each 400 ms with phase=resumed and the correct client. hub.status reports requests.slow=3; requests succeed. The guard callback also reaches prunable and prune's synchronous validation under the territory lock. The atomic claim check/write, reservation ownership and prune safety checks are preserved.
+
+TypeScript noEmit and git diff --check pass. No suite run, as requested; read-only in-memory probe, no filesystem changes. Existing synchronous session pid probes remain the accepted T-70 follow-up.
+
+Evidence: A-15, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15-t-58-delta-review-rev-6-58-5-at-cbce35e.md.
+
+### qa-12 · 2026-10-09T11:59:57.564Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-58-2
+commit: cbce35e33fa9cf37b4d9c8a80157031c3360fd9f
+
+Verified an isolated git archive of cbce35e33fa9cf37b4d9c8a80157031c3360fd9f with explicit supported Node v24.21.0 and pinned Neovim v0.12.5. No product source fixes by QA.
+
+Ran:
+- cbce35e: npm run typecheck passed.
+- cbce35e: npm test under the shared machine lock finished hub 340/341, zero skips. Both new resumed-timing tests passed. The one failure stopped npm before Neovim; original failure preserved, not represented as a green full run.
+- cbce35e: node --test hub/test/freshness.test.ts alone passed 5/5, zero skips.
+- cbce35e: npm run test:nvim under the shared machine lock passed 91/91, zero skips. The headless harness drives nvim_input and reads screenstring; launcher item integration passed.
+- Before the requested target update, 02943dc typecheck passed; targeted task-worktrees, territory-cli, hub/worktrees and request-guard tests passed 27/27; its locked full suite passed hub 339/339 and Neovim 91/91, zero skips.
+- Independent CLI checks on 02943dc carried forward as explicitly directed by the Coordinator, since cbce35e adds timing wrappers/tests: scratch local territory initialization; origin/HEAD=origin/dev; .cland/scratch ignored; task branch at advanced dev tip; repeated claim reuse; epic/closed claims with no worktree; task list/view and worktree list; missing taskBase doctor failure; interactive prune displays the unmerged commit, n preserves it, session-identity --yes is refused, and y removes it after closure.
+- Required reopen race: while cland worktree prune waited at [y/N], another CLI reopened the closed item. Answering y exited 1 with 'T-1 is open: prune removes only the worktrees of closed items'. Verified branch, worktree, committed file and open item state survived; reclosed and pruned successfully afterward.
+- Scratch hubs/spokes stopped; PID and socket cleanup verified. Shared locks released. Evidence copy hash verified before removing QA exports/staging; working tree clean. Real Codex/Claude launches were not repeated in this refresh.
+
+Findings by severity:
+- High: none.
+- Medium / known outside T-58: hub/test/freshness.test.ts:164 in the cbce35e full run expected verdict.current undefined but got true. Exact failure tracked in T-72; Coordinator confirmed the same T-67 baseline failure is not a T-58 finding. The isolated file passed 5/5. This is the remaining qualification on the full-suite result.
+- Low / test cleanup observation: ps -axo pid,ppid,command found one orphan hook bridge from the completed 02943dc suite and two from cbce35e. Sent SIGTERM only to those exact QA export processes and verified none remained. This repeats the earlier cleanup observation.
+
+Durable evidence: A-17, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17-t-58-qa-cbce35e-suite-logs-t-72-failure-manual-prune-race.zip. Includes original full failure, isolated freshness and Neovim logs, old-target logs, runtime/lock records, manual driver/transcripts and cleanup evidence.
+
+### coord · 2026-10-09T12:09:33.356Z
+
+Merged into main as 97683b8 (`git merge --no-ff`, by the Coordinator) at 12:00Z. Suite on main 97683b8: typecheck clean, hub 341/341, Neovim 91/91, 0 skipped.
+Verdicts:
+- Review: rev-cc-58-1, then rev-6-58-2, rev-6-58-3 and rev-6-58-4, all not clear. They covered synchronous git on request paths, a prune that trusted a stale listing, a launch-reservation race, and untimed stretches after awaits. rev-6-58-5 is clear on cbce35e.
+- QA: qa-12-58-1 clear on e2236ee; qa-12-58-2 clear on cbce35e. The one hub failure in the full run was T-72's known timing test.
+What it does:
+- The first claim of an open task creates `t/T-<n>-<slug>` at the task base, plus its worktree.
+- `session.launch` with an item launches in that worktree and claims the item for the session.
+- A Claude Code session launched with an item has worktree creation refused.
+- `cland worktree list` and `cland worktree prune` exist; prune is for the human only and revalidates under the lock.
+- The territory's `cland.taskBase` setting picks the base, and `cland init` sets `origin/HEAD` to dev.
+- Every hub-side territory call is asynchronous, and each stretch after an await is timed.
+Real runs are recorded above: a Codex Implementer committed on its task branch, and a Claude Code Implementer had its worktree creation refused.
+Next on this repository: the human runs `cland worktree prune` for the merged items' worktrees after the restart that carries this. Pre-existing synchronous `ps` probes are tracked on T-70.
+Implementer: impl-58 (Claude Code), launched 10:13Z. GitHub mirror #53.

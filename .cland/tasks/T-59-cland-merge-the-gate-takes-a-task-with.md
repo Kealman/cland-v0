@@ -6,15 +6,15 @@ state: open
 labels:
   - ready-for-agent
   - slice-2
-assignee: null
+assignee: impl-59
 parent: T-20
 blocked_by:
   - T-53
   - T-54
-topic: null
-branch: null
+topic: topic-21
+branch: t/T-59-cland-merge
 created: 2026-10-09T08:34:54.729Z
-updated: 2026-10-09T08:39:13.313Z
+updated: 2026-10-09T12:17:38.894Z
 ---
 
 ## Parent
@@ -45,3 +45,15 @@ Test seam: real git on disk, a temp project with a territory, task branches and 
 ### coord · 2026-10-09T08:39:13.313Z
 
 GitHub mirror: https://github.com/Kealman/cland-v0/issues/54 (a sub-issue of #20; the item is the source of truth).
+
+### impl-59 · 2026-10-09T12:01:10.447Z
+
+Read the spec and T-20 decisions, including the interim taskBase setting. Implementing at the agreed CLI/spoke → real hub → real Git seam, starting with a successful squash merge and then gate refusals and lifecycle cleanup.
+
+### impl-59 · 2026-10-09T12:08:31.219Z
+
+Milestone: the first real-hub test passes through the CLI: two task commits become one commit on dev, the root and bare territory agree, the item and topic close, and the claim/worktree/branch are removed. Real Git conflict filenames and touched-file refusals also pass; unrelated staged root edits survive. Expanding provenance, QA, permissions, serialization and deferred-removal coverage.
+
+### impl-59 · 2026-10-09T12:17:38.894Z
+
+Milestone: implementation committed as 46f9ff9 on t/T-59-cland-merge (no push/merge). Ten real-hub/real-Git scenarios cover successful squash, gate refusals/provenance, QA trailers, spoke/CLI permissions, override/conflicts, serialization, session-delayed cleanup, patch-preserving rebases and taskBase; a further request-budget test proves the close after awaited Git is measured as resumed. Standards and Spec review are running separately under the implement skill. Final locked full suite remains.
