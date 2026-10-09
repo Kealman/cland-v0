@@ -8,6 +8,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, connectWsUi, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
+import { Sessions } from '../src/adapters/sessions.ts';
+import { ProcessTable } from '../src/adapters/processes.ts';
+import type { HarnessAdapter } from '../src/adapters/contract.ts';
 import { BUDGET_MS } from '../src/hub/budget.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import type { Git } from '../src/tracker/verdict-git.ts';
@@ -131,3 +134,60 @@ test('waiting for async Git is a slow-answer with its own counter, without a slo
   assert.equal(status.requests?.slowAnswers, 1);
   assert.equal(status.requests?.lastSlowAnswer?.tool, 'task.comment');
 });
+
+
+for (const operation of ['launch', 'item-launch', 'stop', 'resume', 'relaunch'] as const) {
+  test(`session ${operation}: a 400 ms synchronous publication after an adapter await is timed once as resumed`, async (t) => {
+    const root = await tempProject(t);
+    const records: Array<Record<string, unknown>> = [];
+    const tracker = operation === 'item-launch' ? new Tracker({ root, db: join(root, '.cland', 'hub.db') }) : undefined;
+    if (tracker) { tracker.start(); t.after(() => tracker.stop()); }
+    const hub = await startHub({ log: (r) => records.push(r), ...(tracker ? { tracker } : {}) });
+    t.after(() => hub.close());
+    const table = new ProcessTable();
+    const sessions = new Sessions({ core: hub.core, table, root });
+    t.after(() => { sessions.close(); table.close(); });
+    const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
+    const adapter: HarnessAdapter = {
+      harness: 'test',
+      capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+      spawn: async (r) => {
+        await wait();
+        return { name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, pidStarted: null, harnessId: null, sessionId: 'test-session', harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' };
+      },
+      attachCommand: () => 'attach-test',
+      watch: () => {},
+      inject: async () => {},
+      confirm: () => {},
+      interpret: () => ({}),
+      stop: async () => { await wait(); },
+      resume: async (p) => { await wait(); return { found: true, process: { ...p, status: 'running' }, state: 'idle' }; },
+      close: () => {},
+    };
+    sessions.register(adapter);
+    hub.dispatcher.useSessions(sessions);
+    const ui = await connectWsUi(t, hub, 'lifecycle-ui');
+    const launching = operation === 'launch' || operation === 'item-launch';
+    if (operation === 'item-launch') assert.equal((await ui.request({ type: 'task.create', title: 'Launched item' })).ok, true);
+    const launch = { type: 'session.launch', name: 'test', harness: 'test', ...(operation === 'item-launch' ? { item: 'T-1', role: 'implementer' } : {}) };
+    if (!launching) assert.equal((await ui.request(launch)).ok, true);
+    records.length = 0;
+    let publications = 0;
+    const unsubscribe = hub.core.subscribe((event) => {
+      if (event.type !== 'session.process') return;
+      publications++;
+      if (publications !== 1) return;
+      const until = performance.now() + 400;
+      while (performance.now() < until) { /* one deliberately slow synchronous subscriber */ }
+    });
+    t.after(unsubscribe);
+    const type = launching ? 'session.launch' : operation === 'stop' ? 'session.stop' : 'session.resume';
+    const result = await ui.request(launching ? launch : { type, session: 'test', relaunch: operation === 'relaunch' });
+    assert.equal(result.ok, true, result.error);
+    assert.ok(publications >= 1);
+    const slow = records.filter((r) => r.event === 'slow-request');
+    assert.deepEqual(slow.map((r) => [r.tool, r.client, r.phase]), [[type, 'lifecycle-ui', 'resumed']], JSON.stringify(slow));
+    assert.ok((slow[0]?.ms as number) >= 400);
+    assert.equal(records.filter((r) => r.event === 'slow-answer').length, 0);
+  });
+}
