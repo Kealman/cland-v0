@@ -4,7 +4,7 @@
 // Mandatory: spawn, attachCommand, inject (confirming `injected`), a state stream, stop, resume.
 // Optional: history, usage, setModel, approval relay — each declared in the capability table and never
 // emulated when declared `none`. Every state signal is published with its reliability too.
-import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 
 /** How far a signal or a capability can be trusted. `none`: the adapter does not have it, and nothing pretends it does. */
 export type Reliability = 'reliable' | 'heuristic' | 'none';
@@ -78,6 +78,8 @@ export type AdapterHost = {
   signal: (sessionId: string, signal: StateSignal) => void;
   /** A turn ended in error, with the hub messages that fed it (including steers), when known. */
   turnFailed?: (sessionId: string, error: string, messages: string[]) => void;
+  /** Sender attribution learned after the failure notice (a pending admission just settled). */
+  notifyFailureSenders?: (sessionId: string, error: string, messages: string[]) => void;
   /** The adapter learnt the session's pid after the launch (its supervisor started it late). */
   recordPid: (sessionId: string, pid: number) => void;
   /** The adapter's own connection to the session came back (a reconnect): what waits for an inject is retried now,
@@ -88,7 +90,7 @@ export type AdapterHost = {
 };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { state?: SessionState; model?: string; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string };
+export type Interpretation = { state?: SessionState; model?: string; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };
@@ -114,11 +116,11 @@ export interface HarnessAdapter {
   /** A confirmation the harness sent through the hub (the mod's `injected`): settles a pending inject. */
   confirm(process: HarnessProcess, messageId: string): void;
   /** What a signal posted from inside the session (`cland hook <event>`, with the harness's payload) means. */
-  interpret(event: string, payload: Record<string, unknown>): Interpretation;
+  interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess): Interpretation;
   /** An in-session bridge connected (the Claude Code mod): inject frames go to `send`. Returns its disconnect. */
   bridge?(process: HarnessProcess, send: (frame: InjectFrame) => boolean): () => void;
-  /** The latest usage the harness reported (only where `capabilities.usage` is not `none`). */
-  usage?(process: HarnessProcess): Record<string, unknown> | null;
+  /** Running totals and latest turn/step (only where `capabilities.usage` is not `none`). */
+  usage?(process: HarnessProcess): SessionUsage | null;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
   /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
   renamed?(process: HarnessProcess, from: string): void;

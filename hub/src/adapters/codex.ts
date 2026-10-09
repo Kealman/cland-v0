@@ -24,7 +24,8 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { turnError } from './turn-error.ts';
-import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import { codexCounts } from './usage.ts';
 import { VERSION } from '../version.ts';
 import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
@@ -165,7 +166,8 @@ export class CodexAdapter implements HarnessAdapter {
   /** Watched session ids: their pids are checked and their connections kept. */
   readonly #watched = new Set<string>();
   /** Inputs being admitted, then associated with the actual turn id (idle can precede completion). */
-  readonly #pendingInputs = new Map<string, Set<string>>();
+  readonly #admissions = new Map<string, number>();
+  readonly #completedTurns = new Map<string, string | null>();
   readonly #turnInputs = new Map<string, Set<string>>();
   readonly #earlyFailures = new Map<string, string[]>();
   #timer: NodeJS.Timeout | null = null;
@@ -261,7 +263,6 @@ export class CodexAdapter implements HarnessAdapter {
           const id = (params.turn as { id?: unknown } | undefined)?.id;
           if (mine(params) && typeof id === 'string') {
             live.turnId = id;
-            this.#admitInputs(live.p.sessionId, id);
           }
           return;
         }
@@ -271,8 +272,9 @@ export class CodexAdapter implements HarnessAdapter {
           const key = `${live.p.sessionId}:${turn?.id ?? live.turnId}`;
           const messages = [...(this.#turnInputs.get(key) ?? [])];
           this.#turnInputs.delete(key);
-          if (turn?.error || turn?.status === 'failed') {
-            const error = turnError(turn.error);
+          const error = turn?.error || turn?.status === 'failed' ? turnError(turn?.error) : null;
+          if (this.#admissions.has(live.p.sessionId)) this.#completedTurns.set(key, error);
+          if (error) {
             if (this.#watched.has(live.p.sessionId)) this.#host.turnFailed?.(live.p.sessionId, error, messages);
             else this.#earlyFailures.set(live.p.sessionId, [...(this.#earlyFailures.get(live.p.sessionId) ?? []), error]);
           }
@@ -392,17 +394,33 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- inject
 
-  #admitInputs(sessionId: string, turnId: string): void {
-    const pending = this.#pendingInputs.get(sessionId);
-    if (!pending?.size) return;
+  #admitInput(sessionId: string, turnId: string, messageId: string): void {
     const key = `${sessionId}:${turnId}`;
+    if (this.#completedTurns.has(key)) {
+      const error = this.#completedTurns.get(key);
+      if (error) this.#host.notifyFailureSenders?.(sessionId, error, [messageId]);
+      return;
+    }
     const inputs = this.#turnInputs.get(key) ?? new Set<string>();
-    for (const id of pending) inputs.add(id);
+    inputs.add(messageId);
     this.#turnInputs.set(key, inputs);
-    this.#pendingInputs.delete(sessionId);
   }
 
   async inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
+    this.#admissions.set(p.sessionId, (this.#admissions.get(p.sessionId) ?? 0) + 1);
+    try {
+      await this.#inject(p, message, topic);
+    } finally {
+      const remaining = (this.#admissions.get(p.sessionId) ?? 1) - 1;
+      if (remaining > 0) this.#admissions.set(p.sessionId, remaining);
+      else {
+        this.#admissions.delete(p.sessionId);
+        for (const key of this.#completedTurns.keys()) if (key.startsWith(`${p.sessionId}:`)) this.#completedTurns.delete(key);
+      }
+    }
+  }
+
+  async #inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
     const live = this.#live.get(p.sessionId);
     const client = live?.client;
     if (!live || !client || client.closed) throw new Error('the hub is not connected to this session\'s app-server');
@@ -412,18 +430,14 @@ export class CodexAdapter implements HarnessAdapter {
     // into the active turn
     for (let attempt = 0; attempt < 2 && live.turnId; attempt++) {
       const expected = live.turnId;
-      const key = `${p.sessionId}:${expected}`;
-      const inputs = this.#turnInputs.get(key) ?? new Set<string>();
-      this.#turnInputs.set(key, inputs);
-      inputs.add(message.id);
       try {
         await client.request('turn/steer', { threadId, expectedTurnId: expected, input }, this.#injectTimeoutMs);
+        this.#admitInput(p.sessionId, expected, message.id);
         this.#host.log({ event: 'harness-steered', harness: this.harness, session: p.name, id: message.id, turn: expected });
         return;
       } catch (err) {
         // sent and never answered: the steer may have landed, so it is never sent again on its own
         if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/steer: ${err.message}`);
-        inputs.delete(message.id);
         if (!(err instanceof RpcError)) throw err;
         // the turn ended (or another began) in between: try again on what is current now; a turn id the
         // app-server refuses and nothing replaced is stale, and the thread takes a new turn below
@@ -433,17 +447,13 @@ export class CodexAdapter implements HarnessAdapter {
     // an active turn whose id the hub missed (it reconnected mid-turn): `turn/start` steers it
     const params = live.state === 'idle' || live.state === 'unknown' ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input };
     let r: { turn?: { id?: string } };
-    const pending = this.#pendingInputs.get(p.sessionId) ?? new Set<string>();
-    pending.add(message.id);
-    this.#pendingInputs.set(p.sessionId, pending);
     try {
       r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
     } catch (err) {
       if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/start: ${err.message}`);
-      pending.delete(message.id);
       throw err;
     }
-    if (typeof r.turn?.id === 'string') this.#admitInputs(p.sessionId, r.turn.id);
+    if (typeof r.turn?.id === 'string') this.#admitInput(p.sessionId, r.turn.id, message.id);
     if (typeof r.turn?.id === 'string' && live.state !== 'idle') live.turnId ??= r.turn.id;
   }
 
@@ -455,10 +465,18 @@ export class CodexAdapter implements HarnessAdapter {
     return {};
   }
 
-  usage(p: HarnessProcess): Record<string, unknown> | null {
+  usage(p: HarnessProcess): SessionUsage | null {
     const live = this.#live.get(p.sessionId);
     if (!live || (!live.tokens && !live.rateLimits)) return null;
-    return { ...(p.model ? { model: p.model } : {}), ...(live.tokens ? { tokens: live.tokens } : {}), ...(live.rateLimits ? { rateLimits: live.rateLimits } : {}) };
+    const total = codexCounts(live.tokens?.total);
+    const last = codexCounts(live.tokens?.last);
+    return {
+      ...(p.model ? { model: p.model } : {}),
+      ...(total ? { total } : {}),
+      ...(last ? { last } : {}),
+      ...(live.tokens ? { tokens: live.tokens } : {}),
+      ...(live.rateLimits ? { rateLimits: live.rateLimits } : {}),
+    };
   }
 
   // ---------------------------------------------------------------- watch: liveness and the connection
@@ -482,7 +500,8 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   #unwatch(sessionId: string): void {
-    this.#pendingInputs.delete(sessionId);
+    this.#admissions.delete(sessionId);
+    for (const key of this.#completedTurns.keys()) if (key.startsWith(`${sessionId}:`)) this.#completedTurns.delete(key);
     this.#earlyFailures.delete(sessionId);
     for (const key of this.#turnInputs.keys()) if (key.startsWith(`${sessionId}:`)) this.#turnInputs.delete(key);
     this.#watched.delete(sessionId);
@@ -587,7 +606,8 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   close(): void {
-    this.#pendingInputs.clear();
+    this.#admissions.clear();
+    this.#completedTurns.clear();
     this.#turnInputs.clear();
     this.#earlyFailures.clear();
     this.#closed = true;

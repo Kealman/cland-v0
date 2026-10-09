@@ -293,8 +293,9 @@ async function appServer(args: string[]): Promise<number> {
       await callTool('send', { text: `pong: ${body}`, ...where });
     }
     t.tokens += 12;
-    const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 0, outputTokens: 2, reasoningOutputTokens: 0 };
-    toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total: { ...usage, totalTokens: t.tokens }, last: usage, modelContextWindow: 200000 } });
+    const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 6, outputTokens: 2, reasoningOutputTokens: 1 };
+    const total = { totalTokens: t.tokens, inputTokens: t.tokens / 12 * 10, cachedInputTokens: t.tokens / 12 * 6, outputTokens: t.tokens / 12 * 2, reasoningOutputTokens: t.tokens / 12 };
+    toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total, last: usage, modelContextWindow: 200000 } });
     t.turns += 1;
     save(t);
     t.turnId = null;
@@ -383,6 +384,14 @@ async function appServer(args: string[]): Promise<number> {
         if (!t?.turnId) return { error: { code: -32600, message: 'no active turn to steer' } };
         if (params.expectedTurnId !== t.turnId) return { error: { code: -32600, message: `expected turn ${String(params.expectedTurnId)}, active turn is ${t.turnId}` } };
         const text = textOf(params);
+        if (text.includes('pending steer response')) {
+          const expected = t.turnId;
+          const accepted = text.includes('accept pending steer response');
+          if (accepted) t.queue.push({ text });
+          while (t.turnId === expected) await sleep(5);
+          await sleep(50); // completion reaches the hub before this admission result
+          return accepted ? { result: { turnId: expected } } : { error: { code: -32600, message: 'the active turn ended before steering' } };
+        }
         t.queue.push({ text });
         log(`turn/steer ${t.turnId}: ${text}`);
         return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };

@@ -200,6 +200,7 @@ async function runSession(id: string): Promise<number> {
   writeJson(join(JOBS, `${id}.context.json`), { instructions, hooks: Object.fromEntries([...events].map((e) => [e, hooksOf(e).flatMap((h) => h.hooks.map((x) => x.command))])) });
 
   // the settings hooks: a shell command, the payload on stdin; `async` ones run in the background
+  let promptId: string | undefined;
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
     const background: Array<Promise<void>> = [];
     for (const entry of hooksOf(event)) {
@@ -214,7 +215,7 @@ async function runSession(id: string): Promise<number> {
             resolve();
           });
           child.on('error', () => resolve());
-          child.stdin.end(JSON.stringify({ session_id: job.sessionId, hook_event_name: event, cwd: job.cwd, ...payload }));
+          child.stdin.end(JSON.stringify({ session_id: job.sessionId, prompt_id: promptId, hook_event_name: event, cwd: job.cwd, ...payload }));
         });
         if (!h.async) await run;
         else background.push(run);
@@ -375,6 +376,7 @@ async function runSession(id: string): Promise<number> {
     }
     log(`submitted: ${next.text}`);
     const turnId = randomBytes(4).toString('hex');
+    promptId = turnId;
     const started = Date.now();
     setStatus('busy');
     await runHooks('UserPromptSubmit', { prompt: next.text });
@@ -415,13 +417,13 @@ async function runSession(id: string): Promise<number> {
       await callTool('send', { text: ran, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
       setStatus('idle');
       await runHooks('Stop', { last_assistant_message: ran });
-      await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', inputTokens: 10, outputTokens: 2 } }, (e) => ({ text: e.answer }));
+      await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', input_tokens: 10, output_tokens: 2, cache_read_input_tokens: 4, cache_creation_input_tokens: 3 } }, (e) => ({ text: e.answer }));
       continue;
     }
     await callTool('send', { text: `pong: ${body}`, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
     setStatus('idle');
     await runHooks('Stop', { last_assistant_message: `pong: ${body}` });
-    await dispatch('turn.complete', { turnId, answer: `pong: ${body}`, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', inputTokens: 10, outputTokens: 2 } }, (e) => ({ text: e.answer }));
+    await dispatch('turn.complete', { turnId, answer: `pong: ${body}`, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', input_tokens: 10, output_tokens: 2, cache_read_input_tokens: 4, cache_creation_input_tokens: 3 } }, (e) => ({ text: e.answer }));
   }
 }
 

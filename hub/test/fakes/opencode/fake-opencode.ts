@@ -108,6 +108,7 @@ async function serve(args: string[]): Promise<number> {
 
   // ---------------------------------------------------------------- events
   const streams = new Set<ServerResponse>();
+  let streamPaused = false;
   const emit = (type: string, data: Record<string, unknown>) => {
     const line = `data: ${JSON.stringify({ id: rid('evt'), created: Date.now(), type, location: { directory: process.cwd() }, data })}\n\n`;
     for (const s of streams) s.write(line);
@@ -180,8 +181,8 @@ async function serve(args: string[]): Promise<number> {
     const topic = /\btopic="([^"]+)"/.exec(text)?.[1];
     const msgId = /\bmsg_id="([^"]+)"/.exec(text)?.[1];
     await callTool('send', { text: `pong: ${body}`, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) }).catch((err: unknown) => log(`send failed: ${String(err)}`));
-    emit('session.step.ended', { sessionID: session.id, finish: 'stop', cost: 0, tokens: { input: 10, output: 2, reasoning: 0, cache: { read: 4, write: 0 } } });
-    emit('session.usage.updated', { sessionID: session.id, cost: 0, tokens: { input: 10, output: 2, reasoning: 0, cache: { read: 4, write: 0 } } });
+    emit('session.step.ended', { sessionID: session.id, finish: 'stop', cost: 0.25, tokens: { input: 10, output: 2, reasoning: 1, cache: { read: 4, write: 3 } } });
+    emit('session.usage.updated', { sessionID: session.id, cost: 0.25, tokens: { input: 10, output: 2, reasoning: 1, cache: { read: 4, write: 3 } } });
   };
 
   const execute = async (session: SessionInfo, run: Run) => {
@@ -222,7 +223,13 @@ async function serve(args: string[]): Promise<number> {
       const url = new URL(req.url ?? '/', 'http://x');
       const parts = url.pathname.split('/').filter(Boolean); // api, session, <id>, …
       const method = req.method ?? 'GET';
+      if (url.pathname === '/test/stream' && method === 'POST') {
+        streamPaused = (await readBody(req)).paused === true;
+        if (streamPaused) for (const stream of streams) stream.end();
+        return send(res, 200, { data: true });
+      }
       if (url.pathname === '/api/event' && method === 'GET') {
+        if (streamPaused) return send(res, 503, { message: 'test stream paused' });
         res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
         res.write(`data: ${JSON.stringify({ id: rid('evt'), type: 'server.connected', data: {} })}\n\n`);
         streams.add(res);

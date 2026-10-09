@@ -2,7 +2,7 @@
 id: T-44
 kind: task
 title: "cland CLI: find the hub from a worktree of the project"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-3
 branch: t/T-44-cli-hub-from-worktree
 created: 2026-10-08T19:01:49.025Z
-updated: 2026-10-09T06:38:01.354Z
+updated: 2026-10-09T06:54:35.338Z
 ---
 
 ## Parent
@@ -88,3 +88,60 @@ Totals: Standards 0 findings; Spec 2 medium findings. Both need resolution befor
 ### impl-44 · 2026-10-09T06:38:01.354Z
 
 Addressing review rev-2026-10-09-T44-1. Will preserve the nearest initialized non-worktree project when an ancestor hub runs. For override stop, discovery will record its project root; new files use that root even if probing fails, and legacy copied files with no provable root will skip lock-based signaling/socket cleanup. Adding CLI regressions for nested projects and stale copied discovery with a replacement hub using a new secret.
+
+### impl-44 · 2026-10-09T06:44:25.312Z
+
+Fixed both findings from rev-2026-10-09-T44-1. The nested initialized non-worktree child test went red by selecting the parent's running hub; projectRoot now retains the nearest .cland when it reaches that ancestor. The stale copied-discovery test went red by unlinking the replacement's socket; new discovery files now record optional absolute root, and override stop uses that root for its lock and canonical-discovery checks. Legacy files remain readable: a reachable hub supplies its root through probing, otherwise process signaling and socket cleanup are skipped. Copied discovery also cannot clean a socket after the canonical file has disappeared or names another hub. Added both CLI regressions (including long-root socket relocation, secret rotation, another running project, and legacy copies); updated discovery shape validation, daemon shape test, test harness type and README.
+
+Validation: both new regression triggers reproduced before correction; focused worktree-cli tests 4/4 pass. npm run typecheck && npm test passes once on final code: 247 hub tests + 60 Neovim tests, zero failures. git diff --check passes. Log: /tmp/cland-T-44-review-fix-tests.log. Preparing one fix commit on the existing task branch; no tracker files included.
+
+### rev-1 · 2026-10-09T06:46:19.761Z
+
+verdict: review
+result: clear
+by: rev-1 [reviewer]
+run: rev-2026-10-09-T44-2
+
+Second review of T-44: full change 33b598e451ccc5faaa014b8196038c9ad0f4afd2...44894b63736f7f832b1dfa9483bdbd2ed392d529, with fix 44894b6 inspected separately. Both prior medium findings are closed.
+
+Standards:
+- low (judgment, possible Duplicated Code): hub/test/harness.ts:236 — The harness repeats the production Discovery type, so the new optional root field is maintained twice. Consider importing/re-exporting the production type; the harness already imports project.ts. Nonblocking; no documented standard violation.
+
+Spec: no findings. The nearest separately initialized non-Git child project is preserved. Linked worktree resolution and CLI override coverage remain intact. New discovery files record an absolute root; legacy files remain readable, a live legacy copy obtains its root through probing, and an unknown root disables signaling and socket cleanup. Copied-file cleanup checks canonical discovery ownership and the actual project lock. README documents the field and compatibility. Both regression tests exercise the prior failures, including a replacement hub with a rotated secret and rootless legacy discovery.
+
+No .cland/tasks files or unrelated T-45/T-48 changes in the diff. Inspected /tmp/cland-T-44-review-fix-tests.log: both new regression tests pass, 247 hub tests and 60 Neovim tests pass, zero failures. Implementer reports typecheck passed. This review ran no tests and edited no files.
+
+Totals: Standards 1 low finding; Spec 0 findings. Nothing high or medium remains.
+
+### human · 2026-10-09T06:47:27.193Z
+
+QA T-44: a CLI write from inside the worktree
+
+### qa-1 · 2026-10-09T06:51:09.970Z
+
+verdict: qa
+result: clear
+by: qa-1 [qa]
+run: qa-2026-10-09-T44-1
+
+Checked t/T-44-cli-hub-from-worktree at 44894b63736f7f832b1dfa9483bdbd2ed392d529 against the item and Coordinator's 06:24Z scope note. No product changes; worktree remains clean.
+
+What I ran and saw:
+- task.view T-44, CLI task view T-44 --json, and CLI task list --json succeeded.
+- In the T-44 worktree, exported PATH with /Users/evgeniyivanov/.nvm/versions/node/v24.21.0/bin first, then ran npm run typecheck && npm test. Exit 0: 247/247 hub tests and 60/60 Neovim tests pass, zero skips. The project Neovim harness drives nvim_input and reads screenstring(). Log /tmp/qa-T44-node24-full.log.
+- Afterwards, node --test hub/test/worktree-cli.test.ts under Node 24: 4/4 pass. Read the coverage: internal/external linked worktrees; nested copied .cland; separately initialized child isolation; stale copied discovery preserving a replacement hub and another project (including rootless legacy files); main-only tracker writes; missing/invalid overrides; explicit hub override across hub/task/session/role/inbox/topic/import commands. Log /tmp/qa-T44-focused.log.
+- Against the real project hub (PID 8676), compared branch CLI from T-44 with main CLI from the repository root: hub status matched after normalizing elapsed uptime; task view T-44 --json, session list and inbox matched exactly. CLAND_HUB_FILE was removed for these discovery checks while retaining the session's identity.
+- From an unrelated TMPDIR directory, CLAND_HUB_FILE=/Users/evgeniyivanov/Projects/cland/v0/.cland/hub.json with the T-44 CLI returned the project's hub, PID 8676.
+- Made exactly one requested CLI write: task comment T-44 "QA T-44: a CLI write from inside the worktree". Asserted main's .cland/tasks/T-44-cland-cli-find-the-hub-from-a-worktree.md gained exactly one occurrence (line 118), while the worktree copy stayed byte-identical. git status --short is empty. No hub start/stop, topic answer or role set was run against the real project hub. Live script/evidence: /tmp/qa-T44-live.mjs and /tmp/qa-T44-live.log; task-list evidence /tmp/qa-T44-task-list.json.
+- hub/README.md:380 and :382 and docs/agents/issue-tracker.md:5 accurately describe worktree discovery, existing-hub overrides, main tracker writes and the hub-start exception.
+
+Findings by severity:
+- High: none.
+- Medium: none.
+- Low, environment observation, not T-44: the launched shell initially selected /opt/homebrew/bin/node v25.6.1, outside the declared >=24.13 <25 range. The initial full run had 244 passes and 3 failures from SQLite ExperimentalWarning text in exact stderr assertions (asks-cli and tracker); Neovim was not reached. Independent asks-cli reproduction showed that extra warning text, then passed 4/4 on Node 24.21.0; the entire supported-runtime suite passed as above. Logs /tmp/qa-T44-full.log, /tmp/qa-T44-asks-diagnostic.log and /tmp/qa-T44-node24-asks.log. The live discovery checks also passed under the initial Node 25 shell.
+
+Acceptance criteria satisfied.
+
+### coord · 2026-10-09T06:54:35.338Z
+
+Merged into main as 66f1353 (`git merge --no-ff`, by the Coordinator per the run's arrangement) at 06:52Z; on main after the merge: typecheck clean, 250 hub + 60 Neovim tests pass. Verdicts: review not clear rev-2026-10-09-T44-1 (06:36:56Z, two medium: the "no hub.json, not the project" rule leaked outside worktrees; `hub stop` through a copied override could clean another hub's socket and lock), fix 44894b6 (the discovery file records its hub's root, optional, legacy files readable; stop checks its own lock), review clear rev-2026-10-09-T44-2 (06:46:19Z); qa clear qa-2026-10-09-T44-1 (qa-1, 06:51:09Z: full suite on Node 24, focused tests, the branch's CLI from inside the worktree against the project's live hub matching the root's answers, the override from an unrelated directory, one CLI comment landing only in the main worktree's tracker file). Observation from QA, not T-44's: a hub-launched Codex session's shell resolves Homebrew's Node 25 (outside the engines range) instead of the hub's nvm Node 24, which adds SQLite ExperimentalWarning lines to stderr and fails three exact-stderr assertions; passed to T-48 (the launched session's PATH). Timeline: launched 06:20:54Z, claimed 06:23Z, implemented 06:32Z (12 min), review loop 06:34Z to 06:46Z (one fix round, 12 min), QA 06:46Z to 06:51Z, merged 06:52Z: about 31 minutes from launch to merge. Not pushed.

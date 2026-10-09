@@ -169,7 +169,11 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
 
   // the message's usage, from session.step.ended
   const h = await eventually('usage', async () => (await status(ui)).harnesses.find((x) => x.name === 'impl' && x.usage));
-  assert.deepEqual(h.usage, { model: 'opencode/fake-free', inputTokens: 10, outputTokens: 2, reasoningTokens: 0, cacheReadTokens: 4, cacheWriteTokens: 0, cost: 0 });
+  assert.deepEqual(h.usage, {
+    model: 'opencode/fake-free',
+    total: { totalTokens: 38, inputTokens: 20, outputTokens: 4, reasoningTokens: 2, cacheReadTokens: 8, cacheWriteTokens: 6, cost: 0.5 },
+    last: { totalTokens: 19, inputTokens: 10, outputTokens: 2, reasoningTokens: 1, cacheReadTokens: 4, cacheWriteTokens: 3, cost: 0.25 },
+  });
 
   // stop: the server ends, the row says stopped, the state is unknown
   const stopped = (await ui.request({ type: 'session.stop', session: 'impl' }, 15_000)).value as { process: Harness };
@@ -238,6 +242,32 @@ test('OpenCode failure attribution follows delivered inbox items when two idle a
   const prompts = (await fake.prompts(launched.harnessSessionId as string)).split('\n').filter((line) => line.startsWith('prompt '));
   assert.match(prompts[1] as string, /^prompt queue:/);
   assert.match(prompts[2] as string, /^prompt queue \(running\):/);
+});
+
+test('OpenCode forgets prior execution inputs when completion is missed during an SSE outage', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t, { turnMs: 1000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(async () => { await coord.close(); await sender.close(); });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await eventually('clause turn ended', () => stateEvents(ui, 'impl').some((e) => e.state === 'busy') && stateEvents(ui, 'impl').at(-1)?.state === 'idle' ? true : undefined);
+  await coord.call('send', { to: ['impl'], text: 'successful turn before outage' });
+  await presentAs(ui, 'impl', 'busy');
+  await api(launched, root, 'POST', '/test/stream', { paused: true });
+  await eventually('execution completed while stream paused', async () => {
+    const active = await api(launched, root, 'GET', '/api/session/active') as { data: Record<string, unknown> };
+    return Object.keys(active.data).length === 0 ? true : undefined;
+  });
+  await api(launched, root, 'POST', '/test/stream', { paused: false });
+  await presentAs(ui, 'impl', 'idle'); // reconnect snapshot, not the missed completion
+  await sender.call('send', { to: ['impl'], text: 'fail this turn' });
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await sender.waitForEvent((e) => e.params.content.includes(expected));
+  assert.equal(coord.events.some((e) => e.params.content.includes(expected)), false);
 });
 
 test('a message sent while the session works steers the running turn; one sent while idle is queued', async (t) => {
