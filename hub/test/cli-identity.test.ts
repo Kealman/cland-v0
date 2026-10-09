@@ -6,7 +6,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, spawnSpoke, startDaemon, tempProject, type Session } from './harness.ts';
+import { cland, clandWithEnv, fakeCodex, NO_PS, pidAlive, readDiscovery, spawnSpoke, startDaemon, tempProject, type Session } from './harness.ts';
 
 type Audit = { event: string; session: string; sessionId: string | null; role: string | null; tool: string; client?: string; outcome: string; permission?: string };
 
@@ -60,7 +60,7 @@ test('cland topic answer from a session\'s shell is refused with the typed error
   assert.deepEqual([human?.session, human?.role, human?.outcome], ['human', 'human', 'ok']);
 });
 
-test('the other human-only commands are refused from a session\'s shell, and reading is not: role set and clear, session stop, hygiene unmute; inbox, role list, session list', async (t) => {
+test('the other human-only commands are refused from a session\'s shell, the Coordinator\'s included, and reading is not: role set and clear, session attach and retry, hub unmute; inbox, role list', async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root);
   await session(t, root, 'coord', 'coordinator', 'sess-coord');
@@ -72,7 +72,8 @@ test('the other human-only commands are refused from a session\'s shell, and rea
     [impl, 'impl-1 \\[Implementer\\]', ['role', 'set', 'impl-1', 'reviewer'], 'role.set'],
     [coord, 'coord \\[Coordinator\\]', ['role', 'set', 'impl-1', 'reviewer'], 'role.set'],
     [impl, 'impl-1 \\[Implementer\\]', ['role', 'clear', 'coord'], 'role.clear'],
-    [impl, 'impl-1 \\[Implementer\\]', ['session', 'stop', 'coord'], 'session.stop'],
+    [coord, 'coord \\[Coordinator\\]', ['session', 'attach', 'impl-1'], 'session.attach'],
+    [coord, 'coord \\[Coordinator\\]', ['session', 'retry', 'impl-1', 'no-such-message'], 'session.retry'],
     [impl, 'impl-1 \\[Implementer\\]', ['hub', 'unmute', 'coord', 'impl-1'], 'hygiene.unmute'],
   ] as const) {
     const r = await clandWithEnv(root, env, ...args);
@@ -124,4 +125,52 @@ test('cland task view and task comment from a session\'s shell work as the sessi
   const other = await clandWithEnv(root, impl, 'task', 'comment', 'T-2', 'not my item');
   assert.notEqual(other.code, 0);
   assert.match(other.stderr, /forbidden: task\.comment/);
+});
+
+test('the Coordinator manages the sessions and the hub from its shell, by the permission table: it lists, stops and resumes a launched session and stops the hub; an Implementer is refused each', { skip: NO_PS }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  await startDaemon(t, root, fake.env);
+  await session(t, root, 'coord', 'coordinator', 'sess-coord');
+  await session(t, root, 'impl-1', 'implementer', 'sess-impl');
+  const impl = shellOf('impl-1', 'sess-impl');
+  const coord = shellOf('coord', 'sess-coord');
+
+  // the Coordinator launches from its shell, as it does in a real project
+  const launched = await clandWithEnv(root, coord, 'session', 'launch', 'worker-1', '--harness', 'codex');
+  assert.equal(launched.code, 0, launched.stderr);
+  const [server] = await fake.servers();
+  assert.ok(server, 'the launched session runs');
+
+  for (const [args, permission] of [
+    [['session', 'launch', 'worker-2', '--harness', 'codex'], 'session.launch'],
+    [['session', 'list'], 'session.launch'],
+    [['session', 'stop', 'worker-1'], 'session.stop'],
+    [['session', 'resume', 'worker-1', '--relaunch'], 'session.resume'],
+    [['hub', 'stop'], 'hub.stop'],
+  ] as const) {
+    const r = await clandWithEnv(root, impl, ...args);
+    assert.notEqual(r.code, 0, `${args.join(' ')} is refused`);
+    assert.match(r.stderr, new RegExp(`forbidden: ${permission.replace('.', '\\.')} \\(Implementer may not use ${permission.replace('.', '\\.')}\\)`), args.join(' '));
+  }
+  assert.equal(pidAlive(server.pid), true, 'nothing was stopped');
+
+  const list = await clandWithEnv(root, coord, 'session', 'list');
+  assert.equal(list.code, 0, list.stderr);
+  assert.match(list.stdout, /^worker-1 .*codex {2}running/);
+  const stopped = await clandWithEnv(root, coord, 'session', 'stop', 'worker-1');
+  assert.equal(stopped.code, 0, stopped.stderr);
+  assert.equal(pidAlive(server.pid), false);
+  const [stopAudit] = (await audits(root, 'session.stop')).slice(-1);
+  assert.deepEqual([stopAudit?.session, stopAudit?.role, stopAudit?.client, stopAudit?.outcome], ['coord', 'coordinator', 'cli', 'ok']);
+  const resumed = await clandWithEnv(root, coord, 'session', 'resume', 'worker-1', '--relaunch');
+  assert.equal(resumed.code, 0, resumed.stderr);
+  assert.equal((await fake.servers()).length, 1, 'relaunched');
+  assert.equal((await clandWithEnv(root, coord, 'session', 'stop', 'worker-1')).code, 0);
+
+  // the hub's restart after a merge is the Coordinator's
+  const hub = await readDiscovery(root);
+  const hubStopped = await clandWithEnv(root, coord, 'hub', 'stop');
+  assert.equal(hubStopped.code, 0, hubStopped.stderr);
+  assert.equal(pidAlive(hub.pid), false);
 });

@@ -76,11 +76,10 @@ export type DispatcherOptions = {
 const HUMAN_SESSION = 'human';
 
 /**
- * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state, and the
- * hub's own lifecycle (`cland hub stop`; the session could signal the hub's process anyway, and the Coordinator
- * restarts the hub after a merge). Any other frame is the human's alone.
+ * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
+ * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['hub.status', 'hub.stop', 'inbox.list', 'role.list']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['hub.status', 'inbox.list', 'role.list']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -601,16 +600,15 @@ export class Dispatcher {
         }
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
-        // audited as it. What the permission table knows is decided by the table, as for the session's own tool call;
-        // reading the hub's state is anyone's; everything else is the human's alone.
+        // audited as it. What the permission table knows is decided by the table, as for the session's own tool call
+        // (launching, listing, stopping and resuming sessions, stopping the hub: the Coordinator's); reading the hub's
+        // state is anyone's; everything else is the human's alone.
         const caller = plumbing ? null : this.#asSession(frame);
         if (caller !== null) {
           audit(frame.id, { session: caller.name, sessionId: caller.sessionId, role: caller.role, tool: String(frame.type), args: summarize(frame), client });
-          if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) {
+          if (this.#toolCall(caller, frame) !== null) {
             if (!this.#permitted(caller, frame, peer)) return;
-            return session(frame);
-          }
-          if (!SESSION_CLI_FRAMES.has(String(frame.type))) {
+          } else if (!SESSION_CLI_FRAMES.has(String(frame.type))) {
             return this.#refuse(caller, frame, peer, String(frame.type), `only the human may do this; this call is ${withRole(caller.name, caller.role)}'s, by $CLAND_SESSION_ID`);
           }
         } else if (!plumbing) {

@@ -271,7 +271,7 @@ An unknown tool or scope makes the file unreadable (the last good version stays 
 
 | Role | Tools |
 | --- | --- |
-| Coordinator | `send`, `ask`, `resolve`, `topic.create`, `task.create`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.comment`, `session.launch` (and `session.list`), `role.handover`, `merge`, `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Coordinator | `send`, `ask`, `resolve`, `topic.create`, `task.create`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.comment`, `session.launch` (and `session.list`), `session.stop`, `session.resume`, `hub.stop` (the last three from its shell: The CLI in a session's shell), `role.handover`, `merge`, `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
 | Implementer | `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | Reviewer, QA | `send:agents`, `task.comment:verdict`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
@@ -293,16 +293,17 @@ The adapters put `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` in a launched ses
 | Command | In a session's shell |
 | --- | --- |
 | `cland task …` | The session's, checked against its role as its own `task.*` tools are (The tracker, below). |
-| `cland session launch`, `cland session list` | Decided by the permission table (`session.launch`): the Coordinator may, the others are refused. |
+| `cland session launch`, `list`, `stop`, `resume` (with `--relaunch` too), `cland hub stop` | Decided by the permission table: `session.launch` (which covers `list`), `session.stop`, `session.resume`, `hub.stop`. The Coordinator has all four by default: it launches the sessions, manages them from its shell and restarts the hub after a merge. The other roles are refused, and a refused `cland hub stop` does not fall back to signalling the hub. |
 | `cland inbox`, `cland role list`, `cland hub status` | Allowed: reading the hub's state. |
-| `cland hub stop` (and `hub start`, which sends no frame) | Allowed: the hub's lifecycle, which a session that can signal the hub's process has anyway. |
-| `cland topic answer`, `cland role set`, `cland role clear`, `cland session attach`, `stop`, `resume` and `retry`, `cland hub unmute`, and any other frame (the UI's `topic.send`, `inbox.dismiss`, …) | The human's alone: refused. |
+| `cland topic answer`, `cland role set`, `cland role clear`, `cland session attach` and `retry`, `cland hub unmute`, and any other frame (the UI's `topic.send`, `inbox.dismiss`, …) | The human's alone: refused. |
 
 A refusal is the typed error of the table above, with the frame's type as `permission`, and it shows in Agents as any refusal does:
 
 ```json
 {"type":"result","id":"…","ok":false,"error":"forbidden: topic.answer (only the human may do this; this call is impl-1 [Implementer]'s, by $CLAND_SESSION_ID)","code":"forbidden","permission":"topic.answer","role":"implementer","reason":"only the human may do this; this call is impl-1 [Implementer]'s, by $CLAND_SESSION_ID"}
 ```
+
+A `roles.toml` written before these grants existed lacks `session.stop`, `session.resume` and `hub.stop` in `[coordinator.permissions] tools` (cland never rewrites the file): add them there, or the Coordinator's shell is refused them. The three are for the CLI only; the spoke has no such tools.
 
 `cland hook` is the session's own plumbing (`session.signal`, `session.bridge`) and carries no actor. Without the variables every command is the human's, as before. What stays open: the CLI's identity is its environment, so a shell that unsets both variables is the human's, as any process holding the hub's socket and secret is.
 

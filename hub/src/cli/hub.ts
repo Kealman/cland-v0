@@ -164,7 +164,12 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
     let asked = true;
     try {
       await askHub(d, 'hub.stop');
-    } catch {
+    } catch (err) {
+      // the hub answered, and said no (a session's shell without the grant): the signal is not a way around it
+      if (err instanceof Error && err.message.startsWith('forbidden: ')) {
+        io.err(`cland: ${err.message}\n`);
+        return 1;
+      }
       asked = false;
     }
     if (!(asked && (await waitForExit(d.pid, STOP_DEADLINE_MS)))) {

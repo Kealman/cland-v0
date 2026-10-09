@@ -61,7 +61,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "role.handover", "merge", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
+tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
