@@ -49,6 +49,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'release',
   'sync',
   'artifact.create',
+  'artifact.promote',
 ];
 
 /** The scopes a tool can be granted in, beside the whole of it. */
@@ -83,6 +84,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   'release',
   'sync',
     'artifact.create',
+    'artifact.promote',
     'rename',
     ...READS,
   ],

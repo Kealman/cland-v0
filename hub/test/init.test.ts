@@ -81,6 +81,7 @@ test('cland init on an empty repository: git status shows exactly the committed 
   const root = await tempProject(t, 'cland-init-');
   await gitRepo(root);
   const changes = await run(root, 'init');
+  assert.match(await readFile(join(root, '.cland/config.toml'), 'utf8'), /^\[artifacts\]\nretention_days = 30$/m);
   assert.ok(changes.every((c) => c.action === 'created' || c.path === '.cland/hub.db' || c.path.startsWith('.cland/territory.git')), JSON.stringify(changes.filter((c) => c.action !== 'created')));
 
   const { files: skillFiles } = await shipped();
@@ -220,7 +221,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   settings.hooks.Stop?.push({ hooks: [{ type: 'command', command: 'echo ours' }] });
   await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
   const configPath = join(root, '.cland', 'config.toml');
-  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('rate_limit_max = 30', 'rate_limit_max = 50'));
+  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('rate_limit_max = 30', 'rate_limit_max = 50').replace('retention_days = 30', 'retention_days = 0'));
   await writeFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'ours\n');
   const rolesBefore = await readFile(join(root, '.cland', 'roles.toml'), 'utf8');
   const before = await tree(root);
@@ -258,6 +259,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
     ['echo ours', '[ -n "$CLAND_SESSION_NAME" ] || ! command -v cland >/dev/null 2>&1 || cland hook turn-end # managed by cland'],
   );
   assert.match(await readFile(configPath, 'utf8'), /^rate_limit_max = 50$/m);
+  assert.match(await readFile(configPath, 'utf8'), /^retention_days = 0$/m);
   assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'ours\n');
   assert.equal(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'), rolesBefore);
 

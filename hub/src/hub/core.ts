@@ -243,7 +243,10 @@ export class HubCore {
       try {
         listener(event);
       } catch (err) {
-        this.#log({ event: 'listener-failed', error: err instanceof Error ? err.message : String(err) });
+        // Subscribers and their error logger observe a committed event; neither can undo it
+        // or prevent the other subscribers from hearing the committed state.
+        try { this.#log({ event: 'listener-failed', error: err instanceof Error ? err.message : String(err) }); }
+        catch { /* the failed observer/logger must not turn publication into a domain failure */ }
       }
     }
   }
@@ -1147,7 +1150,7 @@ export class HubCore {
     // an open ask keeps its topic waiting for the human (spec 4.5): only answering, resolve or close end that
     if (next !== 'closed' && next !== 'waiting for human' && this.asks.openIn(topic.id)) next = 'waiting for human';
     if (next !== topic.status) {
-      this.#store.setTopicStatus(topic.id, next);
+      for (const a of this.#store.setTopicStatus(topic.id, next, this.#now().toISOString())) this.artifactChanged(a);
       this.#log({ event: 'topic-status', topic: topic.id, from: topic.status, to: next, why });
     }
     return next;

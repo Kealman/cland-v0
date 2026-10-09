@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 
 const nvim = await nvimOrSkip();
@@ -103,4 +103,48 @@ test('prompt drafts are editable full buffers, survive hub events, reopen, and s
   await eventually('sent status', async () => await c.lua("return require('cland.artifacts').entries[1].status == 'sent'") || undefined);
   await c.input(':Cland view thread general<CR>');
   await c.waitScreen(s => s.includes('Second line unsaved') && s.includes('▣ A-1 prompt'), 'sent inline text and artifact chip in the thread');
+});
+
+test('p in a topic artifact list promotes it and updates the list and picker marks', { skip }, async (t) => {
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  const create = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'Keep', '--content', '# Keep', '--topic', 'general', '--json');
+  const a = JSON.parse(create.stdout).artifact;
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('1 artifacts'), 'artifact loaded');
+  await c.input('<Esc>');
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('ga');
+  await c.waitScreen(s => s.includes('ARTIFACTS') && s.includes(a.id), 'artifact list');
+  await c.input('ggp');
+  await c.waitScreen(s => s.includes('Promote to project path'), 'promote prompt');
+  await c.input('docs/keep.md<CR>');
+  await c.waitScreen(s => s.includes('promoted: docs/keep.md'), 'promoted list mark');
+  assert.equal(await readFile(join(root, 'docs/keep.md'), 'utf8'), '# Keep');
+  await c.input('<Space>a');
+  await c.waitScreen(s => s.includes('pick ›') && s.includes('promoted: docs/keep.md'), 'promoted picker mark');
+});
+
+test('topic lists follow archive events and lists and pickers mark retained entries whose files were deleted', { skip }, async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[artifacts]\nretention_days = 0\n');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Archive' })).value as { topic: { id: string } }).topic.id;
+  const created = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'Old note', '--content', 'old bytes', '--topic', topic, '--json');
+  const a = JSON.parse(created.stdout).artifact;
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.lua(`require('cland.layout').show({kind='artifacts', id=${JSON.stringify(topic)}}, {insert=false})`);
+  await c.waitScreen(s => s.includes(a.id) && s.includes('shared'), 'shared artifact mark');
+  await ui.request({ type: 'topic.close', topic });
+  await c.waitScreen(s => s.includes(a.id) && s.includes('archived'), 'live archived artifact mark');
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await startDaemon(t, root);
+  await c.waitScreen(s => s.includes(a.id) && s.includes('file deleted'), 'deleted list mark after restart');
+  await c.input('<Space>a');
+  await c.waitScreen(s => s.includes('pick ›') && s.includes('file deleted'), 'deleted picker mark');
+  await c.input('<CR>');
+  await c.waitScreen(s => s.includes('artifact: file deleted'), 'deleted entry cannot open');
 });

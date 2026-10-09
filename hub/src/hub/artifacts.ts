@@ -5,7 +5,7 @@ import { extname, isAbsolute, join, resolve } from 'node:path';
 import type { Artifact, ArtifactCreate, ArtifactKind } from '../protocol.ts';
 import type { Store } from './store.ts';
 
-export type ArtifactErrorCode = 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable';
+export type ArtifactErrorCode = 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy';
 export class ArtifactError extends Error {
   readonly code: ArtifactErrorCode;
   constructor(code: ArtifactErrorCode, message: string) { super(message); this.code = code; }

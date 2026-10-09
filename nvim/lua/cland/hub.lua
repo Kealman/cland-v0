@@ -52,7 +52,7 @@ function M.new(opts)
   }, Client)
 end
 
---- Events: `state` (state, detail), `connected` (), `error` (a handler or callback failed: the message), and the pushed frames `message`, `delivery`, `topic`,
+--- Events: `state` (state, detail), `connected` (), `error` (a handler or callback failed: the message), and the pushed frames `message`, `artifact`, `delivery`, `topic`,
 --- `session.state`, `session.role`, `presence`, `session.process`, `session.usage`, `inbox`, `task`,
 --- `role.vacant` and `role.filled` (the event frame).
 function Client:on(event, fn)
@@ -323,7 +323,7 @@ function Client:_frame(frame, line)
         self:_call('request ' .. tostring(frame.id), cb, frame.error or 'failed')
       end
     end
-  elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'session.usage' then
+  elseif t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'session.usage' then
     if t == 'inbox' then self.inbox_value = frame.inbox end
     self:_emit(t, frame)
   end

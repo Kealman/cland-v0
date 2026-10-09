@@ -11,6 +11,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
+  artifacts: { retentionDays: number };
   hygiene: { rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
 };
 
@@ -18,6 +19,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
+  artifacts: { retentionDays: 30 },
   hygiene: { rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
 });
 
@@ -42,6 +44,10 @@ loop_breaker_window_minutes = ${minutes(h.loopBreaker.windowMs)}
 loop_breaker_mute_minutes = ${minutes(h.loopBreaker.muteMs)}
 # the largest message text, in bytes
 max_text_bytes = ${h.maxTextBytes}
+
+# Archived artifact files are removed after this many days; their index entries stay.
+[artifacts]
+retention_days = ${c.artifacts.retentionDays}
 `;
 }
 
@@ -53,6 +59,8 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const c = defaultConfig(fallbackName);
   const project = (doc.project ?? {}) as Record<string, unknown>;
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
+  const a = (doc.artifacts ?? {}) as Record<string, unknown>;
+  if (typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0) c.artifacts.retentionDays = a.retention_days;
   const h = (doc.hygiene ?? {}) as Record<string, unknown>;
   const set = (key: string, apply: (n: number) => void, scale = 1) => {
     const n = positive(h[key]);

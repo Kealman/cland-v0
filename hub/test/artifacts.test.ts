@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, rm, readdir, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rm, readdir, mkdir, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { gitIn } from '../src/tracker/verdict-git.ts';
 import type { Artifact, TopicMessage } from '../src/protocol.ts';
 
 test('a spoke creates a persistent diagram and publishes its structured chip in the topic', async (t) => {
@@ -243,4 +244,128 @@ test('an attachment pointer also fits a cap smaller than its usual heading', asy
   const message = (sent.value as { message: TopicMessage }).message;
   assert.equal(message.text, 'P');
   assert.equal(message.artifacts?.[0]?.id, a.id, 'the attachment still identifies the prompt');
+});
+test('human promotes artifact bytes into the repo without changing Git and refuses confined or occupied paths', async (t) => {
+  const root = await tempProject(t);
+  const git = gitIn(root);
+  assert.equal(await git(['init', '-q', '-b', 'main']), '');
+  await git(['config', 'user.name', 'Test']);
+  await git(['config', 'user.email', 'test@example.com']);
+  await writeFile(join(root, 'base'), 'base');
+  await git(['add', 'base']);
+  await git(['commit', '-qm', 'base']);
+  const head = await git(['rev-parse', 'HEAD']);
+  const index = await git(['ls-files', '--stage']);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const made = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Design', content: '# Design', topic: 'general' });
+  const a = (made.value as { artifact: Artifact }).artifact;
+  const result = await cland(root, 'artifact', 'promote', a.id, 'docs/design.md', '--json');
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(await readFile(join(root, 'docs/design.md'), 'utf8'), '# Design');
+  assert.equal(JSON.parse(result.stdout).artifact.promoted, 'docs/design.md');
+  assert.equal(await git(['rev-parse', 'HEAD']), head);
+  assert.equal(await git(['ls-files', '--stage']), index);
+  assert.match((await cland(root, 'artifact', 'list')).stdout, /promoted: docs\/design.md/);
+  assert.equal((await cland(root, 'artifact', 'promote', a.id, 'docs/again.md')).code, 1);
+});
+
+test('closing topics or bound items archives artifacts; reopening restores files and promotion exempts them', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const item = JSON.parse((await cland(root, 'task', 'create', 'Design', '--json')).stdout).item.id;
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Design', item })).value as { topic: { id: string } }).topic.id;
+  const create = async () => ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Design', content: 'bytes', topic })).value as { artifact: Artifact }).artifact;
+  const a = await create();
+  const promoted = await create();
+  assert.equal((await cland(root, 'artifact', 'promote', promoted.id, 'design.md')).code, 0);
+  const entries = async () => ((await ui.request({ type: 'artifact.list', topic })).value as { artifacts: Artifact[] }).artifacts;
+  await ui.request({ type: 'topic.close', topic });
+  assert.equal((await entries())[0]?.status, 'archived');
+  assert.ok((await entries())[0]?.archivedAt);
+  assert.equal((await entries())[1]?.status, 'shared');
+  await ui.request({ type: 'topic.send', topic, text: 'Reopen' });
+  assert.equal((await entries())[0]?.status, 'shared');
+  assert.equal((await entries())[0]?.archivedAt, undefined);
+  assert.equal((await cland(root, 'task', 'close', item)).code, 0);
+  assert.equal((await entries())[0]?.status, 'archived');
+  assert.equal(await readFile(a.path, 'utf8'), 'bytes');
+});
+
+test('zero-day retention on restart removes only archived files and keeps deleted index entries', async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[artifacts]\nretention_days = 0\n');
+  let { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Archive' })).value as { topic: { id: string } }).topic.id;
+  const create = async (topic: string) => ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Note', content: 'keep bytes', topic })).value as { artifact: Artifact }).artifact;
+  const gone = await create(topic);
+  const deletedTopic = ((await ui.request({ type: 'topic.create', title: 'Deleted archive' })).value as { topic: { id: string } }).topic.id;
+  const deletedTopicArtifact = await create(deletedTopic);
+  await ui.request({ type: 'topic.close', topic: deletedTopic });
+  await ui.request({ type: 'topic.delete', topic: deletedTopic });
+  const promoted = await create(topic);
+  const open = await create('general');
+  assert.equal((await cland(root, 'artifact', 'promote', promoted.id, 'docs/keep.md')).code, 0);
+  await ui.request({ type: 'topic.close', topic });
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  ({ discovery } = await startDaemon(t, root));
+  const restarted = await connectUi(t, discovery);
+  await eventually('archived file deleted in background', async () => {
+    const entries = ((await restarted.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
+    return entries.find(a => a.id === gone.id)?.fileDeleted && entries.find(a => a.id === deletedTopicArtifact.id)?.fileDeleted ? true : undefined;
+  });
+  await assert.rejects(readFile(gone.path), { code: 'ENOENT' });
+  await assert.rejects(readFile(deletedTopicArtifact.path), { code: 'ENOENT' });
+  assert.equal(await readFile(promoted.path, 'utf8'), 'keep bytes');
+  assert.equal(await readFile(open.path, 'utf8'), 'keep bytes');
+  assert.equal(await readFile(join(root, 'docs/keep.md'), 'utf8'), 'keep bytes');
+  assert.match((await cland(root, 'artifact', 'list')).stdout, /file deleted/);
+  await restarted.request({ type: 'topic.send', topic, text: 'Reopen' });
+  const entries = ((await restarted.request({ type: 'artifact.list', topic })).value as { artifacts: Artifact[] }).artifacts;
+  assert.equal(entries[0]?.status, 'archived');
+  assert.equal(entries[0]?.fileDeleted, true);
+});
+
+test('promotion rejects existing, escaped, absolute, private and symlinked destinations without copying', async (t) => {
+  const root = await tempProject(t);
+  const outside = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const a = ((await ui.request({ type: 'artifact.create', kind: 'file', title: 'Bytes', content: 'bytes', topic: 'general' })).value as { artifact: Artifact }).artifact;
+  await writeFile(join(root, 'exists'), 'original');
+  await symlink(outside, join(root, 'escape'));
+  await symlink(join(root, '.cland'), join(root, 'private'));
+  for (const path of ['exists', '../outside', 'docs/../normalized', join(root, 'absolute'), '.cland/copy', '.CLAND/copy', 'escape/sub/copy', 'private/sub/copy']) {
+    const result = await cland(root, 'artifact', 'promote', a.id, path);
+    assert.equal(result.code, 1, path);
+    assert.equal(((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts[0]?.promoted, undefined);
+  }
+  assert.equal(await readFile(join(root, 'exists'), 'utf8'), 'original');
+  assert.deepEqual(await readdir(outside), []);
+  await assert.rejects(readFile(join(root, '.cland/copy')), { code: 'ENOENT' });
+  await assert.rejects(readFile(join(root, 'absolute')), { code: 'ENOENT' });
+});
+
+test('promotion is granted to the Coordinator from its shell and refused to the other roles', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery, 'cli');
+  const a = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Keep', content: 'bytes', topic: 'general' })).value as { artifact: Artifact }).artifact;
+  for (const role of ['implementer', 'reviewer', 'qa', 'coordinator']) {
+    const name = `promoter-${role}`;
+    const sessionId = `promote-${role}`;
+    const s = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId });
+    t.after(() => s.close());
+    await s.waitForPresence([name]);
+    const result = await ui.request({ type: 'artifact.promote', artifact: a.id, path: `${role}.md`, as: { name, sessionId } });
+    if (role === 'coordinator') assert.equal(result.ok, true, result.error);
+    else {
+      assert.equal(result.ok, false);
+      assert.equal((result as { code?: string }).code, 'forbidden');
+      await assert.rejects(readFile(join(root, `${role}.md`)), { code: 'ENOENT' });
+    }
+  }
 });

@@ -39,8 +39,9 @@ import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adap
 import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
 import { NoteIncomplete } from '../roles/note.ts';
+import { ArtifactLifecycle, type ArtifactFiles } from './artifact-lifecycle.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
-import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
+import type { ArtifactCreate, ArtifactList, ArtifactPromote } from '../protocol.ts';
 import { TaskMerges } from './merge.ts';
 import { Releases } from './releases.ts';
 import { ReleaseError } from '../release.ts';
@@ -83,6 +84,7 @@ export type DispatcherOptions = {
   guard?: Omit<GuardOptions, 'log'>;
   /** Artifact file read port; defaults to async filesystem I/O. */
   readArtifact?: (path: string) => Promise<Buffer>;
+  artifactFiles?: ArtifactFiles;
 };
 
 /** Who the UI's and the CLI's calls are audited as. */
@@ -115,6 +117,7 @@ export class Dispatcher {
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
   #artifactQueue: Promise<unknown> = Promise.resolve();
+  readonly artifacts: ArtifactLifecycle;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
@@ -122,6 +125,7 @@ export class Dispatcher {
     this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
     this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log) : null;
     this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.core.store) : null;
+    this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles);
     this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(() => this.#guard.changed());
@@ -540,6 +544,20 @@ export class Dispatcher {
         (err: unknown) => Dispatcher.#failure(frame.id, err),
       ));
     };
+    const promote = (frame: ArtifactPromote, caller: Caller | null) => {
+      const resumed = <T,>(body: () => T): T => this.#guard.measure(frame.type, client, body, 'resumed');
+      const authorize = () => {
+        if (!caller) return;
+        const now = this.#asSession(frame);
+        const grants = core.roles?.get().get(now?.role ?? '')?.permissions.tools;
+        const decision = decide(now?.role ?? null, grants, { tool: frame.type });
+        if (client !== 'cli' || !now || now.role !== 'coordinator' || !decision.ok) throw new ToolForbidden(now?.role ?? null, frame.type, 'promotion belongs to the human or the Coordinator from its own shell');
+      };
+      later(frame.type, this.artifacts.promote(frame.artifact, frame.path, authorize, resumed).then(
+        value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value }) as HubFrame),
+        err => resumed(() => Dispatcher.#failure(frame.id, err)),
+      ));
+    };
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(
         this.#sessions,
@@ -624,6 +642,8 @@ export class Dispatcher {
         switch (frame.type) {
           case 'merge':
             return merge(frame, connection);
+          case 'artifact.promote':
+            throw new ToolForbidden(connection?.role ?? null, frame.type, 'promote from the Coordinator’s shell with cland artifact promote');
           case 'artifact.create':
           case 'artifact.list':
             return artifact(frame, () => connection && core.isCurrent(connection) ? connection : null);
@@ -867,6 +887,7 @@ export class Dispatcher {
           return task(frame, 'client');
         }
         if (isSessionRequest(frame)) return session(frame);
+        if (frame.type === 'artifact.promote') return promote(frame as ArtifactPromote, caller);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
           return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));
         }

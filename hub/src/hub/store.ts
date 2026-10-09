@@ -616,6 +616,27 @@ export class Store implements HygieneMemory {
     if (!result.changes) throw new Error(`no artifact ${a.id}`);
   }
 
+  /** Topic transitions and their artifact marks commit together. Promoted/deleted files never return. */
+  moveArtifacts(topic: string, closed: boolean, now: string): Artifact[] {
+    return this.#transaction(() => {
+      const changed: Artifact[] = [];
+      for (const a of this.artifacts(topic)) {
+        if (a.promoted || a.fileDeleted) continue;
+        if (closed && a.status !== 'archived') {
+          const next: Artifact = { ...a, status: 'archived', archivedAt: now };
+          this.updateArtifact(next);
+          changed.push(next);
+        } else if (!closed && a.status === 'archived') {
+          const next: Artifact = { ...a, status: 'shared' };
+          delete next.archivedAt;
+          this.updateArtifact(next);
+          changed.push(next);
+        }
+      }
+      return changed;
+    });
+  }
+
   addressedInTopic(sessionId: string, topic: string): boolean {
     return this.#db.prepare("select 1 from deliveries d join messages m on m.id = d.message_id where d.session_id = ? and m.topic = ? and d.state in ('delivered', 'injected', 'uncertain') limit 1").get(sessionId, topic) !== undefined;
   }
@@ -675,8 +696,11 @@ export class Store implements HygieneMemory {
     });
   }
 
-  setTopicStatus(id: string, status: TopicStatus): void {
-    this.#db.prepare('update topics set status = ? where id = ?').run(status, id);
+  setTopicStatus(id: string, status: TopicStatus, now = new Date().toISOString()): Artifact[] {
+    return this.#transaction(() => {
+      this.#db.prepare('update topics set status = ? where id = ?').run(status, id);
+      return this.moveArtifacts(id, status === 'closed', now);
+    });
   }
 
   /** The human read the topic up to a message (its id), else up to its latest message. It never moves back. */

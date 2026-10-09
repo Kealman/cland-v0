@@ -17,9 +17,11 @@ export type HubBaseOptions = CoreOptions & {
   helloTimeoutMs?: number;
   /** How often the retention prune runs, ms (default: daily); it also runs at start. */
   pruneEveryMs?: number;
+  artifactRetentionDays?: number;
   /** The request budget and the repeat guard's timings (tests). */
   guard?: DispatcherOptions['guard'];
   readArtifact?: DispatcherOptions['readArtifact'];
+  artifactFiles?: DispatcherOptions['artifactFiles'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
@@ -70,6 +72,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   const unwatchVerdicts = options.tracker?.onVerdict((id, author, v) => core.inbox.verdict({ item: id, author, verdict: v.verdict, result: v.result, run: v.run }));
   const dispatcher = new Dispatcher({
     core,
+    ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,
     ...(options.log ? { log: options.log } : {}),
     ...(options.control ? { control: options.control } : {}),
@@ -79,15 +82,29 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.guard ? { guard: options.guard } : {}),
   });
   core.prune();
-  const pruneTimer = setInterval(() => core.prune(), options.pruneEveryMs ?? 24 * 60 * 60 * 1000);
+  // Background from start, even for a stdio-only hub. Readiness never awaits filesystem retention.
+  let cleanup: Promise<void> | null = null;
+  let closing = false;
+  const cleanupArtifacts = () => {
+    if (closing || cleanup) return;
+    cleanup = dispatcher.artifacts.cleanup(options.artifactRetentionDays ?? 30).catch(err => {
+      try { options.log?.({ event: 'artifact-cleanup-failed', error: err instanceof Error ? err.message : String(err) }); }
+      catch { /* a failed error logger must not kill background retention or prevent retry */ }
+    }).finally(() => { cleanup = null; });
+  };
+  const cleanupStart = setImmediate(cleanupArtifacts);
+  const pruneTimer = setInterval(() => { core.prune(); cleanupArtifacts(); }, options.pruneEveryMs ?? 24 * 60 * 60 * 1000);
   pruneTimer.unref();
   return {
     core,
     dispatcher,
-    prune: () => core.prune(),
+    prune: () => { const gone = core.prune(); cleanupArtifacts(); return gone; },
     close: async () => {
+      closing = true;
+      clearImmediate(cleanupStart);
       dispatcher.close();
       clearInterval(pruneTimer);
+      await cleanup;
       unwatchItems?.();
       unbindTopics?.();
       unwatchVerdicts?.();

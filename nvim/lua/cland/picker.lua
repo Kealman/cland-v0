@@ -89,7 +89,7 @@ local function artifact_entries()
   local current = require('cland.views').current_topic()
   for _, a in ipairs(require('cland.artifacts').all()) do
     out[#out + 1] = { glyph = '▣', ghl = 'ClandBlue', key = a.id .. ' ' .. a.kind .. ' · ' .. a.title,
-      right = a.creator .. ' · ' .. a.status, value = a.id, rank = a.topic == current and 0 or 1 }
+      right = a.creator .. ' · ' .. require('cland.artifacts').mark(a), value = a.id, rank = a.topic == current and 0 or 1 }
   end
   table.sort(out, function(a, b)
     if a.rank ~= b.rank then return a.rank < b.rank end

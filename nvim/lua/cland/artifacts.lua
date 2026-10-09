@@ -11,6 +11,12 @@ function M.all(topic)
   return out
 end
 
+function M.mark(a)
+  if a.fileDeleted then return 'file deleted' end
+  if a.promoted then return 'promoted: ' .. a.promoted end
+  return a.status
+end
+
 function M.get(id)
   for _, a in ipairs(M.entries) do if a.id == id then return a end end
 end
@@ -73,6 +79,8 @@ local browser_ext = { html = true, htm = true, svg = true, png = true, pdf = tru
 function M.open(value)
   local a = type(value) == 'table' and (M.get(value.id) or value) or M.get(value)
   if not a then return state.say('no such artifact', 'ClandRedBar') end
+  a = M.get(a.id) or a
+  if a.fileDeleted then return state.say('artifact: file deleted', 'ClandRedBar') end
   upsert(a)
   local ext = a.path:match('%.([^%.]+)$') or ''
   if browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft') then return browser(a.path) end
@@ -166,10 +174,24 @@ function M.list_buffer(topic)
       if a then M.open(a) end
     end, { buffer = b })
     vim.keymap.set('n', 'q', require('cland.layout').back, { buffer = b })
+    vim.keymap.set('n', 'p', function()
+      local a = M.all(topic)[api.nvim_win_get_cursor(0)[1]]
+      if not a then return end
+      if a.fileDeleted or a.promoted then return state.say(M.mark(a), 'ClandRedBar') end
+      vim.ui.input({ prompt = 'Promote to project path: ' }, function(path)
+        if not path or path == '' then return end
+        M.client:request({ type = 'artifact.promote', artifact = a.id, path = path }, function(err, value)
+          if err then return state.say('promote: ' .. err, 'ClandRedBar') end
+          upsert(value.artifact)
+          state.changed()
+          if value.followUp then state.say('Artifact promoted; notification failed: ' .. value.followUp.error, 'ClandRedBar') end
+        end)
+      end)
+    end, { buffer = b, desc = 'promote artifact into project' })
   end
   local lines = {}
   for _, a in ipairs(M.all(topic)) do
-    lines[#lines + 1] = ' ▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title .. '  ' .. a.creator .. ' · ' .. a.status .. ' · ' .. a.time
+    lines[#lines + 1] = ' ▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title .. '  ' .. a.creator .. ' · ' .. M.mark(a) .. ' · ' .. a.time
   end
   vim.bo[b].modifiable = true
   api.nvim_buf_set_lines(b, 0, -1, false, #lines > 0 and lines or { ' No artifacts shared in this topic yet.' })

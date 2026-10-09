@@ -47,9 +47,11 @@ export type ArtifactKind = 'prompt' | 'note' | 'page' | 'diagram' | 'file';
 export type Artifact = {
   id: string; title: string; kind: ArtifactKind; path: string; creator: string; time: string;
   topic: string; status: 'draft' | 'sent' | 'shared' | 'archived';
+  promoted?: string; archivedAt?: string; fileDeleted?: boolean;
 };
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
+export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
 export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string };
 /** Filters on the Agents record; when both are given they intersect. */
 export type AgentsHistoryFilter = { item?: string; session?: string };
@@ -249,6 +251,7 @@ export type SpokeRequest =
   | MergeRequest
   | ArtifactCreate
   | ArtifactList
+  | ArtifactPromote
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
   | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string; artifacts?: string[] }
   | { type: 'who'; id: string }
@@ -287,7 +290,7 @@ export type HubFrame =
   | { type: 'result'; id: string; ok: true; value: unknown }
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
-  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; code?: import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
+  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; code?: import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
@@ -329,6 +332,7 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':
     case 'artifact.list':
+    case 'artifact.promote':
       return true;
     case 'who':
     case 'ping':
@@ -404,6 +408,7 @@ export type ClientRequest =
   | ArtifactCreate
   | ArtifactList
   | PromptSend
+  | ArtifactPromote
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'hub.status'; id: string }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
@@ -554,6 +559,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'artifact.create':
     case 'artifact.list':
     case 'prompt.send':
+    case 'artifact.promote':
       return true;
     case 'hub.status':
     case 'hub.stop':
