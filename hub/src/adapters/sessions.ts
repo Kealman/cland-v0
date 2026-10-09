@@ -18,8 +18,9 @@ import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type StateSignal } from './contract.ts';
+import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal } from './contract.ts';
 import { ProcessTable, processStarted } from './processes.ts';
+import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText } from '../roles/clause.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
@@ -39,6 +40,11 @@ export type SessionsOptions = {
   /** How long after a push signal a polled signal is still ignored, ms. */
   pushTrustMs?: number;
 };
+
+/** At most one latest usage snapshot per session per second, with a trailing update. */
+export const USAGE_EVENT_MS = 1000;
+
+const untimed: Resumed = (work) => work();
 
 export const DEFAULT_HARNESS = 'claude-code';
 
@@ -66,6 +72,8 @@ export class Sessions {
   readonly #firstHello = new Map<string, { role: string; carried: boolean }>();
   /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
   #vacating = false;
+  readonly #usageTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  readonly #unprocess: () => void;
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -73,6 +81,7 @@ export class Sessions {
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
+    this.#unprocess = this.#table.subscribe((p) => this.#core.publishProcess(this.view(p)));
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
     this.#core.launchedRole((name, sessionId) => {
@@ -130,6 +139,7 @@ export class Sessions {
       ...fields,
       root: this.#root,
       log: this.#log,
+      usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
       notifyFailureSenders: (sessionId, error, messages) => this.#notifyTurnSenders(sessionId, error, messages),
@@ -182,6 +192,18 @@ export class Sessions {
     };
   }
 
+  #usageChanged(sessionId: string): void {
+    if (this.#usageTimers.has(sessionId)) return;
+    const timer = setTimeout(() => {
+      this.#usageTimers.delete(sessionId);
+      const p = this.#table.bySessionId(sessionId);
+      const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
+      if (p && usage) this.#core.publishUsage(p.name, sessionId, usage);
+    }, USAGE_EVENT_MS);
+    timer.unref();
+    this.#usageTimers.set(sessionId, timer);
+  }
+
   list(): HarnessProcessView[] {
     return this.#table.all().map((p) => this.view(p));
   }
@@ -208,7 +230,7 @@ export class Sessions {
     return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}) };
   }
 
-  async launch(request: LaunchRequest): Promise<HarnessProcessView> {
+  async launch(request: LaunchRequest, resumed: Resumed = untimed): Promise<HarnessProcessView> {
     const cwd = resolve(this.#root, request.cwd ?? '.');
     const refusal = nameRefusal(request.name, new Set(['human']));
     if (refusal) throw new Error(refusal);
@@ -241,32 +263,42 @@ export class Sessions {
     this.#launching.set(request.name, []);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
     if (role !== null) this.#firstHello.set(request.name, { role, carried: clause !== null && adapter.clauseAtSpawn === true });
-    let early: SignalFrame[] = [];
-    let p: HarnessProcess;
+    const item = request.item ?? null;
+    let spawned: { process: HarnessProcess } | { error: unknown };
     try {
-      const item = request.item ?? null;
-      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy });
-      p = { ...p, item, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
-      this.#table.put(p);
-      if (reservation) this.#core.launchSettled(request.name);
+      spawned = { process: await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }) };
     } catch (err) {
-      this.#earlyBridges.delete(request.name);
-      this.#firstHello.delete(request.name);
-      if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous);
-      throw err;
-    } finally {
-      early = this.#launching.get(request.name) ?? [];
-      this.#launching.delete(request.name);
+      spawned = { error: err };
     }
-    this.#lastAt.delete(p.sessionId);
-    this.#lastPush.delete(p.sessionId);
-    adapter.watch(p);
-    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: early.length });
-    // the bridges first: the early SessionStart's idle retries what the spoke accepted, through them
-    for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
-    this.#earlyBridges.delete(p.name);
-    for (const frame of early) this.signal(frame);
-    return this.view(this.#table.get(p.name) ?? p);
+    // Publication, cleanup, watch and replay form one continuous stretch after spawn settles.
+    return resumed(() => {
+      let early: SignalFrame[] = [];
+      let p: HarnessProcess;
+      try {
+        if ('error' in spawned) throw spawned.error;
+        const process = spawned.process;
+        p = { ...process, item, pidStarted: process.pidStarted ?? (process.pid !== null ? processStarted(process.pid) : null) };
+        this.#table.put(p);
+        if (reservation) this.#core.launchSettled(request.name);
+      } catch (err) {
+        this.#earlyBridges.delete(request.name);
+        this.#firstHello.delete(request.name);
+        if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous);
+        throw err;
+      } finally {
+        early = this.#launching.get(request.name) ?? [];
+        this.#launching.delete(request.name);
+      }
+      this.#lastAt.delete(p.sessionId);
+      this.#lastPush.delete(p.sessionId);
+      adapter.watch(p);
+      this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: early.length });
+      // the bridges first: the early SessionStart's idle retries what the spoke accepted, through them
+      for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
+      this.#earlyBridges.delete(p.name);
+      for (const frame of early) this.signal(frame);
+      return this.view(this.#table.get(p.name) ?? p);
+    });
   }
 
   attachCommand(name: string): string {
@@ -275,18 +307,20 @@ export class Sessions {
     return this.adapter(p.harness).attachCommand(p);
   }
 
-  async stop(name: string): Promise<HarnessProcessView> {
+  async stop(name: string, resumed: Resumed = untimed): Promise<HarnessProcessView> {
     const p = this.#process(name);
     await this.adapter(p.harness).stop(p);
-    this.#table.update(name, { status: 'stopped' });
-    this.#core.setSessionState(p.sessionId, name, 'unknown', 'stopped');
-    this.#log({ event: 'session-stopped', session: name, harness: p.harness });
-    this.#vacate(p, 'its session was stopped');
-    return this.view(this.#process(name));
+    return resumed(() => {
+      this.#table.update(name, { status: 'stopped' });
+      this.#core.setSessionState(p.sessionId, name, 'unknown', 'stopped');
+      this.#log({ event: 'session-stopped', session: name, harness: p.harness });
+      this.#vacate(p, 'its session was stopped');
+      return this.view(this.#process(name));
+    });
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
-  async resume(name: string, relaunch = false): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+  async resume(name: string, relaunch = false, resumed: Resumed = untimed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
     let p = this.#process(name);
     const adapter = this.adapter(p.harness);
     // a relaunch is a new harness process on the same conversation, whatever became of the old one: one that
@@ -294,27 +328,37 @@ export class Sessions {
     // the row as it is now, by the session's id: while the adapter works the session may rename itself (the
     // Coordinator does), and its row then stands under the new name
     const row = (): HarnessProcess => this.#table.bySessionId(p.sessionId) ?? p;
+    let resuming: Promise<ResumeResult>;
     if (relaunch && p.status === 'running') {
       await adapter.stop(p);
-      this.#table.update(row().name, { status: 'stopped' });
-      this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
-      p = row();
+      resuming = resumed(() => {
+        this.#table.update(row().name, { status: 'stopped' });
+        this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
+        p = row();
+        // The adapter's synchronous prefix belongs to this stretch, up to its next await.
+        return adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
+      });
+    } else {
+      resuming = adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
     }
-    const r = await adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
-    if (!r.found) {
-      if (p.status === 'running') this.#exited(p.sessionId, r.reason);
-      return { found: false, reason: r.reason, process: this.view(row()) };
-    }
-    // what the row says now, not the snapshot the resume started from: a role assigned or revoked, or a rename,
-    // while the adapter worked stays as it was made
-    const current = this.#table.bySessionId(p.sessionId) ?? p;
-    const pidStarted = r.process.pid === current.pid ? (current.pidStarted ?? (r.process.pid !== null ? processStarted(r.process.pid) : null)) : r.process.pid !== null ? processStarted(r.process.pid) : null;
-    const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
-    this.#table.put(process);
-    adapter.watch(process);
-    this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
-    if (r.state !== 'unknown') this.#signal(p.sessionId, { state: r.state, source: 'resume', at: Date.now() }, false);
-    return { found: true, process: this.view(process) };
+    const r = await resuming;
+    return resumed(() => {
+      if (!r.found) {
+        if (p.status === 'running') this.#exited(p.sessionId, r.reason);
+        return { found: false, reason: r.reason, process: this.view(row()) };
+      }
+      // what the row says now, not the snapshot the resume started from: a role assigned or revoked, or a rename,
+      // while the adapter worked stays as it was made
+      const current = this.#table.bySessionId(p.sessionId) ?? p;
+      const pidStarted = r.process.pid === current.pid ? (current.pidStarted ?? (r.process.pid !== null ? processStarted(r.process.pid) : null)) : r.process.pid !== null ? processStarted(r.process.pid) : null;
+      const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
+      this.#table.put(process);
+      adapter.watch(process);
+      this.#core.publishProcess(this.view(process));
+      this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
+      if (r.state !== 'unknown') this.#signal(p.sessionId, { state: r.state, source: 'resume', at: Date.now() }, false);
+      return { found: true, process: this.view(process) };
+    });
   }
 
   /** At the hub's start, before any frame is read: the roles reserved by launches the hub died in are given back. */
@@ -382,7 +426,10 @@ export class Sessions {
     const meaning = adapter.interpret(frame.event, payload, p);
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
-    if (meaning.usage) adapter.noteUsage?.(p, meaning.usage);
+    if (meaning.usage) {
+      adapter.noteUsage?.(p, meaning.usage);
+      this.#usageChanged(p.sessionId);
+    }
     if (meaning.turnError) {
       const error = meaning.turnError;
       this.#turnFailed(p.sessionId, error, []);
@@ -563,6 +610,9 @@ export class Sessions {
     this.#core.onDelivered(null);
     this.#core.launchedRole(null);
     this.#unsubscribe();
+    this.#unprocess();
+    for (const timer of this.#usageTimers.values()) clearTimeout(timer);
+    this.#usageTimers.clear();
     this.#unrename();
   }
 }

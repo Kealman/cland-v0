@@ -112,6 +112,8 @@ export type AdapterHost = {
   log: (entry: Record<string, unknown>) => void;
   /** A state signal the adapter read from outside the session (a poll); push signals come through the hub's `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
+  /** Adapter-owned usage changed; the hub coalesces snapshots per session. */
+  usageChanged?: (sessionId: string) => void;
   /** A turn ended in error, with the hub messages that fed it (including steers), when known. */
   turnFailed?: (sessionId: string, error: string, messages: string[]) => void;
   /** Sender attribution learned after the failure notice (a pending admission just settled). */

@@ -309,6 +309,46 @@ function M.item_of_session(name)
   end
 end
 
+--- A complete process view: renames and reused names replace the previous row.
+function M.upsert_process(process)
+  if type(process) ~= 'table' or not process.name or not process.sessionId then
+    return
+  end
+  local rows = {}
+  for _, p in ipairs(M.S.processes) do
+    if p.name ~= process.name and p.sessionId ~= process.sessionId then
+      rows[#rows + 1] = p
+    end
+  end
+  rows[#rows + 1] = process
+  table.sort(rows, function(a, b)
+    local at, bt = a.startedAt or '', b.startedAt or ''
+    return at == bt and a.name < b.name or at < bt
+  end)
+  M.S.processes = rows
+  M.changed()
+end
+
+function M.set_session_usage(sessionId, usage)
+  if not sessionId or type(usage) ~= 'table' then return end
+  for _, p in ipairs(M.S.processes) do
+    if p.sessionId == sessionId then p.usage = usage end
+  end
+  M.changed()
+end
+
+function M.set_session_role(name, role)
+  if not name then return end
+  for _, p in ipairs(M.S.presence) do
+    if p.name == name then p.role, p.label = role, nil end
+  end
+  for _, p in ipairs(M.S.processes) do
+    -- A stopped process keeps its launch role for resuming; presence carries the live role.
+    if p.name == name and p.status == 'running' then p.role, p.label = role, nil end
+  end
+  M.changed()
+end
+
 --- A session's state changed (a `session.state` event): true when the session was known.
 function M.set_session_state(name, state)
   local known = false

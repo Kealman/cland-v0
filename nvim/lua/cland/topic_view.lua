@@ -59,7 +59,7 @@ function M.new(client, topic)
       disarm()
       -- the history holds only the latest messages: an older ask cached as open is checked against the hub's open
       -- asks, asked after the history so an ask opened meanwhile is in both
-      client:request({ type = 'inbox.list' }, function(ierr, inbox)
+      client:inbox(function(ierr, inbox)
         if ierr or type(inbox) ~= 'table' or type(inbox.asks) ~= 'table' then
           return
         end

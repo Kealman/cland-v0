@@ -180,6 +180,9 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
     last: { totalTokens: 19, inputTokens: 10, outputTokens: 2, reasoningTokens: 1, cacheReadTokens: 4, cacheWriteTokens: 3, cost: 0.25 },
   });
 
+  const usageEvent = await ui.waitFor((f) => f.type === 'session.usage' && f.session === 'impl' && (f.usage as { total?: { outputTokens?: number } }).total?.outputTokens === 4);
+  assert.deepEqual(usageEvent.usage, h.usage, 'the stream publishes usage without a session list refresh');
+
   // stop: the server ends, the row says stopped, the state is unknown
   const stopped = (await ui.request({ type: 'session.stop', session: 'impl' }, 15_000)).value as { process: Harness };
   assert.equal(stopped.process.status, 'stopped');

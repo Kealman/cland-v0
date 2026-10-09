@@ -195,7 +195,7 @@ export class TaskWorktrees {
     resumed: Resumed,
   ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
-    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) });
+    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) }, resumed);
     // the claim as it is now: another session may have taken it while the harness started. The check and the claim
     // run in one stretch of the event loop (timed through `resumed`), so nothing comes between them.
     const taken = resumed(() => {
@@ -209,7 +209,7 @@ export class TaskWorktrees {
     });
     if ('lost' in taken) {
       const held = taken.lost;
-      const stopped = await sessions.stop(process.name).then(
+      const stopped = await sessions.stop(process.name, resumed).then(
         () => `${process.name} was stopped`,
         (err: unknown) => `stopping ${process.name} failed (${err instanceof Error ? err.message : String(err)}): stop it by hand`,
       );

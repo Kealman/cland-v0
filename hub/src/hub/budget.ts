@@ -3,6 +3,8 @@
 //
 // - The budget: each frame's handling is timed; one over `BUDGET_MS` is logged as `slow-request` (tool, client,
 //   duration) and counted for `hub status`, so a stuck or slow handler is never silent.
+// - Answer latency: total receipt-to-answer time, including waits, over `ANSWER_BUDGET_MS` is a separate
+//   `slow-answer` event and counter; it never counts as blocking the event loop.
 // - The repeat guard: a read a connection sends again within `REPEAT_MS` of the same read's answer, with nothing
 //   written anywhere in between, is answered with that answer again instead of being handled. A client hears
 //   nothing older than it would have had it asked a moment earlier, and its own write is always seen (any write
@@ -12,6 +14,8 @@ import type { HubFrame } from '../protocol.ts';
 
 /** A handler taking longer than this, ms, is a `slow-request`. */
 export const BUDGET_MS = 250;
+/** Answer latency, including async waits, has its own higher threshold and counter. */
+export const ANSWER_BUDGET_MS = 5000;
 /** The same read again within this many ms of its answer is answered from that answer. */
 export const REPEAT_MS = 250;
 
@@ -37,23 +41,27 @@ export type RequestCounters = {
   lastSlow?: { tool: string; client: string; ms: number; at: string; phase?: 'resumed' | 'answer' };
   /** Reads answered again from their previous answer. */
   replayed: number;
+  slowAnswers: number;
+  lastSlowAnswer?: { tool: string; client: string; ms: number; at: string };
 };
 
-export type GuardOptions = { log?: LogFn; budgetMs?: number; repeatMs?: number; now?: () => number };
+export type GuardOptions = { log?: LogFn; budgetMs?: number; answerBudgetMs?: number; repeatMs?: number; now?: () => number };
 
 /** One per hub: the budget, the counters and the write generation every connection's replays check. */
 export class RequestGuard {
   readonly #log: LogFn;
   readonly #budgetMs: number;
+  readonly #answerBudgetMs: number;
   readonly repeatMs: number;
   readonly now: () => number;
-  readonly counters: RequestCounters = { slow: 0, replayed: 0 };
+  readonly counters: RequestCounters = { slow: 0, replayed: 0, slowAnswers: 0 };
   /** Moves with every write: a replay is only of an answer given in the same generation. */
   generation = 0;
 
   constructor(options: GuardOptions = {}) {
     this.#log = options.log ?? (() => {});
     this.#budgetMs = options.budgetMs ?? BUDGET_MS;
+    this.#answerBudgetMs = options.answerBudgetMs ?? ANSWER_BUDGET_MS;
     this.repeatMs = options.repeatMs ?? REPEAT_MS;
     this.now = options.now ?? (() => performance.now());
   }
@@ -82,6 +90,14 @@ export class RequestGuard {
     }
   }
 
+  answerElapsed(tool: string, client: string, started: number): void {
+    const ms = Math.round(this.now() - started);
+    if (ms <= this.#answerBudgetMs) return;
+    this.counters.slowAnswers++;
+    this.counters.lastSlowAnswer = { tool, client, ms, at: new Date().toISOString() };
+    this.#log({ event: 'slow-answer', tool, client, ms, budgetMs: this.#answerBudgetMs });
+  }
+
   conversation(): ConversationGuard {
     return new ConversationGuard(this, this.#log);
   }
@@ -96,6 +112,7 @@ export class ConversationGuard {
   /** Request id → the read it asked, until answered. */
   readonly #asked = new Map<string, { key: string; generation: number }>();
   readonly #told = new Set<string>();
+  readonly #pending = new Map<string, { tool: string; client: string; started: number }>();
 
   constructor(hub: RequestGuard, log: LogFn) {
     this.#hub = hub;
@@ -109,6 +126,7 @@ export class ConversationGuard {
   replay(frame: Record<string, unknown>, client: string): HubFrame | null {
     const type = String(frame.type);
     if (typeof frame.id !== 'string') return null;
+    this.#pending.set(frame.id, { tool: type, client, started: this.#hub.now() });
     if (!READS.has(type)) {
       this.#hub.changed();
       return null;
@@ -117,6 +135,7 @@ export class ConversationGuard {
     const key = JSON.stringify(rest);
     const last = this.#answers.get(key);
     if (last && last.generation === this.#hub.generation && this.#hub.now() - last.at < this.#hub.repeatMs) {
+      this.#pending.delete(frame.id);
       this.#hub.counters.replayed++;
       if (!this.#told.has(type)) {
         this.#told.add(type);
@@ -131,6 +150,9 @@ export class ConversationGuard {
   /** A result on its way out: a read's successful answer is kept for a repeat. */
   answered(frame: HubFrame): void {
     if (frame.type !== 'result') return;
+    const pending = this.#pending.get(frame.id);
+    this.#pending.delete(frame.id);
+    if (pending) this.#hub.answerElapsed(pending.tool, pending.client, pending.started);
     const asked = this.#asked.get(frame.id);
     if (!asked) return;
     this.#asked.delete(frame.id);

@@ -11,8 +11,6 @@ local M = {}
 local hub = require('cland.hub')
 local state = require('cland.state')
 
-M.REFRESH_MS = tonumber(vim.env.CLAND_REFRESH_MS or '') or 5000
-
 --- nvim/ (this file is nvim/lua/cland/init.lua) and the repository around it.
 local function dirs()
   local this = debug.getinfo(1, 'S').source:sub(2)
@@ -110,7 +108,7 @@ local refresh_sessions = single_flight(function(done)
       state.changed()
     end
   end)
-  M.client:request({ type = 'inbox.list' }, function(err, value)
+  M.client:inbox(function(err, value)
     answered()
     if not err then
       state.set_inbox(value)
@@ -192,20 +190,28 @@ local function wire_client(client)
   client:on('role.vacant', function()
     state.S.hub_coordinator = { name = nil }
     state.changed()
-    refresh_sessions()
   end)
   client:on('role.filled', function(event)
     state.S.hub_coordinator = { name = event.session }
     state.changed()
-    refresh_sessions()
   end)
-  client:on('session.role', function()
-    refresh_sessions()
+  client:on('session.role', function(event)
+    state.set_session_role(event.session, event.role)
   end)
   client:on('session.state', function(event)
-    if not state.set_session_state(event.session, event.state) then
-      refresh_sessions()
+    state.set_session_state(event.session, event.state)
+  end)
+  client:on('presence', function(event)
+    if type(event.sessions) == 'table' then
+      state.S.presence = event.sessions
+      state.changed()
     end
+  end)
+  client:on('session.process', function(event)
+    state.upsert_process(event.process)
+  end)
+  client:on('session.usage', function(event)
+    state.set_session_usage(event.sessionId, event.usage)
   end)
   -- the inbox, whole, whenever any of it changed (#33)
   client:on('inbox', function(event)
@@ -538,23 +544,6 @@ function M.start(opts)
     end)
   end
 
-  -- a timer's callback that failed says so on the status line, never as an error in the message area
-  local function guarded(fn)
-    return vim.schedule_wrap(function()
-      local ok, err = pcall(fn)
-      if not ok then
-        state.say('cland: ' .. tostring(err), 'ClandRedBar')
-      end
-    end)
-  end
-  -- the sessions still refresh on a timer: presence, a process that ended and the token totals have no event yet;
-  -- the items do not, the `task` events carry every change
-  M.timer = vim.uv.new_timer()
-  M.timer:start(M.REFRESH_MS, M.REFRESH_MS, guarded(function()
-    if M.client:connected() then
-      refresh_sessions()
-    end
-  end))
   M.client:start()
   state.changed()
   return M

@@ -1,0 +1,78 @@
+// Subscribed UI frames at the transport boundary: presence, process rows and coalesced usage.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { connectUi, connectWsUi, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, sleep } from './harness.ts';
+import type { HarnessProcessView, Presence, SessionUsage } from '../src/protocol.ts';
+
+const presence = (f: Record<string, unknown>): Presence[] => f.sessions as Presence[];
+const row = (f: Record<string, unknown>): HarnessProcessView => f.process as HarnessProcessView;
+
+test('presence events follow hello, status, role, rename and the last spoke leaving', async (t) => {
+  const hub = await startHub();
+  t.after(() => hub.close());
+  const ui = await connectWsUi(t, hub);
+  await ui.request({ type: 'subscribe' });
+  const spoke = await spawnSpoke({ hub, name: 'manual', sessionId: 'manual-id', role: 'coordinator' });
+  t.after(() => spoke.close());
+  await ui.waitFor((f) => f.type === 'presence' && presence(f).some((s) => s.name === 'manual' && s.role === 'coordinator'));
+  await spoke.call('status', { text: 'working on T-71' });
+  await ui.waitFor((f) => f.type === 'presence' && presence(f).some((s) => s.status === 'working on T-71'));
+  await ui.request({ type: 'role.set', session: 'manual', role: 'reviewer' });
+  await ui.waitFor((f) => f.type === 'presence' && presence(f).some((s) => s.name === 'manual' && s.role === 'reviewer'));
+  await ui.request({ type: 'role.set', session: 'manual', role: 'coordinator' });
+  await spoke.call('rename', { name: 'renamed' });
+  await ui.waitFor((f) => f.type === 'presence' && presence(f).some((s) => s.name === 'renamed' && s.sessionId === 'manual-id'));
+  const second = await spawnSpoke({ hub, name: 'renamed', sessionId: 'manual-id' });
+  t.after(() => second.close());
+  await second.waitForPresence(['renamed']);
+  const mark = ui.frames.length;
+  await spoke.close();
+  await sleep(100);
+  assert.equal(ui.frames.slice(mark).filter((f) => f.type === 'presence').length, 0, 'another spoke keeps the session present');
+  await second.close();
+  await ui.waitFor((f) => f.type === 'presence' && presence(f).length === 0);
+});
+
+test('process rows publish launch, model, role, rename, exit and stop; usage bursts publish latest totals per session', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const processes: HarnessProcessView[] = [];
+  const baseline = new Map<string, number>();
+  for (const name of ['coord', 'impl']) {
+    const launched = await ui.request({ type: 'session.launch', name, harness: 'claude-code', role: name === 'coord' ? 'coordinator' : 'implementer' });
+    assert.equal(launched.ok, true, launched.error);
+    const p = (launched.value as { process: HarnessProcessView }).process;
+    processes.push(p);
+    await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === p.sessionId && row(f).status === 'running');
+    const usage = await ui.waitFor((f) => f.type === 'session.usage' && f.sessionId === p.sessionId);
+    baseline.set(p.sessionId, (usage.usage as SessionUsage).total?.outputTokens ?? 0);
+  }
+  const mark = ui.frames.length;
+  // One burst for two launches: neither session can suppress the other's trailing update.
+  await Promise.all(processes.flatMap((p) => Array.from({ length: 20 }, () => ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-turn-complete', payload: { usage: { output_tokens: 2 } } }))));
+  for (const p of processes) {
+    await ui.waitFor((f) => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.outputTokens === (baseline.get(p.sessionId) ?? 0) + 40);
+    assert.equal(ui.frames.slice(mark).filter((f) => f.type === 'session.usage' && f.sessionId === p.sessionId).length, 1, 'twenty reports coalesced to latest totals');
+  }
+  const impl = processes[1]!;
+  await ui.request({ type: 'session.signal', session: impl.name, launch: impl.sessionId, event: 'session-start', payload: { model: 'changed-model' } });
+  await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === impl.sessionId && row(f).model === 'changed-model');
+  await ui.request({ type: 'role.set', session: impl.name, role: 'qa' });
+  await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === impl.sessionId && row(f).role === 'qa');
+  const coord = processes[0]!;
+  const spoke = await spawnSpoke({ cwd: root, discover: true, name: coord.name, sessionId: coord.sessionId, role: 'coordinator' });
+  t.after(() => spoke.close());
+  await spoke.call('rename', { name: 'renamed-coord' });
+  await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).name === 'renamed-coord');
+  assert.ok(coord.pid);
+  process.kill(coord.pid, 'SIGKILL');
+  const exited = await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).status === 'exited');
+  assert.equal(row(exited).attach, null);
+  assert.equal(row(exited).state, 'unknown');
+  await ui.request({ type: 'session.stop', session: impl.name });
+  const stopped = await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === impl.sessionId && row(f).status === 'stopped');
+  assert.equal(row(stopped).attach, null);
+});

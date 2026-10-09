@@ -69,7 +69,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
 export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolean; onClose: (fn: () => void) => void };
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
-/** `resumed` times the synchronous work a launch with an item does after it awaited (Git, the spawn): the hub's guard. */
+/** `resumed` times the synchronous lifecycle work after adapter or Git awaits: the hub's guard. */
 export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
@@ -84,7 +84,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
           ...(frame.cwd !== undefined ? { cwd: frame.cwd } : {}),
           ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
         };
-        if (frame.item === undefined) return ok({ process: await sessions.launch(request) });
+        if (frame.item === undefined) return ok({ process: await sessions.launch(request, resumed) });
         if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
         return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed));
       }
@@ -93,9 +93,9 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
       case 'session.stop':
-        return ok({ process: await sessions.stop(frame.session) });
+        return ok({ process: await sessions.stop(frame.session, resumed) });
       case 'session.resume':
-        return ok(await sessions.resume(frame.session, frame.relaunch ?? false));
+        return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed));
       case 'session.retry':
         return ok(sessions.retry(frame.session, frame.message));
       case 'session.signal':

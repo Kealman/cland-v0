@@ -348,20 +348,38 @@ test('a session.state event updates the chip while the human types in the compos
   assert.deepEqual(lines, ['› half a thought and more']);
 });
 
-test('the workbench reads task.list once on connecting and never polls it; a burst of events asks session.list at most twice (T-67)', { skip }, async (t) => {
-  const c = await startShell(t);
-  await c.input('<Esc><Space>i');
-  await c.waitScreen((x) => x.includes('ITEMS'), 'the items panel');
-  // several sessions refreshes (every 300 ms here) later: the items were read once, at the connection
-  await sleep(1500);
+test('the workbench reads sessions and presence once per connect; events update the panel without polling (T-71)', { skip }, async (t) => {
+  const c = await startShell(t, (s) => { s.inbox = {}; });
   const asked = async (type: string) => ((await c.control({ requests: true })).requests as Array<{ type: string }>).filter((r) => r.type === type).length;
-  assert.equal(await asked('task.list'), 1, 'task.list on connecting only: the task events keep the items');
-  // fifty events for sessions the shell does not know, in one write: one refresh, and one more after it at most
-  const before = await asked('session.list');
+  await c.input('<Esc>');
+  await c.waitScreen((x) => x.includes('SESSIONS'), 'the sessions panel');
+  // Beyond the former default timer as well as the accelerated timer used by this fixture.
+  await sleep(5500);
+  for (const type of ['task.list', 'session.list', 'hub.status', 'role.list', 'inbox.list']) {
+    assert.equal(await asked(type), 1, `${type} once on connecting`);
+  }
   await c.control({ emits: Array.from({ length: 50 }, (_, i) => ({ type: 'session.state', session: `ghost-${i}`, sessionId: `g${i}`, state: 'busy', source: 'hook', ts: ts(5) })) });
-  await sleep(150);
-  const burst = (await asked('session.list')) - before;
-  assert.ok(burst >= 1 && burst <= 3, `${burst} session.list for a burst of 50 events (one refresh in flight at a time, plus the timer's)`);
+  await c.control({ emit: { type: 'presence', sessions: [{ name: 'manual', sessionId: 'manual-id', role: 'reviewer', state: 'idle' }] } });
+  await c.waitScreen((x) => x.includes('manual [Reviewer]'), 'a newly connected spoke');
+  await c.control({ emit: { type: 'presence', sessions: [] } });
+  await c.waitScreen((x) => !x.includes('manual [Reviewer]'), 'the spoke leaving');
+  await c.control({ emit: { type: 'session.usage', session: 'impl-1', sessionId: 'impl-1-id', usage: { total: { totalTokens: 12300, cost: 1.8 } } } });
+  await c.waitScreen((x) => x.includes('$1.80'), 'the usage snapshot');
+  // An old launch's usage is ignored even when it reuses a current name.
+  await c.control({ emit: { type: 'session.usage', session: 'impl-1', sessionId: 'old-launch', usage: { total: { cost: 999 } } } });
+  await c.waitScreen((x) => x.includes('$1.80') && !x.includes('$999'), 'usage stays with its launch');
+  await c.control({ emit: { type: 'session.process', process: { ...proc('coord-1', 'coordinator', 'unknown'), status: 'exited', attach: null } } });
+  await c.waitScreen((x) => x.includes('unknown · died'), 'the exited process');
+  assert.equal(await c.lua("return require('cland.state').session('coord-1').attach"), null);
+  await c.control({ emit: { type: 'session.process', process: { ...proc('coord-1', 'coordinator', 'idle'), name: 'renamed' } } });
+  await c.waitScreen((x) => x.includes('renamed [Coordinator]'), 'a renamed process');
+  assert.equal(await c.lua("return require('cland.state').session('coord-1')"), null);
+  await c.control({ emit: { type: 'session.role', session: 'impl-1', role: 'qa', ts: ts(5) } });
+  await c.waitScreen((x) => x.includes('impl-1 [QA]'), 'the assigned role');
+  for (const type of ['session.list', 'hub.status', 'role.list', 'inbox.list']) assert.equal(await asked(type), 1, `${type} never asked by events`);
+  await c.reconnect();
+  await c.waitScreen((x) => x.includes('coord-1 [Coordinator]') && !x.includes('renamed [Coordinator]'), 'the reconnect snapshot');
+  for (const type of ['session.list', 'hub.status', 'inbox.list']) assert.equal(await asked(type), 1, `${type} once in the new connection`);
 });
 
 test('a burst of hub events never raises a hit-enter prompt', { skip }, async (t) => {
@@ -528,6 +546,7 @@ test('the launcher: ␣l opens the form, a role fills its launch defaults, typed
   s = await c.waitScreen((x) => !x.includes('launch a session') && /rev-2 \[Reviewer\] +free/.test(x), 'rev-2 in the panel');
   assert.match(s, /Codex · gpt-x · idle/);
   assert.match(s, /launched rev-2 \[Reviewer\] · Codex ·/);
+  for (const type of ['session.list', 'hub.status']) assert.equal((await requestsOf(c, type)).length, 2, `${type}: connect and own launch`);
   const [frame] = await requestsOf(c, 'session.launch');
   assert.deepEqual({ ...frame, id: undefined, cwd: undefined }, { type: 'session.launch', id: undefined, name: 'rev-2', role: 'reviewer', harness: 'codex', model: 'gpt-x', effort: 'high', cwd: undefined });
   assert.match(String(frame?.cwd), /proj-shell$/);
@@ -668,6 +687,7 @@ test('x asks on a line in the panel; n keeps the session, y sends session.stop a
   assert.doesNotMatch(s, /stop impl-1\?/);
   const stops = await requestsOf(c, 'session.stop');
   assert.deepEqual(stops.map((f) => f.session), ['impl-1']);
+  for (const type of ['session.list', 'hub.status']) assert.equal((await requestsOf(c, type)).length, 2, `${type}: connect and own stop`);
 });
 
 test('a session.state unknown event shows unknown; a process that died shows unknown · died', { skip }, async (t) => {
@@ -675,9 +695,8 @@ test('a session.state unknown event shows unknown; a process that died shows unk
   await c.input('<Esc>');
   await c.control({ emit: { type: 'session.state', session: 'coord-1', sessionId: 'coord-1-id', state: 'unknown', source: 'process', ts: ts(5) } });
   await c.waitScreen((x) => /Claude Code · opus · unknown/.test(x) && /\? coord-1 \[Coordinator\]/.test(x), 'coord-1 unknown');
-  const procs = baseScenario('').processes ?? [];
-  await c.control({ set: { processes: procs.map((p) => (p.name === 'coord-1' ? { ...p, status: 'exited', state: 'unknown', attach: null } : p)) } });
-  await c.waitScreen((x) => /✗ coord-1 \[Coordinator\]/.test(x) && /Claude Code · opus · unknown · died/.test(x), 'coord-1 died, at the next refresh');
+  await c.control({ emit: { type: 'session.process', process: { ...proc('coord-1', 'coordinator', 'unknown'), status: 'exited', attach: null } } });
+  await c.waitScreen((x) => /✗ coord-1 \[Coordinator\]/.test(x) && /Claude Code · opus · unknown · died/.test(x), 'coord-1 died, from its process row event');
 });
 
 test("the picker's sessions kind: waiting ones first, filters by name, role and harness, Enter attaches", { skip }, async (t) => {
