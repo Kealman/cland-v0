@@ -6,7 +6,8 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { sleep, tempProject } from './harness.ts';
+import { tempProject } from './harness.ts';
+import { manualTips } from './freshness-harness.ts';
 import { Tracker, TrackerError, type Actor, type ItemChange, type ItemSummary } from '../src/tracker/tracker.ts';
 import { answerTask } from '../src/tracker/requests.ts';
 import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
@@ -37,7 +38,7 @@ async function repository(root: string, n: number): Promise<{ feature: string }>
 }
 
 /** The tracker with a git runner that counts the processes it starts, and those started while `reading` is set. */
-function counted(t: TestContext, root: string, options: { tipCheckMs?: number; git?: Git } = {}) {
+function counted(t: TestContext, root: string, options: { git?: Git } = {}) {
   const counts = { all: 0, whileReading: 0 };
   let reading = false;
   const real = options.git ?? gitIn(root);
@@ -46,7 +47,8 @@ function counted(t: TestContext, root: string, options: { tipCheckMs?: number; g
     if (reading) counts.whileReading++;
     return real(args, input);
   };
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run, tipCheckMs: options.tipCheckMs ?? 50 });
+  const tips = manualTips();
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run, scheduleTips: tips.scheduleTips });
   t.after(() => tracker.stop());
   const read = <T>(fn: () => T): T => {
     reading = true;
@@ -56,17 +58,25 @@ function counted(t: TestContext, root: string, options: { tipCheckMs?: number; g
       reading = false;
     }
   };
-  return { tracker, counts, read };
+  return { tracker, counts, read, refresh: tips.refresh };
 }
 
-async function settled(tracker: Tracker, ok: (items: ItemSummary[]) => boolean, ms = 15_000): Promise<ItemSummary[]> {
-  const until = Date.now() + ms;
-  for (;;) {
-    const items = tracker.list();
-    if (ok(items)) return items;
-    if (Date.now() > until) assert.fail(`freshness did not settle: ${JSON.stringify(items.map((i) => [i.id, i.verdicts.map((v) => v.current)]))}`);
-    await sleep(25);
-  }
+function settled(tracker: Tracker, ok: (items: ItemSummary[]) => boolean): Promise<ItemSummary[]> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('freshness did not settle'));
+    }, 15_000);
+    const check = () => {
+      const items = tracker.list();
+      if (!ok(items)) return;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(items);
+    };
+    const unsubscribe = tracker.onChange(check);
+    check();
+  });
 }
 const allKnown = (items: ItemSummary[]) => items.every((i) => i.verdicts.every((v) => v.current !== undefined));
 
@@ -74,8 +84,9 @@ test('task.list and task.view start no git process; freshness arrives from the c
   const root = await tempProject(t);
   const N = 20;
   const { feature } = await repository(root, N);
-  const { tracker, counts, read } = counted(t, root);
+  const { tracker, counts, read, refresh } = counted(t, root);
   tracker.start();
+  await refresh();
   const events: ItemChange[] = [];
   tracker.onChange((c) => events.push(c));
   for (let k = 0; k < N; k++) {
@@ -99,15 +110,15 @@ test('task.list and task.view start no git process; freshness arrives from the c
   // the answers were announced as they arrived: the UI hears `current` without asking again
   assert.ok(events.some((e) => e.id === 'T-1' && e.item?.verdicts[0]?.current === true), 'a settled answer is a task event');
 
-  // the task diff of t/3 changes: the timer's tip read sees it and the verdict goes stale, the others stay current
+  // the task diff of t/3 changes: the next tip read sees it and the verdict goes stale, the others stay current
   git(root, 'checkout', 't/3');
   await writeFile(join(root, 'feature'), 'changed\n');
   git(root, 'commit', '-am', 'change the feature');
   git(root, 'checkout', 'dev');
+  await refresh();
   const after = await settled(tracker, (xs) => xs[3]?.verdicts[0]?.current === false);
   assert.deepEqual(after.filter((i) => i.id !== 'T-4').map((i) => i.verdicts[0]?.current), Array(N - 1).fill(true));
   assert.equal(read(() => tracker.view('T-4')).verdicts[0]?.current, false);
-  await sleep(100);
   assert.ok(events.some((e) => e.id === 'T-4' && e.item?.verdicts[0]?.current === false), 'the stale verdict is announced');
   assert.equal(counts.whileReading, 0);
 });
@@ -115,8 +126,9 @@ test('task.list and task.view start no git process; freshness arrives from the c
 test('a verdict on the branch tip is current at once, and an unrelated tip read announces nothing', async (t) => {
   const root = await tempProject(t);
   await repository(root, 1);
-  const { tracker, read } = counted(t, root);
+  const { tracker, read, refresh } = counted(t, root);
   tracker.start();
+  await refresh();
   const { id } = tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
   const view = await tracker.comment(REVIEWER, id, 'checked', { verdict: 'qa', result: 'clear', run: 'q-1' });
   assert.equal(view.verdicts[0]?.commit, git(root, 'rev-parse', 't/0'));
@@ -124,7 +136,7 @@ test('a verdict on the branch tip is current at once, and an unrelated tip read 
   const events: ItemChange[] = [];
   tracker.onChange((c) => events.push(c));
   git(root, 'branch', 'unrelated');
-  await sleep(300);
+  await refresh();
   assert.deepEqual(events, [], 'a tip read that changes no answer is no event');
   assert.equal(read(() => tracker.list())[0]?.verdicts[0]?.current, true);
 });
@@ -132,12 +144,12 @@ test('a verdict on the branch tip is current at once, and an unrelated tip read 
 test('a read that finds a new question with the cache warm and the worker idle starts no git: the work is queued', async (t) => {
   const root = await tempProject(t);
   const { feature } = await repository(root, 1);
-  const { tracker, counts, read } = counted(t, root);
+  const { tracker, counts, read, refresh } = counted(t, root);
   tracker.start();
+  await refresh();
   const { id, path } = tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
   await tracker.comment(REVIEWER, id, 'checked', { verdict: 'review', result: 'clear', run: 'r-1', commit: feature });
   await settled(tracker, allKnown);
-  await sleep(200);
   // another commit with the same task diff, recorded by hand: a key the cache has never seen, found by view (it reads the file)
   const other = git(root, 'commit-tree', `${feature}^{tree}`, '-p', feature, '-m', 'another');
   appendFileSync(join(root, path), `\n### rev-1 · 2026-10-09T09:00:00.000Z\n\nverdict: qa\nresult: clear\nby: rev-1 [reviewer]\nrun: q-1\ncommit: ${other}\n\nChecked by hand.\n`);
@@ -152,16 +164,17 @@ test('a read that finds a new question with the cache warm and the worker idle s
 test('a branch the last tip read did not hold is unknown, not stale, until a later read settles it', async (t) => {
   const root = await tempProject(t);
   const { feature } = await repository(root, 0);
-  // no timer to speak of: only the read a change asks for
-  const { tracker, read } = counted(t, root, { tipCheckMs: 60_000 });
+  const { tracker, read, refresh } = counted(t, root);
   tracker.start();
-  await sleep(200);
+  await refresh();
   git(root, 'branch', 't/late', feature);
   const late = tracker.create(REVIEWER, { title: 'Late branch', branch: 't/late' });
   const none = tracker.create(REVIEWER, { title: 'No branch at all', branch: 't/none' });
   await tracker.comment(REVIEWER, late.id, 'checked', { verdict: 'review', result: 'clear', run: 'r-1', commit: feature });
   await tracker.comment(REVIEWER, none.id, 'checked', { verdict: 'review', result: 'clear', run: 'r-2', commit: feature });
   assert.equal(read(() => tracker.view(late.id)).verdicts[0]?.current, undefined, 'a branch created after the last read is not reported stale');
+  assert.equal(read(() => tracker.view(none.id)).verdicts[0]?.current, undefined, 'absence is unknown until a read after the question');
+  await refresh();
   const items = await settled(tracker, allKnown);
   assert.equal(items.find((i) => i.id === late.id)?.verdicts[0]?.current, true, 'the next read finds it');
   assert.equal(items.find((i) => i.id === none.id)?.verdicts[0]?.current, false, 'a branch no read finds is stale');

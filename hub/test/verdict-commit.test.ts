@@ -6,6 +6,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { cland, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { startFreshnessDaemon } from './freshness-harness.ts';
 import type { ItemView, ItemSummary } from '../src/tracker/tracker.ts';
 
 const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -25,9 +26,6 @@ async function eventually<T>(read: () => Promise<T>, ok: (value: T) => boolean):
 }
 const viewed = (root: string, id: string, ok: (item: ItemView) => boolean) => eventually(async () => (await task(root, 'view', id)).item, ok);
 const listed = (root: string, ok: (items: ItemSummary[]) => boolean) => eventually(async () => (await task(root, 'list')).items, ok);
-/** The branch tips are read every 100 ms instead of every 2 s; `tipsRead` waits long enough for a read after a Git change. */
-const FAST_TIPS = { CLAND_TEST_TIP_CHECK_MS: '100' };
-const tipsRead = () => new Promise((r) => setTimeout(r, 500));
 async function repository(root: string) {
   git(root, 'init', '-b', 'dev');
   git(root, 'config', 'user.name', 'Test');
@@ -112,7 +110,7 @@ test('hub verdict provenance survives restart and unrelated hand edits; forged a
 test('latest verdicts go stale after a change and stay current across a rebase that preserves the diff', async (t) => {
   const root = await tempProject(t);
   const sha = await repository(root);
-  await startDaemon(t, root, FAST_TIPS);
+  const { refresh } = await startFreshnessDaemon(t, root);
   await task(root, 'create', 'Reviewed', '--branch', 't/test');
   await task(root, 'comment', 'T-1', 'ok', '--verdict', 'review', '--result', 'clear', '--run', 'r-1');
   let view = await viewed(root, 'T-1', (i) => i.verdicts[0]?.current !== undefined);
@@ -126,7 +124,7 @@ test('latest verdicts go stale after a change and stay current across a rebase t
   git(root, 'rebase', 'dev');
   const rebased = git(root, 'rev-parse', 'HEAD');
   assert.notEqual(rebased, sha);
-  await tipsRead();
+  await refresh();
   // known once the tips were read again and the patch ids compared: until then it is absent, never computed inline
   const settledView = (ok: (v: boolean | undefined) => boolean) => viewed(root, 'T-1', (i) => ok(i.verdicts.at(-1)?.current));
   assert.equal((await settledView((c) => c !== undefined)).verdicts[0]?.current, true);
@@ -134,6 +132,7 @@ test('latest verdicts go stale after a change and stay current across a rebase t
   await writeFile(join(root, 'feature'), 'changed feature\n');
   git(root, 'add', 'feature');
   git(root, 'commit', '-m', 'change feature');
+  await refresh();
   view = await settledView((c) => c === false);
   assert.equal(view.verdicts[0]?.current, false);
   await task(root, 'comment', 'T-1', 'ok', '--verdict', 'review', '--result', 'clear', '--run', 'r-2');
@@ -141,6 +140,7 @@ test('latest verdicts go stale after a change and stay current across a rebase t
   assert.equal(view.verdicts[0]?.current, undefined, 'only the latest of each kind has freshness');
   assert.equal(view.verdicts[1]?.current, true, 'a verdict on the tip the hub just resolved is current at once');
   git(root, 'branch', '-m', 'dev', 'main');
+  await refresh();
   view = await viewed(root, 'T-1', (i) => i.verdictBase === 'main');
   assert.equal(view.verdictBase, 'main');
   assert.equal(view.verdicts[1]?.current, true);
@@ -172,7 +172,7 @@ test('text verdicts retain their commit and invalid explicit SHAs leave the item
   const root = await tempProject(t);
   const sha = await repository(root);
   git(root, 'branch', '-m', 'dev', 'main');
-  await startDaemon(t, root, FAST_TIPS);
+  const { refresh } = await startFreshnessDaemon(t, root);
   const { item } = await task(root, 'create', 'Reviewed', '--branch', 't/test');
   const header = `verdict: review\nresult: clear\nby: forged [reviewer]\nrun: r-1\ncommit: ${sha}\n\nChecked.`;
   const r = await task(root, 'comment', item.id, header);
@@ -194,7 +194,7 @@ test('text verdicts retain their commit and invalid explicit SHAs leave the item
   git(root, 'commit', '-m', 'advance main');
   git(root, 'checkout', 't/test');
   git(root, 'rebase', 'main');
-  await tipsRead();
+  await refresh();
   const view = await viewed(root, item.id, (i) => i.verdicts[0]?.current !== undefined);
   assert.equal(view.verdictBase, 'main');
   assert.equal(view.verdicts[0]?.current, true);
