@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-44
 branch: t/T-119-containers-from-config-tracker-levels
 created: 2026-10-09T21:56:19.667Z
-updated: 2026-10-09T23:42:06.723Z
+updated: 2026-10-09T23:54:37.997Z
 ---
 
 ## Parent
@@ -106,3 +106,43 @@ Second review delta: replaced indexed-child selection with one final async direc
 ### impl-119 · 2026-10-09T23:42:06.723Z
 
 Second review fixes committed/pushed; head copied from git log -1: 87a1e08a46b3d8258a8ba0622e421a5c409e7aa9. A-267 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-267-t-119-disk-child-discovery-and-source-guard-at-87a1e08.md records disk-wide discovery, source-context guard, narrowed defaults exemption and regressions. Typecheck, levels13/13, async29/29, native29/29, source5/5 pass; internal review clear. Worktree clean. Full suite awaits official delta clearance.
+
+### rev-65 · 2026-10-09T23:47:03.505Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-119-3
+commit: 87a1e08a46b3d8258a8ba0622e421a5c409e7aa9
+
+High: 0. Medium: 2. Low: 0.
+
+Medium — hub/src/tracker/tracker.ts:918: fail-fast Promise.all releases the failed scan's tracker admission while sibling reads/parses are pending; a following queued write commits before a held scan read settles. Drain all started reads before propagating the filename refusal (A-96 partial-failure class; queued-read/drain contract).
+
+Medium — hub/test/tracker-container-source.test.ts:34/:36/:50: operational variable/helper-name exemptions still suppress definite item-kind comparisons; `const LIFECYCLE_KINDS = items.filter(item => item.kind === 'release')` and `const clearPublicationReceipt = (kind: Kind) => kind === 'release'` both pass. Flag .kind/Kind comparisons irrespective of surrounding names, retaining operational vocabulary allowances.
+
+Pinned virtual-port probes reproduced both. Pre-scan reparented children now correctly block close/leaf conversion using one directory pass, no index.list call, old parent intact and temp cleaned. Known-child reopening and malformed/unknown filename refusals also pass. Original importer/dispatch mutations are caught and frame.type release is allowed. The previous whole-index cost low is resolved by disk snapshots/direct-child warning queries.
+
+Cost: one listing + N async reads/parses and O(N) snapshot/pending-read memory per relevant operation; K import transitions may scan K times. No measured timing breach. Custom initiative→feature tests cover parenting/close and both Neovim predicates. Full item reviewed against 9ddfd79, carrying earlier unchanged checks forward; no suite or file edits.
+
+Per Coordinator clarification, disk edits during scan through rename are accepted and are not findings; README should name that full window. Standards: 1 medium. Spec: 1 medium. Evidence A-270: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-270-t-119-review-of-87a1e08-scan-drain-and-guard-exemption-findings.md.
+
+### impl-119 · 2026-10-09T23:50:39.191Z
+
+Third review fixes committed/pushed at git log -1 head 57148b7dea3e633168dd8c94bab583a077c6a66c: allSettled drains scan reads and aggregates failed files before queue release; definite-kind comparisons override operational-name exemptions; README records accepted scan-plus-rename edits. A-271: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-271-t-119-scan-draining-and-definite-kind-guard-at-57148b7.md. Typecheck, async30/30, affectedlevels4/4, source6/6 pass; internal residual review clear. Superseded suite cancelled exit143; waiting T120 landing for single rebase and combined-container status check.
+
+### rev-65 · 2026-10-09T23:54:37.997Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-119-4
+commit: 57148b7dea3e633168dd8c94bab583a077c6a66c
+
+High: 0. Medium: 1. Low: 0.
+
+Medium — hub/test/tracker-container-source.test.ts:46–48/:72: definite-kind detection checks explicit declaration annotations but misses inferred/destructured bindings. The actual pinned guard accepts `const LIFECYCLE_KINDS = (kind: Kind) => { const value = kind; return value === 'release'; };` and `const clearPublicationReceipt = (item: {kind: Kind}) => { const {kind: value} = item; return value === 'release'; };`. Both compare inferred Kind values with a default-level literal and return no failures, contrary to the Coordinator's any-Kind-typed-value requirement. Follow bindings/inference and plant these mutations; this remains the original guard class.
+
+Scan-drain medium resolved: with one held read and two failures, actual-method virtual-port probes keep both refusal and the next queued write pending with zero renames. After release, both failed filenames are reported, the parent stays unchanged, temporary files are cleaned and the following write commits. Original direct typed/.kind guard bypasses now fail. README names the accepted scan-plus-rename interval, which is not a finding.
+
+Full item reviewed against 9ddfd79, carrying earlier unchanged checks forward; no suite or file edits. Standards: 0 findings. Spec: 1 medium. Evidence A-272: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-272-t-119-review-of-57148b7-scan-drain-resolved-inferred-kind-guard-gap.md.

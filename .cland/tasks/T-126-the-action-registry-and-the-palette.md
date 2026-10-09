@@ -10,10 +10,10 @@ assignee: null
 parent: T-109
 blocked_by:
   - T-125
-topic: null
-branch: null
+topic: topic-46
+branch: t/T-126-the-action-registry-and-the-palette
 created: 2026-10-09T21:57:18.399Z
-updated: 2026-10-09T21:57:18.399Z
+updated: 2026-10-09T23:51:19.364Z
 ---
 
 ## Parent
@@ -44,3 +44,13 @@ Matching uses Neovim's built-in fuzzy matching (ADR 0005).
 ## Notes
 
 Size M. Implementer: Codex. Reference: `prototype/panels` `palette.lua`; mockup `Palette.dc.html` and `screens/v01-palette.png`. The later Neovim epics reach their views through this registry, so keep its API small and documented.
+
+## Comments
+
+### impl-126 · 2026-10-09T23:44:50.018Z
+
+Read T-126/T-109 and Coordinator brief; base d21dfb5 includes T-125. Sweeping every existing keymap and :Cland command into one registry. Headless UI and the existing inbox hub-answer boundary are the authorized test seams; dimming will have one replaceable classifier and palette rows will reuse bars.fit.
+
+### impl-126 · 2026-10-09T23:51:19.364Z
+
+Registry and palette are implemented. Six headless palette tests pass: sessions action/key, item centre/split, runtime mapping audit (negative missing/drift checks), inbox-backed ask answer observed at the stub hub, fixed group order/best cursor/prefixes/Tab/Esc/␣a, and dim/blue/wide-row fitting. Split coverage found and fixed missing object-split redraws. Updating the superseded picker tests and writing shipped QA cases/docs before commit and the one final full suite.

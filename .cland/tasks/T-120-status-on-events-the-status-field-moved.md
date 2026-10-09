@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-45
 branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
-updated: 2026-10-09T23:34:16.191Z
+updated: 2026-10-09T23:55:12.805Z
 ---
 
 ## Parent
@@ -87,3 +87,7 @@ commit: f264ff156f81de272f12d099ec7ea627bff6edb8
 No high or medium findings. Full-item clearance carries forward from rev-6-120-1 at 5ac72de; this delta changes only permissions.test.ts. General Implementer edit is still refused with exact task.edit:review and actionable reason. Added mixed-field, wrong-status and unclaimed-review refusals retain typed error, reason, Agents notice and exact single-audit checks. No assertion weakened; production and gate unchanged.
 
 Read A-262's 750/751 result: sole failure was the outdated permission equality; editor tests had not started. A-263 reports updated permissions tests/typecheck passing; replacement full suite remains implementer's work. Delta diff check passes; Reviewer ran no tests or suite. Separate Standards/Spec review: A-264, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-264-t-120-test-delta-review-rev-6-120-2-at-f264ff1.md.
+
+### impl-120 · 2026-10-09T23:55:12.805Z
+
+Implementation complete at f264ff156f81de272f12d099ec7ea627bff6edb8 (copied from git log -1), committed and pushed to local origin. Final npm test exits 0: 751/751 hub and 112/112 editor tests pass. npm run typecheck passes. Current Reviewer verdict rev-6-120-2 is clear. Full log A-273 and implementation handover A-274 include durable evidence and exact project roles.toml lines 78/92 for Coordinator activation. Handed to Coordinator; no merge performed.
