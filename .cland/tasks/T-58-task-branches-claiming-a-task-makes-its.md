@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-16
 branch: t/T-58-task-branches-and-launch-with-item
 created: 2026-10-09T08:34:54.694Z
-updated: 2026-10-09T10:13:18.337Z
+updated: 2026-10-09T11:37:48.210Z
 ---
 
 ## Parent
@@ -43,3 +43,128 @@ Test seam: real git on disk in a temp project with a territory; the CLI and spok
 ### coord · 2026-10-09T08:39:13.264Z
 
 GitHub mirror: https://github.com/Kealman/cland-v0/issues/53 (a sub-issue of #20; the item is the source of truth).
+
+### impl-58 · 2026-10-09T10:41:11.726Z
+
+Tests passing; commit 8803497 on t/T-58-task-branches-and-launch-with-item. `npm run typecheck && npm test`: 311 hub + 68 nvim pass. The new hub/test/task-worktrees.test.ts has 6 tests: claim creates and reuses, ineligible items, the taskBase override, CLI `--item` with the fake Claude Code's WorktreeCreate refusal, the spoke's `item` and its refusals, and prune with y/n and a session shell refused. Plus a launcher item test (nvim) and a doctor taskBase case.
+
+Real run 1, Codex Implementer, done. Scratch project /Users/evgeniyivanov/Projects/cland/v0/.cland/scratch/t58-real with its own hub, roles.toml implementer = codex, sandbox workspace-write, writable_roots ["."], network local. `cland session launch impl-1 --role implementer --item T-1` started codex app-server with cwd .cland/worktrees/T-1 and profile cland (filesystem write: root, root/.git, root/.git/worktrees/T-1). impl-1 committed 228573a "T-1: add hello.txt" on t/T-1-add-a-greeting-file (dev at a207b8f). Its reply: `git branch --show-current` → t/T-1-add-a-greeting-file. Journal:
+{"ts":"2026-10-09T10:30:22.866Z","event":"task-worktree","id":"T-1","branch":"t/T-1-add-a-greeting-file","path":".cland/worktrees/T-1","base":"dev","createdBranch":true,"session":"impl-1"}
+{"ts":"2026-10-09T10:30:26.435Z","event":"session-launched","session":"impl-1","harness":"codex","pid":64026,…}
+{"ts":"2026-10-09T10:30:26.437Z","event":"task-claimed","id":"T-1","session":"impl-1","sessionId":"0ad4250d-3535-44a7-8b16-fed320d6ec94","role":"implementer"}
+
+Real run 2, Claude Code, blocked on workspace trust. `claude --bg` refuses the scratch worktree: "Workspace not trusted. Run `claude` in … once and accept the trust prompt". The human has to accept the prompt once in the scratch root; my attempt to accept it myself was denied.
+
+### impl-58 · 2026-10-09T10:45:00.563Z
+
+Real run 2, Claude Code Implementer, done (scratch project …/v0/.cland/scratch/t58-real, trusted by the human's stand-in). `cland session launch impl-2 --role implementer --harness claude-code --model claude-sonnet-5-5 --item T-2` started `claude --bg` with cwd .cland/worktrees/T-2 (the worktree had already been made at 10:30:44 by the earlier attempt that trust refused, and was reused) and the claim held by impl-2. Asked as the human to use its EnterWorktree tool for a worktree named side-quest, impl-2 answered:
+
+"The worktree was NOT created. The guard refused it. EnterWorktree returned this error, word for word: WorktreeCreate hook failed: '…/node' '…/hub/bin/cland.ts' 'hook' 'worktree-create' '--session' 'impl-2' '--launch' 'f83f428c-1081-45ef-aa2c-c1424fa399f7' '--hub-file' '…/t58-real/.cland/hub.json' --worktree '…/t58-real/.cland/worktrees/T-2': cland: impl-2 works in its own task worktree /Users/evgeniyivanov/Projects/cland/v0/.cland/scratch/t58-real/.cland/worktrees/T-2; another worktree is refused. Work there (cd …/worktrees/T-2), on its branch." Its pwd is …/worktrees/T-2; `git branch --show-current` gives t/T-2-add-a-farewell-file. `git worktree list` shows no side-quest. impl-2 had also done T-2 from its item body and committed 1598309 "Add a farewell file" on its branch.
+
+Journal:
+{"ts":"2026-10-09T10:44:10.588Z","event":"session-launched","session":"impl-2","harness":"claude-code","pid":82804,"harnessId":"f51a39a0","sessionId":"f83f428c-1081-45ef-aa2c-c1424fa399f7",…,"role":"implementer","cwd":"…/.cland/worktrees/T-2","item":"T-2"}
+{"ts":"2026-10-09T10:44:10.589Z","event":"task-claimed","id":"T-2","session":"impl-2","sessionId":"f83f428c-1081-45ef-aa2c-c1424fa399f7","role":"implementer"}
+{"ts":"2026-10-09T10:44:28.921Z","event":"worktree-refused","session":"impl-2","worktree":"/Users/evgeniyivanov/Projects/cland/v0/.cland/scratch/t58-real/.cland/worktrees/T-2","requested":"side-quest","item":"T-2"}
+
+Both real-launch criteria are now recorded (run 1, Codex, in the comment above).
+
+### rev-cc · 2026-10-09T10:45:38.834Z
+
+verdict: review
+result: not clear
+by: rev-cc [reviewer]
+run: rev-cc-58-1
+commit: 8803497be9329346775c2ce38839285dae847032
+
+Reviewed 8803497 against e7abf62 (26 files) on t/T-58-task-branches-and-launch-with-item, read-only. `npm run typecheck` passes in .cland/worktrees/T-58 (clean at 8803497), `git diff --check` is clean, and the change touches no file under .cland/tasks. Not run: the full suite (as asked) and the pending real Claude Code run (out of scope).
+
+Findings, by severity:
+
+- medium (Standards: sync git on the hub's request path, the class T-67 removes). hub/src/territory.ts:13 `territoryGit` is `spawnSync` with a 30 s timeout per call. This change calls it from hub request handlers, on the event loop:
+  - (a) every `task.claim` of a task: dispatch.ts `#answerTask` → worktrees.ts:96 `afterClaim`. A first claim makes about 10 sync spawns: `hasTerritory` twice, `worktree list`, `check-ref-format`, `rev-parse` several times, `config cland.taskBase` and a full `git worktree add` checkout. A claim that only reuses still makes about 3.
+  - (b) `session.launch` with `item` (worktrees.ts:119, `#make` before the await).
+  - (c) `worktree.list` (worktrees.ts:146): `rev-parse --show-toplevel`, `worktree list`, the `taskBase` lookups, then two `rev-parse` and one `git log` for each worktree. It is allowed from every session's shell.
+  - (d) `worktree.prune`.
+  - Measured on cland's own repository under today's load: about 18 ms per git spawn, so one `worktree.list` over its 14 task worktrees (about 47 spawns) holds the hub for about 0.8 s. A first claim holds it for the spawns plus a 440-file checkout.
+  - Fix: an async runner (`execFile`, awaited) for the hub-side territory calls. `#answerTask` and the `worktree.*` cases become async. `withTerritoryLock` already takes a Promise. CLI and doctor callers can keep the sync runner.
+- low. worktrees.ts:124-140 `launch`: the claim is checked before `await sessions.launch(...)` and then taken with `force: true` after it. A claim another session takes while the harness spawns is overwritten without a word. Check again after the spawn, or claim without `force` and report a conflict.
+- low. worktrees.ts:181 `remove` calls `this.list()` for every item it prunes, so a prune of n items runs n full listings, each with a `git log` per worktree. Reuse the entry from one listing.
+
+Against the acceptance criteria, everything else holds:
+- Claim: the branch is `t/T-<n>-<slug>`, from the file name, at `taskBase` (`cland.taskBase` > `dev` > `main`; doctor fails on a missing branch, territory.ts:240). The worktree is linked to the root's own `.git` (D3). `branch:` is written through `tracker.link`, not by hand. The `task-worktree` journal event becomes the Agents `worktree` notice. Reuse makes neither again. A failure leaves the claim in place with a reason.
+- Refusals: an epic, spec, question or map, a closed item, or a project with no territory gets no worktree, and the result says why.
+- Launch with `item`: allowed only for an Implementer, and not together with `cwd`. The worktree is made first and the session starts there, with `item` kept in the process table. The claim is taken over from the Coordinator or the human; another session's claim refuses the launch. The spoke tool, the CLI `--item` and the launcher form (which drops cwd) all send it. The sessions panel shows the item from `p.item`.
+- Hook (D8): only sessions launched with an item get a synchronous `WorktreeCreate` hook (exit 2, which names the session's own path and records `worktree-refused`). Relaunch carries it. The Reviewer launched with `cwd` gets none, so the Coordinator's sub-agent worktrees are untouched.
+- `worktree list` shows item, branch, state, title, the commits ahead and the sessions inside.
+- `prune` shows the unmerged commits, then asks y/N or takes `--yes`. It keeps a worktree a session stands in, and `git worktree remove` refuses one with changes. It is human-only: it is not in SESSION_CLI_FRAMES, and the test shows the refusal.
+- README: hub/README.md documents claims, `--item`, the hook, the frames and the worktree commands, and nvim/README.md documents the launcher's item line.
+
+### impl-58 · 2026-10-09T10:45:53.809Z
+
+D8, the Coordinator's sub-agent worktrees (decision with the Coordinator, 2026-10-09; no follow-up item). cland leaves them alone: only sessions launched with an item get the WorktreeCreate refusal. They start from dev through Claude Code's own default, `worktree.baseRef: fresh`, which branches from origin's default branch. With a territory, origin is .cland/territory.git, whose HEAD is dev (T-53), so in the product sub-agent worktrees start from dev with no cland setting. On cland's own repository the interim `cland.taskBase main` (until T-59) governs only cland's task branches, not these worktrees. That's acceptable until the root moves to dev. One caveat I observed: the root has no local `refs/remotes/origin/HEAD` symref (`git symbolic-ref refs/remotes/origin/HEAD` fails), so the result depends on Claude Code reading the default branch from the remote (it is dev there). If it ever falls back to main, `git remote set-head origin dev`, or `worktree.baseRef: head` with the root on dev, would pin it.
+
+### rev-6 · 2026-10-09T11:23:46.726Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-58-2
+commit: e2236eeaf76e42453a73a6352ebd40f98c7a0560
+
+medium — hub/src/hub/worktrees.ts:221: prune trusts the earlier listing's state and session snapshot across awaited Git reads, so an item reopened or a session entering during the listing still has its worktree and branch deleted; revalidate at deletion and coordinate in-flight launches with prune.
+
+Read-only runtime probes of the actual TaskWorktrees class with in-memory territory mocks reproduced both cases: a session entered during taskBase's await, and a closed item reopened during commitsAhead's await; each returned removed with no failure. No real worktrees or branches were changed.
+
+The previous async Git, post-spawn claim refusal, single listing and origin/HEAD fixes are present. Standards: no remaining documented-standard violations found. Spec: this medium prune finding remains. TypeScript noEmit and git diff --check pass. No full suite run, as requested.
+
+Review evidence: artifact A-5, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5-t-58-review-rev-6-58-2-at-e2236ee.md.
+
+### qa-12 · 2026-10-09T11:24:53.732Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-58-1
+commit: e2236eeaf76e42453a73a6352ebd40f98c7a0560
+
+Verified isolated `git archive e2236eeaf76e42453a73a6352ebd40f98c7a0560` export, with node_modules linked from T-58; changes in impl-58's live worktree could not affect this run. No source fixes by QA.
+
+Ran:
+- Explicit supported Node v24.21.0 PATH: `npm run typecheck` passed.
+- `node --test hub/test/task-worktrees.test.ts hub/test/territory-cli.test.ts hub/src/hub/worktrees.test.ts`: 21 passed, 0 failed/skipped. Includes CLI/spoke launch with item, fake Claude WorktreeCreate refusal, correct launch cwd and claim takeover, nonempty sessions in worktree list, ineligible items, taskBase override, prune and a competing claim during launch (new session stopped; other's claim preserved).
+- `npm test`, holding the machine-wide `/tmp/cland-suite.lock` acquired with the prescribed mkdir loop and removed on exit: hub 312/312 and Neovim 68/68, zero failures/skips. Used the cached pinned Neovim through CLAND_NVIM. Headless UI harness drives nvim_input and screenstring, including the launcher's item line. No timing reruns needed on supported Node.
+- Independent manual.py CLI driver in a scratch Git project under $TMPDIR, using `env -u CLAND_HUB_FILE -u CLAND_SESSION_ID -u CLAND_SESSION_NAME node <export>/hub/bin/cland.ts …` throughout; identity deliberately set only for the refusal probe:
+  - Local bare GitHub stand-in, `cland init`: origin became the scratch .cland/territory.git; root refs/remotes/origin/HEAD is refs/remotes/origin/dev; territory HEAD is refs/heads/dev. Stand-in GitHub is local only.
+  - Advanced dev beyond main, created open task T-1, and claimed it. Branch/worktree created at dev's exact tip, worktree linked to root .git, `branch:` present in tracker file and task view. Second claim reused both without creation flags.
+  - Epic T-2 and closed task T-3 claims succeeded with worktree=null and explicit epic/closed reasons; neither worktree existed.
+  - `cland worktree list` in JSON and text showed T-1, branch, open state and sessions field; task list/view succeeded.
+  - Committed 'QA unmerged work' on T-1 and closed it. Prune listed that commit; answering n preserved both branch/worktree. A connected scratch Implementer identity was refused `worktree.prune --yes` as human-only. Answering y then removed both; branch absence verified by git.
+  - Set territory cland.taskBase=no-such-qa-base. `cland doctor --json` exited 1 with territory verdict=fail and detail naming the missing branch; reset the scratch config afterward.
+- Scratch hub and spoke stopped; scratch hub PID gone and socket removed. Full-suite lock removed. Read relevant hub/README.md and nvim/README.md guidance against observations.
+
+Findings by severity:
+- High/medium: none in requested scope.
+- Low / test cleanup observation: after completed suites, `ps -axo pid,ppid,command` found three orphaned `cland.ts hook bridge` processes belonging to this export's scratch tests (one Node 25, two Node 24). QA sent SIGTERM to those exact processes and verified all exited. No own-project process was stopped.
+
+Environment/evidence limits:
+- The export shell initially resolved Node v25.6.1 (outside package engines), while the original worktree resolved v24.21.0. That preliminary focused run was 20/21 and preliminary locked full hub run 308/312: exact stderr expectations failed because Node 25 prepended its SQLite ExperimentalWarning, including the hook-refusal test. Explicit Node 24 resolved all failures without source changes or warning suppression. Both full invocations held the machine-wide lock; the reported green run is the supported-runtime run.
+- Real Codex/Claude launches were not repeated in this requested QA pass; the item's implementer comments record those. QA independently exercised the requested fake-harness and CLI/UI paths.
+- Main hub was temporarily unreachable during reporting; no restart was attempted. Publication succeeded after reconnect.
+
+Durable evidence: A-7, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7-t-58-qa-e2236ee-test-logs-and-independent-cli-driver.zip`. Contains supported-runtime typecheck/focused/full logs, runtime/lock evidence, manual CLI driver/transcript/JSON records, scratch spoke helper/log, cleanup log and the preliminary Node-25 logs.
+
+### rev-6 · 2026-10-09T11:37:48.210Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-58-3
+commit: 3b4b934703d6b243d934aa1b1d76908144338621
+
+medium — hub/src/hub/worktrees.ts:148: the launch reservation is checked before enqueueing but added only after awaited setup, so two requests during worktree creation both spawn; either one's finally clears the shared guard and lets prune delete the other's worktree while it is still starting. Recheck and reserve within queued setup, with cleanup for setup/spawn failure.
+
+Both requested original probes now refuse deletion. A further read-only probe held the first worktree setup, queued a second launch for the same item, and observed both sessions.launch calls. After failing the first spawn and closing the item, prune returned removed=[T-1], failed=[] while the second spawn remained pending. The new regression checks a second request only after the first spawn starts, missing the setup interval. No filesystem changes; no suite run.
+
+Standards: no documented-standard violations in this delta. Spec: the medium reservation finding remains. Diff check passed. A stable delta typecheck was not obtained: the live worktree was being merged and had conflict markers in dispatch.ts during that attempt (outside the requested delta).
+
+Evidence: A-9, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9-t-58-delta-review-rev-6-58-3-at-3b4b934.md.
