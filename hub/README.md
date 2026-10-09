@@ -288,12 +288,12 @@ A refused call is answered with a typed result, which the spoke hands the model 
 
 ### The CLI in a session's shell
 
-The adapters put `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` in a launched session's shell (Claude Code and Codex; `$CLAND_ROLE` too where there is a role). With either set, every frame the CLI sends carries the session as `as`, the hub takes the call as that session's (by the id first: a session the hub does not know is a roleless one, never the human), and the audit records the session with `client: "cli"`. What the call may do:
+The adapters put `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` in a launched session's shell (Claude Code and Codex; `$CLAND_ROLE` too where there is a role). With either set, every frame the CLI sends carries the session as `as`, the hub takes the call as that session's (by the id first; an id or a name the hub does not know is a roleless session, refused everything that needs a role, never the human), and the audit records the session with `client: "cli"`. What the call may do:
 
 | Command | In a session's shell |
 | --- | --- |
 | `cland task …` | The session's, checked against its role as its own `task.*` tools are (The tracker, below). |
-| `cland session launch`, `list`, `stop`, `resume` (with `--relaunch` too), `cland hub stop` | Decided by the permission table: `session.launch` (which covers `list`), `session.stop`, `session.resume`, `hub.stop`. The Coordinator has all four by default: it launches the sessions, manages them from its shell and restarts the hub after a merge. The other roles are refused, and a refused `cland hub stop` does not fall back to signalling the hub. |
+| `cland session launch`, `list`, `stop`, `resume` (with `--relaunch` too), `cland hub stop` | Decided by the permission table: `session.launch` (which covers `list`), `session.stop`, `session.resume`, `hub.stop`. The Coordinator has all four by default: it launches the sessions, manages them from its shell and restarts the hub after a merge. The other roles are refused, and from a session's shell `cland hub stop` signals the hub's process only after the hub accepted the request: refused, or unanswered, it exits 1 and signals nothing (the human's fallback to the signal stays). |
 | `cland inbox`, `cland role list`, `cland hub status` | Allowed: reading the hub's state. |
 | `cland topic answer`, `cland role set`, `cland role clear`, `cland session attach` and `retry`, `cland hub unmute`, and any other frame (the UI's `topic.send`, `inbox.dismiss`, …) | The human's alone: refused. |
 

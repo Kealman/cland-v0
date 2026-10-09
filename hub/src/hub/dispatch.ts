@@ -187,15 +187,18 @@ export class Dispatcher {
    * hub knows: by its session id (`as.sessionId`, `$CLAND_SESSION_ID`), else by a name a session holds or held. Its
    * role is the hub's, never the frame's. Null for the human, and for a name no session ever had (a CLI actor).
    * A session id decides before any name: a frame carrying one is that session's (an id the hub does not know is a
-   * roleless session, refused what needs a role), whatever name it gives, the human's included.
+   * roleless session, refused what needs a role), whatever name it gives, the human's included. So does `as.shell`:
+   * a name the calling shell gives as its own session is a session's even when the hub never heard of it.
    */
   #asSession(frame: Record<string, unknown>): Caller | null {
     const core = this.#options.core;
     if (!core.roles) return null;
-    const as = frame.as as { name?: unknown; sessionId?: unknown } | undefined;
+    const as = frame.as as { name?: unknown; sessionId?: unknown; shell?: unknown } | undefined;
     if (!as || typeof as !== 'object' || typeof as.name !== 'string') return null;
     const sessionId = typeof as.sessionId === 'string' && as.sessionId !== '' ? as.sessionId : null;
-    if (sessionId === null && as.name === HUMAN_SESSION) return null;
+    // the calling shell's own identity (`$CLAND_SESSION_*`), as against a name the human gave with `--as`
+    const own = as.shell === true;
+    if (sessionId === null && as.name === HUMAN_SESSION && !own) return null;
     if (sessionId !== null) {
       const live = core.connectionOf(sessionId);
       if (live) return { name: live.name, sessionId, role: live.role };
@@ -206,7 +209,9 @@ export class Dispatcher {
     if (present) return { name: present.name, sessionId: present.sessionId, role: present.role };
     const id = core.store.sessionIdOf(as.name);
     const role = core.store.roleOf(as.name);
-    if (id === null && role === null) return null;
+    // a name no session ever had: the human's CLI actor, unless the shell says it is its own session — a stale or
+    // made-up identity is a roleless session, never promoted to the human
+    if (id === null && role === null && !own) return null;
     return { name: as.name, sessionId: id ?? UNKNOWN_SESSION, role };
   }
 

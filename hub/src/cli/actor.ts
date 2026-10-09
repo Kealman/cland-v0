@@ -7,29 +7,32 @@
  * written as and `--role` its role. What remains open: a shell that unsets both variables is the human's, as any
  * process holding the hub's socket is (the CLI's identity is its environment).
  */
-export function actorOf(values: { as?: unknown; role?: unknown }, env: NodeJS.ProcessEnv, io: { err: (s: string) => void }): { name: string; role?: string; sessionId?: string } | undefined {
-  const envName = env.CLAND_SESSION_NAME?.trim() || undefined;
-  const envId = env.CLAND_SESSION_ID?.trim() || undefined;
-  const asFlag = typeof values.as === 'string' ? values.as.trim() : undefined;
-  if (envName !== undefined || envId !== undefined) {
-    const name = envName ?? asFlag ?? 'session';
-    if (asFlag !== undefined && asFlag !== name) io.err(`cland: --as ${JSON.stringify(asFlag)} ignored: this shell is session ${name}'s ($CLAND_SESSION_*), and acts as it\n`);
-    const role = env.CLAND_ROLE?.trim();
-    return { name, ...(role ? { role } : {}), ...(envId ? { sessionId: envId } : {}) };
-  }
-  const role = (typeof values.role === 'string' ? values.role : env.CLAND_ROLE)?.trim();
-  return asFlag ? { name: asFlag, ...(role ? { role } : {}) } : undefined;
-}
+/** What a frame says of its actor (`as`); `shell` marks the calling shell's own session, as against a name the human gave with `--as`. */
+export type FrameActor = { name: string; role?: string; sessionId?: string; shell?: true };
 
 /**
  * The session whose shell this is, from `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` (the adapters set both in a
  * launched session's shell), or undefined in the human's. Every frame the CLI sends carries it as `as`, so the hub
  * answers the call as that session's: what only the human may do is refused, and the audit names the session.
+ * `shell` tells the hub the identity is the caller's own: one it does not know is a roleless session, never the human.
  */
-export function sessionOf(env: NodeJS.ProcessEnv): { name: string; role?: string; sessionId?: string } | undefined {
+export function sessionOf(env: NodeJS.ProcessEnv): FrameActor | undefined {
   const name = env.CLAND_SESSION_NAME?.trim() || undefined;
   const sessionId = env.CLAND_SESSION_ID?.trim() || undefined;
   if (name === undefined && sessionId === undefined) return undefined;
   const role = env.CLAND_ROLE?.trim();
-  return { name: name ?? 'session', ...(role ? { role } : {}), ...(sessionId ? { sessionId } : {}) };
+  return { name: name ?? 'session', ...(role ? { role } : {}), ...(sessionId ? { sessionId } : {}), shell: true };
+}
+
+export function actorOf(values: { as?: unknown; role?: unknown }, env: NodeJS.ProcessEnv, io: { err: (s: string) => void }): FrameActor | undefined {
+  const asFlag = typeof values.as === 'string' ? values.as.trim() : undefined;
+  const session = sessionOf(env);
+  if (session !== undefined) {
+    // a session id alone: the name the flag gives is only a label, the hub goes by the id
+    const name = env.CLAND_SESSION_NAME?.trim() ? session.name : (asFlag ?? session.name);
+    if (asFlag !== undefined && asFlag !== name) io.err(`cland: --as ${JSON.stringify(asFlag)} ignored: this shell is session ${name}'s ($CLAND_SESSION_*), and acts as it\n`);
+    return { ...session, name };
+  }
+  const role = (typeof values.role === 'string' ? values.role : env.CLAND_ROLE)?.trim();
+  return asFlag ? { name: asFlag, ...(role ? { role } : {}) } : undefined;
 }

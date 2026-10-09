@@ -52,6 +52,18 @@ test('cland topic answer from a session\'s shell is refused with the typed error
   const stranger = await clandWithEnv(root, shellOf('ghost', 'sess-nobody'), 'topic', 'answer', asked.ask, '1');
   assert.match(stranger.stderr, /forbidden: topic\.answer \(only the human may do this; this call is ghost's/);
 
+  // ... and so is a name alone that the hub never heard of (a stale or made-up $CLAND_SESSION_NAME, no id): refused,
+  // never promoted to the human
+  const nameOnly = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'topic', 'answer', asked.ask, '1');
+  assert.notEqual(nameOnly.code, 0);
+  assert.match(nameOnly.stderr, /forbidden: topic\.answer \(only the human may do this; this call is ghost's/);
+  const [ghost] = (await audits(root, 'topic.answer')).slice(-1);
+  assert.deepEqual([ghost?.session, ghost?.role, ghost?.outcome], ['ghost', null, 'forbidden']);
+  const ghostTask = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'task', 'create', 'From nobody');
+  assert.notEqual(ghostTask.code, 0);
+  assert.match(ghostTask.stderr, /forbidden: task\.create \(a session with no role has no tools\)/);
+  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `), 'the ask is still open');
+
   // without the variables it is the human's, as before
   const answered = await cland(root, 'topic', 'answer', asked.ask, '1');
   assert.equal(answered.code, 0, answered.stderr);
@@ -173,4 +185,30 @@ test('the Coordinator manages the sessions and the hub from its shell, by the pe
   const hubStopped = await clandWithEnv(root, coord, 'hub', 'stop');
   assert.equal(hubStopped.code, 0, hubStopped.stderr);
   assert.equal(pidAlive(hub.pid), false);
+});
+
+test('cland hub stop from a session\'s shell signals nothing when the hub does not answer: only a confirmed request, or the human, may fall back to the signal', async (t) => {
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  await session(t, root, 'coord', 'coordinator', 'sess-coord');
+  await session(t, root, 'impl-1', 'implementer', 'sess-impl');
+  const hub = await readDiscovery(root);
+  // a hub that takes the connection and never answers
+  process.kill(hub.pid, 'SIGSTOP');
+  t.after(() => {
+    if (pidAlive(hub.pid)) process.kill(hub.pid, 'SIGCONT');
+  });
+  try {
+    for (const env of [shellOf('impl-1', 'sess-impl'), shellOf('coord', 'sess-coord'), { CLAND_SESSION_NAME: 'ghost' }]) {
+      const r = await clandWithEnv(root, env, 'hub', 'stop');
+      assert.equal(r.code, 1, r.stdout);
+      assert.match(r.stderr, new RegExp(`the hub did not confirm hub\\.stop .*this shell is session ${env.CLAND_SESSION_NAME}'s .*pid ${hub.pid} is not signalled`));
+    }
+  } finally {
+    process.kill(hub.pid, 'SIGCONT');
+  }
+  // no signal was left pending: the hub goes on and answers
+  const status = await cland(root, 'hub', 'status');
+  assert.equal(status.code, 0, status.stderr);
+  assert.equal(pidAlive(hub.pid), true);
 });
