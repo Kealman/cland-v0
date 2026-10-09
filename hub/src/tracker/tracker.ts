@@ -38,6 +38,8 @@ import {
 } from './item.ts';
 import type { LogFn } from '../log.ts';
 import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
+import { MergeError } from '../merge.ts';
+import type { MergeReceipt } from './index-db.ts';
 import { Freshness, pending } from './freshness.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
@@ -438,18 +440,43 @@ export class Tracker {
   /** The items, each latest verdict with `current` when the freshness cache knows it (absent: not known yet). */
   freshnessTip(branch: string | null): string | null { return this.#fresh.tip(branch); }
 
-  refreshFreshness(): Promise<void> {
-    return this.#fresh.refresh();
+  refreshFreshness(resumed?: <T>(work: () => T) => T): Promise<void> {
+    return this.#fresh.refresh(resumed);
   }
 
   /** The gate selects the latest hub-written verdict per kind; file-only headers cannot replace its evidence.
    * Annotate that selection from the same async cache as view/list, even when a later file header exists. */
   mergeView(rawId: string): ItemView {
     const view = this.view(rawId);
-    const hub = view.verdicts.filter((v) => v.source === 'hub').map(({ current: _current, ...v }) => v);
+    const evidence = this.#index.mergeVerdicts(view.id, view.comments.flatMap(c => c.verdict ? [{ key: commentKey(c), verdict: { ...c.verdict, author: c.author, at: c.at } }] : []));
+    if (evidence.missing) throw new MergeError('verdict-missing', `${view.id}: hub verdict run ${evidence.missing.run}, commit ${evidence.missing.commit ?? 'none'}, is missing or altered in the item file`);
+    const hub = evidence.verdicts.map(({ current: _current, ...v }) => v);
     const annotated = this.#fresh.annotate(view.id, view.branch, hub);
-    let next = 0;
-    return { ...view, verdicts: view.verdicts.map((v) => v.source === 'hub' ? annotated[next++]! : v) };
+    return { ...view, verdicts: [...view.verdicts.filter(v => v.source === 'file'), ...annotated] };
+  }
+
+  recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
+  mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(normalizeId(rawId) ?? rawId); }
+
+  /** Idempotent follow-ups, kept separate so a failure names the step after a successful landing. */
+  finishMerge(actor: Actor, rawId: string, comment: string): { step: string; error: string } | null {
+    let step = 'close';
+    try {
+      const id = this.#require(rawId).id;
+      checkText(comment, 'comment');
+      const view = this.view(id);
+      if (view.state !== 'closed' || !view.comments.some(c => c.text === comment)) this.#mutate(id, actor, 'close', item => {
+        item.fm.state = 'closed';
+        if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
+      });
+      step = 'release';
+      this.#releaseOnClose(id);
+      step = 'topic close';
+      for (const listener of [...this.#closedListeners]) listener(id);
+      return null;
+    } catch (err) {
+      return { step, error: err instanceof Error ? err.message : String(err) };
+    }
   }
 
   list(filter: ListFilter = {}): ItemSummary[] {
@@ -585,7 +612,7 @@ export class Tracker {
    * A comment, or a verdict: its commit (given, or the branch tip) is resolved with Git before the write, never inside
    * it. `resumed` wraps the synchronous write that runs after Git answered (the hub times it against its budget).
    */
-  async comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed?: <T>(write: () => T) => T): Promise<ItemView> {
+  async comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<ItemView> {
     const body = (text ?? '').trim();
     if (!body && !verdict) throw new TrackerError('a comment needs text');
     checkText(body, 'comment');
@@ -612,11 +639,16 @@ export class Tracker {
       if (branch) {
         awaited = true;
         tip = { branch, sha: await this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`) };
-        if (tip.sha) this.#fresh.noteTip(branch, tip.sha);
       }
     }
     // without an await (a plain comment, a verdict with no branch) the write runs in the request's first stretch
-    return awaited && resumed ? resumed(() => this.#writeComment(actor, rawId, body, v, tip)) : this.#writeComment(actor, rawId, body, v, tip);
+    const write = () => {
+      const writer = v && currentActor ? currentActor() : actor;
+      if (v) v.by = formatVerdictBy(writer.name, writer.role);
+      if (tip?.sha) this.#fresh.noteTip(tip.branch, tip.sha);
+      return this.#writeComment(writer, rawId, body, v, tip);
+    };
+    return awaited && resumed ? resumed(write) : write();
   }
 
   #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null): ItemView {

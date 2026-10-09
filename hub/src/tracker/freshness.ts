@@ -165,11 +165,13 @@ export class Freshness {
   }
 
   /** Read the branch tips (one at a time; a request while reading reads once more after). */
-  async refresh(): Promise<void> {
+  async refresh(resumed: <T>(work: () => T) => T = work => work()): Promise<void> {
     if (this.#stopped) return;
     if (this.#reading) {
       this.#readAgain = true;
-      return new Promise<void>((resolve) => this.#readWaiters.push(resolve));
+      await new Promise<void>((resolve) => this.#readWaiters.push(resolve));
+      // A foreground caller owns its own reread and all synchronous work following it.
+      return this.refresh(resumed);
     }
     this.#reading = true;
     try {
@@ -179,29 +181,33 @@ export class Freshness {
         let read: Map<string, string> | null;
         let base: string | null;
         try {
-          read = await branchTips(this.#git);
+          read = await branchTips(this.#git, resumed);
           base = await this.#readBase(read ?? new Map());
         } catch (err) {
-          this.#fail('read', err);
+          resumed(() => this.#fail('read', err));
           return;
         }
-        if (this.#stopped) return;
-        const next = read ?? new Map<string, string>();
-        const moved = this.#tips === null || !sameTips(this.#tips, next) || this.#base !== base;
-        this.#tips = next;
-        this.#base = base;
-        // a branch asked about before this read started and still missing has none: stale from now on
-        let settled = false;
-        for (const [branch, missing] of this.#missing) {
-          if (next.has(branch)) this.#missing.delete(branch);
-          else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
-        }
-        if (moved) this.#prune();
-        if (moved || settled) this.#tipsMoved();
+        resumed(() => {
+          if (this.#stopped) return;
+          const next = read ?? new Map<string, string>();
+          const moved = this.#tips === null || !sameTips(this.#tips, next) || this.#base !== base;
+          this.#tips = next;
+          this.#base = base;
+          // a branch asked about before this read started and still missing has none: stale from now on
+          let settled = false;
+          for (const [branch, missing] of this.#missing) {
+            if (next.has(branch)) this.#missing.delete(branch);
+            else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
+          }
+          if (moved) this.#prune();
+          if (moved || settled) this.#tipsMoved();
+        });
       } while (this.#readAgain && !this.#stopped);
     } finally {
-      this.#reading = false;
-      for (const done of this.#readWaiters.splice(0)) done();
+      resumed(() => {
+        this.#reading = false;
+        for (const done of this.#readWaiters.splice(0)) done();
+      });
     }
   }
 

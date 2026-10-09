@@ -2,9 +2,15 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { Store } from '../src/hub/store.ts';
+import { parseItem, serializeItem } from '../src/tracker/item.ts';
+import { fixedRoles } from '../src/roles/config.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
@@ -25,7 +31,7 @@ async function project(t: TestContext, env: Record<string, string> = {}) {
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
   t.after(() => rev.close());
   await rev.waitForPresence(['rev']);
-  return { root, ui, rev };
+  return { root, ui, rev, discovery };
 }
 
 async function task(root: string, title = 'Ship the parser', file = 'parser.txt') {
@@ -393,4 +399,271 @@ test('a root switched during real merge-tree preparation is refused without chan
   assert.equal(git(root, 'branch', '--show-current'), 'other');
   assert.equal(git(root, 'write-tree'), index);
   assert.equal(await readFile(join(root, 'driver.txt'), 'utf8'), 'on dev\n');
+});
+
+
+test('deleting any durable hub verdict refuses with the missing run and commit, without reviving an older clear', async (t) => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id, 'clear', 'older-clear');
+  const older = json<{ item: { path: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const file = join(root, older.path);
+  const clearText = await readFile(file, 'utf8');
+  await review(rev, work.id, 'not clear', 'deleted-not-clear');
+  const tip = git(work.path, 'rev-parse', 'HEAD');
+  const intact = parseItem(await readFile(file, 'utf8'), 'T-1-ship-the-parser.md');
+  intact.comments.reverse();
+  await writeFile(file, serializeItem(intact));
+  await refused(ui, root, work.id, 'review-not-clear');
+  await writeFile(file, clearText);
+  const r = await refused(ui, root, work.id, 'verdict-missing');
+  assert.match(r.error ?? '', /deleted-not-clear/);
+  assert.ok(r.error?.includes(tip));
+  // Even an older missing record blocks: durable history must remain present in the file.
+  await review(rev, work.id, 'clear', 'new-clear');
+  await refused(ui, root, work.id, 'verdict-missing');
+});
+
+test('a close write failure reports merged follow-up failure; retry closes and prunes without a second commit', async (t) => {
+  const { root, ui, rev, discovery } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  const topic = await ui.request({ type: 'topic.create', title: 'Retry parser', item: work.id });
+  assert.equal(topic.ok, true, topic.error);
+  const before = git(root, 'rev-parse', 'dev');
+  const obstruction = join(root, '.cland', 'tasks', `.T-1-ship-the-parser.md.${discovery.pid}.tmp`);
+  await mkdir(obstruction);
+  const first = json<{ commit: string; followUp?: { step: string; error: string } }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(first.followUp?.step, 'close');
+  assert.match(first.followUp?.error ?? '', /merged, follow-up failed: close/);
+  assert.equal(git(root, 'rev-parse', 'dev'), first.commit);
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), first.commit);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'open');
+  assert.ok(existsSync(work.path));
+  await rm(obstruction, { recursive: true });
+  // The prepared landing is durable across hub replacement, not just remembered by this request.
+  await killDaemon(discovery.pid);
+  const restarted = await startDaemon(t, root);
+  const retryUi = await connectUi(t, restarted.discovery);
+  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.commit, first.commit);
+  assert.equal(retry.followUp, undefined);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  const closed = json<{ item: { state: string; claim: unknown; comments: Array<{ text: string }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  assert.equal(closed.state, 'closed');
+  assert.equal(closed.claim, null);
+  assert.equal(closed.comments.filter(c => c.text.includes(`Merged ${first.commit}`)).length, 1);
+  assert.equal(existsSync(work.path), false);
+  const history = await retryUi.request({ type: 'topic.history', topic: (topic.value as { topic: { id: string } }).topic.id });
+  assert.equal((history.value as { topic: { status: string } }).topic.status, 'closed');
+  const again = json<{ commit: string; cleanup: string; followUp?: unknown }>(await cland(root, 'merge', 't-01', '--json'));
+  assert.equal(again.commit, first.commit);
+  assert.equal(again.cleanup, 'removed');
+  assert.equal(again.followUp, undefined);
+  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  assert.match(journal, /"event":"merge-follow-up-failed"/);
+  assert.doesNotMatch(journal, /"event":"merge-refused"/);
+});
+
+/** Real Git and a real network hub; the injected runner only pauses real reads, never replaces their answers. */
+async function observableProject(t: TestContext, run?: (real: Git) => Git, clock?: { now: number }, sink?: (entry: Record<string, unknown>) => void) {
+  const root = await tempProject(t, 'cland-merge-observe-');
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'config', 'user.name', 'Test');
+  git(root, 'config', 'user.email', 'test@example.com');
+  git(root, 'config', 'commit.gpgsign', 'false');
+  await writeFile(join(root, 'README.md'), 'project\n');
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'Initial');
+  ok(await cland(root, 'init'));
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run?.(gitIn(root)) ?? gitIn(root) });
+  const records: Array<Record<string, unknown>> = [];
+  const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: r => { sink?.(r); records.push(r); }, ...(clock ? { guard: { now: () => clock.now } } : {}) });
+  t.after(async () => { await hub.close(); tracker.stop(); });
+  const ui = await connectWsUi(t, hub);
+  const human = { id: 'human', name: 'human', role: null };
+  const id = tracker.create(human, { title: 'Observed parser' }).id;
+  tracker.claim(human, id);
+  // The claim frame uses the same real worktree path as the daemon seam.
+  const claimed = await ui.request({ type: 'task.claim', item: id });
+  assert.equal(claimed.ok, true, claimed.error);
+  const worktree = (claimed.value as { worktree: { path: string; branch: string } }).worktree;
+  await writeFile(join(worktree.path, 'parser.txt'), 'parser\n');
+  git(worktree.path, 'add', 'parser.txt');
+  git(worktree.path, 'commit', '-qm', 'Parser');
+  assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
+  const rev = await spawnSpoke({ hub, cwd: root, name: 'rev', sessionId: 'observed-rev', role: 'reviewer' });
+  t.after(() => rev.close());
+  await rev.waitForPresence(['rev']);
+  return { root, tracker, hub, ui, rev, records, work: { id, ...worktree } };
+}
+
+test('foreground merge freshness fan-out after Git is measured as a resumed 400 ms stretch', async (t) => {
+  const clock = { now: 0 };
+  const { root, tracker, ui, rev, records, work } = await observableProject(t, undefined, clock);
+  await review(rev, work.id);
+  const created = await ui.request({ type: 'task.create', title: 'A branch that will appear', branch: 't/later' });
+  assert.equal(created.ok, true, created.error);
+  const id = (created.value as { item: { id: string } }).item.id;
+  const tip = git(work.path, 'rev-parse', 'HEAD');
+  assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', result: 'clear', run: 'later', commit: tip })).ok, true);
+  await eventually('missing branch settled stale', async () => {
+    await tracker.refreshFreshness();
+    return tracker.view(id).verdicts[0]?.current === false ? true : undefined;
+  });
+  // Drain the last write's background poke; creating a Git branch schedules no tracker work.
+  await sleep(100);
+  await tracker.refreshFreshness();
+  git(root, 'branch', 't/later', tip);
+  // A real task-event subscriber is a public boundary; only the guard clock is synthetic.
+  tracker.onChange(change => { if (change.id === id) clock.now += 400; });
+  const response = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(response.ok, true, response.error);
+  assert.ok(records.some(r => r.event === 'slow-request' && r.tool === 'merge' && r.phase === 'resumed' && Number(r.ms) >= 400), JSON.stringify(records));
+});
+
+test('a verdict whose session changes role while Git resolves uses the role and permissions at its write', async (t) => {
+  for (const role of ['implementer', 'coordinator']) await t.test(role, async t => {
+    const reached = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let paused = false;
+    const { root, tracker, ui, rev, work } = await observableProject(t, real => async (args, input) => {
+      if (paused && args[0] === 'rev-parse') { reached.resolve(); await release.promise; }
+      return real(args, input);
+    });
+    paused = true;
+    const writing = rev.call<{ ok: boolean; code?: string; error?: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'role-await' });
+    await reached.promise;
+    assert.equal((await ui.request({ type: 'role.set', session: 'rev', role })).ok, true);
+    release.resolve();
+    const result = await writing;
+    if (role === 'implementer') {
+      assert.equal(result.ok, false, JSON.stringify(result));
+      assert.equal(result.code, 'forbidden');
+      await refused(ui, root, work.id, 'review-missing');
+    } else {
+      assert.equal(result.ok, true, result.error);
+      const verdict = tracker.view(work.id).verdicts[0];
+      assert.equal(verdict?.writer?.role, 'coordinator');
+      assert.equal(verdict?.by, 'rev [coordinator]');
+      await refused(ui, root, work.id, 'review-role');
+    }
+  });
+});
+
+test('release, topic closure and cleanup failures remain merged and retry the remaining steps', async (t) => {
+  for (const step of ['release', 'topic close', 'cleanup', 'branch cleanup']) {
+    await t.test(step, async t => {
+      const { root, tracker, ui, rev, work } = await observableProject(t);
+      await review(rev, work.id);
+      const before = git(root, 'rev-parse', 'dev');
+      const topic = await ui.request({ type: 'topic.create', title: 'Follow-ups', item: work.id });
+      assert.equal(topic.ok, true, topic.error);
+      let repair: () => void | Promise<void> = () => {};
+      if (step === 'release') {
+        const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+        t.after(() => db.close());
+        db.exec("create trigger fail_release before delete on tracker_claims begin select raise(abort, 'release failure'); end");
+        repair = () => db.exec('drop trigger fail_release');
+      } else if (step === 'topic close') {
+        const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+        t.after(() => db.close());
+        db.exec("create trigger fail_topic before update of status on topics when old.item = 'T-1' begin select raise(abort, 'topic closure failure'); end");
+        repair = () => db.exec('drop trigger fail_topic');
+      } else if (step === 'branch cleanup') {
+        const lock = join(root, '.git', 'refs', 'heads', `${work.branch}.lock`);
+        await writeFile(lock, 'branch locked\n');
+        repair = () => rm(lock);
+      } else {
+        await writeFile(join(work.path, 'parser.txt'), 'uncommitted work\n');
+        repair = () => writeFile(join(work.path, 'parser.txt'), 'parser\n');
+      }
+      const response = await ui.request({ type: 'merge', item: work.id }, 30_000);
+      assert.equal(response.ok, true, response.error);
+      const first = response.value as { commit: string; followUp?: { step: string; error: string } };
+      assert.equal(first.followUp?.step, step === 'branch cleanup' ? 'cleanup' : step);
+      assert.ok(first.followUp?.error.includes('merged, follow-up failed:'));
+      assert.equal(git(root, 'rev-parse', 'dev'), first.commit);
+      assert.equal(tracker.view(work.id).state, 'closed');
+      await repair();
+      const retried = await ui.request({ type: 'merge', item: work.id }, 30_000);
+      assert.equal(retried.ok, true, retried.error);
+      const done = retried.value as { commit: string; followUp?: unknown };
+      assert.equal(done.commit, first.commit);
+      assert.equal(done.followUp, undefined);
+      assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+      assert.equal(tracker.view(work.id).claim, null);
+      assert.equal(existsSync(work.path), false);
+      assert.equal(git(root, 'branch', '--list', work.branch), '');
+      const history = await ui.request({ type: 'topic.history', topic: (topic.value as { topic: { id: string } }).topic.id });
+      assert.equal((history.value as { topic: { status: string } }).topic.status, 'closed');
+    });
+  }
+});
+
+
+test('restart after local ref movement but before territory push republishes the prepared commit without another squash', async (t) => {
+  const { root, rev, discovery } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  const hook = join(root, '.git', 'hooks', 'pre-push');
+  await writeFile(hook, '#!/bin/sh\nkill -KILL "$(ps -p "$PPID" -o ppid=)"\nexit 1\n', { mode: 0o755 });
+  const interrupted = await cland(root, 'merge', work.id, '--json');
+  assert.notEqual(interrupted.code, 0);
+  await killDaemon(discovery.pid);
+  const local = git(root, 'rev-parse', 'dev');
+  assert.notEqual(local, before);
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  await rm(hook);
+  await startDaemon(t, root);
+  const retried = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retried.commit, local);
+  assert.equal(retried.followUp, undefined);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), local);
+  assert.equal(existsSync(work.path), false);
+});
+
+test('a failed external log sink still returns the landed commit and retries only follow-ups', async (t) => {
+  let failing = true;
+  const { root, ui, rev, work } = await observableProject(t, undefined, undefined, entry => {
+    if (failing && ['task-merged', 'merge-follow-up-failed'].includes(String(entry.event))) throw new Error('record sink unavailable');
+  });
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  const first = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(first.ok, true, first.error);
+  const result = first.value as { commit: string; followUp?: { step: string } };
+  assert.equal(result.followUp?.step, 'record');
+  assert.equal(git(root, 'rev-parse', 'dev'), result.commit);
+  failing = false;
+  const retry = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(retry.ok, true, retry.error);
+  assert.equal((retry.value as { commit: string }).commit, result.commit);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+});
+
+test('deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored', async (t) => {
+  const fake = await fakeClaude(t);
+  const { root, rev } = await project(t, fake.env);
+  const work = await task(root);
+  ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
+  await review(rev, work.id);
+  const merged = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(merged.cleanup, 'waiting for sessions');
+  git(work.path, 'switch', '-c', 'keep-this-branch');
+  ok(await cland(root, 'session', 'stop', 'impl-1'));
+  await eventually('branch mismatch recorded by deferred cleanup', async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).includes('worktree branch changed since merge') ? true : undefined);
+  assert.ok(existsSync(work.path));
+  assert.notEqual(git(root, 'branch', '--list', 'keep-this-branch'), '');
+  assert.notEqual(git(root, 'branch', '--list', work.branch), '');
+  git(work.path, 'switch', work.branch);
+  const retry = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.commit, merged.commit);
+  assert.equal(retry.cleanup, 'removed');
+  assert.equal(existsSync(work.path), false);
+  assert.notEqual(git(root, 'branch', '--list', 'keep-this-branch'), '');
 });

@@ -78,6 +78,9 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
     }
     case 'task-merged':
       return { kind: 'merge', text: `${String(entry.id)}: merged ${String(entry.commit)} onto ${String(entry.base)} by ${session ? label(session) : 'human'}${entry.override ? ` (human override: ${String(entry.override)})` : ''}`, detail: { item: entry.id, commit: entry.commit, base: entry.base, session, override: entry.override ?? null } };
+    case 'merge-resumed':
+    case 'merge-follow-up-failed':
+      return { kind: 'merge', text: `${String(entry.id)}: ${entry.event === 'merge-resumed' ? `finishing merged ${String(entry.commit)}` : String(entry.error)}`, detail: { item: entry.id, commit: entry.commit, base: entry.base, step: entry.step ?? null } };
     case 'merge-refused':
     case 'merge-cleanup-failed':
       return { kind: 'refusal', text: `${String(entry.id)}: ${entry.event === 'merge-refused' ? 'merge refused' : 'merge cleanup kept'}: ${String(entry.error)}`, detail: { item: entry.id, session, code: entry.code ?? null } };

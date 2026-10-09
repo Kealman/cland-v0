@@ -14,6 +14,7 @@ Call `merge` when that evidence is present. No check command runs in the gate; r
 On refusal:
 
 - Missing, invalid, not-clear or stale verdict: send the findings to the Implementer or request a new verdict from the role named by the refusal.
+- `verdict-missing`: preserve the durable record and restore its missing or altered comment; an older clear cannot replace it.
 - Freshness pending: let the async cache settle, then retry once; if still pending, report the refusal.
 - Conflict: send the named files to the Implementer to rebase in its worktree. After the rebase, let the gate check whether the reviewed patch is preserved.
 - Touched root edits or wrong checkout: preserve the root's work and restore the task-base checkout before retrying.
@@ -21,3 +22,5 @@ On refusal:
 Only the human's own shell may run `cland merge T-<n> --override "<reason>"`. When that decision is needed, ask the human through the Coordinator's `ask`; the reason goes on the item and into the journal. Override skips verdicts; conflicts and Git safety still apply.
 
 Report the returned commit and cleanup status in the item's topic. If cleanup keeps uncommitted work, preserve it and use the human's `cland worktree prune` after it is safe to remove.
+
+If the result says `merged, follow-up failed: <step>`, the returned commit has already landed. Repair the named close, release, topic or cleanup failure and retry `merge` for the same item. The hub verifies its durable prepared landing against Git and completes the remaining steps without creating another commit, including after a hub restart.

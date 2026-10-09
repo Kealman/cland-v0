@@ -206,9 +206,9 @@ export class Dispatcher {
   }
 
   /** Answer a frame with the typed `forbidden` error and post the refusal to the Agents topic. */
-  #refuse(connection: Caller, frame: Record<string, unknown>, peer: Peer, permission: string, reason: string, target = ''): void {
+  #refuse(connection: Caller, frame: Record<string, unknown>, peer: Peer, permission: string, reason: string, target = '', answer = true): void {
     const core = this.#options.core;
-    peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
+    if (answer) peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
     try {
       core.noticeInTopic(AGENTS.id, { kind: 'refusal', text: `${withRole(connection.name, connection.role)} tried ${String(frame.type)}${target}: forbidden (${reason})`, detail: { session: connection.name, role: connection.role, tool: String(frame.type), permission } });
     } catch (err) {
@@ -416,11 +416,26 @@ export class Dispatcher {
     // a task request's answer may wait for Git (a verdict's commit, a claim's worktree), never on the event loop; every
     // stretch it runs on the loop is timed against the budget: the first in `receive`, the writes after Git answered,
     // the answer going out
-    const task = (frame: TaskRequest, actor: Actor | 'client') => {
+    const task = (frame: TaskRequest, actor: Actor | 'client', callerNow?: () => Caller | null) => {
       const tool = String(frame.type);
       const who = kind === 'spoke' ? (name ?? '?') : client;
       const resumed = <T,>(write: () => T): T => this.#guard.measure(tool, who, write, 'resumed');
-      void answerTask(this.#options.tracker, frame, actor, resumed)
+      const currentActor = callerNow ? () => {
+        const caller = callerNow();
+        if (!caller) throw new ToolForbidden(null, 'task.comment', 'the writing session is no longer current');
+        const call = this.#toolCall(caller, frame as unknown as Record<string, unknown>);
+        const roles = core.roles;
+        if (roles && call) {
+          const grants = caller.role === null ? undefined : roles.get().get(caller.role)?.permissions.tools;
+          const decision = decide(caller.role, grants, call);
+          if (!decision.ok) {
+            this.#refuse(caller, frame as unknown as Record<string, unknown>, peer, decision.permission, decision.reason, ` ${frame.type === 'task.comment' ? frame.item : ''}`, false);
+            throw new ToolForbidden(caller.role, decision.permission, decision.reason);
+          }
+        }
+        return sessionActor(caller, UNKNOWN_SESSION);
+      } : undefined;
+      void answerTask(this.#options.tracker, frame, actor, resumed, currentActor)
         .then((result) => {
           this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
           return this.#withWorktree(frame, result, resumed);
@@ -731,7 +746,7 @@ export class Dispatcher {
           }
           // a spoke always acts as its own session
           if (isTaskRequest(frame)) {
-            return task(frame, sessionActor(connection, UNKNOWN_SESSION));
+            return task(frame, sessionActor(connection, UNKNOWN_SESSION), () => connection && core.isCurrent(connection) ? connection : null);
           }
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
@@ -746,7 +761,7 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           if (!this.#permitted(as, frame, peer)) return;
-          return task(frame, sessionActor(as, UNKNOWN_SESSION));
+          return task(frame, sessionActor(as, UNKNOWN_SESSION), () => this.#asSession(frame));
         }
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,

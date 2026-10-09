@@ -6,6 +6,7 @@ import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { Connection } from '../hub/core.ts';
 import { TrackerError, type Actor, type Tracker, type VerdictInput } from './tracker.ts';
 import { importIssues, type ImportRequest } from './import-github.ts';
+import { ToolForbidden } from '../roles/permissions.ts';
 
 export type TaskRequest =
   | {
@@ -72,7 +73,7 @@ const needItem = (f: Record<string, unknown>): string => {
 };
 
 /** Answer one task request; rejects with a TrackerError with a message meant for the asker. */
-export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: Actor, resumed?: <T>(write: () => T) => T): Promise<unknown> {
+export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: Actor, resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<unknown> {
   const f = frame as unknown as Record<string, unknown>;
   for (const k of ['title', 'body', 'text', 'comment']) optStr(f, k);
   for (const k of ['assignee', 'parent', 'topic', 'branch']) optNullableStr(f, k);
@@ -107,7 +108,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       if (frame.text !== undefined && !isStr(frame.text)) throw new TrackerError('`text` must be a string');
       const v = frame.verdict as unknown;
       if (v !== undefined && (typeof v !== 'object' || v === null)) throw new TrackerError('`verdict` must be { verdict, result, run }');
-      const item = await tracker.comment(actor, needItem(f), frame.text ?? '', frame.verdict, resumed);
+      const item = await tracker.comment(actor, needItem(f), frame.text ?? '', frame.verdict, resumed, currentActor);
       const recorded = item.comments.at(-1)?.verdict;
       if (!recorded) return { item };
       const sha = recorded.commit ?? null;
@@ -170,12 +171,13 @@ export const taskErrorMessage = (err: unknown): string => (err instanceof Tracke
  * absent on a hub started without a project (the in-process test hub). `actor` is a spoke's session, or
  * `client` for a frame from the UI or the CLI, which acts as its `as` field.
  */
-export async function answerTask(tracker: Tracker | undefined, frame: TaskRequest, actor: Actor | 'client', resumed?: <T>(write: () => T) => T): Promise<HubFrame> {
+export async function answerTask(tracker: Tracker | undefined, frame: TaskRequest, actor: Actor | 'client', resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<HubFrame> {
   if (!tracker) return { type: 'result', id: frame.id, ok: false, error: 'this hub has no tracker: it was started without a project (`cland hub start` serves one)' };
   try {
     // a client's frame names who it acts as, checked here so a bad one is a failed result like any other
-    return { type: 'result', id: frame.id, ok: true, value: await handleTaskRequest(tracker, frame, actor === 'client' ? actorOf(frame) : actor, resumed) };
+    return { type: 'result', id: frame.id, ok: true, value: await handleTaskRequest(tracker, frame, actor === 'client' ? actorOf(frame) : actor, resumed, currentActor) };
   } catch (err) {
+    if (err instanceof ToolForbidden) throw err;
     return { type: 'result', id: frame.id, ok: false, error: taskErrorMessage(err), ...(err instanceof TrackerError && err.code ? { code: err.code } : {}) };
   }
 }

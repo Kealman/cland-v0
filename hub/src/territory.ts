@@ -413,15 +413,20 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
  * `check` runs there right before the removal and refuses it by throwing (the caller's item state and sessions, which
  * may have changed while Git was read).
  */
-export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}): Promise<{ path: string; branch: string | null }> {
+export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}, expectedBranch?: string): Promise<{ path: string; branch: string | null }> {
   return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item);
     const found = (await worktrees(root)).find((w) => samePath(w.path, path));
-    if (!found) throw new Error(`${item} has no worktree`);
+    if (!found && !expectedBranch) throw new Error(`${item} has no worktree`);
+    if (found && expectedBranch && found.branch !== expectedBranch) throw new Error(`${item}: worktree branch changed since merge`);
+    const branch = found?.branch ?? expectedBranch ?? null;
+    if (branch === 'main' || branch === 'dev') throw new Error(`${item}: cannot prune the integration branch`);
     check();
-    await territoryGitAsync(root, ['worktree', 'remove', path]);
-    if (found.branch !== null && (await refAsync(root, `refs/heads/${found.branch}`)) !== null) await territoryGitAsync(root, ['branch', '-D', found.branch]);
-    return { path, branch: found.branch };
+    if (found) await territoryGitAsync(root, ['worktree', 'remove', path]);
+    const tip = branch === null ? null : await refAsync(root, `refs/heads/${branch}`);
+    check();
+    if (branch !== null && tip !== null) await territoryGitAsync(root, ['branch', '-D', branch]);
+    return { path, branch };
   });
 }
 
@@ -432,6 +437,7 @@ export async function squashTask(
   branch: string,
   message: (tip: string, base: string, baseTip: string) => Promise<string>,
   resumed: <T>(work: () => T) => T = (work) => work(),
+  prepared: (landing: { commit: string; base: string; tip: string }) => void = () => {},
 ): Promise<{ commit: string; base: string }> {
   const managed = await hasTerritory(root);
   resumed(() => { if (!managed) throw new MergeError('merge-territory', 'the project has no managed territory'); });
@@ -489,6 +495,7 @@ export async function squashTask(
     if (currentTip !== tip || currentBase !== before) throw new MergeError('merge-changed', 'a branch changed while the merge was prepared; try again');
   });
   // read-tree preserves unrelated local edits; update-ref is a compare-and-swap of the integration branch.
+  resumed(() => prepared({ commit, base, tip }));
   await territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit]);
   let advanced = false;
   try {
@@ -503,4 +510,15 @@ export async function squashTask(
     resumed(() => { throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
   }
   return { commit, base };
+}
+
+/** A recorded Item commit on the local integration ref is landed; publication may still need finishing. */
+export async function landedTask(root: string, id: string, receipt: { commit: string; base: string; branch: string; tip: string }, resumed: <T>(work: () => T) => T): Promise<{ current: boolean; published: boolean } | null> {
+  const message = await maybeGitAsync(root, ['show', '-s', '--format=%B', receipt.commit]);
+  if (!resumed(() => message?.split('\n').includes(`Item: ${id}`))) return null;
+  const local = await maybeGitAsync(root, ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
+  const remote = await maybeGitAsync(territoryPath(root), ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
+  if (local === null) return null;
+  const tip = await refAsync(root, `refs/heads/${receipt.branch}`);
+  return resumed(() => ({ current: tip === null || tip === receipt.tip, published: remote !== null }));
 }

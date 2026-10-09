@@ -67,6 +67,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'task-removed',
   // task worktrees (T-58)
   'task-merged',
+  'merge-resumed',
+  'merge-follow-up-failed',
   'merge-refused',
   'merge-cleanup-failed',
   'task-worktree',

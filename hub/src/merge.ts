@@ -2,7 +2,7 @@
 export type MergeCode = 'merge-git' | 'merge-item' | 'merge-branch' | 'merge-territory' | 'merge-base' | 'merge-checkout'
   | 'review-missing' | 'review-provenance' | 'review-role' | 'review-claimant' | 'review-not-clear' | 'review-stale' | 'review-pending'
   | 'qa-missing' | 'qa-provenance' | 'qa-role' | 'qa-claimant' | 'qa-not-clear' | 'qa-stale' | 'qa-pending'
-  | 'merge-conflict' | 'merge-dirty' | 'merge-changed';
+  | 'merge-conflict' | 'merge-dirty' | 'merge-changed' | 'verdict-missing';
 export class MergeError extends Error {
   readonly code: MergeCode;
   readonly files: string[] | undefined;

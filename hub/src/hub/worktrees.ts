@@ -264,7 +264,24 @@ export class TaskWorktrees {
    * listing said is checked again under the territory lock right before each removal: the item reopened or a session
    * that entered while Git was read keeps the worktree (rev-6 on T-58).
    */
-  prune(items: string[], resumed: Resumed = untimed): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
+  /** Finish a merged task's branch deletion even if an earlier prune removed only its worktree. */
+  async pruneMerged(item: string, branch: string, resumed: Resumed): Promise<Awaited<ReturnType<TaskWorktrees['prune']>>> {
+    const pruned = await this.prune([item], resumed, new Map([[item, branch]]));
+    if (pruned.failed[0]?.error !== `${item} has no worktree`) return pruned;
+    return this.serial(async () => {
+      try {
+        const done = await removeTaskWorktree(this.root, item, () => resumed(() => {
+          if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
+          if (this.#tracker.view(item).state !== 'closed') throw new Error(`${item} reopened: prune keeps its branch`);
+        }), branch);
+        return resumed(() => ({ removed: [{ item, ...done }], failed: [] }));
+      } catch (err) {
+        return resumed(() => ({ removed: [], failed: [{ item, error: err instanceof Error ? err.message : String(err) }] }));
+      }
+    });
+  }
+
+  prune(items: string[], resumed: Resumed = untimed, expectedBranches: ReadonlyMap<string, string> = new Map()): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
     return this.serial(async () => {
       const entries = await this.#list(resumed);
       const removed = [];
@@ -286,7 +303,7 @@ export class TaskWorktrees {
             if (state !== 'closed') throw new Error(`${item} is ${state ?? 'not in the tracker'} now: prune removes only the worktrees of closed items`);
             const now = [...new Set(this.#sessions().filter((s) => inside(s.cwd, entry.path)).map((s) => s.name))];
             if (now.length) throw new Error(`${item}: ${now.join(', ')} now ${now.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-          }));
+          }), expectedBranches.get(item));
           this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
           removed.push({ item, ...done });
         } catch (err) {
