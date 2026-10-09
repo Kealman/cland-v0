@@ -139,6 +139,37 @@ const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([['
   assert.equal(await successor.done, 0, successor.output());
 });
 
+test('SIGTERM during bootstrap preparation never spawns a suite child', async t => {
+  const dir = await fixture(t);
+  const lock = join(dir, 'lock');
+  const marker = join(dir, 'preparing.json');
+  const spawned = join(dir, 'spawned');
+  const file = join(dir, 'pass.mjs');
+  await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
+  const code = `import fs from 'node:fs/promises'; import { appendFileSync } from 'node:fs'; import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
+const writeFile = fs.writeFile; const spawn = cp.spawn;
+cp.spawn = (...args) => { appendFileSync(${JSON.stringify(spawned)}, 'spawned'); return spawn(...args); };
+fs.writeFile = async (...args) => {
+  if (String(args[0]).split('/').at(-1).startsWith('bootstrap-')) {
+    await writeFile(${JSON.stringify(marker)}, JSON.stringify({ root: String(args[0]).slice(0, String(args[0]).lastIndexOf('/')) }));
+    process.kill(process.pid, 'SIGTERM');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  return writeFile(...args);
+};
+syncBuiltinESMExports();
+const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lock)} });`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+  const done = new Promise<number | null>(resolve => child.once('close', resolve));
+  const { ownProcess } = await import('./process-cleanup.ts');
+  ownProcess(t, child.pid);
+  assert.equal(await done, 143);
+  const prepared = JSON.parse(await readFile(marker, 'utf8')) as { root: string };
+  const { existsSync } = await import('node:fs');
+  assert.equal(existsSync(spawned), false, 'a signal during preparation must not start any suite child');
+  for (const path of [prepared.root, lock, `${lock}.owner`]) assert.equal(existsSync(path), false, path);
+});
+
 for (const kind of ['reused holder PID', 'dead automatic empty lock', 'unknown manual empty lock'] as const) {
   test(`suite lock handles ${kind}`, async t => {
     const dir = await fixture(t);

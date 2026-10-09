@@ -144,6 +144,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let peak = loadavg()[0]!;
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   try {
+    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     if (process.env.CLAND_TEST_SKIP_LOCK !== '1') lease = await acquire(options.lockDir ?? '/tmp/cland-suite.lock', () => interrupted !== null, holder);
     if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     started = Date.now();
@@ -151,9 +152,12 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     // The unique planned path was durably published with the initial lock, before mkdir.
     root = holder.root!;
     await mkdir(root, { mode: 0o700 });
+    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     const rootInfo = await stat(root);
+    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
     await lease?.publishRoot(root);
+    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     for (const [index, args] of suites.entries()) {
       if (interrupted) break;
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
@@ -164,6 +168,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
 const cwd = ${JSON.stringify(resolve(options.cwd ?? process.cwd()))};
 while (!await access(${JSON.stringify(gate)}).then(() => true, () => false)) await setTimeout(25);
 process.chdir(cwd);`);
+      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
       const cwd = resolve(options.cwd ?? process.cwd());
       // Node resolves test targets before imports; keep them absolute while spawning in the owned root.
       const absoluteArgs = args.map((arg, index) => {
@@ -171,6 +176,7 @@ process.chdir(cwd);`);
         const path = resolve(cwd, arg);
         return existsSync(path) || arg.includes('*') ? path : arg;
       });
+      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
       active = spawn(process.execPath, ['--import', bootstrap, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
@@ -178,7 +184,9 @@ process.chdir(cwd);`);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
       holder.runner = activeIdentity;
       await lease?.publishRunner(activeIdentity);
+      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
       await writeFile(gate, 'ready');
+      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
       const code = await done;
       await cleanupProcesses(root, [...captureRunProcesses(holder.token), activeIdentity], (line) => process.stderr.write(`${line}\n`), holder.token, [activeIdentity]);
       active = undefined; activeIdentity = null;
