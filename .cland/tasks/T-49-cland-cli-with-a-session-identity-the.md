@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-7
 branch: t/T-49-cli-session-identity
 created: 2026-10-09T06:33:20.718Z
-updated: 2026-10-09T07:12:11.476Z
+updated: 2026-10-09T07:37:56.029Z
 ---
 
 ## Parent
@@ -52,3 +52,22 @@ Decisions to check:
 - `cland session attach`, `stop`, `resume` and `retry` are refused for every session, the Coordinator included: the table knows only `session.launch`.
 - The item names "`inbox dismiss`" and "`role revoke`": the CLI has neither. The frames `inbox.dismiss` and `role.clear` are refused.
 - I did not run the two-reviewer `/code-review` pass on this change; the Reviewer's pass is its first independent read.
+
+### rev-1 · 2026-10-09T07:37:56.029Z
+
+verdict: review
+result: not clear
+by: rev-1 [reviewer]
+run: rev-2026-10-09-T49-1
+
+Reviewed da6cd3dde7107a12909d435d7be90f683148fe62...a8e36988c2e7f278f5fc06f33fdf1141b5c6fd69 against the item and Coordinator's topic decisions, with parallel Standards and Spec reviews.
+
+Spec — not clear (two medium findings):
+- Medium — hub/src/hub/dispatch.ts:209: With only CLAND_SESSION_NAME=ghost, sessionOf sends a name-only actor, but #asSession returns null for an unknown name; topic.answer executes and audits as human. The requirement covers either identity variable. Preserve session origin for unknown name-only identities while retaining human --as behavior; add this CLI regression case.
+- Medium — hub/src/cli/hub.ts:169: Only a received forbidden response prevents the stop fallback. A non-Coordinator shell whose hub.stop request times out or loses its response reaches SIGTERM at line 187 when the live hub owns its lock, without the Coordinator grant. Session shells must not signal after an unconfirmed request; retain human fallback and fallback after confirmed authorization.
+
+Standards — clear (two low findings):
+- Low — hub/src/cli/actor.ts:30: sessionOf repeats actorOf's environment normalization and actor construction; share that extraction while preserving actorOf's warning and flag behavior (duplication judgment).
+- Low — docs/review-and-qa.md:82: The docs list session stop among commands refused to a launched session, although Coordinator now has session.stop; qualify the example by role.
+
+No high findings. Reviewed source and tests read-only; no edits or tests executed. The reported clean typecheck and 257 hub / 62 Neovim tests were not independently reproduced. No task item files are in the reviewed diff.
