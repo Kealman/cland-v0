@@ -2,10 +2,10 @@
 id: T-96
 kind: question
 title: "Epic plan: shape, home, author and how the merge gate reads it"
-state: open
+state: closed
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: human
 parent: T-81
 blocked_by:
   - T-88
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:48.358Z
-updated: 2026-10-09T19:10:30.939Z
+updated: 2026-10-09T20:32:16.565Z
 ---
 
 ## Question
@@ -34,3 +34,23 @@ Before an epic starts, the human wants the Coordinator to plan it: which tasks g
 - GLOSSARY: Plan, Stage, Lane; the spec section.
 
 Record the resolution as a comment, the spec section and the GLOSSARY entries.
+
+## Comments
+
+### human · 2026-10-09T20:32:11.636Z
+
+Resolution (2026-10-09, the human accepted every point).
+
+- Shape: ordered stages; a stage holds parallel lanes (an ordered list of items one session takes, or one session per item); QA policy per stage (scope none | affected | full; when per-item | after-stage) with per-item override; after-stage means items merge on review and one QA run on dev closes the stage; review is always required.
+- Home: a "## Plan" section with a YAML block in the epic's file, parsed and validated by the hub; a broken plan is refused and the previous one stays in force (ADR 0002 holds).
+- Author: a plan-epic skill run by the Coordinator or the epic's Lead before the epic starts; every epic has a plan; approval configured in config.toml ([plan] approval = none, the default with a watch-layer notification, or human, which blocks launches until the human approves).
+- Tools: task.plan set | show | approve (approve by the human or an Aide only); CLI cland task plan; the qa-required label retires, QA policy comes from the plan or [plan] qa_default.
+- Enforcement: the merge gate reads the item's QA policy from the plan; stage order guides launches through the clause, not blocked by the hub; criteria marked for QA need QA verification.
+- Display and change: the plan view (T-100) opens from the epic, the graph and the palette; rows show the stage; mid-epic changes go through the same tool, journaled and notified at the watch layer.
+- GLOSSARY: Plan, Stage, Lane. No ADR.
+
+Recorded in docs/spec/v0.1.md §3.10 and GLOSSARY.md.
+
+### human · 2026-10-09T20:32:16.565Z
+
+Resolved: see the resolution comment; spec v0.1 §3.10

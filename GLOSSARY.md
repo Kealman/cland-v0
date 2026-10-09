@@ -56,6 +56,18 @@ _Avoid_: notification (that is the human's inbox), signal, hook, trigger
 A session's standing request to receive certain events about a subject: a session, an item, a topic, a role or a node of the item tree. A lead holds one for its subtree by default.
 _Avoid_: watch, monitor, listener, poll
 
+**Plan**:
+How an epic will be worked: its stages, the lanes in each, and the QA policy per stage. Written by the Coordinator or the epic's Lead before the epic starts, kept in the epic's file, read by the merge gate.
+_Avoid_: roadmap, schedule, breakdown, sprint plan
+
+**Stage**:
+One step of a plan: the lanes worked in parallel and the QA policy that closes the step. Stages run in order.
+_Avoid_: phase, milestone, sprint, iteration
+
+**Lane**:
+An ordered list of items in a stage that one session takes in turn, or one session per item. The crew policy per-group means one session per lane.
+_Avoid_: group, batch, track, stream
+
 **Role clause**:
 The instruction text a role carries; the hub delivers it to the session that holds the role.
 _Avoid_: system prompt, role prompt, persona text

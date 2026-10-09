@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T20:27:43.094Z
+updated: 2026-10-09T20:32:49.394Z
 ---
 
 ## Destination
@@ -54,6 +54,7 @@ updated: 2026-10-09T20:27:43.094Z
 - Session hierarchy: levels, reporting, routing and names (T-89, .cland/tasks/T-89-session-hierarchy-levels-reporting.md): the hierarchy is the item tree; sessions attach to nodes as leads (the Coordinator at the root, a Lead role for epics and releases, the Implementer for its item); reports route to the nearest lead up the chain, asks go up one level and only the root's lead asks the human; permissions by level; the crew configuration names the levels with dedicated Leads; ADR 0006.
 - Crew configuration and session reuse (T-90, .cland/tasks/T-90-crew-configuration-and-session-reuse.md): a committed crew.toml holds the staffing policy only (per role: per-item, per-group, pool or singleton, context kept or not, stop after merge, in-harness sub-agents allowed or not; the levels with dedicated Leads); the hub enforces caps and hands out idle pool members at launch; the Coordinator, Leads and Aides edit the file and the hub reloads it; cland init defaults to flat, implementers per item, one reviewer with context, one QA.
 - Event subscriptions for sessions (T-91, .cland/tasks/T-91-event-subscriptions-for-sessions.md): subscribe, unsubscribe and subscriptions tools over session, task, topic, usage and artifact events; events arrive as hub deliveries digested at the next turn by default; send gains a kind and progress notes never start a turn; leads are subscribed to their subtree by default; coalescing and digest caps; ADR 0007.
+- Epic plan: shape, home, author and how the merge gate reads it (T-96, .cland/tasks/T-96-epic-plan-shape-home-author-and-how-the.md): a plan is ordered stages of parallel lanes with a QA policy per stage (scope and per-item or after-stage), kept as a YAML block in the epic's file and validated by the hub; written by a plan-epic skill before the epic starts, human approval configurable; the merge gate reads the QA policy from it and the qa-required label retires.
 
 ## Not yet specified
 
