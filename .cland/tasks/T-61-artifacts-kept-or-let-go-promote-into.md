@@ -2,7 +2,7 @@
 id: T-61
 kind: task
 title: "artifacts kept or let go: promote into the repo, archive with the topic, delete after the retention period"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-29
 branch: t/T-61-artifacts-kept-or-let-go-promote-into
 created: 2026-10-09T08:34:54.761Z
-updated: 2026-10-09T15:52:33.556Z
+updated: 2026-10-09T16:13:51.164Z
 ---
 
 ## Parent
@@ -68,3 +68,45 @@ Medium — hub/src/hub/artifact-lifecycle.ts:118: Close then delete a topic reta
 Medium — hub/src/hub/artifact-lifecycle.ts:101: An escaping publication callback failure after updateArtifact commits enters rollback and deletes the destination, leaving promoted recorded and retries refused as already promoted; preserve committed bytes after the index commit. The real HubCore route was exercised with both subscriber and error-logger faults; ordinary subscriber exceptions alone are caught.
 
 Standards: 0 findings. Spec: 2 medium findings. Read-only, in-memory probes reproduced both cases with normal promotion/cleanup controls passing. No suite run, as requested. Evidence and full probe: A-111, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-111-t-61-review-c7bdfff-rev-65-61-1.md. Existing role/journal synchrony and concurrent adversarial parent swaps remain outside this review's requested scope.
+
+### rev-65 · 2026-10-09T16:02:22.063Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-61-2
+commit: f01861726299604397d8e562d8ddf6347c01a343
+
+High none; medium none; low none. Standards 0 (clear); Spec 0 (clear). Both rev-65-61-1 mediums are resolved in git diff c7bdfff f018617.
+
+Retention now relies on the artifact's own archive status/time and promotion/deletion flags, allowing cleanup after topic deletion. Reopen still changes marks atomically and cleanup rechecks/restores after I/O. Publication follows the promotion index commit: a callback failure retains copied bytes and the mark and returns followUp.error. Dispatcher, CLI and Neovim consume that shape. Observer/error-logger faults are isolated, and later subscribers continue; background cleanup error-logger faults cannot stop retry.
+
+Read A-115 and all nine changed files/added regressions. Independent read-only virtual-filesystem probes loaded Store, HubCore and ArtifactLifecycle directly from pinned f018617 into memory while the checkout rebased. Seven cases passed: promotion control, observer/logger isolation, direct publication follow-up, closed/deleted-topic expiry, archive/reopen faults plus reopen before/during unlink, and cleanup publication-fault recovery. Both prior reproductions now meet the required invariants. No suite run or edits; full-suite evidence remains pending on the subsequent rebased head.
+
+Evidence A-116: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-116-t-61-resolution-review-f018617.md.
+
+### rev-65 · 2026-10-09T16:07:15.075Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-61-3
+commit: 42a7abcd979d1b6dd75eeb08a25ff4485a9d2f01
+
+High none; medium none; low none. Standards 0 (clear); Spec 0 (clear).
+
+Rebase-resolution review: git range-diff bf37548..f018617 1be69e4..42a7abc maps all three commits. Eleven of the same twenty patch files have identical stable per-file patch-id; the nine shared-file changes were inspected. ArtifactLifecycle is byte-identical to the previously clear head. Duplicate artifact/event definitions resolve to T-60's existing definitions, including guarded updateArtifact; T-61 adds its archive transaction and lifecycle handlers without removing T-60's async create/attachment paths.
+
+Direct byte comparisons confirm T-60's artifact/attached-send handler region, native editable buffer, artifact registration/update, bounded-text Hygiene and draft help remain; T-60 prompt/send and T-70 termination/orphan documentation survive, and T-61 lifecycle documentation matches f018617. Neovim retains draft save/send/attach alongside promotion and deleted/promoted marks. Atomic attached-send/status writes and atomic topic/archive transitions coexist.
+
+Seven pinned in-memory virtual-filesystem probes passed on 42a7abc, including deleted-topic expiry, post-commit publication consistency, observer/logger isolation and reopen during unlink. No suite run or edits; the Implementer's full suite remains running per the request.
+
+Evidence A-118: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-118-t-61-rebase-resolution-review-42a7abc.md.
+
+### impl-61 · 2026-10-09T16:13:43.205Z
+
+Ready for integration at 42a7abcd979d1b6dd75eeb08a25ff4485a9d2f01, rebased once onto landed T-60 and pushed to origin. Typecheck and diff-check pass. One full npm test passed: hub 486 + Neovim 94 = 580 tests, 0 failures or skips. Both project-review findings fixed; fix patch-id unchanged through rebase. Final evidence, changes by file, exact project config/role lines for Coordinator, and deferred T-75 synchronous paths: A-120, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-120-t-61-final-implementation-and-validation-evidence.md.
+
+### coord · 2026-10-09T16:13:51.164Z
+
+Merged 9a95f9995c67b38c33916bac8efb750caeeb4bda onto dev.

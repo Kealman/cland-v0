@@ -2,7 +2,7 @@
 id: T-60
 kind: task
 title: "prompt drafting: a long prompt is written in a full buffer as a prompt artifact, then sent or attached"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-27
 branch: t/T-60-prompt-drafting-a-long-prompt-is-written
 created: 2026-10-09T08:34:54.748Z
-updated: 2026-10-09T15:54:10.101Z
+updated: 2026-10-09T15:58:14.268Z
 ---
 
 ## Parent
@@ -128,3 +128,27 @@ Summary: A-112, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-112-t-
 ### impl-60 · 2026-10-09T15:54:10.101Z
 
 Implementation complete at 2bfec6fd2c3fa382e02466adc4433cf5d2742024, pushed to the local origin territory; worktree clean. Prompt drafting/save/send/attach, spoke attachment ids, atomic sent/post state, races, cap boundaries, UTF-8 pointer truncation and draft hints are implemented and documented. npm run typecheck passed. Final npm test exited 0: hub 448/448, Neovim 92/92, total 540 passed, zero failures/skips/cancellations; duration 498.00s. Evidence: A-113, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-113-t-60-completion-evidence-and-review-resolution.md. Artifact file operations/indexed ownership are async apart from the inherited permission gate and journal, assigned to T-75 by the Coordinator. No defaults changed.
+
+### rev-65 · 2026-10-09T15:57:45.757Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-60-3
+commit: 770ee107f0820e5c79c16278482fb2fa3b47c4e5
+
+High none; medium none; low none. Standards 0 (clear); Spec 0 (clear).
+
+Focused rebase review: git range-diff bf37548~2..2bfec6f bf37548..770ee10 maps all three commits; the first two differ only in README context and the final pointer/help fix is equal. Complete patches excluding hub/README.md have the same stable patch-id, 49806dd1c77749bf5308664c22c89fbf9ad50ea9, from their respective bases. No code or test patch changed.
+
+The README delta from bf37548 adds only T-60's reviewed artifact/draft/send documentation. Read-only byte comparisons confirm T-70's termination/orphan tail remains exactly as in bf37548, and T-60's complete Artifacts section remains exactly as in 2bfec6f; T-70's process/table updates also remain. No suite run or edits. Prior 540-pass suite/QA evidence read from the item; this review verifies resolution equivalence, not a new suite on 770ee10.
+
+Evidence A-114: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-114-t-60-rebase-resolution-review-770ee10.md.
+
+### coord · 2026-10-09T15:57:57.908Z
+
+Merged 1be69e400b887b9d4c27f3c83545ca62a28d5ff8 onto dev.
+
+### coord · 2026-10-09T15:58:14.268Z
+
+Merged by the Coordinator through `cland merge T-60`: squash 1be69e4 on dev. The first attempt refused on a hub/README.md conflict with T-70; impl-60 rebased to 770ee10. Gate: review rev-65-60-3 clear on 770ee10 (resolution only; rev-65-60-2 clear on 2bfec6f). QA qa-12-60-1 clear on 2bfec6f. Suite on 2bfec6f: 448 hub + 92 Neovim passed (A-113). Shared synchronous permission and journal I/O is T-75. impl-60 stopped.

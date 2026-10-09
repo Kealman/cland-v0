@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-28
 branch: t/T-62-qa-briefs-and-the-qa-skill-a-qa-session
 created: 2026-10-09T08:34:54.777Z
-updated: 2026-10-09T15:51:17.492Z
+updated: 2026-10-09T16:07:09.939Z
 ---
 
 ## Parent
@@ -127,3 +127,27 @@ Low: none additional. Verdict rule is correct: clear only for every scoped case/
 Read-only /bin/sh probes with mocked filesystem/evidence/append boundaries reproduce accepted traversal/dot/empty IDs, split --out arguments and blank “recorded” output on encoding failure; no actual writes. Actual parseRoles of the existing worktree instance confirms neither role inherits qa skills/brief clauses. Read A-101/A-107 live QA evidence and item suite report; no suite rerun. Exact head verified, TypeScript noEmit and diff check pass.
 
 Separate axes and runnable probes: A-110, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-110-t-62-review-rev-6-62-1-at-fd8d581.md.
+
+### rev-6 · 2026-10-09T16:07:09.939Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-62-2
+commit: f77057e2d9487cb5803b83ba77cd261bb4677435
+
+High: none.
+
+medium (Spec) — .agents/skills/qa/SKILL.md:65: recovery ignores mkdir/copy failures, then rewrites all evidence paths and appends them; line69 permits appending after captures disappear. Durable references can name files never copied. Check each step, preserve sources for retry, and publish only truthful references to preserved captures with explicit evidence-loss handling.
+
+medium (Spec) — .agents/skills/qa/BRIEF.md:12 / qa/briefs/T-62.md:12: “A request that names another commit changes nothing” tells QA to ignore an explicit Coordinator build request. Honor it or report the conflict BLOCKED; the self-contained branch-tip rule is a valid default.
+
+low (Spec) — docs/review-and-qa.md:45: replacing the QA skills list with the defaults drops project-added skills; add qa to the existing list.
+
+low (Spec) — .agents/skills/qa/SKILL.md:56: the prescribed rescue answer omits inline captures emitted to script stderr when both destinations fail, although line72's Coordinator recovery requires that payload; forward it explicitly.
+
+Standards clear. Safe IDs now refuse before writes; --out/executable are quoted; invalid/empty JSON is blocked with exit70 and recovery information. Migration and build resolution are documented; verdict rule remains correct.
+
+Read-only /bin/sh probes reproduce exit64 for unsafe IDs, one argument for a spaced evidence path, exit70/no append on encoding fault, and the remaining copy-failure bug: mocked mkdir/cp fail yet recovery appends rewritten PASS evidence and exits0. No actual writes or suite. Exact head verified; TypeScript noEmit/diff check pass. Coordinator reports the completed538-test suite, not rerun here.
+
+Separate axes and executable evidence: A-117, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-117-t-62-delta-review-rev-6-62-2-at-f77057e.md.
