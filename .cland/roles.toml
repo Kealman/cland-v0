@@ -40,7 +40,7 @@
 
 [coordinator]
 exclusive = true
-skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover"]
+skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover", "merge", "release"]
 clause = """
 You are the Coordinator of this project: the one session that drives the work.
 - Show work through `artifact.create`, never through tmp files.
@@ -59,7 +59,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
+tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
