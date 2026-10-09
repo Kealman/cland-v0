@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T21:08:51.816Z
+updated: 2026-10-09T21:32:31.904Z
 ---
 
 ## Parent
@@ -75,3 +75,44 @@ Standards: high 0, medium 0, low 1; worst low. Spec: high 1, medium 1, low 0; wo
 ### impl-78 · 2026-10-09T21:08:51.816Z
 
 External review rev-65-78-1 found final leaf-parent creation escape and mixed-time final session-alias resolution. Coordinator requested fail-closed post-create confinement/owned rollback, pre-delete dev/inode + containment rechecks, interleaving regressions and README threat model. Cancelled the still-queued full suite for 97f41d2; implementing the fix round before restarting validation.
+
+### rev-65 · 2026-10-09T21:18:12.918Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-78-2
+commit: a2c9700ae38e0f9244eeda90f8ce5fe4c5a89dae
+
+Spec:
+Medium — hub/src/territory.ts:406–411: escaped-creation rollback reads its CAS old SHA from a later worktree listing; a new branch advanced during confinement I/O is force-removed and successfully deleted using the user's newer commit. Pin the creation SHA and retain moved work instead. Coordinator confirmed ref movement remains in scope.
+
+Standards:
+Low — hub/src/hub/worktrees.ts:50; hub/src/territory.ts:406: post-await identity processing/rollback ownership selection are outside resumed; wrap these continuations per hub/README.md:813.
+
+Original high/medium confinement findings resolved under the accepted single-user/non-atomic policy; prior README low fixed. Eleven pinned-source virtual control/rerun cases passed. A twelfth reproduces moved-branch deletion. No suites or actual mutations. Evidence artifact posted in topic-37 with outputs and reproducible probe.
+Standards high 0, medium 0, low 1; worst low. Spec high 0, medium 1, low 0; worst medium.
+
+### impl-78 · 2026-10-09T21:21:27.763Z
+
+Fix round after A-204: deferred writer regression reproduced deletion of a commit during escaped-worktree rollback. Fix pins the explicit creation SHA, refuses before removing anything when the branch differs, and reports preserved path/branch. Regression also checks uncommitted content. Native path-identity extraction/error classification and rollback selection now use resumed scopes; typecheck and 5 worktree tests pass. Final native file running; full suite held until this fix commits.
+
+### impl-78 · 2026-10-09T21:29:55.199Z
+
+Head 199003b5cfc6082d749f7ffb836821efc384e9cb, local-origin pushed. A-206 followup fixed cached-listing race: ordinary Git removal refuses dirty work; moved new-branch CAS refusal restores its registered worktree, existing branches recheck after removal and restore on movement. Escaped detached worktrees are always retained and report fresh HEAD/path. Deferred cached-listing cases cover dirty/clean × new/existing branches, plus clean detached HEAD movement. Native-boundary29, worktrees5 and typecheck pass. Final npm test started on this head; prior invocation acquired lock during cancellation and ended143 after13.58s, not validation.
+
+### rev-65 · 2026-10-09T21:32:31.904Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-78-3
+commit: 199003b5cfc6082d749f7ffb836821efc384e9cb
+
+Standards: clear — high 0, medium 0, low 0. Spec: clear — high 0, medium 0, low 0. No ranked findings remain under the adopted single-user/non-atomic filesystem policy.
+
+hub/src/territory.ts:499 pins new creation SHA; :411 preserves an observed moved branch before removal; :423 non-forced removal keeps dirty work; :427–439 restore clean worktrees when new/existing branches move after the cached listing. :414–418 always retain escaped detached worktrees and report fresh HEAD/path. The timing low is fixed; README states coverage and recovery limits.
+
+A-204/A-206 and sibling probes rerun on the pinned head: 17 read-only virtual cases passed, including clean/dirty × new/existing late writers and detached HEAD movement. diff --check passed; parallel Standards/Spec reviews clear. No real mutations or suites. Full suite remains separately running; Coordinator reports native guard 29/29, worktrees 5/5 and typecheck passing.
+
+Evidence A-211: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-211-t-78-final-resolution-review-on-199003b-preservation-probes-clear.md. Standards total 0, worst none; Spec total 0, worst none.
