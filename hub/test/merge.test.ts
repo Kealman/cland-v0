@@ -365,6 +365,103 @@ test('a failed integration ref update restores the root index and worktree and p
   assert.equal(git(root, 'write-tree'), beforeIndex);
   assert.equal(existsSync(join(root, 'parser.txt')), false);
   assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'open');
+  await rm(join(root, '.git', 'refs', 'heads', 'dev.lock'));
+  await writeFile(join(root, 'README.md'), 'later unrelated staged work\n');
+  git(root, 'add', 'README.md');
+  const retry = json<{ followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.followUp, undefined);
+  assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'later unrelated staged work\n');
+});
+
+async function indexLockProject(t: TestContext, failure: 'transient-lock' | 'persistent-lock' | 'crash-before-ref' = 'transient-lock') {
+  const bin = await tempProject(t, 'cland-index-lock-bin-');
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  await writeFile(join(bin, 'git'), `#!${process.execPath}\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync, rmSync } from 'node:fs';\nconst args = process.argv.slice(2);\nconst marker = '.cland/checkout-mutated';\nconst failed = '.cland/write-tree-failed';\nif (process.env.CLAND_TEST_KILL_BEFORE_REF === '1' && args[0] === 'update-ref' && args[1] === 'refs/heads/dev') { writeFileSync('.cland/before-ref-crash', 'crashed'); process.kill(process.ppid, 'SIGKILL'); process.exit(1); }\nconst fail = process.env.CLAND_TEST_KILL_BEFORE_REF !== '1' && args[0] === 'write-tree' && existsSync(marker) && !existsSync(failed);\nif (fail) { writeFileSync('.git/index.lock', 'held'); writeFileSync(failed, 'failed'); }\nconst result = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' });\nif (args[0] === 'read-tree' && args[1] === '-m' && result.status === 0) writeFileSync(marker, 'changed');\nif (fail && process.env.CLAND_TEST_KEEP_INDEX_LOCK !== '1') rmSync('.git/index.lock');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
+  return project(t, { PATH: `${bin}:${process.env.PATH ?? ''}`, CLAND_TEST_KEEP_INDEX_LOCK: failure === 'persistent-lock' ? '1' : '0', CLAND_TEST_KILL_BEFORE_REF: failure === 'crash-before-ref' ? '1' : '0' });
+}
+
+test('an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing', async (t) => {
+  for (const file of ['parser.txt', 'README.md']) await t.test(file, async (t) => {
+    const { root, rev } = await indexLockProject(t);
+    const work = await task(root, 'Ship changes', file);
+    await review(rev, work.id);
+    await writeFile(join(root, 'local.txt'), 'unrelated staged bytes\n');
+    git(root, 'add', 'local.txt');
+    const refs = git(root, 'show-ref');
+    const indexTree = git(root, 'write-tree');
+    const status = git(root, 'status', '--porcelain');
+    const readme = await readFile(join(root, 'README.md'));
+    const local = await readFile(join(root, 'local.txt'));
+    const result = await cland(root, 'merge', work.id);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /index.lock/);
+    assert.ok(existsSync(join(root, '.cland', 'write-tree-failed')), 'real Git write-tree must run with the lock held');
+    assert.equal(git(root, 'show-ref'), refs);
+    assert.equal(git(root, 'write-tree'), indexTree);
+    assert.equal(git(root, 'status', '--porcelain'), status);
+    assert.deepEqual(await readFile(join(root, 'README.md')), readme);
+    assert.deepEqual(await readFile(join(root, 'local.txt')), local);
+    if (file === 'parser.txt') assert.equal(existsSync(join(root, file)), false);
+  });
+});
+
+test('a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge', async (t) => {
+  const { root, ui, rev, discovery } = await indexLockProject(t, 'persistent-lock');
+  const work = await task(root);
+  await review(rev, work.id);
+  await writeFile(join(root, 'README.md'), 'unrelated staged bytes\n');
+  git(root, 'add', 'README.md');
+  const before = git(root, 'rev-parse', 'dev');
+  const result = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(result.ok, false);
+  const failed = result as { code?: string; recovery?: { commit: string; base: string }; error?: string };
+  assert.equal(failed.code, 'merge-recovery', failed.error);
+  assert.equal(failed.recovery?.base, 'dev');
+  assert.match(failed.error ?? '', /checkout recovery pending/);
+  assert.equal(git(root, 'rev-parse', 'dev'), before);
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const receipt = db.prepare('select commit_sha, checkout_recovery from tracker_merges where item_id = ?').get(work.id);
+  db.close();
+  assert.equal(receipt?.commit_sha, failed.recovery?.commit);
+  assert.ok(receipt?.checkout_recovery);
+  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  assert.match(journal, /"event":"merge-recovery-pending"/);
+  assert.doesNotMatch(journal, /"event":"merge-refused"/);
+  await rm(join(root, '.git', 'index.lock'));
+  await killDaemon(discovery.pid);
+  await startDaemon(t, root);
+  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.followUp, undefined);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), retry.commit);
+  assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'unrelated staged bytes\n');
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'closed');
+});
+
+test('a crash before the integration ref moves retains checkout recovery and can merge after restart', async (t) => {
+  const { root, rev, discovery } = await indexLockProject(t, 'crash-before-ref');
+  const work = await task(root);
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  const interrupted = await cland(root, 'merge', work.id);
+  assert.notEqual(interrupted.code, 0);
+  await killDaemon(discovery.pid);
+  assert.ok(existsSync(join(root, '.cland', 'before-ref-crash')));
+  assert.equal(git(root, 'rev-parse', 'dev'), before);
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const receipt = db.prepare('select checkout_recovery from tracker_merges where item_id = ?').get(work.id);
+  db.close();
+  assert.ok(receipt?.checkout_recovery, 'unlanded mutation must retain its durable checkout snapshot');
+  await startDaemon(t, root);
+  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.followUp, undefined);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), retry.commit);
 });
 
 test('a root switched during real merge-tree preparation is refused without changing the checkout or refs', async (t) => {

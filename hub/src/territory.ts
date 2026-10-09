@@ -524,25 +524,48 @@ export async function squashTask(
   });
   // read-tree preserves unrelated local edits; update-ref is a compare-and-swap of the integration branch.
   const beforeIndex = await territoryGitAsync(root, ['write-tree']);
-  resumed(() => prepared({ commit, base, tip }));
-  await territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit]);
-  const afterIndex = await territoryGitAsync(root, ['write-tree']);
+  // Include unrelated staged edits in the expected landed index, without touching the root checkout. This snapshot
+  // must exist before read-tree: even the write-tree used to inspect its result may fail on a concurrent index lock.
+  const indexCommit = await territoryGitAsync(root, ['commit-tree', beforeIndex, '-p', before], false, 'Merge index snapshot\n');
+  const mergedIndex = await territoryGitAsync(root, ['merge-tree', '--write-tree', commit, indexCommit]);
+  const recovery = resumed(() => ({ before: beforeIndex, after: mergedIndex.split('\n')[0]! }));
+  resumed(() => prepared({ commit, base, tip, checkout: recovery }));
   let advanced = false;
   try {
+    await territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit]);
+    const afterIndex = await territoryGitAsync(root, ['write-tree']);
+    resumed(() => {
+      if (afterIndex !== recovery.after) throw new Error('the index changed during landing; checkout recovery is required');
+    });
     await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, commit, before]);
-    resumed(() => { advanced = true; });
+    resumed(() => { advanced = true; prepared({ commit, base, tip }); });
     // Use the on-disk path, never origin's configurable push URL (and never github).
     await territoryGitAsync(root, ['push', territoryPath(root), `refs/heads/${base}:refs/heads/${base}`], true);
   } catch (err) {
-    // Either a failed ref update or a rejected push must restore the checkout, preserving unrelated local edits.
-    // Persist the exact index states before attempting rollback. A later retry may repair only these known states;
-    // completed receipts never interpret a user's staged deletion/reversion as an interrupted rollback.
-    resumed(() => prepared({ commit, base, tip, checkout: { before: beforeIndex, after: afterIndex } }));
-    await territoryGitAsync(root, ['read-tree', '-m', '-u', commit, before]);
-    if (advanced) await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, before, commit]);
+    resumed(() => prepared({ commit, base, tip, checkout: recovery }));
+    try {
+      await restoreTaskCheckout(root, { commit, base, checkout: recovery }, resumed);
+      if (advanced) await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, before, commit]);
+    } catch (restore) {
+      resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${commit} on ${base}: ${restore instanceof Error ? restore.message : String(restore)}; initial failure: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit, base }); });
+    }
     resumed(() => { throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
   }
   return { commit, base };
+}
+
+/** Restore an unlanded preparation, or roll back a failed landing, only from its recorded index states. */
+export async function restoreTaskCheckout(root: string, receipt: { commit: string; base: string; checkout: { before: string; after: string } }, resumed: <T>(work: () => T) => T): Promise<void> {
+  const before = await refAsync(root, `${receipt.commit}^`);
+  const branch = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  const index = await territoryGitAsync(root, ['write-tree']);
+  resumed(() => {
+    if (!before || branch !== receipt.base) throw new Error(`the root must be on ${receipt.base} for checkout recovery`);
+    if (index !== receipt.checkout.before && index !== receipt.checkout.after) throw new Error('the index changed since merge preparation; staged work was kept');
+  });
+  await territoryGitAsync(root, ['read-tree', '-m', '-u', receipt.commit, before!]);
+  const restored = await territoryGitAsync(root, ['write-tree']);
+  resumed(() => { if (restored !== receipt.checkout.before) throw new Error('the restored index differs from its durable snapshot'); });
 }
 
 /** A recorded Item commit on the local integration ref is landed; publication may still need finishing. */

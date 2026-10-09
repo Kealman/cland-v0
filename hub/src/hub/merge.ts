@@ -5,7 +5,7 @@ import { MergeError } from '../merge.ts';
 import type { IndexedVerdict } from '../tracker/index-db.ts';
 import { normalizeId } from '../tracker/item.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
-import { landedTask, reconcileTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
+import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
 
 type MergeResult = { item: string; commit: string; base: string; cleanup: string; followUp?: { step: string; error: string } };
@@ -98,6 +98,20 @@ export class TaskMerges {
             }
             return;
           }
+          if (prior?.checkout) {
+            try {
+              const parent = await territoryGitAsync(this.tracker.root, ['rev-parse', `${prior.commit}^`]);
+              const base = await territoryGitAsync(this.tracker.root, ['rev-parse', `refs/heads/${prior.base}`]);
+              resumed(() => { if (base !== parent) throw new Error('the integration ref moved since preparation; its checkout was kept'); });
+              await restoreTaskCheckout(this.tracker.root, { ...prior, checkout: prior.checkout }, resumed);
+              resumed(() => {
+                const { checkout: _checkout, ...restored } = prior;
+                this.tracker.recordMerge(id, restored);
+              });
+            } catch (err) {
+              resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${prior.commit} on ${prior.base}: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit: prior.commit, base: prior.base }); });
+            }
+          }
           const view = resumed(() => this.#view(id, override === undefined));
           await this.tracker.refreshFreshness(resumed);
           resumed(() => this.#message(this.#view(id, override === undefined), override));
@@ -116,7 +130,15 @@ export class TaskMerges {
             const receipt = resumed(() => this.tracker.mergeReceipt(id));
             const observed = receipt ? await landedTask(this.tracker.root, id, receipt, resumed) : null;
             resumed(() => {
-              if (!receipt || !observed) throw err;
+              if (!receipt || !observed) {
+                // A complete prelanding rollback needs no further checkout recovery. Later user staging is ordinary
+                // root work, rather than an edit to a still-pending restoration snapshot.
+                if (receipt && err instanceof MergeError && err.code === 'merge-git') {
+                  const { checkout: _checkout, ...restored } = receipt;
+                  this.tracker.recordMerge(id, restored);
+                }
+                throw err;
+              }
               state.landed = { commit: receipt.commit, base: receipt.base };
               reason = receipt.override;
               const error = err instanceof Error ? err.message : String(err);
@@ -126,7 +148,7 @@ export class TaskMerges {
         });
       } catch (err) {
         if (state.landed) return this.#incomplete({ item: id, ...state.landed, cleanup: 'pending' }, step, err instanceof Error ? err.message : String(err), resumed);
-        resumed(() => this.log({ event: 'merge-refused', id, session: actor.name, code: err instanceof MergeError ? err.code : 'merge-failed', error: err instanceof Error ? err.message : String(err) }));
+        resumed(() => this.log({ event: err instanceof MergeError && err.code === 'merge-recovery' ? 'merge-recovery-pending' : 'merge-refused', id, session: actor.name, code: err instanceof MergeError ? err.code : 'merge-failed', error: err instanceof Error ? err.message : String(err), ...(err instanceof MergeError && err.recovery ? err.recovery : {}) }));
         throw err;
       }
       const result: MergeResult = { item: id, ...state.landed!, cleanup: 'pending' };
