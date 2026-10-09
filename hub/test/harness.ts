@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import { processStarted } from '../src/hub/lock.ts';
-import { cleanupProcesses, ownDirectory, ownProcess } from './process-cleanup.ts';
+import { cleanupProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -232,7 +232,12 @@ export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args
   return new Promise((resolve, reject) => {
     execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 }, (err, stdout, stderr) => {
       if (err && typeof err.code !== 'number') reject(err);
-      else resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
+      else {
+        const daemonPid = /\bpid +(\d+)/.exec(stdout)?.[1];
+        if (daemonPid) rememberProcess(Number(daemonPid));
+        try { rememberResultProcesses(JSON.parse(stdout)); } catch { /* plain CLI output */ }
+        resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
+      }
     });
   });
 }
@@ -253,7 +258,11 @@ export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promi
 
 export type Discovery = { root?: string; socket: string; port: number; secret: string; pid: number; version: string };
 
-export const readDiscovery = async (root: string): Promise<Discovery> => JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
+export const readDiscovery = async (root: string): Promise<Discovery> => {
+  const discovery = JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
+  rememberProcess(discovery.pid);
+  return discovery;
+};
 
 export const pidAlive = (pid: number): boolean => {
   try {
@@ -283,7 +292,8 @@ export async function startDaemon(t: TestContext, root: string, env: Record<stri
 }
 
 export async function killDaemon(pid: number): Promise<void> {
-  await cleanupProcesses(undefined, [pid]);
+  const identity = recordedProcess(pid);
+  if (identity) await cleanupProcesses(undefined, [identity]);
 }
 
 /** A JSON-lines client on the hub's Unix socket: send frames, await the next one. */
@@ -400,6 +410,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
         }, timeoutMs);
         results.set(id, (f) => {
           clearTimeout(timer);
+          rememberResultProcesses(f);
           resolve(f as { ok: boolean; value?: unknown; error?: string });
         });
         send({ ...frame, id });
@@ -504,7 +515,9 @@ export async function fakeClaude(
       execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['agents', '--json'], { env: { ...process.env, ...env }, encoding: 'utf8' }, (_err, stdout) => resolve(stdout)),
     );
     try {
-      return JSON.parse(out) as Awaited<ReturnType<FakeClaude['sessions']>>;
+      const result = JSON.parse(out) as Awaited<ReturnType<FakeClaude['sessions']>>;
+      rememberResultProcesses(result);
+      return result;
     } catch {
       return [];
     }
@@ -575,6 +588,7 @@ export async function fakeCodex(t: TestContext, options: { pollMs?: number; inje
   const servers = async () => {
     const files = await readdir(join(home, 'servers')).catch(() => [] as string[]);
     const all = await Promise.all(files.map(async (f) => JSON.parse(await readFile(join(home, 'servers', f), 'utf8')) as FakeCodexServer));
+    rememberResultProcesses(all);
     return all.filter((s) => pidAlive(s.pid));
   };
   t.after(async () => {

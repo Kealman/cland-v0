@@ -784,8 +784,15 @@ node hub/bin/cland.ts --version
 Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
 `npm test --workspace hub`, or `npm run test:nvim`. These entry points take
 `/tmp/cland-suite.lock` before spawning tests; a second run prints the holder's
-pid and start time and waits. A dead holder is reclaimed. An empty lock directory
-from the manual `mkdir` convention is respected until its owner removes it.
+pid and start time and waits. Automatic runs publish a PID/start-time sidecar
+before creating the directory. After a one-second grace period, a dead holder
+(including a reused PID) is reclaimed: its verified processes exit and its run
+directory is removed before the replacement suite starts.
+
+An empty lock from the manual `mkdir` convention has no recorded owner and is
+never reclaimed by age. Once a minute the waiter prints its age and recovery
+guidance, with a warning after 15 minutes. If no suite is running, remove an
+abandoned manual lock with `rmdir /tmp/cland-suite.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
 The suites run at concurrency 4. Targeted single-file runs are free:
@@ -794,9 +801,11 @@ The suites run at concurrency 4. Targeted single-file runs are free:
 `node --test` is reserved for targeted runs.
 
 The runner uses a short temporary directory for each run (Unix socket paths must
-fit), cleans processes by cwd/arguments and process group, and prints any final
+fit), verifies process start identities and a run marker or exact directory
+containment before signalling, and prints any final
 leftovers, including detached hook bridges. Test helpers register temporary
-project ownership before spawning: their after hooks kill descendants/groups
+project ownership before spawning: their after hooks kill owned descendants
+(and groups only when every member and the leader are verified)
 before removing the directory, and signal handlers cover SIGINT/SIGTERM where
 Node's test after hooks do not run. New process fixtures must use `tempProject`
 or `ownDirectory` and register teardown before awaiting process startup.

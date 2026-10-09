@@ -1,7 +1,7 @@
 // Runner CLI seam: separate Node processes, real process table, no internal mocks.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -53,8 +53,10 @@ test('a suite takes over locks left by a killed runner and reaper', async (t) =>
   const holder = run(t, dir, holding);
   await until(async () => (await readFile(marker, 'utf8').catch(() => '')).length > 0);
   const worker = JSON.parse(await readFile(marker, 'utf8')) as { pid: number; root: string };
+  const { captureProcess } = await import('./process-cleanup.ts');
+  const workerIdentity = captureProcess(worker.pid);
   // A crashed runner cannot run its cleanup: clean the fixture child explicitly after the check.
-  t.after(async () => { const { cleanupProcesses } = await import('./process-cleanup.ts'); await cleanupProcesses(worker.root, [worker.pid]); await rm(worker.root, { recursive: true, force: true }); });
+  t.after(async () => { const { cleanupProcesses } = await import('./process-cleanup.ts'); await cleanupProcesses(worker.root, workerIdentity ? [workerIdentity] : []); await rm(worker.root, { recursive: true, force: true }); });
   const exited = new Promise<void>(resolve => holder.child.once('exit', () => resolve()));
   holder.child.kill('SIGKILL');
   await exited;
@@ -70,14 +72,51 @@ test('a suite takes over locks left by a killed runner and reaper', async (t) =>
   reaper.kill('SIGKILL');
   await reaped;
   const file = join(dir, 'pass.mjs');
-  await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
+  await writeFile(file, `import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; import test from 'node:test'; test('fixture', () => { assert.throws(() => process.kill(${worker.pid}, 0), { code: 'ESRCH' }); assert.equal(existsSync(${JSON.stringify(worker.root)}), false); });`);
   const suite = run(t, dir, file);
   assert.equal(await suite.done, 0, suite.output());
   assert.match(suite.output(), /taking over stale suite lock/);
+  assert.throws(() => process.kill(worker.pid, 0), { code: 'ESRCH' });
+  assert.equal(await import('node:fs/promises').then(({ stat }) => stat(worker.root)).catch(() => null), null);
 });
 
+for (const kind of ['reused holder PID', 'dead automatic empty lock', 'unknown manual empty lock'] as const) {
+  test(`suite lock handles ${kind}`, async t => {
+    const dir = await fixture(t);
+    const lock = join(dir, 'lock');
+    await mkdir(lock);
+    const old = new Date(Date.now() - 16 * 60_000);
+    if (kind !== 'unknown manual empty lock') {
+      const pid = kind === 'reused holder PID' ? process.pid : 2147483647;
+      if (kind === 'dead automatic empty lock') assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+      const metadata = { pid, started: 'Mon Oct 5 12:00:00 1900', since: old.toISOString(), token: 'dead-fixture' };
+      await writeFile(`${lock}.owner`, JSON.stringify(metadata));
+      await utimes(`${lock}.owner`, old, old);
+      if (kind === 'reused holder PID') await writeFile(join(lock, 'holder.json'), JSON.stringify(metadata));
+    }
+    await utimes(lock, old, old);
+    const file = join(dir, 'pass.mjs');
+    await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
+    const suite = run(t, dir, file);
+    if (kind === 'unknown manual empty lock') {
+      await until(() => suite.output().includes('WARNING: ownerless manual suite lock'));
+      assert.match(suite.output(), /age 96[0-9]s; no owner recorded \(a manual lock\); if no suite is running, remove it with/);
+      await delay(1200);
+      assert.equal(suite.child.exitCode, null);
+      assert.deepEqual(await import('node:fs/promises').then(({ readdir }) => readdir(lock)), []);
+      suite.child.kill('SIGTERM');
+      assert.equal(await suite.done, 143, suite.output());
+      assert.deepEqual(await import('node:fs/promises').then(({ readdir }) => readdir(lock)), []);
+      await rm(lock, { recursive: true });
+    } else {
+      assert.equal(await suite.done, 0, suite.output());
+      assert.match(suite.output(), /taking over stale suite lock/);
+    }
+  });
+}
+
 const harness = fileURLToPath(new URL('./harness.ts', import.meta.url));
-for (const outcome of ['failure', 'SIGINT', 'SIGTERM'] as const) {
+for (const outcome of ['failure', 'SIGINT', 'SIGTERM', 'SIGKILL'] as const) {
   test(`a ${outcome} after launching a real daemon and fake harness leaves no process or project`, async (t) => {
     const dir = await fixture(t);
     const marker = join(dir, 'started.json');
@@ -101,8 +140,19 @@ test('intentional fixture', async t => {
     const suite = run(t, dir, file);
     await until(async () => (await readFile(marker, 'utf8').catch(() => '')).length > 0).catch(error => { throw new Error(String(error) + '\n' + suite.output()); });
     const started = JSON.parse(await readFile(marker, 'utf8')) as { root: string; suiteRoot: string; pid: number; sessions: Array<{ pid: number }> };
-    if (outcome !== 'failure') suite.child.kill(outcome);
-    assert.equal(await suite.done, outcome === 'failure' ? 1 : outcome === 'SIGINT' ? 130 : 143, suite.output());
+    if (outcome === 'SIGKILL') {
+      const exited = new Promise<void>(resolve => suite.child.once('exit', () => resolve()));
+      suite.child.kill('SIGKILL');
+      await exited;
+      const successorFile = join(dir, 'successor.mjs');
+      await writeFile(successorFile, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; test('old run gone before startup', () => { for (const pid of ${JSON.stringify([started.pid, ...started.sessions.map(s => s.pid)])}) assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }); assert.equal(existsSync(${JSON.stringify(started.suiteRoot)}), false); });`);
+      const successor = run(t, dir, successorFile);
+      assert.equal(await successor.done, 0, successor.output());
+      assert.match(successor.output(), /taking over stale suite lock/);
+    } else {
+      if (outcome !== 'failure') suite.child.kill(outcome);
+      assert.equal(await suite.done, outcome === 'failure' ? 1 : outcome === 'SIGINT' ? 130 : 143, suite.output());
+    }
     const { execFileSync } = await import('node:child_process');
     const table = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
     for (const pid of [started.pid, ...started.sessions.map(s => s.pid)]) assert.doesNotMatch(table, new RegExp(`^\\s*${pid}\\s`, 'm'), suite.output());

@@ -1,54 +1,103 @@
 // All package suite entry points share this machine lock and temporary process boundary.
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cleanupProcesses, pause } from './process-cleanup.ts';
-import { acquireLock, HubLocked } from '../src/hub/lock.ts';
+import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
+import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
 
-type Holder = { pid: number; started: string; token: string };
-const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; } };
-const holderAt = async (dir: string): Promise<Holder | null> => {
+type Holder = { pid: number; started: string; since: string; token: string; root?: string; device?: number; inode?: number };
+type Lease = { publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
+const RECOVERY_GRACE_MS = 1000;
+async function holderAt(path: string): Promise<Holder | null> {
   try {
-    const value: unknown = JSON.parse(await readFile(join(dir, 'holder.json'), 'utf8'));
+    const value: unknown = JSON.parse(await readFile(path, 'utf8'));
     if (typeof value === 'object' && value !== null && 'pid' in value && 'started' in value && 'token' in value && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.started === 'string' && typeof value.token === 'string') return value as Holder;
-  } catch { /* a manual lock has no metadata: wait until its owner removes it */ }
+  } catch { /* no complete ownership record */ }
   return null;
-};
-async function acquire(dir: string, interrupted: () => boolean): Promise<() => Promise<void>> {
-  const holder: Holder = { pid: process.pid, started: new Date().toISOString(), token: randomUUID() };
-  let last = '';
+}
+async function publish(path: string, holder: Holder, exclusive = false): Promise<void> {
+  const staging = `${path}.${holder.token}`;
+  await writeFile(staging, JSON.stringify(holder), { mode: 0o600 });
+  try { if (exclusive) await link(staging, path); else await rename(staging, path); }
+  finally { await rm(staging, { force: true }); }
+}
+async function sweep(holder: Holder): Promise<void> {
+  const ownedRoot = async () => {
+    if (!holder.root) return undefined;
+    const info = await stat(holder.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+    if (info && (info.dev !== holder.device || info.ino !== holder.inode)) throw new Error('suite root identity changed; refusing cleanup');
+    return info ? holder.root : undefined;
+  };
+  // The run marker is unique per invocation, including workers whose cwd is the repository.
+  for (let n = 0; n < 10; n++) {
+    await cleanupProcesses(await ownedRoot(), captureRunProcesses(holder.token), line => process.stderr.write(`${line}\n`), holder.token);
+    if (captureRunProcesses(holder.token).length === 0) break;
+    if (n === 9) throw new Error('old suite still owns live processes; refusing to start another suite');
+  }
+  const root = await ownedRoot();
+  if (root) await rm(root, { recursive: true, force: true });
+}
+
+async function acquire(dir: string, interrupted: () => boolean, holder: Holder): Promise<Lease> {
+  const ownerPath = `${dir}.owner`;
+  const metadataPath = join(dir, 'holder.json');
+  let last = ''; let lastPrinted = 0;
   while (!interrupted()) {
+    let guard: ReturnType<typeof acquireLock> | undefined;
+    let previous: Holder | null = null;
+    let info: Awaited<ReturnType<typeof stat>> | null = null;
     try {
-      await mkdir(dir);
-      try { await writeFile(join(dir, 'holder.json'), JSON.stringify(holder)); }
-      catch (error) { await rm(dir, { recursive: true, force: true }); throw error; }
-      return async () => { if ((await holderAt(dir))?.token === holder.token) await rm(dir, { recursive: true, force: true }); };
-    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
-    const previous = await holderAt(dir);
-    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.started}` : 'waiting for the suite lock held by pid unknown since unknown (manual lock or holder starting)';
-    if (line !== last) { process.stderr.write(`${line}\n`); last = line; }
-    if (previous && !alive(previous.pid)) {
-      // Reuse the hub's PID/start-time guard: a reaper that dies is itself recoverable.
-      let guard: ReturnType<typeof acquireLock> | undefined;
-      try {
-        guard = acquireLock(`${dir}.reaper`);
-        const current = await holderAt(dir);
-        if (current?.token === previous.token && !alive(current.pid)) {
-          const stale = `${dir}.stale-${holder.token}`;
-          await rename(dir, stale);
-          await rm(stale, { recursive: true, force: true });
+      // Serializes publication/recovery. Its own PID/start-time guard can recover a killed reaper.
+      guard = acquireLock(`${dir}.reaper`);
+      info = await stat(dir).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+      previous = await holderAt(ownerPath) ?? await holderAt(metadataPath);
+      if (previous && !holderAlive(previous)) {
+        const ownerInfo = await stat(ownerPath).catch(() => null);
+        if (Date.now() - (ownerInfo?.mtimeMs ?? info?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
+          // Keep the stale lock in place throughout cleanup: no replacement daemon can overlap it.
+          await sweep(previous);
+          await rm(dir, { recursive: true, force: true });
+          await rm(ownerPath, { force: true });
           process.stderr.write(`taking over stale suite lock held by pid ${previous.pid}\n`);
+          continue;
         }
-      } catch (error) {
-        // The shared lock's short retry budget can expire before its dead breaker guard ages out.
-        const contended = error instanceof Error && error.message === `could not take ${dir}.reaper: it keeps changing under this process`;
-        if (!(error instanceof HubLocked) && !contended && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-        await pause(250);
-      } finally { guard?.release(); }
-      continue;
+      }
+      if (!info && !previous) {
+        // Publish whole PID/start identity BEFORE mkdir, covering death in the metadata gap.
+        await publish(ownerPath, holder, true);
+        try { await mkdir(dir); }
+        catch (error) { await rm(ownerPath, { force: true }); if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; continue; }
+        await publish(metadataPath, holder);
+        return {
+          publishRoot: async root => {
+            const rootInfo = await stat(root);
+            holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
+            // Sidecar first: a crash between updates still retains full recovery ownership.
+            await publish(ownerPath, holder);
+            await publish(metadataPath, holder);
+          },
+          release: async () => {
+            if ((await holderAt(ownerPath))?.token !== holder.token) return;
+            await rm(dir, { recursive: true, force: true });
+            await rm(ownerPath, { force: true });
+          },
+        };
+      }
+    } catch (error) {
+      const contended = error instanceof Error && error.message === `could not take ${dir}.reaper: it keeps changing under this process`;
+      if (!(error instanceof HubLocked) && !contended && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      previous = await holderAt(ownerPath) ?? await holderAt(metadataPath);
+      info = await stat(dir).catch(() => null);
+    } finally { guard?.release(); }
+    const age = Math.max(0, Date.now() - (info?.mtimeMs ?? Date.now()));
+    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.since ?? previous.started}` :
+      `waiting for the suite lock; age ${Math.floor(age / 1000)}s; no owner recorded (a manual lock); if no suite is running, remove it with \`rmdir /tmp/cland-suite.lock\``;
+    if ((line !== last && previous !== null) || Date.now() - lastPrinted >= 60_000 || !lastPrinted) {
+      process.stderr.write(`${line}\n`); last = line; lastPrinted = Date.now();
+      if (!previous && age >= 15 * 60_000) process.stderr.write('WARNING: ownerless manual suite lock is over 15 minutes old and cannot recover automatically; verify no suite is running before removing it.\n');
     }
     await pause(250);
   }
@@ -58,32 +107,43 @@ async function acquire(dir: string, interrupted: () => boolean): Promise<() => P
 export async function runSuite(suites: string[][], options: { lockDir?: string; cwd?: string } = {}): Promise<number> {
   let interrupted: NodeJS.Signals | null = null;
   let active: ReturnType<typeof spawn> | undefined;
+  const runId = randomUUID();
+  let activeIdentity: ProcessIdentity | null = null;
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
-    const handler = () => { interrupted = signal; active?.kill(signal); };
+    const handler = () => {
+      interrupted = signal;
+      if (activeIdentity) void cleanupProcesses(undefined, [activeIdentity], () => {}, runId).catch(error => process.stderr.write(String(error) + '\n'));
+    };
     process.on(signal, handler);
     return { signal, handler };
   });
-  let release: (() => Promise<void>) | undefined;
+  const startedIdentity = processStarted(process.pid);
+  if (!startedIdentity) throw new Error('cannot establish suite holder process identity');
+  const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId };
+  let lease: Lease | undefined;
   let root: string | undefined;
   const invoked = Date.now();
   let started = invoked;
   let peak = loadavg()[0]!;
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   try {
-    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') release = await acquire(options.lockDir ?? '/tmp/cland-suite.lock', () => interrupted !== null);
+    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') lease = await acquire(options.lockDir ?? '/tmp/cland-suite.lock', () => interrupted !== null, holder);
     if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     started = Date.now();
     peak = loadavg()[0]!;
     root = await realpath(await mkdtemp('/tmp/cland-suite-'));
+    const rootInfo = await stat(root);
+    holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
+    await lease?.publishRoot(root);
     for (const args of suites) {
       if (interrupted) break;
-      const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root };
+      const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
       delete env.NODE_TEST_CONTEXT;
       active = spawn(process.execPath, args, { cwd: options.cwd, env, detached: true, stdio: 'inherit' });
-      const pid = active.pid;
+      activeIdentity = captureProcess(active.pid);
       const code = await new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
-      await cleanupProcesses(root, pid ? [pid] : [], (line) => process.stderr.write(`${line}\n`));
-      active = undefined;
+      await cleanupProcesses(root, [...captureRunProcesses(holder.token), ...(activeIdentity ? [activeIdentity] : [])], (line) => process.stderr.write(`${line}\n`), holder.token);
+      active = undefined; activeIdentity = null;
       if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
     }
@@ -94,9 +154,9 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   } finally {
     clearInterval(sample);
     try {
-      if (root) { await cleanupProcesses(root, active?.pid ? [active.pid] : [], (line) => process.stderr.write(`${line}\n`)); await rm(root, { recursive: true, force: true }); }
+      if (root) await sweep(holder);
+      await lease?.release();
     } finally {
-      await release?.();
       for (const { signal, handler } of handlers) process.off(signal, handler);
       process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}\n`);
     }
