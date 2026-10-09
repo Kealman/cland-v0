@@ -4,6 +4,10 @@
 [project]
 name = "v0"
 
+# Keyboard layouts for Neovim Normal-mode letters (currently: ru). Ctrl focus chords use English.
+[keys]
+layouts = ["ru"]
+
 # The hub's message hygiene, read at hub start (cland hub stop, then start, to apply a change).
 [hygiene]
 # messages one session may send to other sessions within the window
