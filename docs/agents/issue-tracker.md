@@ -9,15 +9,15 @@ From a linked Git worktree, the CLI follows its `.git` file to Git's common dire
 - Every `cland task` command takes `--json`. Read results with `--json` and `jq`; the plain output is for humans.
 - You act as `$CLAND_SESSION_NAME` (role `$CLAND_ROLE`) when cland launched your session, else as `human`. `--as <name> [--role <r>]` overrides. "Yourself" below means `${CLAND_SESSION_NAME:-human}`.
 
-## GitHub Issues: the human-facing mirror
+## GitHub Issues: retired
 
-The items were imported from this repo's GitHub Issues (`Kealman/cland-v0`) with `cland task import-github --all` (#38). The import gave each of issues #1–#42 the item of the same number (`T-23` is #23), so the `#<n>` references in the imported bodies and comments name the same items; items created from now on (`T-43` and up) have no GitHub counterpart. An imported item carries `github: {repo, number, url}` in its frontmatter (`.item.github` in `view --json`).
+The items were imported from this repo's GitHub Issues (`Kealman/cland-v0`) with `cland task import-github --all` (#38). The import gave each of issues #1–#42 the item of the same number (`T-23` is #23), so the `#<n>` references in the imported bodies and comments name the same items. An imported item carries `github: {repo, number, url}` in its frontmatter (`.item.github` in `view --json`).
 
-Until slice 1 is done (epic `T-19`), the GitHub Issues stay as the human-facing mirror:
+The GitHub Issues served as the human-facing mirror until v0 was done. At the human's request, every open issue was closed on 2026-10-09, after the v0.0.1 release, and the mirror is retired:
 
-- The human may still write on GitHub. `node hub/bin/cland.ts task import-github --all` refreshes the items from it: it is idempotent, rewrites title, body, labels, state, assignee, kind, parent and `blocked_by` of every imported item from its issue, appends only the GitHub comments the item does not hold yet, and keeps what GitHub does not own (`topic`, `branch`, local comments). It writes nothing when GitHub has not changed.
-- Because a refresh rewrites those fields, when you close, relabel or re-link an **imported** item, make the same change on its issue (`gh issue close <number>`, `gh issue edit <number> --add-label …`), otherwise the next refresh reverts it. Comments need no mirroring.
-- Create new work as items only, not as GitHub issues.
+- The tracker is the only source of truth. Create, close, relabel and re-link items only with `cland task`; make no matching change on GitHub.
+- Do not run `cland task import-github` on this repo. A refresh rewrites state, labels and edges from the issues, so it would close items that are still open here, such as `T-19`.
+- Create new work as items only, never as GitHub issues.
 
 ## Conventions
 
