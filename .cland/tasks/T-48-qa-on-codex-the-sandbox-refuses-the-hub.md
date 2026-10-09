@@ -2,7 +2,7 @@
 id: T-48
 kind: task
 title: "Codex sessions launched by cland: approvals auto-approved and a per-role sandbox, so no check or commit waits on the human"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-2
 branch: t/T-48-codex-qa-sandbox
 created: 2026-10-08T19:48:52.717Z
-updated: 2026-10-09T07:44:37.215Z
+updated: 2026-10-09T07:57:23.486Z
 ---
 
 ## Parent
@@ -174,3 +174,7 @@ Evidence files: /tmp/qa-T48-full.log, /tmp/qa-T48-targeted.log, /tmp/qa-T48-task
 ### coord · 2026-10-09T07:44:37.215Z
 
 Merged into main as 4490cf7 (`git merge --no-ff`, by the Coordinator) at 07:43Z; on main after the merge: typecheck clean, 253 hub + 62 Neovim tests pass. Verdicts: review not clear rev-2026-10-09-T48-1 (07:17:23Z, one medium: a legacy launch table inherited no role defaults), fix 801fcb9 (key-by-key inheritance, `""` opt-out, mode compatibility), main merged twice (86eacda, da6cd3d), review clear rev-2026-10-09-T48-2 (rev-1, 07:33:28Z); qa clear qa-2026-10-09-T48-1 (qa-2, 07:42:02Z: suite on the branch, the adapter and role tests, and the real-Codex proof on a scratch clone's hub: an Implementer session p1 and a QA session p2 launched under the new defaults ran Node 24, typecheck and the suite (247 pass, 6 documented skips, Neovim 62), `cland inbox` from inside a worktree, and for p1 a commit (79e6822 in the scratch log), with both outside requests refused by the proxy's allowlist and no approval wait or request in 235 session-list samples and the hub log; evidence limit: Codex suppressed curl's exit code, so the 56/403 figures were not observable). Timeline: launched 06:20:54Z, rescoped 06:25Z, implemented 07:03Z, review loop 07:08Z to 07:33Z (rev-1's spoke replaced mid-review, T-51, cost about 10 minutes), QA 07:31Z to 07:42Z, merged 07:43Z: about 82 minutes from launch to merge. Not pushed. Still open: the closing evidence on this project's own hub, after the hub restarts on 4490cf7 (the stand-in is asked first): a fresh Codex session launched under the defaults runs the suite and `cland inbox` with no approval.
+
+### coord · 2026-10-09T07:57:23.486Z
+
+Closing evidence on this project's own hub: after the restart on main 59043fa at 07:47Z (`cland role list`: Implementer approval never, sandbox workspace-write, writable `.`, network local; QA the same without writable roots; Reviewer read-only, no network), qa-3 (Codex gpt-6-astra, launched at 07:48Z in the T-49 worktree through `cland session launch --cwd` with the QA defaults; its app-server's command line carries `-c default_permissions="cland"`, `-c permissions.cland={…}` and `-c features.network_proxy=true`) ran, with no approval asked and no `waiting for approval` at any time: `node --version` v24.21.0 (the hub's Node first on PATH), `npm run typecheck && npm test` in the worktree (hub 251 passed, 7 documented skips on the `ps` refusal, the sandbox-exec one and the identity test's stop, 0 failed; Neovim 62 passed), main's `cland inbox` from inside the worktree against this hub (exit 0), and a `git commit` probe refused on `index.lock` (exit 128) as designed for QA. The Implementer side (a commit from a worktree without an approval) was shown by qa-2's probe p1 on the scratch clone (79e6822) and by impl-48's own runs. All four acceptance criteria met: the fake app-server test asserts the thread/start params and overrides per role; the real Codex shows the suite, `cland inbox` and the commit without an approval; docs/review-and-qa.md and hub/README.md document the sandbox and the keys; the suite passes. Merged as 4490cf7 at 07:43Z; closed 07:53Z. Follow-ups elsewhere: T-50 (lost steer), T-51 (replaced spoke), and the ghost-identity wording from T-49's QA (low, unfiled).

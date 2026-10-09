@@ -2,7 +2,7 @@
 id: T-49
 kind: task
 title: "cland CLI with a session identity: the hub refuses the human-only commands"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-7
 branch: t/T-49-cli-session-identity
 created: 2026-10-09T06:33:20.718Z
-updated: 2026-10-09T07:37:56.029Z
+updated: 2026-10-09T07:57:23.467Z
 ---
 
 ## Parent
@@ -71,3 +71,55 @@ Standards — clear (two low findings):
 - Low — docs/review-and-qa.md:82: The docs list session stop among commands refused to a launched session, although Coordinator now has session.stop; qualify the example by role.
 
 No high findings. Reviewed source and tests read-only; no edits or tests executed. The reported clean typecheck and 257 hub / 62 Neovim tests were not independently reproduced. No task item files are in the reviewed diff.
+
+### rev-1 · 2026-10-09T07:46:31.505Z
+
+verdict: review
+result: clear
+by: rev-1 [reviewer]
+run: rev-2026-10-09-T49-2
+
+Reviewed main (4490cf7)...5399b2879b82966ecd7aa858f9f215357fea5982 and fix commit 5399b28 against the item and Coordinator's second-round request, with parallel Standards and Spec reviews.
+
+Standards — clear: no findings. actorOf shares sessionOf's extraction, and docs/review-and-qa.md correctly describes the Coordinator's stop capability; both previous low notes are closed.
+
+Spec — clear: no findings. Both previous medium findings are closed. The shell:true actor marker keeps unknown name-only identities roleless for task and non-task frames, while a human's --as remains unchanged. A session shell's failed/unconfirmed hub.stop exits before the signal fallback; confirmed requests and human calls retain fallback. The regression tests check ghost-only topic.answer refusal/audit, task.create refusal and the still-open ask, plus an unresponsive SIGSTOPped hub for Implementer, Coordinator and unknown-name shells, followed by a successful status after SIGCONT.
+
+No high, medium or low findings remain. Source and tests reviewed read-only; no edits or tests executed. The reported clean typecheck and 258 hub / 62 Neovim passes were not independently reproduced. No task item files appear in the diff.
+
+### qa-3 · 2026-10-09T07:51:29.730Z
+
+verdict: qa
+result: clear
+by: qa-3 [qa]
+run: qa-2026-10-09-T49-1
+
+Checked branch t/T-49-cli-session-identity at 5399b2879b82966ecd7aa858f9f215357fea5982. Read the item, Coordinator's 07:12Z decisions and subsequent acceptance, hub/test/cli-identity.test.ts, and the relevant docs. No source edits; worktree clean.
+
+Part A (T-48 launch proof):
+- `node --version`: exit 0, v24.21.0.
+- `npm run typecheck && npm test`: exit 0. Typecheck clean; hub 258 total, 251 passed, 7 skipped, 0 failed; Neovim 62 passed, 0 skipped/failed. Six hub scenarios skip because this sandbox refuses `ps` for PID identity (the existing five plus Coordinator session/hub management in cli-identity.test.ts); one skips because nested sandbox-exec is unavailable. Neovim uses the project's headless harness, nvim_input and screenstring(), with the cached runtime.
+- `node /Users/evgeniyivanov/Projects/cland/v0/hub/bin/cland.ts inbox`, from this worktree: exit 0, inbox notifications and `needs you: 0`.
+- `git commit --allow-empty -m "probe"`: exit 128, cannot create main .git/worktrees/T-49/index.lock: Operation not permitted. Not retried; no commit made.
+- No command entered waiting for approval.
+
+Part B:
+- Branch CLI `task list --state open --json` and `task view T-49 --json` against the project hub: both exit 0; eight open items including T-49, correct T-49 body/verdicts returned.
+- `node --test hub/test/cli-identity.test.ts`: exit 0, 4 passed, 1 skipped, 0 failed. The skip is the Coordinator's launch/list/stop/resume/hub-stop scenario, requiring ps for PID identity before signalling. Executed cases confirm human-only refusals, an open ask and correct audit identity, task view/comment attribution and scope, unknown name-only identity rejection, and no signal fallback for unanswered stops (Implementer, Coordinator and ghost).
+- Scratch git project: /private/var/folders/np/77bqv0b975563h22_twt3tsw0000gn/T/qa-T49-uTcS8u. Every scratch CLI command unset CLAND_HUB_FILE; init and hub start retained this QA shell's session identity. Both exit 0.
+- With CLAND_SESSION_NAME=ghost and CLAND_SESSION_ID removed: task create probe exits 1 (`forbidden: task.create (a session with no role has no tools)`); role set ghost implementer exits 1 and explicitly names ghost; hub stop exits 1 (`forbidden: hub.stop (a session with no role has no tools)`). Subsequent hub status exits 0, same PID 58638 still answering.
+- With both session variables removed: task create probe exits 0, creates T-1. Audit records human for that successful create and ghost, role null, client cli, forbidden for the refused commands.
+- Human hub stop exits 0; subsequent status says no hub running. No kill fallback needed. No lifecycle or role mutations were sent to the project's own hub.
+
+Part C: hub/README.md:289-308 documents session identity, the command permission table, human-only frames, unknown roleless sessions, stop fallback, and the missing session.stop/session.resume/hub.stop grants in older roles.toml. docs/review-and-qa.md:82 agrees on Coordinator stop capabilities.
+
+Findings:
+- High: none.
+- Medium: none.
+- Low: the scratch ghost `task create probe` and `hub stop` errors omit `ghost`, contrary to the brief's naming expectation; they emit the generic roleless reason from hub/src/roles/permissions.ts:137. `role set` names ghost, and all three audit records correctly identify ghost. Refusal and identity enforcement work; this is diagnostic wording, not an authorization bypass.
+
+Evidence logs: /tmp/qa-20261009-T49-suite.log and /tmp/qa-20261009-T49-identity.log; project CLI snapshots /tmp/qa-20261009-T49-list.json and /tmp/qa-20261009-T49-view.json; scratch audit .cland/log/hub.log in the temporary project above. Fix/instrumentation phases were not performed: QA's brief explicitly forbids fixes, and the direct CLI observations establish the diagnostic finding.
+
+### coord · 2026-10-09T07:57:23.467Z
+
+Merged into main as d063ff8 (`git merge --no-ff`, by the Coordinator) at 07:52Z; on main after the merge: typecheck clean, hub 258 pass (a first run had one failure that did not reproduce on the rerun: 258/258), Neovim run separately. Verdicts: review not clear rev-2026-10-09-T49-1 (07:38:02Z, two medium: an unknown name-only identity promoted to the human; an unanswered hub stop still signalling the hub), fix 5399b28 (an identity from the shell's environment is the shell's own, an unknown one a roleless session; a session's hub stop signals only after the hub accepted it), review clear rev-2026-10-09-T49-2 (rev-1, 07:46:38Z); qa clear qa-2026-10-09-T49-1 (qa-3, 07:51:29Z, the first QA session under the new per-role policy: the identity tests, the scratch-hub refusals of a ghost identity for task create, role set and hub stop with the hub staying alive, the human's create and stop; one low: the task create and hub stop refusals omit the session's name in their text, while the audit names it). Decisions on the way: `session.stop`, `session.resume` and `hub.stop` granted to the Coordinator in the permission table, refused to every other session; `attach`, `retry`, `role set`, `role clear` refused to all sessions; listing stays under the `session.launch` grant; older roles.toml files lack the grants (README). Timeline: briefed 07:05Z, first commit 07:12Z, grants 07:16Z, review loop 07:33Z to 07:46Z (one fix round), QA 07:48Z to 07:51Z, merged 07:52Z. Not pushed.
