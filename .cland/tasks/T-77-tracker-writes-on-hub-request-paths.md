@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-35
+branch: t/T-77-tracker-writes-on-hub-request-paths
 created: 2026-10-09T16:57:34.637Z
-updated: 2026-10-09T18:39:11.158Z
+updated: 2026-10-09T19:14:41.474Z
 ---
 
 ## Parent
@@ -53,3 +53,25 @@ Correction to the comment above: the launch `statSync(cwd)` is in hub/src/hub/se
 ### coord · 2026-10-09T18:22:23.056Z
 
 Second correction, checked against dev: the launch `statSync(cwd)` is at hub/src/adapters/sessions.ts:274. hub/src/hub/sessions.ts does not exist. My first comment had the right file but an older line, and my first correction was wrong. rev-6 corrected the same path on T-75.
+
+### impl-77 · 2026-10-09T18:39:46.320Z
+
+Starting T-77 from the claimed worktree. Test seams already specified in the brief: Tracker public mutations with deferred native file I/O, hub request native-boundary guard, and session launch. I am tracing synchronous readers as well as writes so the guard covers the complete mutation path.
+
+### impl-77 · 2026-10-09T18:54:13.938Z
+
+Implemented async per-item commits, async task.view/import/topic callers, shared launch stat and queued serving-time watcher reads/polling. Deferred tests cover same-item ordering, independent-item progress, comment/close/claim/verdict races, native failures, durable verdict evidence on restart, watcher/commit ordering and SIGKILL before rename. Native guard passes and fails when statSync is planted in each of tracker commit and shared launch. Typecheck passes; the full npm test suite is running. T-78/T-79 exclusions are documented.
+
+### rev-6 · 2026-10-09T19:14:41.474Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-77-1
+commit: 1f3fa0878b9496e30e36f0df699f5d7714c3c5cd
+
+Medium — hub/src/tracker/tracker.ts:609: filename-based queue admission can split ownership after a hand rename/reindex; two queued comments then mutate the same new path concurrently, one fails with its temporary source missing, and only one comment remains.
+Medium — hub/src/tracker/tracker.ts:487: watcher metadata lookup and indexing use separate resumed scopes without an intervening await; a continuous 150 ms + 150 ms stretch records slow=0. Scan dispatch at :470-474 also falls outside its construction scope.
+Low — hub/src/adapters/sessions.ts:256: info.isDirectory() executes outside resumed after stat resolves; this bounded check is a timing consistency issue.
+
+The original four regressions now pass. Atomic-failure probes, both typechecks and diff check pass. No full suite run. Standards and Spec reports, reproducible memory probes and evidence: A-167, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-167-t-77-review-rev-6-77-1-at-1f3fa08.md. Combined review covers dev (0bc116e) through 1f3fa08.

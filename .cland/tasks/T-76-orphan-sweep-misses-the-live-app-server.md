@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-33
 branch: t/T-76-orphan-sweep-misses-the-live-app-server
 created: 2026-10-09T16:38:16.092Z
-updated: 2026-10-09T18:25:33.594Z
+updated: 2026-10-09T19:16:16.200Z
 ---
 
 ## Parent
@@ -84,3 +84,70 @@ Invariant: successful termination ends the owned tree and signals only verified 
 
 The original high group-membership finding and low README finding are resolved. Standards: clear, 0 findings. Spec: 0 high, 1 medium, 0 low. Diff check passed; read-only virtual probes only, no suite or real signals. Full suite remains with Implementer as requested.
 Evidence A-155: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-155-t-76-resolution-review-c205bd6-rev-65-76-2.md
+
+### impl-76 · 2026-10-09T18:45:16.597Z
+
+Fix round rev-65-76-2: committed freeze-before-kill at 3ed1eadd60d973d73226abccc8f5389b5f8c2417. All 42 targeted tests and typecheck passed, including concurrent doctor files and stopped-survivor/reused-PID refusal checks. Self-review then reproduced overlapping wrapper/server sweep workers: one worker's SIGCONT thaws another's captured server during its final KILL probe, allowing a child to escape. Coordinator authorized collapse. The pending addition gives identity-matching owned ancestor candidates sole tree ownership before workers start; sweep-level regression verifies intermediate descent and that an unowned ancestor cannot suppress an independently owned child. Addition typecheck and 10 virtual tests pass; real ownership files are being rerun.
+
+### rev-65 · 2026-10-09T18:46:06.879Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-76-3
+commit: 3ed1eadd60d973d73226abccc8f5389b5f8c2417
+
+Medium — hub/src/system-processes.ts:136–143: if process inspection remains unavailable after SIGSTOP (including the cleanup probe), thaw only logs process-thaw-failed and returns, leaving an owned survivor indefinitely stopped. Pinned virtual fixture leaves pid 100 in T state with no SIGCONT; this fails the requested never-left-stopped error-path invariant.
+
+Medium — hub/src/orphans.ts:150–151, hub/src/system-processes.ts:138–140: parallel wrapper/server candidates independently freeze and thaw a shared child. Reproduced two endProcess workers: after wrapper death, the child worker's fresh wrapper check refuses KILL and thaws child 101 while the wrapper worker probes it for KILL; resumed 101 forks 102, then is killed, and the wrapper worker reports success with 102 alive. Recovery ownership must coordinate overlapping identities so one worker cannot reopen another's frozen-tree fork gap.
+
+Invariant: stopped identities retain safe recovery ownership until resumed or confirmed dead; successful termination ends the owned tree. Sibling checks: A-155 single-worker child escape is fixed; late unowned group joiner receives no STOP/KILL; ordinary post-freeze guard refusal resumes the survivor; all 18 ownership/fixture-scope cases pass. The added unavailable-KILL test permits thaw inspection to succeed and misses unavailable thaw itself.
+
+Standards: clear, 0 findings. Spec: 0 high, 2 medium, 0 low. Sweep remains background with a 12-second shared deadline plus an independent 2-second thaw budget (source bound, not benchmark). Diff check passed. Read-only virtual probes only; no suite or actual signals.
+Evidence A-160: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-160-t-76-freeze-recovery-review-3ed1ead-rev-65-76-3.md
+
+### impl-76 · 2026-10-09T18:51:06.634Z
+
+Combined fix committed at 23f89cd5e24e553cd159294d0e4cbd15c84e1985. One sweep worker per owned tree (candidate collapse), cleanup CONT even on persistent inspection failure, and immediate removal of confirmed dead/reused identities from the stopped set. 46 targeted cases pass, including two doctor files concurrently, plus typecheck/diff check. Two-axis self-review is clear after resolving its overlap and confirmed-reuse findings. Evidence A-162: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-162-t-76-freeze-cleanup-and-ownership-delta-review.md; executable overlap proof A-161: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-161-t-76-overlapping-freeze-standalone-proof.mjs. Head frozen for external delta review; final full suite pending.
+
+### rev-65 · 2026-10-09T18:56:51.308Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-76-4
+commit: 23f89cd5e24e553cd159294d0e4cbd15c84e1985
+
+Medium — hub/src/orphans.ts:166, hub/src/system-processes.ts:143–144: ownership collapse is per invocation. Two concurrent public sweepOrphans calls still select the same wrapper; one refuses after wrapper death and CONTs the shared server during the other's KILL probe, allowing a child to escape while the other reports success. Pinned actual-sweep virtual probe returns ended [[100], []] with child 102 alive. Coordinate tree recovery ownership across callers (startup/doctor/concurrent doctors).
+
+Medium — hub/src/orphans.ts:162: collapse permanently drops an independently owned child before the ancestor captures it. If the ancestor exits before :173–174, its worker returns and the child remains alive with no worker or diagnostic. Pinned fixture leaves owned server 901 alive with zero termination calls. Reassess suppressed candidates after the ancestor settles instead of discarding them.
+
+Medium — hub/src/system-processes.ts:147: if one SIGCONT raises non-ESRCH and error logging throws, thaw aborts before later stopped PIDs receive CONT. Pinned combined-fault fixture leaves pid 101 stopped. Cleanup observers must not prevent remaining recovery attempts (README every-exit-path guarantee).
+
+Invariant: tree ownership survives awaits and spans callers; every suppressed owned candidate is captured or reassessed; observers cannot abort survivor recovery. A-155, late unowned group joiner, ordinary refusal recovery, persistent-inspection recovery and confirmed reuse pruning pass. The identity-free SIGCONT follows the Coordinator's explicit exception; accepted limitation: unobserved death/reuse followed by failed inspection can CONT a replacement, so 'reused PID never touched' only holds for observed identity changes.
+
+Standards: 0 high, 1 medium, 0 low. Spec: 0 high, 2 medium, 0 low. Diff check passed. No suite or actual signals; Coordinator-reported targeted tests/full suite remain separate. Evidence A-163: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-163-t-76-collapse-recovery-review-23f89cd-rev-65-76-4.md
+
+### impl-76 · 2026-10-09T19:10:54.002Z
+
+Final design committed at 8d3036924b9e5319a4ee4ed9a7f35a4782898aac: async per-project sweep lock with PID/start proof and busy warning, atomic capture claims with queued-descendant reassessment, and logger-independent CONT recovery. All 68 targeted cases passed (including two doctor files concurrently), typecheck/diff check passed, both self-review axes clear. Evidence A-166: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-166-t-76-final-design-and-targeted-evidence.md. Full npm test restarted on the frozen head; external delta review pending.
+
+### rev-65 · 2026-10-09T19:16:16.200Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-76-5
+commit: 8d3036924b9e5319a4ee4ed9a7f35a4782898aac
+
+Low — hub/README.md:949: the claim that CONT does not affect a process that is not stopped is too broad; a running process can catch SIGCONT and run a handler. Qualify this as default continuation behavior or remove that reassurance. The accepted identity-free recovery tradeoff itself is correctly documented.
+
+All three rev-65-76-4 mediums are resolved: same-project public sweeps serialize, queued children remain eligible until actually captured, and throwing observers cannot skip later CONT attempts. Pinned virtual probes pass competitor refusal/no signals, ancestor exit before capture, unowned ancestor preservation, logger fault recovery, A-155/late joiner, persistent inspection recovery, confirmed reuse, deleted-root preparation and 23 shared lock lifecycle cases. 34 logical virtual cases total; diff check passed. Coordinator reports 68 targeted tests/typecheck passing; no Reviewer suite or actual process signals. Full suite remains separate.
+
+Standards: 0 findings. Spec: 0 high, 0 medium, 1 low. T-76 clear.
+
+Separate pre-existing hazards, excluded from this verdict as requested:
+- hub/src/orphans.ts:157: different-project doctors may discover the same deleted-project hub through existing machine-wide discovery while holding different caller-root locks; serialization is per project, not per globally discovered target.
+- hub/src/system-processes.ts:43: direct concurrent termination calls outside sweepOrphans do not share sweep serialization/claims; the direct-helper overlapping-thaw hazard remains for separate follow-up.
+
+Evidence A-168: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-168-t-76-final-design-review-8d30369-rev-65-76-5.md
