@@ -251,6 +251,10 @@ type Live = {
   rateLimits: Record<string, unknown> | null;
 };
 
+type OwedInput = { text: string; recoveries: number };
+
+type PendingInput = { id: string; takenUp: Set<string> };
+
 type ThreadResult = { thread: { id: string; status?: unknown; model?: string }; model?: string };
 
 export class CodexAdapter implements HarnessAdapter {
@@ -269,11 +273,12 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #watched = new Set<string>();
   /** Inputs being admitted, then associated with the actual turn id (idle can precede completion). */
   readonly #admissions = new Map<string, number>();
+  readonly #pendingInputs = new Map<string, Set<PendingInput>>();
   readonly #completedTurns = new Map<string, string | null>();
   readonly #turnInputs = new Map<string, Set<string>>();
   /** Steers the app-server accepted that their turn has not been seen to take up: by `sessionId:turnId`, each
    *  message id with its envelope. A turn that ends with one left gets it again (`#redeliver`). */
-  readonly #steers = new Map<string, Map<string, string>>();
+  readonly #steers = new Map<string, Map<string, OwedInput>>();
   readonly #earlyFailures = new Map<string, string[]>();
   #timer: NodeJS.Timeout | null = null;
   #versionChecked = false;
@@ -379,7 +384,7 @@ export class CodexAdapter implements HarnessAdapter {
           // an input the turn took up is a userMessage item of the turn: a steer seen there is no longer owed
           const item = params.item as { type?: unknown; content?: Array<{ text?: unknown }> } | undefined;
           if (!mine(params) || item?.type !== 'userMessage') return;
-          this.#takenUp(live.p.sessionId, (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n'));
+          this.#takenUp(live.p.sessionId, String(params.turnId), (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n'));
           return;
         }
         case 'turn/started': {
@@ -531,14 +536,17 @@ export class CodexAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- inject
 
   /** The turn took up an input: the steers whose envelope it carries are owed no more. */
-  #takenUp(sessionId: string, text: string): void {
+  #takenUp(sessionId: string, turnId: string, text: string): void {
     const ids = envelopeIds(text);
     if (ids.length === 0) return;
-    for (const [key, owed] of this.#steers) {
-      if (!key.startsWith(`${sessionId}:`)) continue;
-      for (const id of ids) owed.delete(id);
-      if (owed.size === 0) this.#steers.delete(key);
+    for (const pending of this.#pendingInputs.get(sessionId) ?? []) {
+      if (ids.includes(pending.id)) pending.takenUp.add(turnId);
     }
+    const key = `${sessionId}:${turnId}`;
+    const owed = this.#steers.get(key);
+    if (!owed) return;
+    for (const id of ids) owed.delete(id);
+    if (owed.size === 0) this.#steers.delete(key);
   }
 
   /**
@@ -548,11 +556,11 @@ export class CodexAdapter implements HarnessAdapter {
    * cannot be read counts as not taken up. Measured with Codex 0.160.0, an accepted steer was always taken up: this
    * is the guard for the case it is not.
    */
-  async #redeliver(live: Live, turnId: string, owed: Map<string, string>): Promise<void> {
+  async #redeliver(live: Live, turnId: string, owed: Map<string, OwedInput>): Promise<void> {
     const client = live.client;
     const threadId = live.p.harnessSessionId as string;
-    if (!client || client.closed) return;
     try {
+      if (!client || client.closed) throw new Error("the hub is not connected to this session\'s app-server");
       const r = await client.request<{ thread: { turns?: Array<{ id?: string; items?: Array<{ type?: string; content?: Array<{ text?: unknown }> }> }> } }>('thread/read', { threadId, includeTurns: true }, 15_000);
       const items = r.thread.turns?.find((t) => t.id === turnId)?.items ?? [];
       for (const item of items) {
@@ -562,18 +570,41 @@ export class CodexAdapter implements HarnessAdapter {
     } catch (err) {
       this.#host.log({ event: 'harness-turn-unread', harness: this.harness, session: live.p.name, turn: turnId, error: err instanceof Error ? err.message : String(err) });
     }
-    for (const [id, text] of owed) {
+    for (const [id, obligation] of owed) {
       try {
-        const idle = live.state === 'idle' || live.state === 'unknown';
-        const params = idle ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input: [{ type: 'text', text, text_elements: [] }] };
-        const r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
-        if (typeof r.turn?.id === 'string') this.#admitInput(live.p.sessionId, r.turn.id, id);
-        if (typeof r.turn?.id === 'string' && !idle) live.turnId ??= r.turn.id;
-        this.#host.log({ event: 'harness-redelivered', harness: this.harness, session: live.p.name, id, turn: turnId });
+        // A newer turn may itself drop a recovery. Track every accepted attempt, but stop
+        // after two recoveries and report the failure rather than silently losing or looping.
+        if (obligation.recoveries >= 2) throw new Error('the message was still missing after two redeliveries');
+        await this.#withAdmission(live.p.sessionId, id, async (pending) => {
+          if (!client || client.closed) throw new Error("the hub is not connected to this session's app-server");
+          const idle = live.state === 'idle' || live.state === 'unknown';
+          const text = obligation.text;
+          const params = idle ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input: [{ type: 'text', text, text_elements: [] }] };
+          const r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
+          if (typeof r.turn?.id !== 'string') throw new Error('the app-server accepted redelivery without a turn id');
+          this.#acceptedInput(live, r.turn.id, id, { text, recoveries: obligation.recoveries + 1 }, pending);
+          if (live.state !== 'idle') live.turnId ??= r.turn.id;
+          this.#host.log({ event: 'harness-redelivered', harness: this.harness, session: live.p.name, id, turn: turnId });
+        });
       } catch (err) {
-        this.#host.log({ event: 'harness-redelivery-failed', harness: this.harness, session: live.p.name, id, turn: turnId, error: err instanceof Error ? err.message : String(err) });
+        const error = err instanceof Error ? err.message : String(err);
+        this.#host.log({ event: 'harness-redelivery-failed', harness: this.harness, session: live.p.name, id, turn: turnId, error });
+        this.#host.notifyFailureSenders?.(live.p.sessionId, `redelivery failed: ${error}`, [id]);
       }
     }
+  }
+
+  /** Reconcile acceptance with consumption and completion, in whichever order they arrive. */
+  #acceptedInput(live: Live, turnId: string, id: string, obligation: OwedInput, pending: PendingInput): void {
+    const sessionId = live.p.sessionId;
+    this.#admitInput(sessionId, turnId, id);
+    if (pending.takenUp.has(turnId)) return;
+    const key = `${sessionId}:${turnId}`;
+    const owed = this.#steers.get(key) ?? new Map<string, OwedInput>();
+    owed.set(id, obligation);
+    if (this.#completedTurns.has(key)) {
+      if (this.#completedTurns.get(key) === null) void this.#redeliver(live, turnId, owed);
+    } else this.#steers.set(key, owed);
   }
 
   #admitInput(sessionId: string, turnId: string, messageId: string): void {
@@ -589,20 +620,31 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   async inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
-    this.#admissions.set(p.sessionId, (this.#admissions.get(p.sessionId) ?? 0) + 1);
+    await this.#withAdmission(p.sessionId, message.id, (pending) => this.#inject(p, message, topic, pending));
+  }
+
+  /** Original injections and recoveries share the same completion/late-response reconciliation. */
+  async #withAdmission(sessionId: string, messageId: string, work: (pending: PendingInput) => Promise<void>): Promise<void> {
+    const pending: PendingInput = { id: messageId, takenUp: new Set() };
+    const inputs = this.#pendingInputs.get(sessionId) ?? new Set<PendingInput>();
+    this.#pendingInputs.set(sessionId, inputs);
+    inputs.add(pending);
+    this.#admissions.set(sessionId, (this.#admissions.get(sessionId) ?? 0) + 1);
     try {
-      await this.#inject(p, message, topic);
+      await work(pending);
     } finally {
-      const remaining = (this.#admissions.get(p.sessionId) ?? 1) - 1;
-      if (remaining > 0) this.#admissions.set(p.sessionId, remaining);
+      inputs.delete(pending);
+      if (inputs.size === 0) this.#pendingInputs.delete(sessionId);
+      const remaining = (this.#admissions.get(sessionId) ?? 1) - 1;
+      if (remaining > 0) this.#admissions.set(sessionId, remaining);
       else {
-        this.#admissions.delete(p.sessionId);
-        for (const key of this.#completedTurns.keys()) if (key.startsWith(`${p.sessionId}:`)) this.#completedTurns.delete(key);
+        this.#admissions.delete(sessionId);
+        for (const key of this.#completedTurns.keys()) if (key.startsWith(`${sessionId}:`)) this.#completedTurns.delete(key);
       }
     }
   }
 
-  async #inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
+  async #inject(p: HarnessProcess, message: Message, topic: TopicRef | null, pending: PendingInput): Promise<void> {
     const live = this.#live.get(p.sessionId);
     const client = live?.client;
     if (!live || !client || client.closed) throw new Error('the hub is not connected to this session\'s app-server');
@@ -612,19 +654,12 @@ export class CodexAdapter implements HarnessAdapter {
     // into the active turn
     for (let attempt = 0; attempt < 2 && live.turnId; attempt++) {
       const expected = live.turnId;
-      const key = `${p.sessionId}:${expected}`;
-      // owed from before the request: the turn may take the steer up before the result is read here
-      const owed = this.#steers.get(key) ?? new Map<string, string>();
-      this.#steers.set(key, owed.set(message.id, text));
       try {
         await client.request('turn/steer', { threadId, expectedTurnId: expected, input }, this.#injectTimeoutMs);
-        this.#admitInput(p.sessionId, expected, message.id);
+        this.#acceptedInput(live, expected, message.id, { text, recoveries: 0 }, pending);
         this.#host.log({ event: 'harness-steered', harness: this.harness, session: p.name, id: message.id, turn: expected });
         return;
       } catch (err) {
-        // not accepted (or not known to be): nothing is owed on this account; the paths below decide
-        owed.delete(message.id);
-        if (owed.size === 0 && this.#steers.get(key) === owed) this.#steers.delete(key);
         // sent and never answered: the steer may have landed, so it is never sent again on its own
         if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/steer: ${err.message}`);
         if (!(err instanceof RpcError)) throw err;
@@ -642,7 +677,7 @@ export class CodexAdapter implements HarnessAdapter {
       if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/start: ${err.message}`);
       throw err;
     }
-    if (typeof r.turn?.id === 'string') this.#admitInput(p.sessionId, r.turn.id, message.id);
+    if (typeof r.turn?.id === 'string') this.#acceptedInput(live, r.turn.id, message.id, { text, recoveries: 0 }, pending);
     if (typeof r.turn?.id === 'string' && live.state !== 'idle') live.turnId ??= r.turn.id;
   }
 
@@ -690,6 +725,7 @@ export class CodexAdapter implements HarnessAdapter {
 
   #unwatch(sessionId: string): void {
     this.#admissions.delete(sessionId);
+    this.#pendingInputs.delete(sessionId);
     for (const key of this.#completedTurns.keys()) if (key.startsWith(`${sessionId}:`)) this.#completedTurns.delete(key);
     this.#earlyFailures.delete(sessionId);
     for (const key of this.#turnInputs.keys()) if (key.startsWith(`${sessionId}:`)) this.#turnInputs.delete(key);

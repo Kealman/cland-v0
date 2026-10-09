@@ -456,3 +456,78 @@ test('a steer the app-server accepted and the turn never took up is delivered ag
   const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
   assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), ['impl-1 [Implementer]: its turn ended without a message it had accepted; the message was delivered again as a new turn']);
 });
+
+for (const mode of ['rejected', 'unanswered']) test(`a successful completion before a late ${mode} steer response never replays a pending admission`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { injectTimeoutMs: 1500, turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = `@impl late ${mode} steer`;
+  const id = await sendGeneral(ui, body);
+  await eventually('steer pending', async () => (await fake.log(launched.pid as number)).includes('pending late steer:') || undefined);
+  await fake.approve();
+  await eventually('completion before reply', async () => (await fake.log(launched.pid as number)).includes('late steer completed before response') || undefined);
+  // Keep the reply blocked through the inject deadline: admission is ambiguous, never owed.
+  await eventually('uncertain admission', async () => (await hubLog(root)).includes(`"event":"inject-uncertain","id":"${id}"`) || undefined);
+  const events = (await hubLog(root)).split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line) as { event: string; id?: string });
+  assert.equal(events.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 0);
+  assert.equal(ui.frames.filter((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`).length, 0);
+  await writeFile(join(fake.home, 'release-steer-response'), '');
+});
+
+test('a recovery accepted and dropped in a newer turn retains its obligation', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = '@impl drop this steer; drop recovery in newer turn';
+  const id = await sendGeneral(ui, body);
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await writeFile(join(fake.home, 'new-turn-during-read'), '');
+  await fake.approve();
+  await eventually('recovery accepted by newer turn', async () => (await fake.log(launched.pid as number)).includes('recovery accepted and dropped in newer turn:') || undefined);
+  await writeFile(join(fake.home, 'release-newer-turn'), '');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`, 5000);
+  await presentAs(ui, 'impl', 'idle');
+  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  const recoveries = journal.split('\n').filter((line) => line.includes('"event":"harness-redelivered"') && line.includes(id));
+  assert.equal(recoveries.length, 2, 'the recovery in the newer turn is recovered again, then consumed');
+});
+
+test('a recovered turn failing before its admission response notifies the original sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(() => sender.close());
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = 'drop this steer; fail recovered turn before response';
+  const sent = await sender.call<{ ok: boolean }>('send', { to: ['impl'], text: body });
+  assert.equal(sent.ok, true);
+  const frame = await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === body);
+  const id = (frame.message as { id: string }).id;
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await fake.approve();
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === expected);
+  await eventually('failure preceded response', async () => (await fake.log(launched.pid as number)).includes('recovered turn failed before response') || undefined);
+  await sender.waitForEvent((e) => e.params.content.includes(expected), 5000);
+  assert.equal(sender.events.filter((e) => e.params.content.includes(expected)).length, 1);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.equal(inbox.notifications.filter((n) => n.kind === 'turn-failed' && n.text === expected).length, 1);
+});

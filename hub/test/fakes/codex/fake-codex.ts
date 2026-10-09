@@ -269,10 +269,13 @@ async function appServer(args: string[]): Promise<number> {
       const taken = { type: 'userMessage' as const, id: randomUUID(), content: [{ type: 'text' as const, text: item.text }] };
       record.items.push(taken);
       toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
+      if (item.text === 'newer recovery turn') {
+        while (!existsSync(join(HOME, 'release-newer-turn'))) await sleep(5);
+      }
       await sleep(TURN_MS);
       const body = /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1];
       if (body === undefined) continue; // the clause, or text that is no cland message: nothing to answer
-      if (body.includes('fail this turn')) {
+      if (body.includes('fail this turn') || body.includes('fail recovered turn before response')) {
         error = { message: 'Upstream request failed: Endpoint is unavailable\nupstream details' };
         t.queue.length = 0;
         break;
@@ -378,6 +381,15 @@ async function appServer(args: string[]): Promise<number> {
       case 'thread/read': {
         const t = threads.get(params.threadId as string) ?? load(params.threadId as string);
         if (!t) return { error: { code: -32600, message: `thread not found: ${String(params.threadId)}` } };
+        if (params.includeTurns === true && existsSync(join(HOME, 'new-turn-during-read'))) {
+          rmSync(join(HOME, 'new-turn-during-read'));
+          t.turnId = randomUUID();
+          t.queue.push({ text: 'newer recovery turn' });
+          setStatus(t, { type: 'active', activeFlags: [] });
+          toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });
+          void runTurn(t);
+          log('newer turn started during readback');
+        }
         return { result: { thread: { ...view(t), turns: params.includeTurns === true ? (t.history ?? []) : [] } } };
       }
       case 'turn/start': {
@@ -392,7 +404,12 @@ async function appServer(args: string[]): Promise<number> {
         }
         const lose = loseOnce(text);
         if (t.turnId) {
-          // an active turn: turn/start steers it
+          // an active turn: turn/start steers it, including a recovery which that newer turn may drop.
+          if (text.includes('drop recovery in newer turn') && !lost.has(`recovery:${text}`)) {
+            lost.add(`recovery:${text}`);
+            log(`recovery accepted and dropped in newer turn: ${text}`);
+            return { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
+          }
           t.queue.push({ text });
           log(`steered by turn/start: ${text}`);
           return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
@@ -402,7 +419,13 @@ async function appServer(args: string[]): Promise<number> {
         log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}${typeof params.effort === 'string' ? ` effort=${params.effort}` : ''}`);
         setStatus(t, { type: 'active', activeFlags: [] });
         toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });
+        const acceptedTurn = t.turnId;
         void runTurn(t);
+        if (text.includes('fail recovered turn before response')) {
+          while (t.turnId === acceptedTurn) await sleep(5);
+          log('recovered turn failed before response');
+          return { result: { turn: { id: acceptedTurn, status: 'failed', items: [] } } };
+        }
         const spoiled = spoilOnce(text);
         if (spoiled) return spoiled;
         return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
@@ -412,6 +435,15 @@ async function appServer(args: string[]): Promise<number> {
         if (!t?.turnId) return { error: { code: -32600, message: 'no active turn to steer' } };
         if (params.expectedTurnId !== t.turnId) return { error: { code: -32600, message: `expected turn ${String(params.expectedTurnId)}, active turn is ${t.turnId}` } };
         const text = textOf(params);
+        if (text.includes('late rejected steer') || text.includes('late unanswered steer')) {
+          const expected = t.turnId;
+          log(`pending late steer: ${text}`);
+          while (t.turnId === expected) await sleep(5);
+          log('late steer completed before response');
+          while (!existsSync(join(HOME, 'release-steer-response'))) await sleep(5);
+          log('late steer response released');
+          return text.includes('late unanswered steer') ? { lost: true } : { error: { code: -32600, message: 'no active turn to steer' } };
+        }
         if (text.includes('pending steer response')) {
           const expected = t.turnId;
           const accepted = text.includes('accept pending steer response');
