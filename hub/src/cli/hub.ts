@@ -10,6 +10,7 @@ import { hubDiscovery, layout, pidAlive, projectRoot, readDiscovery, removeDisco
 import type { HubStatus } from '../protocol.ts';
 import { withRole } from '../names.ts';
 import { askHub, askHubFrame, probe } from './socket-client.ts';
+import { sessionOf } from './actor.ts';
 import { journalPath, readJournal } from '../hub/journal.ts';
 import { liveHolder } from '../hub/lock.ts';
 import { formatAudit, parseSince, readAudit, type AuditFilter } from '../hub/audit.ts';
@@ -164,7 +165,19 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
     let asked = true;
     try {
       await askHub(d, 'hub.stop');
-    } catch {
+    } catch (err) {
+      // the hub answered, and said no (a session's shell without the grant): the signal is not a way around it
+      if (err instanceof Error && err.message.startsWith('forbidden: ')) {
+        io.err(`cland: ${err.message}\n`);
+        return 1;
+      }
+      // no answer, from a session's shell: nothing says the session may stop the hub, so nothing is signalled.
+      // (The human's fallback below stays, and so does a session's once the hub accepted its request.)
+      const session = sessionOf(process.env);
+      if (session !== undefined) {
+        io.err(`cland: the hub did not confirm hub.stop (${err instanceof Error ? err.message : String(err)}); this shell is session ${session.name}'s ($CLAND_SESSION_*), so pid ${d.pid} is not signalled\n`);
+        return 1;
+      }
       asked = false;
     }
     if (!(asked && (await waitForExit(d.pid, STOP_DEADLINE_MS)))) {

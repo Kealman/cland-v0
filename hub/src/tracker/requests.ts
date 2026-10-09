@@ -46,8 +46,9 @@ export type TaskRequest =
 
 /** Who a CLI request acts as; a spoke's requests always act as the spoke's own session. `sessionId` is the launched
  *  session's own (`CLAND_SESSION_ID`): with it, or with a name the hub knows as a session, the call is that
- *  session's, checked against its role and audited as it. */
-export type ActorField = { name: string; role?: string | null; sessionId?: string };
+ *  session's, checked against its role and audited as it. `shell` says the identity is the calling shell's own
+ *  (`$CLAND_SESSION_*`), not a name the human gave with `--as`: one the hub does not know is then a roleless session. */
+export type ActorField = { name: string; role?: string | null; sessionId?: string; shell?: boolean };
 
 export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.claim', 'task.import'] as const;
 

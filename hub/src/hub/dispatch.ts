@@ -75,6 +75,12 @@ export type DispatcherOptions = {
 /** Who the UI's and the CLI's calls are audited as. */
 const HUMAN_SESSION = 'human';
 
+/**
+ * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
+ * other frame is the human's alone.
+ */
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['hub.status', 'inbox.list', 'role.list']);
+
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
 
@@ -148,15 +154,20 @@ export class Dispatcher {
     const grants = connection.role === null ? undefined : roles.get().get(connection.role)?.permissions.tools;
     const decision = decide(connection.role, grants, call);
     if (decision.ok) return true;
-    const { permission, reason } = decision;
-    peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
     const target = call.tool === 'send' ? (call.toHuman ? ' to the human' : '') : typeof call.item === 'string' ? ` ${call.item}` : '';
+    this.#refuse(connection, frame, peer, decision.permission, decision.reason, target);
+    return false;
+  }
+
+  /** Answer a frame with the typed `forbidden` error and post the refusal to the Agents topic. */
+  #refuse(connection: Caller, frame: Record<string, unknown>, peer: Peer, permission: string, reason: string, target = ''): void {
+    const core = this.#options.core;
+    peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
     try {
       core.noticeInTopic(AGENTS.id, { kind: 'refusal', text: `${withRole(connection.name, connection.role)} tried ${String(frame.type)}${target}: forbidden (${reason})`, detail: { session: connection.name, role: connection.role, tool: String(frame.type), permission } });
     } catch (err) {
       this.#log({ event: 'notice-failed', error: err instanceof Error ? err.message : String(err) });
     }
-    return false;
   }
 
   /**
@@ -176,15 +187,18 @@ export class Dispatcher {
    * hub knows: by its session id (`as.sessionId`, `$CLAND_SESSION_ID`), else by a name a session holds or held. Its
    * role is the hub's, never the frame's. Null for the human, and for a name no session ever had (a CLI actor).
    * A session id decides before any name: a frame carrying one is that session's (an id the hub does not know is a
-   * roleless session, refused what needs a role), whatever name it gives, the human's included.
+   * roleless session, refused what needs a role), whatever name it gives, the human's included. So does `as.shell`:
+   * a name the calling shell gives as its own session is a session's even when the hub never heard of it.
    */
   #asSession(frame: Record<string, unknown>): Caller | null {
     const core = this.#options.core;
     if (!core.roles) return null;
-    const as = frame.as as { name?: unknown; sessionId?: unknown } | undefined;
+    const as = frame.as as { name?: unknown; sessionId?: unknown; shell?: unknown } | undefined;
     if (!as || typeof as !== 'object' || typeof as.name !== 'string') return null;
     const sessionId = typeof as.sessionId === 'string' && as.sessionId !== '' ? as.sessionId : null;
-    if (sessionId === null && as.name === HUMAN_SESSION) return null;
+    // the calling shell's own identity (`$CLAND_SESSION_*`), as against a name the human gave with `--as`
+    const own = as.shell === true;
+    if (sessionId === null && as.name === HUMAN_SESSION && !own) return null;
     if (sessionId !== null) {
       const live = core.connectionOf(sessionId);
       if (live) return { name: live.name, sessionId, role: live.role };
@@ -195,7 +209,9 @@ export class Dispatcher {
     if (present) return { name: present.name, sessionId: present.sessionId, role: present.role };
     const id = core.store.sessionIdOf(as.name);
     const role = core.store.roleOf(as.name);
-    if (id === null && role === null) return null;
+    // a name no session ever had: the human's CLI actor, unless the shell says it is its own session — a stale or
+    // made-up identity is a roleless session, never promoted to the human
+    if (id === null && role === null && !own) return null;
     return { name: as.name, sessionId: id ?? UNKNOWN_SESSION, role };
   }
 
@@ -587,8 +603,21 @@ export class Dispatcher {
           this.#bindAssignee(frame, result);
           return peer.send(result);
         }
-        // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
-        if (frame.type !== 'session.signal' && frame.type !== 'session.bridge') {
+        const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
+        // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
+        // audited as it. What the permission table knows is decided by the table, as for the session's own tool call
+        // (launching, listing, stopping and resuming sessions, stopping the hub: the Coordinator's); reading the hub's
+        // state is anyone's; everything else is the human's alone.
+        const caller = plumbing ? null : this.#asSession(frame);
+        if (caller !== null) {
+          audit(frame.id, { session: caller.name, sessionId: caller.sessionId, role: caller.role, tool: String(frame.type), args: summarize(frame), client });
+          if (this.#toolCall(caller, frame) !== null) {
+            if (!this.#permitted(caller, frame, peer)) return;
+          } else if (!SESSION_CLI_FRAMES.has(String(frame.type))) {
+            return this.#refuse(caller, frame, peer, String(frame.type), `only the human may do this; this call is ${withRole(caller.name, caller.role)}'s, by $CLAND_SESSION_ID`);
+          }
+        } else if (!plumbing) {
+          // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
           audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
         }
         // a client's frame may name who it acts as (a name no session holds: written as it, unrestricted)
