@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
+import { AppServerClient } from '../src/adapters/codex/app-server.ts';
 import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
@@ -328,7 +329,7 @@ const threadCalls = (log: string, method: 'thread/start' | 'thread/resume'): Arr
     .filter((json) => json !== undefined)
     .map((json) => JSON.parse(json) as Record<string, unknown>);
 
-test('each role\'s launch defaults reach Codex: thread/start never asks for approvals and names the sandbox, whose writable roots and network the app-server is given as roles.toml has them (T-48)', async (t) => {
+test('Codex launches Implementer and QA with full access, Reviewer read-only, and the T-48 profile when configured (T-65)', async (t) => {
   const root = await tempProject(t);
   // a repository with a worktree under .cland/worktrees, as an Implementer's item gets
   const worktree = join(root, '.cland', 'worktrees', 'T-1');
@@ -361,25 +362,18 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
   const sockets = (cwd: string) => ({ [join(root, '.cland')]: 'allow', [cwd]: 'allow', [tmp]: 'allow', [join(root, '.cland', 'run')]: 'deny', [join(tmp, 'cland-run')]: 'deny' });
   const localNetwork = (cwd: string) => ({ enabled: true, allow_local_binding: true, unix_sockets: sockets(cwd) });
 
-  // the Implementer: its worktree, the main worktree and both git directories writable; Unix sockets and loopback only.
-  // The thread names the profile; the app-server's command line defines it
+  // the Implementer has full access even when launched in a worktree: no profile overrides are needed.
   const impl = await started('impl-1', { role: 'implementer', cwd: worktree });
   assert.equal(impl.cwd, worktree);
-  assert.deepEqual(impl.thread, { approvalPolicy: 'never', permissions: 'cland' });
-  assert.deepEqual(impl.overrides, {
-    default_permissions: 'cland',
-    'permissions.cland': { extends: ':workspace', filesystem: { [root]: 'write', [join(root, '.git')]: 'write', [gitDir]: 'write' }, network: localNetwork(worktree) },
-    'features.network_proxy': true,
-  });
+  assert.deepEqual([impl.thread, impl.overrides], [{ approvalPolicy: 'never', permissions: ':danger-full-access' }, {}]);
 
   // the Reviewer: read-only, no network, so a built-in profile is enough
   const rev = await started('rev-1', { role: 'reviewer' });
   assert.deepEqual([rev.thread, rev.overrides], [{ approvalPolicy: 'never', permissions: ':read-only' }, {}]);
 
-  // QA: writes in its own directory only (git directories stay read-only); Unix sockets and loopback
+  // QA can run all checks, including watchers, pid identity and nested harnesses.
   const qa = await started('qa-1', { role: 'qa' });
-  assert.deepEqual(qa.thread, { approvalPolicy: 'never', permissions: 'cland' });
-  assert.deepEqual(qa.overrides, { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', network: localNetwork(root) }, 'features.network_proxy': true });
+  assert.deepEqual([qa.thread, qa.overrides], [{ approvalPolicy: 'never', permissions: ':danger-full-access' }, {}]);
 
   // no role, so no launch defaults: approvals are still never asked, the sandbox is Codex's own
   const plain = await started('plain-1', {});
@@ -393,10 +387,17 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
 
   // roles.toml is read as it is at each launch: an edit changes the next one, and a relaunch takes it too
   const text = await readFile(file, 'utf8');
-  const qaLaunch = text.slice(text.indexOf('[qa.launch]'));
-  await writeFile(file, text.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"').replace('sandbox = "workspace-write"', 'sandbox = "danger-full-access"').replace('network = "local"', '')));
+  const profileText = text.replaceAll('sandbox = "danger-full-access"', 'sandbox = "workspace-write"\nnetwork = "local"');
+  const implStart = profileText.indexOf('[implementer.launch]');
+  const implEnd = profileText.indexOf('[implementer.permissions]', implStart);
+  const implLaunch = profileText.slice(implStart, implEnd);
+  const withRoots = profileText.replace(implLaunch, implLaunch + 'writable_roots = ["."]\n\n');
+  const qaLaunch = withRoots.slice(withRoots.indexOf('[qa.launch]'));
+  await writeFile(file, withRoots.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"')));
   const qa2 = await started('qa-2', { role: 'qa' });
-  assert.deepEqual([qa2.thread, qa2.overrides], [{ approvalPolicy: 'on-request', permissions: ':danger-full-access' }, {}]);
+  const qaProfile = { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', network: localNetwork(root) }, 'features.network_proxy': true };
+  assert.deepEqual(qa2.thread, { approvalPolicy: 'on-request', permissions: 'cland' });
+  assert.deepEqual(qa2.overrides, qaProfile);
 
   await presentAs(ui, 'qa-1', 'idle');
   await killDaemon(qa.launched.pid as number);
@@ -405,19 +406,152 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
   assert.equal(relaunched.ok, true, relaunched.error);
   const again = (relaunched.value as { process: Harness }).process;
   const [resumed] = threadCalls(await fake.log(again.pid as number), 'thread/resume');
-  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: ':danger-full-access' });
-  assert.deepEqual(await overridesOf(again.pid as number), {}, 'the relaunched app-server no longer defines the profile');
+  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: 'cland' });
+  assert.deepEqual(await overridesOf(again.pid as number), qaProfile, 'the relaunched app-server defines the configured profile');
 
-  // and the other way: a relaunch under the Implementer's defaults defines the profile again
+  // the Implementer's configured profile still grants the main worktree and both git directories
   await presentAs(ui, 'impl-1', 'idle');
   await killDaemon(impl.launched.pid as number);
   await eventually('impl-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'impl-1')?.state === 'unknown' ? true : undefined));
   const implAgain = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
   assert.equal(implAgain.ok, true, implAgain.error);
   const implPid = (implAgain.value as { process: Harness }).process.pid as number;
-  assert.deepEqual(await overridesOf(implPid), impl.overrides);
+  assert.deepEqual(await overridesOf(implPid), {
+    default_permissions: 'cland',
+    'permissions.cland': { extends: ':workspace', filesystem: { [root]: 'write', [join(root, '.git')]: 'write', [gitDir]: 'write' }, network: localNetwork(worktree) },
+    'features.network_proxy': true,
+  });
   const [implResumed] = threadCalls(await fake.log(implPid), 'thread/resume');
   assert.deepEqual([implResumed?.approvalPolicy, implResumed?.permissions], ['never', 'cland']);
+});
+
+// T-51. Measured with Codex 0.160.0: every `thread/start` on an app-server spawns its MCP servers again, so any
+// further thread there (a helper's, a sub-agent's, a client's) brings a second spoke with the session's identity,
+// while the session's own thread goes on calling its tools through the first one.
+test('a second spoke of a live Codex session (another thread on its app-server) leaves the session its tools: the hub answers both, and says so once', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  const clauses = async () => (await hubLog(root)).split('\n').filter((l) => l.includes('"event":"role-clause"')).length;
+  const clausesBefore = await clauses();
+
+  // another client starts a thread on the session's app-server
+  const other = await AppServerClient.connect(launched.harnessId as string, { client: { name: 'test', title: 'test', version: '0' }, timeoutMs: 15_000, connectTimeoutMs: 3000 });
+  t.after(() => other.close());
+  await other.request('thread/start', { cwd: root });
+  await eventually('the second spoke said hello', async () => (/"event":"replaced","name":"impl-1","sessionId":"[^"]+","spokes":2/.test(await hubLog(root)) ? true : undefined));
+  assert.match(await fake.log(launched.pid as number), /mcp cland ready \(another thread's\)/);
+
+  // one session still, and nothing of a hello happened again: no clause is injected into its thread a second time
+  assert.equal((await status(ui)).sessions.filter((s) => s.name === 'impl-1').length, 1);
+  assert.equal(await clauses(), clausesBefore);
+
+  // the session's thread calls its tools through its first spoke, and they work: the pong is a `send`
+  const id = await sendGeneral(ui, '@impl-1 still there?');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 still there?', 15_000);
+  assert.doesNotMatch(await fake.log(launched.pid as number), /replaced/);
+
+  // the Agents record says there are two, once
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'spoke-joined').map((m) => m.text), ['impl-1 [Implementer]: another spoke of the session connected (2 now); each is answered, and deliveries go to the newest']);
+});
+
+test('session resume --relaunch on a live session relaunches it: the app-server is stopped and a new one resumes the thread, with its role and its tools', { skip: NO_PS }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  // without --relaunch a live session is only re-found
+  const found = await ui.request({ type: 'session.resume', session: 'impl-1' }, 30_000);
+  assert.equal((found.value as { process: Harness }).process.pid, launched.pid);
+
+  const r = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
+  assert.equal(r.ok, true, r.error);
+  const again = (r.value as { found: boolean; process: Harness }).process;
+  assert.notEqual(again.pid, launched.pid, 'a new app-server');
+  assert.equal(pidAlive(launched.pid as number), false, 'the old one was stopped');
+  assert.equal(again.harnessSessionId, launched.harnessSessionId, 'the same thread');
+  assert.equal(again.status, 'running');
+  assert.match(await hubLog(root), /"event":"session-resumed","session":"impl-1",.*"relaunched":true/);
+  const present = await presentAs(ui, 'impl-1', 'idle');
+  assert.equal(present.role, 'implementer', 'the relaunch kept its role');
+
+  const id = await sendGeneral(ui, '@impl-1 back?');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 back?', 15_000);
+});
+
+// T-51, the second occurrence: a hub restart with a session whose first spoke an older hub had told it was replaced.
+// That spoke never came back, and the session's thread went on calling it. Now every spoke reconnects and is taken.
+test('after a hub restart every spoke of a Codex session reconnects, and the session\'s thread still has its tools', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const first = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, first.discovery);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  const other = await AppServerClient.connect(launched.harnessId as string, { client: { name: 'test', title: 'test', version: '0' }, timeoutMs: 15_000, connectTimeoutMs: 3000 });
+  t.after(() => other.close());
+  await other.request('thread/start', { cwd: root });
+  await eventually('two spokes', async () => (/"event":"replaced","name":"impl-1","sessionId":"[^"]+","spokes":2/.test(await hubLog(root)) ? true : undefined));
+  ui.close();
+
+  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+  const restarted = Date.now();
+  const second = await startDaemon(t, root, fake.env);
+  const ui2 = await connectUi(t, second.discovery);
+  assert.equal((await ui2.request({ type: 'subscribe' })).ok, true);
+  const since = async (event: string) =>
+    (await hubLog(root))
+      .split('\n')
+      .filter((l) => l.startsWith('{'))
+      .map((l) => JSON.parse(l) as { ts: string; event: string; name?: string; spokes?: number })
+      .filter((e) => e.event === event && Date.parse(e.ts) >= restarted && e.name === 'impl-1');
+  // both come back: one says hello, the other joins it
+  await eventually('both spokes are back', async () => ((await since('hello')).length === 1 && (await since('replaced')).some((e) => e.spokes === 2) ? true : undefined));
+  await presentAs(ui2, 'impl-1', 'idle');
+
+  const id = await sendGeneral(ui2, '@impl-1 after the restart?');
+  await ui2.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  await ui2.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 after the restart?', 15_000);
+});
+
+// Review rev-20261009-51-2c2e706: the stop of a live relaunch is awaited, and the session may rename itself meanwhile.
+test('session resume --relaunch on a live session that renames itself while it is being stopped relaunches it under its new name', { skip: NO_PS }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_CODEX_TERM_DELAY_MS: '1200' });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+
+  // its turn renames it 300 ms in; the relaunch's stop is under way by then, and takes 1200 ms
+  const id = await sendGeneral(ui, 'rename to coord-2');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  const r = await ui.request({ type: 'session.resume', session: 'coord', relaunch: true }, 30_000);
+  assert.equal(r.ok, true, r.error);
+  const again = (r.value as { found: boolean; process: Harness }).process;
+  assert.match(await fake.log(launched.pid as number), /tool rename → \{"ok":true/, 'the rename landed while the app-server was going');
+  assert.equal(again.name, 'coord-2');
+  assert.equal(again.status, 'running');
+  assert.notEqual(again.pid, launched.pid);
+  assert.equal(pidAlive(launched.pid as number), false);
+  assert.equal(again.harnessSessionId, launched.harnessSessionId, 'the same thread');
+  // one row, under the new name, with a live process behind it
+  const rows = (await status(ui)).harnesses.filter((h) => h.sessionId === launched.sessionId);
+  assert.deepEqual(rows.map((h) => [h.name, h.status, h.pid]), [['coord-2', 'running', again.pid]]);
+  const present = await presentAs(ui, 'coord-2', 'idle');
+  assert.equal(present.role, 'coordinator');
 });
 
 // T-50. Measured with Codex 0.160.0 (11 steers in the last 5 to 120 ms of a turn): an accepted `turn/steer` is taken up

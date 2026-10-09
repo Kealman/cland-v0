@@ -81,7 +81,7 @@ test('cland init on an empty repository: git status shows exactly the committed 
   const root = await tempProject(t, 'cland-init-');
   await gitRepo(root);
   const changes = await run(root, 'init');
-  assert.ok(changes.every((c) => c.action === 'created' || c.path === '.cland/hub.db'), JSON.stringify(changes.filter((c) => c.action !== 'created')));
+  assert.ok(changes.every((c) => c.action === 'created' || c.path === '.cland/hub.db' || c.path.startsWith('.cland/territory.git')), JSON.stringify(changes.filter((c) => c.action !== 'created')));
 
   const { files: skillFiles } = await shipped();
   const expected = [
@@ -124,7 +124,7 @@ test('cland init on an empty repository: git status shows exactly the committed 
   const agents = await readFile(join(root, 'AGENTS.md'), 'utf8');
   assert.match(agents, /^<!-- cland:begin managed by cland [^\n]*-->\n## cland\n/);
   assert.match(agents, /<!-- cland:end -->\n$/);
-  for (const rule of ['Obey hub events', '`cland task`', 'Artifacts go through the hub', 'Sub-agents never use the hub', 'Push to GitHub only on the Coordinator']) assert.ok(agents.includes(rule), rule);
+  for (const rule of ['Obey hub events', '`cland task`', 'Artifacts go through the hub', 'Sub-agents never use the hub', 'only `cland release` pushes to `github`']) assert.ok(agents.includes(rule), rule);
 
   // committed files carry no machine path (the project's, the home folder, cland's own checkout)
   for (const f of expected) {

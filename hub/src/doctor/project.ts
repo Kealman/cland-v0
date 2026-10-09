@@ -16,6 +16,7 @@ import type { HubStatus } from '../protocol.ts';
 import { parseRoles } from '../roles/config.ts';
 import { VERSION } from '../version.ts';
 import { fail, ok, probeTimeout, run, warn, type Check } from './report.ts';
+import { territoryProblems } from '../territory.ts';
 
 const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/\s*\n\s*/g, ' ').trim();
 
@@ -281,5 +282,7 @@ function checkInstructions(root: string): Check[] {
 export async function checkProject(root: string): Promise<Check[]> {
   const l = layout(root);
   if (!existsSync(l.dir)) return [fail('project', `${root} has no ${CLAND_DIR}/: not a cland project`, `cland init ${root}`)];
-  return [...(await checkHub(l)), ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
+  const problems = territoryProblems(root);
+  const territory = problems === null ? ok('territory', 'not a git repository: no territory needed') : problems.length ? fail('territory', problems.join('; '), 'cland init (restore origin to .cland/territory.git if it was changed)') : ok('territory', 'origin is the local bare repository; main and dev protected; HEAD on dev');
+  return [...(await checkHub(l)), territory, ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
 }

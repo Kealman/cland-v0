@@ -284,12 +284,23 @@ export class Sessions {
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
-    const p = this.#process(name);
+    let p = this.#process(name);
     const adapter = this.adapter(p.harness);
+    // a relaunch is a new harness process on the same conversation, whatever became of the old one: one that
+    // still runs is stopped first (its row keeps the role: this is not the session's end, so nothing is vacated)
+    // the row as it is now, by the session's id: while the adapter works the session may rename itself (the
+    // Coordinator does), and its row then stands under the new name
+    const row = (): HarnessProcess => this.#table.bySessionId(p.sessionId) ?? p;
+    if (relaunch && p.status === 'running') {
+      await adapter.stop(p);
+      this.#table.update(row().name, { status: 'stopped' });
+      this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
+      p = row();
+    }
     const r = await adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
     if (!r.found) {
       if (p.status === 'running') this.#exited(p.sessionId, r.reason);
-      return { found: false, reason: r.reason, process: this.view(this.#process(name)) };
+      return { found: false, reason: r.reason, process: this.view(row()) };
     }
     // what the row says now, not the snapshot the resume started from: a role assigned or revoked, or a rename,
     // while the adapter worked stays as it was made
@@ -298,7 +309,7 @@ export class Sessions {
     const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, pidStarted };
     this.#table.put(process);
     adapter.watch(process);
-    this.#log({ event: 'session-resumed', session: name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
+    this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
     if (r.state !== 'unknown') this.#signal(p.sessionId, { state: r.state, source: 'resume', at: Date.now() }, false);
     return { found: true, process: this.view(process) };
   }
