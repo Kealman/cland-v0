@@ -3,7 +3,8 @@
 // follows a hand edit within a second; `e` opens the file and a save re-indexes it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
@@ -129,4 +130,51 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   assert.ok(took2 < 1000, `the panel followed the save in ${took2} ms`);
   const list = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<{ id: string; title: string }> };
   assert.equal(list.items.find((i) => i.id === 'T-7')?.title, 'Transport over QUIC', 'the hub re-indexed the save');
+});
+
+
+test('the item view shows verdict commits, red stale marks, and file-only provenance', { skip }, async (t) => {
+  const root = await tempProject(t);
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  git('init', '-b', 'main');
+  git('config', 'user.name', 'Test');
+  git('config', 'user.email', 'test@example.com');
+  await writeFile(join(root, 'feature'), 'base\n');
+  git('add', 'feature');
+  git('commit', '-m', 'base');
+  git('checkout', '-b', 't/test');
+  await writeFile(join(root, 'feature'), 'feature\n');
+  git('add', 'feature');
+  git('commit', '-m', 'feature');
+  const sha = git('rev-parse', 'HEAD');
+  await startDaemon(t, root);
+  const created = await cland(root, 'task', 'create', 'Reviewed', '--branch', 't/test', '--json');
+  assert.equal(created.code, 0, created.stderr);
+  const item = JSON.parse(created.stdout).item as { path: string };
+  const recorded = await cland(root, 'task', 'comment', 'T-1', 'Checked.', '--verdict', 'review', '--result', 'clear', '--run', 'r-1');
+  assert.equal(recorded.code, 0, recorded.stderr);
+  const file = join(root, item.path);
+  await writeFile(file, (await readFile(file, 'utf8')) + '\n' + verdictComment('qa-1', 'qa', 'qa', 'clear', 'q-1', 6, 'Imported.'));
+  await writeFile(join(root, 'feature'), 'changed\n');
+  git('add', 'feature');
+  git('commit', '-m', 'changed');
+  const c = await startClient(t, bin, root);
+  await c.waitScreen((s) => s.includes('General'), 'the workbench');
+  await c.input('<Esc>:Cland view item T-1<CR>');
+  const screen = await c.waitScreen((s) => s.includes('VERDICTS · 2') && s.includes('stale'), 'the stale verdict');
+  assert.match(screen, new RegExp(sha.slice(0, 8)));
+  assert.match(screen, /from the file/);
+  assert.match(screen, /from the hub/);
+  const redStale = await c.lua<boolean>(`
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_get_name(b) == 'cland://item/T-1' then
+        local lines = vim.api.nvim_buf_get_lines(b, 0, -1, false)
+        for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(b, -1, 0, -1, {details=true})) do
+          local d = mark[4]
+          if d.hl_group == 'ClandRed' and (lines[mark[2]+1] or ''):sub(mark[3]+1, d.end_col):find('stale', 1, true) then return true end
+        end
+      end
+    end
+    return false`);
+  assert.equal(redStale, true, 'stale is highlighted red in the item buffer');
 });
