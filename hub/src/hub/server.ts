@@ -84,6 +84,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     dispatcher,
     prune: () => core.prune(),
     close: async () => {
+      dispatcher.close();
       clearInterval(pruneTimer);
       unwatchItems?.();
       unbindTopics?.();

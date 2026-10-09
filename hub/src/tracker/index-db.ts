@@ -69,6 +69,16 @@ create table if not exists tracker_meta (
   key text primary key,
   value text not null
 );
+-- A prepared landing survives a crash or a failed lifecycle write. Git decides whether it actually landed.
+create table if not exists tracker_merges (
+  item_id text primary key,
+  branch text not null,
+  tip text not null,
+  base text not null,
+  commit_sha text not null,
+  override_reason text,
+  checkout_recovery text
+);
 `;
 
 /** Where an indexed version came from: the hub's own write, or a file changed outside the hub. */
@@ -94,6 +104,8 @@ export type IndexedItem = {
 export type IndexedVerdict = Verdict & { author: string; at: string; source: 'hub' | 'file'; writer?: { sessionId: string; role: string | null }; current?: boolean };
 type VerdictRecord = Verdict & { author: string; at: string };
 type KeyedVerdict = { verdict: VerdictRecord; key: string };
+export type CheckoutRecovery = { before: string; after: string };
+export type MergeReceipt = { branch: string; tip: string; base: string; commit: string; override?: string; checkout?: CheckoutRecovery };
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
@@ -124,6 +136,8 @@ export class TrackerIndex {
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
     const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
     for (const column of ['commit_sha', 'comment_key']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
+    const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
+    if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
   }
 
   close(): void {
@@ -284,6 +298,29 @@ export class TrackerIndex {
       lastMatched = r.written_order as number;
       return { ...verdict, source: 'hub', writer: { sessionId: r.session_id as string, role: r.role as string | null } };
     });
+  }
+
+  /** The gate's evidence follows durable write order, and every recorded comment must still be present. */
+  mergeVerdicts(id: string, verdicts: KeyedVerdict[]): { verdicts: IndexedVerdict[]; missing?: { run: string; commit: string | null } } {
+    const present = new Map(verdicts.map(v => [v.key, v.verdict]));
+    const rows = this.#db.prepare('select comment_key, run, commit_sha, session_id, role from tracker_written_verdicts where item_id = ? order by rowid').all(id) as Row[];
+    const selected: IndexedVerdict[] = [];
+    for (const row of rows) {
+      const v = present.get(row.comment_key as string);
+      if (!v) return { verdicts: [], missing: { run: row.run as string, commit: row.commit_sha as string | null } };
+      selected.push({ ...v, source: 'hub', writer: { sessionId: row.session_id as string, role: row.role as string | null } });
+    }
+    return { verdicts: selected };
+  }
+
+  recordMerge(id: string, receipt: MergeReceipt): void {
+    this.#db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason, checkout_recovery) values (?, ?, ?, ?, ?, ?, ?) on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base, commit_sha = excluded.commit_sha, override_reason = excluded.override_reason, checkout_recovery = excluded.checkout_recovery')
+      .run(id, receipt.branch, receipt.tip, receipt.base, receipt.commit, receipt.override ?? null, receipt.checkout ? JSON.stringify(receipt.checkout) : null);
+  }
+
+  mergeReceipt(id: string): MergeReceipt | null {
+    const row = this.#db.prepare('select * from tracker_merges where item_id = ?').get(id) as Row | undefined;
+    return row ? { branch: row.branch as string, tip: row.tip as string, base: row.base as string, commit: row.commit_sha as string, ...(row.override_reason === null ? {} : { override: row.override_reason as string }), ...(row.checkout_recovery === null ? {} : { checkout: JSON.parse(row.checkout_recovery as string) as CheckoutRecovery }) } : null;
   }
 
   // ---------------------------------------------------------------- claims

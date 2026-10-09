@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Tracker } from '../tracker/tracker.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
-import { provisionTerritory } from '../territory.ts';
+import { provisionTerritory, removeTaskWorktree } from '../territory.ts';
 import { Report } from '../init/files.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import type { HarnessProcessView } from '../protocol.ts';
@@ -73,6 +73,22 @@ async function territoryProject(t: TestContext, sessions: () => SessionCwd[]) {
 }
 
 const HUMAN = { id: 'human', name: 'human', role: null };
+
+test('merged cleanup restores the worktree when the branch moves between removal and CAS deletion', async (t) => {
+  const { root, git, tracker, worktrees } = await territoryProject(t, () => []);
+  tracker.create(HUMAN, { title: 'Raced cleanup', kind: 'task' });
+  const { worktree } = await worktrees.afterClaim('T-1', 'human');
+  assert.ok(worktree);
+  const tip = git('rev-parse', worktree.branch);
+  const next = git('commit-tree', `${tip}^{tree}`, '-p', tip, '-m', 'Unmerged work');
+  let checks = 0;
+  await assert.rejects(removeTaskWorktree(root, 'T-1', () => {
+    if (++checks === 2) git('update-ref', `refs/heads/${worktree.branch}`, next, tip);
+  }, { branch: worktree.branch, tip }), new RegExp(`branch moved since merge \\(${next}\\), kept`));
+  assert.equal(git('rev-parse', worktree.branch), next);
+  assert.ok(existsSync(worktree.path));
+  assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: worktree.path, encoding: 'utf8' }).trim(), next);
+});
 
 test('prune checks again under the lock: an item reopened, or a session entering, while it read Git keeps its worktree (rev-6 on T-58)', async (t) => {
   // the sessions as the hub sees them: whatever the test makes happen while the listing reads Git

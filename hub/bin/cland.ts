@@ -13,6 +13,7 @@ import { QA_USAGE, runQa } from '../src/cli/qa.ts';
 import { runQaFixture } from '../src/cli/qa-fixture.ts';
 import { ARTIFACT_USAGE, runArtifact } from '../src/cli/artifact.ts';
 import { WORKTREE_USAGE, runWorktree } from '../src/cli/worktree.ts';
+import { MERGE_USAGE, runMerge } from '../src/cli/merge.ts';
 import { VERSION } from '../src/version.ts';
 
 const usage = `cland ${VERSION}
@@ -21,7 +22,7 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${OPEN_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${ROLE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}  --version, -v   print the version
+${OPEN_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${ROLE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -106,6 +107,10 @@ switch (command) {
       process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exitCode = 1;
     }
+    break;
+  case 'merge':
+    try { process.exitCode = await runMerge(rest); }
+    catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
     break;
   case 'worktree':
     try {

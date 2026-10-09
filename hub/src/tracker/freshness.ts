@@ -44,6 +44,8 @@ const scheduleTips: TipSchedule = (read, intervalMs) => {
 
 export type FreshnessOptions = {
   git: Git;
+  /** The territory task base, read asynchronously alongside branch tips; defaults to dev/main. */
+  readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
   log?: LogFn;
   intervalMs?: number;
   scheduleTips?: TipSchedule;
@@ -55,6 +57,8 @@ export type FreshnessOptions = {
 
 export class Freshness {
   readonly #git: Git;
+  readonly #readBase: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
+  #base: string | null = null;
   readonly #log: LogFn;
   readonly #intervalMs: number;
   readonly #scheduleTips: TipSchedule;
@@ -74,6 +78,7 @@ export class Freshness {
   /** Tip reads started so far. */
   #reads = 0;
   #reading = false;
+  #readWaiters: Array<() => void> = [];
   #readAgain = false;
   #schedule: ReturnType<TipSchedule> | null = null;
   #stopped = false;
@@ -81,6 +86,7 @@ export class Freshness {
 
   constructor(options: FreshnessOptions) {
     this.#git = options.git;
+    this.#readBase = options.readBase ?? (async (tips) => verdictBaseOf(tips));
     this.#log = options.log ?? (() => {});
     this.#intervalMs = options.intervalMs ?? TIP_CHECK_MS;
     this.#scheduleTips = options.scheduleTips ?? scheduleTips;
@@ -103,7 +109,7 @@ export class Freshness {
 
   /** The integration branch patch ids are compared against, as last read; null when neither exists or not read yet. */
   base(): string | null {
-    return this.#tips ? verdictBaseOf(this.#tips) : null;
+    return this.#base;
   }
 
   /** Something changed in the tracker: read the tips again soon. */
@@ -154,7 +160,7 @@ export class Freshness {
       return missing.absent ? false : undefined;
     }
     if (commit === tip) return true;
-    const base = verdictBaseOf(tips);
+    const base = this.#base;
     const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null);
     const known = this.#results.get(key);
     if (known !== undefined) return known;
@@ -177,11 +183,13 @@ export class Freshness {
   }
 
   /** Read the branch tips (one at a time; a request while reading reads once more after). */
-  async refresh(): Promise<void> {
+  async refresh(resumed: <T>(work: () => T) => T = work => work()): Promise<void> {
     if (this.#stopped) return;
     if (this.#reading) {
       this.#readAgain = true;
-      return;
+      await new Promise<void>((resolve) => this.#readWaiters.push(resolve));
+      // A foreground caller owns its own reread and all synchronous work following it.
+      return this.refresh(resumed);
     }
     this.#reading = true;
     try {
@@ -189,27 +197,35 @@ export class Freshness {
         this.#readAgain = false;
         const seq = ++this.#reads;
         let read: Map<string, string> | null;
+        let base: string | null;
         try {
-          read = await branchTips(this.#git);
+          read = await branchTips(this.#git, resumed);
+          base = await this.#readBase(read ?? new Map());
         } catch (err) {
-          this.#fail('read', err);
+          resumed(() => this.#fail('read', err));
           return;
         }
-        if (this.#stopped) return;
-        const next = read ?? new Map<string, string>();
-        const moved = this.#tips === null || !sameTips(this.#tips, next);
-        this.#tips = next;
-        // a branch asked about before this read started and still missing has none: stale from now on
-        let settled = false;
-        for (const [branch, missing] of this.#missing) {
-          if (next.has(branch)) this.#missing.delete(branch);
-          else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
-        }
-        if (moved) this.#prune();
-        if (moved || settled) this.#tipsMoved();
+        resumed(() => {
+          if (this.#stopped) return;
+          const next = read ?? new Map<string, string>();
+          const moved = this.#tips === null || !sameTips(this.#tips, next) || this.#base !== base;
+          this.#tips = next;
+          this.#base = base;
+          // a branch asked about before this read started and still missing has none: stale from now on
+          let settled = false;
+          for (const [branch, missing] of this.#missing) {
+            if (next.has(branch)) this.#missing.delete(branch);
+            else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
+          }
+          if (moved) this.#prune();
+          if (moved || settled) this.#tipsMoved();
+        });
       } while (this.#readAgain && !this.#stopped);
     } finally {
-      this.#reading = false;
+      resumed(() => {
+        this.#reading = false;
+        for (const done of this.#readWaiters.splice(0)) done();
+      });
     }
   }
 
@@ -218,7 +234,7 @@ export class Freshness {
     const tips = this.#tips;
     if (!tips) return;
     const live = new Set(tips.values());
-    const base = verdictBaseOf(tips);
+    const base = this.#base;
     const baseKey = `${base ?? ''} ${base ? (tips.get(base) ?? '') : ''}`;
     const alive = (key: string) => {
       const [, tip, b, bt] = key.split(' ');

@@ -2,6 +2,7 @@
 import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { MergeError } from './merge.ts';
 import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
@@ -282,12 +283,20 @@ export function territoryProblems(root: string): string[] | null {
 // writes also hold the territory lock against other processes, taken without blocking (`withTerritoryLockAsync`).
 
 /** `territoryGit`, awaited: trimmed stdout, or a rejection naming the command and Git's message. */
-export function territoryGitAsync(cwd: string, args: string[]): Promise<string> {
+export class TerritoryGitError extends Error {
+  readonly stdout: string;
+  readonly code: number | string | null | undefined;
+  constructor(message: string, stdout: string, code: number | string | null | undefined) { super(message); this.stdout = stdout; this.code = code; }
+}
+
+export function territoryGitAsync(cwd: string, args: string[], marked = false, input?: string): Promise<string> {
   return new Promise((resolvePromise, reject) => {
-    execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CLAND_TERRITORY_WRITE: '' } }, (err, stdout, stderr) => {
-      if (err) reject(new Error(`git ${args.join(' ')}: ${String(stderr).trim() || err.message}`));
+    const child = execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CLAND_TERRITORY_WRITE: marked ? '1' : '' } }, (err, stdout, stderr) => {
+      if (err) reject(new TerritoryGitError(`git ${args.join(' ')}: ${String(stderr).trim() || err.message}`, String(stdout), err.code));
       else resolvePromise(String(stdout).trim());
     });
+    child.stdin?.on('error', () => {}); // an early Git refusal can close stdin before the input is consumed
+    child.stdin?.end(input);
   });
 }
 
@@ -404,14 +413,206 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
  * `check` runs there right before the removal and refuses it by throwing (the caller's item state and sessions, which
  * may have changed while Git was read).
  */
-export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}): Promise<{ path: string; branch: string | null }> {
+/** Merged cleanup may delete only this exact ref value; explicit human prune has no expected value. */
+export type ExpectedBranch = { branch: string; tip: string };
+
+export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}, expected?: ExpectedBranch, resumed: <T>(work: () => T) => T = work => work()): Promise<{ path: string; branch: string | null }> {
   return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item);
-    const found = (await worktrees(root)).find((w) => samePath(w.path, path));
-    if (!found) throw new Error(`${item} has no worktree`);
-    check();
-    await territoryGitAsync(root, ['worktree', 'remove', path]);
-    if (found.branch !== null && (await refAsync(root, `refs/heads/${found.branch}`)) !== null) await territoryGitAsync(root, ['branch', '-D', found.branch]);
-    return { path, branch: found.branch };
+    const listed = await worktrees(root);
+    const { found, branch } = resumed(() => {
+      const found = listed.find(w => samePath(w.path, path));
+      if (!found && !expected) throw new Error(`${item} has no worktree`);
+      if (found && expected && found.branch !== expected.branch) throw new Error(`${item}: worktree branch changed since merge`);
+      const branch = found?.branch ?? expected?.branch ?? null;
+      if (branch === 'main' || branch === 'dev') throw new Error(`${item}: cannot prune the integration branch`);
+      return { found, branch };
+    });
+    const tip = branch === null ? null : await refAsync(root, `refs/heads/${branch}`);
+    const gone = resumed(() => {
+      if (expected && !found && tip === null) return true;
+      if (expected && tip !== expected.tip) throw new Error(`${item}: branch moved since merge (${tip ?? 'none'}), kept`);
+      check();
+      return false;
+    });
+    if (gone) return { path, branch };
+    if (found) await territoryGitAsync(root, ['worktree', 'remove', path]);
+    resumed(check);
+    if (branch !== null && tip !== null) {
+      if (expected) {
+        try {
+          // --no-deref protects against a hand-replaced symbolic task ref; the old SHA is a compare-and-swap.
+          await territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, expected.tip]);
+        } catch (err) {
+          const current = await refAsync(root, `refs/heads/${branch}`);
+          if (current !== expected.tip) {
+            // A writer moved the ref after the pre-removal check: preserve its branch and put its worktree back.
+            if (found) await territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', path, expected.tip] : ['worktree', 'add', path, branch]);
+            resumed(() => { throw new Error(`${item}: branch moved since merge (${current ?? 'none'}), kept`); });
+          }
+          throw err;
+        }
+      } else await territoryGitAsync(root, ['branch', '-D', branch]);
+    }
+    return { path, branch };
+  });
+}
+
+// ---------------------------------------------------------------- the squash gate's Git work (T-59, D2/D9)
+/** The guard owns the lock and calls `message` again after preparation, before any ref moves. */
+export async function squashTask(
+  root: string,
+  branch: string,
+  message: (tip: string, base: string, baseTip: string) => Promise<string>,
+  resumed: <T>(work: () => T) => T = (work) => work(),
+  prepared: (landing: { commit: string; base: string; tip: string; checkout?: { before: string; after: string } }) => void = () => {},
+): Promise<{ commit: string; base: string }> {
+  const managed = await hasTerritory(root);
+  resumed(() => { if (!managed) throw new MergeError('merge-territory', 'the project has no managed territory'); });
+  const foundBase = await taskBase(root);
+  const base = resumed(() => {
+    if (!foundBase) throw new MergeError('merge-base', 'no task base');
+    if (branch === foundBase || branch === 'main' || branch === 'dev') throw new MergeError('merge-branch', 'the task branch is the integration branch');
+    return foundBase;
+  });
+  const foundBefore = await refAsync(root, `refs/heads/${base}`);
+  const foundTip = await refAsync(root, `refs/heads/${branch}`);
+  const { before, tip } = resumed(() => {
+    if (!foundBefore || !foundTip) throw new MergeError('merge-branch', `no local branch ${branch}`);
+    return { before: foundBefore, tip: foundTip };
+  });
+  const checkout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => { if (checkout !== base) throw new MergeError('merge-checkout', `the project root must be on ${base}`); });
+  const remoteTip = await refAsync(territoryPath(root), `refs/heads/${base}`);
+  const ancestor = remoteTip ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', remoteTip, before]) : '';
+  resumed(() => { if (ancestor === null) throw new MergeError('merge-base', `territory ${base} is not an ancestor of the root's ${base}`); });
+  let tree: string;
+  try {
+    const merged = await territoryGitAsync(root, ['merge-tree', '--write-tree', '--name-only', '-z', before, tip]);
+    tree = resumed(() => merged.split('\0')[0]!);
+  } catch (err) {
+    tree = resumed(() => {
+      if (!(err instanceof TerritoryGitError) || err.code !== 1) throw err;
+      const parts = err.stdout.split('\0').slice(1);
+      const files = parts.slice(0, parts.indexOf(''));
+      throw new MergeError('merge-conflict', `rebase ${branch} on ${base}; conflicts: ${files.join(', ')}`, files);
+    });
+  }
+  const touched = await territoryGitAsync(root, ['diff', '--name-only', '-z', before, tree, '--']);
+  const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--']);
+  const untracked = await territoryGitAsync(root, ['ls-files', '--others', '--exclude-standard', '-z']);
+  resumed(() => {
+    const paths = touched.split('\0').filter(Boolean);
+    const dirty = [...tracked.split('\0'), ...untracked.split('\0')].filter(Boolean);
+    const overlap = dirty.filter((f) => paths.some((p) => f === p || f.startsWith(p + '/') || p.startsWith(f + '/')));
+    if (overlap.length) throw new MergeError('merge-dirty', `uncommitted changes in ${overlap.join(', ')}`, overlap);
+  });
+  // Git's own index/worktree safety checks also catch directory obstructions and staged changes. No ref yet.
+  try { await territoryGitAsync(root, ['read-tree', '--dry-run', '-m', '-u', before, tree]); }
+  catch (err) { resumed(() => { throw new MergeError('merge-dirty', err instanceof Error ? err.message : String(err)); }); }
+  const text = await message(tip, base, before);
+  const commit = await territoryGitAsync(root, ['commit-tree', tree, '-p', before], false, text + '\n');
+  const latestText = await message(tip, base, before);
+  resumed(() => { if (latestText !== text) throw new MergeError('merge-changed', 'the item or verdicts changed during preparation; try again'); });
+  // These facts are read again after every preparation callback: a checkout or ref may move during its awaits.
+  const currentTip = await refAsync(root, `refs/heads/${branch}`);
+  const currentBase = await refAsync(root, `refs/heads/${base}`);
+  const currentCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => {
+    if (currentCheckout !== base) throw new MergeError('merge-checkout', `the project root moved off ${base} during preparation`);
+    if (currentTip !== tip || currentBase !== before) throw new MergeError('merge-changed', 'a branch changed while the merge was prepared; try again');
+  });
+  // read-tree preserves unrelated local edits; update-ref is a compare-and-swap of the integration branch.
+  const beforeIndex = await territoryGitAsync(root, ['write-tree']);
+  // Include unrelated staged edits in the expected landed index, without touching the root checkout. This snapshot
+  // must exist before read-tree: even the write-tree used to inspect its result may fail on a concurrent index lock.
+  const indexCommit = await territoryGitAsync(root, ['commit-tree', beforeIndex, '-p', before], false, 'Merge index snapshot\n');
+  const mergedIndex = await territoryGitAsync(root, ['merge-tree', '--write-tree', commit, indexCommit]);
+  const recovery = resumed(() => ({ before: beforeIndex, after: mergedIndex.split('\n')[0]! }));
+  resumed(() => prepared({ commit, base, tip, checkout: recovery }));
+  let advanced = false;
+  try {
+    await territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit]);
+    const afterIndex = await territoryGitAsync(root, ['write-tree']);
+    resumed(() => {
+      if (afterIndex !== recovery.after) throw new Error('the index changed during landing; checkout recovery is required');
+    });
+    await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, commit, before]);
+    resumed(() => { advanced = true; prepared({ commit, base, tip }); });
+    // Use the on-disk path, never origin's configurable push URL (and never github).
+    await territoryGitAsync(root, ['push', territoryPath(root), `refs/heads/${base}:refs/heads/${base}`], true);
+  } catch (err) {
+    resumed(() => prepared({ commit, base, tip, checkout: recovery }));
+    try {
+      await restoreTaskCheckout(root, { commit, base, checkout: recovery }, resumed);
+      if (advanced) await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, before, commit]);
+    } catch (restore) {
+      resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${commit} on ${base}: ${restore instanceof Error ? restore.message : String(restore)}; initial failure: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit, base }); });
+    }
+    resumed(() => { throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
+  }
+  return { commit, base };
+}
+
+/** Restore an unlanded preparation, or roll back a failed landing, only from its recorded index states. */
+export async function restoreTaskCheckout(root: string, receipt: { commit: string; base: string; checkout: { before: string; after: string } }, resumed: <T>(work: () => T) => T): Promise<void> {
+  const before = await refAsync(root, `${receipt.commit}^`);
+  const branch = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  const index = await territoryGitAsync(root, ['write-tree']);
+  resumed(() => {
+    if (!before || branch !== receipt.base) throw new Error(`the root must be on ${receipt.base} for checkout recovery`);
+    if (index !== receipt.checkout.before && index !== receipt.checkout.after) throw new Error('the index changed since merge preparation; staged work was kept');
+  });
+  await territoryGitAsync(root, ['read-tree', '-m', '-u', receipt.commit, before!]);
+  const restored = await territoryGitAsync(root, ['write-tree']);
+  resumed(() => { if (restored !== receipt.checkout.before) throw new Error('the restored index differs from its durable snapshot'); });
+}
+
+/** A recorded Item commit on the local integration ref is landed; publication may still need finishing. */
+export async function landedTask(root: string, id: string, receipt: { commit: string; base: string; branch: string; tip: string }, resumed: <T>(work: () => T) => T): Promise<{ current: boolean; published: boolean } | null> {
+  const message = await maybeGitAsync(root, ['show', '-s', '--format=%B', receipt.commit]);
+  if (!resumed(() => message?.split('\n').includes(`Item: ${id}`))) return null;
+  const local = await maybeGitAsync(root, ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
+  const remote = await maybeGitAsync(territoryPath(root), ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
+  if (local === null && remote === null) return null;
+  const tip = await refAsync(root, `refs/heads/${receipt.branch}`);
+  return resumed(() => ({ current: tip === null || tip === receipt.tip, published: remote !== null }));
+}
+
+/** Finish a recorded landing's root checkout after an interrupted or failed rollback. No local edits are forced. */
+export async function reconcileTaskCheckout(root: string, receipt: { commit: string; base: string; checkout?: { before: string; after: string } }, resumed: <T>(work: () => T) => T, reconciled: () => void = () => {}): Promise<void> {
+  const before = await refAsync(root, `${receipt.commit}^`);
+  const current = await refAsync(root, `refs/heads/${receipt.base}`);
+  const checkout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => {
+    if (!before || !current) throw new Error('cannot resolve the recorded landing and its base');
+    if (checkout !== receipt.base) throw new Error(`the project root must be on ${receipt.base} to finish its landed merge`);
+  });
+  const contains = await maybeGitAsync(root, ['merge-base', '--is-ancestor', receipt.commit, current!]);
+  const advances = contains === null ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', current!, receipt.commit]) : '';
+  const target = resumed(() => {
+    if (advances === null) throw new Error(`${receipt.base} diverged from the recorded landing; its checkout was kept`);
+    return contains === null ? receipt.commit : current!;
+  });
+  const checkedTip = await refAsync(root, `refs/heads/${receipt.base}`);
+  const checkedCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => {
+    if (checkedTip !== current || checkedCheckout !== receipt.base) throw new Error('the root checkout or base changed before landing reconciliation; try again');
+  });
+  if (receipt.checkout) {
+    const index = await territoryGitAsync(root, ['write-tree']);
+    const rolledBack = resumed(() => {
+      if (index !== receipt.checkout!.before && index !== receipt.checkout!.after) throw new Error('the index changed since merge rollback; staged work was kept');
+      return index === receipt.checkout!.before;
+    });
+    if (rolledBack) await territoryGitAsync(root, ['read-tree', '-m', '-u', before!, target]);
+    // Record a coherent checkout before the ref repair; a ref failure can be retried without touching staged work.
+    resumed(reconciled);
+  }
+  if (target !== current) await territoryGitAsync(root, ['update-ref', `refs/heads/${receipt.base}`, target, current!]);
+  const finalTip = await refAsync(root, `refs/heads/${receipt.base}`);
+  const finalCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => {
+    if (finalTip !== target || finalCheckout !== receipt.base) throw new Error('the root checkout or base changed during landing reconciliation; try again');
   });
 }
