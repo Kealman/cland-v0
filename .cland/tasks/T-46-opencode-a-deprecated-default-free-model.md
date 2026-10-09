@@ -2,7 +2,7 @@
 id: T-46
 kind: task
 title: "OpenCode: a deprecated default free model fails every turn, and the failure is silent"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-5
 branch: t/T-46-opencode-failed-turn-and-default-model
 created: 2026-10-08T19:09:47.340Z
-updated: 2026-10-09T07:22:53.993Z
+updated: 2026-10-09T08:09:28.065Z
 ---
 
 ## Parent
@@ -87,3 +87,52 @@ Model preference, first-line error extraction, Agents/inbox wiring, documentatio
 ### impl-46 · 2026-10-09T07:22:53.993Z
 
 Addressing rev-20261009-46-e877fac: reconcile Claude attribution when failure beats start and bound its history; reconcile Codex failed completion with pending steer admission; clear OpenCode execution attribution across SSE disconnect. Adding ordering regressions, then one full check and follow-up commit.
+
+### impl-46 · 2026-10-09T07:59:05.093Z
+
+Completed four rev-2 fixes and regressions in 127ce02; main59043fa (T-47 usage totals + T-48 launch policy) merged as 9a73ec4, retaining both sides. Node24 npm run typecheck && npm test PASS: 264 hub +62 Neovim tests. Worktree clean; tracker files match main exactly. Adapter code, hook payloads, fake-harness tests and hub/README.md updated. Ready for rev-2 re-review. Earlier reports were blocked by MCP 'this spoke was replaced'.
+
+### coord · 2026-10-09T08:01:16.755Z
+
+Fix round (impl-46, report 07:59Z after a relaunch; its earlier reports failed on "this spoke was replaced", T-51): 127ce02 fixes the four findings of rev-20261009-46-e877fac with regressions (Claude Code reconciles by the native `prompt_id` with a bounded history; Codex attributes only accepted admissions, including acknowledgements after completion; OpenCode clears uncertain attribution on an SSE loss); 9a73ec4 merges main 59043fa keeping T-47's usage totals and T-48's launch policy; head 9a73ec4. `npm run typecheck && npm test` on Node 24: 264 hub + 62 Neovim pass. Second-round review requested from rev-2 at 07:59Z; QA from qa-4 (the new policy) at 08:00Z, including the real OpenCode check within its sandbox's limits.
+
+### qa-4 · 2026-10-09T08:04:16.089Z
+
+verdict: qa
+result: clear
+by: qa-4 [qa]
+run: qa-20261009-46-9a73ec4
+
+Checked branch t/T-46-opencode-failed-turn-and-default-model at 9a73ec4 with Node 24.21.0. No source changes; final git status clean and git diff --check passed.
+
+Ran:
+- task.view T-46 and topic-5 brief/decisions; node hub/bin/cland.ts task list --state open --json and task view T-46 --json both succeeded.
+- npm run typecheck && npm test once: typecheck passed (test command ran); full output reports 264 hub tests: 258 pass, 0 fail, 6 skips (five ps identity checks and one macOS sandbox-exec check); 62 Neovim tests: 62 pass, 0 fail/skips. Neovim harness drives nvim_input and reads screenstring(). Log: /tmp/cland-qa4-T46-full.log. The final tool poll surfaced a sandbox network denial to opencode.ai rather than an exit result; complete suite totals were already written.
+- node --test hub/test/opencode-adapter.test.ts hub/test/codex-adapter.test.ts hub/test/claude-code-adapter.test.ts hub/test/claude-code-sessions.test.ts: exit 0; 35 tests, 32 pass, 3 ps-related skips, 0 fail. Read assertions verifying first-line Agents/inbox notices and sender hub notes for all three harnesses, Claude prompt_id reconciliation including failure-before-start and bounded history, accepted/rejected Codex steers, OpenCode SSE outage and queued-turn attribution. Log: /tmp/cland-qa4-T46-adapters.log.
+- Fake no-model launch prefers big-pickle over deprecated exo-free and answers. The fallback launch assertion at opencode-adapter.test.ts:107 belongs to a skipped ps-dependent test, so I additionally ran direct branch pickFreeModel assertions: big-pickle preference, first free Zen fallback, first free other-provider fallback all pass.
+- Real OpenCode through this branch's hub in /private/var/folders/np/77bqv0b975563h22_twt3tsw0000gn/T/cland-qa4-T46.SdFU8V. Every scratch command unset CLAND_HUB_FILE; kept session variables. git init, cland init, hub start, session launch/list/inbox exercised. Initial launch hit EPERM writing the normal OpenCode log; restarted only scratch hub with XDG data/cache/state/config paths under scratch. Explicit o2 --model opencode/exo-free failed with 'Model unavailable: opencode/exo-free'; no-model o3 selected opencode/big-pickle and failed with 'Provider request failed with HTTP 403: Domain not in allowlist.' Both failures have matching named first-line inbox notifications and journal turn-failed records with agentsNotice ids. /tmp/cland-qa4-T46-inbox.txt, /tmp/cland-qa4-T46-failures.jsonl and /tmp/cland-qa4-T46-sessions-final.json preserve evidence.
+- README lines 487 and 543 describe the implemented failure reporting, attribution limits, deterministic big-pickle preference and fallback without a probe.
+
+Findings / evidence limits, ranked:
+- Low, unconfirmed cold-catalog observation: first no-model o1 in fresh XDG dirs selected openrouter/inclusionai/ling-3.1-flash. A later GET /api/model had 438 models including free/active/tools-enabled big-pickle; pickFreeModel on that later catalog returned big-pickle, and the next no-model launch o3 selected it. opencode.ts:150-156 returns on the first nonempty catalog. I did not capture the catalog at o1 selection time, so this does not establish a picker violation; a partially loaded catalog is a hypothesis. Evidence: /tmp/cland-qa4-T46-o1-retry.log, /tmp/cland-qa4-T46-o3-launch.log, /tmp/cland-qa4-T46-models-summary.json.
+- Evidence limit: the network sandbox prevents confirming that real big-pickle answers; its actual failure was correctly surfaced. No confirmed T-46 blocker in the exercised behavior.
+- Cleanup environment limit: session stop o1/o2/o3 reported stopped and scratch hub stop succeeded (hub PID 57342 exited), but their OpenCode HTTP endpoints still answered. kill -TERM 57623 59888 64341 was denied EPERM. Sent those exact scratch-only PIDs to Coordinator for cleanup. Project hub was never started/stopped or reconfigured.
+
+### rev-3 · 2026-10-09T08:07:00.337Z
+
+verdict: review
+result: clear
+by: rev-3 [reviewer]
+run: rev-20261009-46-9a73ec4
+
+Reviewed pinned head 9a73ec4 against merge-base 59043fa, including the 127ce02 fixes, both merge resolutions, T-46 and the Coordinator's topic-5 decisions. No high, medium or low findings remain.
+
+Standards: 0 documented-standard violations and 0 actionable heuristic findings. Harness-specific attribution stays in the adapters; reporting reuses the journal → Agents → inbox path.
+
+Spec: 0 findings. All four previous findings are closed: Claude matches native prompt_id even when failure precedes start and bounds history to 64; Codex records attribution after RPC acceptance and reconciles acceptance after completion without notifying rejected steers; OpenCode clears both execution inputs and queued inbox attribution on SSE loss. Fake-seam regressions cover these orders. All three adapters preserve named first-line Agents/inbox notices and sender hub notes. The deprecated-first fake launch selects big-pickle and answers; fallback and README match the decision.
+
+The merge preserves T-47 usage totals, T-48 launch-policy plumbing, contract/protocol types and fake behavior. No net .cland/tasks changes. Read-only git diff --check passed. Read QA logs: hub 258 pass/6 skips, Neovim 62 pass; focused adapters 32 pass/3 skips. No test rerun or file edits. Git reads succeeded despite the documented nonfatal Xcode cache warnings. Real model answering remains QA's network-limited evidence; T-50/T-51/T-52 excluded.
+
+### coord · 2026-10-09T08:09:28.065Z
+
+Merged into main as 18dce79 (`git merge --no-ff`, by the Coordinator) at 08:07Z; on main after the merge: typecheck clean, 269 hub + 62 Neovim tests pass. Verdicts: review not clear rev-20261009-46-e877fac (rev-2, 07:22Z: three medium attribution races, one low), fix 127ce02 and the merge of main 9a73ec4, review clear rev-20261009-46-9a73ec4 (rev-3, 08:07:10Z; rev-2 stopped answering after the second-round request and was replaced); qa clear qa-20261009-46-9a73ec4 (qa-4, 08:04Z, under the new policy: the suite in the worktree with the documented skips, the adapter tests, and the real OpenCode on a scratch hub: a launch on the deprecated `opencode/exo-free` and a launch whose provider call was refused by the sandbox both produced the inbox notification and the Agents notice; a no-model launch on a warm catalog selected big-pickle; evidence limits: whether big-pickle answers was not observable without internet, and a cold-catalog first launch picked an OpenRouter model, filed as T-52). Cleanup after QA: three scratch `opencode serve` processes survived `session stop` under the sandboxed hub and were terminated by the Coordinator. Timeline: launched 06:55:04Z, implemented 07:18Z (24 min, with approval waits), review loop 07:20Z to 08:07Z (one fix round; the Implementer's reports were blocked by a replaced spoke, T-51, until a relaunch), QA 08:00Z to 08:04Z, merged 08:07Z: about 72 minutes from launch to merge. Not pushed.

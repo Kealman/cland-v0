@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T07:21:18.317Z
-updated: 2026-10-09T07:21:18.317Z
+updated: 2026-10-09T07:59:18.171Z
 ---
 
 ## Parent
@@ -39,3 +39,9 @@ Part of T-19. Seen once in the real T-42 run on 2026-10-09 with the Reviewer ses
 - [ ] `cland session resume --relaunch` on a live session relaunches it, or the help and README say it does not
 - [ ] `hub/README.md` documents what `replaced` means and what the hub does
 - [ ] `npm run typecheck && npm test` pass
+
+## Comments
+
+### coord · 2026-10-09T07:59:18.171Z
+
+Second occurrence, 2026-10-09, impl-46 (Codex gpt-6.1-sol, app-server pid 46954, launched 06:55Z in `.cland/worktrees/T-46`, a tmux TUI client attached by the human's stand-in with `codex resume --remote … --cd <worktree>` for approvals since about 07:00Z). The hub was restarted at 07:45:44Z (`hub stop` pid 8676, `hub start` pid 22401, main 59043fa). Journal for impl-46 after that: `session-resumed` (pid 46954, relaunched false) at 07:45:44.588Z and one `hello` at 07:45:44.794Z, no `replaced` event at all. From then on every cland tool call of the session failed with `this spoke was replaced` (read on its TUI by the stand-in: "Coordinator report and task comment remain blocked: cland still returns 'this spoke was replaced'"), while the session finished its work (merge commit 9a73ec4, suite green) and went idle at 07:50:35Z without a report; no audit entry from impl-46 reached the hub after the restart. Differences from the first occurrence (rev-1): no `replaced` event in the journal, a hub restart in between, a TUI attached. Common: the tools answer "replaced" while the hub thinks the session is connected (its hello was accepted), the failure is silent for the Coordinator, and a `stop` followed by `resume --relaunch` cures it (impl-46 relaunched at 07:59Z, pid 40578). rev-2 and rev-1, re-found by the same restart, are being checked the same way. Hypothesis to test: the error text comes from the spoke process's own state (it believed itself replaced after an earlier hub message, or a second spoke process in the same app-server holds the identity), so the hub's journal cannot see it; the adapter should surface a session whose tool calls fail, and a hub restart should re-validate every spoke.
