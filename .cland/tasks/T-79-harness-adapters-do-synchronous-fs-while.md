@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T18:47:17.580Z
-updated: 2026-10-09T18:47:17.580Z
+updated: 2026-10-09T20:23:19.252Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ Launching a session runs synchronous fs inside the harness adapters. In the Code
 ## Notes
 
 Size M. Start after T-77 merges. Can run beside T-78.
+
+## Comments
+
+### coord · 2026-10-09T20:23:19.252Z
+
+Added scope, from rev-6-104-2 on T-104 (A-185), a low: the start of the launch's cwd stat, and the error timing of role assignment, are not yet timed consistently with the surrounding resumed scopes. They are bounded, so there is no stall risk. Fold this into T-79's launch-path timing pass.
