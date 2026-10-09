@@ -219,13 +219,8 @@ end
 function M.matches(message)
   local f = M.filter
   if f.item then
-    local topic
-    for _, t in ipairs(state.S.topics) do
-      if t.item == f.item then
-        topic = t.id
-        break
-      end
-    end
+    local bound = state.topic_of_item(f.item)
+    local topic = bound and bound.id
     if not names(message.detail, f.item) and not (topic and names(message.detail, topic)) then
       return false
     end
