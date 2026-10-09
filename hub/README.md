@@ -12,6 +12,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
+| `src/watch.ts` | A folder watch that falls back to polling every 500 ms where watching is refused (a macOS sandbox denies FSEvents): used for `.cland/tasks/` and `roles.toml`. |
 | `src/hub/topics.ts` | The topic model (spec 4.5): the status moves, the mentions of a human message, the "no coordinator" warning, the port to the tracker a binding goes through. |
 | `src/hub/asks.ts` | Asks (spec 4.5, #33): the Coordinator's question with numbered options; the human's answer with `answer_to`; withdrawn by `resolve`, cancelled by a close. |
 | `src/hub/inbox.ts` | The inbox (spec 5, #33): asks, approvals, waiting topics and notifications, the "needs you" count, the `inbox` event; the idle threshold from `.cland/config.toml`. |
@@ -38,7 +39,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/project.ts` | The `.cland/` layout, the managed `.gitignore`, the secret, the discovery file, finding the project root. |
 | `src/tracker/item.ts` | The item file format: frontmatter, body, comments, verdicts; parse (lenient for hand edits) and serialize. |
 | `src/tracker/index-db.ts` | The tracker's index (items, labels, blockers, verdicts), its id high-water mark and the claims: tables of their own in `hub.db`, through a connection of their own. |
-| `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` and re-indexes hand edits, holds claims. |
+| `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` (or polls it, `src/watch.ts`) and re-indexes hand edits, holds claims. |
 | `src/tracker/import-github.ts` | The hub's side of the GitHub import (`task.import`): issues to items, found again by their `github` reference, written only when their text changes. |
 | `src/tracker/requests.ts` | The `task.*` request frames and their handler, called from the dispatcher for spokes and clients alike. |
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve [--stdio]`, `audit`. |
@@ -156,7 +157,7 @@ One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (th
 | Reviewer | codex, `gpt-6.1-sol`, effort `high` | code-review |
 | QA | codex, `gpt-6-astra`, effort `high` | diagnosing-bugs |
 
-The hub watches the file and reads it again before each launch and assignment when it changed on disk, so the next one uses what the human last saved (`roles-loaded` in the log). A file that does not parse is logged (`roles-unreadable`) and the last good version stays in force.
+The hub watches the file (where the folder cannot be watched it polls, and logs `roles-unwatched` once) and reads it again before each launch and assignment when it changed on disk, so the next one uses what the human last saved (`roles-loaded` in the log). A file that does not parse is logged (`roles-unreadable`) and the last good version stays in force.
 
 ### Assignment
 

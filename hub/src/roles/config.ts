@@ -2,11 +2,12 @@
 // defaults and the permission list (enforced by the hub on every spoke tool call: `permissions.ts`). Written with the defaults when missing, never rewritten;
 // watched, and read again before each use when it changed on disk, so the next launch or assignment uses
 // what the human last saved. A file that does not parse is logged and the last good version stays in force.
-import { existsSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { parse } from 'smol-toml';
 import { ROLE_NAMES } from '../names.ts';
 import type { LogFn } from '../log.ts';
+import { watchFolder, type FolderWatch } from '../watch.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
 
@@ -104,7 +105,7 @@ export class RolesFile implements RolesSource {
   #config: RolesConfig = DEFAULTS;
   /** What the loaded version looked like on disk: a different stamp means read again. */
   #stamp = '';
-  #watcher: FSWatcher | null = null;
+  #watcher: FolderWatch | null = null;
   #debounce: NodeJS.Timeout | null = null;
 
   constructor(path: string, log: LogFn = () => {}) {
@@ -119,18 +120,21 @@ export class RolesFile implements RolesSource {
       this.#log({ event: 'roles-written', path: this.path });
     }
     this.#reload();
-    try {
-      // the folder, not the file: an editor that saves by rename replaces the file the watch was on
-      this.#watcher = watch(dirname(this.path), (_kind, name) => {
-        if (name !== null && name !== basename(this.path)) return;
-        if (this.#debounce) clearTimeout(this.#debounce);
-        this.#debounce = setTimeout(() => this.#reload(), 50);
-        this.#debounce.unref();
-      });
-      this.#watcher.unref();
-    } catch (err) {
-      this.#log({ event: 'roles-unwatched', error: err instanceof Error ? err.message : String(err) });
-    }
+    // the folder, not the file: an editor that saves by rename replaces the file the watch was on
+    this.#watcher = watchFolder(
+      dirname(this.path),
+      {
+        changed: (name) => {
+          if (name !== null && name !== basename(this.path)) return;
+          if (this.#debounce) clearTimeout(this.#debounce);
+          this.#debounce = setTimeout(() => this.#reload(), 50);
+          this.#debounce.unref();
+        },
+        // `#reload` reads the file only when its stamp changed
+        poll: () => this.#reload(),
+      },
+      { log: this.#log, event: 'roles-unwatched', unref: true },
+    );
   }
 
   stop(): void {

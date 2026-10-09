@@ -459,3 +459,28 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
   const err = await spoke.client.callTool({ name: 'task.view', arguments: { id: 'T-5' } });
   assert.equal(err.isError, true);
 });
+
+// T-48: a sandboxed session's `npm test` starts hubs where FSEvents is refused (Codex's seatbelt): the watch fails
+// after it started, and the hub must go on and still see what was edited by hand.
+test('where the folder cannot be watched the hub polls: a hand edit of an item and of roles.toml are still picked up', async (t) => {
+  const root = await tempProject(t);
+  await startDaemon(t, root, { CLAND_TEST_WATCH_REFUSED: '1' });
+  const fellBack = (await hubLog(root)).filter((e) => typeof e.polling === 'number').map((e) => e.event);
+  assert.deepEqual(fellBack.sort(), ['roles-unwatched', 'task-watch-error'], 'both watches say once that they poll');
+
+  ok(await cland(root, 'task', 'create', 'Original title'));
+  const file = join(tasksDir(root), 'T-1-original-title.md');
+  await writeFile(file, (await readFile(file, 'utf8')).replace('title: Original title', 'title: Edited by hand'));
+  await eventually(10_000, async () => assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.title), ['Edited by hand']));
+  await writeFile(join(tasksDir(root), 'T-2-second.md'), '---\nid: T-2\ntitle: Second\n---\n');
+  await eventually(10_000, async () => assert.equal((await json<{ items: Summary[] }>(root, 'list')).items.length, 2));
+  await rm(join(tasksDir(root), 'T-2-second.md'));
+  await eventually(10_000, async () => assert.deepEqual((await json<{ items: Summary[] }>(root, 'list')).items.map((i) => i.id), ['T-1']));
+
+  // roles.toml: re-read with no call asking for it
+  const roles = join(root, '.cland', 'roles.toml');
+  const loaded = async () => (await hubLog(root)).filter((e) => e.event === 'roles-loaded').length;
+  const before = await loaded();
+  await writeFile(roles, (await readFile(roles, 'utf8')).replace('model = "gpt-6-astra"', 'model = "gpt-fake-edited"'));
+  await eventually(10_000, async () => assert.equal(await loaded(), before + 1));
+});

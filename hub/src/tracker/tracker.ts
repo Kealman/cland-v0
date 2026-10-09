@@ -6,7 +6,7 @@
 // Hand edits are picked up by a watcher on the folder (debounced) and re-indexed; last writer wins.
 // Nothing is ever committed.
 import { createHash } from 'node:crypto';
-import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TrackerIndex, type Claim, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
@@ -32,6 +32,7 @@ import {
   type VerdictResult,
 } from './item.ts';
 import type { LogFn } from '../log.ts';
+import { watchFolder, type FolderWatch } from '../watch.ts';
 
 /** How long the watcher waits for a file to settle before reading it. */
 export const DEBOUNCE_MS = 100;
@@ -119,7 +120,9 @@ export class Tracker {
   readonly #index: TrackerIndex;
   readonly #log: LogFn;
   readonly #now: () => Date;
-  #watcher: FSWatcher | null = null;
+  #watcher: FolderWatch | null = null;
+  /** The folder as the last poll saw it (only used when it cannot be watched). */
+  #polled = '';
   readonly #pending = new Map<string, NodeJS.Timeout>();
   #rescanTimer: NodeJS.Timeout | null = null;
 
@@ -206,13 +209,42 @@ export class Tracker {
   /** Bring the index level with the folder, then watch it. */
   start(): void {
     this.rescan();
-    this.#watcher = watch(this.#dir, (_event, name) => {
-      if (name === null) this.#scheduleRescan();
-      else if (fileNumber(String(name)) !== null) this.#schedule(String(name));
-    });
-    this.#watcher.on('error', (err) => {
-      this.#log({ event: 'task-watch-error', error: err.message });
-    });
+    this.#watcher = watchFolder(
+      this.#dir,
+      {
+        changed: (name) => {
+          if (name === null) this.#scheduleRescan();
+          else if (fileNumber(name) !== null) this.#schedule(name);
+        },
+        // every file is read only when the folder's listing or a file's time or size moved
+        poll: () => {
+          const stamp = this.#folderStamp();
+          if (stamp === this.#polled) return;
+          this.#polled = stamp;
+          this.rescan();
+        },
+      },
+      { log: this.#log, event: 'task-watch-error' },
+    );
+    this.#polled = this.#folderStamp();
+  }
+
+  /** The item files with their times and sizes: what a poll compares when the folder cannot be watched. */
+  #folderStamp(): string {
+    try {
+      return this.#itemFiles()
+        .map((name) => {
+          try {
+            const s = statSync(join(this.#dir, name));
+            return `${name}:${s.mtimeMs}:${s.size}:${s.ino}`;
+          } catch {
+            return name;
+          }
+        })
+        .join('|');
+    } catch {
+      return '';
+    }
   }
 
   stop(): void {
