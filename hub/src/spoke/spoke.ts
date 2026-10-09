@@ -26,6 +26,7 @@ import { findDiscovery, readDiscovery } from '../project.ts';
 const VERSION = '0.1.0';
 
 const TOOLS = [
+  { name: 'merge', description: 'Land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator only; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' } }, required: ['item'] } },
   {
     name: 'artifact.create',
     description: 'Show work through a persistent artifact in a topic. Give exactly one of path (copied) or content. Returns the artifact id and absolute path; posts its chip into the topic.',
@@ -246,6 +247,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     if (!hub) return text({ ok: false, error: notConfigured }, true);
     try {
       switch (req.params.name) {
+        case 'merge': {
+          if (typeof args.item !== 'string') throw new Error('merge needs an item id');
+          const value = await hub.request({ type: 'merge', item: args.item }, 60_000) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         case 'artifact.create': {
           const value = await hub.request({ ...args, type: 'artifact.create' } as Omit<import('../protocol.ts').ArtifactCreate, 'id'>) as Record<string, unknown>;
           return text({ ok: true, ...value });
@@ -346,7 +352,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     } catch (err) {
       // a refusal by the hub's permission table reaches the model typed: what was missing, for which role, why
       if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
-      if (err instanceof Refused) return text({ ok: false, error: err.message, code: err.code, ...(err.missing ? { missing: err.missing } : {}) }, true);
+      if (err instanceof Refused) return text({ ok: false, error: err.message, code: err.code, ...(err.missing ? { missing: err.missing } : {}), ...(err.files ? { files: err.files } : {}) }, true);
       // a hygiene refusal reaches the model typed too
       const refusal = err instanceof Error && 'refusal' in err ? (err as Error & { refusal: unknown }).refusal : undefined;
       return text({ ok: false, error: err instanceof Error ? err.message : String(err), ...(refusal ? { refusal } : {}) }, true);

@@ -48,6 +48,7 @@ export class Freshness {
   /** Tip reads started so far. */
   #reads = 0;
   #reading = false;
+  #readWaiters: Array<() => void> = [];
   #readAgain = false;
   #timer: NodeJS.Timeout | null = null;
   #poke: NodeJS.Timeout | null = null;
@@ -163,7 +164,7 @@ export class Freshness {
     if (this.#stopped) return;
     if (this.#reading) {
       this.#readAgain = true;
-      return;
+      return new Promise<void>((resolve) => this.#readWaiters.push(resolve));
     }
     this.#reading = true;
     try {
@@ -192,6 +193,7 @@ export class Freshness {
       } while (this.#readAgain && !this.#stopped);
     } finally {
       this.#reading = false;
+      for (const done of this.#readWaiters.splice(0)) done();
     }
   }
 

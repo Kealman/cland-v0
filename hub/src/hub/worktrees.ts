@@ -78,7 +78,7 @@ export class TaskWorktrees {
   }
 
   /** Run `operation` after every operation queued before it, whatever their outcome. */
-  #serial<T>(operation: () => Promise<T>): Promise<T> {
+  serial<T>(operation: () => Promise<T>): Promise<T> {
     const run = this.#queue.then(operation, operation);
     this.#queue = run.catch(() => {});
     return run;
@@ -115,7 +115,7 @@ export class TaskWorktrees {
 
   /** After a claim (decision D7): the worktree made or reused, or why there is none. A failure never undoes the claim. */
   afterClaim(id: string, session: string | null, resumed: Resumed = untimed): Promise<WorktreeOutcome> {
-    return this.#serial(async () => {
+    return this.serial(async () => {
       let view: ItemView;
       try {
         view = this.#tracker.view(id);
@@ -156,7 +156,7 @@ export class TaskWorktrees {
     // in the queue, after any prune queued before it: the reservation is tested and taken in the same step as the
     // worktree is made, so of two launches for one item only one goes on, and a prune queued after it leaves the
     // worktree alone until the claim is the session's
-    const { reason, worktree } = await this.#serial(async () => {
+    const { reason, worktree } = await this.serial(async () => {
       if (this.#launching.has(view.id)) throw new Error(`${view.id}: another session is being launched for it`);
       this.#launching.set(view.id, token);
       try {
@@ -220,7 +220,7 @@ export class TaskWorktrees {
 
   /** The task worktrees with their items and the sessions standing inside. */
   list(resumed: Resumed = untimed): Promise<WorktreeEntry[]> {
-    return this.#serial(() => this.#list(resumed));
+    return this.serial(() => this.#list(resumed));
   }
 
   /** Git's facts first, all awaited; then the items and the sessions, read in one stretch timed through `resumed`. */
@@ -265,7 +265,7 @@ export class TaskWorktrees {
    * that entered while Git was read keeps the worktree (rev-6 on T-58).
    */
   prune(items: string[], resumed: Resumed = untimed): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
-    return this.#serial(async () => {
+    return this.serial(async () => {
       const entries = await this.#list(resumed);
       const removed = [];
       const failed = [];

@@ -368,7 +368,7 @@ test('the tools still to come are checked through the same table: one session, i
         future('topic.create', { title: 'Bound', item: 'T-2' }),
         // role.handover exists (#31): allowed by the table, then refused for a receiver the hub does not know
         { ...future('role.handover', { to: 'x', note: { goals_now: 'g', work_in_flight: 'w', open_decisions: 'o', waiting_on: 'n' } }), error: /"x" is not a session the hub knows/ },
-        { ...future('merge', { item: 'T-2' }), error: unknown },
+        { ...future('merge', { item: 'T-2' }), error: /no branch/, errorCode: 'merge-branch' },
         { ...future('artifact.create', { name: 'a' }), error: /no such artifact topic/, errorCode: 'artifact-topic' },
         { ...future('task.import', { repo: 'o/r' }), forbidden: 'task.import' },
       ],

@@ -232,7 +232,10 @@ export type Hello = {
   role?: string;
 };
 
+export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string };
+
 export type SpokeRequest =
+  | MergeRequest
   | ArtifactCreate
   | ArtifactList
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
@@ -273,7 +276,7 @@ export type HubFrame =
   | { type: 'result'; id: string; ok: true; value: unknown }
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
-  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
+  | { type: 'result'; id: string; ok: false; error: string; files?: string[]; code?: import('./merge.ts').MergeCode | 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
@@ -311,6 +314,8 @@ export function isAck(f: Record<string, unknown>): f is Ack {
 export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'merge':
+      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':
     case 'artifact.list':
       return true;
@@ -382,6 +387,7 @@ export type ClientHello = {
 };
 
 export type ClientRequest =
+  | MergeRequest
   | ArtifactCreate
   | ArtifactList
   /** What runs: the hub's process and the connected sessions. */
@@ -525,6 +531,8 @@ export function isClientHello(f: Record<string, unknown>): f is ClientHello {
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'merge':
+      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':
     case 'artifact.list':
       return true;

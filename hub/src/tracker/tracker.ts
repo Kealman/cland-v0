@@ -434,6 +434,22 @@ export class Tracker {
   }
 
   /** The items, each latest verdict with `current` when the freshness cache knows it (absent: not known yet). */
+  freshnessTip(branch: string | null): string | null { return this.#fresh.tip(branch); }
+
+  refreshFreshness(): Promise<void> {
+    return this.#fresh.refresh();
+  }
+
+  /** The gate selects the latest hub-written verdict per kind; file-only headers cannot replace its evidence.
+   * Annotate that selection from the same async cache as view/list, even when a later file header exists. */
+  mergeView(rawId: string): ItemView {
+    const view = this.view(rawId);
+    const hub = view.verdicts.filter((v) => v.source === 'hub').map(({ current: _current, ...v }) => v);
+    const annotated = this.#fresh.annotate(view.id, view.branch, hub);
+    let next = 0;
+    return { ...view, verdicts: view.verdicts.map((v) => v.source === 'hub' ? annotated[next++]! : v) };
+  }
+
   list(filter: ListFilter = {}): ItemSummary[] {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();

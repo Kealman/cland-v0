@@ -40,6 +40,8 @@ import { handOver, roleState, settleAllClaims, type HandoverContext } from '../r
 import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
+import { TaskMerges } from './merge.ts';
+import { MergeError } from '../merge.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
 import { RequestGuard, type GuardOptions } from './budget.ts';
 
@@ -103,6 +105,7 @@ export class Dispatcher {
   #sessions: Sessions | undefined;
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
   readonly #worktrees: TaskWorktrees | null;
+  readonly #merges: TaskMerges | null;
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
 
@@ -110,6 +113,7 @@ export class Dispatcher {
     this.#options = options;
     this.#log = options.log ?? (() => {});
     this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
+    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log) : null;
     this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(() => this.#guard.changed());
@@ -127,6 +131,8 @@ export class Dispatcher {
       this.#log({ event: 'claims-settle-failed', error: err instanceof Error ? err.message : String(err) });
     }
   }
+
+  close(): void { this.#merges?.stop(); }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
@@ -168,6 +174,7 @@ export class Dispatcher {
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof MergeError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}) };
     if (err instanceof ArtifactError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };
     if (err instanceof ToolForbidden) return { type: 'result', id, ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason };
@@ -427,6 +434,17 @@ export class Dispatcher {
           }, 'answer'),
         );
     };
+    const merge = (frame: import('../protocol.ts').MergeRequest, caller: Caller | null) => {
+      if (caller !== null && frame.override !== undefined) return this.#refuse(caller, frame, peer, 'merge', 'only the human may override verdicts');
+      if (frame.override !== undefined && !frame.override.trim()) return peer.send(Dispatcher.#failure(frame.id, new MergeError('merge-item', 'an override needs a reason')));
+      if (!this.#merges) return peer.send(Dispatcher.#failure(frame.id, new MergeError('merge-item', 'this hub has no tracker')));
+      const actor = caller ? sessionActor(caller, UNKNOWN_SESSION) : { id: 'human', name: 'human', role: null };
+      const resumed = <T,>(write: () => T): T => this.#guard.measure('merge', kind === 'spoke' ? (name ?? '?') : client, write, 'resumed');
+      later('merge', this.#merges.merge(frame.item, actor, resumed, frame.override).then(
+        (value): HubFrame => ({ type: 'result', id: frame.id, ok: true, value }),
+        (err: unknown) => Dispatcher.#failure(frame.id, err),
+      ));
+    };
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(
         this.#sessions,
@@ -509,6 +527,8 @@ export class Dispatcher {
       }
       try {
         switch (frame.type) {
+          case 'merge':
+            return merge(frame, connection);
           case 'artifact.create':
           case 'artifact.list':
             peer.send({ type: 'result', id: frame.id, ok: true, value: this.#artifact(frame, connection) });
@@ -757,6 +777,7 @@ export class Dispatcher {
           catch (err) { peer.send(Dispatcher.#failure(String(frame.id), err)); }
           return;
         }
+        if (frame.type === 'merge' && isClientRequest(frame)) return merge(frame as import('../protocol.ts').MergeRequest, caller);
         clientRequest(frame);
     };
 
