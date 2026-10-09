@@ -1,4 +1,4 @@
--- Persistent artifacts: shared chips, read-only source buffers, and browser previews (decision D12).
+-- Persistent artifacts, editable prompt drafts, and browser previews (decision D12).
 local api = vim.api
 local state = require('cland.state')
 local M = { entries = {}, bufs = {}, lists = {} }
@@ -32,7 +32,12 @@ function M.setup(client)
     end)
   end
   client:on('connected', load)
+  client:on('artifact', function(e)
+    upsert(e.artifact)
+    state.changed()
+  end)
   client:on('message', function(e)
+    for _, a in ipairs(e.message.artifacts or {}) do upsert(a) end
     if type(e.message.artifact) == 'table' then
       upsert(e.message.artifact)
       state.changed()
@@ -66,11 +71,11 @@ end
 
 local browser_ext = { html = true, htm = true, svg = true, png = true, pdf = true, jpg = true, jpeg = true, gif = true, webp = true }
 function M.open(value)
-  local a = type(value) == 'table' and value or M.get(value)
+  local a = type(value) == 'table' and (M.get(value.id) or value) or M.get(value)
   if not a then return state.say('no such artifact', 'ClandRedBar') end
   upsert(a)
   local ext = a.path:match('%.([^%.]+)$') or ''
-  if browser_ext[ext:lower()] then return browser(a.path) end
+  if browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft') then return browser(a.path) end
   require('cland.layout').show({ kind = 'artifact', id = a.id }, { insert = false })
 end
 
@@ -78,23 +83,74 @@ function M.buffer(id)
   local a = M.get(id)
   local b = M.bufs[id]
   if b and api.nvim_buf_is_valid(b) then return b end
-  b = api.nvim_create_buf(false, true)
+  local draft = a and a.kind == 'prompt' and a.status == 'draft'
+  if draft then
+    b = vim.fn.bufadd(a.path)
+    vim.fn.bufload(b)
+  else
+    b = api.nvim_create_buf(false, true)
+  end
   M.bufs[id] = b
   vim.bo[b].bufhidden = 'hide'
-  local ok, lines = pcall(vim.fn.readfile, a and a.path or '')
-  api.nvim_buf_set_lines(b, 0, -1, false, ok and lines or { 'Cannot read artifact: ' .. tostring(lines) })
+  if not draft then
+    local ok, lines = pcall(vim.fn.readfile, a and a.path or '')
+    api.nvim_buf_set_lines(b, 0, -1, false, ok and lines or { 'Cannot read artifact: ' .. tostring(lines) })
+  end
   local ext = a and (a.path:match('%.([^%.]+)$') or ''):lower() or ''
   vim.bo[b].filetype = ({ mmd = 'mermaid', mermaid = 'mermaid', md = 'markdown', markdown = 'markdown' })[ext] or 'text'
-  vim.bo[b].readonly = true
-  vim.bo[b].modifiable = false
+  vim.bo[b].readonly = not draft
+  vim.bo[b].modifiable = draft
+  if draft then
+    if vim.fn.getfsize(a.path) == 0 then vim.bo[b].endofline = false end
+    vim.bo[b].fixendofline = false
+    vim.bo[b].swapfile = false
+    vim.bo[b].modified = false
+  end
   vim.b[b].cland_role = 'artifact'
   vim.b[b].cland_artifact = id
-  if a then pcall(api.nvim_buf_set_name, b, a.path) end
+  if a and not draft then pcall(api.nvim_buf_set_name, b, a.path) end
+  if draft then
+    vim.keymap.set('n', '<leader>ps', function() M.send_prompt(false) end, { buffer = b, desc = 'send prompt' })
+    vim.keymap.set('n', '<leader>pa', function() M.send_prompt(true) end, { buffer = b, desc = 'attach prompt' })
+  end
   vim.keymap.set('n', 'q', require('cland.layout').back, { buffer = b })
   if vim.bo[b].filetype == 'mermaid' then
     vim.keymap.set('n', 'R', function() M.preview(a) end, { buffer = b, desc = 'render Mermaid in browser' })
   end
   return b
+end
+
+function M.prompt(title)
+  local topic = require('cland.views').current_topic()
+  if not topic or topic == 'agents' then return state.say('open a thread to draft a prompt', 'ClandRedBar') end
+  if not M.client:connected() then return state.say('prompt: the hub is not connected', 'ClandRedBar') end
+  title = title and vim.trim(title) ~= '' and title or 'Prompt'
+  local origin = api.nvim_get_current_buf()
+  M.client:request({ type = 'artifact.create', kind = 'prompt', title = title, topic = topic, content = '', status = 'draft' }, function(err, value)
+    if err then return state.say('prompt: ' .. err, 'ClandRedBar') end
+    upsert(value.artifact)
+    -- The request reserves its topic, but a late answer never pulls the human from another buffer.
+    if api.nvim_get_current_buf() == origin then M.open(value.artifact) end
+    state.changed()
+  end)
+end
+
+function M.send_prompt(attach)
+  local b = api.nvim_get_current_buf()
+  local a = M.get(vim.b[b].cland_artifact)
+  if not a or a.kind ~= 'prompt' or a.status ~= 'draft' then return state.say('open a prompt draft to send it', 'ClandRedBar') end
+  if M.sending and M.sending[a.id] then return end
+  if not M.client:connected() then return state.say('prompt: the hub is not connected', 'ClandRedBar') end
+  local ok, err = pcall(vim.cmd, 'write')
+  if not ok then return state.say('prompt save: ' .. tostring(err), 'ClandRedBar') end
+  M.sending = M.sending or {}
+  M.sending[a.id] = true
+  M.client:request({ type = 'prompt.send', artifact = a.id, attach = attach }, function(failure)
+    M.sending[a.id] = nil
+    if failure then return state.say('prompt not sent: ' .. failure, 'ClandRedBar') end
+    -- Events update metadata only: edited text and cursor stay untouched, including edits made during send.
+    state.say('prompt sent: ' .. a.title)
+  end)
 end
 
 function M.list_buffer(topic)

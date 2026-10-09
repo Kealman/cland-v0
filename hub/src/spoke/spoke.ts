@@ -32,7 +32,7 @@ const TOOLS = [
     description: 'Show work through a persistent artifact in a topic. Give exactly one of path (copied) or content. Returns the artifact id and absolute path; posts its chip into the topic.',
     inputSchema: { type: 'object', properties: {
       kind: { type: 'string', enum: ['prompt', 'note', 'page', 'diagram', 'file'] }, title: { type: 'string' },
-      path: { type: 'string' }, content: { type: 'string' }, topic: { type: 'string' },
+      path: { type: 'string' }, content: { type: 'string' }, topic: { type: 'string' }, status: { type: 'string', enum: ['draft', 'shared'] },
     }, required: ['kind', 'title', 'topic'] },
   },
   {
@@ -44,6 +44,7 @@ const TOOLS = [
       properties: {
         to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles or `all`; omit to write to the human' },
         text: { type: 'string', description: 'The message' },
+        artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact ids in this topic to attach; deliveries carry their durable paths' },
         topic: { type: 'string', description: 'The topic id (the `topic` of the event being answered); default General for the human, Agents between sessions' },
         reply_to: { type: 'string', description: 'msg_id of the event being answered' },
       },
@@ -177,6 +178,7 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
     msg_id: message.id,
     ts: message.ts,
   };
+  if (message.artifacts?.length) meta.artifacts = JSON.stringify(message.artifacts);
   if (message.artifact) {
     meta.artifact_id = message.artifact.id;
     meta.artifact_path = message.artifact.path;
@@ -263,6 +265,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
             type: 'send',
             to,
             text: args.text,
+            ...(args.artifacts !== undefined ? { artifacts: args.artifacts as string[] } : {}),
             ...(typeof args.reply_to === 'string' ? { replyTo: args.reply_to } : {}),
             ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),
           })) as { outcomes: SendOutcome[]; topic: TopicRef };

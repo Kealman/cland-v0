@@ -204,14 +204,16 @@ function Thread:render()
       end
       return
     end
-    if type(m.artifact) == 'table' then
-      local a = m.artifact
+    if m.artifacts then
+      for _, l in ipairs(vim.split(tostring(m.text or ''), '\n', { plain = true })) do add(' ' .. l) end
+    end
+    local attachments = m.artifacts or (m.artifact and { m.artifact } or {})
+    for _, a in ipairs(attachments) do
       local chip = ' ▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title
       add(chip, { { col = 1, opts = { end_col = #chip, hl_group = 'ClandBlue' } } })
       artifact_rows[#lines] = a
-      add('')
-      return
     end
+    if #attachments > 0 then add(''); return end
     for _, l in ipairs(vim.split(tostring(m.text or ''), '\n', { plain = true })) do
       add(' ' .. l)
     end

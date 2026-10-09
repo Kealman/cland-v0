@@ -71,3 +71,36 @@ test('artifact chip opens Mermaid source read-only and the browser renderer, top
   await eventually('page browser opener', async () => (await readFile(opened, 'utf8')).includes(p.path) ? true : undefined);
   assert.equal(await readFile(a.path, 'utf8'), 'graph TD\n A-->B');
 });
+
+test('prompt drafts are editable full buffers, survive hub events, reopen, and send saved text', { skip }, async (t) => {
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const c = await startClient(t, bin, root);
+  await c.input('<Esc>:Cland prompt Brief for T-12<CR>');
+  await eventually('draft buffer', async () => await c.lua("return vim.b.cland_artifact") || undefined);
+  assert.deepEqual(await c.lua("return {vim.bo.modifiable, vim.bo.readonly, vim.bo.buftype, vim.api.nvim_buf_get_lines(0,0,-1,false)}"), [true, false, '', ['']]);
+  await c.waitScreen(s => s.includes(':w saves') && s.includes('␣ps send') && !s.includes('read-only'), 'editable draft help');
+  await c.input('iFirst line<CR>Second line<Esc>:w<CR>');
+  assert.deepEqual(await c.lua('return vim.api.nvim_buf_get_lines(0,0,-1,false)'), ['First line', 'Second line'], (await c.screen()).join('\n'));
+  const path = await c.lua<string>('return vim.api.nvim_buf_get_name(0)');
+  assert.match(path, /A-\d+-brief-for-t-12\.md$/);
+  await eventually('saved prompt', async () => (await readFile(path, 'utf8')).startsWith('First line') || undefined);
+  assert.equal(await readFile(path, 'utf8'), 'First line\nSecond line');
+  await c.input('A unsaved');
+  const before = await c.lua('return {vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0), vim.api.nvim_buf_get_lines(0,0,-1,false), vim.fn.mode()}');
+  await coord.call('send', { topic: 'general', text: 'An event while drafting' });
+  await eventually('hub event received', async () => await c.lua("return #require('cland.views').topic('general').thread.messages > 0") || undefined);
+  assert.deepEqual(await c.lua('return {vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0), vim.api.nvim_buf_get_lines(0,0,-1,false), vim.fn.mode()}'), before);
+  await c.input('<Esc>q<Space>a');
+  await c.waitScreen(s => s.includes('draft') && s.includes('Brief for T-12'), 'draft in picker');
+  await c.input('<CR>');
+  await c.waitScreen(s => s.includes('First line') && s.includes('Second line'), 'reopened draft');
+  await c.input(':Cland prompt send<CR>');
+  await coord.waitForEvent(e => e.params.content === 'First line\nSecond line unsaved');
+  await eventually('sent status', async () => await c.lua("return require('cland.artifacts').entries[1].status == 'sent'") || undefined);
+  await c.input(':Cland view thread general<CR>');
+  await c.waitScreen(s => s.includes('Second line unsaved') && s.includes('▣ A-1 prompt'), 'sent inline text and artifact chip in the thread');
+});

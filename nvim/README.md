@@ -65,6 +65,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `f` `F` | Agents log | Filter by an item id or session name (Tab completes both); clear the filter. |
 | `L` | item view / sessions panel | Open Agents filtered to this item / the row’s session. |
 | `r` | Agents log | Reply to the sender of the message under the cursor: a composer opens under the log (Enter sends, `q` in Normal mode cancels). |
+| `␣P` | thread or composer | Open a full prompt draft buffer for this topic. |
 | `␣g` `␣c` | anywhere | General; the composer of the current thread, in Insert mode. |
 | `␣r` | anywhere | Resolve the topic in view (or under the cursor in the topics panel): its wait is cleared to open. |
 | `1`–`5` `f` `F` | items panel | The filters all, in work, needs you, done, map; `f` and `F` cycle them. |
@@ -246,3 +247,10 @@ Topic messages with artifacts show a chip such as `▣ A-3 diagram · Merge flow
 HTML, SVG, PNG, PDF and other common images open through the system opener (`open` on macOS, `xdg-open` elsewhere). `CLAND_OPENER` can name a replacement executable; it receives the absolute file path as its single argument, including for Mermaid previews. Tests use this to record opening without launching a browser.
 
 The thread header counts the topic's artifacts. Press `ga` in the thread for its artifact list, with id, kind, title, creator, status and time; Enter opens the selected row and `q` returns. The Agents log also counts artifacts and supports Enter on a chip and `ga` for its list. `:Cland view artifacts <topic>` opens that list directly. `␣a` opens the floating picker on its artifacts kind; Tab cycles between items, topics, sessions and artifacts. Artifacts from the current topic appear first. Type an id, kind or title to filter, then Enter to open.
+
+
+## Prompt drafts
+
+In a thread, `:Cland prompt [title]` (for example `:Cland prompt Brief for T-12`) or `␣P` next to `␣c` opens an empty prompt artifact in the centre as a normal editable Markdown buffer. `:w` saves its durable `.cland/artifacts/A-<n>-<slug>.md` file. Drafts appear with status `draft` in `ga` and the artifacts picker, where Enter reopens the saved buffer. Incoming hub events update metadata while preserving draft text, cursor and unsaved edits.
+
+`:Cland prompt send` saves and sends the draft's text when it fits the hub's configured byte cap, with the usual queued/delivered/injected stages. Larger drafts send a one-line message with the artifact attached. `:Cland prompt attach` always attaches it. Buffer keys `␣ps` and `␣pa` do the same. A successful post marks the artifact `sent`; refusal keeps the draft available for correction. The file is reserved when the draft opens, so it is available in the picker even before its first save. `q` returns to the thread; attached messages show their text and an opening chip for each artifact.

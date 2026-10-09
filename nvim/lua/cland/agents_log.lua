@@ -81,8 +81,8 @@ function M.buffer()
     M.reply_at(api.nvim_win_get_cursor(0)[1])
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: reply to the sender of this message' })
   vim.keymap.set('n', '<CR>', function()
-    local m = M.at(api.nvim_win_get_cursor(0)[1])
-    if m and m.artifact then require('cland.artifacts').open(m.artifact) end
+    local a = (M.artifact_rows or {})[api.nvim_win_get_cursor(0)[1]]
+    if a then require('cland.artifacts').open(a) end
   end, { buffer = b, desc = 'cland: open artifact' })
   vim.keymap.set('n', 'ga', function()
     require('cland.layout').show({ kind = 'artifacts', id = M.TOPIC }, { insert = false })
@@ -106,7 +106,7 @@ function M.render()
   if not (b and api.nvim_buf_is_valid(b)) then
     return
   end
-  local lines, marks, rows = {}, {}, {}
+  local lines, marks, rows, artifact_rows = {}, {}, {}, {}
   local function line(text, m, hls)
     lines[#lines + 1] = text
     rows[#lines] = m
@@ -123,9 +123,12 @@ function M.render()
   for _, m in ipairs(M.messages) do
     local time = ' ' .. clock(m.ts) .. '  '
     local text_lines = vim.split(tostring(m.text or ''), '\n', { plain = true })
-    if m.artifact then
-      local a = m.artifact
-      text_lines = { '▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title }
+    local attachment_lines = {}
+    local attachments = m.artifacts or (m.artifact and { m.artifact } or {})
+    if m.artifact and not m.artifacts then text_lines = {} end
+    for _, a in ipairs(attachments) do
+      text_lines[#text_lines + 1] = '▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title
+      attachment_lines[#text_lines] = a
     end
     if m.fromKind == 'hub' then
       local g = M.GLYPHS[m.kind] or M.OTHER_GLYPH
@@ -148,13 +151,16 @@ function M.render()
         { s_to, s_to + #dest, 'ClandTeal' },
         { #head, -1, m.artifact and 'ClandBlue' or 'ClandText' },
       })
+      artifact_rows[#lines] = attachment_lines[1]
       local pad = string.rep(' ', #time)
       for i = 2, #text_lines do
         line(pad .. text_lines[i], m)
+        artifact_rows[#lines] = attachment_lines[i]
       end
     end
   end
   M.rows = rows
+  M.artifact_rows = artifact_rows
   local stay = {}
   local old = api.nvim_buf_line_count(b)
   for _, win in ipairs(vim.fn.win_findbuf(b)) do

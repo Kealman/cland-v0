@@ -48,7 +48,8 @@ export type Artifact = {
   id: string; title: string; kind: ArtifactKind; path: string; creator: string; time: string;
   topic: string; status: 'draft' | 'sent' | 'shared' | 'archived';
 };
-export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string };
+export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; status?: 'draft' | 'shared' };
+export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
 export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string };
 /** Filters on the Agents record; when both are given they intersect. */
 export type AgentsHistoryFilter = { item?: string; session?: string };
@@ -75,6 +76,7 @@ export type Message = {
   /** The human's answer to an ask (#33): the ask's message id. */
   answerTo?: string;
   artifact?: Artifact;
+  artifacts?: Artifact[];
 };
 
 /** Why hygiene refused a send (spec 4.2): the size cap, the session's rate limit, or the pair's loop breaker
@@ -160,6 +162,7 @@ export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Top
 
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
+  | { type: 'artifact'; artifact: Artifact }
   /** The connected sessions, replaced on a hello, last spoke leaving, rename, status or role change. */
   | { type: 'presence'; sessions: Presence[] }
   /** A process-table row changed: the same view as session.list, replaced by stable session id or name. */
@@ -247,7 +250,7 @@ export type SpokeRequest =
   | ArtifactCreate
   | ArtifactList
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
-  | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string }
+  | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string; artifacts?: string[] }
   | { type: 'who'; id: string }
   /** `topic`: that topic's latest messages instead of the session's own traffic; Agents accepts item/session filters. */
   | ({ type: 'history'; id: string; limit?: number; with?: string; topic?: string } & AgentsHistoryFilter)
@@ -400,6 +403,7 @@ export type ClientRequest =
   | MergeRequest
   | ArtifactCreate
   | ArtifactList
+  | PromptSend
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'hub.status'; id: string }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
@@ -411,7 +415,7 @@ export type ClientRequest =
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
-  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string }
+  | { type: 'topic.send'; id: string; topic: string; text: string; to?: string[]; replyTo?: string; artifacts?: string[] }
   | { type: 'topic.rename'; id: string; topic: string; title: string }
   | { type: 'topic.delete'; id: string; topic: string }
   /** The human opens a topic, optionally bound to an item: `{ topic: Topic }`. */
@@ -549,6 +553,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':
     case 'artifact.list':
+    case 'prompt.send':
       return true;
     case 'hub.status':
     case 'hub.stop':

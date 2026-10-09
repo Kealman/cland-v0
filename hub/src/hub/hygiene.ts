@@ -76,6 +76,15 @@ export class Hygiene {
     return bytes > this.#maxBytes ? `message is ${bytes} bytes; the cap is ${this.#maxBytes} — put the material in an item or a file and send the pointer` : null;
   }
 
+  /** A prefix that fits the configured byte cap, preserving complete UTF-8 characters. */
+  boundedText(text: string): string {
+    const bytes = Buffer.from(text, 'utf8');
+    if (bytes.length <= this.#maxBytes) return text;
+    let end = this.#maxBytes;
+    while (end > 0 && (bytes[end]! & 0xc0) === 0x80) end--;
+    return bytes.subarray(0, end).toString('utf8');
+  }
+
   /** Human text over the cap, cut with a marker that names the original length. */
   truncate(text: string): string {
     if (Buffer.byteLength(text, 'utf8') <= this.#maxBytes) return text;

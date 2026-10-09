@@ -118,6 +118,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'sessions', column: 'role', type: 'text' },
   { table: 'sessions', column: 'session_id', type: 'text' },
   { table: 'messages', column: 'artifact', type: 'text' },
+  { table: 'messages', column: 'artifacts', type: 'text' },
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
@@ -167,6 +168,7 @@ type Row = Record<string, string | number | null>;
 
 const toMessage = (row: Row): Message => ({
   ...(typeof row.artifact === 'string' ? { artifact: JSON.parse(row.artifact) as Artifact } : {}),
+  ...(typeof row.artifacts === 'string' ? { artifacts: JSON.parse(row.artifacts) as Artifact[] } : {}),
   id: row.id as string,
   from: row.from_name as string,
   fromKind: row.from_kind as Message['fromKind'],
@@ -492,6 +494,11 @@ export class Store implements HygieneMemory {
           seq,
         );
       if (message.artifact) this.#db.prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
+      if (message.artifacts?.length) {
+        this.#db.prepare('update messages set artifacts = ? where id = ?').run(JSON.stringify(message.artifacts), message.id);
+        // Status and post commit together, before the core publishes either. A failed status write rolls back the post.
+        for (const a of message.artifacts) if (a.kind === 'prompt') this.updateArtifact({ ...a, status: 'sent' });
+      }
       if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?))');
@@ -591,6 +598,22 @@ export class Store implements HygieneMemory {
       publish(a);
       return a;
     });
+  }
+
+  nextArtifactId(): string {
+    const row = this.#db.prepare("select coalesce((select seq from sqlite_sequence where name = 'artifacts'), 0) + 1 as n").get() as Row;
+    return `A-${row.n}`;
+  }
+
+  artifact(id: string): Artifact | null {
+    if (!/^A-[1-9][0-9]*$/.test(id)) return null;
+    const row = this.#db.prepare('select value from artifacts where number = ?').get(Number(id.slice(2))) as Row | undefined;
+    return row ? JSON.parse(row.value as string) as Artifact : null;
+  }
+
+  updateArtifact(a: Artifact): void {
+    const result = this.#db.prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), Number(a.id.slice(2)));
+    if (!result.changes) throw new Error(`no artifact ${a.id}`);
   }
 
   addressedInTopic(sessionId: string, topic: string): boolean {

@@ -902,7 +902,7 @@ Show a file with the spoke tool `artifact.create`:
 {"kind":"diagram","title":"Merge flow","content":"graph TD; A-->B","topic":"topic-3"}
 ```
 
-Kinds are `prompt`, `note`, `page`, `diagram`, and `file`. Give exactly one of `content` or `path` (relative to the session's working directory). A path is copied, so deleting its source or worktree leaves the artifact readable. Text content defaults to `.md` for prompts/notes, `.html` for pages, `.mmd` for diagrams and `.txt` for files; copied files retain their extension. Files live under `.cland/artifacts/A-<n>-<slug>.<ext>`, with a durable hub index containing the id, title, kind, creator, time, topic, status and absolute path. Every create is a new id, initially `shared`.
+Kinds are `prompt`, `note`, `page`, `diagram`, and `file`. Give exactly one of `content` or `path` (relative to the session's working directory). A path is copied, so deleting its source or worktree leaves the artifact readable. Text content defaults to `.md` for prompts/notes, `.html` for pages, `.mmd` for diagrams and `.txt` for files; copied files retain their extension. Files live under `.cland/artifacts/A-<n>-<slug>.<ext>`, with a durable hub index containing the id, title, kind, creator, time, topic, status and absolute path. Every create is a new id, initially `shared`; prompt creation can request `status: "draft"` to save without publishing a message.
 
 The result includes `artifact`, `id`, and `path`. The topic message carries a structured `artifact` field, and session deliveries name `artifact_id` and `artifact_path` in their envelope. Publication obeys the message size cap and the session's send rate limit; refusal leaves no file or index entry. The file content itself is not subject to the message text cap (wire frames retain their existing maximum size).
 
@@ -915,7 +915,11 @@ cland artifact create --kind note --title Findings --content-file - --topic topi
 cland artifact list --topic topic-3 --json
 ```
 
-The UI can send `artifact.create` and `artifact.list` frames; list returns `{artifacts: [...]}` for the project or a supplied `topic`. Prompt drafting and artifact promotion, archival and cleanup belong to later slices.
+The UI can send `artifact.create` and `artifact.list` frames; list returns `{artifacts: [...]}` for the project or a supplied `topic`. Drafts are included in lists and emit `artifact` events for subscribed clients. A human `prompt.send` frame (`artifact: "A-3"`, optional `attach: true`) reads the saved prompt and posts its text when it fits `[hygiene].max_text_bytes` (8 KiB by default). Above the cap, or with `attach`, it posts `Prompt A-3: <title>` with the artifact attached. The pointer is bounded to the byte cap on a complete UTF-8 character boundary; the full title remains in attachment metadata. The message and `sent` status commit together before publication: a failed post or status write leaves the draft and no delivery. A prompt already sent cannot be posted again through `prompt.send`.
+
+The spoke's `send` accepts `artifacts: ["A-3", "A-4"]` alongside `text`, `to` and `topic`. Each id must exist in that topic, be unarchived, and have a readable file; unknown or foreign-topic ids refuse the whole send. Availability and caller permissions are checked again after asynchronous file preparation. Attached prompt drafts become `sent` with the post. Deliveries include an `artifacts` array of metadata and durable paths; `artifact_id` and `artifact_path` name the first attachment for compatibility. Attachment messages retain their text alongside chips in the workbench.
+
+Artifact creation prepares and cleans up its files asynchronously, with serialized id reservation, indexed ownership checks, and measured request continuations. The shared permission gate (`RolesFile.get`) and journal (`writeSync`) still perform synchronous I/O; T-75 tracks those inherited paths. The existing config and role defaults are unchanged. Artifact promotion, archival and cleanup belong to later slices.
 
 ### Harness termination and orphan sweep
 

@@ -232,11 +232,12 @@ M.HELP = {
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
   'Pick      ␣p items · topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
   '          ␣a artifacts picker · ga topic artifacts · ↵ open chip · R render Mermaid',
-  'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
+  'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · ␣P drafts a prompt · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
   '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode: keys go to the session, C-\\ C-n leaves',
+  'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
   'Views     :Cland view thread <topic> | session <name> | item <id> | board | log | inbox',
@@ -306,6 +307,7 @@ local function keymaps()
     local v = state.S.ui.view
     layout.show({ kind = 'thread', id = v.kind == 'thread' and v.id or 'general' })
   end, 'composer')
+  map('<leader>P', function() require('cland.artifacts').prompt() end, 'draft prompt')
   map('<leader>p', function()
     picker.open()
   end, 'picker')
@@ -359,6 +361,10 @@ local function commands()
       else
         state.say(':Cland topic new <title> | close [id] | resolve [id]', 'ClandRedBar')
       end
+    elseif sub == 'prompt' then
+      local artifacts = require('cland.artifacts')
+      if a == 'send' or a == 'attach' then artifacts.send_prompt(a == 'attach')
+      else artifacts.prompt(table.concat(vim.list_slice(o.fargs, 2), ' ')) end
     elseif sub == 'refresh' then
       M.refresh()
     elseif sub == 'launch' then
@@ -369,14 +375,14 @@ local function commands()
     elseif sub == 'help' or not sub then
       M.help()
     else
-      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | qa dump <path> | refresh | help', 'ClandRedBar')
+      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | prompt [title]|send|attach | qa dump <path> | refresh | help', 'ClandRedBar')
     end
   end, {
     nargs = '*',
     complete = function(_, line)
       local words = vim.split(line, '%s+', { trimempty = true })
       if #words <= 1 or (#words == 2 and not line:match('%s$')) then
-        return { 'preset', 'view', 'panel', 'launch', 'topic', 'qa', 'refresh', 'help' }
+        return { 'preset', 'view', 'panel', 'launch', 'topic', 'prompt', 'qa', 'refresh', 'help' }
       end
       local sub = words[2]
       if sub == 'preset' then
@@ -387,6 +393,8 @@ local function commands()
         return { 'items', 'inbox', 'sessions', 'topics', 'dock' }
       elseif sub == 'topic' then
         return { 'new', 'close', 'resolve' }
+      elseif sub == 'prompt' then
+        return { 'send', 'attach' }
       elseif sub == 'qa' then
         return { 'dump' }
       end

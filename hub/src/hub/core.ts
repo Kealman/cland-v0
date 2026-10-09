@@ -39,6 +39,13 @@ import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
 
+/** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
+function messageArtifacts(artifacts?: Artifact[]): Pick<Message, 'artifacts' | 'artifact'> {
+  if (!artifacts?.length) return {};
+  const sent = artifacts.map(a => a.kind === 'prompt' ? { ...a, status: 'sent' as const } : a);
+  return { artifacts: sent, artifact: sent[0]! };
+}
+
 /** How long a message waits for an offline session; also how long a name stays known after its last sign of life. */
 export const QUEUE_TTL_MS = 24 * 60 * 60 * 1000;
 /** How long the store keeps a message. */
@@ -456,6 +463,10 @@ export class HubCore {
     this.#onDelivered?.(messageId, connection.name, connection.sessionId);
   }
 
+  artifactChanged(artifact: Artifact): void { this.#emit({ type: 'artifact', artifact }); }
+  textFits(text: string): boolean { return this.#hygiene.sizeRefusal(text) === null; }
+  boundedText(text: string): string { return this.#hygiene.boundedText(text); }
+
   /** The message's stage as stored, to the subscribers; it moves only once every addressee got as far. */
   #emitStage(messageId: string): void {
     const topic = this.#store.message(messageId)?.topic;
@@ -616,6 +627,7 @@ export class HubCore {
 
   /** A recorded notice reaches the subscribers and its addressees. */
   #publishNotice(message: Message): void {
+    for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);
     for (const n of message.to) this.#send(message, n);
   }
@@ -1295,7 +1307,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[]): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -1340,6 +1352,7 @@ export class HubCore {
       topic: topic.id,
       ...(answerTo !== undefined ? { answerTo } : {}),
       ...(artifact ? { artifact } : {}),
+      ...messageArtifacts(artifacts),
     };
     this.#store.record(
       message,
@@ -1350,6 +1363,7 @@ export class HubCore {
     this.#store.markTopicRead(topic.id, message.id);
     // a person wrote to these sessions: their pairs count afresh (the loop breaker mutes a pair with no human between)
     for (const n of sessions) this.#hygiene.humanTouched(this.#identity(n));
+    for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);
     this.#move(topic, 'human', 'a human message');
     this.#publishTopics();
@@ -1370,7 +1384,7 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[]): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
     const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
     const toHuman = to.length === 0;
@@ -1430,6 +1444,7 @@ export class HubCore {
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
       ...(artifact ? { artifact } : {}),
+      ...messageArtifacts(artifacts),
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
     if (sessions.size > 0 || toHuman) {
@@ -1437,7 +1452,8 @@ export class HubCore {
       const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
       this.#store.record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
       this.#store.touchTopic(topic.id, message.ts);
-      this.#emitMessage(message);
+      for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
+    this.#emitMessage(message);
       this.#move(topic, toHuman ? 'to-human' : awaited.includes(from) ? 'reply' : 'between-agents', `a message from ${from}`);
       this.#publishTopics();
       // every agent-to-agent message is in the Agents record (spec 4.5, #34): one sent into another topic is

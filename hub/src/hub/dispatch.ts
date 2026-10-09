@@ -9,6 +9,7 @@
 // Every spoke tool call passes the permission table here (spec 4.4, `roles/permissions.ts`), by the role the hub
 // holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
 // in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
+import { readFile, stat } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
@@ -32,7 +33,7 @@ import {
 import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor, type TaskRequest } from '../tracker/requests.ts';
-import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
+import { normalizeId, readsAsVerdict, verdictOfText } from '../tracker/item.ts';
 import type { Actor, Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
@@ -80,6 +81,8 @@ export type DispatcherOptions = {
   tracker?: Tracker;
   /** The request budget and the repeat guard's timings (tests). */
   guard?: Omit<GuardOptions, 'log'>;
+  /** Artifact file read port; defaults to async filesystem I/O. */
+  readArtifact?: (path: string) => Promise<Buffer>;
 };
 
 /** Who the UI's and the CLI's calls are audited as. */
@@ -111,6 +114,7 @@ export class Dispatcher {
   readonly #releases: Releases | null;
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
+  #artifactQueue: Promise<unknown> = Promise.resolve();
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
@@ -196,7 +200,7 @@ export class Dispatcher {
    * the typed error, and posted to the Agents topic. A hub with no role definitions (no project) checks nothing;
    * a frame that is no tool the table knows goes on to its own "unknown request" answer.
    */
-  #permitted(connection: Caller, frame: Record<string, unknown>, peer: Peer): boolean {
+  #permitted(connection: Caller, frame: Record<string, unknown>, peer: Peer, answer = true): boolean {
     const core = this.#options.core;
     const roles = core.roles;
     if (!roles) return true;
@@ -206,7 +210,7 @@ export class Dispatcher {
     const decision = decide(connection.role, grants, call);
     if (decision.ok) return true;
     const target = call.tool === 'send' ? (call.toHuman ? ' to the human' : '') : typeof call.item === 'string' ? ` ${call.item}` : '';
-    this.#refuse(connection, frame, peer, decision.permission, decision.reason, target);
+    this.#refuse(connection, frame, peer, decision.permission, decision.reason, target, answer);
     return false;
   }
 
@@ -304,12 +308,9 @@ export class Dispatcher {
     const tracker = this.#options.tracker;
     const own = (): boolean | undefined => {
       if (!tracker || item === null) return false;
-      let view;
-      try {
-        view = tracker.view(item);
-      } catch {
-        return undefined; // no such item: the tool says so itself
-      }
+      // Ownership is an indexed permission fact; request authorization never reads an item file.
+      const view = tracker.list().find(value => value.id === normalizeId(item));
+      if (!view) return undefined; // no such item: the tool says so itself
       const actor = sessionActor(connection, UNKNOWN_SESSION);
       if (view.claim?.sessionId === actor.id) return true;
       if (view.assignee === null) return false;
@@ -338,29 +339,40 @@ export class Dispatcher {
     };
   }
 
-  #artifact(frame: ArtifactCreate | ArtifactList, caller: Caller | null): unknown {
+  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
+    const caller = callerNow();
     const core = this.#options.core;
     if (frame.type === 'artifact.list') {
       if (frame.topic !== undefined && (typeof frame.topic !== 'string' || !core.store.topic(frame.topic))) throw new ArtifactError('artifact-topic', 'no such artifact topic');
       return { artifacts: core.store.artifacts(frame.topic) };
     }
-    const topic = typeof frame.topic === 'string' ? core.store.topic(frame.topic) : null;
-    if (!topic) throw new ArtifactError('artifact-topic', 'no such artifact topic');
-    if (caller !== null && caller.role !== 'coordinator') {
-      const own = topic.item !== null && this.#toolCall(caller, { type: 'task.claim', item: topic.item })?.own?.() === true;
-      if (topic.id === GENERAL.id || topic.id === AGENTS.id || !(own || core.store.addressedInTopic(caller.sessionId, topic.id))) {
-        throw new ToolForbidden(caller.role, 'artifact.create', 'artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s');
+    const authorize = () => {
+      const caller = callerNow();
+      const topic = typeof frame.topic === 'string' ? core.store.topic(frame.topic) : null;
+      if (!topic) throw new ArtifactError('artifact-topic', 'no such artifact topic');
+      if (caller !== null && caller.role !== 'coordinator') {
+        const own = topic.item !== null && this.#toolCall(caller, { type: 'task.claim', item: topic.item })?.own?.() === true;
+        if (topic.id === GENERAL.id || topic.id === AGENTS.id || !(own || core.store.addressedInTopic(caller.sessionId, topic.id))) {
+          throw new ToolForbidden(caller.role, 'artifact.create', 'artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s');
+        }
       }
-    }
+      return topic;
+    };
+    const topic = authorize();
     const root = this.#options.control?.status().root;
     const name = caller?.name ?? 'human';
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
-    const artifact = createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.' }, (a) => {
+    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.' }, (a) => {
+      if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
-      if (caller) core.sendFromSession(name, [], text, undefined, topic.id, a, caller);
+      const current = callerNow();
+      if (current) core.sendFromSession(current.name, [], text, undefined, topic.id, a, current);
       else core.sendFromHuman(topic.id, text, undefined, undefined, undefined, a);
+    }, resumed, authorize, this.#options.readArtifact ?? readFile);
+    return resumed(() => {
+      core.artifactChanged(artifact);
+      return { artifact, id: artifact.id, path: artifact.path };
     });
-    return { artifact, id: artifact.id, path: artifact.path };
   }
 
   open(wire: Peer, transport: { authenticated: boolean; edge: string }): Conversation {
@@ -418,6 +430,69 @@ export class Dispatcher {
           else settle(frame);
         }, 'answer'),
       );
+    const artifact = (frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null) => {
+      const tool = frame.type;
+      const who = kind === 'spoke' ? (name ?? '?') : client;
+      const resumed = <T,>(work: () => T): T => this.#guard.measure(tool, who, work, 'resumed');
+      const original = callerNow();
+      const authorizeCaller = () => {
+        const current = callerNow();
+        if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, tool, 'the session is no longer current');
+        if (current && !this.#permitted(current, frame as unknown as Record<string, unknown>, peer, false)) throw new ToolForbidden(current.role, tool, 'permission changed during artifact preparation');
+        return current;
+      };
+      const run = () => this.#artifact(frame, authorizeCaller, resumed);
+      const operation = frame.type === 'artifact.create' ? this.#artifactQueue.then(() => resumed(run)) : run();
+      if (frame.type === 'artifact.create') this.#artifactQueue = operation.catch(() => resumed(() => {}));
+      later(tool, operation.then(value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+    };
+    const attachedSend = (frame: Record<string, unknown>, callerNow: () => Caller | null) => {
+      const tool = String(frame.type);
+      const resumed = <T,>(work: () => T): T => this.#guard.measure(tool, kind === 'spoke' ? (name ?? '?') : client, work, 'resumed');
+      const original = callerNow();
+      const prompt = tool === 'prompt.send';
+      const topicId = prompt ? core.store.artifact(String(frame.artifact))?.topic : (typeof frame.topic === 'string' ? frame.topic : (Array.isArray(frame.to) && frame.to.length ? AGENTS.id : GENERAL.id));
+      const ids = prompt ? [frame.artifact] : frame.artifacts;
+      const check = () => {
+        const caller = callerNow();
+        if (original && (!caller || caller.sessionId !== original.sessionId)) throw new ToolForbidden(null, 'send', 'the session is no longer current');
+        if (caller && !this.#permitted(caller, { ...frame, type: 'send' }, peer, false)) throw new ToolForbidden(caller.role, 'send', 'permission changed during attachment preparation');
+        if (!Array.isArray(ids) || !ids.length || !ids.every(id => typeof id === 'string')) throw new ArtifactError('artifact-source', 'artifacts must be a nonempty array of ids');
+        const artifacts = ids.map(id => {
+          const a = core.store.artifact(id);
+          if (!a || a.status === 'archived' || a.topic !== topicId) throw new ArtifactError('artifact-unavailable', `artifact ${id} is unavailable in this topic`);
+          if (prompt && (a.kind !== 'prompt' || a.status !== 'draft' || a.creator !== 'human')) throw new ArtifactError('artifact-unavailable', 'only a human prompt draft can be sent here');
+          return a;
+        });
+        return { caller, artifacts };
+      };
+      const operation = async (): Promise<HubFrame> => {
+        try {
+          const prepared = check();
+          // Reserve the intended ids/topic/caller before I/O; no post or status is changed yet.
+          const contents = await Promise.all(prepared.artifacts.map(a => this.#options.readArtifact ? this.#options.readArtifact(a.path) : readFile(a.path)));
+          const files = await resumed(() => {
+            check();
+            return Promise.all(prepared.artifacts.map(a => stat(a.path)));
+          });
+          return resumed(() => {
+            if (!files.every(info => info.isFile())) throw new ArtifactError('artifact-unavailable', 'an attachment file is unavailable');
+            // Re-read availability, topic, draft status and caller permissions after final file I/O, then post without yielding.
+            const { caller, artifacts } = check();
+            if (artifacts.some((a, i) => a.path !== prepared.artifacts[i]?.path)) throw new ArtifactError('artifact-unavailable', 'an attachment path changed during preparation');
+            const saved = contents[0]!.toString('utf8');
+            const text = prompt ? (frame.attach === true || !core.textFits(saved) ? core.boundedText(`Prompt ${artifacts[0]!.id}: ${artifacts[0]!.title}`) : saved) : frame.text;
+            if (typeof text !== 'string') throw new ArtifactError('artifact-source', 'send needs text');
+            const reply = typeof frame.replyTo === 'string' ? frame.replyTo : undefined;
+            const to = Array.isArray(frame.to) ? frame.to as string[] : undefined;
+            const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts)
+              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts);
+            return { type: 'result', id: String(frame.id), ok: true, value };
+          });
+        } catch (err) { return resumed(() => Dispatcher.#failure(String(frame.id), err)); }
+      };
+      later(tool, operation());
+    };
     // a task request's answer may wait for Git (a verdict's commit, a claim's worktree), never on the event loop; every
     // stretch it runs on the loop is timed against the budget: the first in `receive`, the writes after Git answered,
     // the answer going out
@@ -551,8 +626,7 @@ export class Dispatcher {
             return merge(frame, connection);
           case 'artifact.create':
           case 'artifact.list':
-            peer.send({ type: 'result', id: frame.id, ok: true, value: this.#artifact(frame, connection) });
-            break;
+            return artifact(frame, () => connection && core.isCurrent(connection) ? connection : null);
           case 'who':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { me, sessions: core.presence() } });
             break;
@@ -755,6 +829,7 @@ export class Dispatcher {
           }
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
+          if (frame.type === 'send' && frame.artifacts !== undefined) return attachedSend(frame, () => connection && core.isCurrent(connection) ? connection : null);
           return spokeRequest(frame, connection.name);
         }
         if (replayed(frame)) return;
@@ -793,10 +868,9 @@ export class Dispatcher {
         }
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
-          try { peer.send({ type: 'result', id: String(frame.id), ok: true, value: this.#artifact(frame as ArtifactCreate | ArtifactList, caller) }); }
-          catch (err) { peer.send(Dispatcher.#failure(String(frame.id), err)); }
-          return;
+          return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));
         }
+        if (frame.type === 'prompt.send' || (frame.type === 'topic.send' && frame.artifacts !== undefined)) return attachedSend(frame, () => this.#asSession(frame));
         if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync')) {
           const tool = frame.type;
           if (caller && (client !== 'cli' || caller.role !== 'coordinator')) return this.#refuse(caller, frame, peer, tool, `${tool} belongs to the human or the Coordinator from its own shell`);

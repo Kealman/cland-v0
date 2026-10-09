@@ -19,6 +19,7 @@ export type HubBaseOptions = CoreOptions & {
   pruneEveryMs?: number;
   /** The request budget and the repeat guard's timings (tests). */
   guard?: DispatcherOptions['guard'];
+  readArtifact?: DispatcherOptions['readArtifact'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
@@ -74,6 +75,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.control ? { control: options.control } : {}),
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
+    ...(options.readArtifact ? { readArtifact: options.readArtifact } : {}),
     ...(options.guard ? { guard: options.guard } : {}),
   });
   core.prune();

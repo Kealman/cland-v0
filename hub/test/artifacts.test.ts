@@ -138,3 +138,109 @@ test('artifact publications use send size and rate limits, rolling back files an
   assert.deepEqual((await ui.request({ type: 'artifact.list' })).value, { artifacts: [first.artifact] });
   assert.deepEqual(await readdir(join(root, '.cland/artifacts')), ['A-1-result.md']);
 });
+
+test('prompt drafts send text at the byte cap and attach above it, with persistent sent status', async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 64\n');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  for (const [content, attached] of [['x'.repeat(64), false], ['x'.repeat(65), true], ['é'.repeat(32), false], ['é'.repeat(32) + 'x', true]] as const) {
+    const created = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Brief', topic: 'general', content, status: 'draft' });
+    assert.equal(created.ok, true, created.error);
+    const a = (created.value as { artifact: Artifact }).artifact;
+    assert.equal(a.status, 'draft');
+    const sent = await ui.request({ type: 'prompt.send', artifact: a.id });
+    assert.equal(sent.ok, true, sent.error);
+    const message = (sent.value as { message: TopicMessage }).message;
+    assert.equal(message.text, attached ? `Prompt ${a.id}: Brief` : content);
+    assert.equal(message.artifacts?.[0]?.path, a.path);
+    const event = await coord.waitForEvent(e => e.params.meta?.msg_id === message.id);
+    assert.equal(event.params.meta?.artifact_path, a.path);
+    assert.equal(((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts.find(x => x.id === a.id)?.status, 'sent');
+  }
+});
+
+test('spoke send attaches several artifacts and refuses unknown, foreign and missing files', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  t.after(() => coord.close());
+  t.after(() => impl.close());
+  await coord.waitForPresence(['coord', 'impl']);
+  const artifacts: Artifact[] = [];
+  for (const title of ['Brief', 'Details']) {
+    const created = await coord.call<{ artifact: Artifact }>('artifact.create', { kind: 'prompt', title, content: title, topic: 'agents', status: 'draft' });
+    artifacts.push(created.artifact);
+  }
+  const sent = await coord.call<{ ok: boolean }>('send', { to: ['impl'], topic: 'agents', text: 'Read the briefs', artifacts: artifacts.map(a => a.id) });
+  assert.equal(sent.ok, true);
+  const event = await impl.waitForEvent(e => e.params.content === 'Read the briefs');
+  assert.deepEqual(JSON.parse(event.params.meta!.artifacts!).map((a: Artifact) => a.path), artifacts.map(a => a.path));
+  const stored = ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages.find(m => m.id === event.params.meta?.msg_id)!;
+  assert.deepEqual(stored.artifacts?.map(a => a.status), ['sent', 'sent']);
+  for (const ids of [['A-999999'], [artifacts[0]!.id, 'A-999999']]) {
+    const refused = await coord.call<{ ok: boolean; code: string }>('send', { to: ['impl'], topic: 'agents', text: 'Unknown attachment', artifacts: ids });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.code, 'artifact-unavailable');
+  }
+  const foreign = await coord.call<{ ok: boolean; code: string }>('send', { to: ['impl'], topic: 'general', text: 'Foreign attachment', artifacts: [artifacts[0]!.id] });
+  assert.equal(foreign.code, 'artifact-unavailable');
+  await rm(artifacts[0]!.path);
+  const missing = await coord.call<{ ok: boolean }>('send', { to: ['impl'], topic: 'agents', text: 'Missing file', artifacts: [artifacts[0]!.id] });
+  assert.equal(missing.ok, false);
+  assert.equal(impl.events.some(e => ['Unknown attachment', 'Foreign attachment', 'Missing file'].includes(e.params.content)), false);
+});
+
+test('forced prompt attachment keeps the saved text in its artifact and a refused post keeps the draft', async (t) => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const created = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Brief', topic: 'general', content: 'Short brief', status: 'draft' });
+  const a = (created.value as { artifact: Artifact }).artifact;
+  const attached = await ui.request({ type: 'prompt.send', artifact: a.id, attach: true });
+  assert.equal((attached.value as { message: TopicMessage }).message.text, `Prompt ${a.id}: Brief`);
+  assert.equal(await readFile(a.path, 'utf8'), 'Short brief');
+  const empty = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Empty', topic: 'general', content: '', status: 'draft' });
+  const draft = (empty.value as { artifact: Artifact }).artifact;
+  assert.equal((await ui.request({ type: 'prompt.send', artifact: draft.id })).ok, false);
+  assert.equal(((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts.find(x => x.id === draft.id)?.status, 'draft');
+  assert.equal((await ui.request({ type: 'prompt.send', artifact: a.id })).ok, false, 'a sent draft cannot post twice');
+});
+
+test('automatic and explicit prompt attachment pointers fit the cap with long and multibyte titles', async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 33\n');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  for (const attach of [false, true]) for (const title of ['x'.repeat(100), 'é'.repeat(100)]) {
+    const a = ((await ui.request({ type: 'artifact.create', kind: 'prompt', title, topic: 'general', content: attach ? 'Short' : 'x'.repeat(34), status: 'draft' })).value as { artifact: Artifact }).artifact;
+    const sent = await ui.request({ type: 'prompt.send', artifact: a.id, attach });
+    assert.equal(sent.ok, true, sent.error);
+    const message = (sent.value as { message: TopicMessage }).message;
+    assert.ok(Buffer.byteLength(message.text, 'utf8') <= 33);
+    assert.equal(message.text, `Prompt ${a.id}: ` + (title.startsWith('é') ? 'é'.repeat(10) : 'x'.repeat(21)));
+    assert.equal(message.artifacts?.[0]?.title, title, 'the full title remains in attachment metadata');
+    assert.equal(message.artifacts?.[0]?.status, 'sent');
+  }
+});
+
+test('an attachment pointer also fits a cap smaller than its usual heading', async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 1\n');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const a = ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Long heading', topic: 'general', content: 'Over cap', status: 'draft' })).value as { artifact: Artifact }).artifact;
+  const sent = await ui.request({ type: 'prompt.send', artifact: a.id });
+  assert.equal(sent.ok, true, sent.error);
+  const message = (sent.value as { message: TopicMessage }).message;
+  assert.equal(message.text, 'P');
+  assert.equal(message.artifacts?.[0]?.id, a.id, 'the attachment still identifies the prompt');
+});

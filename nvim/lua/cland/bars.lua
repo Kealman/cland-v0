@@ -247,6 +247,10 @@ function M.winbar(win)
   elseif role == 'artifacts' then
     return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open · q back', 'ClandDimBar' } })
   elseif role == 'artifact' then
+    local a = require('cland.artifacts').get(vim.b[buf].cland_artifact)
+    if a and a.kind == 'prompt' and a.status == 'draft' then
+      return head(win, a.id .. ' · draft', { { ':w saves · ␣ps send · ␣pa attach · q back', 'ClandDimBar' } })
+    end
     return head(win, tostring(vim.b[buf].cland_artifact), { { 'read-only · R render Mermaid · q back', 'ClandDimBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)
