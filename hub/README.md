@@ -286,6 +286,26 @@ A refused call is answered with a typed result, which the spoke hands the model 
 
 `rev-1 [Reviewer] tried task.close T-12: forbidden (Reviewer may not use task.close)` (a hub message in `agents`, `from: "hub"`, addressed to nobody). `permission` names what was missing: `send:human`, `task.comment:verdict`, or the tool itself.
 
+### The CLI in a session's shell
+
+The adapters put `$CLAND_SESSION_ID` and `$CLAND_SESSION_NAME` in a launched session's shell (Claude Code and Codex; `$CLAND_ROLE` too where there is a role). With either set, every frame the CLI sends carries the session as `as`, the hub takes the call as that session's (by the id first: a session the hub does not know is a roleless one, never the human), and the audit records the session with `client: "cli"`. What the call may do:
+
+| Command | In a session's shell |
+| --- | --- |
+| `cland task …` | The session's, checked against its role as its own `task.*` tools are (The tracker, below). |
+| `cland session launch`, `cland session list` | Decided by the permission table (`session.launch`): the Coordinator may, the others are refused. |
+| `cland inbox`, `cland role list`, `cland hub status` | Allowed: reading the hub's state. |
+| `cland hub stop` (and `hub start`, which sends no frame) | Allowed: the hub's lifecycle, which a session that can signal the hub's process has anyway. |
+| `cland topic answer`, `cland role set`, `cland role clear`, `cland session attach`, `stop`, `resume` and `retry`, `cland hub unmute`, and any other frame (the UI's `topic.send`, `inbox.dismiss`, …) | The human's alone: refused. |
+
+A refusal is the typed error of the table above, with the frame's type as `permission`, and it shows in Agents as any refusal does:
+
+```json
+{"type":"result","id":"…","ok":false,"error":"forbidden: topic.answer (only the human may do this; this call is impl-1 [Implementer]'s, by $CLAND_SESSION_ID)","code":"forbidden","permission":"topic.answer","role":"implementer","reason":"only the human may do this; this call is impl-1 [Implementer]'s, by $CLAND_SESSION_ID"}
+```
+
+`cland hook` is the session's own plumbing (`session.signal`, `session.bridge`) and carries no actor. Without the variables every command is the human's, as before. What stays open: the CLI's identity is its environment, so a shell that unsets both variables is the human's, as any process holding the hub's socket and secret is.
+
 ### The audit log
 
 Every tool call the hub answers, a spoke's (allowed or refused) or the human's through the UI or the CLI, is an `audit` event in the hub's log (`.cland/log/hub.log`) until the journal (#34) takes it over in this shape:

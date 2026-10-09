@@ -75,6 +75,13 @@ export type DispatcherOptions = {
 /** Who the UI's and the CLI's calls are audited as. */
 const HUMAN_SESSION = 'human';
 
+/**
+ * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state, and the
+ * hub's own lifecycle (`cland hub stop`; the session could signal the hub's process anyway, and the Coordinator
+ * restarts the hub after a merge). Any other frame is the human's alone.
+ */
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['hub.status', 'hub.stop', 'inbox.list', 'role.list']);
+
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
 
@@ -148,15 +155,20 @@ export class Dispatcher {
     const grants = connection.role === null ? undefined : roles.get().get(connection.role)?.permissions.tools;
     const decision = decide(connection.role, grants, call);
     if (decision.ok) return true;
-    const { permission, reason } = decision;
-    peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
     const target = call.tool === 'send' ? (call.toHuman ? ' to the human' : '') : typeof call.item === 'string' ? ` ${call.item}` : '';
+    this.#refuse(connection, frame, peer, decision.permission, decision.reason, target);
+    return false;
+  }
+
+  /** Answer a frame with the typed `forbidden` error and post the refusal to the Agents topic. */
+  #refuse(connection: Caller, frame: Record<string, unknown>, peer: Peer, permission: string, reason: string, target = ''): void {
+    const core = this.#options.core;
+    peer.send({ type: 'result', id: String(frame.id), ok: false, error: `forbidden: ${permission} (${reason})`, code: 'forbidden', permission, role: connection.role, reason });
     try {
       core.noticeInTopic(AGENTS.id, { kind: 'refusal', text: `${withRole(connection.name, connection.role)} tried ${String(frame.type)}${target}: forbidden (${reason})`, detail: { session: connection.name, role: connection.role, tool: String(frame.type), permission } });
     } catch (err) {
       this.#log({ event: 'notice-failed', error: err instanceof Error ? err.message : String(err) });
     }
-    return false;
   }
 
   /**
@@ -587,8 +599,22 @@ export class Dispatcher {
           this.#bindAssignee(frame, result);
           return peer.send(result);
         }
-        // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
-        if (frame.type !== 'session.signal' && frame.type !== 'session.bridge') {
+        const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
+        // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
+        // audited as it. What the permission table knows is decided by the table, as for the session's own tool call;
+        // reading the hub's state is anyone's; everything else is the human's alone.
+        const caller = plumbing ? null : this.#asSession(frame);
+        if (caller !== null) {
+          audit(frame.id, { session: caller.name, sessionId: caller.sessionId, role: caller.role, tool: String(frame.type), args: summarize(frame), client });
+          if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) {
+            if (!this.#permitted(caller, frame, peer)) return;
+            return session(frame);
+          }
+          if (!SESSION_CLI_FRAMES.has(String(frame.type))) {
+            return this.#refuse(caller, frame, peer, String(frame.type), `only the human may do this; this call is ${withRole(caller.name, caller.role)}'s, by $CLAND_SESSION_ID`);
+          }
+        } else if (!plumbing) {
+          // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
           audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
         }
         // a client's frame may name who it acts as (a name no session holds: written as it, unrestricted)
