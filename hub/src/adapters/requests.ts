@@ -18,7 +18,7 @@
 import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';
 import { InvalidLaunchCwd, type Sessions } from './sessions.ts';
-import type { TaskWorktrees } from '../hub/worktrees.ts';
+import type { Resumed, TaskWorktrees } from '../hub/worktrees.ts';
 
 export type SessionRequest =
   | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string; item?: string }
@@ -69,7 +69,8 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
 export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolean; onClose: (fn: () => void) => void };
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
-export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees): Promise<HubFrame> {
+/** `resumed` times the synchronous work a launch with an item does after it awaited (Git, the spawn): the hub's guard. */
+export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
   try {
@@ -85,7 +86,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
         };
         if (frame.item === undefined) return ok({ process: await sessions.launch(request) });
         if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
-        return ok(await worktrees.launch(sessions, { ...request, item: frame.item }));
+        return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed));
       }
       case 'session.list':
         return ok({ processes: sessions.list(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });

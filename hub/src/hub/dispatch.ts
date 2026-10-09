@@ -428,7 +428,13 @@ export class Dispatcher {
         );
     };
     const session = (frame: Parameters<typeof answerSession>[1]) =>
-      void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }, this.#worktrees ?? undefined).then((result) => {
+      void answerSession(
+        this.#sessions,
+        frame,
+        { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) },
+        this.#worktrees ?? undefined,
+        (write) => this.#guard.measure(frame.type, kind === 'spoke' ? (name ?? '?') : client, write, 'resumed'),
+      ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);
       });
@@ -633,12 +639,13 @@ export class Dispatcher {
             // closed items' worktrees, with items those removed
             const worktrees = this.#needWorktrees();
             const id = frame.id;
+            const resumed = <T,>(write: () => T): T => this.#guard.measure(frame.type, client, write, 'resumed');
             const value: Promise<unknown> =
               frame.type === 'worktree.list'
-                ? worktrees.list().then((w) => ({ worktrees: w }))
+                ? worktrees.list(resumed).then((w) => ({ worktrees: w }))
                 : frame.dryRun === true || !frame.items?.length
-                  ? worktrees.prunable().then((candidates) => ({ candidates }))
-                  : worktrees.prune(frame.items);
+                  ? worktrees.prunable(resumed).then((candidates) => ({ candidates }))
+                  : worktrees.prune(frame.items, resumed);
             return later(frame.type, value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
           }
           case 'subscribe':

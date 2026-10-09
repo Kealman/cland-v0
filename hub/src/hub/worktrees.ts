@@ -141,7 +141,7 @@ export class TaskWorktrees {
    * the session just launched is stopped, the claim left with its holder. An item that gets no worktree launches at
    * the project root.
    */
-  async launch(sessions: Sessions, request: LaunchRequest & { item: string }): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
+  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     if (request.role !== 'implementer') throw new Error('`item` is for an Implementer (--role implementer); a Reviewer or QA session stands in a worktree with cwd');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = this.#tracker.view(request.item);
@@ -165,7 +165,7 @@ export class TaskWorktrees {
         let worktree: TaskWorktree | null = null;
         if (reason === null) {
           try {
-            worktree = await this.#make(now, request.name);
+            worktree = await this.#make(now, request.name, resumed);
           } catch (err) {
             throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
           }
@@ -177,7 +177,7 @@ export class TaskWorktrees {
       }
     });
     try {
-      return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other);
+      return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed);
     } finally {
       release();
     }
@@ -192,61 +192,70 @@ export class TaskWorktrees {
     reason: string | null,
     yields: (held: Claim | null) => boolean,
     other: (held: Claim) => string,
+    resumed: Resumed,
   ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
     const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) });
     // the claim as it is now: another session may have taken it while the harness started. The check and the claim
-    // below run in one turn of the event loop, so nothing comes between them.
-    const held = this.#tracker.view(id).claim;
-    if (!yields(held) && held?.sessionId !== process.sessionId) {
-      this.#log({ event: 'launch-claim-lost', id, session: process.name, holder: held?.session ?? null });
+    // run in one stretch of the event loop (timed through `resumed`), so nothing comes between them.
+    const taken = resumed(() => {
+      const held = this.#tracker.view(id).claim;
+      if (!yields(held) && held?.sessionId !== process.sessionId) {
+        this.#log({ event: 'launch-claim-lost', id, session: process.name, holder: held?.session ?? null });
+        return { lost: held as Claim };
+      }
+      const actor: Actor = { id: process.sessionId, name: process.name, role: process.role };
+      return { claim: this.#tracker.claim(actor, id, { force: true }).claim };
+    });
+    if ('lost' in taken) {
+      const held = taken.lost;
       const stopped = await sessions.stop(process.name).then(
         () => `${process.name} was stopped`,
         (err: unknown) => `stopping ${process.name} failed (${err instanceof Error ? err.message : String(err)}): stop it by hand`,
       );
-      throw new Error(`${other(held as Claim)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
+      throw new Error(`${other(held)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
     }
-    const actor: Actor = { id: process.sessionId, name: process.name, role: process.role };
-    const { claim } = this.#tracker.claim(actor, id, { force: true });
-    return { process, claim, worktree, ...(reason !== null ? { reason } : {}) };
+    return { process, claim: taken.claim, worktree, ...(reason !== null ? { reason } : {}) };
   }
 
   /** The task worktrees with their items and the sessions standing inside. */
-  list(): Promise<WorktreeEntry[]> {
-    return this.#serial(() => this.#list());
+  list(resumed: Resumed = untimed): Promise<WorktreeEntry[]> {
+    return this.#serial(() => this.#list(resumed));
   }
 
-  async #list(): Promise<WorktreeEntry[]> {
+  /** Git's facts first, all awaited; then the items and the sessions, read in one stretch timed through `resumed`. */
+  async #list(resumed: Resumed): Promise<WorktreeEntry[]> {
     const root = this.root;
-    const sessions = this.#sessions();
     const base = await taskBase(root).catch(() => null);
-    const out: WorktreeEntry[] = [];
-    for (const w of await listTaskWorktrees(root)) {
-      let view: ItemView | null = null;
-      try {
-        view = this.#tracker.view(w.item);
-      } catch {
-        view = null;
-      }
-      const names = [...new Set(sessions.filter((s) => inside(s.cwd, w.path)).map((s) => s.name))];
-      out.push({
-        item: w.item,
-        path: w.path,
-        branch: w.branch,
-        title: view?.title ?? null,
-        kind: view?.kind ?? null,
-        state: view?.state ?? null,
-        sessions: names,
-        base,
-        ahead: w.branch ? await commitsAhead(root, w.branch, base) : [],
+    const found: Array<Awaited<ReturnType<typeof listTaskWorktrees>>[number] & { ahead: string[] }> = [];
+    for (const w of await listTaskWorktrees(root)) found.push({ ...w, ahead: w.branch ? await commitsAhead(root, w.branch, base) : [] });
+    return resumed(() => {
+      const sessions = this.#sessions();
+      return found.map((w): WorktreeEntry => {
+        let view: ItemView | null = null;
+        try {
+          view = this.#tracker.view(w.item);
+        } catch {
+          view = null;
+        }
+        return {
+          item: w.item,
+          path: w.path,
+          branch: w.branch,
+          title: view?.title ?? null,
+          kind: view?.kind ?? null,
+          state: view?.state ?? null,
+          sessions: [...new Set(sessions.filter((s) => inside(s.cwd, w.path)).map((s) => s.name))],
+          base,
+          ahead: w.ahead,
+        };
       });
-    }
-    return out;
+    });
   }
 
   /** The worktrees `prune` offers: those of closed items. */
-  async prunable(): Promise<WorktreeEntry[]> {
-    return (await this.list()).filter((w) => w.state === 'closed');
+  async prunable(resumed: Resumed = untimed): Promise<WorktreeEntry[]> {
+    return (await this.list(resumed)).filter((w) => w.state === 'closed');
   }
 
   /**
@@ -255,9 +264,9 @@ export class TaskWorktrees {
    * listing said is checked again under the territory lock right before each removal: the item reopened or a session
    * that entered while Git was read keeps the worktree (rev-6 on T-58).
    */
-  prune(items: string[]): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
+  prune(items: string[], resumed: Resumed = untimed): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
     return this.#serial(async () => {
-      const entries = await this.#list();
+      const entries = await this.#list(resumed);
       const removed = [];
       const failed = [];
       for (const item of items) {
@@ -266,7 +275,7 @@ export class TaskWorktrees {
           if (!entry) throw new Error(`${item} has no worktree`);
           if (entry.state !== 'closed') throw new Error(`${item} is ${entry.state ?? 'not in the tracker'}: prune removes only the worktrees of closed items`);
           if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-          const done = await removeTaskWorktree(this.root, item, () => {
+          const done = await removeTaskWorktree(this.root, item, () => resumed(() => {
             if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
             let state: string | null = null;
             try {
@@ -277,7 +286,7 @@ export class TaskWorktrees {
             if (state !== 'closed') throw new Error(`${item} is ${state ?? 'not in the tracker'} now: prune removes only the worktrees of closed items`);
             const now = [...new Set(this.#sessions().filter((s) => inside(s.cwd, entry.path)).map((s) => s.name))];
             if (now.length) throw new Error(`${item}: ${now.join(', ')} now ${now.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-          });
+          }));
           this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
           removed.push({ item, ...done });
         } catch (err) {
