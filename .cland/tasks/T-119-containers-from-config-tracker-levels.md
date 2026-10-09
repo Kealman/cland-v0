@@ -10,10 +10,10 @@ assignee: null
 parent: T-107
 blocked_by:
   - T-118
-topic: null
-branch: null
+topic: topic-44
+branch: t/T-119-containers-from-config-tracker-levels
 created: 2026-10-09T21:56:19.667Z
-updated: 2026-10-09T21:56:19.667Z
+updated: 2026-10-09T23:01:55.078Z
 ---
 
 ## Parent
@@ -38,3 +38,9 @@ Closing a release or an epic with open children is refused by the hub, with no f
 ## Notes
 
 Size M. Implementer: Codex. Risk from the sizing: the hard-coded kinds are spread across the hub, so sweep them all in one change, and do not convert them one example at a time (A-96, class G). Defaults against instances: this project's `.cland/config.toml` does not inherit a new default, so list the exact line it needs in your report, and the Coordinator commits it.
+
+## Comments
+
+### impl-119 · 2026-10-09T23:01:55.078Z
+
+Implementation started: configured hierarchy and unknown-kind indexing through the existing hub/CLI seams; queued close guard naming open children; init/update defaults and Neovim predicates. Retain approved map question/task children and spec leaf behavior.

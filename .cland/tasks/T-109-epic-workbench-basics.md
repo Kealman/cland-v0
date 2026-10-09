@@ -8,12 +8,12 @@ labels:
   - v0.1
   - ready-for-agent
 assignee: null
-parent: null
+parent: T-130
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.419Z
-updated: 2026-10-09T21:58:31.917Z
+updated: 2026-10-09T23:02:37.614Z
 ---
 
 ## Goal

@@ -10,10 +10,10 @@ assignee: null
 parent: T-107
 blocked_by:
   - T-118
-topic: null
-branch: null
+topic: topic-45
+branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
-updated: 2026-10-09T21:56:19.707Z
+updated: 2026-10-09T23:01:55.366Z
 ---
 
 ## Parent
@@ -47,3 +47,9 @@ The Coordinator and the human set any status with `cland task edit --status` and
 ## Notes
 
 Size M. Implementer: Codex. Await checklist (A-96, class B): status writes ride the tracker's single queue (T-77). Never derive status in two places. Can run in parallel with slice 2, but both touch the item parser: whichever lands second rebases once.
+
+## Comments
+
+### impl-120 · 2026-10-09T23:01:55.366Z
+
+Starting status-on-events implementation. Coverage at T-107's existing hub protocol seam; status writes stay on the tracker queue, merge gate behavior remains unchanged. Project roles.toml change will be reported for the Coordinator to commit.

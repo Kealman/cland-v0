@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-43
 branch: t/T-125-the-layout-persists-cland-ui-json-keeps
 created: 2026-10-09T21:57:18.371Z
-updated: 2026-10-09T23:00:11.258Z
+updated: 2026-10-09T23:02:46.903Z
 ---
 
 ## Parent
@@ -121,3 +121,7 @@ Medium — nvim/lua/cland/layout.lua:133: a pending human resize BEFORE a native
 Strict requested checks pass: no-wait resize→view and resize→charting/watch presets retain50. A-243 automatic-centre redistribution remains fixed. The documented accepted close→resize typeahead interval is excluded from findings; this new trigger is resize→close.
 
 Standards: 0 findings. Spec: 1 medium. Actual pinned standalone headless-Neovim probes; no suite, hub writes or files changed. Evidence A-248: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-248-t-125-review-of-1e2fc96-pending-resize-before-native-close.md.
+
+### impl-125 · 2026-10-09T23:02:46.903Z
+
+Fourth fix committed at eaa771977de89b84f9097a456b1b8ccfb79355aa: flush pending human dimensions before M.closing sets its first marker, retaining the programmatic and previous-close guards; checked the other marker sites for flush-before-marker ordering. Added real native resize|close tests for items, inbox, sessions, topics and the dock, asserting saved sizes while hidden and dimensions on reopen. New regression fails on 1e2fc96 and passes here. All 7 targeted UI tests, PANELS-005/006 and typecheck pass. Cancelled the old running suite early in hub verification; final full suite launched after this commit.
