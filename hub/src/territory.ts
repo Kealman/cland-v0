@@ -59,6 +59,10 @@ function gitProject(root: string): boolean {
 const ref = (cwd: string, name: string): string | null => maybeGit(cwd, ['rev-parse', '--verify', name]);
 const remote = (root: string, name: string): string | null => maybeGit(root, ['remote', 'get-url', name]);
 const pointsAtTerritory = (root: string, url: string | null): boolean => url !== null && resolve(root, url) === territoryPath(root);
+const originUrlsAreLocal = (root: string, push = false): boolean => {
+  const urls = maybeGit(root, ['remote', 'get-url', ...(push ? ['--push'] : []), '--all', 'origin']);
+  return urls !== null && urls.split('\n').every((url) => pointsAtTerritory(root, url));
+};
 
 /** Provision remotes, refs and the protection hook, under the shared lock; report even unchanged Git steps. */
 export function provisionTerritory(report: Report, root: string): void {
@@ -92,7 +96,13 @@ export function provisionTerritory(report: Report, root: string): void {
       report.add(join(path, 'remotes/github'), 'updated', 'renamed origin to github, including branch upstreams');
     } else report.add(join(path, 'remotes/github'), 'unchanged', remote(root, 'github') === null ? 'no GitHub remote' : 'already github');
     if (!ours) territoryGit(root, ['remote', 'add', 'origin', path]);
-    report.add(join(path, 'remotes/origin'), ours ? 'unchanged' : 'created', 'origin is the local territory');
+    const safeUrls = originUrlsAreLocal(root) && originUrlsAreLocal(root, true);
+    if (!safeUrls) {
+      territoryGit(root, ['config', '--replace-all', 'remote.origin.url', path]);
+      territoryGit(root, ['config', '--replace-all', 'remote.origin.pushurl', path]);
+      if (!originUrlsAreLocal(root) || !originUrlsAreLocal(root, true)) throw new Error('origin URLs are rewritten outside the territory: fix Git url.*.insteadOf rules before cland init');
+    }
+    report.add(join(path, 'remotes/origin'), !ours ? 'created' : safeUrls ? 'unchanged' : 'updated', safeUrls ? 'origin is the local territory' : 'repaired origin fetch and push destinations to the local territory');
 
     const hook = join(path, 'hooks', 'update');
     writeIfChanged(report, hook, TERRITORY_HOOK);
@@ -176,13 +186,14 @@ export function territoryProblems(root: string): string[] | null {
   const path = territoryPath(root);
   if (!existsSync(path)) return gitProject(root) ? ['territory missing'] : null;
   const problems: string[] = [];
-  if (!pointsAtTerritory(root, remote(root, 'origin'))) problems.push('origin is not the territory');
+  if (!originUrlsAreLocal(root)) problems.push('origin is not the territory');
+  if (!originUrlsAreLocal(root, true)) problems.push('origin push URL is not the territory');
   if (maybeGit(path, ['rev-parse', '--is-bare-repository']) !== 'true') problems.push('territory is not a bare repository');
   for (const branch of ['main', 'dev']) {
     if (ref(path, `refs/heads/${branch}`) === null) problems.push(`territory ${branch} is missing`);
   }
   if (maybeGit(path, ['symbolic-ref', 'HEAD']) !== 'refs/heads/dev') problems.push('territory HEAD is not dev');
   const hook = join(path, 'hooks', 'update');
-  if (readText(hook) !== TERRITORY_HOOK || !existsSync(hook) || (statSync(hook).mode & 0o111) === 0 || maybeGit(path, ['config', '--get', 'core.hooksPath']) !== 'hooks') problems.push('territory protection hook is missing or changed');
+  if (readText(hook) !== TERRITORY_HOOK || !existsSync(hook) || (statSync(hook).mode & 0o111) !== 0o111 || maybeGit(path, ['config', '--get', 'core.hooksPath']) !== 'hooks') problems.push('territory protection hook is missing, changed or not executable');
   return problems;
 }

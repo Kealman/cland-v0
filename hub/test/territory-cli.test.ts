@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { clandWithEnv, tempProject, type CliResult } from './harness.ts';
 
@@ -156,6 +156,12 @@ test('doctor checks the territory and names corrupted origin, missing dev, HEAD 
     return JSON.parse(r.stdout).checks.find((c: { name: string }) => c.name === 'territory') as { verdict: string; detail: string; fix?: string };
   };
   assert.equal((await check()).verdict, 'ok');
+  await chmod(join(territory, 'hooks', 'update'), 0o641);
+  assert.match((await check()).detail, /not executable/);
+  await chmod(join(territory, 'hooks', 'update'), 0o755);
+  git(root, 'config', 'remote.origin.pushurl', github);
+  assert.match((await check()).detail, /origin push URL is not the territory/);
+  git(root, 'config', '--unset-all', 'remote.origin.pushurl');
   git(root, 'remote', 'set-url', 'origin', github);
   git(territory, 'update-ref', '-d', 'refs/heads/dev');
   git(territory, 'symbolic-ref', 'HEAD', 'refs/heads/main');
@@ -174,4 +180,18 @@ test('an origin/github name collision refuses before modifying remotes or creati
   assert.match(r.stderr, /origin and github both exist/);
   assert.equal(git(root, 'remote', 'get-url', 'origin'), github);
   await assert.rejects(readFile(join(territory, 'HEAD')));
+});
+
+test('init repairs origin push overrides and extra URLs so ordinary pushes cannot reach GitHub', async (t) => {
+  const { root, github, territory } = await fixture(t);
+  await init(root);
+  const before = git(github, 'show-ref');
+  git(root, 'config', '--add', 'remote.origin.pushurl', github);
+  git(root, 'config', '--add', 'remote.origin.url', github);
+  const changes = await init(root);
+  assert.equal(changes.find((c) => c.path.endsWith('remotes/origin'))?.action, 'updated');
+  assert.equal(git(root, 'remote', 'get-url', '--all', 'origin'), territory);
+  assert.equal(git(root, 'remote', 'get-url', '--push', '--all', 'origin'), territory);
+  git(root, 'push', '-q', 'origin', 'HEAD:refs/heads/t/T-1-local');
+  assert.equal(git(github, 'show-ref'), before);
 });
