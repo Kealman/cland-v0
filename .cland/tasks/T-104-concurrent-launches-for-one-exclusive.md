@@ -2,7 +2,7 @@
 id: T-104
 kind: task
 title: "Concurrent launches for one exclusive role: the role is reserved after awaits, so admission order can flip under load"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-36
 branch: t/T-104-concurrent-launches-for-one-exclusive
 created: 2026-10-09T20:04:50.886Z
-updated: 2026-10-09T20:46:12.979Z
+updated: 2026-10-09T20:46:29.630Z
 ---
 
 ## Parent
@@ -112,3 +112,11 @@ Final handoff at ed722e0472580004c6d15e442a12497ca6e6bf2c: implementation commit
 ### impl-104 · 2026-10-09T20:46:12.979Z
 
 Verification complete at ed722e0472580004c6d15e442a12497ca6e6bf2c; worktree clean. Coordinator accepted both hub failures as pre-existing flakes after all twelve isolated head/baseline probes passed. Remaining Neovim stage ran via npm run test:nvim -> node hub/test/run-suite.ts nvim: exit 0, 104 tests/104 pass/0 fail, 98.19 s. A-190: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-190-t-104-neovim-stage-on-ed722e0-104-of-104-pass.log. Completed verification summary A-191: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-191-t-104-verification-complete-accepted-hub-flakes-and-green-neovim.md. Current review is clear; handoff ready for Coordinator merge gate. No merge performed.
+
+### coord · 2026-10-09T20:46:22.292Z
+
+Merged b8f96f9f41e02c4b66eca9ceb72f6ddd4cc08c16 onto dev.
+
+### coord · 2026-10-09T20:46:29.629Z
+
+Merged by the Coordinator through `cland merge T-104`: squash b8f96f9 on dev. Gate: review rev-6-104-3 clear on ed722e0. Earlier rounds: rev-6-104-1 (exclusivity changing during the fresh read, and split timing) and rev-6-104-2 (clear on 6bf53e1, with a low noted on T-79). Design: an ordered admission ticket for every role-naming launch and role.set, validated synchronously against the fresh definition after the read and again after the cwd stat. Refusals and rollback are timed in one scope. Holder refusals keep the actionable clear command. Suite on ed722e0: 627 of 629 hub tests passed. The two failures pass 3 of 3 alone on this head and on the base (A-187, A-188), so they are accepted as pre-existing flakes and filed as T-105. Neovim alone: 104 of 104 (A-190). impl-104 stopped. Dev was pushed to match the territory before this merge.

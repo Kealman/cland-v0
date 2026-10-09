@@ -4,15 +4,15 @@ kind: task
 title: Merge, worktree and release checks still read items through the tracker's synchronous view
 state: open
 labels:
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T18:46:27.376Z
+updated: 2026-10-09T20:46:41.376Z
 ---
 
 ## Parent

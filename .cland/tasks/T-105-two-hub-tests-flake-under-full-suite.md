@@ -4,15 +4,15 @@ kind: task
 title: "Two hub tests flake under full-suite load: the deleted-project doctor sweep lock (ENOENT) and the process-row rename publication timeout"
 state: open
 labels:
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T20:43:35.328Z
-updated: 2026-10-09T20:43:35.328Z
+updated: 2026-10-09T20:46:41.240Z
 ---
 
 ## Parent
