@@ -177,7 +177,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   hub.dispatcher.useSessions(adapters.sessions);
   adapters.sessions.releaseInterruptedLaunches();
 
-  const discovery: Discovery = { socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
+  const discovery: Discovery = { root, socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   void adapters.sessions.resumeAll();

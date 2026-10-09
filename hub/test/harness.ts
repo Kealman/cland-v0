@@ -233,7 +233,7 @@ export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promi
   return root;
 }
 
-export type Discovery = { socket: string; port: number; secret: string; pid: number; version: string };
+export type Discovery = { root?: string; socket: string; port: number; secret: string; pid: number; version: string };
 
 export const readDiscovery = async (root: string): Promise<Discovery> => JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
 
