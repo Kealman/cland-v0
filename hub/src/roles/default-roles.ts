@@ -20,11 +20,11 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #                           writable_roots  with workspace-write: more writable directories, relative to the
 #                                           project root. One that holds .git is writable with it, and with the
 #                                           session's own worktree git directory, so the session can commit.
-#                           network         none (the default) | local (Unix sockets under .cland/, the session's
+#                           network         none | local (Unix sockets under .cland/, the session's
 #                                           directory and the temp dir, and loopback: the hub's socket, \`cland\`,
 #                                           tests that start hubs; every other host refused) | full
 #                         A key left out takes the role's built-in value (the ones written below), so a
-#                         launch table without these keys is still sandboxed; write "" for none.
+#                         launch table without these keys still gets its role policy; write "" for none.
 #                         A session that reaches the hub's socket can act as the human there (\`cland topic
 #                         answer\`): \`network = "local"\` trusts the role with that. See docs/review-and-qa.md.
 #   [<role>.permissions]  tools: the spoke tools the role may use, enforced by the hub on every call. A grant is
@@ -71,6 +71,7 @@ skills = ["implement", "tdd", "diagnosing-bugs"]
 clause = """
 You are an Implementer: you carry out one item at a time and report to the Coordinator.
 - Show work through \`artifact.create\` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
+- Codex launches default to never asking for approvals and full access: every harness must be able to do any work its role needs.
 - Work on the item you claimed (\`task.claim\`); comment on it as you go. Do not take items nobody gave you.
 - When you are stuck or need a decision, ask the Coordinator in a plain message (\`send\` to \`coordinator\`): only the Coordinator asks the human.
 - When the human mentions you in a topic (\`@implementer\` or your name), answer the human in that topic with \`send\` and no \`to\`. Otherwise do not write to the human.
@@ -84,11 +85,9 @@ harness = "opencode"
 # Edit to pin one, e.g. "opencode/big-pickle".
 model = ""
 effort = ""
-# Its own worktree and the main one, git directories included (it commits on its branch); the hub and local test servers, no outside network.
+# Full access so any harness can do the work its role needs (T-65, human decision 2026-10-09).
 approval = "never"
-sandbox = "workspace-write"
-writable_roots = ["."]
-network = "local"
+sandbox = "danger-full-access"
 
 [implementer.permissions]
 tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "who", "history", "status", "task.view", "task.list"]
@@ -122,8 +121,9 @@ skills = ["diagnosing-bugs"]
 clause = """
 You are QA: you exercise the running product when the Coordinator asks and return a verdict.
 - Show work through \`artifact.create\` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
+- Codex launches default to never asking for approvals and full access: every harness must be able to do any work its role needs.
 - A request is a hub message from the Coordinator, in the Agents topic or a topic bound to the item. Its first line is \`qa request T-<n>\`; the rest names what to check and on which branch or build.
-- Work: read the item with \`task.view\`, then run the checks yourself: shell-level checks (build, tests, the commands a user would run); the \`cland task\` CLI (\`cland task list\`, \`cland task view\`; the \`task.list\` and \`task.view\` tools answer the same when the CLI cannot reach the hub); and where UI is involved, a headless Neovim: one \`nvim --headless\` process running a Lua script that feeds keys with \`nvim_input\` and reads the grid with \`screenstring()\`, or the project's own test harness if it does that (\`nvim --headless --listen\` with \`--remote-send\` and \`--remote-expr\` needs a sandbox that allows sockets). Keep what you ran and what you saw. Do not fix what you find.
+- Work: read the item with \`task.view\`, then run the checks yourself: shell-level checks (build, tests, the commands a user would run); the \`cland task\` CLI (\`cland task list\`, \`cland task view\`); and where UI is involved, a headless Neovim: one \`nvim --headless\` process running a Lua script that feeds keys with \`nvim_input\` and reads the grid with \`screenstring()\`, or the project's own test harness if it does that (\`nvim --headless --listen\` with \`--remote-send\` and \`--remote-expr\`). Keep what you ran and what you saw. Do not fix what you find.
 - Verdict: one \`task.comment\` on the item with \`verdict\` qa, \`result\` clear or not clear, and \`run\` an id of your own for this pass (e.g. qa-<date>-<n>). The hub writes the header from them: \`verdict: qa\`, \`result: clear | not clear\`, \`by: <name> [<role>]\`, \`run: <id>\`. The text lists what you ran, then the findings ranked by severity (high, medium, low), each with file:line or the command and what it showed.
 - Report: \`send\` to the Coordinator, in the request's topic, with the first line \`qa clear T-<n>\` or \`qa not clear T-<n>\`, then the failures that matter.
 - Fallback: when no QA session is available, the Coordinator runs the same brief with \`/codex:rescue --wait --fresh --model gpt-6-astra\` and records the verdict itself in the same shape.
@@ -134,10 +134,9 @@ You are QA: you exercise the running product when the Coordinator asks and retur
 harness = "codex"
 model = "gpt-6-astra"
 effort = "high"
-# It runs the checks where it stands and writes nothing else (git directories stay read-only); the hub and local test servers, no outside network.
+# Full access so any harness can run the checks its role needs (T-65, human decision 2026-10-09).
 approval = "never"
-sandbox = "workspace-write"
-network = "local"
+sandbox = "danger-full-access"
 
 [qa.permissions]
 tools = ["send:agents", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]
