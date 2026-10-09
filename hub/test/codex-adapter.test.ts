@@ -11,11 +11,54 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
-import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
+test('a failed Codex turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['impl'], text: 'fail this turn' })).ok, true);
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.ok(inbox.notifications.some((n) => n.kind === 'turn-failed' && n.text === expected));
+  await coord.waitForEvent((e) => e.params.content.includes(expected));
+});
+
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
+
+for (const accepted of [false, true]) test(`Codex failure before a pending steer response notifies only admitted senders (${accepted ? 'accepted' : 'rejected'})`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(async () => { await coord.close(); await sender.close(); });
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await coord.call('send', { to: ['impl'], text: 'fail this turn' });
+  await presentAs(ui, 'impl', 'busy');
+  const body = `${accepted ? 'accept' : 'reject'} pending steer response`;
+  await sender.call('send', { to: ['impl'], text: body });
+  const sent = await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === body);
+  const id = (sent.message as { id: string }).id;
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await coord.waitForEvent((e) => e.params.content.includes(expected));
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  if (accepted) await sender.waitForEvent((e) => e.params.content.includes(expected));
+  assert.equal(sender.events.some((e) => e.params.content.includes(expected)), accepted);
+});
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 type StateEvent = { type: 'session.state'; session: string; state: string; source: string };

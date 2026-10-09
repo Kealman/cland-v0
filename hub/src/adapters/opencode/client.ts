@@ -124,13 +124,13 @@ export const formatModel = (m: ModelRef): string => `${m.providerID}/${m.id}`;
 
 /**
  * The default model when the launch names none: a free one the server lists — zero input and output price,
- * tool calls supported (the spoke's `send` is a tool), active. OpenCode Zen's own (`opencode/…`) first: they need
- * no key. Null when there is none: the server's own default then applies.
+ * tool calls supported (the spoke's `send` is a tool), active. Prefer the known-good `opencode/big-pickle`,
+ * then OpenCode Zen's own (`opencode/…`): they need no key. Null when none: the server's default applies.
  */
 export function pickFreeModel(models: ModelEntry[]): ModelRef | null {
   const free = models.filter(
     (m) => m.enabled !== false && (m.status === undefined || m.status === 'active') && m.capabilities?.tools !== false && Array.isArray(m.cost) && m.cost.length > 0 && m.cost.every((c) => c.input === 0 && c.output === 0),
   );
-  const pick = free.find((m) => m.providerID === 'opencode') ?? free[0];
+  const pick = free.find((m) => m.providerID === 'opencode' && m.id === 'big-pickle') ?? free.find((m) => m.providerID === 'opencode') ?? free[0];
   return pick ? { providerID: pick.providerID, id: pick.id } : null;
 }

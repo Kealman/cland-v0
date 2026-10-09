@@ -128,7 +128,7 @@ export type InboxAsk = { id: string; topic: TopicRef; question: string; options:
 /** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
 export type InboxApproval = { session: string; label: string; harness: string | null; since: string | null; attach: string | null };
 
-export type NotificationKind = 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain';
+export type NotificationKind = 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed';
 
 /** Something worth the human's eye from the journal (until #34, the hub's own events): dismissable, never blocking. */
 export type InboxNotification = {

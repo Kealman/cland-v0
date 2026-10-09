@@ -111,6 +111,9 @@ export class InboxBoard {
         if (!DEATH_REASONS.has(event.reason) && event.reason !== 'handover') this.#roleChange(event);
         break;
       case 'message':
+        if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'turn-failed') {
+          this.#notify('turn-failed', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
+        }
         // a handover (#31) moves a role between two sessions: its `handover` notice in Agents (#34) says who handed
         // what to whom, once, where its two `session.role` events would make two rows
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'handover') {

@@ -130,6 +130,8 @@ export class Sessions {
       root: this.#root,
       log: this.#log,
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
+      turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
+      notifyFailureSenders: (sessionId, error, messages) => this.#notifyTurnSenders(sessionId, error, messages),
       exited: (sessionId, detail) => this.#exited(sessionId, detail),
       reconnected: (sessionId) => {
         const p = this.#table.bySessionId(sessionId);
@@ -358,10 +360,16 @@ export class Sessions {
     // the harness's own conversation id, as its hooks carry it (a `/clear` starts a new one)
     const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
     if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
-    const meaning = adapter.interpret(frame.event, payload);
+    const meaning = adapter.interpret(frame.event, payload, p);
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
     if (meaning.usage) adapter.noteUsage?.(p, meaning.usage);
+    if (meaning.turnError) {
+      const error = meaning.turnError;
+      this.#turnFailed(p.sessionId, error, []);
+      // A failure may beat its input's confirmation. The adapter reconciles them by harness identity.
+      if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages));
+    }
     if (!meaning.state) return { applied: false };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now() }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
@@ -389,6 +397,27 @@ export class Sessions {
     // the next idle — a transition, not every poll that finds it idle — retries what was never confirmed
     if (signal.state === 'idle' && changed) this.#retry(p, signal.at);
     return changed;
+  }
+
+  #turnFailed(sessionId: string, error: string, messages: string[]): void {
+    const p = this.#table.bySessionId(sessionId);
+    if (!p || p.status !== 'running') return;
+    const text = `${this.#core.label(p.name)}: its turn failed: ${error}`;
+    // The lifecycle log feeds Agents through its journalled notice path; that notice also feeds the inbox.
+    this.#log({ event: 'turn-failed', session: p.name, harness: p.harness, error, text, messages });
+    this.#notifyTurnSenders(sessionId, error, messages);
+  }
+
+  #notifyTurnSenders(sessionId: string, error: string, messages: string[]): void {
+    const p = this.#table.bySessionId(sessionId);
+    if (!p || p.status !== 'running') return;
+    const text = `${this.#core.label(p.name)}: its turn failed: ${error}`;
+    const senders = new Set<string>();
+    for (const id of messages) {
+      const message = this.#core.store.message(id);
+      if (message?.fromKind === 'agent') senders.add(message.from);
+    }
+    for (const sender of senders) this.#core.notify(sender, text);
   }
 
   #exited(sessionId: string, detail: string): void {

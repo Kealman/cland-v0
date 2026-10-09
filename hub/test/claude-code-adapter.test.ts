@@ -14,6 +14,26 @@ type Harness = { name: string; harness: string; pid: number | null; harnessId: s
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 type StateEvent = { type: 'session.state'; session: string; state: string; source: string };
 
+test('a Claude Code StopFailure is recorded in Agents and the inbox and reported to the sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 600_000, turnMs: 1000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
+  const mark = ui.frames.length;
+  await launch(ui, 'impl', { role: 'implementer' });
+  await aTurn(ui, 'impl', mark);
+  assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['impl'], text: 'fail this turn' })).ok, true);
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.ok(inbox.notifications.some((n) => n.kind === 'turn-failed' && n.text === expected));
+  await coord.waitForEvent((e) => e.params.content.includes(expected));
+});
+
 async function status(ui: FrameClient): Promise<Status> {
   const r = await ui.request({ type: 'hub.status' });
   assert.equal(r.ok, true, r.error);

@@ -200,6 +200,7 @@ async function runSession(id: string): Promise<number> {
   writeJson(join(JOBS, `${id}.context.json`), { instructions, hooks: Object.fromEntries([...events].map((e) => [e, hooksOf(e).flatMap((h) => h.hooks.map((x) => x.command))])) });
 
   // the settings hooks: a shell command, the payload on stdin; `async` ones run in the background
+  let promptId: string | undefined;
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
     const background: Array<Promise<void>> = [];
     for (const entry of hooksOf(event)) {
@@ -214,7 +215,7 @@ async function runSession(id: string): Promise<number> {
             resolve();
           });
           child.on('error', () => resolve());
-          child.stdin.end(JSON.stringify({ session_id: job.sessionId, hook_event_name: event, cwd: job.cwd, ...payload }));
+          child.stdin.end(JSON.stringify({ session_id: job.sessionId, prompt_id: promptId, hook_event_name: event, cwd: job.cwd, ...payload }));
         });
         if (!h.async) await run;
         else background.push(run);
@@ -375,6 +376,7 @@ async function runSession(id: string): Promise<number> {
     }
     log(`submitted: ${next.text}`);
     const turnId = randomBytes(4).toString('hex');
+    promptId = turnId;
     const started = Date.now();
     setStatus('busy');
     await runHooks('UserPromptSubmit', { prompt: next.text });
@@ -382,6 +384,12 @@ async function runSession(id: string): Promise<number> {
     next.started();
     await new Promise((r) => setTimeout(r, turnMs));
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(next.text)?.[1] ?? next.text;
+    if (body.includes('fail this turn')) {
+      setStatus('idle');
+      await runHooks('StopFailure', { error: 'server_error', error_details: 'Upstream request failed: Endpoint is unavailable\nupstream details' });
+      await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
+      continue;
+    }
     const rename = /^rename to (\S+)$/.exec(body.trim());
     if (rename) await callTool('rename', { name: rename[1] });
     if (body.includes('needs approval')) {

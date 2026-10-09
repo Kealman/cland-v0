@@ -13,10 +13,11 @@
 // heuristic. A pending approval outranks a pending form, which outranks running.
 import type { SessionState } from '../../protocol.ts';
 import { formatModel, type ModelRef, type ServerEvent } from './client.ts';
+import { turnError } from '../turn-error.ts';
 
 export type Usage = { model?: string; inputTokens: number; outputTokens: number; reasoningTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cost: number };
 
-export type Change = { state?: SessionState; usage?: Usage; model?: string };
+export type Change = { state?: SessionState; usage?: Usage; model?: string; ended?: true; turnError?: string };
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -70,7 +71,7 @@ export class SessionTracker {
         this.running = false;
         this.permissions.clear();
         this.forms.clear();
-        return this.#emit();
+        return { ...this.#emit(), ended: true, ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error) } : {}) };
       case 'permission.asked': {
         const id = str(d.id);
         if (id) this.permissions.add(id);

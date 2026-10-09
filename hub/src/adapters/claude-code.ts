@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
 import { signalProcess } from './processes.ts';
+import { turnError } from './turn-error.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 
 export const CLAUDE_CODE = 'claude-code';
@@ -122,7 +123,7 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
       return { state: 'busy', ...(confirms.length ? { confirms } : {}) };
     }
     case 'turn-end':
-      return { state: 'idle' };
+      return { state: 'idle', ...(payload.hook_event_name === 'StopFailure' || payload.error ? { turnError: turnError(payload.error_details ?? payload.error) } : {}) };
     case 'mod-turn-complete': {
       const usage = typeof payload.usage === 'object' && payload.usage !== null ? (payload.usage as Record<string, unknown>) : undefined;
       return { state: 'idle', ...(usage ? { usage } : {}), ...(usage && typeof usage.model === 'string' ? { model: usage.model } : {}) };
@@ -143,6 +144,9 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
 }
 
 type Pending = { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout };
+type Prompt = { messages?: string[]; resolve?: (messages: string[]) => void };
+/** Enough recent prompts for delayed hooks; eviction drops uncertain attribution rather than guessing. */
+const PROMPT_HISTORY_LIMIT = 64;
 
 export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly harness = CLAUDE_CODE;
@@ -159,6 +163,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   /** The mod's bridge of each session: where inject frames go. */
   readonly #bridges = new Map<string, (frame: InjectFrame) => boolean>();
   readonly #pending = new Map<string, Pending>();
+  readonly #prompts = new Map<string, Map<string, Prompt>>();
   /** Running totals and the last usage the mod reported, by session id. */
   readonly #usage = new Map<string, SessionUsage>();
   /** Sessions being stopped: still watched, but their exit is the stop's to report. */
@@ -334,8 +339,27 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     pending.resolve();
   }
 
-  interpret(event: string, payload: Record<string, unknown>): Interpretation {
-    return interpret(event, payload);
+  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess): Interpretation {
+    const meaning = interpret(event, payload);
+    const id = typeof payload.prompt_id === 'string' ? payload.prompt_id : null;
+    if (!p || !id || (event !== 'turn-start' && !meaning.turnError)) return meaning;
+    const prompts = this.#prompts.get(p.sessionId) ?? new Map<string, Prompt>();
+    this.#prompts.set(p.sessionId, prompts);
+    const prompt = prompts.get(id) ?? {};
+    prompts.set(id, prompt);
+    if (event === 'turn-start') {
+      prompt.messages = meaning.confirms ?? [];
+      prompt.resolve?.(prompt.messages);
+      delete prompt.resolve;
+    } else {
+      meaning.failureMessages = prompt.messages !== undefined ? Promise.resolve(prompt.messages) : new Promise((resolve) => { prompt.resolve = resolve; });
+    }
+    while (prompts.size > PROMPT_HISTORY_LIMIT) {
+      const oldest = prompts.keys().next().value as string;
+      prompts.get(oldest)?.resolve?.([]);
+      prompts.delete(oldest);
+    }
+    return meaning;
   }
 
   noteUsage(p: HarnessProcess, usage: Record<string, unknown>): void {
@@ -357,6 +381,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   #unwatch(sessionId: string): void {
+    for (const prompt of this.#prompts.get(sessionId)?.values() ?? []) prompt.resolve?.([]);
+    this.#prompts.delete(sessionId);
     this.#watched.delete(sessionId);
     if (this.#watched.size === 0 && this.#timer) {
       clearInterval(this.#timer);
@@ -449,6 +475,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   close(): void {
+    for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
+    this.#prompts.clear();
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = null;
     this.#watched.clear();

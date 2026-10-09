@@ -257,11 +257,17 @@ async function appServer(args: string[]): Promise<number> {
 
   const runTurn = async (t: Thread) => {
     const turnId = t.turnId as string;
+    let error: { message: string } | null = null;
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
       log(`turn ${turnId} item: ${item.text}`);
       await sleep(TURN_MS);
       const body = /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1];
       if (body === undefined) continue; // the clause, or text that is no cland message: nothing to answer
+      if (body.includes('fail this turn')) {
+        error = { message: 'Upstream request failed: Endpoint is unavailable\nupstream details' };
+        t.queue.length = 0;
+        break;
+      }
       if (body.includes('needs approval')) {
         await callTool('status', { text: 'idle' });
         const itemId = randomUUID();
@@ -299,7 +305,7 @@ async function appServer(args: string[]): Promise<number> {
     t.turnId = null;
     // as the real one: idle is sent before turn/completed
     setStatus(t, { type: 'idle' });
-    toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: 'completed', items: [] } });
+    toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: error ? 'failed' : 'completed', error, items: [] } });
   };
 
   const textOf = (params: Record<string, unknown>): string => {
@@ -396,6 +402,14 @@ async function appServer(args: string[]): Promise<number> {
         if (!t?.turnId) return { error: { code: -32600, message: 'no active turn to steer' } };
         if (params.expectedTurnId !== t.turnId) return { error: { code: -32600, message: `expected turn ${String(params.expectedTurnId)}, active turn is ${t.turnId}` } };
         const text = textOf(params);
+        if (text.includes('pending steer response')) {
+          const expected = t.turnId;
+          const accepted = text.includes('accept pending steer response');
+          if (accepted) t.queue.push({ text });
+          while (t.turnId === expected) await sleep(5);
+          await sleep(50); // completion reaches the hub before this admission result
+          return accepted ? { result: { turnId: expected } } : { error: { code: -32600, message: 'the active turn ended before steering' } };
+        }
         t.queue.push({ text });
         log(`turn/steer ${t.turnId}: ${text}`);
         return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };

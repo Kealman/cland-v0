@@ -8,7 +8,7 @@ import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
@@ -112,6 +112,61 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
   await stop.done;
   assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
   assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
+});
+
+test('late Claude start and StopFailure hooks keep failure notes with their own turn sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 600_000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const mark = ui.frames.length;
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await clauseTurnDone(ui, 'coord', mark);
+  const a = await spawnSpoke({ cwd: root, discover: true, name: 'sender-a', role: 'implementer' });
+  const b = await spawnSpoke({ cwd: root, discover: true, name: 'sender-b', role: 'reviewer' });
+  t.after(async () => { await a.close(); await b.close(); });
+  await a.call('send', { to: ['coord'], text: 'first turn' });
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first turn');
+  await presentAs(ui, 'coord', 'idle');
+  await b.call('send', { to: ['coord'], text: 'second turn' });
+  const first = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender-a');
+  const second = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender-b');
+  const firstId = (first.message as { id: string }).id;
+  const secondId = (second.message as { id: string }).id;
+  await eventually('both inputs answered', () => ui.frames.filter((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'coord' && ['pong: first turn', 'pong: second turn'].includes((f.message as { text: string }).text)).length === 2 ? true : undefined);
+  const at = Date.now() + 10_000;
+  const signal = (event: string, payload: Record<string, unknown>) => hook(root, event, { session: 'coord', launch: launched.sessionId, payload }).done;
+  await signal('turn-start', { at, prompt_id: 'first', ids: [firstId] });
+  await signal('turn-start', { at: at + 2000, prompt_id: 'second', ids: [secondId] });
+  await signal('turn-start', { at: at + 100, prompt_id: 'first', ids: [firstId] }); // A's older hook arrives after B's
+  await signal('turn-end', { at: at + 1000, prompt_id: 'first', hook_event_name: 'StopFailure', error: 'server_error', error_details: 'first turn failed' });
+  await a.waitForEvent((e) => e.params.content.includes('its turn failed: first turn failed'));
+  assert.equal(b.events.some((e) => e.params.content.includes('its turn failed: first turn failed')), false);
+  assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older failure is reported without replacing the newer busy');
+  await signal('turn-end', { at: at + 3000, prompt_id: 'second', hook_event_name: 'StopFailure', error: 'server_error', error_details: 'second turn failed' });
+  await b.waitForEvent((e) => e.params.content.includes('its turn failed: second turn failed'));
+  assert.equal(a.events.some((e) => e.params.content.includes('its turn failed: second turn failed')), false);
+
+  await t.test('failure before its start hook reports immediately and later notifies the matching prompt sender', async () => {
+    await signal('turn-start', { prompt_id: 'prior', ids: [firstId] });
+    await signal('turn-end', { prompt_id: 'late-start', hook_event_name: 'StopFailure', error: 'failure before start' });
+    await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text.includes('failure before start'));
+    assert.equal(a.events.some((e) => e.params.content.includes('its turn failed: failure before start')), false);
+    assert.equal(b.events.some((e) => e.params.content.includes('its turn failed: failure before start')), false);
+    await signal('turn-start', { prompt_id: 'late-start', ids: [secondId] });
+    await b.waitForEvent((e) => e.params.content.includes('its turn failed: failure before start'));
+    assert.equal(a.events.some((e) => e.params.content.includes('its turn failed: failure before start')), false);
+  });
+
+  await t.test('bounded prompt history discards unresolved old attribution without guessing', async () => {
+    await signal('turn-end', { prompt_id: 'expired', hook_event_name: 'StopFailure', error: 'expired failure' });
+    for (let i = 0; i < 128; i++) await ui.request({ type: 'session.signal', session: 'coord', launch: launched.sessionId, event: 'turn-start', payload: { prompt_id: `recent-${i}`, ids: [secondId] } });
+    await signal('turn-start', { prompt_id: 'expired', ids: [firstId] });
+    await signal('turn-end', { prompt_id: 'recent-127', hook_event_name: 'StopFailure', error: 'recent failure' });
+    await b.waitForEvent((e) => e.params.content.includes('its turn failed: recent failure'));
+    assert.equal(a.events.some((e) => e.params.content.includes('its turn failed: expired failure')), false);
+  });
 });
 
 test('a signal from an earlier launch under the same name changes nothing of the process that replaced it', async (t) => {
