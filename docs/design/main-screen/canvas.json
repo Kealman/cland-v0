@@ -1,6 +1,6 @@
 {
   "v": 3,
-  "createdOnFiles": {"v": 1, "at": "2026-10-08T06:30:00Z"},
+  "createdOnFiles": {"v": 1, "at": "2026-10-09T17:01:12Z"},
   "title": "cland Main Screen",
   "launch": {"view": "canvas"},
   "pages": [],
@@ -12,13 +12,19 @@
     "Session.dc.html": {"x": 0, "y": 3000, "w": 1440, "h": 900, "title": "Center view: live harness session"},
     "Item.dc.html": {"x": 1520, "y": 3000, "w": 1440, "h": 900, "title": "Center view: item detail"},
     "Pickers.dc.html": {"x": 3040, "y": 3000, "w": 1440, "h": 900, "title": "Floating pickers"},
-    "Inbox.dc.html": {"x": 4560, "y": 3000, "w": 1440, "h": 900, "title": "Inbox anatomy"}
+    "Inbox.dc.html": {"x": 4560, "y": 3000, "w": 1440, "h": 900, "title": "Inbox anatomy"},
+    "ItemsBoard.dc.html": {"x": 0, "y": 4500, "w": 1440, "h": 900, "title": "Items panel: vertical board (T-99)"},
+    "SessionsPanel.dc.html": {"x": 1520, "y": 4500, "w": 1440, "h": 900, "title": "Sessions panel: groups (T-99)"},
+    "Palette.dc.html": {"x": 3040, "y": 4500, "w": 1440, "h": 900, "title": "Command palette (T-99)"},
+    "Thread.dc.html": {"x": 0, "y": 6000, "w": 1440, "h": 900, "title": "Thread rendering (T-97)"}
   },
-  "order": ["Main.dc.html", "Charting.dc.html", "Watch.dc.html", "Steady.dc.html", "Session.dc.html", "Item.dc.html", "Pickers.dc.html", "Inbox.dc.html"],
+  "order": ["Main.dc.html", "Charting.dc.html", "Watch.dc.html", "Steady.dc.html", "Session.dc.html", "Item.dc.html", "Pickers.dc.html", "Inbox.dc.html", "ItemsBoard.dc.html", "SessionsPanel.dc.html", "Palette.dc.html", "Thread.dc.html"],
   "notes": {
     "t1": {"x": 0, "y": -300, "text": "cland main screen: one shell, panels that toggle, the item list at the centre of everything", "kind": "title1", "maxW": 1440},
     "t2": {"x": 0, "y": 1200, "text": "The same shell across the three stages: nothing is a mode, only which panels are open", "kind": "title1", "maxW": 4480},
-    "t3": {"x": 0, "y": 2700, "text": "Center views and overlays: session, item, pickers, inbox", "kind": "title1", "maxW": 6000}
+    "t3": {"x": 0, "y": 2700, "text": "Center views and overlays: session, item, pickers, inbox", "kind": "title1", "maxW": 6000},
+    "t4": {"x": 0, "y": 4200, "text": "v0.1 panels: the items panel as a vertical board, sessions grouped by state, one palette for everything", "kind": "title1", "maxW": 4480},
+    "t5": {"x": 0, "y": 5700, "text": "v0.1 thread: bands, Markdown, folded agent runs", "kind": "title1", "maxW": 1440}
   },
   "designSystems": []
 }

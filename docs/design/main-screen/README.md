@@ -13,8 +13,10 @@ The approved design of cland's main screen (wayfinder ticket #15, 2026-10-08). A
 - `Session.dc.html`, `Item.dc.html`: the attached-session view and the item view.
 - `Pickers.dc.html`: the one floating picker and its four kinds.
 - `Inbox.dc.html`: the inbox sections, what feeds them, the row actions, and the three motions `gi` / `gt` / `gs`.
+- `ItemsBoard.dc.html`, `SessionsPanel.dc.html`, `Palette.dc.html`: v0.1, the items panel as a vertical board, the sessions panel grouped by state, and the command palette (map ticket T-99; behaviour on branch `prototype/panels`).
+- `Thread.dc.html`: v0.1, the thread rendering with role gutters, layers and folded agent runs (map ticket T-97; behaviour on branch `prototype/thread`).
 - `canvas.json`: the artboard layout of the design canvas (https://claude.ai/artifact/TuzGTeNLthjo2RLwMyhZfp, private to the owner).
-- `screens/`: PNG renders of the Neovim prototype at 200x50 for the workbench and the three presets.
+- `screens/`: PNG renders of the Neovim prototype at 200x50 for the v0 workbench and the three presets, and `v01-*.png` renders of the v0.1 mockups.
 
 ## Visual vocabulary
 

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: items panel as a vertical board</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.ep{color:#5b6472;font-size:12px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.isec{color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding-top:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.msg{display:flex;flex-direction:column;gap:2px;padding:6px 0}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.verdict{border:1px solid #2a3340;border-radius:5px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.crit{display:flex;gap:10px;align-items:baseline}
+.crit .cid{color:#8a94a3;min-width:22px}
+.crit .mk{margin-left:auto;padding-left:16px;color:#8a94a3;font-size:12px;white-space:nowrap}
+.note{padding-left:50px;margin-top:-6px;font-size:12px}
+.field{display:flex;flex-direction:column;gap:2px;font-size:12px}
+.field .l{color:#8a94a3}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">T-58 Rank among siblings</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+    <span class="chip">sessions <span class="badge n">5</span> <span class="warn">1▲</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 440px">
+      <div class="ph"><span>items · <span style="text-transform: none">v0.1</span></span><span>board · 12 in work · 6 done</span></div>
+      <div class="tabs"><span class="dim" style="color: #5b6472">epic</span><span class="cur">all</span><span>E-5 Tracker</span><span>E-6 Panels</span><span>E-7 Crew</span><span>E-8 Thread</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+
+        <div class="sec"><span>▾</span><span>in progress (3)</span></div>
+        <div class="row sel"><span class="teal">◐</span><span class="id">T-58</span><span class="ep">E-5 ›</span><span class="t">Rank among siblings</span><span class="claim">impl-58 <span class="bad">✗</span></span><span class="badge">?</span><span class="frac">2/5</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-63</span><span class="ep">E-6 ›</span><span class="t">Sessions grouped by state</span><span class="claim">impl-63</span><span class="frac">0/4</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-66</span><span class="ep">E-6 ›</span><span class="t">Palette action registry</span><span class="claim">impl-66</span><span class="frac">0/3</span></div>
+
+        <div class="sec"><span>▾</span><span>review (2)</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-61</span><span class="ep">E-5 ›</span><span class="t">Status moves on events</span><span class="claim">rev-6 <span class="warn">▲</span></span><span class="frac">2/4</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-69</span><span class="ep">E-7 ›</span><span class="t">Aide role clause</span><span class="claim dim">for Reviewer</span><span class="frac">0/3</span></div>
+
+        <div class="sec"><span>▾</span><span>qa (1)</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-57</span><span class="ep">E-5 ›</span><span class="t">Status field in the index</span><span class="claim">qa-12</span><span class="frac">3/4</span></div>
+
+        <div class="sec"><span>▾</span><span>ready (1)</span></div>
+        <div class="row"><span class="ok">◉</span><span class="id">T-55</span><span class="ep">E-5 ›</span><span class="t">Release item kind</span><span class="claim ok">✓ review ✓ qa</span><span class="frac ok">4/4</span></div>
+
+        <div class="sec"><span>▾</span><span>planned (5)</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-67</span><span class="ep">E-5 ›</span><span class="t">Criteria parser and marks</span><span class="claim">next</span><span class="frac">0/4</span></div>
+        <div class="row dim"><span>◌</span><span class="id">T-68</span><span class="ep">E-6 ›</span><span class="t">Vertical items board</span><span class="claim dim">by T-58</span><span class="frac">0/5</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-70</span><span class="ep">E-7 ›</span><span class="t">Aide key and yours group</span><span class="claim"></span><span class="frac">0/2</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-71</span><span class="ep">E-7 ›</span><span class="t">Event subscriptions</span><span class="claim"></span><span class="frac">0/3</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-72</span><span class="ep">E-8 ›</span><span class="t">Thread folds agent runs</span><span class="claim"></span><span class="frac">0/3</span></div>
+
+        <div class="sec" style="padding-top: 12px"><span>▸</span><span>backlog (9)</span><span class="r">za unfolds</span></div>
+        <div class="sec" style="margin-top: 10px; border-top: 1px solid #1a212b; padding-top: 10px"><span>▸</span><span>unscheduled (3)</span><span class="r">in no release</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">K J rank among siblings · T to the top</div>
+      <div class="row dim" style="font-size: 12px">↵ open · za fold · 1-5 or f filter · gt gs</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="ph"><span>T-58 · task · in progress</span><span>gt topic · gs session · gb branch · e edit · x close</span></div>
+      <div style="display: flex; flex: 1; min-height: 0">
+        <div style="flex: 1; min-width: 0; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+          <div class="dim" style="font-size: 12px">v0.1 › E-5 Tracker › T-58</div>
+          <div style="font-size: 18px; line-height: 24px; font-weight: 600">Rank among siblings</div>
+          <div class="dim" style="font-size: 12px">.cland/tasks/T-58-rank-among-siblings.md · created 2026-10-12 · updated 11:55</div>
+          <div style="border-top: 1px solid #222a35; padding-top: 10px">A task or an epic carries <span class="blue">rank</span>, a sparse integer that orders it among the items with the same parent. <span class="blue">cland task rank T-n --top</span>, <span class="blue">--before T-m</span> and <span class="blue">--after T-m</span> renumber only what they must; lists sort by rank, then id.</div>
+          <div class="isec">acceptance criteria · 2 of 5 verified</div>
+          <div class="crit"><span class="ok">●</span><span class="cid">C1</span><span>--top makes it first and renumbers the fewest</span><span class="mk">verified · rev-6 · r-0611</span></div>
+          <div class="crit"><span class="ok">●</span><span class="cid">C2</span><span>Lists sort by rank, then id</span><span class="mk">verified · rev-6 · r-0611</span></div>
+          <div class="crit"><span class="bad">✗</span><span class="cid">C3</span><span>--before and --after keep the sibling gaps</span><span class="mk bad">failed · rev-6 · r-0611</span></div>
+          <div class="note dim">note: a move to the top renumbers every sibling, not only the two around the gap</div>
+          <div class="crit"><span class="teal">◐</span><span class="cid">C4</span><span>The next item is the lowest-ranked unblocked planned task</span><span class="mk">done · impl-58</span></div>
+          <div class="crit"><span class="dim">○</span><span class="cid">C5</span><span>The high label retires with the migration</span><span class="mk">open</span></div>
+          <div class="isec">verdicts</div>
+          <div class="verdict" style="border-color: #ff7b72"><div><span class="bad">✗ review · not clear</span> <span class="dim">· rev-6 [Reviewer] · run r-0611 · round 1 · 11:48</span></div><div class="dim">2 findings, both in the renumbering · verified C1, C2 on 4f2a9c1 · failed C3</div></div>
+          <div class="verdict"><div><span class="dim">qa · required · not started</span></div></div>
+          <div class="isec">comments · 2</div>
+          <div class="msg"><div class="who"><b>rev-6</b><span class="role">Reviewer</span><span>11:48</span></div><div>C1 and C2 hold. C3 fails: a move to the top renumbers the whole sibling list, so the sparse gaps are gone after the first move.</div></div>
+          <div class="msg"><div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>11:55</span></div><div>impl-58 waits for the fix brief. I asked the human how much rev-6 re-reviews after the fix.</div></div>
+        </div>
+        <div style="width: 300px; border-left: 1px solid #222a35; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; background: #0d1117">
+          <div class="field"><span class="l">status</span><span class="teal">◐ in progress · set by the review at 11:48</span></div>
+          <div class="field"><span class="l">rank</span><span>20 · second in E-5 · K J move it</span></div>
+          <div class="field"><span class="l">release › parent</span><span>v0.1 › E-5 Tracker</span></div>
+          <div class="field"><span class="l">kind · labels</span><span>task · tracker</span></div>
+          <div class="field"><span class="l">assignee</span><span>Implementer</span></div>
+          <div class="field"><span class="l">claim</span><span class="teal">impl-58 · Implementer · idle 40m</span></div>
+          <div class="field"><span class="l">topic</span><span><a href="#">T-58 Rank among siblings</a> · <span class="warn">ask open</span></span></div>
+          <div class="field"><span class="l">branch</span><span>t/T-58-rank-among-siblings · 5 commits</span></div>
+          <div class="field"><span class="l">blocked by</span><span class="dim">none</span></div>
+          <div class="field"><span class="l">blocks</span><span>T-68 Vertical items board</span></div>
+          <div class="field"><span class="l">criteria</span><span>2 of 5 verified · <span class="bad">1 failed</span></span></div>
+          <div class="field"><span class="l">cost so far</span><span>$3.10 · 380k tokens</span></div>
+          <div class="field" style="margin-top: auto"><span class="l">merge gate</span><span class="dim">refused: C3 failed · C4 and C5 not verified · review not clear</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>T-58 · in progress · claim impl-58 · review not clear</span>
+    <span>hub: ok</span>
+    <span>sessions: 3 busy · 1 waiting · 2 idle</span>
+    <span style="margin-left: auto">items panel: release v0.1 by status; backlog and unscheduled folded, done hidden</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

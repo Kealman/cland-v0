@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T20:35:46.038Z
+updated: 2026-10-09T20:50:46.659Z
 ---
 
 ## Destination
@@ -35,7 +35,7 @@ updated: 2026-10-09T20:35:46.038Z
 - A brief at launch: `session.launch` and `cland session launch` take a brief (text or an artifact). The hub delivers it right after the role clause, before the session's first turn, as its first delivery.
 - Sessions panel: one line per session (name, role, state glyph, item); harness, model and usage on the selected row only. Groups in the order waiting, busy, idle; stopped sessions folded into one "stopped (N)" line that a key unfolds.
 - Board: shows items of open parents only (epics, later releases), with a parent filter in its header. Closed items of a closed epic leave the board.
-- Focus: `C-h/j/k/l` move focus between windows in every mode, terminal included, so leaving a session is a move; Esc always goes to the harness; one "leave terminal" key that never reaches the harness. The exact bindings come from the free-keys research.
+- Focus: `C-h/j/k/l` move focus between windows in every mode, terminal included, so leaving a session is a move; Esc always goes to the harness; one "leave terminal" key that never reaches the harness. The exact bindings come from the free-keys research (T-85) and are recorded in spec §3.12.
 - Palette: `␣p` becomes one command palette. No prefix searches objects and actions together; prefixes `>` actions, `#` items, `@` sessions, `~` artifacts, `/` topics. Every cland action (`:Cland` subcommands, panel toggles, session launch, answering an ask) is registered with a title and its key. Built on Neovim's built-in fuzzy matching, no plugin.
 - The "in work" filter bug is the tracker item T-80, not a map ticket; the status ticket decides the model it waits on.
 - Dogfooding: the v0.1 epics carry the label `v0.1`; when the release kind exists they move under the release item. No stopgap epic.
@@ -57,6 +57,7 @@ updated: 2026-10-09T20:35:46.038Z
 - Epic plan: shape, home, author and how the merge gate reads it (T-96, .cland/tasks/T-96-epic-plan-shape-home-author-and-how-the.md): a plan is ordered stages of parallel lanes with a QA policy per stage (scope and per-item or after-stage), kept as a YAML block in the epic's file and validated by the hub; written by a plan-epic skill before the epic starts, human approval configurable; the merge gate reads the QA policy from it and the qa-required label retires.
 - Free keys in the three harness TUIs for focus moves and leaving a terminal (T-85, .cland/tasks/T-85-free-keys-in-the-three-harness-tuis-for.md; branch research/free-keys, docs/research/free-keys.md with its probe kit): C-h, C-j, C-k and C-l reach Neovim intact on every path (Ghostty in both encodings, tmux with and without extended keys), at the cost of the harnesses' own C-j newline and C-k delete-to-end-of-line, and C-h and C-l in Claude Code and Codex; a lone C-\ is the strongest leave-terminal key, unbound everywhere; C-Space and Option chords are ruled out on this machine; Meta chords depend on timing through tmux; three local conditions break the four keys (a Ghostty shift+enter=text line, the Russian layout's Cyrillic chords, a tty erase of ^H); all three harnesses turn on the kitty keyboard protocol.
 - Neovim rendering techniques for the thread and a task graph (T-86, .cland/tasks/T-86-neovim-rendering-techniques-for-the.md; branch research/nvim-rendering, docs/research/nvim-rendering.md with 28 repeatable probes): every thread technique works in Neovim 0.12.5 without plugins (line bands, gutters, virtual lines, folds, tree-sitter Markdown with conceal, which hides less than render-markdown does); one Markdown tree for a whole thread is fragile, so render per message; narrow widths break five things; a full rewrite of 200 messages costs 17 to 33 ms; the graph of an epic the size of T-19 fits a buffer with Sugiyama layering, and legibility, not speed, is the limit.
+- Workbench panels: vertical board, session groups, the palette (T-99, .cland/tasks/T-99-workbench-panels-vertical-board-session.md): the mockups ItemsBoard, SessionsPanel and Palette accepted; the prototype on prototype/panels is the behavioural reference; keys K/J/T for rank, za for folds, ␣A for an Aide, the palette with prefixes and every action's key; the focus keys recorded with them: C-h/j/k/l in every mode, a lone C-\ leaves a terminal, langmap for layouts, no Cyrillic duplicates.
 
 ## Not yet specified
 

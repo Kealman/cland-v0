@@ -68,6 +68,10 @@ _Avoid_: phase, milestone, sprint, iteration
 An ordered list of items in a stage that one session takes in turn, or one session per item. The crew policy per-group means one session per lane.
 _Avoid_: group, batch, track, stream
 
+**Palette**:
+The one floating search over everything in cland: items, sessions, topics, artifacts and every action, each action with its key. A prefix narrows it to one kind.
+_Avoid_: picker, finder, command bar, spotlight, launcher
+
 **Role clause**:
 The instruction text a role carries; the hub delivers it to the session that holds the role.
 _Avoid_: system prompt, role prompt, persona text

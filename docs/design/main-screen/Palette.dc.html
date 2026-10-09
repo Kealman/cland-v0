@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: command palette</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.panel.right{border-right:0;border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.ep{color:#5b6472;font-size:12px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.xrow{display:flex;gap:8px;padding:0 12px 0 30px;font-size:12px;line-height:18px;white-space:nowrap;overflow:hidden}
+.xrow .l{color:#8a94a3;min-width:56px}
+.msg{display:flex;flex-direction:column;gap:2px;padding:8px 16px}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.stage{margin-left:auto;color:#8a94a3}
+.card{margin:6px 16px;border:1px solid #3a3320;background:#171510;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.compose{border-top:1px solid #222a35;background:#0d1117;padding:8px 16px;display:flex;flex-direction:column;gap:6px}
+.input{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:8px 10px;color:#d6dbe4;min-height:44px;font:inherit}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.pick{border:1px solid #2a3340;border-radius:8px;background:#10141b;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column}
+.pt{display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px}
+.pt .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.pq{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #222a35;color:#d6dbe4}
+.pf{display:flex;gap:14px;padding:6px 14px;border-top:1px solid #222a35;color:#8a94a3;font-size:12px}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23;padding:0 4px}
+.cap{color:#8a94a3;font-size:12px;line-height:16px}
+.pick b{color:#6aa5ff}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.bad{color:#ff7b72}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar" style="opacity: .45">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">General</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+    <span class="chip">sessions <span class="badge n">5</span> <span class="warn">1▲</span></span>
+  </div>
+
+  <div style="position: relative; display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 440px">
+      <div class="ph"><span>items · <span style="text-transform: none">v0.1</span></span><span>board · 12 in work · 6 done</span></div>
+      <div class="tabs"><span style="color: #5b6472">epic</span><span class="cur">all</span><span>E-5 Tracker</span><span>E-6 Panels</span><span>E-7 Crew</span><span>E-8 Thread</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+        <div class="sec"><span>▾</span><span>in progress (3)</span></div>
+        <div class="row sel"><span class="teal">◐</span><span class="id">T-58</span><span class="ep">E-5 ›</span><span class="t">Rank among siblings</span><span class="claim">impl-58 <span class="bad">✗</span></span><span class="badge">?</span><span class="frac">2/5</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-63</span><span class="ep">E-6 ›</span><span class="t">Sessions grouped by state</span><span class="claim">impl-63</span><span class="frac">0/4</span></div>
+        <div class="row"><span class="teal">◐</span><span class="id">T-66</span><span class="ep">E-6 ›</span><span class="t">Palette action registry</span><span class="claim">impl-66</span><span class="frac">0/3</span></div>
+        <div class="sec"><span>▾</span><span>review (2)</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-61</span><span class="ep">E-5 ›</span><span class="t">Status moves on events</span><span class="claim">rev-6 <span class="warn">▲</span></span><span class="frac">2/4</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-69</span><span class="ep">E-7 ›</span><span class="t">Aide role clause</span><span class="claim dim">for Reviewer</span><span class="frac">0/3</span></div>
+        <div class="sec"><span>▾</span><span>qa (1)</span></div>
+        <div class="row"><span class="warn">◉</span><span class="id">T-57</span><span class="ep">E-5 ›</span><span class="t">Status field in the index</span><span class="claim">qa-12</span><span class="frac">3/4</span></div>
+        <div class="sec"><span>▾</span><span>ready (1)</span></div>
+        <div class="row"><span class="ok">◉</span><span class="id">T-55</span><span class="ep">E-5 ›</span><span class="t">Release item kind</span><span class="claim ok">✓ review ✓ qa</span><span class="frac ok">4/4</span></div>
+        <div class="sec"><span>▾</span><span>planned (5)</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-67</span><span class="ep">E-5 ›</span><span class="t">Criteria parser and marks</span><span class="claim">next</span><span class="frac">0/4</span></div>
+        <div class="row dim"><span>◌</span><span class="id">T-68</span><span class="ep">E-6 ›</span><span class="t">Vertical items board</span><span class="claim dim">by T-58</span><span class="frac">0/5</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-70</span><span class="ep">E-7 ›</span><span class="t">Aide key and yours group</span><span class="claim"></span><span class="frac">0/2</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-71</span><span class="ep">E-7 ›</span><span class="t">Event subscriptions</span><span class="claim"></span><span class="frac">0/3</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-72</span><span class="ep">E-8 ›</span><span class="t">Thread folds agent runs</span><span class="claim"></span><span class="frac">0/3</span></div>
+        <div class="sec" style="padding-top: 12px"><span>▸</span><span>backlog (9)</span><span class="r">za unfolds</span></div>
+        <div class="sec" style="margin-top: 10px; border-top: 1px solid #1a212b; padding-top: 10px"><span>▸</span><span>unscheduled (3)</span><span class="r">in no release</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">K J rank among siblings · T to the top</div>
+      <div class="row dim" style="font-size: 12px">↵ open · za fold · 1-5 or f filter · gt gs</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+      <div class="ph"><span>General · to @coordinator</span><span>topic open · 2 unread</span></div>
+      <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 6px">
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>11:52</span></div>
+          <div>T-55 is ready: review and QA clear, 4 of 4 criteria verified. I merge it once qa-12 finishes T-57, so the release notes keep their order.</div>
+        </div>
+        <div class="msg" style="background: #0d1117">
+          <div class="who"><b>you</b><span>11:58</span><span class="stage">✓✓ injected</span></div>
+          <div>Start T-67 with a new Implementer once T-55 is merged. Keep rev-6 on T-61.</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:01</span><span class="stage warn">▲ waiting for you</span></div>
+        </div>
+        <div class="card">
+          <div><span class="warn">ask</span> <span class="dim">· T-58 Rank among siblings</span></div>
+          <div>rev-6 found two issues in T-58. After impl-58's fix, what should rev-6 re-review?</div>
+          <div class="opt"><span class="k">1</span><span>re-review the whole diff</span></div>
+          <div class="opt"><span class="k">2</span><span>only the fix commits</span></div>
+          <div class="opt"><span class="k">3</span><span>ask me later</span></div>
+          <div class="dim" style="font-size: 12px">or type a free answer below</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:03</span></div>
+          <div>shared <span class="chip"><span class="blue">A-131</span> page · review of T-58: two findings</span></div>
+        </div>
+      </div>
+      <div class="compose">
+        <div class="input dim">@coordinator  Message General… (Enter sends, S-Enter newline)</div>
+        <div class="dim" style="font-size: 12px; display: flex; gap: 16px"><span>to: Coordinator (coord-1)</span><span style="margin-left: auto">␣o open as prompt artifact</span></div>
+      </div>
+    </div>
+
+    <div class="panel right" style="width: 380px">
+      <div class="ph"><span>sessions</span><span>7 live · 1 waiting</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+        <div class="sec"><span>yours</span></div>
+        <div class="row"><span class="teal">●</span><b>aide-1</b><span class="role">Aide</span><span class="claim dim">—</span></div>
+        <div class="sec"><span>waiting (1)</span></div>
+        <div style="background: #182131; padding-bottom: 6px">
+          <div class="row"><span class="warn">▲</span><b>rev-6</b><span class="role">Reviewer</span><span class="claim">T-61</span></div>
+          <div class="xrow"><span class="l">harness</span><span>Codex</span></div>
+          <div class="xrow"><span class="l">model</span><span>gpt-6.1-sol · effort high</span></div>
+          <div class="xrow"><span class="l">state</span><span class="warn">waiting for approval · 4m</span></div>
+          <div class="xrow"><span class="l"></span><span class="dim">run: npm test -- --filter status</span></div>
+          <div class="xrow"><span class="l">usage</span><span>$2.40 · 512k tok</span></div>
+        </div>
+        <div class="sec"><span>busy (3)</span></div>
+        <div class="row"><span class="teal">●</span><b>coord-1</b><span class="role">Coordinator</span><span class="claim dim">—</span></div>
+        <div class="row"><span class="teal">●</span><b>impl-63</b><span class="role">Implementer</span><span class="claim">T-63</span></div>
+        <div class="row"><span class="teal">●</span><b>qa-12</b><span class="role">QA</span><span class="claim">T-57</span></div>
+        <div class="sec"><span>idle (2)</span></div>
+        <div class="row dim"><span>○</span><b>impl-66</b><span>Implementer</span><span class="claim dim">T-66</span></div>
+        <div class="row dim"><span>○</span><b>impl-58</b><span>Implementer</span><span class="claim dim">T-58</span></div>
+        <div class="sec" style="padding-top: 12px"><span>▸</span><span>stopped (23)</span><span class="r">za unfolds</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">↵ attach · C-v split · za fold · c capabilities</div>
+      <div class="row dim" style="font-size: 12px">l launch · a new Aide (␣A anywhere) · x stop</div>
+    </div>
+
+    <div style="position: absolute; inset: 0; background: rgba(5, 8, 12, 0.55); display: flex; align-items: flex-start; gap: 44px; padding: 36px 48px">
+
+      <div style="width: 760px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px">
+        <div class="cap" style="align-self: flex-start; background: #0b0e14; border: 1px solid #222a35; border-radius: 4px; padding: 3px 8px">␣p · no prefix: objects and actions together, grouped by kind; the cursor starts on the best match</div>
+        <div class="pick">
+          <div class="pq"><span class="dim">␣p ›</span><span>rev<span style="color: #6aa5ff">▏</span></span><span class="dim" style="margin-left: auto; font-size: 12px">12 matches</span></div>
+          <div class="pt"><span><span class="k">&gt;</span> actions</span><span><span class="k">#</span> items</span><span><span class="k">@</span> sessions</span><span><span class="k">~</span> artifacts</span><span><span class="k">/</span> topics</span><span style="margin-left: auto">a prefix narrows to one kind</span></div>
+          <div style="padding: 2px 0 6px">
+            <div class="sec"><span class="blue">&gt;</span><span>actions (3)</span></div>
+            <div class="row"><span class="dim">›</span><span>P<b>rev</b>ious centre view</span><span class="claim"><span class="k">␣␣</span></span></div>
+            <div class="row"><span class="dim">›</span><span><b>Re</b>sol<b>v</b>e the topic in view</span><span class="claim"><span class="k">␣r</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Answer ask T-58 · 1 re-<b>rev</b>iew the whole diff</span><span class="claim"><span class="dim">on the ask</span> <span class="k">1</span></span></div>
+            <div class="sec"><span class="blue">#</span><span>items (3)</span></div>
+            <div class="row"><span class="warn">◉</span><span class="id">T-61</span><span class="t">Status moves on events</span><span class="claim"><span class="dim">review ·</span> <b>rev</b>-6 <span class="warn">▲</span></span><span class="frac">2/4</span></div>
+            <div class="row dim"><span>○</span><span class="id">T-73</span><span class="t"><b>Rev</b>iewer clause names the criteria to verify</span><span class="claim dim">backlog</span><span class="frac">0/3</span></div>
+            <div class="row dim"><span>●</span><span class="id">T-41</span><span class="t"><b>Rev</b>iew and QA through the roles</span><span class="claim dim">done · no release</span><span class="frac"></span></div>
+            <div class="sec"><span class="blue">@</span><span>sessions (2)</span></div>
+            <div class="row sel"><span class="warn">▲</span><span><b>rev</b>-6</span><span class="role">Reviewer</span><span class="dim">Codex · gpt-6.1-sol · waiting for approval</span><span class="claim">T-61</span></div>
+            <div class="row dim"><span>×</span><span><b>rev</b>-5</span><span>Reviewer</span><span>Codex · stopped 2026-10-08</span><span class="claim dim">—</span></div>
+            <div class="sec"><span class="blue">~</span><span>artifacts (2)</span></div>
+            <div class="row"><span class="blue">A-131</span><span><b>rev</b>iew of T-58: two findings</span><span class="dim">· page · rev-6 · sent to you by coord-1</span><span class="claim dim">T-58</span></div>
+            <div class="row dim"><span class="blue">A-118</span><span><b>rev</b>iew of T-55: clear</span><span>· page · rev-6</span><span class="claim dim">T-55</span></div>
+            <div class="sec"><span class="blue">/</span><span>topics (2)</span></div>
+            <div class="row"><span class="teal">●</span><span><b>Rev</b>iewer lane: one session per epic?</span><span class="dim">· open · coord-1</span><span class="claim dim">11:20</span></div>
+            <div class="row dim"><span>○</span><span>T-41 <b>Rev</b>iew and QA through the roles</span><span>· closed</span><span class="claim dim">v0</span></div>
+          </div>
+          <div class="pf"><span><span class="k">↵</span> run or open</span><span><span class="k">C-v</span> open in a split</span><span><span class="k">Tab</span> narrow to a kind</span><span><span class="k">Esc</span> close</span></div>
+        </div>
+      </div>
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+        <div class="cap" style="align-self: flex-start; background: #0b0e14; border: 1px solid #222a35; border-radius: 4px; padding: 3px 8px">then &gt; · actions only, each with its key and where the key works</div>
+        <div class="pick">
+          <div class="pq"><span class="dim">␣p ›</span><span>&gt;<span style="color: #6aa5ff">▏</span></span><span class="dim" style="margin-left: auto; font-size: 12px">41 actions</span></div>
+          <div class="pt"><span class="cur"><span class="k">&gt;</span> actions</span><span><span class="k">#</span> items</span><span><span class="k">@</span> sessions</span><span><span class="k">~</span> artifacts</span><span><span class="k">/</span> topics</span></div>
+          <div style="padding: 2px 0 6px">
+            <div class="sec"><span>needs you</span></div>
+            <div class="row sel"><span class="warn">?</span><span>Answer ask T-58 · 1 re-review the whole diff</span><span class="claim"><span class="dim">on the ask</span> <span class="k">1</span></span></div>
+            <div class="row"><span class="warn">?</span><span>Answer ask T-58 · 2 only the fix commits</span><span class="claim"><span class="dim">on the ask</span> <span class="k">2</span></span></div>
+            <div class="row"><span class="warn">?</span><span>Answer ask T-58 · 3 ask me later</span><span class="claim"><span class="dim">on the ask</span> <span class="k">3</span></span></div>
+            <div class="sec"><span>recent</span></div>
+            <div class="row"><span class="dim">›</span><span>Open sessions panel</span><span class="claim"><span class="k">␣s</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Launch an Aide</span><span class="claim"><span class="k">␣A</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Open items panel</span><span class="claim"><span class="k">␣i</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Open board</span><span class="claim"><span class="k">␣b</span></span></div>
+            <div class="sec"><span>all, a to z</span></div>
+            <div class="row"><span class="dim">›</span><span>Fold or unfold a group</span><span class="claim"><span class="dim">panels</span> <span class="k">za</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Launch a session</span><span class="claim"><span class="k">␣l</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Move item to the top</span><span class="claim"><span class="dim">items panel</span> <span class="k">T</span></span></div>
+            <div class="row"><span class="dim">›</span><span>Pick the current release</span><span class="claim dim">no key</span></div>
+            <div class="row"><span class="dim">›</span><span>Preset: charting</span><span class="claim dim">no key</span></div>
+          </div>
+          <div class="pf"><span><span class="k">↵</span> run</span><span><span class="k">Tab</span> next kind</span><span><span class="k">Esc</span> close</span></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="status" style="opacity: .45">
+    <span>General · topic open · to @coordinator</span>
+    <span>hub: ok</span>
+    <span style="margin-left: auto">the palette floats over whatever is open and closes on Esc</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

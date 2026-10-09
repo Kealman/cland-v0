@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: sessions panel groups</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.panel.right{border-right:0;border-left:1px solid #222a35}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.xrow{display:flex;gap:8px;padding:0 12px 0 30px;font-size:12px;line-height:18px;white-space:nowrap;overflow:hidden}
+.xrow .l{color:#8a94a3;min-width:56px}
+.msg{display:flex;flex-direction:column;gap:2px;padding:8px 16px}
+.who{display:flex;gap:8px;align-items:baseline;color:#8a94a3;font-size:12px}
+.who b{color:#d6dbe4;font-weight:600}
+.role{color:#35c4a0}
+.stage{margin-left:auto;color:#8a94a3}
+.card{margin:6px 16px;border:1px solid #3a3320;background:#171510;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:center}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.compose{border-top:1px solid #222a35;background:#0d1117;padding:8px 16px;display:flex;flex-direction:column;gap:6px}
+.input{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:8px 10px;color:#d6dbe4;min-height:44px;font:inherit}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.bad{color:#ff7b72}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">General</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">3</span></span>
+    <span class="chip">sessions <span class="badge n">5</span> <span class="warn">1▲</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+      <div class="ph"><span>General · to @coordinator</span><span>topic open · 2 unread</span></div>
+      <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 6px">
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>11:52</span></div>
+          <div>T-55 is ready: review and QA clear, 4 of 4 criteria verified. I merge it once qa-12 finishes T-57, so the release notes keep their order.</div>
+        </div>
+        <div class="msg" style="background: #0d1117">
+          <div class="who"><b>you</b><span>11:58</span><span class="stage">✓✓ injected</span></div>
+          <div>Start T-67 with a new Implementer once T-55 is merged. Keep rev-6 on T-61.</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:01</span><span class="stage warn">▲ waiting for you</span></div>
+        </div>
+        <div class="card" style="max-width: 720px">
+          <div><span class="warn">ask</span> <span class="dim">· T-58 Rank among siblings</span></div>
+          <div>rev-6 found two issues in T-58. After impl-58's fix, what should rev-6 re-review?</div>
+          <div class="opt"><span class="k">1</span><span>re-review the whole diff</span></div>
+          <div class="opt"><span class="k">2</span><span>only the fix commits</span></div>
+          <div class="opt"><span class="k">3</span><span>ask me later</span></div>
+          <div class="dim" style="font-size: 12px">or type a free answer below</div>
+        </div>
+        <div class="msg">
+          <div class="who"><b>coord-1</b><span class="role">Coordinator</span><span>12:03</span></div>
+          <div>shared <span class="chip"><span class="blue">A-131</span> page · review of T-58: two findings</span></div>
+        </div>
+      </div>
+      <div class="compose">
+        <div class="input dim">@coordinator  Message General… (Enter sends, S-Enter newline, @ mentions, ␣a attach artifact)</div>
+        <div class="dim" style="font-size: 12px; display: flex; gap: 16px"><span>to: Coordinator (coord-1)</span><span>last: injected 11:58</span><span style="margin-left: auto">␣o open as prompt artifact</span></div>
+      </div>
+    </div>
+
+    <div class="panel right" style="width: 380px">
+      <div class="ph"><span>sessions</span><span>7 live · 1 waiting</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+
+        <div class="sec"><span>yours</span></div>
+        <div class="row"><span class="teal">●</span><b>aide-1</b><span class="role">Aide</span><span class="claim dim">—</span></div>
+
+        <div class="sec"><span>waiting (1)</span></div>
+        <div style="background: #182131; padding-bottom: 6px">
+          <div class="row"><span class="warn">▲</span><b>rev-6</b><span class="role">Reviewer</span><span class="claim">T-61</span></div>
+          <div class="xrow"><span class="l">harness</span><span>Codex</span></div>
+          <div class="xrow"><span class="l">model</span><span>gpt-6.1-sol · effort high</span></div>
+          <div class="xrow"><span class="l">state</span><span class="warn">waiting for approval · 4m</span></div>
+          <div class="xrow"><span class="l"></span><span class="dim">run: npm test -- --filter status</span></div>
+          <div class="xrow"><span class="l">usage</span><span>$2.40 · 512k tok</span></div>
+        </div>
+
+        <div class="sec"><span>busy (3)</span></div>
+        <div class="row"><span class="teal">●</span><b>coord-1</b><span class="role">Coordinator</span><span class="claim dim">—</span></div>
+        <div class="row"><span class="teal">●</span><b>impl-63</b><span class="role">Implementer</span><span class="claim">T-63</span></div>
+        <div class="row"><span class="teal">●</span><b>qa-12</b><span class="role">QA</span><span class="claim">T-57</span></div>
+
+        <div class="sec"><span>idle (2)</span></div>
+        <div class="row dim"><span>○</span><b>impl-66</b><span>Implementer</span><span class="claim dim">T-66</span></div>
+        <div class="row dim"><span>○</span><b>impl-58</b><span>Implementer</span><span class="claim dim">T-58</span></div>
+
+        <div class="sec" style="padding-top: 12px"><span>▸</span><span>stopped (23)</span><span class="r">za unfolds</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">↵ attach · C-v split · za fold · c capabilities</div>
+      <div class="row dim" style="font-size: 12px">l launch · a new Aide (␣A anywhere) · x stop</div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>General · topic open · to @coordinator</span>
+    <span>hub: ok · 1 queued</span>
+    <span>sessions: 3 busy · 1 waiting · 2 idle · 23 stopped</span>
+    <span style="margin-left: auto">sessions panel: yours first, then waiting, busy, idle; stopped folded</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

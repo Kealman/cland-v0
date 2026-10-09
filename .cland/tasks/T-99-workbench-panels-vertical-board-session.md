@@ -2,7 +2,7 @@
 id: T-99
 kind: question
 title: "Workbench panels: vertical board, session groups, the palette"
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:50.900Z
-updated: 2026-10-09T20:31:02.415Z
+updated: 2026-10-09T20:50:26.068Z
 ---
 
 ## Question
@@ -154,3 +154,13 @@ Needs you (an open ask in its topic, or its latest review or QA verdict not clea
 Not verified: a working session with you at the keys; widths over 160 columns (at 160 the left panel is 35 columns wide, so titles are cut early).
 
 For your reaction: the sections and what a row shows; `J` / `K` and `e` / `E` (the epic key would pick the release once that kind exists); `za` / `↵` / `Tab` for folds; the expanded selected row; the palette's grouping and its five-per-group cap without a prefix; `␣A` for the Aide.
+
+### human · 2026-10-09T20:50:14.678Z
+
+Resolution (2026-10-09). The human accepted the three mockups (ItemsBoard, SessionsPanel, Palette on the design canvas, mirrored in docs/design/main-screen/) and the decisions the mockups and the prototype added: rank keys K/J and T, za for folds, ␣A for an Aide, the epic tab row as filter, the "next" mark, green ◉ for ready, fractions on planned rows, a 440 px items panel, the palette's cursor on the best match, unscheduled = parents reach no open container, only containers cycle as the scope. The Neovim prototype on prototype/panels (f1cdbe2, 896fa01; run command in the comment above) is the behavioural reference; a live working session was not held, and the human may try it at any time, with findings going to the build tickets.
+
+Recorded in docs/spec/v0.1.md §3.11 (the panels) and §3.12 (focus and keys, from the T-85 research and the human's answers: C-h/j/k/l in every mode, a lone C-\ to leave a terminal, cland doctor warnings for the Ghostty shift+enter line and a ^H erase, langmap for layouts, no Cyrillic duplicates for the Ctrl chords). GLOSSARY: Palette.
+
+### human · 2026-10-09T20:50:26.068Z
+
+Resolved: see the resolution comment; spec v0.1 §3.11 and §3.12
