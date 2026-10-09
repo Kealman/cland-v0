@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, connectWsUi, startDaemon, startHub, tempProject } from './harness.ts';
+import { connectUi, connectWsUi, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { createSocketEdge } from '../src/hub/socket.ts';
 import { BUDGET_MS } from '../src/hub/budget.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import type { Git } from '../src/tracker/verdict-git.ts';
@@ -98,4 +99,35 @@ test('a verdict write that resumes after Git into a slow synchronous write is ti
   const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'task.comment');
   assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'reviewer-ui']], JSON.stringify(slow));
   assert.ok((slow[0]?.ms as number) >= 400, `${String(slow[0]?.ms)} ms`);
+});
+
+
+test('waiting for async Git is a slow-answer with its own counter, without a slow-request', async (t) => {
+  const root = await tempProject(t);
+  const records: Array<Record<string, unknown>> = [];
+  const log = (r: Record<string, unknown>) => records.push(r);
+  const git: Git = (args) => new Promise((resolve) => setTimeout(() => resolve(args[0] === 'rev-parse' ? 'a'.repeat(40) : ''), 150));
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, git });
+  tracker.start();
+  t.after(() => tracker.stop());
+  // A lower answer threshold keeps this test fast; the loop budget stays at its production value.
+  const hub = await startHub({ log, tracker, guard: { answerBudgetMs: 100 }, control: { status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root, startedAt: new Date().toISOString(), uptimeMs: 0 }), stop: () => {} } });
+  t.after(() => hub.close());
+  const socket = join(root, 'hub.sock');
+  const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
+  t.after(() => edge.close());
+  const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'waiting-ui');
+  await ui.request({ type: 'task.create', title: 'Reviewed', branch: 't/x' });
+  records.length = 0;
+  const result = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'r-1' } });
+  assert.equal(result.ok, true, result.error);
+  const slow = records.filter((r) => r.event === 'slow-answer' && r.tool === 'task.comment');
+  assert.equal(slow.length, 1, JSON.stringify(records));
+  assert.equal(slow[0]?.client, 'waiting-ui');
+  assert.ok((slow[0]?.ms as number) >= 150);
+  assert.equal(records.filter((r) => r.event === 'slow-request').length, 0);
+  const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+  assert.equal(status.requests?.slow, 0);
+  assert.equal(status.requests?.slowAnswers, 1);
+  assert.equal(status.requests?.lastSlowAnswer?.tool, 'task.comment');
 });

@@ -160,6 +160,12 @@ export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Top
 
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
+  /** The connected sessions, replaced on a hello, last spoke leaving, rename, status or role change. */
+  | { type: 'presence'; sessions: Presence[] }
+  /** A process-table row changed: the same view as session.list, replaced by stable session id or name. */
+  | { type: 'session.process'; process: HarnessProcessView }
+  /** Latest usage totals, coalesced per launch; old launches must never update a new row under the same name. */
+  | { type: 'session.usage'; session: string; sessionId: string; usage: SessionUsage }
   /** A new message in a topic: the human's, an agent's. */
   | { type: 'message'; topic: TopicRef; message: TopicMessage }
   /** A message's stage changed. */
@@ -466,8 +472,8 @@ export type HubStatus = {
   harnesses?: HarnessProcessView[];
   /** The top bar's "needs you" count: open asks, sessions waiting for approval, topics waiting for the human (#33). */
   needsYou?: number;
-  /** The request path's health (T-67): handlers over the budget (`slow-request`), reads answered again (`too-fast`). */
-  requests?: { slow: number; lastSlow?: { tool: string; client: string; ms: number; at: string; phase?: 'resumed' | 'answer' }; replayed: number };
+  /** Request health: blocking (`slow-request`), answer latency including waits (`slow-answer`), repeated reads. */
+  requests?: { slow: number; lastSlow?: { tool: string; client: string; ms: number; at: string; phase?: 'resumed' | 'answer' }; replayed: number; slowAnswers: number; lastSlowAnswer?: { tool: string; client: string; ms: number; at: string } };
 };
 
 /** Comparable token counts: input excludes cache; reasoning is a subset of output. Cost, when reported, is USD. */

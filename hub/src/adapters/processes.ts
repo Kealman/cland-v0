@@ -93,6 +93,7 @@ const toProcess = (r: Row): HarnessProcess => ({
 
 export class ProcessTable {
   readonly #db: DatabaseSync;
+  readonly #listeners = new Set<(process: HarnessProcess) => void>();
 
   constructor(path: string = ':memory:') {
     this.#db = new DatabaseSync(path);
@@ -103,6 +104,17 @@ export class ProcessTable {
     if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
     if (!columns.has('item')) this.#db.exec('alter table harness_processes add column item text');
+  }
+
+  /** Every committed row change, including renames: the sessions layer publishes its public view. */
+  subscribe(listener: (process: HarnessProcess) => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  #changed(name: string): void {
+    const process = this.get(name);
+    if (process) for (const listener of this.#listeners) listener(process);
   }
 
   close(): void {
@@ -119,6 +131,7 @@ export class ProcessTable {
            pid_started = excluded.pid_started, item = excluded.item`,
       )
       .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null);
+    this.#changed(p.name);
   }
 
   /**
@@ -139,6 +152,7 @@ export class ProcessTable {
       this.#db.exec('rollback');
       throw err;
     }
+    this.#changed(to);
     return true;
   }
 
@@ -150,7 +164,10 @@ export class ProcessTable {
       sets.push(`${column[k]} = ?`);
       values.push(v);
     }
-    if (sets.length) this.#db.prepare(`update harness_processes set ${sets.join(', ')} where name = ?`).run(...values, name);
+    if (sets.length) {
+      this.#db.prepare(`update harness_processes set ${sets.join(', ')} where name = ?`).run(...values, name);
+      this.#changed(name);
+    }
   }
 
   get(name: string): HarnessProcess | null {

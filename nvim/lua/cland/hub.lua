@@ -53,7 +53,8 @@ function M.new(opts)
 end
 
 --- Events: `state` (state, detail), `connected` (), `error` (a handler or callback failed: the message), and the pushed frames `message`, `delivery`, `topic`,
---- `session.state`, `session.role`, `role.vacant` and `role.filled` (the event frame).
+--- `session.state`, `session.role`, `presence`, `session.process`, `session.usage`, `inbox`, `task`,
+--- `role.vacant` and `role.filled` (the event frame).
 function Client:on(event, fn)
   self.handlers[event] = self.handlers[event] or {}
   table.insert(self.handlers[event], fn)
@@ -122,6 +123,26 @@ function Client:request(frame, cb, opts)
     self.nulls[id] = true
   end
   self:_write(vim.tbl_extend('force', frame, { id = id }))
+end
+
+--- One inbox snapshot per connection, shared by the shell and topic views, kept by inbox events.
+function Client:inbox(cb)
+  if self:connected() and self.inbox_value then
+    return self:_call('inbox', cb, nil, vim.deepcopy(self.inbox_value))
+  end
+  if self.inbox_waiters then
+    table.insert(self.inbox_waiters, cb)
+    return
+  end
+  self.inbox_waiters = { cb }
+  self:request({ type = 'inbox.list' }, function(err, value)
+    if not err and not self.inbox_value then self.inbox_value = value end
+    local waiters = self.inbox_waiters or {}
+    self.inbox_waiters = nil
+    for _, fn in ipairs(waiters) do
+      self:_call('inbox', fn, err, vim.deepcopy(self.inbox_value or value))
+    end
+  end)
 end
 
 function Client:_connect()
@@ -265,6 +286,7 @@ end
 function Client:_frame(frame, line)
   local t = frame.type
   if t == 'welcome' then
+    self.inbox_value = nil
     self.retry_ms = 250
     self.autostarted = false
     self.failures = 0
@@ -301,7 +323,8 @@ function Client:_frame(frame, line)
         self:_call('request ' .. tostring(frame.id), cb, frame.error or 'failed')
       end
     end
-  elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' then
+  elseif t == 'message' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'session.usage' then
+    if t == 'inbox' then self.inbox_value = frame.inbox end
     self:_emit(t, frame)
   end
 end
@@ -315,6 +338,7 @@ function Client:_lost(reason)
     pcall(self.proc.kill, self.proc, 15)
     self.proc = nil
   end
+  self.inbox_value = nil
   local pending = self.pending
   self.pending = {}
   self.nulls = {}

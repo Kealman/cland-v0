@@ -382,8 +382,8 @@ export class Dispatcher {
     const peer: Peer = {
       send: (frame) => {
         settle(frame);
-        guard.answered(frame);
         wire.send(frame);
+        guard.answered(frame);
       },
       close: (code, reason) => wire.close(code, reason),
       isOpen: () => wire.isOpen(),

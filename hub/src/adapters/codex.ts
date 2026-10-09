@@ -436,10 +436,16 @@ export class CodexAdapter implements HarnessAdapter {
           return;
         }
         case 'thread/tokenUsage/updated':
-          if (mine(params) && params.tokenUsage && typeof params.tokenUsage === 'object') live.tokens = params.tokenUsage as Record<string, unknown>;
+          if (mine(params) && params.tokenUsage && typeof params.tokenUsage === 'object') {
+            live.tokens = params.tokenUsage as Record<string, unknown>;
+            this.#host.usageChanged?.(live.p.sessionId);
+          }
           return;
         case 'account/rateLimits/updated':
-          if (params.rateLimits && typeof params.rateLimits === 'object') live.rateLimits = params.rateLimits as Record<string, unknown>;
+          if (params.rateLimits && typeof params.rateLimits === 'object') {
+            live.rateLimits = params.rateLimits as Record<string, unknown>;
+            this.#host.usageChanged?.(live.p.sessionId);
+          }
           return;
         case 'thread/closed':
           if (mine(params)) this.#host.log({ event: 'harness-thread-closed', harness: this.harness, session: live.p.name, thread: live.p.harnessSessionId });
@@ -469,7 +475,10 @@ export class CodexAdapter implements HarnessAdapter {
   async #readRateLimits(live: Live): Promise<void> {
     try {
       const r = await live.client?.request<{ rateLimits?: Record<string, unknown> }>('account/rateLimits/read', {}, 15_000);
-      if (r?.rateLimits) live.rateLimits = r.rateLimits;
+      if (r?.rateLimits) {
+        live.rateLimits = r.rateLimits;
+        this.#host.usageChanged?.(live.p.sessionId);
+      }
     } catch {
       // an account without rate limits (an API key) has none to read
     }

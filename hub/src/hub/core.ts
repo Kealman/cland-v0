@@ -9,6 +9,8 @@ import {
   type HandoverNote,
   type Hello,
   type HubEvent,
+  type HarnessProcessView,
+  type SessionUsage,
   type HygieneRefusal,
   type Message,
   type Presence,
@@ -161,6 +163,7 @@ export class HubCore {
   readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
+  #publishedPresence = '[]';
   #items: TopicItems | null;
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
   readonly #publishedTopics = new Map<string, string>();
@@ -246,6 +249,23 @@ export class HubCore {
     const stage = this.#store.stage(message.id);
     const ask = this.asks.card(message.id);
     this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
+  }
+
+  /** Adapter-owned process facts go through the same subscription as the core's events. */
+  publishProcess(process: HarnessProcessView): void {
+    this.#emit({ type: 'session.process', process });
+  }
+
+  publishUsage(session: string, sessionId: string, usage: SessionUsage): void {
+    this.#emit({ type: 'session.usage', session, sessionId, usage });
+  }
+
+  #publishPresence(): void {
+    const sessions = this.presence();
+    const signature = JSON.stringify(sessions);
+    if (signature === this.#publishedPresence) return;
+    this.#publishedPresence = signature;
+    this.#emit({ type: 'presence', sessions });
   }
 
   get store(): Store {
@@ -362,6 +382,7 @@ export class HubCore {
         this.#log({ event: 'hello-listener-failed', name, error: err instanceof Error ? err.message : String(err) });
       }
     }
+    this.#publishPresence();
     return { ok: true, name, connection, spoke };
   }
 
@@ -515,6 +536,7 @@ export class HubCore {
     }
     this.#live.delete(connection.name);
     this.#log({ event: 'bye', name: connection.name });
+    this.#publishPresence();
     this.#announceCoordinator();
   }
 
@@ -616,6 +638,7 @@ export class HubCore {
     c.status = text.trim().slice(0, 200) || null;
     this.#store.rememberStatus(name, c.status);
     this.#log({ event: 'status', name, status: c.status });
+    this.#publishPresence();
   }
 
   /** The heartbeat: the session is still here. */
@@ -648,6 +671,7 @@ export class HubCore {
     this.#store.rememberRole(to, c.role);
     this.#log({ event: 'rename', from, to });
     for (const fn of [...this.#renamed]) fn(from, to, c.sessionId);
+    this.#publishPresence();
     this.#announceCoordinator();
     return { ok: true, name: to };
   }
@@ -962,6 +986,7 @@ export class HubCore {
 
   #emitRole(session: string, role: string | null, previous: string | null, reason: string): void {
     this.#emit({ type: 'session.role', session, role, previous, reason, ts: this.#now().toISOString() });
+    this.#publishPresence();
   }
 
   /** Tell subscribers when the live Coordinator changes: `role.vacant` when none is left, `role.filled` when one is back. */

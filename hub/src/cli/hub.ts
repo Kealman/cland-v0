@@ -55,7 +55,7 @@ function describe(s: HubStatus): string {
   if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');
   if (s.requests) {
     const last = s.requests.lastSlow;
-    lines.push(`requests: ${s.requests.slow} slow${last ? ` (latest ${last.tool} from ${last.client}, ${last.ms} ms at ${last.at})` : ''} · ${s.requests.replayed} answered again (too fast)`);
+    lines.push(`requests: ${s.requests.slow} slow${last ? ` (latest ${last.tool} from ${last.client}, ${last.ms} ms at ${last.at})` : ''} · ${s.requests.slowAnswers ?? 0} slow answers · ${s.requests.replayed} answered again (too fast)`);
   }
   const launched = s.harnesses ?? [];
   if (launched.length) lines.push(`launched: ${launched.length}`);

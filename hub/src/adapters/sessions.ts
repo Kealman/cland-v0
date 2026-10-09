@@ -40,6 +40,9 @@ export type SessionsOptions = {
   pushTrustMs?: number;
 };
 
+/** At most one latest usage snapshot per session per second, with a trailing update. */
+export const USAGE_EVENT_MS = 1000;
+
 export const DEFAULT_HARNESS = 'claude-code';
 
 export class Sessions {
@@ -66,6 +69,8 @@ export class Sessions {
   readonly #firstHello = new Map<string, { role: string; carried: boolean }>();
   /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
   #vacating = false;
+  readonly #usageTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  readonly #unprocess: () => void;
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -73,6 +78,7 @@ export class Sessions {
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
+    this.#unprocess = this.#table.subscribe((p) => this.#core.publishProcess(this.view(p)));
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
     this.#core.launchedRole((name, sessionId) => {
@@ -130,6 +136,7 @@ export class Sessions {
       ...fields,
       root: this.#root,
       log: this.#log,
+      usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
       notifyFailureSenders: (sessionId, error, messages) => this.#notifyTurnSenders(sessionId, error, messages),
@@ -180,6 +187,18 @@ export class Sessions {
       attach: p.status === 'running' && adapter ? adapter.attachCommand(p) : null,
       ...(usage ? { usage } : {}),
     };
+  }
+
+  #usageChanged(sessionId: string): void {
+    if (this.#usageTimers.has(sessionId)) return;
+    const timer = setTimeout(() => {
+      this.#usageTimers.delete(sessionId);
+      const p = this.#table.bySessionId(sessionId);
+      const usage = p && this.#adapters.get(p.harness)?.usage?.(p);
+      if (p && usage) this.#core.publishUsage(p.name, sessionId, usage);
+    }, USAGE_EVENT_MS);
+    timer.unref();
+    this.#usageTimers.set(sessionId, timer);
   }
 
   list(): HarnessProcessView[] {
@@ -312,6 +331,7 @@ export class Sessions {
     const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
     this.#table.put(process);
     adapter.watch(process);
+    this.#core.publishProcess(this.view(process));
     this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
     if (r.state !== 'unknown') this.#signal(p.sessionId, { state: r.state, source: 'resume', at: Date.now() }, false);
     return { found: true, process: this.view(process) };
@@ -382,7 +402,10 @@ export class Sessions {
     const meaning = adapter.interpret(frame.event, payload, p);
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
-    if (meaning.usage) adapter.noteUsage?.(p, meaning.usage);
+    if (meaning.usage) {
+      adapter.noteUsage?.(p, meaning.usage);
+      this.#usageChanged(p.sessionId);
+    }
     if (meaning.turnError) {
       const error = meaning.turnError;
       this.#turnFailed(p.sessionId, error, []);
@@ -563,6 +586,9 @@ export class Sessions {
     this.#core.onDelivered(null);
     this.#core.launchedRole(null);
     this.#unsubscribe();
+    this.#unprocess();
+    for (const timer of this.#usageTimers.values()) clearTimeout(timer);
+    this.#usageTimers.clear();
     this.#unrename();
   }
 }

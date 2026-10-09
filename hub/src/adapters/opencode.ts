@@ -251,7 +251,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
       w.turnMessages.clear();
       if (change.turnError) this.#host.turnFailed?.(w.process.sessionId, change.turnError, messages);
     }
-    if (change.usage) this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
+    if (change.usage) {
+      this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
+      this.#host.usageChanged?.(w.process.sessionId);
+    }
     if (change.state) this.#host.signal(w.process.sessionId, { state: change.state, source: 'sse', at });
   }
 
