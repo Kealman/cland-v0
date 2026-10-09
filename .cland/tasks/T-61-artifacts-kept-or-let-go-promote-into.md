@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-29
 branch: t/T-61-artifacts-kept-or-let-go-promote-into
 created: 2026-10-09T08:34:54.761Z
-updated: 2026-10-09T16:13:51.164Z
+updated: 2026-10-09T16:14:29.766Z
 ---
 
 ## Parent
@@ -110,3 +110,39 @@ Ready for integration at 42a7abcd979d1b6dd75eeb08a25ff4485a9d2f01, rebased once 
 ### coord · 2026-10-09T16:13:51.164Z
 
 Merged 9a95f9995c67b38c33916bac8efb750caeeb4bda onto dev.
+
+### coord · 2026-10-09T16:14:24.263Z
+
+Merged by the Coordinator through `cland merge T-61`: squash 9a95f99 on dev. Gate: review rev-65-61-3 clear on the rebased head 42a7abc (resolution; rev-65-61-2 clear on f018617 for the fix of rev-65-61-1). Suite on 42a7abc: 486 hub + 94 Neovim passed (A-120). qa-12's live matrix passed on 42a7abc (A-119); its verdict lands after the merge. This project's grant and config lines from A-120 are in a8ba2b2. Remaining synchronous permission and journal I/O is T-75. Concurrent parent-directory swaps by other processes are out of scope by the Coordinator's decision; there is a realpath post-check. impl-61 stopped.
+
+### qa-12 · 2026-10-09T16:14:29.766Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-61-1
+commit: 42a7abcd979d1b6dd75eeb08a25ff4485a9d2f01
+
+Commit: 42a7abcd979d1b6dd75eeb08a25ff4485a9d2f01. Run: qa-12-61-1. Recorded after integration, as requested.
+
+Ran:
+- Read T-61 and checked acceptance criteria and hub/README.md documentation.
+- git archive export of the requested head, linked to parent node_modules. npm run typecheck passed.
+- Independent live CLI/real-hub matrix in a scratch Git project. CLAND_HUB_FILE, CLAND_SESSION_ID and CLAND_SESSION_NAME unset; role checks explicitly supplied each scratch spoke's identity. Exercised cland task list/create/view/close.
+- cland artifact promote A-1 docs/x.md copied an eight-byte binary fixture exactly, retained its source, and listed promoted: docs/x.md. HEAD, index entries and git write-tree remained identical; porcelain status showed only the new untracked docs/x.md.
+- Existing destination, absolute path outside the project, ../ escape, .cland/ destination and symlinked parent to a separate outside directory were refused. Existing bytes remained unchanged, outside directory stayed empty, and no promotion mark was recorded.
+- Connected actual Implementer, Reviewer and QA spokes and ran the promote CLI with their session identities: all returned forbidden and created no destination. Separately verified the positive Coordinator spoke-shell grant, which copied the exact bytes successfully. Promotion is a CLI/UI operation, so these checks exercised its role table through that documented interface.
+- One headless Neovim using the project's nvim_input/screenstring harness: p in the topic artifact list prompted for a path, promoted the file, and updated the list and picker marks.
+- Closing a topic archived its unpromoted artifact with archivedAt while its promoted artifact remained shared. A reopening message returned the ordinary artifact to shared and removed archivedAt. Closing the bound item archived it again.
+- cland init wrote [artifacts] retention_days = 30. cland update preserved changed values 7 and 0.
+- With retention_days = 0, restarted the hub while keeping the same Neovim process open. Startup cleanup deleted archived files from a closed topic and a topic that had been closed then deleted. Both index entries remained and CLI list, live Neovim list and picker displayed file deleted; opening the deleted picker entry was refused with artifact: file deleted.
+- Promoted source files and repository copies survived, as did files in open topics. A reopening message after deletion retained the deleted entry without claiming its bytes were restored.
+
+Shared full suite: read A-120, impl-61's final-head evidence, also relayed by Coordinator. npm run typecheck passed; npm test exit 0, 486/486 hub + 94/94 Neovim = 580 passed, zero failures/cancellations/skips. Suite duration 555.39s, lock wait 0.01s, peak 1m load 10.15. No duplicate full suite run.
+
+Findings by severity: high none; medium none; low none in the requested scope.
+
+Raw evidence A-119: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-119-t-61-independent-live-promote-archive-retention-qa-evidence.zip. Contains independent drivers, CLI/Git responses, screenstring grids, artifact state transitions, journal, typecheck output and cleanup evidence. SHA256 2828e4f3fa25c145c1818fc7d959cb41098777f69b1673f334fef3053dd6b45b.
+
+Cleanup verified all eight owned process IDs absent and all three scratch roots removed. Export/staging removed after verifying the durable artifact hash; task worktree clean. No product fixes.
+Summary A-121: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-121-t-61-qa-clear-on-42a7abc.md.

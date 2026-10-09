@@ -2,7 +2,7 @@
 id: T-62
 kind: task
 title: "QA briefs and the qa skill: a QA session runs an item's brief and records its verdict and runs"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-28
 branch: t/T-62-qa-briefs-and-the-qa-skill-a-qa-session
 created: 2026-10-09T08:34:54.777Z
-updated: 2026-10-09T16:07:09.939Z
+updated: 2026-10-09T16:28:20.206Z
 ---
 
 ## Parent
@@ -151,3 +151,47 @@ Standards clear. Safe IDs now refuse before writes; --out/executable are quoted;
 Read-only /bin/sh probes reproduce exit64 for unsafe IDs, one argument for a spaced evidence path, exit70/no append on encoding fault, and the remaining copy-failure bug: mocked mkdir/cp fail yet recovery appends rewritten PASS evidence and exits0. No actual writes or suite. Exact head verified; TypeScript noEmit/diff check pass. Coordinator reports the completed538-test suite, not rerun here.
 
 Separate axes and executable evidence: A-117, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-117-t-62-delta-review-rev-6-62-2-at-f77057e.md.
+
+### rev-6 · 2026-10-09T16:15:26.577Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-62-3
+commit: 6945669aca3b793d886351b49fd95e7d9b9920a5
+
+High: none.
+
+medium (Standards/Spec) — .agents/skills/qa/qa-record.sh:71: a failed jq evidence extraction is replaced with paths="", so no captures are copied; line_ok remains1 and the independent rewrite at line88 appends the original references under the durable tree and reports success. This breaches SKILL.md:66 and the requested checked recovery guarantee. Treat extraction failure as a lost line: preserve sources, name the case, append nothing for it and exit73.
+
+Low: none additional. The other fixes pass: requested-commit mismatch is BLOCKED naming both commits; migration preserves existing skills; rescue forwards inline captures. Directory/copy/verification/missing/conflict/append failures correctly refuse the affected line.
+
+Eight read-only /bin/sh probes with filesystem/input/append boundaries mocked reproduce normal success, exit71 for mkdir failure, exit73 for other recovery failures, and the remaining extraction fault: zero CP calls, rewritten PASS line appended, exit0. Real jq handles all other steps. No actual writes or suites. Exact head verified; diff check and TypeScript noEmit pass. Coordinator reports 14 targeted tests on this head, last full suite on f77057e.
+
+Both axes and executable probe evidence: A-122, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-122-t-62-recovery-review-rev-6-62-3-at-6945669.md.
+
+### rev-6 · 2026-10-09T16:27:10.744Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-62-4
+commit: 7f4501b9dadf7e5415c476aca645769562e9f79c
+
+High, medium, low: none remaining in the requested resolution delta. Standards clear; Spec clear.
+
+The prior evidence-extraction failure is closed at .agents/skills/qa/qa-record.sh:74: failed extraction reports the case, preserves sources, appends nothing and contributes to exit73. Case extraction and rewriting now check their status too, including nonempty partial rewrite output on failure. A rewrite failure may leave verified destination copies as harmless retry leftovers, with no line appended.
+
+Rebase confirmed: git range-diff 6945669~8..6945669 5d6d357..770ae4f marks all8 patches equal. T-61's Coordinator artifact.promote permission remains at hub/src/roles/default-roles.ts:69 beside T-62's qa skills and clauses. dev5d6d357 is an ancestor; exact head and clean worktree verified.
+
+Thirteen read-only /bin/sh probes pass: success and empty evidence, mkdir/copy/cmp/missing/conflict/append failures, and selection/case/evidence/rewrite faults including partial output. No actual files written. Diff check and TypeScript noEmit pass. No suite run as requested; Coordinator reports500hub+94Neovim on770ae4f and15targeted skills-qa tests on this head.
+
+Separate axes, range comparison and runnable evidence: A-123, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-123-t-62-final-resolution-review-rev-6-62-4-at-7f4501b.md.
+
+### coord · 2026-10-09T16:27:17.148Z
+
+Merged db7b7d75d59aa0631ae059c2ccabc369656fc269 onto dev.
+
+### coord · 2026-10-09T16:28:20.206Z
+
+Merged by the Coordinator through `cland merge T-62`: squash db7b7d7 on dev. Gate: review rev-6-62-4 clear on 7f4501b, covering the rebase onto 5d6d357 and the fix for rev-6-62-3. Earlier rounds were rev-6-62-1 (six mediums) and rev-6-62-2 (two mediums, two lows), each fixed. Live criteria, on this repository: qa-62 (Codex gpt-6-astra) runs qa-2026-10-09-62-1 on 8506808 and qa-2026-10-09-62-2 on fd8d581, both clear, with a deliberate FAIL case (A-101, A-107). In scratch projects: impl-62's Codex QA run and rescue run. Suite on 770ae4f, the rebase of 6945669: 500 hub + 94 Neovim passed. The fix after it touched only qa-record.sh and its test (15 skills-qa tests pass). impl-62 and qa-62 stopped. This project's roles.toml edits for the QA workflow wait for the human's answer (ask a8e6dc43).
