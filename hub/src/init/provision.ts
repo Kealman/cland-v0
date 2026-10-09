@@ -9,7 +9,7 @@
 //   AGENTS.md's managed block, the @AGENTS.md import of an existing CLAUDE.md
 //   the cland hooks in .claude/settings.json
 //
-// The territory (remotes, the bare repository, `dev`) is slice 2's.
+// The territory runs first: root cleanliness must be checked before generated files appear.
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENTS, GENERAL } from '../hub/core.ts';
@@ -21,10 +21,13 @@ import { provisionConfig } from './config.ts';
 import { isManagedFile, readText, Report, writeIfChanged, type Change } from './files.ts';
 import { provisionAgentsMd, provisionClaudeMd, provisionDocs } from './instructions.ts';
 import { provisionClaudeSkills, provisionSkills, SKILLS_SOURCE } from './skills.ts';
+import { provisionTerritory } from '../territory.ts';
 
 export type ProvisionOptions = {
   /** Where the shipped skills are read from; this repository's `.agents/skills/` unless a test says otherwise. */
   skillsSource?: string;
+  /** Update refreshes an existing territory, but does not opt a project into one. Init does. */
+  territory?: boolean;
 };
 
 export const TASKS_KEEP = `# ${MANAGED_BY}: keeps .cland/tasks/ in git until it holds an item\n`;
@@ -34,6 +37,7 @@ export function provision(root: string, options: ProvisionOptions = {}): Change[
   const report = new Report(root);
   const l = layout(root);
   mkdirSync(l.dir, { recursive: true });
+  if (options.territory !== false) provisionTerritory(report, root);
 
   // .cland/: the managed .gitignore (the hub's own rule: rewritten while marked), config, roles, tasks
   const ignore = readText(l.gitignore);

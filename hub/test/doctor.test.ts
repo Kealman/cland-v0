@@ -94,7 +94,7 @@ test('a healthy project on a healthy machine: every check ok, plain text, exit 0
     assert.doesNotMatch(r.stdout, /\x1b\[/);
     const lines = r.stdout.trimEnd().split('\n');
     assert.match(lines[0] ?? '', /^cland doctor \S+ in /);
-    assert.match(lines.at(-1) ?? '', /^20 ok, 0 warn, 0 fail$/);
+    assert.match(lines.at(-1) ?? '', /^21 ok, 0 warn, 0 fail$/);
     for (const line of lines.slice(1, -1)) assert.match(line, /^ok {4}\S/);
   });
 
