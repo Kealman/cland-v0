@@ -125,30 +125,16 @@ end
 
 -- Sessions --------------------------------------------------------------------------------------------
 
---- "$1.80" or "12.3k tok": what the adapter reports of a session's usage (cost first), or nil.
+--- "$1.80" or "12.3k tok": the session's running total (cost first), or nil.
 function M.usage_text(u)
-  if type(u) ~= 'table' then
+  if type(u) ~= 'table' or type(u.total) ~= 'table' then
     return nil
   end
-  local cost = u.cost or u.costUSD or u.cost_usd or u.total_cost_usd
+  local cost = u.total.cost
   if type(cost) == 'number' and cost > 0 then
     return ('$%.2f'):format(cost)
   end
-  local tokens
-  local t = type(u.tokens) == 'table' and u.tokens or nil
-  local total = t and type(t.total) == 'table' and t.total or nil
-  if total then
-    tokens = total.totalTokens or total.total_tokens
-  end
-  if not tokens then
-    local sum = 0
-    for _, k in ipairs({ 'inputTokens', 'outputTokens', 'input_tokens', 'output_tokens' }) do
-      if type(u[k]) == 'number' then
-        sum = sum + u[k]
-      end
-    end
-    tokens = sum > 0 and sum or nil
-  end
+  local tokens = u.total.totalTokens
   if type(tokens) ~= 'number' then
     return nil
   end

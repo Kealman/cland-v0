@@ -4,7 +4,7 @@
 // Mandatory: spawn, attachCommand, inject (confirming `injected`), a state stream, stop, resume.
 // Optional: history, usage, setModel, approval relay — each declared in the capability table and never
 // emulated when declared `none`. Every state signal is published with its reliability too.
-import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 
 /** How far a signal or a capability can be trusted. `none`: the adapter does not have it, and nothing pretends it does. */
 export type Reliability = 'reliable' | 'heuristic' | 'none';
@@ -145,8 +145,8 @@ export interface HarnessAdapter {
   interpret(event: string, payload: Record<string, unknown>): Interpretation;
   /** An in-session bridge connected (the Claude Code mod): inject frames go to `send`. Returns its disconnect. */
   bridge?(process: HarnessProcess, send: (frame: InjectFrame) => boolean): () => void;
-  /** The latest usage the harness reported (only where `capabilities.usage` is not `none`). */
-  usage?(process: HarnessProcess): Record<string, unknown> | null;
+  /** Running totals and latest turn/step (only where `capabilities.usage` is not `none`). */
+  usage?(process: HarnessProcess): SessionUsage | null;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
   /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
   renamed?(process: HarnessProcess, from: string): void;

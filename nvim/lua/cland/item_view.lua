@@ -68,7 +68,7 @@ local function hhmm(iso)
   return os.date('%Y-%m-%d %H:%M', t + offset)
 end
 
---- The cost the claiming session's harness reported, where its adapter has usage; nil when unknown.
+--- The claiming session's running cost, where reported; nil when unknown.
 function M.cost(it)
   local c = items.claim(it)
   if not c then
@@ -76,12 +76,9 @@ function M.cost(it)
   end
   for _, p in ipairs(state.S.processes) do
     if p.name == c.session and type(p.usage) == 'table' then
-      local u = p.usage
-      for _, k in ipairs({ 'costUsd', 'cost_usd', 'total_cost_usd', 'cost' }) do
-        local v = tonumber(u[k])
-        if v then
-          return ('$%.2f'):format(v)
-        end
+      local total = p.usage.total
+      if type(total) == 'table' and type(total.cost) == 'number' then
+        return ('$%.2f'):format(total.cost)
       end
     end
   end

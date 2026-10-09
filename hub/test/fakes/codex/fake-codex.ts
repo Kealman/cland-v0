@@ -291,8 +291,9 @@ async function appServer(args: string[]): Promise<number> {
       await callTool('send', { text: `pong: ${body}`, ...where });
     }
     t.tokens += 12;
-    const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 0, outputTokens: 2, reasoningOutputTokens: 0 };
-    toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total: { ...usage, totalTokens: t.tokens }, last: usage, modelContextWindow: 200000 } });
+    const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 6, outputTokens: 2, reasoningOutputTokens: 1 };
+    const total = { totalTokens: t.tokens, inputTokens: t.tokens / 12 * 10, cachedInputTokens: t.tokens / 12 * 6, outputTokens: t.tokens / 12 * 2, reasoningOutputTokens: t.tokens / 12 };
+    toSubscribers(t.id, 'thread/tokenUsage/updated', { threadId: t.id, turnId, tokenUsage: { total, last: usage, modelContextWindow: 200000 } });
     t.turns += 1;
     save(t);
     t.turnId = null;

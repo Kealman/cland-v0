@@ -409,13 +409,13 @@ async function runSession(id: string): Promise<number> {
       await callTool('send', { text: ran, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
       setStatus('idle');
       await runHooks('Stop', { last_assistant_message: ran });
-      await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', inputTokens: 10, outputTokens: 2 } }, (e) => ({ text: e.answer }));
+      await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', input_tokens: 10, output_tokens: 2, cache_read_input_tokens: 4, cache_creation_input_tokens: 3 } }, (e) => ({ text: e.answer }));
       continue;
     }
     await callTool('send', { text: `pong: ${body}`, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
     setStatus('idle');
     await runHooks('Stop', { last_assistant_message: `pong: ${body}` });
-    await dispatch('turn.complete', { turnId, answer: `pong: ${body}`, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', inputTokens: 10, outputTokens: 2 } }, (e) => ({ text: e.answer }));
+    await dispatch('turn.complete', { turnId, answer: `pong: ${body}`, durationMs: Date.now() - started, isAborted: false, reason: 'answer', usage: { model: job.model ?? 'claude-fake-1', input_tokens: 10, output_tokens: 2, cache_read_input_tokens: 4, cache_creation_input_tokens: 3 } }, (e) => ({ text: e.answer }));
   }
 }
 

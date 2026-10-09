@@ -118,9 +118,13 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   assert.ok(busy && ['hook', 'mod'].includes(busy.source), `busy came from ${busy?.source}`);
 
   // the turn's model and usage, from the mod's turn.complete
-  const h = await eventually('usage', async () => (await status(ui)).harnesses.find((x) => x.name === 'coord' && x.usage));
+  const h = await eventually('usage for both turns', async () => (await status(ui)).harnesses.find((x) => x.name === 'coord' && (x.usage?.total as { outputTokens?: number } | undefined)?.outputTokens === 4));
   assert.equal(h.model, 'claude-fake-1');
-  assert.deepEqual(h.usage, { model: 'claude-fake-1', inputTokens: 10, outputTokens: 2 });
+  assert.deepEqual(h.usage, {
+    model: 'claude-fake-1',
+    total: { totalTokens: 38, inputTokens: 20, outputTokens: 4, reasoningTokens: 0, cacheReadTokens: 8, cacheWriteTokens: 6 },
+    last: { totalTokens: 19, inputTokens: 10, outputTokens: 2, reasoningTokens: 0, cacheReadTokens: 4, cacheWriteTokens: 3 },
+  });
 
   // a permission prompt: waiting for approval, from the PermissionRequest hook, whatever the model says of itself
   await ui.request({ type: 'topic.send', topic: 'general', text: 'this one needs approval' });
