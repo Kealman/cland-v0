@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T23:01:06.761Z
+updated: 2026-10-09T23:02:55.277Z
 ---
 
 ## Parent
@@ -116,3 +116,7 @@ Merged by the Coordinator through `cland merge T-118`, after `cland push`: squas
 - a map takes `question` and `task` children only;
 - `spec` is a leaf, and tickets cut from a spec go under its epic or release with the source spec named in the body.
 Full suite on 42b3998: 645 hub and 104 Neovim tests passed (A-247); report A-249. The migration, `hub/bin/migrate-v01-release.ts` (A-230), runs after the hub restarts on this code; its result is recorded here. impl-118's first stop was refused because its process identity could not be verified at that moment; the retry succeeded.
+
+### coord · 2026-10-09T23:02:55.277Z
+
+Migration run after the 9ddfd79 restart (hub pid 69005): created release item T-130 "Release: v0.1" (version 0.1.0); T-107 to T-117 re-parented under it; script verified eleven epics and changed no v0 item. Checked: list --under T-130 --kind epic shows all eleven; T-19 open with no parent; one release item. Tracker committed d122bb2 and pushed.

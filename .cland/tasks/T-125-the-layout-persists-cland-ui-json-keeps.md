@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-43
 branch: t/T-125-the-layout-persists-cland-ui-json-keeps
 created: 2026-10-09T21:57:18.371Z
-updated: 2026-10-09T23:02:46.903Z
+updated: 2026-10-09T23:43:29.925Z
 ---
 
 ## Parent
@@ -125,3 +125,59 @@ Standards: 0 findings. Spec: 1 medium. Actual pinned standalone headless-Neovim 
 ### impl-125 · 2026-10-09T23:02:46.903Z
 
 Fourth fix committed at eaa771977de89b84f9097a456b1b8ccfb79355aa: flush pending human dimensions before M.closing sets its first marker, retaining the programmatic and previous-close guards; checked the other marker sites for flush-before-marker ordering. Added real native resize|close tests for items, inbox, sessions, topics and the dock, asserting saved sizes while hidden and dimensions on reopen. New regression fails on 1e2fc96 and passes here. All 7 targeted UI tests, PANELS-005/006 and typecheck pass. Cancelled the old running suite early in hub verification; final full suite launched after this commit.
+
+### rev-65 · 2026-10-09T23:05:16.155Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-125-5
+commit: eaa771977de89b84f9097a456b1b8ccfb79355aa
+
+High: none. Medium: none. Low: none. Pending manual dimensions flush before the first native-close marker; programmatic-change and existing-close guards remain intact. No new lost-write path identified.
+
+Actual pinned standalone-Neovim comparisons: native resize→close→hidden/reopen fails on 1e2fc96 and passes on eaa7719 for items, inbox, sessions, topics and dock, with unrelated saved dimensions unchanged. No-wait view/charting/watch switches and automatic centre-close repair also pass. The documented Coordinator-accepted close-before-resize interval remains out of scope and retains its tested behavior.
+
+Standards: 0 findings. Spec: 0 findings. No suite, hub writes or files changed by Reviewer. Evidence A-250: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-250-t-125-resolution-review-of-eaa7719-clear.md.
+
+### impl-125 · 2026-10-09T23:17:36.031Z
+
+eaa7719 full suite: hub 665/665; Neovim 120/121; exit 1. A-253 retains the final log. Coordinator steer: absent ui.json is silent defaults; an existing unreadable/corrupt file notices without displacing inbox answer keys. Kept the failing shell test unchanged, reproduced it red, and fixed it green. Expanded startup regression to absence, unreadable directory, corrupt JSON/schema/version, checking the actual focused inbox statusline. Sole production reader is ui.load; QA readbacks do not post notices. Delta now awaiting targeted UI tests; PANELS-005/006 and typecheck pass.
+
+### rev-65 · 2026-10-09T23:21:00.863Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-125-6
+commit: c9efcffcaf8da720026f5fa9443e1841320c9cb2
+
+Medium — nvim/lua/cland/bars.lua:206 (also :221): keep_hint shortens the notice and drops duplicate session counts but leaves the centre context unbounded; a valid longer topic title at 160 columns hides both ui.json notice and inbox answer keys. Budget/truncate context too, reserving the notice and answer-hint prefix.
+
+Actual pinned standalone-Neovim rendering with in-memory stat/readfile ports: absent file is silent; directory/EACCES/corrupt JSON/schema/version each produces defaults and one notice with ui.json and the full inbox hint visible for General/coord-1. With the longer T-119 container topic title, state has one notice but the rendered row shows neither notice nor answer hint. ui.load is the only production reader. Failing shell.test.ts is unchanged (identical blob 70c47694b042d5272a920cbf0da15e1349f54ae6); full-suite execution remains Implementer validation.
+
+Full item covered by carrying forward rev-65-125-5/A-250; layout and manual-size fixes remain unchanged, and the accepted typeahead limitation remains excluded. Standards: 0 findings. Spec: 1 medium. No suite or file edits. Evidence A-258: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-258-t-125-review-of-c9efcff-long-context-hides-notice-and-hint.md.
+
+### impl-125 · 2026-10-09T23:28:27.772Z
+
+Resolved A-258's long-context finding at committed 571c7d6ea3658cd88a678155eb9b2c0fee82ae87: one measured statusline display-cell budget allocates focused hint, notice, ellipsized context, then counts. Long centre titles and context/preset text cannot push hints or notices off the bar; removed keep_hint-specific trimming. Actual long-title regression goes red on c9efcff and green at both 160 and 80 columns, with wide characters and budget assertions. All 8 UI tests, PANELS-005/006 and typecheck pass. Broader shell run passed 67/68: its only failure expected context during a higher-priority long preset notice. That preset test now checks the notice, expiry, then context, and passes its targeted rerun; the original inbox regression stays unchanged and passed the broader run. Cancelled c9efcff npm test via its runner (exit143), freeing T-120's lock; new full suite launched after commit.
+
+### rev-65 · 2026-10-09T23:31:11.121Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-125-7
+commit: 571c7d6ea3658cd88a678155eb9b2c0fee82ae87
+
+High: none. Medium: none. Low: none. A-258 is resolved by the shared display-cell fitter and hint→notice→context→counts budget; keep_hint is gone.
+
+Actual pinned standalone-Neovim comparison: the long title with wide characters loses notice/hint on c9efcff at 160/80 columns, and preserves both on 571c7d6 within 160/80 cells. Leading-wide titles also pass at 159/80 cells. Ordinary absent/valid inputs remain silent; five unreadable/invalid cases each produce defaults and one visible notice. Mode/hub/preset/context and full hints survive at normal width; lowest-priority counts return when space permits and remain in the top bar/session panel.
+
+The sole shell.test.ts hunk is the preset test's notice/expiry/context checks and Board wait. Original inbox regression is byte-identical (1313 bytes, SHA-256 f074b84baf382a9651b306ce14e3d29ea67b8c6b036ffded65a2d7dcae6c1608). Full-item coverage carries forward rev-65-125-5/A-250; layout/manual-size fixes are unchanged and the accepted typeahead limitation remains excluded. ui.load remains the sole production reader.
+
+Standards: 0 findings. Spec: 0 findings. No suite or file edits. Evidence A-261: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-261-t-125-resolution-review-of-571c7d6-clear.md.
+
+### impl-125 · 2026-10-09T23:43:29.925Z
+
+Final verification on clean committed 571c7d6ea3658cd88a678155eb9b2c0fee82ae87: npm test exited 0; hub 665/665 and Neovim 122/122, total 787 pass, 0 failures/cancelled/skips. Full-suite duration 662.35s, lock wait 207.38s. Typecheck and targeted UI/QA/preset checks also pass. Review clear rev-65-125-7 (A-261). Complete suite log A-268: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-268-t-125-571c7d6-full-suite-log-787-pass-exit-0.log. Final implementation/limitations handoff A-269: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-269-t-125-final-handoff-persistent-layout-and-passing-verification.md. Exact project .cland/.gitignore line is ui.json after hub.json, already committed by Coordinator. Branch pushed to origin; no merge; source tree clean.

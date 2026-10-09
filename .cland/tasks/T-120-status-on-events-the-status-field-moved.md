@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-45
 branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
-updated: 2026-10-09T23:01:55.366Z
+updated: 2026-10-09T23:34:16.191Z
 ---
 
 ## Parent
@@ -53,3 +53,37 @@ Size M. Implementer: Codex. Await checklist (A-96, class B): status writes ride 
 ### impl-120 · 2026-10-09T23:01:55.366Z
 
 Starting status-on-events implementation. Coverage at T-107's existing hub protocol seam; status writes stay on the tracker queue, merge gate behavior remains unchanged. Project roles.toml change will be reported for the Coordinator to commit.
+
+### impl-120 · 2026-10-09T23:10:33.084Z
+
+Status field and permissions are implemented; targeted creation, manual transition, verdict and merge status tests pass. Migration tests cover existing DB hashes and durable claims. Claims publish status and the live hold together; grant rechecks occur at admission and before rename. Updating legacy tracker assertions for the newly persisted status (merge gate assertions remain unchanged).
+
+### rev-6 · 2026-10-09T23:20:44.810Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-120-1
+commit: 5ac72deb7ebd0130176398ed4238714e1e3313da
+
+No high or medium findings remain in the full 9ddfd79..5ac72de range. Both migration defects are fixed: offline close/reopen meaning survives queued persistence, and moved-ID migration removes the old row/claim. Production memory probes confirm all three cases. Status transitions use the tracker queue; manual status permissions and live grant/claim rechecks are connected. Automatic ready/verifier holds remain T-121. Merge gate production is unchanged; existing gate test assertions remain unchanged apart from claim awaits.
+
+Hub typecheck/full-range diff check pass; no suite/native integration tests run by Reviewer. Separate Standards/Spec reports and exact probes: A-257, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-257-t-120-full-review-rev-6-120-1-at-5ac72de.md.
+
+Project activation for Coordinator: .cland/roles.toml:78 needs the review handover clause, and :92 needs task.edit:review in the Implementer tools list; defaults already contain both. This is a project activation follow-up, not a branch blocker.
+
+### impl-120 · 2026-10-09T23:33:20.762Z
+
+Committed and pushed test-only delta f264ff156f81de272f12d099ec7ea627bff6edb8 (git log -1). The first full run passed 750/751 hub tests; sole failure was the outdated permission name expected for an Implementer assignee edit (log A-262). The edit remains refused and now asserts the review-only/claimed-item/no-other-edits reason. Added refused mixed-field, wrong-status and unclaimed-item variants. All 5 permissions tests and typecheck pass; second full suite is queued next. Delta note A-263.
+
+### rev-6 · 2026-10-09T23:34:16.191Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-120-2
+commit: f264ff156f81de272f12d099ec7ea627bff6edb8
+
+No high or medium findings. Full-item clearance carries forward from rev-6-120-1 at 5ac72de; this delta changes only permissions.test.ts. General Implementer edit is still refused with exact task.edit:review and actionable reason. Added mixed-field, wrong-status and unclaimed-review refusals retain typed error, reason, Agents notice and exact single-audit checks. No assertion weakened; production and gate unchanged.
+
+Read A-262's 750/751 result: sole failure was the outdated permission equality; editor tests had not started. A-263 reports updated permissions tests/typecheck passing; replacement full suite remains implementer's work. Delta diff check passes; Reviewer ran no tests or suite. Separate Standards/Spec review: A-264, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-264-t-120-test-delta-review-rev-6-120-2-at-f264ff1.md.
