@@ -10,9 +10,9 @@ assignee: null
 parent: T-19
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-66-under-load-the-items-tree-reverted-to-an
 created: 2026-10-09T08:58:42.263Z
-updated: 2026-10-09T16:49:19.682Z
+updated: 2026-10-09T18:05:34.473Z
 ---
 
 ## Parent

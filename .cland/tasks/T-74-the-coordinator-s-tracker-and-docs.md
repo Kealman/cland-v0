@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-31
 branch: t/T-74-the-coordinator-s-tracker-and-docs
 created: 2026-10-09T15:00:48.091Z
-updated: 2026-10-09T17:57:00.959Z
+updated: 2026-10-09T17:58:26.897Z
 ---
 
 ## Parent
@@ -120,3 +120,41 @@ Merged 72b71d3d423801839231b865a56848005fc83ea1 onto dev.
 
 Merged by the Coordinator through `cland merge T-74`: squash 72b71d3 on dev. Gate: review rev-65-74-3 clear on 84fb16f, after rev-65-74-1 (lock race, high, and unknown outcome, medium) and rev-65-74-2 (outcome masked by cleanup). Full suite on 84fb16f: 528 hub + 94 Neovim passed, no failures or skips (A-144). Head and base comparisons: A-140. qa-12's live matrix passed on f79164b (A-134). impl-74 stopped.
 Observed at this merge: the root's dev held an unpushed commit, 5d228e5, by the human's account through another Claude session at 17:01Z. It is a two-line docs link update for the design canvas. The running hub predates T-74, so the gate did not refuse, and the merge published 5d228e5 to the territory beneath 72b71d3. That is exactly the case T-74's new refusal covers once the hub runs this code. The Coordinator's `push` grant is added to this project's roles.toml in a separate commit.
+
+### qa-12 · 2026-10-09T17:58:26.897Z
+
+verdict: qa
+result: not clear
+by: qa-12 [qa]
+run: qa-12-74-1
+commit: f79164bcf0ab91c3af0f97a2c68e74e4706ecc24
+
+Historical QA verdict on f79164bcf0ab91c3af0f97a2c68e74e4706ecc24, run qa-12-74-1: not clear. The requested independent live matrix passed, but the acceptance criterion requiring a passing full suite was not met on this exact head. This is a record of that head, not a verdict on the subsequently merged fix.
+
+Ran independently:
+- Read T-74; checked hub/README.md, the merge skill and AGENTS.md/generated managed instructions for cland push and merge-unpublished guidance.
+- git archive export of f79164b with parent node_modules; npm run typecheck passed.
+- node --test hub/test/territory-lock.test.ts: 11/11 passed, zero failures/skips/cancellations, including null-snapshot, stale takeover, guard recovery and sync/async exclusion regressions.
+- Initialized scratch Git projects with their own territory and real hub; unset CLAND_HUB_FILE, CLAND_SESSION_ID and CLAND_SESSION_NAME. Every CLI test used an environment without a caller-supplied territory marker. Exercised cland task list/create/view.
+- Human and connected Coordinator session-shell cland push published committed root dev to territory dev.
+- Connected Implementer, Reviewer and QA session-shell attempts returned permission refusals with local and territory refs unchanged.
+- A real Reviewer spoke recorded a clear verdict on a scratch item. With an unpublished root tracker commit, cland merge refused with merge-unpublished, naming its hash/subject and run cland push. Ref snapshots, index tree, porcelain status, item bytes and README bytes stayed identical; item and claim remained open. After cland push, the same merge succeeded, with one Item trailer and territory/root agreement.
+- Paused the first actual Git receive hook, launched a second cland push, and observed both pending while the first held the territory lock. Released the hook: both completed, exactly one publication occurred, the second observed the already-published tip, and neither territory.lock nor its .break guard remained.
+- Introduced a territory-only commit using Git plumbing solely in the scratch fixture, plus a divergent root commit. cland push refused push-behind, naming the territory commit hash/subject; neither repository's refs changed.
+- Live outcome-unknown probe: Git accepted the push, then a wrapper failed its reply and the subsequent confirmation query. CLI returned exit 2, named the pinned commit and verification/retry guidance, logged push-outcome-unknown and no push-refused. Territory dev had moved. Restoring Git confirmation and retrying was idempotent; no lock/guard remained.
+
+Findings by severity:
+- High: none in the independent live scope.
+- Medium, reported full-suite failure on f79164b: impl-74's npm test failed six hub tests with ENOENT while releasing the lock after the project directory was deleted at daemon stop. Coordinator supplied this result. That shutdown/deleted-directory path was outside my live matrix; I did not reproduce or run a duplicate full suite. It prevents a clear verdict for the original head's complete acceptance criteria.
+- Medium, separately reported by review on f79164b: rev-65-74-2/A-136 identified hub/src/territory.ts:91 cleanup masking the primary push-outcome-unknown when lock release also fails. My direct unknown-outcome probe did not inject this additional release failure. Attribution: reviewer evidence, not an independent QA reproduction.
+- Low: none in the requested live scope.
+
+Subsequent resolution, outside this verdict's pinned head: both issues were fixed in 84fb16f83b06311c3a73932c52c20d863b75cb07. Read A-144's durable full validation log: typecheck passed; 528/528 hub + 94/94 Neovim = 622 tests passed, zero failures/skips/cancellations, suite duration 618.88s. Coordinator reports that head merged as 72b71d3 on its clear review. I have not rerun my live matrix on 84fb16f and do not claim this historical verdict independently clears it.
+
+Evidence A-134: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-134-t-74-independent-push-merge-lock-and-unknown-outcome-qa-evidence.zip. Scripts, CLI/Git responses, lock snapshots, typecheck/lock-test output, journal and unknown-outcome log, and cleanup verification. SHA256 5614133173aed2943b4dacfcc048d1e7c3522fdede131d1380e4b062026ab291.
+Full fixed-head log A-144: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-144-t-74-passing-typecheck-and-full-suite-log-on-84fb16f.log.
+
+Probe history: the first main driver stopped on its own mkdir EEXIST because cland init already created docs/. Corrected only that fixture setup and reran the unfinished matrix successfully. The independently passing unknown-outcome test was retained without a repeat. No product source changed.
+
+Cleanup verified all 11 owned process IDs absent and all three scratch roots removed. Export/staging removed after verifying the durable evidence hash; worktree clean.
+Summary A-147: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-147-t-74-historical-qa-verdict-on-f79164b.md.

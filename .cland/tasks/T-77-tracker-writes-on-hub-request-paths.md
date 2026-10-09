@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T16:57:34.637Z
-updated: 2026-10-09T16:57:34.637Z
+updated: 2026-10-09T18:01:28.030Z
 ---
 
 ## Parent
@@ -39,3 +39,13 @@ Tracker mutations reached from hub requests (`task.create`, `task.edit`, `task.c
 ## Notes
 
 Size M; triage before scheduling, because the tracker is the source of truth and the change touches every write. Start after T-75 merges.
+
+## Comments
+
+### coord · 2026-10-09T17:57:48.578Z
+
+Added scope, from rev-6's T-75 review at 17:56Z. Launch also reaches a pre-existing `statSync(cwd)` at hub/src/adapters/sessions.ts:269, a synchronous fs call on the session.launch request path. It predates T-75 and was left out of it by the Coordinator's decision. T-77 now covers the remaining synchronous fs on hub request paths: the tracker's item writes and this launch stat. The guard test should cover both.
+
+### coord · 2026-10-09T18:01:28.030Z
+
+Correction to the comment above: the launch `statSync(cwd)` is in hub/src/hub/sessions.ts at line 269, not in hub/src/adapters/sessions.ts. The path is from rev-6's verdict rev-6-75-4 on T-75.

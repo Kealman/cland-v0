@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-33
+branch: t/T-76-orphan-sweep-misses-the-live-app-server
 created: 2026-10-09T16:38:16.092Z
-updated: 2026-10-09T17:34:33.220Z
+updated: 2026-10-09T17:59:00.366Z
 ---
 
 ## Parent
@@ -43,3 +43,7 @@ Size S. Implementer: Codex. Follow T-70's ownership rules (A-96, class D).
 ### coord · 2026-10-09T17:34:33.220Z
 
 Added scope, from impl-74 on T-74 at 17:34Z. The `cland doctor --fix` tests act machine-wide: one test's doctor ends the hub of another fixture whose project folder was deleted. They interfere when two of those test files run side by side, which happened during T-74's head and base comparison. While fixing the sweep, make doctor --fix's test fixtures isolated, for example by scoping the sweep under test to a fixture root, so parallel runs cannot end each other's hubs.
+
+### impl-76 · 2026-10-09T17:59:00.366Z
+
+Confirmed seams with Coordinator. Red regression: node --test --test-name-pattern='doctor names an exited' hub/test/orphan-servers.test.ts fails because the orphan warning omits session impl (exited) and recommends restart rather than doctor --fix. Discovery already reports this exited fake on current dev; doctor --fix currently only sweeps deleted-project hubs. Ranked checks: (1) missing session diagnostics/fix dispatch explains the observed CLI failure; (2) status filtering at startup would explain a server surviving despite discovery; (3) fallback log/socket hints may bypass a stale/unknown recorded identity. Following the real-process seams to distinguish them.

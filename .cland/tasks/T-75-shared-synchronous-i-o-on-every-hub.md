@@ -2,7 +2,7 @@
 id: T-75
 kind: task
 title: "Shared synchronous I/O on every hub request: the permission check reads roles.toml and the journal writes with writeSync"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-32
 branch: t/T-75-shared-synchronous-i-o-on-every-hub
 created: 2026-10-09T15:35:43.178Z
-updated: 2026-10-09T17:51:19.586Z
+updated: 2026-10-09T18:05:35.169Z
 ---
 
 ## Parent
@@ -127,3 +127,29 @@ Previous async production logging and durable checkpoint fixes remain unchanged 
 ### impl-75 · 2026-10-09T17:51:19.586Z
 
 Followup from final-suite failures: explicit fresh role reads preserve immediate launch/relaunch/human assignment edits; authorization is rechecked after that await. Journal synchronous native initiation failures and their reports share one timing scope; fresh failures retry and count once. Startup/listener stderr behavior is restored. Audit test observations drain both queues through bounded hub.status flushLogs; reservation crash recovery uses persisted store reservations, not diagnostic logs (core.ts reserveLaunchRole/releaseInterruptedLaunches); always-polling roles replace the former watch-fallback warning. Exact61183e0 Codex comparison failed profile3/3; base0401b3f passed3/3. Final targeted checks and skill review are underway before commit/full suite.
+
+### rev-6 · 2026-10-09T18:01:13.963Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-75-4
+commit: 7fc47c3d427638162d205d315446425b17dbec48
+
+Standards: clear. Spec: clear. No high or medium findings in 61183e0..7fc47c3. Fresh roles ordering/retry, all five journal initiation/report timing boundaries, and the bounded drain barrier (including same-ID repetition) passed read-only probes. Changed expectations agree with A-142/A-143; typecheck and diff check passed. No full suite run, as requested.
+
+Out of scope follow-up — hub/src/hub/sessions.ts:269: pre-existing statSync(cwd) remains on launch; the Coordinator explicitly assigned it to T-77, outside T-75's shared roles/journal/logging scope.
+
+Evidence and standalone probes: A-148, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-148-t-75-resolution-review-rev-6-75-4-at-7fc47c3.md
+
+### impl-75 · 2026-10-09T18:05:16.904Z
+
+Completed implementation at 7fc47c3d427638162d205d315446425b17dbec48 (git log -1), pushed to origin. npm test exit0: Hub530/530 and Neovim94/94, zero failures/skips/cancellations; duration578.33s, lock wait20.19s. Hub-start, unchanged Codex immediate profile, unchanged stdio listener and all5 native/session-process tests pass. Typecheck and diff check pass; worktree clean. Final suite evidence A-149: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-149-t-75-final-npm-test-624-passing-tests-at-7fc47c3.log. Changed-test justifications and source references A-142: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-142-t-75-final-followup-regression-comparisons-and-changed-expectations.md; exact-head Codex comparison logs A-143. Implementation covers memory-only permission snapshots, rare fresh launch/relaunch/human assignment with post-await authorization, ordered async journal/process logging, whole continuation timing, pruning-safe checkpoint recovery and bounded log drain. Tracker mutations remain scoped to T-77. No merge performed.
+
+### coord · 2026-10-09T18:05:23.224Z
+
+Merged e2425ccbc0534c14ffb7ecc9f7075f220836da04 onto dev.
+
+### coord · 2026-10-09T18:05:35.169Z
+
+Merged by the Coordinator through `cland merge T-75`: squash e2425cc on dev. Gate: review rev-6-75-4 clear on 7fc47c3. Earlier rounds: rev-6-75-1 had three mediums (a file-backed stderr sink, the checkpoint running ahead of the journal, untimed continuations), rev-6-75-2 had one medium (split parse scopes), and rev-6-75-3 was clear on 61183e0. After that, the suite and impl-75's own sweep found five split timing starts, the launch profile regression, which a fresh() read now fixes, and listener diagnostics, which are back on stderr. Every changed test expectation is justified in A-142. Full suite on 7fc47c3: 530 hub + 94 Neovim passed (A-149). Out of scope and in T-77: the tracker's item writes, and the launch statSync at hub/src/hub/sessions.ts:269. impl-75 stopped. Live after the next hub restart.
