@@ -2,7 +2,7 @@
 // (`nvim/lua/cland/qa.lua`) runs it before it starts the fixture's hub, with the fixture as JSON on stdin:
 // `{ dir, project, items, roles, config }`. The item files come from the tracker's own writer, so a fixture
 // item reads back as it was given; every path stays inside `dir`, the run's directory.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { fileNameOf, KINDS, parseItem, serializeItem, STATES, type Comment, type Item, type Kind, type State } from '../tracker/item.ts';
 
@@ -49,10 +49,12 @@ function itemOf(raw: FixtureItem): Item {
   };
 }
 
-/** Write the fixture project under `fixture.dir` and return its root. Nothing is written when any part is refused. */
+/** Write a new fixture project under `fixture.dir` and return its root. Nothing is written when any part is refused, or when the project's directory exists. */
 export function writeFixture(fixture: Fixture): string {
   if (!PROJECT_NAME.test(fixture.project)) throw new Error(`the fixture's project ${JSON.stringify(fixture.project)} is not a plain directory name`);
   const root = join(resolve(fixture.dir), fixture.project);
+  // a fixture is new: whatever stands at its path is not written over
+  if (existsSync(root)) throw new Error(`the fixture project ${root} already exists`);
   const tasks = join(root, '.cland', 'tasks');
   const files = (fixture.items ?? []).map((raw) => {
     const item = itemOf(raw);

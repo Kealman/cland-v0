@@ -271,6 +271,28 @@ test('keys longer than Neovim\'s input buffer are all typed, the last ones too',
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
 });
 
+test('a mapping is never split between two chunks of keys: rev-6\'s x×4084 then <Esc><Space>i, and mappings before, after and across every chunk boundary', { skip }, async (t) => {
+  const run = await qa(t, [`${CASES}KEYS-002.lua`], { env: {} });
+  assert.equal(run.line.message, undefined);
+  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+});
+
+test('`cland --qa-fixture` writes a new fixture project only: an existing one is refused and left as it was', async (t) => {
+  const dir = realpathSync(await tempDir(t, 'cland-qa-fixture-'));
+  const fixture = (title: string) => JSON.stringify({ dir, project: 'proj', items: [{ id: 'T-1', title }] });
+  const write = (input: string) => spawnSync(process.execPath, [CLI, '--qa-fixture'], { input, encoding: 'utf8' });
+  const first = write(fixture('First'));
+  assert.equal(first.status, 0, first.stderr);
+  assert.equal(first.stdout.trim(), join(dir, 'proj'));
+  const file = join(dir, 'proj', '.cland', 'tasks', 'T-1-first.md');
+  const before = await readFile(file, 'utf8');
+  const again = write(fixture('Second'));
+  assert.equal(again.status, 1);
+  assert.match(again.stderr, /the fixture project .*proj already exists/);
+  assert.deepEqual(await readdir(join(dir, 'proj', '.cland', 'tasks')), ['T-1-first.md']);
+  assert.equal(await readFile(file, 'utf8'), before);
+});
+
 test('a case that never returns is ended by --timeout: BLOCKED, exit 2, and no Neovim left spinning', { skip }, async (t) => {
   const nv = await pidWrapper(await tempDir(t, 'cland-qa-hang-'));
   const run = await qa(t, [`${CASES}HANG-001.lua`, '--timeout', '2'], { env: { CLAND_NVIM: nv.wrapper } });

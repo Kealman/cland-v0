@@ -32,17 +32,47 @@ local KEYS_CHUNK = 4096
 local KEYS_PAUSE_MS = 5
 local MAX_STALLED = 1000
 
---- The longest prefix of `keys` within KEYS_CHUNK bytes that ends between two keys: a `<…>` key or a character.
-local function chunk_of(keys)
+--- The keys of `keys`, each a `<…>` notation or one character, with where each ends.
+local function key_ends(keys, limit)
+  local ends, plain = {}, {}
   local i = 1
-  while i <= #keys do
-    local key = keys:match('^<[^<>%s]+>', i) or keys:match('^[%z\1-\127\194-\244][\128-\191]*', i)
-    if i - 1 + #key > KEYS_CHUNK and i > 1 then
-      break
-    end
+  while i <= #keys and i <= limit + 1 do
+    local notation = keys:match('^<[^<>%s]+>', i)
+    local key = notation or keys:match('^[%z\1-\127\194-\244][\128-\191]*', i)
     i = i + #key
+    ends[#ends + 1] = i - 1
+    plain[#plain + 1] = not notation
   end
-  return keys:sub(1, i - 1)
+  return ends, plain
+end
+
+--- What `keys` sends next: a prefix within KEYS_CHUNK bytes, cut where no mapping can be pending, as a
+--- mapping's keys must arrive together. The latest cut wins of, in order: one inside a run of text (two plain
+--- characters on each side), one right after `<CR>` or `<Esc>`, one after a plain character (never between
+--- a notation and the key after it); only a sequence with none of these is cut anywhere.
+local function chunk_of(keys)
+  if #keys <= KEYS_CHUNK then
+    return keys
+  end
+  local ends, plain = key_ends(keys, KEYS_CHUNK)
+  local function last(ok)
+    for k = #ends - 1, 1, -1 do
+      if ends[k] <= KEYS_CHUNK and ok(k) then
+        return ends[k]
+      end
+    end
+  end
+  local cut = last(function(k)
+    return k >= 2 and plain[k - 1] and plain[k] and plain[k + 1] and plain[k + 2] ~= false
+  end) or last(function(k)
+    local key = keys:sub((ends[k - 1] or 0) + 1, ends[k]):lower()
+    return key == '<cr>' or key == '<esc>'
+  end) or last(function(k)
+    return plain[k]
+  end) or last(function()
+    return true
+  end) or ends[1]
+  return keys:sub(1, cut)
 end
 local RESULT_MARK = 'CLAND-QA-RESULT '
 local STAMP = '2026-01-01T00:00:00.000Z'
