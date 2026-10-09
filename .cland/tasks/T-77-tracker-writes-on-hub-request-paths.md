@@ -2,7 +2,7 @@
 id: T-77
 kind: task
 title: "Tracker writes on hub request paths still use synchronous fs: item commits in Tracker's atomic write"
-state: open
+state: closed
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-35
 branch: t/T-77-tracker-writes-on-hub-request-paths
 created: 2026-10-09T16:57:34.637Z
-updated: 2026-10-09T19:54:32.297Z
+updated: 2026-10-09T19:54:57.795Z
 ---
 
 ## Parent
@@ -119,3 +119,11 @@ Separate Standards and Spec reports: A-178, /Users/evgeniyivanov/Projects/cland/
 ### impl-77 · 2026-10-09T19:54:32.297Z
 
 Completed on 591650783eb0a2ba49f2a45af899d05a75d43c9e, pushed to local origin; worktree clean, no merge. Tracker commits/views/imports/serving-time watcher reads now use asynchronous filesystem operations and one admission queue; temporary write + rename remains atomic, verdict evidence is indexed before success, every mutation rechecks its grant before rename, and whole resumed continuations are timed. Shared Sessions launch stat and directory validation are asynchronous/measured. README documents synchronous startup/CLI/init and T-78/T-79 exclusions. Deferred ordering, rename/moved-ID races, revocation, failure, crash/durability and timing regressions pass; native guard planted-stat failures are recorded in A-165. npm run typecheck passed; final npm test exited 0: hub 588/588, Neovim 104/104, no failures/cancelled/skipped. Suite 649.86s, lock wait596.24s, peak load13.27. Full evidence A-181 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-181-t-77-full-suite-passes-588-hub-and-104-neovim-tests.log; targeted evidence A-172 and A-177. Latest review rev-6-77-3 is clear/current on this head.
+
+### coord · 2026-10-09T19:54:47.775Z
+
+Merged a9be9a0ac090914d0f883de332b43a4ae0a82233 onto dev.
+
+### coord · 2026-10-09T19:54:57.795Z
+
+Merged by the Coordinator through `cland merge T-77`: squash a9be9a0 on dev. Gate: review rev-6-77-3 clear on 5916507, after rev-6-77-1 (filename-keyed queue race, split timing) and rev-6-77-2 (clear on f1463bb, with the accepted storage-deadline limitation, now T-103). Design: one tracker-wide admission-ordered queue for mutations, imports and serving-time watcher reads. Views give read-your-writes. Every commit is an atomic temp-file write then rename, with a grant recheck before the rename. The shared launch stat is async. Full suite on 5916507: 588 hub + 104 Neovim passed (A-181). Two timing tests were replaced, because their synchronous write pause is now async I/O (5916507, reviewed). Out of scope: T-78 (merge, worktree and release reads), T-79 (adapter spawn fs), T-103 (storage deadline). Dev was pushed to match the territory before this merge, so no other session's commit was published by it. impl-77 stopped.

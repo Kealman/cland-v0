@@ -5,7 +5,7 @@ title: "Session hierarchy: levels, reporting, routing and names"
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: human
 parent: T-81
 blocked_by:
   - T-82
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:42.721Z
-updated: 2026-10-09T19:10:25.846Z
+updated: 2026-10-09T19:59:11.630Z
 ---
 
 ## Question

@@ -5,7 +5,7 @@ title: Crew configuration and session reuse
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: human
 parent: T-81
 blocked_by:
   - T-89
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:43.529Z
-updated: 2026-10-09T19:10:26.752Z
+updated: 2026-10-09T20:04:06.716Z
 ---
 
 ## Question
