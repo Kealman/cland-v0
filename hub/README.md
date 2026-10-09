@@ -679,14 +679,18 @@ verdict: review
 result: clear
 by: rev-1 [reviewer]
 run: r-1
+commit: 0123456789abcdef0123456789abcdef01234567
 
 Looks right.
 ```
 
-A comment is headed `### <author> · <ISO time>`; one whose first lines are `verdict:` (`review` | `qa`), `result:` (`clear` | `not clear`), `by:` (`<session> [<role>]`) and `run:` is a verdict.
+A comment is headed `### <author> · <ISO time>`; one whose first lines are `verdict:` (`review` | `qa`), `result:` (`clear` | `not clear`), `by:` (`<session> [<role>]`) and `run:` is a verdict. Its optional `commit:` pins the Git commit covered by that run; older verdicts without it still parse.
 
 - **Writes** go through the hub and are serialized: each runs read–change–write–index synchronously, the file replaced atomically. Nothing is committed.
 - **Hand edits** are picked up by a watcher on the folder (debounced 100 ms) and re-indexed, about 120 ms after the write as the hub log's `task-reindexed` stamps it (the test asserts under a second on that stamp; a `cland task list` poll adds its own process start-up, seconds on a loaded machine); a hand-edited file is read leniently (a missing field takes its default). Last writer wins: a hand edit landing within 2 s of a hub write of the same item, or a hub write finding a hand edit the watcher has not reached yet (the hub's change is then applied on top of it), or a hand edit landing while the hub writes the item (between its read and its rename: the file is checked just before the rename and the replaced file just after; the hand edit is overwritten), is logged as `task-conflict` in the hub's log. A file that cannot be parsed is logged as `task-unreadable` and keeps its last indexed version.
+- **Verdict commits and provenance.** `task.comment` accepts `verdict.commit` on the wire, `commit` on the spoke tool, or `--commit <sha>` on the CLI. An explicit SHA must resolve to a commit and is written in full; without it, the hub records the tip of the item's local `branch`, if it resolves. The result includes `commit: {sha, source: "explicit" | "branch" | "none", note}` and the plain CLI prints the note, including when no commit could be recorded. Text verdict headers accept `commit:` too.
+- **Durable verdict evidence.** `tracker_written_verdicts` holds item, kind, result, run, commit, writer session id, role at write time and comment time, plus a fingerprint of the exact comment. This table is never rebuilt from item files. The separate file index gains `commit_sha` and `comment_key` with additive migrations. `task.view` and `task.list` give every verdict `source: "hub" | "file"`; a hub verdict also carries `writer: {sessionId, role}` from the stored evidence, never from `by:`. An unrelated hand edit preserves it; changing the verdict or its comment removes the match. Imported and hand-written verdicts have `file` provenance, even if their `by:` claims a Reviewer.
+- **Freshness.** The latest verdict of each kind in file order carries `current: true | false` on view and list. It is current when its commit is the branch tip, or the whole diff from its own merge base has the same `git patch-id --stable` as the tip's diff from its own merge base. The base is `dev` when present, else `main`; `verdictBase` says which was used (null if neither exists). Missing or unresolvable commits/branches are stale; unavailable Git facts never establish patch equivalence. Earlier verdicts omit `current`. The Neovim item view and plain CLI show the short commit, current/stale and from the hub/file; Neovim marks stale red. This evidence prepares the merge gate; recording a verdict alone does not enforce that gate.
 - **The index** (items, labels, blockers, verdicts) is rebuilt from the files at every start. `--verdict review=clear` matches the item's latest verdict of that kind.
 - **Claims** are a session's live hold on an item, kept in `hub.db` (they survive a restart), never written to the file and distinct from `assignee`. A claim is held by the claimer's identity, not its name: a spoke's session id (a rename keeps the claim; another session taking the old name gets none of it), or `human` / `cli:<name>` for the CLI, which is never a session. `view` shows the holder's name (`session`) beside its identity (`sessionId`); the holder claiming again refreshes the name. Another holder's claim is refused unless forced; closing an item releases its claim.
 
@@ -697,7 +701,7 @@ A comment is headed `### <author> · <ISO time>`; one whose first lines are `ver
 | `cland task create <title> [--kind] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
 | `cland task view <id>` | `task.view` | Frontmatter, body, comments, verdicts and the claim. |
 | `cland task list [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
-| `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id>]` | `task.comment` | Appends a comment, or a verdict. |
+| `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id> [--commit <sha>]]` | `task.comment` | Appends a comment, or a verdict. |
 | `cland task edit <id> [--title] [--body] [--kind] [--state] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
 | `cland task close <id> [--comment]` | `task.close` | Closes the item. |
 | `cland task link <id> [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |

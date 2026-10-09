@@ -1,8 +1,9 @@
 // The tracker's index and claims: tables of their own in the hub's SQLite file, through a connection of
 // their own. The index is derived from the files and rebuilt from them at every start; claims are hub
 // state (a session's live hold on an item) and are never written to a file.
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { idNumber, type Item, type Kind, type State, type VerdictKind, type VerdictResult } from './item.ts';
+import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type VerdictKind, type VerdictResult } from './item.ts';
 
 const SCHEMA = `
 create table if not exists tracker_items (
@@ -44,6 +45,19 @@ create table if not exists tracker_verdicts (
   at text not null,
   primary key (item_id, seq)
 );
+-- Durable hub evidence: no foreign key into the rebuildable file index.
+create table if not exists tracker_written_verdicts (
+  item_id text not null,
+  comment_key text not null,
+  verdict text not null,
+  result text not null,
+  run text not null,
+  commit_sha text,
+  session_id text not null,
+  role text,
+  at text not null,
+  primary key (item_id, comment_key)
+);
 create table if not exists tracker_claims (
   item_id text primary key,
   session text not null,
@@ -77,7 +91,8 @@ export type IndexedItem = {
 };
 
 /** A verdict as the index holds it: the verdict comment's header, its author and time. */
-export type IndexedVerdict = { verdict: VerdictKind; result: VerdictResult; by: string; run: string; author: string; at: string };
+export type IndexedVerdict = Verdict & { author: string; at: string; source: 'hub' | 'file'; writer?: { sessionId: string; role: string | null }; current?: boolean };
+type VerdictRecord = Verdict & { author: string; at: string };
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
@@ -106,6 +121,8 @@ export class TrackerIndex {
     // additive, for a file written before claims carried the session id
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
+    const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
+    for (const column of ['commit_sha', 'comment_key']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
   }
 
   close(): void {
@@ -125,7 +142,7 @@ export class TrackerIndex {
   }
 
   /** Index one item's current version, replacing whatever the index held for its id. */
-  put(item: Item, meta: IndexMeta): void {
+  put(item: Item, meta: IndexMeta, writer?: { id: string; role: string | null }): void {
     const fm = item.fm;
     this.#tx(() => {
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
@@ -139,9 +156,14 @@ export class TrackerIndex {
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
       for (const b of fm.blocked_by) blocker.run(fm.id, b);
-      const verdict = this.#db.prepare('insert into tracker_verdicts (item_id, seq, verdict, result, by, run, author, at) values (?, ?, ?, ?, ?, ?, ?, ?)');
+      const last = item.comments.at(-1);
+      if (writer && last?.verdict) {
+        const v = last.verdict;
+        this.#db.prepare('insert or ignore into tracker_written_verdicts (item_id, comment_key, verdict, result, run, commit_sha, session_id, role, at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(fm.id, commentKey(last), v.verdict, v.result, v.run, v.commit ?? null, writer.id, writer.role, last.at);
+      }
+      const verdict = this.#db.prepare('insert into tracker_verdicts (item_id, seq, verdict, result, by, run, author, at, commit_sha, comment_key) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       item.comments.forEach((c, seq) => {
-        if (c.verdict) verdict.run(fm.id, seq, c.verdict.verdict, c.verdict.result, c.verdict.by, c.verdict.run, c.author, c.at);
+        if (c.verdict) verdict.run(fm.id, seq, c.verdict.verdict, c.verdict.result, c.verdict.by, c.verdict.run, c.author, c.at, c.verdict.commit ?? null, commentKey(c));
       });
       this.#raiseHighWater(idNumber(fm.id));
     });
@@ -237,15 +259,21 @@ export class TrackerIndex {
 
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
   verdicts(): Map<string, IndexedVerdict[]> {
-    const rows = this.#db.prepare('select item_id, verdict, result, by, run, author, at from tracker_verdicts order by item_id, seq').all() as Row[];
+    const rows = this.#db.prepare('select item_id, verdict, result, by, run, author, at, commit_sha, comment_key from tracker_verdicts order by item_id, seq').all() as Row[];
     const out = new Map<string, IndexedVerdict[]>();
     for (const r of rows) {
       const id = r.item_id as string;
       const list = out.get(id) ?? [];
-      list.push({ verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string });
+      list.push(this.markVerdict(id, { verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string, ...(r.commit_sha ? { commit: r.commit_sha as string } : {}) }, r.comment_key as string));
       out.set(id, list);
     }
     return out;
+  }
+
+  /** Match this exact comment, rather than trusting its by line or the whole item's last writer. */
+  markVerdict(id: string, verdict: VerdictRecord, key: string): IndexedVerdict {
+    const r = this.#db.prepare('select session_id, role from tracker_written_verdicts where item_id = ? and comment_key = ?').get(id, key) as Row | undefined;
+    return { ...verdict, source: r ? 'hub' : 'file', ...(r ? { writer: { sessionId: r.session_id as string, role: r.role as string | null } } : {}) };
   }
 
   // ---------------------------------------------------------------- claims
@@ -287,3 +315,9 @@ const claimOfRow = (r: Row): Claim => ({
   role: (r.role as string | null) ?? null,
   claimedAt: r.claimed_at as string,
 });
+
+/** A comment's identity survives unrelated edits and index rebuilds, but not changes to the verdict. */
+export function commentKey(c: Comment): string {
+  const v = c.verdict;
+  return createHash('sha256').update(JSON.stringify([c.author, c.at, v?.verdict, v?.result, v?.by, v?.run, v?.commit ?? null, c.text])).digest('hex');
+}
