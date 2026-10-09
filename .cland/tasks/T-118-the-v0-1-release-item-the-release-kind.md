@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T22:14:23.544Z
+updated: 2026-10-09T22:40:08.212Z
 ---
 
 ## Parent
@@ -85,3 +85,19 @@ High: none. Medium: none. Low: none. All three rev-65-118-1 findings are resolve
 Standards: 0 findings. Spec: 0 findings. Actual pinned pure helpers passed 36 parenting, 25 version, four Notes and four Notes-idempotence cases in memory. Actual pinned migration body passed six virtual-CLI scenarios, including a full rerun with zero writes, duplicate-match refusal naming both IDs with zero writes, partial-link resumption, missing-epic preflight, link interruption/restart, and a closed prior release. Every migration write uses cland task through the hub; no direct item-file writes.
 
 No suite, actual migration or filesystem changes by Reviewer. Post-merge migration remains the Coordinator's step via A-230. Evidence A-231: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-231-t-118-resolution-review-of-baf6ecc-clear.md.
+
+### impl-118 · 2026-10-09T22:38:27.653Z
+
+Workflow correction head 42b3998e4f6744efb02cc3c26ae371115989dd27, pushed to origin. The full run on baf6ecc exposed one stale to-spec/to-tickets assumption: task children under a spec. A targeted replay reproduced the exact parenting-rule refusal. Per Coordinator decision, both guides now direct tickets to the source spec's epic/release (or none), with the source spec named on the body's Parent line. Updated workflow coverage passes all six skills-tracker tests (including epic/release/unscheduled cases); npm run typecheck passes. The superseded suite was stopped through its T-118 runner after cwd verification and cleanup. Queuing one full npm test on 42b3998 now.
+
+### rev-65 · 2026-10-09T22:40:08.212Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-118-3
+commit: 42b3998e4f6744efb02cc3c26ae371115989dd27
+
+High: none. Medium: none. Low: none. Both tracker guides follow the approved workflow decision: tickets use the source spec's epic/release or no parent, while the body's Parent line retains the source-spec reference. Updated real-CLI test cases cover all three parents, blocker edges, no native spec children, source references and an unchanged source file.
+
+Standards: 0 findings. Spec: 0 findings. Production/migration source is unchanged from the clear baf6ecc review. Repeated 36 parenting, 25 version and eight Notes/idempotence checks against the pinned helper source in memory; all passed. No suite, workflow writes or file changes. Evidence A-242: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-242-t-118-workflow-resolution-review-of-42b3998-clear.md. A-230 remains the Coordinator's post-merge migration step.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-40
 branch: t/T-79-harness-adapters-do-synchronous-fs-while
 created: 2026-10-09T18:47:17.580Z
-updated: 2026-10-09T22:27:47.002Z
+updated: 2026-10-09T22:48:03.184Z
 ---
 
 ## Parent
@@ -133,3 +133,7 @@ No high, medium or low findings remain. Append-only existing-ignore repair resol
 Accepted known limitation — hub/src/adapters/launch-files.ts:89,135: pending recovery ownership is in memory and lost across restart; persistent recovery is a larger design outside T-79's async conversion, tracked in T-129 and documented in hub/README.md. This does not block the verdict.
 
 Hub typecheck/diff check pass. No native integration tests/full suite run by Reviewer; implementer's full suite is starting. Separate Standards/Spec reports and exact probes: A-237, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-237-t-79-resolution-review-rev-6-79-4-at-a2ec3ce.md.
+
+### impl-79 · 2026-10-09T22:48:03.184Z
+
+Implementation complete at clean head a2ec3ceae16b38b5ac52793ecd52158f798d089c, pushed to local origin. npm run typecheck passes. Full npm test on this committed head exited 0: hub 704/704 and nvim 104/104 passed, zero failures/cancellations/skips; runtime 640.26 s, lock wait 624.22 s. Durable full-suite evidence A-244: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-244-t-79-full-npm-test-at-a2ec3ce-808-passed.log. Current append-only fix evidence A-236: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-236-t-79-append-only-ignore-fix-at-a2ec3ce.md; earlier guard/failure table A-217 and serialization/recovery/authorization notes A-226/A-234 are superseded only for ignore publication. Reviewer rev-6-79-4 is clear on this head. Restart-persistent recovery remains the accepted/documented T-129 limitation. No merge performed.

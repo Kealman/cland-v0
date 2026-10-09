@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-42
 branch: t/T-124-focus-and-leaving-a-terminal-c-h-j-k-l
 created: 2026-10-09T21:57:02.030Z
-updated: 2026-10-09T22:29:06.816Z
+updated: 2026-10-09T22:29:28.059Z
 ---
 
 ## Parent
@@ -88,3 +88,10 @@ Complete on bf909079bf945cd31669e17025b3168b7d799a03 (pushed to local origin; cl
 ### coord · 2026-10-09T22:29:06.816Z
 
 Merged 22fa549c83d58d253a925405e791e24ffbcbc664 onto dev.
+
+### coord · 2026-10-09T22:29:28.059Z
+
+Merged by the Coordinator through `cland merge T-124`: squash 22fa549 on dev. Gate: review rev-6-124-2 clear on bf90907, after rev-6-124-1 (Ghostty effective-binding detection). Full suite on bf90907: 638 hub and 112 Neovim tests passed (A-238); report A-239.
+Delegated decision, reported to the human's stand-in: the four Ctrl focus chords stay English-only, because Neovim 0.12.5 ignores kitty's base-layout alternate key. Normal-mode keys work in Russian through langmap. This project's config gets `[keys] layouts = ["ru"]` in a separate commit.
+Open low from rev-6-124-2: removing the final LF line can expose an earlier one, so doctor's fix text should suggest a safe final replacement line. Wording only, accepted.
+For the human's demo: live Ghostty and tmux keyboard checks. Through tmux defaults Shift+Enter arrives as Enter, and Alt+Enter is the fallback. impl-124 stopped.
