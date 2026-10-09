@@ -101,6 +101,7 @@ const TOOLS = [
         model: { type: 'string', description: "The model; the role's default, else the harness's, when absent" },
         harness: { type: 'string', description: "The harness (`claude-code`, `opencode`); the role's default, else `claude-code`, when absent" },
         effort: { type: 'string', description: "The reasoning effort (Claude Code: low … max); the role's default when absent" },
+        cwd: { type: 'string', description: 'The working directory: absolute or relative to the project root; the project root when absent' },
       },
       required: ['name'],
     },
@@ -306,6 +307,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
               ...(typeof args.model === 'string' ? { model: args.model } : {}),
               ...(typeof args.harness === 'string' ? { harness: args.harness } : {}),
               ...(typeof args.effort === 'string' ? { effort: args.effort } : {}),
+              ...(typeof args.cwd === 'string' ? { cwd: args.cwd } : {}),
             },
             60_000,
           )) as Record<string, unknown>;

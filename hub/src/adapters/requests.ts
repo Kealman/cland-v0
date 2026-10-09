@@ -15,7 +15,7 @@
 // earlier launch under the same name is ignored or refused.
 import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';
-import type { Sessions } from './sessions.ts';
+import { InvalidLaunchCwd, type Sessions } from './sessions.ts';
 
 export type SessionRequest =
   | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string }
@@ -118,6 +118,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       }
     }
   } catch (err) {
+    if (err instanceof InvalidLaunchCwd) return { type: 'result', id: frame.id, ok: false, error: err.message, code: 'invalid-cwd' };
     return { type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
