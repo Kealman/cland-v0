@@ -382,6 +382,12 @@ async function runSession(id: string): Promise<number> {
     next.started();
     await new Promise((r) => setTimeout(r, turnMs));
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(next.text)?.[1] ?? next.text;
+    if (body.includes('fail this turn')) {
+      setStatus('idle');
+      await runHooks('StopFailure', { error: 'server_error', error_details: 'Upstream request failed: Endpoint is unavailable\nupstream details' });
+      await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
+      continue;
+    }
     const rename = /^rename to (\S+)$/.exec(body.trim());
     if (rename) await callTool('rename', { name: rename[1] });
     if (body.includes('needs approval')) {

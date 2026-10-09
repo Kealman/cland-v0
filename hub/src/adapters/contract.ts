@@ -76,6 +76,8 @@ export type AdapterHost = {
   log: (entry: Record<string, unknown>) => void;
   /** A state signal the adapter read from outside the session (a poll); push signals come through the hub's `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
+  /** A turn ended in error, with the hub messages that fed it (including steers), when known. */
+  turnFailed?: (sessionId: string, error: string, messages: string[]) => void;
   /** The adapter learnt the session's pid after the launch (its supervisor started it late). */
   recordPid: (sessionId: string, pid: number) => void;
   /** The adapter's own connection to the session came back (a reconnect): what waits for an inject is retried now,
@@ -86,7 +88,7 @@ export type AdapterHost = {
 };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { state?: SessionState; model?: string; usage?: Record<string, unknown>; confirms?: string[] };
+export type Interpretation = { state?: SessionState; model?: string; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };

@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, TopicRef } from '../protocol.ts';
 import { signalProcess } from './processes.ts';
+import { turnError } from './turn-error.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 
 export const CLAUDE_CODE = 'claude-code';
@@ -121,7 +122,7 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
       return { state: 'busy', ...(confirms.length ? { confirms } : {}) };
     }
     case 'turn-end':
-      return { state: 'idle' };
+      return { state: 'idle', ...(payload.hook_event_name === 'StopFailure' || payload.error ? { turnError: turnError(payload.error_details ?? payload.error) } : {}) };
     case 'mod-turn-complete': {
       const usage = typeof payload.usage === 'object' && payload.usage !== null ? (payload.usage as Record<string, unknown>) : undefined;
       return { state: 'idle', ...(usage ? { usage } : {}), ...(usage && typeof usage.model === 'string' ? { model: usage.model } : {}) };

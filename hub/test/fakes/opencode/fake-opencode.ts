@@ -146,7 +146,8 @@ async function serve(args: string[]): Promise<number> {
   const sessionFile = (id: string) => join(SESSIONS, `${id}.json`);
   const getSession = (id: string) => readJson<SessionInfo>(sessionFile(id));
   type Pending = { resolve: (reply: string) => void };
-  type Run = { inputs: string[]; queued: string[] };
+  type Input = { id: string; text: string };
+  type Run = { inputs: Input[]; queued: Input[] };
   const runs = new Map<string, Run>();
   const permissions = new Map<string, Map<string, Pending & { action: string }>>();
   const forms = new Map<string, Map<string, Pending & { title: string }>>();
@@ -157,6 +158,7 @@ async function serve(args: string[]): Promise<number> {
     emit('session.step.started', { sessionID: session.id, agent: 'build', model: session.model, assistantMessageID: rid('msg') });
     const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(text)?.[1] ?? text;
     await sleep(body.includes('take your time') ? 2000 : turnMs);
+    if (body.includes('fail this turn') || session.model.id === 'exo-free') throw new Error('Upstream request failed: Endpoint is unavailable\nupstream details');
     if (body.includes('needs approval')) {
       const id = rid('per');
       const reply = await new Promise<string>((resolve) => {
@@ -183,14 +185,19 @@ async function serve(args: string[]): Promise<number> {
   };
 
   const execute = async (session: SessionInfo, run: Run) => {
+    await sleep(Number(process.env.FAKE_OPENCODE_START_DELAY_MS ?? 0));
     emit('session.execution.started', { sessionID: session.id });
-    for (let input = run.inputs.shift(); input !== undefined; input = run.inputs.shift()) {
-      emit('session.inbox.delivered', { sessionID: session.id });
-      await answer(session, input);
+    try {
+      for (let input = run.inputs.shift(); input !== undefined; input = run.inputs.shift()) {
+        emit('session.inbox.delivered', { sessionID: session.id, inboxID: input.id });
+        await answer(session, input.text);
+      }
+      emit('session.execution.succeeded', { sessionID: session.id });
+    } catch (error) {
+      emit('session.execution.failed', { sessionID: session.id, error: { name: 'APIError', data: { message: (error as Error).message } } });
     }
-    emit('session.execution.succeeded', { sessionID: session.id });
     if (run.queued.length) {
-      run.inputs.push(run.queued.shift() as string);
+      run.inputs.push(run.queued.shift() as Input);
       void execute(session, run);
     } else runs.delete(session.id);
   };
@@ -231,6 +238,10 @@ async function serve(args: string[]): Promise<number> {
       if (url.pathname === '/api/model' && method === 'GET')
         return send(res, 200, {
           data: [
+            ...(process.env.FAKE_OPENCODE_DEPRECATED_FIRST ? [
+              { id: 'exo-free', providerID: 'opencode', status: 'active', cost: [{ input: 0, output: 0 }] },
+              { id: 'big-pickle', providerID: 'opencode', status: 'active', cost: [{ input: 0, output: 0 }] },
+            ] : []),
             { id: 'fake-paid', providerID: 'opencode', status: 'active', enabled: true, capabilities: { tools: true }, cost: [{ input: 1, output: 4 }] },
             { id: 'fake-free', providerID: 'opencode', status: 'active', enabled: true, capabilities: { tools: true }, cost: [{ input: 0, output: 0 }] },
           ],
@@ -268,11 +279,11 @@ async function serve(args: string[]): Promise<number> {
           send(res, 200, { data: { id, sessionID: sid, time: { created: Date.now() }, type: 'user', payload: { text }, delivery } });
           const run = runs.get(sid);
           if (!run) {
-            const fresh: Run = { inputs: [text], queued: [] };
+            const fresh: Run = { inputs: [{ id, text }], queued: [] };
             runs.set(sid, fresh);
             void execute(session, fresh);
-          } else if (delivery === 'steer') run.inputs.push(text);
-          else run.queued.push(text);
+          } else if (delivery === 'steer') run.inputs.push({ id, text });
+          else run.queued.push({ id, text });
           return;
         }
         if (parts[3] === 'permission' && parts.length === 4 && method === 'GET') return send(res, 200, { data: [...of(permissions, sid)].map(([id, p]) => ({ id, sessionID: sid, action: p.action, resources: [] })) });

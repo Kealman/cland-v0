@@ -10,9 +10,28 @@ import { mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/pro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
+
+test('a failed Codex turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['impl'], text: 'fail this turn' })).ok, true);
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.ok(inbox.notifications.some((n) => n.kind === 'turn-failed' && n.text === expected));
+  await coord.waitForEvent((e) => e.params.content.includes(expected));
+});
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };

@@ -9,7 +9,7 @@ import { mkdtemp, readdir, readFile, realpath, rm, stat } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -176,6 +176,68 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.equal(stopped.process.status, 'stopped');
   assert.equal(stopped.process.state, 'unknown');
   assert.deepEqual(await fake.servers(), []);
+});
+
+test('a launch without a model prefers big-pickle over a listed but deprecated free model', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_DEPRECATED_FIRST: '1' });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
+  assert.equal(launched.model, 'opencode/big-pickle');
+  await clauseAnswered(ui, 'impl');
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, 'does the default answer?');
+  await replyTo(ui, 'impl', 'pong: does the default answer?');
+});
+
+test('a failed OpenCode turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  // Wait for the launch's role-clause turn to finish before sending the failing work.
+  await eventually('clause turn ended', () => stateEvents(ui, 'impl').some((e) => e.state === 'busy') && stateEvents(ui, 'impl').at(-1)?.state === 'idle' ? true : undefined);
+  const sent = await coord.call<{ ok: boolean }>('send', { to: ['impl'], text: 'fail this turn' });
+  assert.equal(sent.ok, true);
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.equal(history.messages.filter((m) => m.kind === 'turn-failed' && m.text === expected).length, 1);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; session?: string; text: string }> };
+  assert.ok(inbox.notifications.some((n) => n.kind === 'turn-failed' && n.session === 'impl' && n.text === expected));
+  await coord.waitForEvent((e) => e.params.content.includes(expected));
+  assert.equal((await status(ui)).harnesses.find((h) => h.name === launched.name)?.status, 'running');
+});
+
+test('OpenCode failure attribution follows delivered inbox items when two idle admissions queue separate turns', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_START_DELAY_MS: '1000' });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(async () => { await coord.close(); await sender.close(); });
+  await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
+  await sender.waitForEvent((e) => e.params.meta?.kind === 'role');
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await eventually('clause turn ended', () => stateEvents(ui, 'impl').some((e) => e.state === 'busy') && stateEvents(ui, 'impl').at(-1)?.state === 'idle' ? true : undefined);
+  await coord.call('send', { to: ['impl'], text: 'first queued turn succeeds' });
+  await sender.call('send', { to: ['impl'], text: 'fail this turn' });
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await sender.waitForEvent((e) => e.params.content.includes(expected));
+  assert.equal(coord.events.some((e) => e.params.content.includes(expected)), false, 'the sender of the successful first turn gets no failure note');
+  const prompts = (await fake.prompts(launched.harnessSessionId as string)).split('\n').filter((line) => line.startsWith('prompt '));
+  assert.match(prompts[1] as string, /^prompt queue:/);
+  assert.match(prompts[2] as string, /^prompt queue \(running\):/);
 });
 
 test('a message sent while the session works steers the running turn; one sent while idle is queued', async (t) => {

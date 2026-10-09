@@ -51,6 +51,8 @@ export class Sessions {
   /** By session id: when the last applied signal happened, and when the last push signal arrived. */
   readonly #lastAt = new Map<string, number>();
   readonly #lastPush = new Map<string, number>();
+  /** Claude's hook/mod turn-start confirmations identify the input even when StopFailure arrives late. */
+  readonly #turnMessages = new Map<string, Map<number, string[]>>();
   /** Injects in flight, `<session id>:<message id>`, with when each went out: a retry never doubles one. A
    *  retry asked for while one is in flight — by an idle the harness fired after it went out, or a bridge
    *  that connected — is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
@@ -130,6 +132,7 @@ export class Sessions {
       root: this.#root,
       log: this.#log,
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
+      turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),
       exited: (sessionId, detail) => this.#exited(sessionId, detail),
       reconnected: (sessionId) => {
         const p = this.#table.bySessionId(sessionId);
@@ -349,9 +352,20 @@ export class Sessions {
     const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
     if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
     const meaning = adapter.interpret(frame.event, payload);
+    const at = frame.at ?? Date.now();
+    if (frame.event === 'turn-start' || frame.event === 'mod-turn-start') {
+      const starts = this.#turnMessages.get(p.sessionId) ?? new Map<number, string[]>();
+      starts.set(at, meaning.confirms ?? []);
+      this.#turnMessages.set(p.sessionId, starts);
+    }
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     if (meaning.model && meaning.model !== p.model) this.#table.update(p.name, { model: meaning.model });
     if (meaning.usage) adapter.noteUsage?.(p, meaning.usage);
+    if (meaning.turnError) {
+      // Async hooks can arrive after later turns; attribute by when they fired, even if idle is stale.
+      const starts = [...(this.#turnMessages.get(p.sessionId) ?? [])].filter(([started]) => started <= at).sort(([a], [b]) => b - a);
+      this.#turnFailed(p.sessionId, meaning.turnError, starts[0]?.[1] ?? []);
+    }
     if (!meaning.state) return { applied: false };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now() }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
@@ -381,6 +395,20 @@ export class Sessions {
     return changed;
   }
 
+  #turnFailed(sessionId: string, error: string, messages: string[]): void {
+    const p = this.#table.bySessionId(sessionId);
+    if (!p || p.status !== 'running') return;
+    const text = `${this.#core.label(p.name)}: its turn failed: ${error}`;
+    const senders = new Set<string>();
+    for (const id of messages) {
+      const message = this.#core.store.message(id);
+      if (message?.fromKind === 'agent') senders.add(message.from);
+    }
+    // The lifecycle log feeds Agents through its journalled notice path; that notice also feeds the inbox.
+    this.#log({ event: 'turn-failed', session: p.name, harness: p.harness, error, text, messages });
+    for (const sender of senders) this.#core.notify(sender, text);
+  }
+
   #exited(sessionId: string, detail: string): void {
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
@@ -393,6 +421,7 @@ export class Sessions {
 
   /** A dead holder leaves its role vacant (spec 4.4); the process table keeps it for a relaunch. */
   #vacate(p: HarnessProcess, reason: string): void {
+    this.#turnMessages.delete(p.sessionId);
     this.#vacating = true;
     try {
       this.#core.vacateRole(this.#core.connectionOf(p.sessionId)?.name ?? p.name, reason);
@@ -501,6 +530,7 @@ export class Sessions {
   }
 
   close(): void {
+    this.#turnMessages.clear();
     for (const a of this.#adapters.values()) a.close();
     this.#core.onDelivered(null);
     this.#core.launchedRole(null);

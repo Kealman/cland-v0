@@ -253,11 +253,17 @@ async function appServer(args: string[]): Promise<number> {
 
   const runTurn = async (t: Thread) => {
     const turnId = t.turnId as string;
+    let error: { message: string } | null = null;
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
       log(`turn ${turnId} item: ${item.text}`);
       await sleep(TURN_MS);
       const body = /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1];
       if (body === undefined) continue; // the clause, or text that is no cland message: nothing to answer
+      if (body.includes('fail this turn')) {
+        error = { message: 'Upstream request failed: Endpoint is unavailable\nupstream details' };
+        t.queue.length = 0;
+        break;
+      }
       if (body.includes('needs approval')) {
         await callTool('status', { text: 'idle' });
         const itemId = randomUUID();
@@ -294,7 +300,7 @@ async function appServer(args: string[]): Promise<number> {
     t.turnId = null;
     // as the real one: idle is sent before turn/completed
     setStatus(t, { type: 'idle' });
-    toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: 'completed', items: [] } });
+    toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: error ? 'failed' : 'completed', error, items: [] } });
   };
 
   const textOf = (params: Record<string, unknown>): string => {
