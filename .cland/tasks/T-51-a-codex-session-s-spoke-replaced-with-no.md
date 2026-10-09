@@ -2,17 +2,17 @@
 id: T-51
 kind: task
 title: "A Codex session's spoke replaced with no attach behind it: the session's tool calls then fail silently until a stop and relaunch"
-state: open
+state: closed
 labels:
   - slice-1
   - ready-for-agent
-assignee: impl-48
+assignee: impl-51
 parent: T-19
 blocked_by: []
 topic: topic-8
 branch: t/T-51-replaced-spoke-stale-state
 created: 2026-10-09T07:21:18.317Z
-updated: 2026-10-09T08:31:43.546Z
+updated: 2026-10-09T10:02:01.031Z
 ---
 
 ## Parent
@@ -123,3 +123,58 @@ Read-only in-memory evaluation of the branch's resume method with a deferred sto
 Standards: 0 documented-standard violations or actionable heuristic findings. Spec: 1 medium finding. The multi-spoke behavior otherwise matches the decisions: every socket shares current role/identity, newest delivery and remaining-spoke fallback, no repeated clause on join, Agents record without inbox notification, and 4002 reconnect. Secret authentication precedes joining; a mismatched id cannot join a held name. Revoked live roles remain shared/null; stopped/offline role fallback predates this change. Fake tests cover joins, restart and ordinary relaunch; README includes the trust note. No .cland/tasks diff; git diff --check passed.
 
 No edits or test-suite reruns. Tool limitations reported in topic-8: one guessed source path corrected; initial heredoc evaluation refused its temp file, then succeeded as an argument without writes. Git reads succeeded with the documented Xcode cache warnings.
+
+### rev-4 · 2026-10-09T09:10:59.979Z
+
+verdict: review
+result: clear
+by: rev-4 [reviewer]
+run: rev-20261009-51-9acddc4
+
+Reviewed pinned head 9acddc4c6dc5a48ade03f28e4ac58039c31ab187 against base b8368b3, including the complete T-51 diff, both occurrences, the earlier review/QA verdicts, and the Coordinator's documented decisions. Main thread only; no implementation edits.
+
+High: none found.
+Medium: none found. The previous medium is resolved at hub/src/adapters/sessions.ts:293: after stop, the row is resolved by session id; the not-found response resolves it again, and session-resumed uses the resulting current name.
+Low (coverage) — hub/src/spoke/hub-client.ts:279: no committed test specifically forces close 4002 and verifies reconnection; QA's independent real-spoke/scripted-peer probe already verified it, so this remains a nonblocking regression-coverage gap.
+
+Standards: no documented-standard violations or actionable smell findings. Spec: no remaining high/medium findings. The shared connection answers every spoke with current identity/role, routes deliveries to the newest and then the remaining spoke, removes presence only after the last closes, and avoids role resolution/clause re-injection on joins. Authentication precedes joining. The Agents record and README match the Coordinator's accepted no-inbox decision and the documented shared-identity trust boundary. The 4002 path now follows ordinary reconnect handling.
+
+The new fake-seam regression at hub/test/codex-adapter.test.ts:525 delays SIGTERM exit by 1200 ms while the Coordinator's turn renames it; assertions cover the renamed running row, new pid, dead old pid, same thread, one row for the session id, and retained role.
+
+Independent read-only in-memory evaluation of the extracted resume method passed both success and not-found paths with a rename during stop, another rename during resume, and reuse of the original name by an unrelated session. The returned name and lifecycle log followed the current row, the unrelated row stayed running/untouched, and exactly one row remained for the original session id. This checks control flow with stubbed table/adapter operations, not harness integration.
+
+Git diff --check passed; the reviewed worktree was clean at the pinned head. No suite rerun in the Reviewer sandbox. Prior QA covers 2c2e706; current-head typecheck and two 271/272 hub runs (different unrelated timeouts, passing alone) are Implementer-reported evidence, not independently reproduced here.
+
+### qa-5 · 2026-10-09T09:13:53.727Z
+
+verdict: qa
+result: clear
+by: qa-5 [qa]
+run: qa-2026-10-09-t51-2
+
+Refresh covers 9acddc4c6dc5a48ade03f28e4ac58039c31ab187 on t/T-51-replaced-spoke-stale-state. Confirmed with git log -1 and final git rev-parse HEAD; working tree clean. No product changes made.
+
+Ran:
+- `npm run typecheck && npm test` once: exit 0; typecheck clean; hub 272 total, 263 passed, 9 documented sandbox skips, 0 failed; Neovim 62 passed, 0 skipped, 0 failed. No timing failures occurred, so no isolated failure reruns were needed.
+- `node --test hub/test/codex-adapter.test.ts hub/test/names.test.ts hub/test/resilience.test.ts`: exit 0; 32 total, 29 passed, 3 ps-dependent skips, 0 failed. Joined-spoke tools, newest/fallback deliveries, no clause reinjection, Agents notice, and reconnecting spokes after hub restart passed again.
+- Read the new regression at hub/test/codex-adapter.test.ts:525: 1200 ms delayed SIGTERM exit lets the Coordinator rename during the stop; assertions require the new name, new pid, old pid gone, same thread, a single running process-table row, and retained Coordinator role. This test was skipped here because ps is refused, as were the ordinary live-relaunch and process-table restart tests.
+- `node /tmp/qa-t51-refresh-rename.mjs`: supplemental check of the actual Sessions.resume and in-memory ProcessTable with a deferred fake adapter stop. Both rename during stop and rename plus reuse of the old name passed. Resume received the original session id under coord-2 with stopped status, returned it running with the same role/thread, and left the unrelated row under coord unchanged. This exercises the fixed control flow, not OS process termination/relaunch.
+- `node hub/bin/cland.ts task list --state open --json` and `task view T-51 --json`: exit 0. `git diff --check`: exit 0.
+
+Findings by severity: high none; medium none; low no new findings. The prior low coverage note about a committed 4002-specific test remains unchanged; the first QA pass directly probed that behavior successfully.
+
+Evidence limits: live process relaunch and the new rename-during-stop integration case remain unexecuted in this ps-restricted sandbox. The prior accepted real-Codex startup restriction still applies; no new real-Codex run was requested in this refresh. The supplemental check confirms the reviewed name/identity race is fixed at the session-manager boundary.
+
+Artifacts: /tmp/qa-t51-refresh-suite.log, /tmp/qa-t51-refresh-targeted.log, /tmp/qa-t51-refresh-rename.mjs, /tmp/qa-t51-refresh-task-list.json, /tmp/qa-t51-refresh-task-view.json.
+
+### impl-51 · 2026-10-09T09:48:31.718Z
+
+Forward merge in progress from main into t/T-51-replaced-spoke-stale-state. Only hub/README.md conflicts: preserving T-51 multi-spoke/reconnect/relaunch documentation and main's T-56/T-65 additions. No implementation changes planned; will run typecheck and suite once, with any load timeout rerun alone.
+
+### impl-51 · 2026-10-09T09:57:48.923Z
+
+Forward merge completed: abb0b463d7f79ff1649ae760fe22d55ff2e1af2d merges main 9826a2b into t/T-51-replaced-spoke-stale-state. Resolved only hub/README.md, preserving T-51's spokes/replaced/relaunch sections and main's T-56/T-65 documentation. Tracker files exactly match main; no new .cland/tasks edits authored. Validation: npm run typecheck && npm test once, exit 0; hub 274 total / 265 passed / 9 documented sandbox skips / 0 failed; Neovim 64 passed / 0 skipped / 0 failed. No reruns. git diff --check passed; worktree clean. Log: /tmp/impl-51-forward-suite.log. No push.
+
+### coord · 2026-10-09T10:02:01.031Z
+
+Merged into main as fcf9a2d (`git merge --no-ff`, by the Coordinator) at 10:01Z, after impl-51's forward merge abb0b46 (spoke and Agents docs reconciled with T-56/T-65/T-53/T-54). Review and QA clear on the branch; the suite on main after the merge runs in the background and the result lands on T-42's run notes. Effect once the hub restarts: a session keeps every spoke (Codex sub-agent threads no longer replace the main spoke), and `cland session resume <name> --relaunch` follows a live session by id. Until the restart the old rule holds: Reviewers review in the main thread only.
