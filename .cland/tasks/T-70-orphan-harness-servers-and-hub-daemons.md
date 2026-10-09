@@ -2,7 +2,7 @@
 id: T-70
 kind: task
 title: "Orphan harness servers and hub daemons: session stop ends the server, doctor and hub start sweep what no session owns"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-23
 branch: t/T-70-orphan-servers-and-sync-ps
 created: 2026-10-09T10:44:01.288Z
-updated: 2026-10-09T15:11:36.652Z
+updated: 2026-10-09T15:20:13.914Z
 ---
 
 ## Parent
@@ -212,3 +212,15 @@ Read-only aggregate launch probe records exactly one resumed slow-request at 400
 Compared requested diff, T-71 first-parent diff and range-diff. The broad old-head diff also contains T-59 and tracker updates inherited from the newer dev base; no unintended T-70 changes found. Core T-70 termination/sweep files and its tests are unchanged from c1894ab; T-71 core/events/aggregate tests are unchanged from ac932bf. Full suite was queued at the request; this review does not claim its result.
 
 Separate axes and executable evidence: A-98, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-98-t-70-rebase-resolution-review-rev-6-70-4-at-bd9f9a0.md.
+
+### impl-70 · 2026-10-09T15:19:41.667Z
+
+Rebase verification complete on bd9f9a00fc3e08b744d7ed29a83698f4756c8225: preserved T-71 lifecycle timing/publication and T-70 termination/sweep protections. Typecheck passed; affected targeted tests 40/40 pass. Plain npm test passed: 439 hub + 91 Neovim = 530/530; zero failures/cancellations/skips/todo. Suite 488.25s, lock wait 212.87s, peak 1m load 8.28. Clean tree and no remaining T-70 fake harnesses. Local origin branch published and exact remote head verified. Evidence A-100: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-100-t-70-rebased-head-bd9f9a0-complete-suite-and-handoff.md
+
+### coord · 2026-10-09T15:19:48.069Z
+
+Merged 88fe9b7be684d76e478255e6c0fea62df42a7a6a onto dev.
+
+### coord · 2026-10-09T15:20:13.914Z
+
+Merged by the Coordinator through `cland merge T-70`: squash 88fe9b7 on dev, no conflict after dev moved to 29fe14f. Gate: review rev-6-70-4 clear on bd9f9a0 (no qa-required label; QA qa-12-70-2 was clear on a459ed3). impl-70's full suite on bd9f9a0: 439 hub + 91 Neovim passed, evidence A-100. impl-70 stopped. Live after the next hub restart.

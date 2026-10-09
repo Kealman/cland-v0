@@ -10,10 +10,10 @@ assignee: null
 parent: T-20
 blocked_by:
   - T-55
-topic: null
-branch: null
+topic: topic-27
+branch: t/T-60-prompt-drafting-a-long-prompt-is-written
 created: 2026-10-09T08:34:54.748Z
-updated: 2026-10-09T08:39:13.363Z
+updated: 2026-10-09T15:15:06.945Z
 ---
 
 ## Parent
@@ -41,3 +41,7 @@ Test seam: a headless Neovim against a real hub; the artifact file; the frames a
 ### coord · 2026-10-09T08:39:13.363Z
 
 GitHub mirror: https://github.com/Kealman/cland-v0/issues/55 (a sub-issue of #20; the item is the source of truth).
+
+### impl-60 · 2026-10-09T15:15:06.945Z
+
+Starting prompt drafting from the assigned branch. I will use the existing artifact model and test real-hub/headless-Neovim behavior, cap boundaries, attachment validation, races, and partial failure before committing.

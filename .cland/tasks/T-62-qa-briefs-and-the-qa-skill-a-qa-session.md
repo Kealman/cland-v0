@@ -12,9 +12,9 @@ blocked_by:
   - T-54
   - T-57
 topic: null
-branch: null
+branch: t/T-62-qa-briefs-and-the-qa-skill-a-qa-session
 created: 2026-10-09T08:34:54.777Z
-updated: 2026-10-09T08:39:13.470Z
+updated: 2026-10-09T15:14:29.302Z
 ---
 
 ## Parent

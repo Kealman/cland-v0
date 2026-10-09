@@ -11,9 +11,9 @@ parent: T-20
 blocked_by:
   - T-55
 topic: null
-branch: null
+branch: t/T-61-artifacts-kept-or-let-go-promote-into
 created: 2026-10-09T08:34:54.761Z
-updated: 2026-10-09T08:39:13.389Z
+updated: 2026-10-09T15:19:58.649Z
 ---
 
 ## Parent
