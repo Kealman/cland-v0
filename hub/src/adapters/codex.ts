@@ -71,7 +71,7 @@ export function firstTurn(name: string, clause: string | null | undefined): stri
 }
 
 /** An item of a turn, as `item/completed` and `thread/read` give it. */
-type TurnItem = { type?: unknown; name?: unknown; output?: unknown; content?: Array<{ text?: unknown }> };
+type TurnItem = { type?: unknown; name?: unknown; namespace?: unknown; output?: unknown; content?: Array<{ text?: unknown }> };
 
 /** How an input reached the app-server: text (`turn/steer`, or `turn/start` with `input`), or the `hub_event` tool
  *  output of a `turn/start` into an idle thread. */
@@ -82,7 +82,7 @@ type InputShape = 'text' | 'toolOutput';
  *  `namespace` and `output`. */
 function turnInput(item: TurnItem | undefined): { shape: InputShape; text: string } | null {
   if (item?.type === 'userMessage') return { shape: 'text', text: (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n') };
-  if (item?.type === 'functionCallOutput' && item.name === 'hub_event') {
+  if (item?.type === 'functionCallOutput' && item.name === 'hub_event' && item.namespace === 'cland') {
     if (typeof item.output === 'string') return { shape: 'toolOutput', text: item.output };
     if (Array.isArray(item.output)) return { shape: 'toolOutput', text: item.output.map((c: { text?: unknown }) => (typeof c?.text === 'string' ? c.text : '')).join('\n') };
   }

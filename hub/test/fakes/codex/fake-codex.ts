@@ -50,7 +50,8 @@
 // once. "fail recovered turn before response" completes the recovery as failed before replying; "refuse recovered
 // request" refuses it, and "drop every recovery" admits empty recovery turns to test the bounded failure outcome.
 // T-68: an input containing "record an unknown item" is recorded as an item of a type no Codex has (`hubInput`), as
-// a future app-server might, so the hub's reader cannot classify the turn.
+// a future app-server might, so the hub's reader cannot classify the turn; one containing "leave unannounced" is
+// recorded but never announced (`item/completed` missed), so only the turn's record shows it.
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
@@ -293,7 +294,7 @@ async function appServer(args: string[]): Promise<number> {
           ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
           : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
       record.items.push(taken);
-      toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
+      if (!item.text.includes('leave unannounced')) toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
       if (item.text === 'newer recovery turn') {
         while (!existsSync(join(HOME, 'release-newer-turn'))) await sleep(5);
       }

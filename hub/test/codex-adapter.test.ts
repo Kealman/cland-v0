@@ -621,6 +621,26 @@ test('a delivery to an idle Codex session runs one turn and is never redelivered
   assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered' || m.kind === 'turn-failed'), []);
 });
 
+test('an idle delivery whose item the turn never announced is found in the turn record and not redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  await sendGeneral(ui, '@impl-1 leave unannounced');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 leave unannounced', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string });
+  assert.deepEqual(events.filter((e) => /^harness-(redelivered|redelivery-failed|turn-unread)$/.test(e.event)), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+});
+
 test('a turn whose input items the hub cannot classify is reported once as unread and not redelivered', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
