@@ -87,14 +87,15 @@ test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktr
   assert.equal(json<Claimed>(await cland(root, 'task', 'claim', 'T-2', '--json')).worktree?.branch, 't/T-2-short');
 });
 
-test('an epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why', async (t) => {
+test('a release, epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why', async (t) => {
   const root = await project(t);
   await startDaemon(t, root);
   for (const kind of ['epic', 'spec', 'question', 'map']) ok(await cland(root, 'task', 'create', `A ${kind}`, '--kind', kind));
   ok(await cland(root, 'task', 'create', 'Done already', '--kind', 'task'));
   ok(await cland(root, 'task', 'close', 'T-5'));
+  ok(await cland(root, 'task', 'create', 'A release', '--kind', 'release'));
   const reasons: string[] = [];
-  for (const id of ['T-1', 'T-2', 'T-3', 'T-4', 'T-5']) {
+  for (const id of ['T-1', 'T-2', 'T-3', 'T-4', 'T-5', 'T-6']) {
     const r = json<Claimed>(await cland(root, 'task', 'claim', id, '--json'));
     assert.equal(r.claim?.session, 'human', id);
     assert.equal(r.worktree, null, id);
@@ -106,6 +107,7 @@ test('an epic, spec, question or map, a closed task, or a project without a terr
     'T-3 is a question: only a task gets a branch and a worktree',
     'T-4 is a map: only a task gets a branch and a worktree',
     'T-5 is closed: no worktree',
+    'T-6 is a release: only a task gets a branch and a worktree',
   ]);
   assert.match(ok(await cland(root, 'task', 'claim', 'T-1')).stdout, /worktree {2}none: T-1 is an epic/);
   assert.equal(existsSync(join(root, '.cland', 'worktrees')), false);

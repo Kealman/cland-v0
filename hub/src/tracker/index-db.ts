@@ -87,6 +87,7 @@ export type Source = 'hub' | 'hand';
 export type IndexedItem = {
   id: string;
   kind: Kind;
+  version?: string;
   title: string;
   state: State;
   labels: string[];
@@ -113,6 +114,8 @@ export type IndexMeta = { file: string; hash: string; source: Source; indexedAt:
 export type Claim = { session: string; sessionId: string; role: string | null; claimedAt: string };
 
 export type ListFilter = {
+  /** Descendants only, excluding the named root; combined with all other filters. */
+  under?: string;
   state?: State;
   /** Every label listed must be on the item. */
   labels?: string[];
@@ -131,7 +134,9 @@ export class TrackerIndex {
     this.#db = new DatabaseSync(path);
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;');
     this.#db.exec(SCHEMA);
-    // additive, for a file written before claims carried the session id
+    // Additive columns for databases created by earlier hub versions.
+    const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
+    if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
     const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
@@ -163,10 +168,10 @@ export class TrackerIndex {
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
       this.#db
         .prepare(
-          `insert into tracker_items (id, n, file, kind, title, state, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into tracker_items (id, n, file, kind, version, title, state, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.title, fm.state, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
+        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
@@ -224,6 +229,13 @@ export class TrackerIndex {
   list(filter: ListFilter = {}): IndexedItem[] {
     const where: string[] = [];
     const args: Array<string | number> = [];
+    if (filter.under) {
+      where.push(`i.id in (with recursive subtree(id) as (
+        select id from tracker_items where parent = ?
+        union select child.id from tracker_items child join subtree on child.parent = subtree.id
+      ) select id from subtree where id != ?)`);
+      args.push(filter.under, filter.under);
+    }
     if (filter.state) {
       where.push('i.state = ?');
       args.push(filter.state);
@@ -258,6 +270,7 @@ export class TrackerIndex {
     return {
       id,
       kind: r.kind as Kind,
+      ...(r.version !== null ? { version: r.version as string } : {}),
       title: r.title as string,
       state: r.state as State,
       labels: (this.#db.prepare('select label from tracker_labels where item_id = ? order by rowid').all(id) as Row[]).map((x) => x.label as string),

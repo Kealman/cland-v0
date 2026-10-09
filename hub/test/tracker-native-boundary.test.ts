@@ -76,7 +76,10 @@ test('hub tracker mutations, reads, scans, and shared launches use no synchronou
   await guarded(async () => {
     for (const frame of [
       { type: 'task.create', title: 'First', kind: 'spec' },
-      { type: 'task.create', title: 'Second', kind: 'spec' },
+      { type: 'task.create', title: 'Second', kind: 'epic' },
+      { type: 'task.create', title: 'Release', kind: 'release', version: '0.1.0' },
+      { type: 'task.link', item: 'T-2', parent: 'T-3' },
+      { type: 'task.list', under: 'T-3' },
       { type: 'task.view', item: 'T-1' },
       { type: 'task.edit', item: 'T-1', body: 'edited' },
       { type: 'task.link', item: 'T-1', parent: 'T-2' },

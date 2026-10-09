@@ -1,5 +1,6 @@
 // The spoke's `task.*` tools: the tracker's requests as MCP tools. Arguments name the item `id`; the frame
 // carries it as `item` (a frame's `id` is the request's). The hub validates; the spoke only reshapes.
+import { KINDS } from '../tracker/item.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { DistributiveOmit } from './hub-client.ts';
 
@@ -7,7 +8,7 @@ const str = { type: 'string' } as const;
 const strs = { type: 'array', items: { type: 'string' } } as const;
 const nullableStr = { type: ['string', 'null'] } as const;
 const itemId = { type: 'string', description: 'The item id, T-<n>' } as const;
-const KIND = { type: 'string', enum: ['epic', 'spec', 'task', 'question', 'map'] } as const;
+const KIND = { type: 'string', enum: KINDS } as const;
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [
@@ -16,19 +17,19 @@ export const TASK_TOOLS = [
     description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id T-<n>). Returns the item.",
     inputSchema: {
       type: 'object',
-      properties: { title: str, kind: { ...KIND, description: 'Default task' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, topic: str, branch: str },
+      properties: { title: str, kind: { ...KIND, description: 'Default task' }, version: { ...str, description: 'Release semver without the v; optional at creation' }, body: str, labels: strs, assignee: str, parent: itemId, blocked_by: strs, topic: str, branch: str },
       required: ['title'],
     },
   },
   {
     name: 'task.view',
-    description: 'One item: its fields, body, comments, verdicts, and the live claim on it if any.',
+    description: 'One item: its fields, file path, root-to-item ancestry, body, comments, verdicts, and live claim.',
     inputSchema: { type: 'object', properties: { id: itemId }, required: ['id'] },
   },
   {
     name: 'task.list',
-    description: 'List items from the index. Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
-    inputSchema: { type: 'object', properties: { state: STATE, label: strs, kind: KIND, assignee: str, verdict: str } },
+    description: 'List items from the index. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
+    inputSchema: { type: 'object', properties: { under: itemId, state: STATE, label: strs, kind: KIND, assignee: str, verdict: str } },
   },
   {
     name: 'task.comment',
@@ -41,8 +42,8 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.edit',
-    description: "Change an item's title, body, kind, state, labels (replace, add, remove) or assignee (null clears).",
-    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, state: STATE, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
+    description: "Change an item's title, body, kind, version, state, labels (replace, add, remove) or assignee (null clears).",
+    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, version: nullableStr, state: STATE, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
   },
   {
     name: 'task.close',

@@ -33,6 +33,7 @@ function itemOf(raw: FixtureItem): Item {
     fm: {
       id,
       kind,
+      ...(raw.version !== undefined ? { version: String(raw.version) } : {}),
       title: String(raw.title ?? ''),
       state,
       labels: texts(raw.labels),

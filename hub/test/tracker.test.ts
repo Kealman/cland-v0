@@ -57,7 +57,7 @@ test('task create writes an item file with the frontmatter and sequential ids', 
   const root = await project(t);
   const first = ok(await cland(root, 'task', 'create', 'Add the login page', '--label', 'ui', '--label', 'slice-1', '--body', 'The page the human logs in on.'));
   assert.equal(first.stdout, 'created T-1  .cland/tasks/T-1-add-the-login-page.md\n');
-  const second = await json<{ item: View }>(root, 'create', 'Write the spec', '--kind', 'spec', '--parent', 'T-1', '--assignee', 'alice');
+  const second = await json<{ item: View }>(root, 'create', 'Write the spec', '--kind', 'spec', '--assignee', 'alice');
   assert.equal(second.item.id, 'T-2');
   assert.deepEqual(await itemFiles(root), ['T-1-add-the-login-page.md', 'T-2-write-the-spec.md']);
 
@@ -77,7 +77,7 @@ test('task create writes an item file with the frontmatter and sequential ids', 
 
   const fm2 = frontmatter(await readFile(join(tasksDir(root), 'T-2-write-the-spec.md'), 'utf8'));
   assert.equal(fm2.kind, 'spec');
-  assert.equal(fm2.parent, 'T-1');
+  assert.equal(fm2.parent, null);
   assert.equal(fm2.assignee, 'alice');
 
   // a file added by hand takes its number; the hub continues above it

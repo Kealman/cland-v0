@@ -3,7 +3,7 @@
 // Pure: text in, text out; nothing here touches the disk.
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
-export const KINDS = ['epic', 'spec', 'task', 'question', 'map'] as const;
+export const KINDS = ['release', 'epic', 'spec', 'task', 'question', 'map'] as const;
 export type Kind = (typeof KINDS)[number];
 export const STATES = ['open', 'closed'] as const;
 export type State = (typeof STATES)[number];
@@ -16,6 +16,8 @@ export type VerdictResult = (typeof RESULTS)[number];
 export type Frontmatter = {
   id: string;
   kind: Kind;
+  /** Release semver, without the v; absent until planned. */
+  version?: string;
   title: string;
   state: State;
   labels: string[];
@@ -94,6 +96,29 @@ export function parseVerdictFilter(raw: string): { verdict: VerdictKind; result:
   return { verdict: k as VerdictKind, result: result as VerdictResult };
 }
 
+/** Default ladder for this slice; maps sit outside it and hold wayfinder questions/tasks. */
+export const LEVELS = ['release', 'epic'] as const;
+export function parentingRefusal(child: Kind, parent: Kind): string | null {
+  const level = (LEVELS as readonly Kind[]).indexOf(child);
+  const allowed = level >= 0 ? level > 0 && parent === LEVELS[level - 1]
+    : child === 'map' ? false
+    : (LEVELS as readonly Kind[]).includes(parent) || parent === 'map' && (child === 'question' || child === 'task');
+  return allowed ? null : `parenting rule: ${child} cannot be under ${parent}; release has no parent, epic takes release, leaves take release or epic, and map takes question or task`;
+}
+
+/** A release starts with a Notes section, preserving text the author already prepared. */
+export function withReleaseNotes(body: string): string {
+  const text = body.replace(/\r\n/g, '\n').trim();
+  return /^## Notes[ \t]*$/m.test(text) ? text : [text, '## Notes'].filter(Boolean).join('\n\n');
+}
+
+// SemVer 2.0: core and numeric prerelease identifiers have no leading zero; build identifiers may.
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+export function versionRefusal(kind: Kind, version: unknown): string | null {
+  if (kind !== 'release') return 'version belongs only to a release item';
+  return typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version) ? null : 'version must be semver without the v (for example 0.1.0)';
+}
+
 // ------------------------------------------------------------------ reading
 
 export class ItemParseError extends Error {}
@@ -108,7 +133,7 @@ const ref = (v: unknown): string | null => {
 /**
  * Parse an item file. A hand-edited file is read leniently: a missing field takes its default, a single
  * label is a list of one, `12` is `T-12`. Only a file with no frontmatter, unparsable YAML, an unknown
- * kind or state, or no id at all (neither in the frontmatter nor in `fileName`) is refused.
+ * kind or state, an invalid release version, or no id at all (neither in the frontmatter nor in `fileName`) is refused.
  */
 export function parseItem(text: string, fileName?: string): Item {
   const src = text.replace(/\r\n/g, '\n');
@@ -143,6 +168,11 @@ export function parseItem(text: string, fileName?: string): Item {
     created: str(r.created) ?? '',
     updated: str(r.updated) ?? '',
   };
+  if (r.version !== undefined && r.version !== null) {
+    const refusal = versionRefusal(kind, r.version);
+    if (refusal) throw new ItemParseError(refusal);
+    fm.version = r.version as string;
+  }
   const github = githubOf(r.github);
   if (github) fm.github = github;
 
@@ -219,6 +249,7 @@ export function serializeItem(item: Item): string {
   const ordered: Frontmatter = {
     id: fm.id,
     kind: fm.kind,
+    ...(fm.version !== undefined ? { version: fm.version } : {}),
     title: fm.title,
     state: fm.state,
     labels: fm.labels,

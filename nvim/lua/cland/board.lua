@@ -34,7 +34,7 @@ function M.columns()
     cols[c[1]] = {}
   end
   for _, it in ipairs(items.all()) do
-    if it.kind ~= 'epic' and it.kind ~= 'map' then
+    if it.kind ~= 'release' and it.kind ~= 'epic' and it.kind ~= 'map' then
       table.insert(cols[items.column(it)], it)
     end
   end

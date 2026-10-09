@@ -9,12 +9,12 @@ import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
 import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
 
-export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-file f] [--label l]… [--assignee a]
+export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
   task view <id>
-  task list [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
+  task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>]]
-  task edit <id> [--title t] [--body t | --body-file f] [--kind k] [--state s] [--label l]…
+  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
@@ -37,11 +37,11 @@ const COMMON = {
 } as const satisfies ParseArgsConfig['options'];
 
 const OPTIONS = {
-  create: { ...COMMON, kind: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
+  create: { ...COMMON, kind: { type: 'string' }, version: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   view: { ...COMMON },
-  list: { ...COMMON, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
+  list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
   comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, 'body-file': { type: 'string' } },
-  edit: { ...COMMON, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
+  edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   claim: { ...COMMON, release: { type: 'boolean' }, force: { type: 'boolean' } },
@@ -77,6 +77,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         type: 'task.create',
         title,
         kind: v.kind,
+        version: v.version,
         body: readBody(v),
         labels: v.label,
         assignee: v.assignee,
@@ -89,7 +90,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
     case 'view':
       return { type: 'task.view', item: needId() };
     case 'list':
-      return defined({ type: 'task.list', state: v.state, labels: v.label, kind: v.kind, assignee: v.assignee, verdict: v.verdict }) as { type: string };
+      return defined({ type: 'task.list', under: v.under, state: v.state, labels: v.label, kind: v.kind, assignee: v.assignee, verdict: v.verdict }) as { type: string };
     case 'comment': {
       const item = needId();
       const text = typeof v['body-file'] === 'string' ? readBody(v) : positionals.slice(1).join(' ');
@@ -103,6 +104,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
     case 'edit':
       return defined({
         type: 'task.edit',
+        version: clearable(v.version as string | undefined),
         item: needId(),
         title: v.title,
         body: readBody(v),
@@ -136,8 +138,9 @@ const claimText = (c: Claim | null): string => (c ? `${c.session}${c.role ? ` ($
 
 function viewText(i: ItemView): string {
   const lines = [
-    `${i.id}  ${i.title}`,
+    i.ancestry.map(node => `${node.id}  ${node.title}`).join(' › '),
     `  kind      ${i.kind}`,
+    ...(i.version !== undefined ? [`  version   ${i.version}`] : []),
     `  state     ${i.state}`,
     `  labels    ${i.labels.length ? i.labels.join(', ') : '-'}`,
     `  assignee  ${i.assignee ?? '-'}`,

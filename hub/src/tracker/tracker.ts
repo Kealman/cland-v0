@@ -26,6 +26,9 @@ import {
   serializeItem,
   STATES,
   VERDICT_KINDS,
+  versionRefusal,
+  parentingRefusal,
+  withReleaseNotes,
   type Comment,
   type GithubRef,
   type Item,
@@ -56,6 +59,8 @@ export type Actor = { id: string; name: string; role: string | null };
 export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
   path: string;
+  /** Root-to-item header path, including this item; distinct from the file path. */
+  ancestry: Array<Pick<IndexedItem, 'id' | 'kind' | 'title'>>;
   /** The integration branch used for patch-id comparisons, or null when neither exists. */
   verdictBase: string | null;
   body: string;
@@ -75,6 +80,7 @@ export type ItemChange = { id: string; item: ItemSummary | null };
 export type CreateInput = {
   title: string;
   kind?: Kind;
+  version?: string;
   body?: string;
   labels?: string[];
   assignee?: string | null;
@@ -85,6 +91,7 @@ export type CreateInput = {
 };
 
 export type EditInput = {
+  version?: string | null;
   title?: string;
   body?: string;
   kind?: Kind;
@@ -569,11 +576,25 @@ export class Tracker {
       ...item.fm,
       file,
       path: join(TASKS_REL, file),
+      ancestry: this.#ancestry(item),
       body: item.body,
       comments: item.comments,
       verdicts: this.#fresh.annotate(id, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id),
     };
+  }
+
+  #ancestry(item: Item): ItemView['ancestry'] {
+    const path: ItemView['ancestry'] = [];
+    const seen = new Set<string>();
+    let node: Pick<IndexedItem, 'id' | 'kind' | 'title' | 'parent'> | null = item.fm;
+    // Legacy/hand-edited parents may be missing or cyclic; never hang a read.
+    while (node && !seen.has(node.id)) {
+      seen.add(node.id);
+      path.push({ id: node.id, kind: node.kind, title: node.title });
+      node = node.parent ? this.#index.get(node.parent) : null;
+    }
+    return path.reverse();
   }
 
   /** The items, each latest verdict with `current` when the freshness cache knows it (absent: not known yet). */
@@ -623,6 +644,7 @@ export class Tracker {
   }
 
   list(filter: ListFilter = {}): ItemSummary[] {
+    if (filter.under !== undefined) filter = { ...filter, under: this.#require(filter.under).id };
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
@@ -720,6 +742,14 @@ export class Tracker {
     return id;
   }
 
+  #checkParent(kind: Kind, parent: string | null): void {
+    if (parent === null) return;
+    const indexed = this.#index.get(parent);
+    if (!indexed) throw new TrackerError(`parent: no item ${parent}`);
+    const refusal = parentingRefusal(kind, indexed.kind);
+    if (refusal) throw new TrackerError(`${refusal} (parent ${parent})`);
+  }
+
   create(actor: Actor, input: CreateInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
     return this.#serial(() => this.#create(actor, input, resumed, authorize), resumed);
   }
@@ -729,8 +759,13 @@ export class Tracker {
     if (!title) throw new TrackerError('an item needs a title');
     const kind = input.kind ?? 'task';
     if (!KINDS.includes(kind)) throw new TrackerError(`unknown kind "${kind}" (one of ${KINDS.join(', ')})`);
+    if (input.version !== undefined) {
+      const refusal = versionRefusal(kind, input.version);
+      if (refusal) throw new TrackerError(refusal);
+    }
     checkText(input.body ?? '', 'body');
     const parent = input.parent ? this.#ref(input.parent, null, 'parent') : null;
+    this.#checkParent(kind, parent);
     const blocked = [...new Set((input.blocked_by ?? []).map((b) => this.#ref(b, null, 'blocked_by')))];
     const topic = input.topic?.trim() || null;
     this.#checkTopic(null, topic);
@@ -744,6 +779,7 @@ export class Tracker {
         fm: {
           id,
           kind,
+          ...(input.version !== undefined ? { version: input.version } : {}),
           title,
           state: 'open',
           labels: uniq(input.labels ?? []),
@@ -755,7 +791,7 @@ export class Tracker {
           created: now,
           updated: now,
         },
-        body: input.body?.trim() ?? '',
+        body: kind === 'release' ? withReleaseNotes(input.body ?? '') : input.body?.trim() ?? '',
         comments: [],
       };
       const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); });
@@ -862,7 +898,27 @@ export class Tracker {
         const fm = item.fm;
         if (input.title !== undefined) fm.title = input.title.trim();
         if (input.body !== undefined) item.body = input.body.trim();
-        if (input.kind !== undefined) fm.kind = input.kind;
+        if (input.kind !== undefined && input.kind !== fm.kind) {
+          this.#checkParent(input.kind, fm.parent);
+          for (const child of this.#index.list().filter(child => child.parent === fm.id)) {
+            const refusal = parentingRefusal(child.kind, input.kind);
+            if (refusal) throw new TrackerError(`${refusal} (child ${child.id})`);
+          }
+          if (fm.version !== undefined && input.version !== null) {
+            const refusal = versionRefusal(input.kind, fm.version);
+            if (refusal) throw new TrackerError(refusal);
+          }
+          fm.kind = input.kind;
+          if (fm.kind === 'release') item.body = withReleaseNotes(item.body);
+        }
+        if (input.version !== undefined) {
+          if (input.version === null) delete fm.version;
+          else {
+            const refusal = versionRefusal(fm.kind, input.version);
+            if (refusal) throw new TrackerError(refusal);
+            fm.version = input.version;
+          }
+        }
         if (input.state !== undefined) fm.state = input.state;
         if (input.labels !== undefined) fm.labels = uniq(input.labels);
         if (input.add_labels) fm.labels = uniq([...fm.labels, ...input.add_labels]);
@@ -913,7 +969,7 @@ export class Tracker {
       if (topic !== undefined) this.#checkTopic(id, topic);
       const view = await this.#mutate(id, actor, 'link', (item) => {
         const fm = item.fm;
-        if (parent !== undefined) fm.parent = parent;
+        if (parent !== undefined) { this.#checkParent(fm.kind, parent); fm.parent = parent; }
         fm.blocked_by = uniq([...fm.blocked_by, ...add]).filter((b) => !remove.includes(b));
         if (topic !== undefined) fm.topic = topic;
         if (input.branch !== undefined) fm.branch = input.branch || null;

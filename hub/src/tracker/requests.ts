@@ -14,6 +14,7 @@ export type TaskRequest =
       id: string;
       title: string;
       kind?: Kind;
+      version?: string;
       body?: string;
       labels?: string[];
       assignee?: string | null;
@@ -24,10 +25,11 @@ export type TaskRequest =
       as?: ActorField;
     }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
       type: 'task.edit';
+      version?: string | null;
       id: string;
       item: string;
       title?: string;
@@ -76,8 +78,8 @@ const needItem = (f: Record<string, unknown>): string => {
 export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: Actor, resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<unknown> {
   const authorize = () => { currentActor?.(); };
   const f = frame as unknown as Record<string, unknown>;
-  for (const k of ['title', 'body', 'text', 'comment']) optStr(f, k);
-  for (const k of ['assignee', 'parent', 'topic', 'branch']) optNullableStr(f, k);
+  for (const k of ['title', 'body', 'text', 'comment', 'under']) optStr(f, k);
+  for (const k of ['assignee', 'parent', 'topic', 'branch', 'version']) optNullableStr(f, k);
   for (const k of ['labels', 'add_labels', 'remove_labels', 'blocked_by', 'unblock']) optList(f, k);
   if (f.kind !== undefined && !KINDS.includes(f.kind as Kind)) throw new TrackerError(`unknown kind "${String(f.kind)}" (one of ${KINDS.join(', ')})`);
   if (f.state !== undefined && !STATES.includes(f.state as State)) throw new TrackerError(`unknown state "${String(f.state)}" (open or closed)`);
@@ -97,6 +99,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       }
       return {
         items: tracker.list({
+          ...(frame.under !== undefined ? { under: frame.under } : {}),
           ...(frame.state ? { state: frame.state } : {}),
           ...(frame.labels?.length ? { labels: frame.labels } : {}),
           ...(frame.kind ? { kind: frame.kind } : {}),

@@ -123,40 +123,43 @@ test('every `cland task` command the template names parses: it reaches the hub c
 
 // ------------------------------------------------------------------ /to-spec and /to-tickets
 
-test('to-spec and to-tickets: a spec item, then tickets in dependency order with parent and blocked-by edges', async (t) => {
-  const root = await project(t);
-  // to-spec: "publish to the issue tracker" → an item of kind spec, labelled ready-for-agent
-  const spec = await create(root, ['Login with a magic link', '--kind', 'spec', '--label', 'ready-for-agent'], '## Problem Statement\n\nUsers forget passwords.\n');
-  // to-tickets: blockers first, each with --parent (the source was an existing item) and --blocked-by
-  const schema = await create(root, ['Store one-time login tokens', '--kind', 'task', '--parent', spec, '--label', 'ready-for-agent'], '## What to build\n\nTokens.\n');
-  const send = await create(root, ['Send the magic link by email', '--kind', 'task', '--parent', spec, '--blocked-by', schema, '--label', 'ready-for-agent'], '## What to build\n\nThe email.\n');
-  const land = await create(root, ['Log in from the link', '--kind', 'task', '--parent', spec, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], '## What to build\n\nThe landing.\n');
+for (const parentKind of ['epic', 'release', null]) {
+  test(`to-spec and to-tickets: source spec stays a leaf; tickets use ${parentKind ?? 'no parent'} and blocking edges`, async (t) => {
+    const root = await project(t);
+    const parent = parentKind ? await create(root, ['Login delivery', '--kind', parentKind], '## Goal\n\nMagic links.\n') : null;
+    const parentArgs = parent ? ['--parent', parent] : [];
+    // to-spec: publish the spec under the planned container, or unscheduled.
+    const spec = await create(root, ['Login with a magic link', '--kind', 'spec', ...parentArgs, '--label', 'ready-for-agent'], '## Problem Statement\n\nUsers forget passwords.\n');
+    const specBefore = (await itemFile(root, spec)).text;
+    const source = `## Parent\n\n${spec}: Login with a magic link\n\n`;
+    // to-tickets: the source spec is context in the body. Native parent edges point to its container.
+    const schema = await create(root, ['Store one-time login tokens', '--kind', 'task', ...parentArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
+    const send = await create(root, ['Send the magic link by email', '--kind', 'task', ...parentArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
+    const land = await create(root, ['Log in from the link', '--kind', 'task', ...parentArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
 
-  // the files are the truth
-  const specFile = await itemFile(root, spec);
-  assert.equal(specFile.fm.kind, 'spec');
-  assert.deepEqual(specFile.fm.labels, ['ready-for-agent']);
-  assert.match(specFile.text, /## Problem Statement\n\nUsers forget passwords\./);
-  const landFile = await itemFile(root, land);
-  assert.equal(landFile.fm.parent, spec);
-  assert.deepEqual(landFile.fm.blocked_by, [schema, send]);
-  assert.deepEqual((await itemFile(root, send)).fm.blocked_by, [schema]);
-  assert.deepEqual((await itemFile(root, schema)).fm.blocked_by, []);
+    const specFile = await itemFile(root, spec);
+    assert.equal(specFile.fm.kind, 'spec');
+    assert.deepEqual(specFile.fm.labels, ['ready-for-agent']);
+    assert.equal(specFile.fm.parent, parent);
+    assert.match(specFile.text, /## Problem Statement\n\nUsers forget passwords\./);
+    const landFile = await itemFile(root, land);
+    assert.equal(landFile.fm.parent, parent);
+    assert.deepEqual(landFile.fm.blocked_by, [schema, send]);
+    assert.deepEqual((await itemFile(root, send)).fm.blocked_by, [schema]);
+    assert.deepEqual((await itemFile(root, schema)).fm.blocked_by, []);
+    for (const id of [schema, send, land]) assert.equal((await view(root, id)).body.split('\n\n')[1], `${spec}: Login with a magic link`);
 
-  // the template's "children of a parent": the index agrees with the files, in dependency order
-  const children = (await list(root)).filter((i) => i.parent === spec);
-  assert.deepEqual(
-    children.map((i) => [i.id, i.blocked_by]),
-    [
-      [schema, []],
-      [send, [schema]],
-      [land, [schema, send]],
-    ],
-  );
-  assert.deepEqual((await list(root, '--state', 'open', '--label', 'ready-for-agent')).map((i) => i.id), [spec, schema, send, land]);
-  // to-tickets never closes or modifies the parent
-  assert.equal((await view(root, spec)).state, 'open');
-});
+    const listed = await list(root);
+    assert.deepEqual(listed.filter(i => i.parent === spec), [], 'a spec has no native children');
+    assert.deepEqual(
+      listed.filter(i => [schema, send, land].includes(i.id)).map(i => [i.parent, i.blocked_by]),
+      [[parent, []], [parent, [schema]], [parent, [schema, send]]],
+    );
+    assert.deepEqual((await list(root, '--state', 'open', '--label', 'ready-for-agent')).map(i => i.id), [spec, schema, send, land]);
+    assert.equal((await view(root, spec)).state, 'open');
+    assert.equal((await itemFile(root, spec)).text, specBefore, 'to-tickets never modifies its source spec');
+  });
+}
 
 // ------------------------------------------------------------------ /wayfinder
 
