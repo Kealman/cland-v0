@@ -132,7 +132,7 @@ function recoverGuardSync(path: string): void {
   }
   emptyGuardSync(path);
 }
-async function recoverGuardAsync(path: string, resumed: Resumed): Promise<void> {
+async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: number): Promise<void> {
   let names: string[];
   try {
     const stat = await fs.lstat(path);
@@ -148,7 +148,7 @@ async function recoverGuardAsync(path: string, resumed: Resumed): Promise<void> 
       return record.holder;
     });
     if (resumed(() => pidAlive(holder.pid))) {
-      const now = holder.started === null ? null : await processStartedAsync(holder.pid, PS_TIMEOUT_MS, resumed);
+      const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed);
       if (resumed(() => sameProcess(holder, now))) return;
     }
     await fs.rm(`${path}/${name}`, { force: true });
@@ -167,7 +167,7 @@ function takeGuardSync(path: string, me: LockHolder): (() => void) | null {
     return () => { rmSync(`${path}/${name}`, { force: true }); emptyGuardSync(path); };
   }, () => rmSync(tmp, { recursive: true, force: true }));
 }
-async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed): Promise<(() => Promise<void>) | null> {
+async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed, deadline?: number): Promise<(() => Promise<void>) | null> {
   const name = `${randomUUID()}.owner`;
   const tmp = `${path}.${name}.tmp`;
   await fs.mkdir(tmp, { mode: 0o700 });
@@ -176,7 +176,7 @@ async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed): P
     try { await fs.rename(tmp, path); }
     catch (err) {
       resumed(() => { if (!occupied(err)) throw err; });
-      await recoverGuardAsync(path, resumed);
+      await recoverGuardAsync(path, resumed, deadline);
       return null;
     }
     return resumed(() => async () => { await fs.rm(`${path}/${name}`, { force: true }); await emptyGuardAsync(path, resumed); });
@@ -244,34 +244,43 @@ export function acquireLock(path: string): HubLock {
   throw new Error(`could not take ${path}: it keeps changing under this process`);
 }
 
-export async function acquireLockAsync(path: string, resumed: Resumed = work => work()): Promise<AsyncHubLock> {
-  ownStarted ??= processStartedAsync(process.pid);
+function lockTimeout(deadline?: number): number {
+  const ms = deadline === undefined ? PS_TIMEOUT_MS : deadline - Date.now();
+  if (ms <= 0) throw new Error('lock acquisition deadline reached');
+  return Math.min(PS_TIMEOUT_MS, ms);
+}
+
+export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number): Promise<AsyncHubLock> {
+  lockTimeout(deadline);
+  ownStarted ??= processStartedAsync(process.pid, lockTimeout(deadline));
   const started = await ownStarted;
   const { me, text } = resumed(() => {
     const me = { pid: process.pid, started, token: randomUUID() };
     return { me, text: `${JSON.stringify(me)}\n` };
   });
-  const guarded = async <T>(work: () => Promise<T>): Promise<T> => {
+  const guarded = async <T>(work: () => Promise<T>, limit?: number): Promise<T> => {
     for (let attempt = 0; attempt < 250; attempt++) {
-      const release = await takeGuardAsync(`${path}.break`, me, resumed);
+      lockTimeout(limit);
+      const release = await takeGuardAsync(`${path}.break`, me, resumed, limit);
       if (!release) { await pauseAsync(); continue; }
       return withCleanupAsync(work, release, resumed);
     }
     return resumed(() => { throw new Error(`could not take guard for ${path}`); });
   };
   for (let attempt = 0; attempt < 50; attempt++) {
+    lockTimeout(deadline);
     const acquired = await guarded(async () => {
       if (await createExclusiveAsync(path, text, resumed)) return true;
       const record = await recordAsync(path, resumed);
       if (!record.exists) return false;
       if (record.holder && resumed(() => pidAlive(record.holder!.pid))) {
         const holder = record.holder;
-        const now = holder.started === null ? null : await processStartedAsync(holder.pid, PS_TIMEOUT_MS, resumed);
+        const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed);
         resumed(() => { if (sameProcess(holder, now)) throw new HubLocked(holder); });
       }
       await fs.rm(path, { force: true });
       return false;
-    });
+    }, deadline);
     if (acquired) return resumed(() => ({ holder: me, release: async () => {
       const record = await recordAsync(path, resumed);
       if (!resumed(() => sameHolder(record.holder, me))) return;
@@ -279,7 +288,7 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
         await guarded(async () => {
           const current = await recordAsync(path, resumed);
           if (resumed(() => sameHolder(current.holder, me))) await fs.rm(path, { force: true });
-        });
+        }, deadline === undefined ? undefined : Date.now() + 2000);
       } catch (err) {
         if (resumed(() => absent(err))) {
           const current = await recordAsync(path, resumed);

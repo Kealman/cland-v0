@@ -378,7 +378,8 @@ test('a hub stops successfully twice after its project directory is deleted', as
   const root = await tempProject(t);
   const daemon = await serveProject(root, { log: () => {} });
   t.after(() => daemon.stop());
-  await fs.rm(root, { recursive: true });
+  // The background sweep may still publish its lock while the recursive delete walks the project.
+  await fs.rm(root, { recursive: true, maxRetries: 10, retryDelay: 20 });
   await daemon.stop();
   await daemon.stop();
   await daemon.stopped;

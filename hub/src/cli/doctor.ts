@@ -8,11 +8,11 @@ import { checkProject } from '../doctor/project.ts';
 import { render, summarise, warn, ok, type Check } from '../doctor/report.ts';
 import { checkToolchain } from '../doctor/toolchain.ts';
 import { projectRoot } from '../project.ts';
-import { findOrphans, sweepOrphans } from '../orphans.ts';
+import { findOrphans, sweepOrphans, SweepBusy } from '../orphans.ts';
 import { VERSION } from '../version.ts';
 
 export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub and what cland init provisioned; one line per
-                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends hubs whose projects were deleted)
+                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers and deleted-project hubs)
 `;
 
 export async function runDoctor(args: string[], cwd: string = process.cwd(), env: NodeJS.ProcessEnv = process.env): Promise<number> {
@@ -23,16 +23,19 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
   if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
   const [toolchain, project] = await Promise.all([checkToolchain(env), checkProject(root)]);
   const orphanChecks: Check[] = [];
+  // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.
+  const hubScopeRoot = env.CLAND_TEST_ORPHAN_ROOT;
   try {
     const lifecycle = readJournal(journalPath(join(root, '.cland')), { kinds: ['hub-started', 'orphan-ended'] });
     const latestStart = lifecycle.findLastIndex(entry => entry.event === 'hub-started');
     orphanChecks.push(...lifecycle.slice(latestStart + 1).filter(entry => entry.event === 'orphan-ended').map(entry => ok('orphan cleanup', `ended pid ${entry.pid}: ${entry.reason} (${entry.root})`)));
-    const ended = args.includes('--fix') ? await sweepOrphans(root, () => {}, 'hub') : [];
+    const ended = args.includes('--fix') ? [...await sweepOrphans(root, () => {}, 'harness'), ...await sweepOrphans(root, () => {}, 'hub', hubScopeRoot === undefined ? {} : { hubScopeRoot })] : [];
     orphanChecks.push(...ended.map(p => ok(`orphan ${p.kind}`, `ended pid ${p.process.pid}: ${p.reason} (${p.root})`)));
-    const orphans = await findOrphans(root, true);
-    orphanChecks.push(...orphans.map(p => warn(`orphan ${p.kind}`, `pid ${p.process.pid}: ${p.reason} (${p.root})`, p.owned ? p.kind === 'harness' ? 'cland hub stop, then cland hub start' : 'cland doctor --fix' : 'inspect this process manually; ambiguous candidates are preserved')));
-  } catch {
-    orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
+    const orphans = await findOrphans(root, true, undefined, hubScopeRoot);
+    orphanChecks.push(...orphans.map(p => warn(`orphan ${p.kind}`, `pid ${p.process.pid}: ${p.reason} (${p.root})`, p.owned ? 'cland doctor --fix' : 'inspect this process manually; ambiguous candidates are preserved')));
+  } catch (err) {
+    if (err instanceof SweepBusy) orphanChecks.push(warn('orphan sweep', err.message, 'wait for the active sweep, then rerun cland doctor --fix'));
+    else orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
   }
   const checks = [...toolchain, ...project, ...orphanChecks];
   const summary = summarise(checks);

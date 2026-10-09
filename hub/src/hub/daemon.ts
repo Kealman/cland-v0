@@ -80,7 +80,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const processLog: LogFn = options.log ?? (entry => {
     // A stdio parent sees startup/listener diagnostics on its stderr pipe, as before.
     // Once serving, ordinary events (including audit/refusal) use the async append sink.
-    if (starting || String(entry.event).startsWith('orphan-sweep-')) fatalLog(entry);
+    if (starting || String(entry.event).startsWith('orphan-sweep-') || entry.event === 'orphan-ended' || entry.event === 'orphan-preserved') fatalLog(entry);
     else processJournal!.write(entry as { event: string } & Record<string, unknown>);
   });
   const journal = new Journal(journalPath(l.dir), undefined, { log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });

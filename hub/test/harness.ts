@@ -228,6 +228,8 @@ export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
 export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  // Doctor normally discovers deleted-project hubs machine-wide. Tests only inspect their own fixture.
+  if (args[0] === 'doctor') env.CLAND_TEST_ORPHAN_ROOT = cwd;
   Object.assign(env, extra);
   return new Promise((resolve, reject) => {
     execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 }, (err, stdout, stderr) => {
@@ -250,8 +252,8 @@ export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args
 export const NO_PS: string | false = processStarted(process.pid) === null ? 'needs `ps` for pid identity, and this sandbox refuses it' : false;
 
 /** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
-export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promise<string> {
-  const root = await realpath(await mkdtemp(join(tmpdir(), prefix)));
+export async function tempProject(t: TestContext, prefix = 'cland-proj-', parent = tmpdir()): Promise<string> {
+  const root = await realpath(await mkdtemp(join(parent, prefix)));
   ownDirectory(t, root);
   return root;
 }
