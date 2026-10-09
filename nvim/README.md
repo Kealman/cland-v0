@@ -92,7 +92,84 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `:Cland panel items`, `inbox`, `sessions`, `topics`, `dock` | The panel keys as a command. |
 | `:Cland launch [name]` | The session launcher, the name filled in. |
 | `:Cland topic new <title>`, `close [id]`, `resolve [id]` | Create a topic and open it; close or resolve the topic in view (or the one named). |
+| `:Cland qa dump <path>` | Write the screen grid to `<path>.screen.txt` and the state snapshot to `<path>.state.json`, in any run (QA cases below). |
 | `:Cland refresh`, `:Cland help` | Ask the hub again; the keys. |
+
+## QA cases: `cland --headless --qa`
+
+```sh
+cland --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]
+cland --headless --qa qa/cases/SHELL-001.lua
+```
+
+One scripted QA case in one headless Neovim with no socket (spec 4.10, #57): the default QA lane, which needs no grant and runs inside a sandbox. The run prints one JSON line on stdout and exits with the result's code.
+
+| Result | Exit | When |
+| --- | --- | --- |
+| `PASS` | 0 | The case's `run` returned. |
+| `FAIL` | 1 | An `expect` did not hold. |
+| `INCONCLUSIVE` | 2 | A `wait_for` timed out. |
+| `BLOCKED` | 2 | The case could not run or broke: a Lua error in it (with its traceback), a case file that is missing or does not load, no Neovim, no temp dir for a stdio-hub case, `--timeout` (default 120 s) passed, or the run interrupted by a signal. |
+
+```json
+{"case":"SHELL-001","result":"PASS","duration_ms":490,"build":"b8368b3","hub":"stdio","evidence":{"screen":"…","state":{…}}}
+```
+
+- **`case`** is the file's name without `.lua`. **`build`** is the repository's short commit, else `v<version>` where git cannot run. **`message`** is there for every result but `PASS`: the expectation's message, what the wait was for, the error.
+- **`evidence`** is the last screen and state, whatever the result. With `--out <dir>` they are the files `<dir>/<case>.screen.txt` and `<dir>/<case>.state.json`, and `evidence` lists the files written. Without it they are inline: `{"screen", "state"}`, plus `dumps` for what the case dumped along the way.
+- **The fixture project.** A case never runs against the live project. The run builds the case's fixture in a directory of its own in the temp dir (`cland-qa-…/<project>`), starts the workbench on it, and removes it at the end.
+- **The hub** is the workbench's stdio child: the real hub (`cland hub serve --stdio --no-listen`, which binds nothing) on the fixture project, or the stub hub (`test/stub-hub.ts`) with the case's scenario. `--hub` overrides what the case names.
+- **The environment** is the run's own: `NVIM_APPNAME=cland-qa`, `--clean -u nvim/init.lua --headless`, a 160×45 grid, `TERM=xterm-256color`, `LANG=en_US.UTF-8`, `TZ=UTC`, `HOME` and every XDG directory inside the run's directory, no `--listen`, and the server socket Neovim opens by default stopped before the case runs. Nothing of the caller's environment is passed on but `PATH` and `TMPDIR`, so no `CLAND_*` variable of a session reaches it.
+- **Nothing is left behind.** Neovim leads a process group of its own; the run kills what remains of it (the hub) and then removes its directory. A session terminal's job is stopped by Neovim when it quits. Once the result is printed, a Neovim that does not quit within 3 s is killed and the result stands.
+- **In a sandbox.** With the network denied (no socket can be bound or reached) every case runs. With file writes denied outside the temp dir too, every case runs, and `--out` must be inside the temp dir. With every file write denied (a read-only rescue run) only the stub hub runs, and without `--out`: run a portable case with `--hub stub`. A stdio-hub case is `BLOCKED` there and says so.
+
+### The case file
+
+A case is a Lua file that returns a table. Two ship in `qa/cases/`: `SHELL-001.lua` (General shows and a message goes `queued`) and `ITEMS-001.lua` (a fixture item in the items panel and its view).
+
+```lua
+return {
+  title = 'A fixture item shows in the items panel',
+  hub = 'stdio', -- or 'stub'; 'stdio' when left out
+  fixture = {
+    project = 'qa-items',
+    items = { { id = 'T-1', kind = 'epic', title = 'Workbench shell' }, { id = 'T-2', title = 'Items panel', parent = 'T-1' } },
+  },
+  run = function(qa)
+    qa.wait_for(function() return #qa.state().items == 2 end, 10000, 'the two fixture items')
+    qa.keys('<Esc><Space>i')
+    qa.wait_for(function() return qa.screen():find('T-2 Items panel', 1, true) end, 5000, 'T-2 in the items panel')
+    qa.expect(qa.state().panels.left, 'the items panel is open')
+  end,
+}
+```
+
+| Field | What it is |
+| --- | --- |
+| `title` | One line saying what the case checks. |
+| `hub` | `stdio` (the default) or `stub`. A case that uses only what both hubs answer is portable: leave `scenario` out of what it asserts and it runs with either. |
+| `fixture.project` | The project's name, shown in the top bar (`qa-project` when left out): a plain directory name (letters, digits, `.`, `_`, `-`, not starting with `.`), or the case is `BLOCKED` before anything is written. |
+| `fixture.items` | The items: `id` and `title`, and optionally `kind`, `state`, `labels`, `assignee`, `parent`, `blocked_by`, `topic`, `branch`, `created`, `updated`, `body`, `comments` (`{ author, at, text }`). An `id` is `T-<n>`, or the case is `BLOCKED` before anything is written. For the stdio hub they become item files in `.cland/tasks/`, written by the tracker's own writer (`cland --qa-fixture`, `hub/src/cli/qa-fixture.ts`), so they read back as given; for the stub hub they are its `task.list`. Times left out are `2026-01-01T00:00:00.000Z`. |
+| `fixture.roles`, `fixture.config` | The text of `.cland/roles.toml` and `.cland/config.toml` (the stdio hub reads them). |
+| `scenario` | The stub hub's scenario (`test/stub-hub.ts`): `processes` (sessions with their states), `presence`, `adapters`, `coordinator`, `topics`, `messages`, `inbox`, `roles`, `attach`, `send`. Its `items` win over the fixture's. |
+| `run` | `function(qa)`: the case. |
+
+### The Lua QA API
+
+| Call | What it does |
+| --- | --- |
+| `qa.keys(keys)` | Types the keys with `nvim_input()`, in its notation (`<CR>`, `<Esc>`, `<Space>`, `<C-v>`). They are consumed when it returns. Up to 4 KiB go in at once. A longer sequence goes in chunks of at most 4 KiB (Neovim's input buffer holds 16 KiB, and one filled to the brim takes nothing more), with a pause between them that ends whatever command or mapping is pending; so it is cut only right after an `<Esc>` or a `<CR>`, and a stretch of more than 4 KiB with neither is refused before anything is typed (`BLOCKED`): put an `<Esc>` or a `<CR>` where the mode is known, or split the keys over several calls. Input Neovim stops taking for about 5 s ends the case `BLOCKED` too. |
+| `qa.wait_for(predicate, timeout, what)` | Waits (over `vim.wait()`) until `predicate()` is truthy and returns its value. After `timeout` ms (5000 when left out) the case ends `INCONCLUSIVE`, naming `what`. |
+| `qa.screen()` | The grid as text, read with `screenstring()` after a redraw: 45 lines joined by newlines, trailing blanks cut. Floating windows and terminal buffers are in it. |
+| `qa.state()` | What the client knows, as a table: `project`, `root`, `hub` (`state`, `detail`), `mode`, `view` (`kind`, `id`), `panels` (`left`, `right`, `dock`), `sessions` (`name`, `role`, `label`, `harness`, `model`, `state`, `status`, `live`, `launched`, `item`), `coordinator`, `roles`, `topics` (with their `status`), `asks` (the open ones), `needs_you`, `items`. Topics, asks, items and roles are as the hub sent them. |
+| `qa.expect(condition, message)` | Ends the case `FAIL` with `message` unless `condition` is truthy. |
+| `qa.dump(path)` | Dumps the grid and the state now. A relative path is under `--out` (`<out>/<path>.screen.txt`, `<out>/<path>.state.json`), or, without `--out`, inline in the evidence as `dumps[path]`. |
+| `qa.root` | The fixture project's directory. |
+
+**How a case runs.** The case is a coroutine inside Neovim. Keys typed with `nvim_input()` are consumed by Neovim's main loop only, never while Lua runs, `vim.wait()` included. So `keys` and `wait_for` hand control back to the main loop and continue from a scheduled callback, the way an RPC client's requests arrive between keys. Two rules follow:
+
+- **One mapping, one `keys` call.** `qa.keys('<Space>i')`, never `qa.keys('<Space>')` then `qa.keys('i')`: an event between the two ends the pending mapping.
+- **Wait for the effect, not for time.** After keys that ask the hub for something, `wait_for` what the screen or the state should show.
 
 ## The pinned Neovim
 
@@ -140,6 +217,7 @@ In `init.lua`, and in the shell:
 | `lua/cland/topic_view.lua` | One topic's thread and composer, wired to the client (history merged on every connect). |
 | `lua/cland/thread.lua` | The thread buffer: `sender [Role]` (the role's label) and local time on each message's header. The human's own messages show their delivery stage right-aligned (`⌁ queued`, `✓ delivered`, `✓✓ injected`), changed in place on `delivery` events. A one-line notice under the messages tells about the hub connection or a failed send. A cursor away from the tail stays where it is. |
 | `lua/cland/composer.lua` | The composer, a prompt buffer. Enter sends, Shift+Enter (or Alt+Enter) inserts a newline. The text is kept until the hub accepts it and put back on a refusal. |
+| `lua/cland/qa.lua` | The QA lane: the screen grid as text, the state snapshot, `:Cland qa dump`, and the runner of `cland --headless --qa` with the Lua QA API (below). |
 | `lua/cland/hl.lua` | The design's colours and glyphs: delivery stages, session states, item states. |
 
 ## Tests
@@ -154,6 +232,7 @@ Every test starts the real client headless as `nvim --clean -u nvim/init.lua --h
 - `test/items.test.ts` runs against a real hub with item files written by hand (and a claim through `cland task claim`): the tree, the map grouping, the item view and the board; a hand-written file shows in the panel within a second; `e` opens the file and a save re-indexes it.
 - `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the picker, `gi`/`gt`/`gs`, the presets, the topics panel (groups, pinning, unread badges, the warning glyph, Enter, `n`/`c`/`r` and `:Cland topic`), the picker's topics kind, the thread header with the status and the binding, an event while typing, a burst of events without a hit-enter prompt (and four writes of 50 waves of every event kind, malformed ones among them, with Insert mode, the typed text and an empty message area kept), a coordinator `null` after a reconnect, an item view and an ask card made current again after a reconnect (also an ask older than the history the reconnect reads, closed through `inbox.list`), an attach client that ended attached again, a deeply indented list, multi-line asks, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, a real `:restart` re-attaching the session terminal and a `C-v` split, the sessions (#28): the launcher's frame with typed values and role defaults, refusals in the form and the panel, the roleless warning, `C-v`, `x` with its confirmation line and `session.stop`, `c`, `unknown` from an event and from a dead process, the picker's order and filters, and the items (#36) over a fixture set: the tree, each filter and the map grouping, the item view's fields column, verdicts and comments, the board's columns and a label moving a card, `gi`/`gt`/`gs` between items, topics and sessions both ways (a topic event binding an item followed), `task` events, and the picker's items kind, and the inbox and asks (#33): the sections in order with the top bar's count, `2` on an ask row, `i` arming the composer for a free answer, `d` and `D`, the ask card in the thread answered with `2`, the inbox full width.
 - `test/sessions.test.ts` runs against a real hub with the three fake harnesses of `hub/test/fakes` first on the PATH: Claude Code, Codex and OpenCode sessions launched from the launcher, each in the panel with the model chosen and a live state, attached with Enter (each fake's attach client prints its own line in the terminal), a killed one `unknown · died` with `harness-exited` in the hub's log, and `x` `y` stopping one (`session-stopped`), and the Agents log (#34): rows with `sender [Role]`, kind glyphs, an event adding a row, `␣L`, `:Cland view log`, `r` preparing a reply with `replyTo`.
+- `test/qa.test.ts` runs `cland --headless --qa` as a process: the exit code, the JSON line and the dump files for each result (the shipped cases and the ones in `test/qa-cases/`), the state snapshot against a stub scenario, `:Cland qa dump`, `--timeout`, and the three `sandbox-exec` profiles above (skipped with the reason where `sandbox-exec` is missing); a run started inside a live project with a user configuration planted leaves both alone and leaves no process.
 - `test/agents-filters.test.ts` runs headless Neovim against a real hub: item/session completion, history and live filters (including bound-topic notices and a metadata collision), clearing, and `L` from an item view or session row.
 - `test/nvim-path.test.ts`: the resolver from a path with a space, `#` and `%`; a linked worktree using the main worktree's cache; two resolvers on an empty cache (one download); an empty lock taken over after the grace; two resolvers breaking the same dead holder's lock (one download, no lock removed from under its holder).
 
