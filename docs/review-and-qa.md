@@ -85,7 +85,7 @@ ADR 0003 records that QA runs where Unix sockets are blocked, which is why the U
 
 A project whose root is itself a linked git worktree has no `.git` directory there, so `writable_roots = ["."]` opens no git directory and its sessions cannot commit.
 
-A session in a worktree runs `cland` from the project root (`cd <root> && cland inbox`): the CLI takes the nearest `.git` or `.cland/` for the project, and a worktree has both.
+A session in a worktree runs `cland` where it stands: the CLI finds the project's hub from a linked worktree (T-44), and the hub's socket is among the allowed ones.
 
 ### How it was measured
 
