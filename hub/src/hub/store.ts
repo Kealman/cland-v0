@@ -710,8 +710,10 @@ export class Store implements HygieneMemory {
       args.push(filter.item, this.topicOfItem(filter.item)?.id ?? null);
     }
     if (filter.session !== undefined) {
+      // Only session-bearing facts: harness/role/rule metadata can equal a valid session name.
       clauses.push(`(from_name = ? or exists (select 1 from json_each(to_json) where value = ?)
-        or exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text' and value = ?))`);
+        or exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text'
+          and (fullkey in ('$.session', '$.from', '$.to', '$.by') or path in ('$.to', '$.pair')) and value = ?))`);
       args.push(filter.session, filter.session, filter.session);
     }
     args.push(limit);

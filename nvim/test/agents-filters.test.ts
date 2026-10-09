@@ -1,6 +1,9 @@
 // T-56: the human filters the Agents log against a real hub, then follows live entries and shortcuts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { TopicMessage } from '../../hub/src/protocol.ts';
 import { connectUi, spawnSpoke, startDaemon, tempProject, type FrameClient } from '../../hub/test/harness.ts';
 import { centreOf, nvimOrSkip, startClient } from './harness.ts';
 
@@ -65,4 +68,34 @@ test('f completes items and sessions, filters history and live notices; F clears
   s = await c.waitScreen((s) => centreOf(s).includes('AGENTS · beta') && centreOf(s).includes('only other'), 'L from session row');
   assert.ok(centreOf(s).includes('message to alpha'));
   assert.ok(!centreOf(s).includes('claimed T-1'));
+});
+
+test('a session named loop excludes another pair’s loop metadata in live entries, frames and spoke history', { skip }, async (t) => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nloop_breaker_max = 1\n');
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const loop = await spawnSpoke({ discover: true, cwd: root, name: 'loop', sessionId: 'sess-loop', role: 'implementer' });
+  t.after(() => loop.close());
+  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
+  t.after(() => alpha.close());
+  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
+  t.after(() => beta.close());
+  await loop.waitForPresence(['loop', 'alpha', 'beta']);
+  const c = await startClient(t, bin, root);
+  await c.waitScreen((s) => s.includes('loop [Implementer]'), 'connected sessions');
+  await c.input('<Esc><Space>L');
+  await c.waitScreen((s) => centreOf(s).includes('loop assigned Implementer'), 'history loaded');
+  await c.input('floop<CR>');
+  await c.waitScreen((s) => centreOf(s).includes('AGENTS · loop'), 'loop session filter');
+  await alpha.call('send', { to: ['beta'], text: 'first' });
+  await alpha.call('send', { to: ['beta'], text: 'trip loop breaker' });
+  await loop.call('send', { to: ['beta'], text: 'loop sentinel' });
+  const screen = await c.waitScreen((s) => centreOf(s).includes('loop sentinel'), 'matching live entry after unrelated mute');
+  assert.ok(!centreOf(screen).includes('muted:'), 'the rule named loop does not name the session loop');
+  const history = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', session: 'loop' });
+  assert.deepEqual(history.messages.map((m) => m.kind ?? m.text), ['role-assign', 'loop sentinel']);
+  const spoke = await beta.call<{ messages: Array<{ msg_id: string }> }>('history', { topic: 'agents', session: 'loop' });
+  assert.deepEqual(spoke.messages.map((m) => m.msg_id), history.messages.map((m) => m.id));
 });

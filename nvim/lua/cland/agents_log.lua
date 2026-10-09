@@ -225,7 +225,17 @@ function M.matches(message)
       return false
     end
   end
-  return not f.session or message.from == f.session or names(message.to, f.session) or names(message.detail, f.session)
+  if not f.session or message.from == f.session or names(message.to, f.session) then
+    return true
+  end
+  -- Only facts naming sessions: a harness or rule can have the same name as an unrelated session.
+  local detail = type(message.detail) == 'table' and message.detail or {}
+  for _, key in ipairs({ 'session', 'from', 'to', 'by', 'pair' }) do
+    if names(detail[key], f.session) then
+      return true
+    end
+  end
+  return false
 end
 
 function M.filter_label()
