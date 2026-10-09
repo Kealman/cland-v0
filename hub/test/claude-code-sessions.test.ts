@@ -8,7 +8,7 @@ import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
@@ -242,7 +242,7 @@ test('resume never adopts another session that reuses the pid: no identity match
   assert.ok(pidAlive(other.pid), 'the other session is left alone');
 });
 
-test('a stop whose `claude stop` fails falls back to SIGTERM and stops the session', async (t) => {
+test('a stop whose `claude stop` fails falls back to SIGTERM and stops the session', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { stopCrash: true, stopGraceMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);

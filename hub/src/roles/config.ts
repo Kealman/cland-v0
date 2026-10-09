@@ -10,6 +10,7 @@ import type { LogFn } from '../log.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
+import { APPROVALS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Sandbox } from '../adapters/contract.ts';
 
 export type LaunchDefaults = {
   harness: string;
@@ -17,6 +18,11 @@ export type LaunchDefaults = {
   model: string | null;
   /** null: the harness's own default. */
   effort: string | null;
+  /** Whether the session asks before a command its sandbox refuses; null: the adapter's default (Codex: never). */
+  approval: Approval | null;
+  /** What the session's commands may touch, `writableRoots` as the file gives them (relative to the project
+   *  root); null: the harness's own sandbox. Adapters whose harness takes neither ignore both. */
+  sandbox: Sandbox | null;
 };
 
 export type RoleDefinition = {
@@ -46,6 +52,26 @@ const optString = (v: unknown, where: string): string | null => {
   if (v === undefined) return null;
   if (typeof v !== 'string') throw new Error(`${where} must be a string`);
   return v.trim() || null;
+};
+
+const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string): T | null => {
+  const s = optString(v, where);
+  if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${values.join(', ')}`);
+  return s as T | null;
+};
+
+/** `sandbox`, with `writable_roots` and `network` beside it: both need a sandbox to belong to. */
+const sandboxOf = (launch: Record<string, unknown>, where: string): Sandbox | null => {
+  const mode = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`);
+  const writableRoots = strings(launch.writable_roots, `${where}.writable_roots`);
+  const network = oneOf(launch.network, SANDBOX_NETWORKS, `${where}.network`);
+  if (mode === null) {
+    if (writableRoots.length || network !== null) throw new Error(`${where}.writable_roots and ${where}.network need ${where}.sandbox`);
+    return null;
+  }
+  if (writableRoots.length && mode !== 'workspace-write') throw new Error(`${where}.writable_roots needs sandbox = "workspace-write"`);
+  if (mode === 'danger-full-access' && network !== null && network !== 'full') throw new Error(`${where}.network cannot be ${network} with sandbox = "danger-full-access": nothing is closed there`);
+  return { mode, writableRoots, network: network ?? (mode === 'danger-full-access' ? 'full' : 'none') };
 };
 
 /** A role's grants: each one checked against the table's tools and scopes; absent → the built-in list. */
@@ -85,7 +111,13 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
       exclusive: t.exclusive === true,
       clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
       skills: strings(t.skills, `${role}.skills`),
-      launch: { harness, model: optString(launch.model, `${role}.launch.model`), effort: optString(launch.effort, `${role}.launch.effort`) },
+      launch: {
+        harness,
+        model: optString(launch.model, `${role}.launch.model`),
+        effort: optString(launch.effort, `${role}.launch.effort`),
+        approval: oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
+        sandbox: sandboxOf(launch, `${role}.launch`),
+      },
       permissions: { tools: grants(permissions.tools, role) },
     });
   }

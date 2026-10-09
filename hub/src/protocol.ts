@@ -412,8 +412,17 @@ export type ClientRequest =
 /** A session and its role as the role frames answer. */
 export type RoleHolder = { name: string; role: string | null; label: string; live: boolean };
 
+/** A role's launch defaults (roles.toml): `approval` and `sandbox` are null where the file gives none. */
+export type RoleLaunch = {
+  harness: string;
+  model: string | null;
+  effort: string | null;
+  approval: string | null;
+  sandbox: { mode: string; writableRoots: string[]; network: string } | null;
+};
+
 export type RoleList = {
-  roles: Array<{ role: string; label: string; exclusive: boolean; skills: string[]; launch: { harness: string; model: string | null; effort: string | null }; holders: RoleHolder[] }>;
+  roles: Array<{ role: string; label: string; exclusive: boolean; skills: string[]; launch: RoleLaunch; holders: RoleHolder[] }>;
   /** The live Coordinator's name, or null: "no coordinator". */
   coordinator: string | null;
 };

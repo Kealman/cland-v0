@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { assignRole, cland, connectSocket, killDaemon, pidAlive, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { assignRole, cland, connectSocket, killDaemon, pidAlive, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, NO_PS } from './harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);
@@ -246,7 +246,7 @@ test('two cland hub start at the same instant leave exactly one hub, and both re
   assert.equal((JSON.parse(await readFile(join(root, '.cland', 'hub.lock'), 'utf8')) as { pid: number }).pid, discovery.pid);
 });
 
-test('cland hub stop never signals a process that is not the project\'s hub: it only removes the hub.json naming it', async (t) => {
+test('cland hub stop never signals a process that is not the project\'s hub: it only removes the hub.json naming it', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   // a live process that is no hub at all — a reused pid, as far as hub.json can tell
   const stranger = spawn('sleep', ['30'], { stdio: 'ignore' });
@@ -292,7 +292,7 @@ test('a stopping hub leaves alone a socket that is no longer the one it bound, a
   assert.deepEqual(events.slice(-3), ['stopping', 'socket-kept', 'stopped']);
 });
 
-test('a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start', async (t) => {
+test('a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const lockFile = join(root, '.cland', 'hub.lock');
   const first = await startDaemon(t, root);
