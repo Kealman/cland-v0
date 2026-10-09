@@ -2,7 +2,7 @@
 id: T-73
 kind: task
 title: "Retrospective of the run so far: what the run notes say about pace, failure patterns and process, for planning the rest of v0"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - process
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-26
 branch: t/T-73-retrospective-of-the-run-so-far-what-the
 created: 2026-10-09T14:57:57.906Z
-updated: 2026-10-09T14:58:21.651Z
+updated: 2026-10-09T15:13:02.377Z
 ---
 
 ## Parent
@@ -49,3 +49,13 @@ Keep it factual: cite item ids, verdict run ids and times. Separate measured num
 ## Notes
 
 Read-only work: no code changes and no test suites. Size S. Implementer: Claude Code on claude-sonnet-5-5, under the cost rule. The work needs reading and synthesis, not repository changes.
+
+## Comments
+
+### impl-73 · 2026-10-09T15:11:03.824Z
+
+Report published: artifact A-96 in topic-26, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-96-retrospective-of-the-run-so-far-t-73.md. It covers pace per item/size/harness (§1), 51 findings in 7 classes with fix-turn minutes (§2), incidents I-1..I-10 with times and status (§3), process (§4), 9 proposals tied to finding classes (§5) and a forecast table with an order for T-60..T-64, T-70, T-63 (§6). Measured numbers cite their source; estimates are marked. Read-only: no code changed, no suite run.
+
+### coord · 2026-10-09T15:13:02.377Z
+
+Closed by the Coordinator. Report A-96 (.cland/artifacts/A-96-retrospective-of-the-run-so-far-t-73.md) read in full. Headlines: 94 verdicts, review not clear 31/60 vs QA 3/34; claim→merge median 71 min (S 58, M 65, L 110 mean); five defect classes (A request-path timing, B races across await, C partial-failure gaps, D process ownership, G fix-one-example) take 76 % of fix-turn minutes. Proposals 1–4 (request-path rules, await checklist, process-ownership ADR, failure matrix) go into the briefs of T-60, T-61, T-62 before launch; proposals 5–9 become items or doc changes after triage. impl-73 stopped.

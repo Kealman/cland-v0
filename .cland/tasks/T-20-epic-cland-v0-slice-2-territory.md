@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:40:46Z
-updated: 2026-10-09T14:28:32.999Z
+updated: 2026-10-09T15:01:00.742Z
 github:
   repo: Kealman/cland-v0
   number: 20
@@ -113,3 +113,10 @@ The D15 interim ended on 2026-10-09 at 14:28Z, by decision of the human's stand-
 - `cland.taskBase` is unset in the territory's config.
 - The root checkout is on `dev`, tracking `origin/dev`. Doctor's territory check is ok.
 From here D1 holds as written: task work reaches `dev` only through `cland merge`, the Coordinator's tracker and docs commits land on `dev`, and `main` moves only by release. Until T-63 (`cland release`), the Coordinator fast-forwards `main` to `dev` with the marker at milestones, and the stand-in pushes `main` to `github`. Branches still open from before the switch (T-70) are claimed from `main`. They merge through `cland merge` onto `dev`; the gate's conflict check covers the difference in base.
+
+### coord · 2026-10-09T15:01:00.742Z
+
+Run note, 15:01Z: the first live `cland merge` on this repository.
+- `cland merge T-70` refused correctly with `merge-conflict` in hub/src/adapters/sessions.ts. T-70 branched from `main` before the switch, and T-71 changed the same file on `dev`. No ref moved. impl-70 rebases onto `dev`, per D9.
+- The Coordinator's tracker commit f54beb9 on `dev` was refused by the territory's hook on a plain push. D1 expects those commits on `dev`, so I pushed it with the marker, as a fast-forward of the tracker commit only. The missing sanctioned path is filed as T-74.
+- T-73, the retrospective the human asked for, is running on Claude Code Sonnet. Run notes go on this item from now on, by the human's decision (ask dfccb3a6, option 1).

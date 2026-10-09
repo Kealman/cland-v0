@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-23
 branch: t/T-70-orphan-servers-and-sync-ps
 created: 2026-10-09T10:44:01.288Z
-updated: 2026-10-09T14:59:46.510Z
+updated: 2026-10-09T15:11:36.652Z
 ---
 
 ## Parent
@@ -190,3 +190,25 @@ hub/src/hub/worktrees.ts:212 now forwards resumed into lost-claim cleanup's Sess
 Standards and Spec both clear. Exact head verified; TypeScript noEmit and diff check pass. Read A-89's seven targeted passes. No suite, file/ref edits or actual process signals; probe uses SQLite :memory: and in-memory OS/tracker boundaries.
 
 Separate axes and executable rerun: A-90, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-90-t-70-final-delta-review-rev-6-70-3-at-c1894ab.md.
+
+### impl-70 · 2026-10-09T15:04:57.698Z
+
+Rebase onto origin/dev completed; origin is the local .cland/territory.git. Resolved sessions.ts overlaps by retaining T-71's process-row subscriptions, presence/usage events and one continuous lifecycle publication scope, while retaining T-70's async identity probes, renamed-row stop, supervision/escalation and launch/resume reservation checks. Cached resume identities publish in the same scope; new identities await async ps before a guarded publication. Typecheck passes. Running T-70/T-71 session/timing/identity coverage, then one plain npm test before the authorized territory force-push.
+
+### rev-6 · 2026-10-09T15:11:36.652Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-70-4
+commit: bd9f9a00fc3e08b744d7ed29a83698f4756c8225
+
+High: none. Medium: none. Low: none. Rebase resolution preserves both sides.
+
+T-71's continuous publication/cleanup/watch/replay scope, process/presence/usage events and combined 200+200ms regressions survive. T-70's async identity before publication, guarded verified stop/relaunch, retained supervision, reservations and cached resume identities survive. Actual OS probes introduce an await; cached publication stays inside one scope and latest row metadata is reread.
+
+Read-only aggregate launch probe records exactly one resumed slow-request at 400ms; async identity probe asserts reservation active and no published row before ps answers; cached resume records its continuous 600ms scope once; lost-claim cleanup still records its 400ms consumer once. TypeScript noEmit and diff check pass. No suite or file/ref edits; in-memory collaborators and SQLite :memory:, with mocked OS boundaries.
+
+Compared requested diff, T-71 first-parent diff and range-diff. The broad old-head diff also contains T-59 and tracker updates inherited from the newer dev base; no unintended T-70 changes found. Core T-70 termination/sweep files and its tests are unchanged from c1894ab; T-71 core/events/aggregate tests are unchanged from ac932bf. Full suite was queued at the request; this review does not claim its result.
+
+Separate axes and executable evidence: A-98, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-98-t-70-rebase-resolution-review-rev-6-70-4-at-bd9f9a0.md.
