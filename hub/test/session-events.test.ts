@@ -3,9 +3,55 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, connectWsUi, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, sleep } from './harness.ts';
 import type { HarnessProcessView, Presence, SessionUsage } from '../src/protocol.ts';
+import { ProcessTable } from '../src/adapters/processes.ts';
+import { Sessions } from '../src/adapters/sessions.ts';
 
 const presence = (f: Record<string, unknown>): Presence[] => f.sessions as Presence[];
 const row = (f: Record<string, unknown>): HarnessProcessView => f.process as HarnessProcessView;
+
+test('rename before the spoke welcome is refused; after welcome its process event survives a held transport', async t => {
+  const root = await tempProject(t);
+  const hub = await startHub();
+  t.after(() => hub.close());
+  const table = new ProcessTable();
+  const sessions = new Sessions({ core: hub.core, table, root });
+  t.after(() => { sessions.close(); table.close(); });
+  table.put({ name: 'coord', harness: 'test', role: 'coordinator', model: null, cwd: root,
+    pid: null, pidStarted: null, harnessId: null, sessionId: 'held-coord', harnessSessionId: null,
+    startedAt: new Date().toISOString(), status: 'running' });
+  let releaseWelcome: (() => void) | undefined;
+  const publication = Promise.withResolvers<() => void>();
+  const open = hub.dispatcher.open.bind(hub.dispatcher);
+  t.mock.method(hub.dispatcher, 'open', (wire: Parameters<typeof open>[0], transport: Parameters<typeof open>[1]) => open({
+    ...wire,
+    send: frame => {
+      if (frame.type === 'welcome' && frame.name === 'coord') releaseWelcome = () => wire.send(frame);
+      else if (frame.type === 'session.process' && frame.process.name === 'renamed-coord') publication.resolve(() => wire.send(frame));
+      else wire.send(frame);
+    },
+  }, transport));
+  const ui = await connectWsUi(t, hub);
+  await ui.request({ type: 'subscribe' });
+  const spoke = await spawnSpoke({ hub, name: 'coord', sessionId: 'held-coord', role: 'coordinator' });
+  t.after(() => spoke.close());
+  await ui.waitFor(f => f.type === 'presence' && presence(f).some(p => p.sessionId === 'held-coord'));
+  assert.ok(releaseWelcome, 'the hub welcomed the spoke, but the transport holds that frame');
+  const premature = await spoke.call<{ ok: boolean; error?: string }>('rename', { name: 'renamed-coord' });
+  assert.equal(premature.ok, false, 'a call before welcome is refused, never queued');
+  assert.match(premature.error ?? '', /not connected yet/);
+  assert.equal(ui.frames.some(f => f.type === 'session.process' && row(f).name === 'renamed-coord'), false);
+  releaseWelcome();
+  await spoke.waitForPresence(['coord']);
+  const renamed = await spoke.call<{ ok: boolean; name?: string; error?: string }>('rename', { name: 'renamed-coord' });
+  assert.equal(renamed.ok, true, renamed.error);
+  assert.equal(renamed.name, 'renamed-coord');
+  const published = ui.waitFor(f => f.type === 'session.process' && row(f).sessionId === 'held-coord' && row(f).name === 'renamed-coord');
+  // The existing event deadline bounds capture too; publication may precede or follow the reply.
+  const releasePublication = await Promise.race([publication.promise, published.then(() => assert.fail('the process frame escaped the transport hold'))]);
+  assert.equal(ui.frames.some(f => f.type === 'session.process' && row(f).name === 'renamed-coord'), false);
+  releasePublication();
+  assert.equal(row(await published).name, 'renamed-coord');
+});
 
 test('presence events follow hello, status, role, rename and the last spoke leaving', async (t) => {
   const hub = await startHub();
@@ -65,7 +111,9 @@ test('process rows publish launch, model, role, rename, exit and stop; usage bur
   const coord = processes[0]!;
   const spoke = await spawnSpoke({ cwd: root, discover: true, name: coord.name, sessionId: coord.sessionId, role: 'coordinator' });
   t.after(() => spoke.close());
-  await spoke.call('rename', { name: 'renamed-coord' });
+  await spoke.waitForPresence([coord.name]);
+  const renamed = await spoke.call<{ ok: boolean; error?: string }>('rename', { name: 'renamed-coord' });
+  assert.equal(renamed.ok, true, renamed.error);
   await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === coord.sessionId && row(f).name === 'renamed-coord');
   assert.ok(coord.pid);
   process.kill(coord.pid, 'SIGKILL');

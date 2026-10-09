@@ -55,16 +55,19 @@ test('a live acquisition guard cannot keep a sweep waiting beyond its shared dea
   assert.ok(Date.now() - before < 1000, 'guard contention uses the sweep deadline');
 });
 
-test('project removal during sweep lock acquisition is skipped, while an existing root retains ENOENT', async t => {
+test('directory removal during sweep lock acquisition is skipped, while intact directories retain ENOENT', async t => {
   const fs = (await import('node:fs/promises')).default;
   const originalMkdir = fs.mkdir;
-  for (const removed of [true, false]) {
+  for (const removed of ['root', '.cland', '.cland/run', null]) {
     const root = await tempProject(t);
     const entries: Array<Record<string, unknown>> = [];
     const failure = Object.assign(new Error('guard fixture disappeared'), { code: 'ENOENT' });
     const mocked = t.mock.method(fs, 'mkdir', async (...args: Parameters<typeof originalMkdir>) => {
       if (String(args[0]).includes('orphan-sweep.lock.break.')) {
-        if (removed) await fs.rm(root, { recursive: true, force: true });
+        if (removed) {
+          await fs.rm(removed === 'root' ? root : join(root, removed), { recursive: true });
+          return originalMkdir(...args); // the real guard mkdir sees its vanished parent
+        }
         throw failure;
       }
       return originalMkdir(...args);
@@ -73,7 +76,8 @@ test('project removal during sweep lock acquisition is skipped, while an existin
     try {
       if (removed) {
         assert.deepEqual(await sweepOrphans(root, entry => entries.push(entry)), []);
-        await assert.rejects(fs.stat(root), { code: 'ENOENT' });
+        await assert.rejects(fs.stat(removed === 'root' ? root : join(root, removed)), { code: 'ENOENT' });
+        if (removed !== 'root') assert.ok(await fs.stat(root), 'project root remains during partial deletion');
         assert.ok(entries.some(entry => entry.event === 'orphan-sweep-skipped' && entry.reason === 'project-removed'));
       } else {
         await assert.rejects(sweepOrphans(root, entry => entries.push(entry)), err => err === failure);

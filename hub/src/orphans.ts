@@ -164,8 +164,11 @@ export async function sweepOrphans(root: string, log: (entry: Record<string, unk
     finally { await lock.release(); }
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      const removed = await stat(root).then(() => false, error => error.code === 'ENOENT');
-      if (removed) { log({ event: 'orphan-sweep-skipped', reason: 'project-removed' }); return []; }
+      // Recursive project deletion can remove a lock parent before it removes the root.
+      for (const path of [root, join(root, '.cland'), join(root, '.cland', 'run')]) {
+        const removed = await stat(path).then(() => false, error => error.code === 'ENOENT');
+        if (removed) { log({ event: 'orphan-sweep-skipped', reason: 'project-removed' }); return []; }
+      }
     }
     throw err;
   }
