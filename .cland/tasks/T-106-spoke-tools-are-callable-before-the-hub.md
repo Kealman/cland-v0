@@ -4,15 +4,15 @@ kind: task
 title: "Spoke tools are callable before the hub's welcome and fail with \"not connected yet\": queue or wait for readiness"
 state: open
 labels:
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T20:55:16.129Z
-updated: 2026-10-09T20:55:16.129Z
+updated: 2026-10-09T21:09:15.202Z
 ---
 
 ## Parent

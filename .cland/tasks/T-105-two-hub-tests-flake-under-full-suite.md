@@ -2,7 +2,7 @@
 id: T-105
 kind: task
 title: "Two hub tests flake under full-suite load: the deleted-project doctor sweep lock (ENOENT) and the process-row rename publication timeout"
-state: open
+state: closed
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-38
 branch: t/T-105-two-hub-tests-flake-under-full-suite
 created: 2026-10-09T20:43:35.328Z
-updated: 2026-10-09T21:08:51.076Z
+updated: 2026-10-09T21:09:09.691Z
 ---
 
 ## Parent
@@ -72,3 +72,11 @@ Coordinator decision on the stability criterion, as rev-65-105-1 asked. The item
 ### impl-105 · 2026-10-09T21:08:51.076Z
 
 Done on 0447a4e4bab19ef1ff3cf13e1af82001359ae163, pushed to local origin; working tree clean. Sweep now skips confirmed partial parent-directory removal (root/.cland/run); original intact-parent ENOENT assertion preserved. Rename flake was an ignored pre-welcome refused call, not lost accepted publication: test now awaits own spoke readiness, asserts rename success, and retains the event assertion/deadline. Both cases reproduced deterministically before fixes (A-192/A-193). No original assertions weakened; no new sleeps/longer timeouts. Standards and Spec self-reviews clear. npm run typecheck passes; final npm test passes 630 hub + 104 Neovim = 734, zero failures (A-199). Both affected files pass 5/5 complete-file runs under active suite load; sweep regression also 5/5; sampled boundary load 4.65–19.88, full-suite peak 22.89 (A-200). Final report A-201 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-201-t-105-final-implementation-and-verification.md; full log /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-199-t-105-final-full-suite-on-0447a4e-734-pass.log; stability /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-200-t-105-stability-five-runs-per-affected-file-under-load.log. No merge performed.
+
+### coord · 2026-10-09T21:09:03.759Z
+
+Merged 93172051dcf5b061c4ff4c06c2e15f2ba39abc33 onto dev.
+
+### coord · 2026-10-09T21:09:09.691Z
+
+Merged by the Coordinator through `cland merge T-105`: squash 9317205 on dev. Gate: review rev-65-105-1 clear on 0447a4e. The doctor sweep now treats ENOENT as project-removed when the root, `.cland` or `.cland/run` is confirmed gone, and intact paths keep the error. The rename test was a test readiness bug: a refused pre-welcome call, now waiting for readiness and asserting success, with no assertion weakened. Final suite on 0447a4e: 734 passed (A-199). Stability under load: the rename, sweep regression and doctor files each passed 5 of 5 (A-200), the evidence accepted in place of five full suites per the Coordinator's decision above. The readiness follow-up is T-106. impl-105 stopped.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-08T11:40:32Z
-updated: 2026-10-09T20:56:30.636Z
+updated: 2026-10-09T21:09:05.164Z
 github:
   repo: Kealman/cland-v0
   number: 19
@@ -125,3 +125,7 @@ The git territory (bare `origin`, worktrees per item, `cland merge`, `cland rele
 ### coord · 2026-10-09T20:56:30.636Z
 
 Run note 20:58Z. The hub restarted on dev d7b821b (pid 61541), by the human's decision in General. T-74, T-75, T-66, T-76, T-77 and T-104 are now live. Doctor afterwards: 1 fail, because the territory hook installed by T-53 predated T-74's new refusal message. Behaviour was unchanged. The Coordinator installed exactly the expected hook, not via `cland init`, which rewrites other managed files. A direct hook probe confirms: dev and main refused without the marker, allowed with it; task branches allowed. Doctor is now 20 ok, 3 warn, 0 fail. Warnings: Codex 0.162.1 outside the tested range; a reused pid preserved correctly; a fresh test-fixture hub from a running suite, left alone until no suite runs, because doctor --fix acts machine-wide (T-102). Lesson: a change to a managed territory file needs its migration in the item, the class F drift from A-96. `cland update` should refresh the hook.
+
+### coord · 2026-10-09T21:09:05.164Z
+
+Run note 21:09Z. First live refusal of T-74's gate: `cland merge T-105` refused with merge-unpublished, because the root's dev held 5c192d5, an unpushed v0.1 spec commit from the human's other session. No ref moved. `cland push` published it, and the merge was retried. The gate works as designed. That session still commits without pushing, so every merge now needs a push first.
