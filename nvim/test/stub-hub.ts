@@ -21,6 +21,8 @@
 import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
+import { readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
   topics?: Array<Record<string, unknown>>;
@@ -234,7 +236,7 @@ function answer(f: Frame) {
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status':
-      return ok(f.id, { sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+      return ok(f.id, { keys: readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.keys ?? { layouts: [] }, sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
     case 'inbox.list':
       return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');
     case 'topic.answer':

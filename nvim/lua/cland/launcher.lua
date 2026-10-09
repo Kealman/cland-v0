@@ -335,7 +335,7 @@ function M.open(opts)
   map('<Esc>', M.close)
   map('<C-c>', M.close)
   -- the fields are fixed: no line is added or joined
-  for _, lhs in ipairs({ '<BS>', '<C-h>', '<C-w>', '<C-u>' }) do
+  for _, lhs in ipairs({ '<BS>', '<C-w>', '<C-u>' }) do
     vim.keymap.set('i', lhs, function()
       return api.nvim_win_get_cursor(0)[2] > 0 and lhs or ''
     end, { buffer = f.buf, expr = true, replace_keycodes = true })

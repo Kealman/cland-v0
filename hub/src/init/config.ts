@@ -12,6 +12,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 export type ProjectConfig = {
   name: string;
   artifacts: { retentionDays: number };
+  keys: { layouts: string[] };
   hygiene: { rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
 };
 
@@ -20,6 +21,7 @@ const MINUTE = 60_000;
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   artifacts: { retentionDays: 30 },
+  keys: { layouts: [] },
   hygiene: { rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
 });
 
@@ -32,6 +34,10 @@ export function renderConfig(c: ProjectConfig): string {
 
 [project]
 name = ${JSON.stringify(c.name)}
+
+# Keyboard layouts for Neovim Normal-mode letters (currently: ru). Ctrl focus chords use English.
+[keys]
+layouts = ${JSON.stringify(c.keys.layouts)}
 
 # The hub's message hygiene, read at hub start (cland hub stop, then start, to apply a change).
 [hygiene]
@@ -59,6 +65,8 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const c = defaultConfig(fallbackName);
   const project = (doc.project ?? {}) as Record<string, unknown>;
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
+  const keys = (doc.keys ?? {}) as Record<string, unknown>;
+  if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];
   const a = (doc.artifacts ?? {}) as Record<string, unknown>;
   if (typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0) c.artifacts.retentionDays = a.retention_days;
   const h = (doc.hygiene ?? {}) as Record<string, unknown>;

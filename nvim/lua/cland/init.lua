@@ -130,6 +130,7 @@ local refresh_sessions = single_flight(function(done)
   M.client:snapshot({ type = 'hub.status' }, function(err, value, events)
     if not err and value then
       state.S.presence = value.sessions or {}
+      require('cland.keys').layouts(value.keys and value.keys.layouts or {})
       if value.coordinator == vim.NIL then
         state.S.hub_coordinator = { name = nil }
       elseif type(value.coordinator) == 'string' then
@@ -282,7 +283,7 @@ M.HELP = {
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
   '          :Cland topic new <title> | close | resolve',
-  'Session   ↵ attaches in Terminal mode: keys go to the session, C-\\ C-n leaves',
+  'Session   ↵ attaches in Terminal mode · C-h/j/k/l focus · C-\\ leaves (C-\\ C-n too)',
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
@@ -316,6 +317,7 @@ function M.help()
 end
 
 local function keymaps()
+  require('cland.keys').setup()
   local layout = require('cland.layout')
   local motions = require('cland.motions')
   local picker = require('cland.picker')

@@ -82,7 +82,8 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣l` | anywhere | The session launcher (above). |
 | `l` `C-v` `x` `c` | sessions panel | Launch a session; attach the row's session in a vertical split beside the centre (Terminal mode; the centre view stays); stop it, after a line in the panel asks (`y` stops through `session.stop`, `n` or `Esc` keeps it); its adapter's capability table in a float (each state signal and optional capability as `reliable`, `heuristic` or `none`; `q` closes). |
 | `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. `@reviewer`, `@qa`, … or `@<session>` in the text addresses them instead of the Coordinator. |
-| `C-\ C-n` | session terminal | Leave Terminal mode; until then every key goes to the session. |
+| `C-h` `C-j` `C-k` `C-l` | every mode | Focus left, down, up or right; entering a composer or terminal resumes typing. Use the English layout for these chords. |
+| `C-\` (also `C-\ C-n`) | session terminal | Leave Terminal mode immediately; Esc still goes to the harness. |
 
 ### Commands
 
@@ -281,3 +282,68 @@ The thread header counts the topic's artifacts. Press `ga` in the thread for its
 In a thread, `:Cland prompt [title]` (for example `:Cland prompt Brief for T-12`) or `␣P` next to `␣c` opens an empty prompt artifact in the centre as a normal editable Markdown buffer. `:w` saves its durable `.cland/artifacts/A-<n>-<slug>.md` file. Drafts appear with status `draft` in `ga` and the artifacts picker, where Enter reopens the saved buffer. Incoming hub events update metadata while preserving draft text, cursor and unsaved edits.
 
 `:Cland prompt send` saves and sends the draft's text when it fits the hub's configured byte cap, with the usual queued/delivered/injected stages. Larger drafts send a one-line message with the artifact attached. `:Cland prompt attach` always attaches it. Buffer keys `␣ps` and `␣pa` do the same. A successful post marks the artifact `sent`; refusal keeps the draft available for correction. The file is reserved when the draft opens, so it is available in the picker even before its first save. `q` returns to the thread; attached messages show their text and an opening chip for each artifact.
+
+## Focus and keyboard layouts
+
+`C-h/j/k/l` are focus moves in every mode, including Terminal mode. They take those
+chords from the harness (notably `C-j` for newline and `C-k` for delete to end of
+line). Backspace remains available. Shift+Enter reaches a harness as `ESC[13;2u`
+through the existing `<S-CR>` mapping; Alt+Enter still passes through. Both keys
+insert a newline in the composer. No Esc or Meta focus/leave binding is added.
+A lone `C-\` leaves Terminal mode; the `C-\ C-n` habit still leaves it, though
+its second key runs in Normal mode. The old `C-\ C-o` and literal `C-\ C-\`
+terminal sequences are replaced by the lone-key mapping.
+
+`cland doctor` warns, with fixes, when the effective Shift+Enter binding in
+the standard Ghostty config files is `shift+enter=text:\n` (Shift+Enter then collides with `C-j`), or the
+invoking tty has `erase = ^H` (legacy `C-h` then becomes Backspace). Remove that
+Ghostty binding and reload its config; use `stty erase '^?'` in the affected tty.
+A non-tty invocation cannot inspect a tty's erase setting. The standard config
+locations, case-sensitive config keys and quoted values follow
+[Ghostty's configuration documentation](https://ghostty.org/docs/config). The
+last binding for Shift+Enter wins, including an unbind; the pinned Ghostty 1.3.1
+loads the older `config` before `config.ghostty`, then macOS files after XDG
+([pinned implementation](https://github.com/ghostty-org/ghostty/blob/v1.3.1/src/config/Config.zig#L3793)).
+
+Opt into Normal-mode layout translation in `.cland/config.toml`:
+
+```toml
+[keys]
+layouts = ["ru"]
+```
+
+The default is `[]`; `ru` is the supported layout. The hub reads this setting at
+startup and returns it to the workbench in `hub.status`; restart the hub to apply
+a config change. Neovim sets one `langmap` option string per named layout, for
+letters, uppercase letters and punctuation. For example, Russian `о` acts as
+Normal-mode `j`. Composer and terminal text stays Cyrillic; mapped RHS keys are
+not translated (`langremap` is off). Unknown layout names produce a status notice.
+
+### Kitty base-layout check (T-124, 2026-10-09)
+
+The pinned Neovim **0.12.5 does not use the base-layout alternate** for Ctrl
+chords. Free-keys probe A replayed `CSI 1088::104;5u` into an actual Neovim TUI
+running in a PTY: `vim.on_key` logged `KEY <C-р>` and the Cyrillic candidate map
+fired; the English candidate did not. The control `CSI 104;5u` logged `KEY <C-H>`
+and fired `MAP <C-h>`. These candidate maps exist only in the research probe.
+The Coordinator chose §3.12's fallback: focus chords need the English layout,
+with no Cyrillic duplicates and no TUI patch. Russian Normal-mode keys use
+`langmap` independently.
+
+Evidence: artifact **A-219**, stored at
+`.cland/artifacts/A-219-t-124-kitty-base-layout-probe-neovim-0-12-5.txt` in the
+project root (topic `topic-42`). Repeat using the kit on `origin/research/free-keys`:
+
+```sh
+# Extract docs/research/free-keys/ from that ref into a scratch directory first.
+FK_OUT="$KEY_PROBE_OUTPUT" NVIM="$CLAND_NVIM" sh "$KEY_PROBE_KIT/run.sh" A ghostty xterm-ghostty
+```
+
+The T-124 report also records probe B with tmux defaults and with extended keys,
+and probe A with tty erase `^H`. These runs replay bytes through real PTYs and
+Neovim's TUI, including Ghostty's legacy and kitty encodings; they do not drive
+Ghostty's GUI keyboard. Physical-key checks in Ghostty and tmux remain for the
+human's demo. With tmux defaults Shift+Enter arrives as plain Enter; Alt+Enter is
+the newline fallback. `extended-keys on` with `extended-keys-format csi-u` preserves
+Shift+Enter. The Shift+Enter, paste-tab, scrollback and attach-only workarounds
+from ADR 0005 remain in place.

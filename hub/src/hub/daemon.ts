@@ -135,6 +135,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
           version: VERSION,
           root,
           startedAt: startedAt.toISOString(),
+          keys: config?.keys ?? { layouts: [] },
           uptimeMs: Date.now() - startedAt.getTime(),
           harnesses: adapters?.sessions.list() ?? [],
         }),

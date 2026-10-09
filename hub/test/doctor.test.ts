@@ -37,6 +37,8 @@ async function toolchain(t: TestContext): Promise<{ env: Record<string, string>;
     [...Object.entries(HARNESS_DIRS).filter(([k]) => k !== without).map(([, d]) => d), FAKE_GH_DIR, bin, '/usr/bin', '/bin'].join(':');
   const env = {
     PATH: path(),
+    HOME: join(dir, 'home'),
+    XDG_CONFIG_HOME: join(dir, 'config'),
     CLAND_NVIM: nvim,
     FAKE_CLAUDE_HOME: join(dir, 'claude-home'),
     FAKE_CODEX_HOME: join(dir, 'codex-home'),
@@ -105,6 +107,55 @@ test('a healthy project on a healthy machine: every check ok, plain text, exit 0
     assert.equal(typeof r.version, 'string');
     assert.deepEqual(r.summary, { ok: r.checks.length, warn: 0, fail: 0 });
     for (const c of r.checks) assert.deepEqual(Object.keys(c).sort(), ['detail', 'name', 'verdict']);
+  });
+
+  await t.test('key warnings name the Ghostty LF binding and tty erase collision, with fixes', async () => {
+    const fixture = join(root, 'keys-fixtures');
+    await mkdir(join(fixture, 'ghostty'), { recursive: true });
+    const config = join(fixture, 'ghostty', 'config');
+    const stty = join(fixture, 'stty');
+    const erase = join(fixture, 'stty-output');
+    await writeFile(stty, '#!/bin/sh\ncat "$CLAND_TEST_STTY_OUTPUT"\n');
+    await chmod(stty, 0o755);
+    const env = { ...tools.env, HOME: fixture, XDG_CONFIG_HOME: fixture, PATH: `${fixture}:${tools.env.PATH}`, CLAND_TEST_STTY_OUTPUT: erase };
+    await writeFile(config, '# a comment\nkeybind = shift+enter=text:\\n\n');
+    await writeFile(erase, 'speed 9600 baud; erase = ^H; kill = ^U;\n');
+    const bad = await report(root, env);
+    assert.equal(check(bad.report, 'Ghostty Shift+Enter').verdict, 'warn');
+    assert.match(check(bad.report, 'Ghostty Shift+Enter').fix ?? '', /remove.*shift\+enter/);
+    assert.equal(check(bad.report, 'tty erase').verdict, 'warn');
+    assert.match(check(bad.report, 'tty erase').fix ?? '', /stty erase/);
+    const plain = await doctor(root, env);
+    assert.match(plain.stdout, /warn.*Ghostty Shift\+Enter.*fix:/);
+    assert.match(plain.stdout, /warn.*tty erase.*fix:/);
+    await writeFile(config, '# keybind = shift+enter=text:\\n\nkeybind = shift+enter=text:hello\n');
+    await writeFile(erase, 'speed 9600 baud; erase = ^?; kill = ^U;\n');
+    const good = await report(root, env);
+    assert.ok(!good.report.checks.some(c => c.name === 'Ghostty Shift+Enter' || c.name === 'tty erase'));
+    for (const [label, text, warning] of [
+      ['later safe override', 'keybind = shift+enter=text:\\n\nkeybind = shift+enter=csi:13;2u\n', false],
+      ['later unbind', 'keybind = shift+enter=text:\\n\nkeybind = shift+enter=unbind\n', false],
+      ['clear bindings', 'keybind = shift+enter=text:\\n\nkeybind = clear\n', false],
+      ['quoted LF', 'keybind = "shift+enter=text:\\n"\n', true],
+      ['invalid uppercase key', 'KEYBIND = shift+enter=text:\\n\n', false],
+      ['plain LF', 'keybind = shift+enter=text:\\n\n', true],
+    ] as const) {
+      await writeFile(config, text);
+      const value = await report(root, env);
+      assert.equal(value.report.checks.some(c => c.name === 'Ghostty Shift+Enter'), warning, label);
+    }
+    await writeFile(config, 'keybind = shift+enter=text:\\n\n');
+    const modern = join(fixture, 'ghostty', 'config.ghostty');
+    await writeFile(modern, 'keybind = shift+enter=csi:13;2u\n');
+    assert.ok(!(await report(root, env)).report.checks.some(c => c.name === 'Ghostty Shift+Enter'), 'modern filename overrides legacy config');
+    await writeFile(config, 'keybind = shift+enter=csi:13;2u\n');
+    await writeFile(modern, 'keybind = "shift+enter=text:\\n"\n');
+    assert.ok((await report(root, env)).report.checks.some(c => c.name === 'Ghostty Shift+Enter'), 'modern filename may also override a safe binding with LF');
+    await rm(modern);
+    await rm(config);
+    await writeFile(erase, 'not a tty\n');
+    const missing = await report(root, env);
+    assert.ok(!missing.report.checks.some(c => c.name === 'Ghostty Shift+Enter' || c.name === 'tty erase'));
   });
 
   await t.test('a harness version outside the tested range is a warning, not a failure', async () => {

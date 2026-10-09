@@ -433,6 +433,119 @@ test('a burst of hub events never raises a hit-enter prompt', { skip }, async (t
   assert.equal(messages.trim(), '', `the message area: ${messages}`);
 });
 
+test('each focus chord moves to its neighboring window from Normal, Insert and Terminal mode', { skip }, async (t) => {
+  for (const mode of ['n', 'i', 't']) {
+    await t.test(mode, async (t) => {
+      const c = await startShell(t);
+      if (mode === 't') {
+        await c.input('<Esc>:Cland view session coord-1<CR>');
+        await c.waitScreen((x) => x.includes('keylog ready'), 'the attached session');
+      } else {
+        await c.input('<Esc>');
+      }
+      const windows = await c.lua<Record<string, number>>(`
+        local origin = vim.api.nvim_get_current_win()
+        local wins = { origin = origin }
+        for _, pair in ipairs({ {'h', 'left'}, {'j', 'below'}, {'k', 'above'}, {'l', 'right'} }) do
+          local buf = vim.api.nvim_create_buf(false, true)
+          wins[pair[1]] = vim.api.nvim_open_win(buf, false, { split = pair[2], win = origin })
+        end
+        return wins
+      `);
+      for (const direction of ['h', 'j', 'k', 'l']) {
+        await c.lua('vim.api.nvim_set_current_win(...)', windows.origin);
+        if (mode !== 'n' && await c.mode() !== mode) await c.input(mode === 't' ? 'i' : 'A');
+        await waitUntil(async () => await c.mode() === mode, 'the source mode');
+        await c.input(`<C-${direction}>`);
+        await waitUntil(async () => await c.lua('return vim.api.nvim_get_current_win()') === windows[direction], `${mode}: focus ${direction}`);
+        if (mode === 't') assert.equal(await readFile(c.keylog, 'utf8'), '', 'focus keys never reach the harness');
+      }
+      if (mode === 't') {
+        await c.input('<C-h>');
+        await waitUntil(async () => await c.mode() === 't', 'returning to the terminal resumes typing');
+      }
+    });
+  }
+});
+
+async function waitUntil(predicate: () => Promise<boolean>, what: string): Promise<void> {
+  const until = Date.now() + 5000;
+  while (Date.now() < until) {
+    if (await predicate()) return;
+    await sleep(25);
+  }
+  assert.fail(`never observed ${what}`);
+}
+
+test('focus also leaves Visual, Select, operator-pending and command-line modes', { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc>');
+  const windows = await c.lua<{ origin: number; left: number }>(`
+    local origin = vim.api.nvim_get_current_win()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {'one two'})
+    vim.api.nvim_win_set_buf(origin, buf)
+    return { origin = origin, left = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), false, { split = 'left', win = origin }) }
+  `);
+  for (const [keys, mode] of [['v', 'v'], ['v<C-g>', 's'], ['d', 'no'], [':', 'c']]) {
+    await c.lua('vim.api.nvim_set_current_win(...); vim.api.nvim_win_set_cursor(0, {1, 0})', windows.origin);
+    await c.input(keys!);
+    await waitUntil(async () => await c.mode() === mode, mode!);
+    await c.input('<C-h>');
+    await waitUntil(async () => await c.lua('return vim.api.nvim_get_current_win()') === windows.left, `${mode}: focus left`);
+    assert.equal(await c.mode(), 'n');
+  }
+});
+
+test('the launcher no longer shadows Ctrl+H as Backspace', { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc>:Cland panel items<CR>:Cland launch scratch<CR>');
+  await c.waitScreen(x => x.includes('launch a session') && x.includes('scratch'), 'the launcher');
+  const left = await c.lua<number>("return require('cland.layout').win.left");
+  await c.input('<C-h>');
+  await waitUntil(async () => await c.lua('return vim.api.nvim_get_current_win()') === left, 'focus leaves the launcher');
+  assert.equal(await c.mode(), 'n');
+});
+
+test('a lone Ctrl+Backslash leaves Terminal mode, the old two-key habit works, and Esc reaches the harness', { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc>:Cland view session coord-1<CR>');
+  await c.waitScreen((x) => x.includes('keylog ready'), 'the attached session');
+  await waitUntil(async () => await c.mode() === 't', 'Terminal mode');
+  await c.input('<C-\\>');
+  await waitUntil(async () => (await c.mode()).startsWith('n'), 'a lone Ctrl+Backslash leaves');
+  assert.equal(await readFile(c.keylog, 'utf8'), '');
+  await c.input('i');
+  await waitUntil(async () => await c.mode() === 't', 'Terminal mode again');
+  await c.input('<C-\\><C-n>');
+  await waitUntil(async () => (await c.mode()).startsWith('n'), 'the two-key habit leaves');
+  assert.equal(await readFile(c.keylog, 'utf8'), '');
+  await c.input('i<Esc><M-CR>');
+  await waitUntil(async () => (await readFile(c.keylog, 'utf8')).replaceAll('\n', '') === '1b1b0d', 'Esc and Alt+Enter pass through');
+  assert.equal(await c.mode(), 't');
+});
+
+test('Russian Normal-mode letters follow langmap while the composer keeps Cyrillic text', { skip }, async (t) => {
+  const c = await startShell(t);
+  await mkdir(join(c.root, '.cland'), { recursive: true });
+  await writeFile(join(c.root, '.cland', 'config.toml'), '[keys]\nlayouts = ["ru"]\n');
+  await c.reconnect();
+  await waitUntil(async () => await c.lua<string>('return vim.o.langmap') !== '', 'the configured layout');
+  await c.input('<Esc><C-k>');
+  await c.lua("vim.api.nvim_win_set_cursor(0, {1, 0})");
+  await c.input('о'); // Russian J: down a line.
+  await waitUntil(async () => await c.lua<number>('return vim.api.nvim_win_get_cursor(0)[1]') === 2, 'Russian J moves down');
+  await c.input('<C-j>Привет мир<S-CR>вторая строка<M-CR>третья');
+  await c.waitScreen(x => x.includes('Привет мир') && x.includes('вторая строка') && x.includes('третья'), 'unchanged Cyrillic composer text and newline keys');
+  await c.input('<CR>');
+  await c.waitScreen(x => x.includes('you') && x.includes('Привет мир') && x.includes('третья'), 'the Cyrillic message');
+  await c.input('<Esc>:Cland view session coord-1<CR>');
+  await c.waitScreen(x => x.includes('keylog ready'), 'the terminal with Russian langmap');
+  await waitUntil(async () => await c.mode() === 't', 'Terminal mode');
+  await c.input('Привет');
+  await waitUntil(async () => (await readFile(c.keylog, 'utf8')).replaceAll('\n', '') === 'd09fd180d0b8d0b2d0b5d182', 'unchanged Cyrillic terminal bytes');
+});
+
 test('Shift+Enter reaches the session terminal as ESC[13;2u; a paste keeps its tabs', { skip }, async (t) => {
   const c = await startShell(t);
   await c.input('<Esc>:Cland view session coord-1<CR>');

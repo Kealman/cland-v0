@@ -27,9 +27,7 @@ function M.new(opts)
   vim.fn.prompt_setcallback(buf, function(text)
     self:_submit(text)
   end)
-  vim.keymap.set('i', '<M-CR>', function()
-    api.nvim_feedkeys(api.nvim_replace_termcodes('<S-CR>', true, false, true), 'n', false)
-  end, { buffer = buf, desc = 'cland: newline in the message' })
+  vim.keymap.set('i', '<M-CR>', '<S-CR>', { buffer = buf, desc = 'cland: newline in the message' })
   api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'InsertEnter', 'InsertLeave' }, {
     buffer = buf,
     callback = function()

@@ -7,6 +7,7 @@ import { journalPath, readJournal } from '../hub/journal.ts';
 import { checkProject } from '../doctor/project.ts';
 import { render, summarise, warn, ok, type Check } from '../doctor/report.ts';
 import { checkToolchain } from '../doctor/toolchain.ts';
+import { checkKeys } from '../doctor/keys.ts';
 import { projectRoot } from '../project.ts';
 import { findOrphans, sweepOrphans, SweepBusy } from '../orphans.ts';
 import { VERSION } from '../version.ts';
@@ -21,7 +22,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
   if (extra !== undefined || args.some((a) => a.startsWith('--') && a !== '--json' && a !== '--fix')) throw new Error('usage: cland doctor [dir] [--json] [--fix]');
   const root = dir === undefined ? projectRoot(cwd) : resolve(cwd, dir);
   if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
-  const [toolchain, project] = await Promise.all([checkToolchain(env), checkProject(root)]);
+  const [toolchain, project, keys] = await Promise.all([checkToolchain(env), checkProject(root), checkKeys(env)]);
   const orphanChecks: Check[] = [];
   // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.
   const hubScopeRoot = env.CLAND_TEST_ORPHAN_ROOT;
@@ -37,7 +38,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     if (err instanceof SweepBusy) orphanChecks.push(warn('orphan sweep', err.message, 'wait for the active sweep, then rerun cland doctor --fix'));
     else orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
   }
-  const checks = [...toolchain, ...project, ...orphanChecks];
+  const checks = [...toolchain, ...project, ...keys, ...orphanChecks];
   const summary = summarise(checks);
   if (json) process.stdout.write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
   else {

@@ -221,7 +221,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   settings.hooks.Stop?.push({ hooks: [{ type: 'command', command: 'echo ours' }] });
   await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
   const configPath = join(root, '.cland', 'config.toml');
-  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('rate_limit_max = 30', 'rate_limit_max = 50').replace('retention_days = 30', 'retention_days = 0'));
+  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('rate_limit_max = 30', 'rate_limit_max = 50').replace('retention_days = 30', 'retention_days = 0').replace('layouts = []', 'layouts = ["ru"]'));
   await writeFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'ours\n');
   const rolesBefore = await readFile(join(root, '.cland', 'roles.toml'), 'utf8');
   const before = await tree(root);
@@ -260,6 +260,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   );
   assert.match(await readFile(configPath, 'utf8'), /^rate_limit_max = 50$/m);
   assert.match(await readFile(configPath, 'utf8'), /^retention_days = 0$/m);
+  assert.match(await readFile(configPath, 'utf8'), /^layouts = \["ru"\]$/m);
   assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'ours\n');
   assert.equal(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'), rolesBefore);
 
@@ -275,9 +276,11 @@ test('a hub started in an initialised project has General and Agents, serves the
   await gitRepo(root);
   await run(root, 'init');
   const configPath = join(root, '.cland', 'config.toml');
-  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('max_text_bytes = 8192', 'max_text_bytes = 4096'));
+  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('max_text_bytes = 8192', 'max_text_bytes = 4096').replace('layouts = []', 'layouts = ["ru"]'));
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
+  const statusReply = await ui.request({ type: 'hub.status' });
+  assert.deepEqual((statusReply.value as { keys: { layouts: string[] } }).keys, { layouts: ['ru'] });
   const topics = (await ui.request({ type: 'topic.list' })).value as { topics: Array<{ id: string; title: string }> };
   assert.deepEqual(
     topics.topics.map((x) => [x.id, x.title]),

@@ -189,7 +189,7 @@ function M.status()
   local hint
   local role = vim.b.cland_role
   if mode == 't' then
-    hint = 'keys go to the session · C-\\ C-n leaves · then ␣␣ back'
+    hint = 'C-h/j/k/l focus · C-\\ leaves · then ␣␣ back'
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then

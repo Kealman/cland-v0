@@ -55,11 +55,12 @@ export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number
 };
 
 /**
- * Run `bin args`, never throwing: a missing binary, a crash or the timeout come back as `error`. Stdin is closed.
+ * Run `bin args`, never throwing: a missing binary, a crash or the timeout come back as `error`.
+ * Stdin is closed unless explicitly inherited for a tty inspection.
  * The child leads its own process group: past the deadline the whole group is killed and the pipes are closed, so a
  * grandchild holding stdout open (a wrapper script's real tool) neither outlives the check nor keeps it waiting.
  */
-export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000)): Promise<RunResult> {
+export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false): Promise<RunResult> {
   return new Promise((done) => {
     let stdout = '';
     let stderr = '';
@@ -72,7 +73,7 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
     };
     let child;
     try {
-      child = spawn(bin, args, { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+      child = spawn(bin, args, { env, stdio: [inheritStdin ? 0 : 'ignore', 'pipe', 'pipe'], detached: true });
     } catch (err) {
       finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err) });
       return;
@@ -83,12 +84,12 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       } catch {
         child.kill('SIGKILL');
       }
-      child.stdout.destroy();
-      child.stderr.destroy();
+      child.stdout?.destroy();
+      child.stderr?.destroy();
       finish({ code: null, stdout, stderr, error: `no answer within ${timeoutMs / 1000} s` });
     }, timeoutMs);
-    child.stdout.setEncoding('utf8').on('data', (c: string) => (stdout += c));
-    child.stderr.setEncoding('utf8').on('data', (c: string) => (stderr += c));
+    child.stdout?.setEncoding('utf8').on('data', (c: string) => (stdout += c));
+    child.stderr?.setEncoding('utf8').on('data', (c: string) => (stderr += c));
     child.on('error', (err) => finish({ code: null, stdout, stderr, error: err.message }));
     child.on('close', (code) => finish({ code, stdout, stderr }));
   });
