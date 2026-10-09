@@ -126,7 +126,7 @@ One scripted QA case in one headless Neovim with no socket (spec 4.10, #57): the
 
 ### The case file
 
-A case is a Lua file that returns a table. Two ship in `qa/cases/`: `SHELL-001.lua` (General shows and a message goes `queued`) and `ITEMS-001.lua` (a fixture item in the items panel and its view).
+A case opens with its catalogue header, a block of comment lines with `id`, `title`, `preconditions`, `expected`, `since` and `regression` (the `qa` skill, `docs/review-and-qa.md`; `hub/test/skills-qa.test.ts` checks every shipped case has one). It is a Lua file that returns a table. Two ship in `qa/cases/`: `SHELL-001.lua` (General shows and a message goes `queued`) and `ITEMS-001.lua` (a fixture item in the items panel and its view).
 
 ```lua
 return {

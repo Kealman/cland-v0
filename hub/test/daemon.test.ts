@@ -31,7 +31,7 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
   const gitignore = await readFile(join(root, '.cland', '.gitignore'), 'utf8');
   assert.match(gitignore.split('\n')[0] ?? '', /^# managed by cland/);
   const patterns = gitignore.split('\n').filter((l) => l && !l.startsWith('#'));
-  for (const p of ['hub.db*', 'hub.json', 'hub.sock', 'secret', 'journal.jsonl', 'log/', 'artifacts/', 'worktrees/', 'territory.git/', 'scratch/']) assert.ok(patterns.includes(p), `ignores ${p}`);
+  for (const p of ['hub.db*', 'hub.json', 'hub.sock', 'secret', 'journal.jsonl', 'log/', 'artifacts/', 'worktrees/', 'territory.git/', 'scratch/', 'qa/']) assert.ok(patterns.includes(p), `ignores ${p}`);
   for (const kept of ['tasks', 'roles.toml', 'config.toml', '.gitignore']) assert.ok(!patterns.some((p) => p.startsWith(kept)), `does not ignore ${kept}`);
   assert.ok(pidAlive(discovery.pid), 'the daemon outlives the `cland hub start` that spawned it');
 });
@@ -172,7 +172,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
   await writeFile(join(root, '.cland', 'tasks', 'T-1.md'), '# a task\n');
   await writeFile(join(root, '.cland', 'roles.toml'), '');
   await writeFile(join(root, '.cland', 'config.toml'), '');
-  for (const volatile of ['journal.jsonl', 'artifacts/a.txt', 'worktrees/w/x', 'territory.git/HEAD', 'run/cx-1.sock']) {
+  for (const volatile of ['journal.jsonl', 'artifacts/a.txt', 'worktrees/w/x', 'territory.git/HEAD', 'run/cx-1.sock', 'qa/runs.jsonl', 'qa/T-1/r1/SHELL-001.screen.txt']) {
     await mkdir(join(root, '.cland', volatile, '..'), { recursive: true });
     await writeFile(join(root, '.cland', volatile), 'x');
   }

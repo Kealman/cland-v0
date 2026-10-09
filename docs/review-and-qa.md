@@ -8,7 +8,7 @@ How a change gets reviewed and checked in slice 1 (spec 4.10 and 6 (g), ticket #
 2. It sends a request through the hub to the session holding the role: `send` with `to: ["reviewer"]` (or `["qa"]`, or the holder's name). When no holder is live, it launches one first with `session.launch` and the role; `roles.toml` gives the harness and the model (Reviewer: Codex with `gpt-6.1-sol`; QA: Codex with `gpt-6-astra`), and the first turn is the role's clause.
 3. The holder works as its clause says:
    - Reviewer: reads the item with `task.view`, then the changes the request names, read-only, against the spec and the acceptance criteria. It edits nothing.
-   - QA: reads the item, then runs shell-level checks, the `cland task` CLI, and where UI is involved a headless Neovim fed with `nvim_input` and read with `screenstring()`. It fixes nothing.
+   - QA: reads the item and the brief the request names (The brief, below), runs each case of the brief with `cland --headless --qa` (a headless Neovim fed with `nvim_input` and read with `screenstring()`) and each manual check, and records every case as a line of `.cland/qa/runs.jsonl`. It fixes nothing.
 
    Neither waits on an approval: Reviewer is read-only with no network; QA has full access by default (The Codex sandbox, below).
 4. The holder writes its verdict on the item with one `task.comment` (`verdict`, `result`, `run`); the hub adds `by` and writes the header.
@@ -36,6 +36,43 @@ The report's first line is the verdict and the item, then the points that matter
 review not clear T-12
 High: hub/src/tracker/tracker.ts:212 a closed item keeps its claim.
 ```
+
+## Turning on the QA workflow in an existing project
+
+`cland update` brings the `qa` skill (`.agents/skills/qa/`) and the managed `.cland/.gitignore` line `qa/`, and never rewrites `.cland/roles.toml`: a project's roles are its own, and the new defaults reach it only through these edits. A project initialised after T-62 has all of it.
+
+1. Run `cland update`, then `git status`: `.agents/skills/qa/` and `.cland/.gitignore` changed. `.cland/qa/` is ignored from now on.
+2. In `.cland/roles.toml`, add `"qa"` to the existing `skills` list of the Coordinator and of the QA role, keeping what is there (QA's default list is then `["qa", "diagnosing-bugs"]`).
+3. In the QA clause, replace the bullets for the request, the work, the verdict and the fallback with the current ones (`hub/src/roles/default-roles.ts`, `[qa]`): the request names the brief `qa/briefs/T-<n>.md` and the `qa` skill is the whole job; the work is each case through `sh .agents/skills/qa/qa-record.sh`; the verdict gives `commit` and is `clear` only when every case in scope passed; the fallback is `/codex:rescue --background --fresh --model gpt-6-astra`.
+4. In the Coordinator clause, extend the "Reviews and QA go through…" bullet with the brief (`qa/briefs/T-<n>.md`, written with the `qa` skill, committed and self-contained) and the fallback bullet with the QA rescue form `"Run the QA brief in qa/briefs/T-<n>.md exactly"`, the append of the returned lines to `.cland/qa/runs.jsonl`, the note that the merge gate does not count a verdict the Coordinator records, and filing each finding as an item labelled `qa-found` and `needs-triage`.
+5. Optional, for a restricted QA sandbox: under `[qa.launch]` with `sandbox = "workspace-write"` and no `writable_roots`, QA's are `[".cland/qa"]` already. A written `writable_roots` replaces them, so keep `".cland/qa"` in it.
+6. The hub re-reads `roles.toml` when it changes: the next QA launch and the next assignment use it. Sessions already running keep their clause until relaunched.
+
+## The brief
+
+A QA request names a brief: `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. The Coordinator writes it with the `qa` skill (`.agents/skills/qa/`; `BRIEF.md` there is the template). A brief has:
+
+- the item, and the build: its branch and a rule that resolves without the request (the tip of that branch in the item's worktree when the run starts; the run records the commit it ran; a dirty worktree, or a request naming a commit other than the tip, is `BLOCKED`);
+- the cases: ids of `qa/cases/<ID>.lua`, run with `cland --headless --qa` (spec 4.10, `nvim/README.md`, "QA cases"), each with its surface: `headless-grid` (the default, needs no grant), `tmux` (grant 2), `web-terminal` (grant 1) or `hub-api`;
+- the manual checks: a command and its expected outcome each;
+- what is out of scope, and the grants the run needs (none by default).
+
+Each case file opens with its catalogue header, a comment block with `id`, `title`, `preconditions`, `expected`, `since` and `regression`, so the case catalogue is `qa/cases/`. The brief ends with the procedure (run in order, fix nothing, `clear` only when every case in scope passed), because the run reads only the brief.
+
+## The runs
+
+A run is the pass over a brief, with an id of the QA session's own (`qa-<date>-<n>`). `sh .agents/skills/qa/qa-record.sh` (`cland init` copies skills without the executable bit), run from the item's worktree, runs a case (or records a manual check or another surface) and appends **one JSON line per case** to `.cland/qa/runs.jsonl` of the project, not the worktree's copy:
+
+```json
+{"ts":"2026-10-09T15:20:03Z","item":"T-62","run":"qa-2026-10-09-1","case":"SHELL-001","build":"29fe14f","surface":"headless-grid","method":"cland --headless --qa qa/cases/SHELL-001.lua","result":"PASS","exit_code":0,"evidence":[".cland/qa/T-62/qa-2026-10-09-1/SHELL-001.screen.txt",".cland/qa/T-62/qa-2026-10-09-1/SHELL-001.state.json"],"session":"qa-1"}
+```
+
+- `ts` UTC; `item` and `run` as above; `case` the case id (`M1`, `M2`… for the brief's manual checks); `build` the short commit of the worktree that was run; `surface` is `headless-grid`, `tmux`, `web-terminal` or `hub-api`; `method` is the command run; `result` is `PASS`, `FAIL`, `INCONCLUSIVE` or `BLOCKED`; `exit_code` is 0 for PASS, 1 for FAIL, 2 for INCONCLUSIVE and BLOCKED; `evidence` are paths relative to the project root; `session` is the QA session (`$CLAND_SESSION_NAME`), or `rescue` for a rescue run.
+- `item` is exactly `T-<digits>`; `run` and `case` are single path components (letters, digits, `.`, `_`, `-`, not starting with `.` or `-`), because they name the evidence tree; the script refuses anything else (exit 64) and a line it cannot serialize (exit 70), appending nothing.
+- Evidence (the grid and state dumps, captures) goes in `.cland/qa/T-<n>/<run>/`. Both live under `.cland/qa/`, which the managed `.cland/.gitignore` ignores (decision D14): runs are the machine's record, the verdict on the item is the project's. The QA role's `workspace-write` default for `writable_roots` is `.cland/qa`, the only place outside its worktree a restricted QA session writes.
+- A rescue run reaches neither the hub nor, usually, `.cland/qa`: its captures go to the temp dir (or, failing that, inline on stderr) and it prints each line. The Coordinator runs `sh .agents/skills/qa/qa-record.sh recover T-<n> <run> <captures-dir> <lines-file>`, which copies and verifies the captures into `.cland/qa/T-<n>/<run>/`, rewrites the evidence paths and appends only the lines whose captures were all copied (exit 73 names each line it could not; the `qa` skill, "Recovering a rescue run").
+
+The verdict that follows is one `task.comment` with `verdict qa`, `result`, `run` and `commit` (the full SHA that was run; the hub otherwise takes the branch tip). It is `clear` only when **every** case in scope passed. A FAIL, BLOCKED or INCONCLUSIVE case makes it `not clear`, and the text names the case. The text opens with the case table (case, surface, result, evidence). Each finding becomes an item labelled `qa-found` and `needs-triage`, which the Coordinator files.
 
 ## The verdict
 
@@ -77,7 +114,7 @@ Full access changes the command sandbox, not the role: the hub still checks tool
 
 ### Optional T-48 profile
 
-Projects that choose a restricted sandbox can still set `approval = "never"`, `sandbox = "workspace-write"` and `network = "local"` explicitly; add `writable_roots = ["."]` for an Implementer that needs the main worktree and its git directories. Without the roots, QA writes only in its cwd and the temp dir, and git directories stay read-only. Omitted keys inherit the current role defaults, so specifying just `workspace-write` leaves the network full for Implementer and QA.
+Projects that choose a restricted sandbox can still set `approval = "never"`, `sandbox = "workspace-write"` and `network = "local"` explicitly; add `writable_roots = ["."]` for an Implementer that needs the main worktree and its git directories. Without `writable_roots`, a restricted QA session gets `.cland/qa` (its runs and evidence); an Implementer gets none, so it writes only in its cwd and the temp dir, and git directories stay read-only. Omitted keys inherit the current role defaults, so specifying just `workspace-write` leaves the network full for Implementer and QA.
 
 The following limitations were measured under that restricted profile (macOS, Codex 0.160.0); they do not describe the new full-access defaults:
 
@@ -110,6 +147,6 @@ Against the installed app-server (Codex 0.160.0, macOS), first with `command/exe
 When the role session is unavailable (none can be launched, it died, or it does not answer), the Coordinator runs the same brief through `/codex:rescue`:
 
 - review: `/codex:rescue --wait --fresh --model gpt-6.1-sol <brief>`, read-only;
-- QA: `/codex:rescue --wait --fresh --model gpt-6-astra <brief>`; long runs go `--background`, then `/codex:status` and `/codex:result`.
+- QA: `/codex:rescue --background --fresh --model gpt-6-astra "Run the QA brief in qa/briefs/T-<n>.md exactly"`, then `/codex:status` and `/codex:result` (`--wait` for a short brief).
 
-Outside Claude Code the same run is `node <codex plugin>/scripts/codex-companion.mjs task --model gpt-6.1-sol "<brief>"`. The Coordinator then records the verdict itself, in the same shape: `task.comment` with `verdict`, `result` and `run` set to the rescue job id, and the text saying it came through `/codex:rescue`. A rescue run is not launched by the hub: it runs in Codex's own default sandbox and declines every approval, so QA through it keeps to what needs neither: shell checks and the one-process headless Neovim (no `--listen`, no `cland`, no test that starts a hub; that sandbox refuses sockets).
+Outside Claude Code the same run is `node <codex plugin>/scripts/codex-companion.mjs task --model gpt-6.1-sol "<brief>"`. The Coordinator then records the verdict itself, in the same shape: `task.comment` with `verdict`, `result` and `run` set to the rescue job id, and the text saying it came through `/codex:rescue`. For QA the run's output holds the case lines and the verdict (the `qa` skill, "If you are a rescue run"); the Coordinator appends the lines to `.cland/qa/runs.jsonl`. The item view shows the verdict as the Coordinator's, and the merge gate does not count it (decision D5): only a verdict the hub recorded for a session holding the QA role does. A rescue run is not launched by the hub: it runs in Codex's own default sandbox and declines every approval, so QA through it keeps to what needs neither: shell checks and the one-process headless Neovim (no `--listen`, no `cland`, no test that starts a hub; that sandbox refuses sockets).

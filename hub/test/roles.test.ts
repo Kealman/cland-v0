@@ -228,6 +228,11 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
   assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "read-only"\n').get('implementer')?.launch.sandbox, { mode: 'read-only', writableRoots: [], network: 'full' });
   assert.deepEqual(launch('sandbox = "read-only"\nnetwork = "none"')?.sandbox, { mode: 'read-only', writableRoots: [], network: 'none' });
   assert.deepEqual(launch('sandbox = "danger-full-access"')?.sandbox, { mode: 'danger-full-access', writableRoots: [], network: 'full' });
+  // QA's restricted profile gets the runs and evidence directory (T-62, decision D14); a written list replaces it, and no other role gets one
+  assert.deepEqual(launch('sandbox = "workspace-write"')?.sandbox, { mode: 'workspace-write', writableRoots: ['.cland/qa'], network: 'full' });
+  assert.deepEqual(launch('sandbox = "workspace-write"\nwritable_roots = []')?.sandbox?.writableRoots, []);
+  assert.deepEqual(launch('sandbox = "workspace-write"\nwritable_roots = ["."]')?.sandbox?.writableRoots, ['.']);
+  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "workspace-write"\n').get('implementer')?.launch.sandbox?.writableRoots, []);
 
   assert.throws(() => launch('approval = "always"'), /qa\.launch\.approval must be one of never, on-request, untrusted/);
   assert.throws(() => launch('sandbox = "open"'), /qa\.launch\.sandbox must be one of read-only, workspace-write, danger-full-access/);

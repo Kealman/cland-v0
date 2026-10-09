@@ -399,7 +399,8 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   const qaLaunch = withRoots.slice(withRoots.indexOf('[qa.launch]'));
   await writeFile(file, withRoots.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"')));
   const qa2 = await started('qa-2', { role: 'qa' });
-  const qaProfile = { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', network: localNetwork(root) }, 'features.network_proxy': true };
+  // QA's workspace-write profile also grants its runs and evidence directory (T-62)
+  const qaProfile = { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', filesystem: { [join(root, '.cland', 'qa')]: 'write' }, network: localNetwork(root) }, 'features.network_proxy': true };
   assert.deepEqual(qa2.thread, { approvalPolicy: 'on-request', permissions: 'cland' });
   assert.deepEqual(qa2.overrides, qaProfile);
 

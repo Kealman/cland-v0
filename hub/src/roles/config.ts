@@ -54,6 +54,12 @@ const optString = (v: unknown, where: string): string | null => {
   return v.trim() || null;
 };
 
+/**
+ * The directories a role's `workspace-write` sandbox gets beyond its own, when `writable_roots` is left out (project-
+ * relative): QA's runs and evidence (decision D14). `danger-full-access` has no roots; a written list replaces this.
+ */
+const DEFAULT_WRITABLE_ROOTS: Readonly<Record<string, string[]>> = { qa: ['.cland/qa'] };
+
 const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string): T | null => {
   const s = optString(v, where);
   if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${values.join(', ')}`);
@@ -66,7 +72,7 @@ const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string
  * harness's own. Inherited roots and network follow the mode that was written: roots only with `workspace-write`,
  * nothing closed with `danger-full-access`.
  */
-const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox | null): Sandbox | null => {
+const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox | null, role: string): Sandbox | null => {
   const written = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`);
   const roots = launch.writable_roots === undefined ? null : strings(launch.writable_roots, `${where}.writable_roots`);
   const network = oneOf(launch.network, SANDBOX_NETWORKS, `${where}.network`);
@@ -79,7 +85,7 @@ const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox
   if (mode === 'danger-full-access' && network !== null && network !== 'full') throw new Error(`${where}.network cannot be ${network} with sandbox = "danger-full-access": nothing is closed there`);
   return {
     mode,
-    writableRoots: mode === 'workspace-write' ? (roots ?? base?.writableRoots ?? []) : [],
+    writableRoots: mode === 'workspace-write' ? (roots ?? (base?.writableRoots.length ? base.writableRoots : (DEFAULT_WRITABLE_ROOTS[role] ?? []))) : [],
     network: mode === 'danger-full-access' ? 'full' : (network ?? base?.network ?? 'none'),
   };
 };
@@ -131,7 +137,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
         effort: optString(launch.effort, `${role}.launch.effort`),
         // a key left out is the role's built-in value; `""` is the adapter's or the harness's own
         approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
-        sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null),
+        sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
       },
       permissions: { tools: grants(permissions.tools, role) },
     });

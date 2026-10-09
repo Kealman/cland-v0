@@ -1,4 +1,9 @@
--- ITEMS-001: a fixture item shows in the items panel, under its parent, and Enter on its row opens its view.
+-- id: ITEMS-001
+-- title: A fixture item shows in the items panel and in its view
+-- preconditions: a fixture project with the epic T-1 and its child T-2; the stdio hub
+-- expected: T-2 is listed in the items panel under T-1; Enter on its row opens its view
+-- since: T-57
+-- regression: no
 return {
   title = 'A fixture item shows in the items panel and in its view',
   fixture = {

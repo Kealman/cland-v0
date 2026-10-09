@@ -13,4 +13,5 @@ worktrees/
 territory.git/
 territory.lock*
 scratch/
+qa/
 *.tmp

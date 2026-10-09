@@ -28,8 +28,8 @@ export const MANAGED_MARK = '# managed by cland';
 export const MANAGED_BY = `managed by cland ${VERSION}`;
 
 /**
- * `.cland/.gitignore`: everything volatile. What is meant to be committed — `tasks/`, `roles.toml`,
- * `config.toml` and this file — is deliberately absent.
+ * `.cland/.gitignore`: everything volatile, QA runs and their evidence (`qa/`, decision D14) included. What is
+ * meant to be committed — `tasks/`, `roles.toml`, `config.toml` and this file — is deliberately absent.
  */
 export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; remove this line to take the file over.
 # Volatile hub state: never committed. tasks/, roles.toml and config.toml are.
@@ -46,6 +46,7 @@ worktrees/
 territory.git/
 territory.lock*
 scratch/
+qa/
 *.tmp
 `;
 

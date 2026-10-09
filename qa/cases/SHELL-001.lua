@@ -1,4 +1,9 @@
--- SHELL-001: the workbench opens on General, and a message typed in the composer goes `queued`.
+-- id: SHELL-001
+-- title: General shows and a message goes queued
+-- preconditions: a fixture project with no items and no messages; the stdio hub
+-- expected: the empty General thread shows with the hub connected; a message typed in the composer shows in the thread as queued
+-- since: T-57
+-- regression: no
 return {
   title = 'General shows and a message goes queued',
   fixture = { project = 'qa-shell' },
