@@ -14,7 +14,8 @@ export const HEARTBEAT_MS = 30_000;
  */
 export const MAX_FRAME_BYTES = 1024 * 1024;
 
-/** The close code that tells a spoke a newer spoke of its own session took its name: it must not reconnect. */
+/** The close code a hub older than T-51 sent a spoke when a newer spoke of its session took its name. Today's hub
+ *  never sends it (every spoke of a session stands), and a spoke that gets it reconnects like after any close. */
 export const REPLACED_CLOSE_CODE = 4002;
 
 /** What a refused spoke is told to do: the message names the fix, never only the fact. */

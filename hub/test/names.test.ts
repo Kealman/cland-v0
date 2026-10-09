@@ -59,33 +59,50 @@ test('a reserved or malformed requested name is refused with the reason, and the
   }
 });
 
-test('a restart of the same session takes its name back from the stale spoke, and the stale one does not reconnect', async () => {
+// T-51: a harness may run more than one spoke for one session (Codex starts one per thread of its app-server; an
+// MCP reconnect leaves the old socket standing). Closing the older one left the harness calling tools on a spoke that
+// refused them for good.
+test('a second spoke of the same session joins it: both are answered as the session, deliveries go to the newest, and to the one that is left when it goes', async () => {
   const hub = await startHub();
-  const stale = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const first = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
-  let fresh: Session | null = null;
+  let second: Session | null = null;
   try {
     await witness.waitForPresence(['alpha', 'witness']);
-    await stale.call('status', { text: 'mid-task' });
-    // the same session's spoke restarts while the old socket still stands (an MCP reconnect, a resume)
-    fresh = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-    await fresh.waitForPresence(['alpha', 'witness']);
-    const who = await fresh.call<{ me: string; sessions: Array<{ name: string; status: string | null }> }>('who');
-    assert.equal(who.me, 'alpha', 'the restart is the session: it takes the name, not a generated one');
-    assert.deepEqual(who.sessions.filter((d) => d.name === 'alpha').map((d) => d.status), ['mid-task'], 'one holder, and the status followed the name');
+    await first.call('status', { text: 'mid-task' });
+    second = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+    await second.waitForPresence(['alpha', 'witness']);
+    const who = await second.call<{ me: string; sessions: Array<{ name: string; status: string | null }> }>('who');
+    assert.equal(who.me, 'alpha', 'the second spoke is the session: its name, not a generated one');
+    assert.deepEqual(who.sessions.filter((d) => d.name === 'alpha').map((d) => d.status), ['mid-task'], 'one session, with the status it had');
+
+    // the first spoke still stands and still is the session: its calls are answered, and what it sets is the session's
     await sleep(300);
-    const replaced = await stale.call<{ ok: boolean; error?: string }>('who');
-    assert.equal(replaced.ok, false);
-    assert.match(replaced.error ?? '', /replaced: a newer spoke of this session took the name/);
-    const again = await witness.call<{ sessions: Array<{ name: string }> }>('who');
-    assert.equal(again.sessions.filter((d) => d.name === 'alpha').length, 1, 'the stale spoke did not take the name back');
-    // a message to the name reaches the fresh spoke, never the stale one
+    const still = await first.call<{ ok: boolean; me?: string; error?: string }>('who');
+    assert.equal(still.ok, true, still.error);
+    assert.equal(still.me, 'alpha');
+    assert.equal((await first.call<{ ok: boolean }>('status', { text: 'set through the first spoke' })).ok, true);
+    const seen = await witness.call<{ sessions: Array<{ name: string; status: string | null }> }>('who');
+    assert.deepEqual(seen.sessions.filter((d) => d.name === 'alpha').map((d) => d.status), ['set through the first spoke'], 'one holder of the name');
+
+    // a message to the name reaches the newest spoke, once
     await witness.call('send', { to: ['alpha'], text: 'which one of you?' });
-    await fresh.waitForEvent((e) => e.params.content === 'which one of you?');
-    assert.equal(stale.events.length, 0);
+    await second.waitForEvent((e) => e.params.content === 'which one of you?');
+    assert.equal(first.events.filter((e) => e.params.content === 'which one of you?').length, 0);
+
+    // the newest goes: the session stays, and its deliveries go to the spoke that is left
+    await second.close();
+    second = null;
+    await witness.call('send', { to: ['alpha'], text: 'and now?' });
+    await first.waitForEvent((e) => e.params.content === 'and now?');
+    assert.equal((await witness.call<{ sessions: Array<{ name: string }> }>('who')).sessions.filter((d) => d.name === 'alpha').length, 1);
+
+    // the last one goes: the session is offline
+    await first.close();
+    await witness.waitForPresence(['witness']);
   } finally {
-    await fresh?.close();
-    await stale.close();
+    await second?.close();
+    await first.close();
     await witness.close();
     await hub.close();
   }
