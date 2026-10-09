@@ -155,9 +155,11 @@ One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (th
 | Role | Launch defaults | Approval and sandbox | Skills |
 | --- | --- | --- | --- |
 | Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | none given | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
-| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | `never`; `workspace-write`, `writable_roots = ["."]`, `network = "local"` (applied when it is launched on Codex) | implement, tdd, diagnosing-bugs |
+| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | `never`; `danger-full-access` (applied when it is launched on Codex) | implement, tdd, diagnosing-bugs |
 | Reviewer | codex, `gpt-6.1-sol`, effort `high` | `never`; `read-only` | code-review |
-| QA | codex, `gpt-6-astra`, effort `high` | `never`; `workspace-write`, `network = "local"` | diagnosing-bugs |
+| QA | codex, `gpt-6-astra`, effort `high` | `never`; `danger-full-access` | diagnosing-bugs |
+
+The human decided on 2026-10-09 (T-65) that every session of every harness must be able to do any work its role needs. Implementer and QA therefore default to full access with no approval prompts, the equivalent of Claude Code's auto mode. Reviewer stays read-only with no network.
 
 How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). They belong to the role, whatever harness a launch names (the model and effort are the role's harness's only). The Codex adapter applies it (The Codex adapter, below); Claude Code and OpenCode keep their own permission settings and ignore these keys.
 
@@ -168,7 +170,18 @@ How a launched session may act is read from `[<role>.launch]` at each launch, an
 | `writable_roots` | a list of directories, relative to the project root; needs `workspace-write` | More writable directories. One that holds a `.git` directory is writable with it, and with the session's own git directory when that lies there (a worktree's `.git/worktrees/<name>`): this is what lets a session in a worktree commit. |
 | `network` | `none`, `local`, `full`; needs a sandbox | `local`: Unix sockets under the project's `.cland/`, the session's cwd and the temp dir, and loopback, so `cland` reaches the hub and tests start their own hubs; every other host is refused. `full`: the whole network. |
 
-A key the table leaves out takes the role's built-in value from the table above, key by key, so a `[<role>.launch]` written before these keys existed still launches its role approval-free and sandboxed; only a written value overrides, and `""` asks for none. Inherited roots apply only to `workspace-write`, and `danger-full-access` closes no network. The Coordinator has no built-in values. A wrong value, `writable_roots` with a sandbox that is not `workspace-write`, or `network` or `writable_roots` with `sandbox = ""` makes the file unreadable, as any other mistake in it. `cland role list` shows each role's values. `docs/review-and-qa.md` ("The Codex sandbox") says what each role's sandbox allows, what it cannot, and why.
+A key the table leaves out takes the role's built-in value from the table above, key by key, so a `[<role>.launch]` written before these keys existed still launches with its role's approval and sandbox defaults; only a written value overrides, and `""` asks for none. Inherited roots apply only to `workspace-write`, and `danger-full-access` closes no network. The Coordinator has no built-in values. A wrong value, `writable_roots` with a sandbox that is not `workspace-write`, or `network` or `writable_roots` with `sandbox = ""` makes the file unreadable, as any other mistake in it. `cland role list` shows each role's values. `docs/review-and-qa.md` ("The Codex sandbox") says what each role's sandbox allows, what it cannot, and why.
+
+Projects that prefer T-48's restricted profile can set the following keys in `[implementer.launch]` (and in `[qa.launch]`, omitting `writable_roots` for QA):
+
+```toml
+approval = "never"
+sandbox = "workspace-write"
+writable_roots = ["."]
+network = "local"
+```
+
+Write `network = "local"` explicitly: omitted keys inherit the current role defaults, whose network is full for Implementer and QA. The profile still supplies writable git directories and local sockets through the named Codex permissions profile; its limits and earlier measurements are in `docs/review-and-qa.md`.
 
 The hub watches the file (where the folder cannot be watched it polls, and logs `roles-unwatched` once) and reads it again before each launch and assignment when it changed on disk, so the next one uses what the human last saved (`roles-loaded` in the log). A file that does not parse is logged (`roles-unreadable`) and the last good version stays in force.
 
