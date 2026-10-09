@@ -91,14 +91,14 @@ function M.dump(path)
   return files
 end
 
---- A verdict raised out of the case: FAIL (an expectation), INCONCLUSIVE (a wait that timed out), BLOCKED
+--- A result raised out of the case: FAIL (an expectation), INCONCLUSIVE (a wait that timed out), BLOCKED
 --- (the run cannot go on; an error in the case's own Lua is BLOCKED too, with its traceback).
-local function verdict(result, message)
+local function ends(result, message)
   error({ qa = result, message = message }, 0)
 end
 
 local function blocked(message)
-  verdict('BLOCKED', message)
+  ends('BLOCKED', message)
 end
 
 -- The fixture project -------------------------------------------------------------------------------------
@@ -219,11 +219,15 @@ end
 function M.run()
   local path = vim.env.CLAND_QA_CASE
   local out = vim.env.CLAND_QA_OUT or ''
-  local name = vim.fn.fnamemodify(path, ':t:r')
+  local name = vim.env.CLAND_QA_NAME or vim.fn.fnamemodify(path, ':t:r')
   local hub = (vim.env.CLAND_QA_HUB or '') ~= '' and vim.env.CLAND_QA_HUB or nil
   vim.o.columns = M.COLUMNS
   vim.o.lines = M.LINES
   vim.o.swapfile = false
+  -- one process with no socket: the server Neovim starts by default is stopped
+  for _, server in ipairs(vim.fn.serverlist()) do
+    pcall(vim.fn.serverstop, server)
+  end
 
   local co
   local finished = false
@@ -296,7 +300,7 @@ function M.run()
     local deadline = uv.hrtime() + timeout * 1e6
     while true do
       settle()
-      -- the predicate's own error (or verdict) is raised here, not from inside vim.wait
+      -- the predicate's own error is raised here, not from inside vim.wait
       local ok, value = true, nil
       vim.wait(SLICE_MS, function()
         ok, value = pcall(predicate)
@@ -309,7 +313,7 @@ function M.run()
         return value
       end
       if uv.hrtime() >= deadline then
-        verdict('INCONCLUSIVE', ('wait_for timed out after %d ms%s'):format(timeout, what and (': ' .. what) or ''))
+        ends('INCONCLUSIVE', ('wait_for timed out after %d ms%s'):format(timeout, what and (': ' .. what) or ''))
       end
     end
   end
@@ -317,7 +321,7 @@ function M.run()
   --- The case FAILs with `message` unless `condition` is truthy.
   function qa.expect(condition, message)
     if not condition then
-      verdict('FAIL', message or 'an expectation failed')
+      ends('FAIL', message or 'an expectation failed')
     end
     return condition
   end

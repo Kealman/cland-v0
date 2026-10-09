@@ -47,7 +47,7 @@ switch (command) {
     break;
   case '--headless':
   case '--qa':
-    // a QA case's verdict is the exit code; what stops the run before any case is BLOCKED's code
+    // a QA case's result is the exit code; what stops the run before any case has BLOCKED's code
     try {
       process.exitCode = await runQa(process.argv.slice(2));
     } catch (err) {

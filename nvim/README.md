@@ -98,7 +98,7 @@ cland --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <se
 cland --headless --qa qa/cases/SHELL-001.lua
 ```
 
-One scripted QA case in one headless Neovim with no socket (spec 4.10, #57): the default QA lane, which needs no grant and runs inside a sandbox. The run prints one JSON line on stdout and exits with the verdict.
+One scripted QA case in one headless Neovim with no socket (spec 4.10, #57): the default QA lane, which needs no grant and runs inside a sandbox. The run prints one JSON line on stdout and exits with the result's code.
 
 | Result | Exit | When |
 | --- | --- | --- |
@@ -115,8 +115,8 @@ One scripted QA case in one headless Neovim with no socket (spec 4.10, #57): the
 - **`evidence`** is the last screen and state, whatever the result. With `--out <dir>` they are the files `<dir>/<case>.screen.txt` and `<dir>/<case>.state.json`, and `evidence` lists the files written. Without it they are inline: `{"screen", "state"}`, plus `dumps` for what the case dumped along the way.
 - **The fixture project.** A case never runs against the live project. The run builds the case's fixture in a directory of its own in the temp dir (`cland-qa-…/<project>`), starts the workbench on it, and removes it at the end.
 - **The hub** is the workbench's stdio child: the real hub (`cland hub serve --stdio --no-listen`, which binds nothing) on the fixture project, or the stub hub (`test/stub-hub.ts`) with the case's scenario. `--hub` overrides what the case names.
-- **The environment** is the run's own: `NVIM_APPNAME=cland-qa`, `--clean -u nvim/init.lua --headless`, a 160×45 grid, `TERM=xterm-256color`, `LANG=en_US.UTF-8`, `TZ=UTC`, `HOME` and every `XDG_*_HOME` inside the run's directory, no `--listen`. Nothing of the caller's environment is passed on but `PATH` and `TMPDIR`, so no `CLAND_*` variable of a session reaches it.
-- **Nothing is left behind.** Neovim leads a process group of its own; the run kills what remains of it (the hub, a terminal's job) and then removes its directory.
+- **The environment** is the run's own: `NVIM_APPNAME=cland-qa`, `--clean -u nvim/init.lua --headless`, a 160×45 grid, `TERM=xterm-256color`, `LANG=en_US.UTF-8`, `TZ=UTC`, `HOME` and every XDG directory inside the run's directory, no `--listen`, and the server socket Neovim opens by default stopped before the case runs. Nothing of the caller's environment is passed on but `PATH` and `TMPDIR`, so no `CLAND_*` variable of a session reaches it.
+- **Nothing is left behind.** Neovim leads a process group of its own; the run kills what remains of it (the hub) and then removes its directory. A session terminal's job is stopped by Neovim when it quits. Once the result is printed, a Neovim that does not quit within 3 s is killed and the result stands.
 - **In a sandbox.** With the network denied (no socket can be bound or reached) every case runs. With file writes denied outside the temp dir too, every case runs, and `--out` must be inside the temp dir. With every file write denied (a read-only rescue run) only the stub hub runs, and without `--out`: run a portable case with `--hub stub`. A stdio-hub case is `BLOCKED` there and says so.
 
 ### The case file

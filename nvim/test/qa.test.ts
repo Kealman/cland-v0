@@ -150,6 +150,8 @@ test('a case that is not there, or does not load, is BLOCKED with exit 2; a bad 
   assert.match(broken.line.message ?? '', /the case does not load/);
 
   await assert.rejects(qa(t, [`${CASES}FAIL-001.lua`, '--hub', 'tcp']), /--hub is stdio or stub/);
+  // a timer Node cannot keep would fire at once
+  await assert.rejects(qa(t, [`${CASES}FAIL-001.lua`, '--timeout', '3000000']), /--timeout needs a number of seconds, at most 2147483/);
 });
 
 test('qa.state() holds the stub scenario: the sessions with their states, the roles, and the topics, asks and items the screen shows', { skip }, async (t) => {
@@ -225,6 +227,12 @@ test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher
   assert.match(screen, /│name +coord /);
   assert.match(screen, /│model +qa-model /);
   assert.equal(state.mode, 'i');
+});
+
+test('every run is given the fixed grid, the pinned TERM, LANG and TZ, paths of its own and no server socket, whatever the caller has', { skip }, async (t) => {
+  const run = await qa(t, [`${CASES}ENV-001.lua`], { env: { TERM: 'dumb', LANG: 'ru_RU.UTF-8', TZ: 'Asia/Tokyo', NVIM_APPNAME: 'mine', CLAND_SESSION_NAME: 'impl-1', CLAND_REFRESH_MS: '1' } });
+  assert.equal(run.line.message, undefined);
+  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
 });
 
 test('a case that never returns is ended by --timeout: BLOCKED, exit 2, and no Neovim left spinning', { skip }, async (t) => {

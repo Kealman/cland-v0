@@ -2,13 +2,15 @@
 // socket (spec 4.10, #57). The case runs inside Neovim through the Lua QA API (`nvim/lua/cland/qa.lua`),
 // against a fixture project in the temp dir with its own stdio hub (`cland hub serve --stdio --no-listen`)
 // or the stub hub, never the live project. This side starts Neovim with a pinned environment, waits for
-// the case's result, prints it as one JSON line and exits with the verdict; nothing is left running.
+// the case's result, prints it as one JSON line and exits with its code; nothing is left running.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, join, resolve, sep } from 'node:path';
 import { ensureNvim, NVIM_DIR, REPO_ROOT } from '../../../nvim/bin/nvim-path.ts';
 import { VERSION } from '../version.ts';
+
+const SYNOPSIS = 'usage: cland --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]';
 
 export const QA_USAGE = `  --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]
                   run one QA case in a headless workbench on a fixture project; prints one JSON line
@@ -24,15 +26,19 @@ const RESULTS = Object.keys(EXIT);
 /** The line the case's Neovim prints on stdout when it is done. */
 const RESULT_MARK = 'CLAND-QA-RESULT ';
 const DEFAULT_TIMEOUT_S = 120;
-/** The size the design is drawn for, and the locale and zone every run sees. */
+/** How long Neovim has to leave once it printed the result, before what is left of it is killed. */
+const QUIT_GRACE_MS = 3000;
+/** The longest timer Node keeps: a longer one would fire at once. */
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+/** The terminal, the locale and the zone every run sees, whatever the caller's are. */
 const PINNED = { TERM: 'xterm-256color', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8', TZ: 'UTC', SHELL: '/bin/sh' };
 
-type Options = { caseFile: string; out: string | null; hub: string | null; timeoutMs: number };
+type Options = { caseFile: string; out: string | null; hub: 'stdio' | 'stub' | null; timeoutMs: number };
 
 function parse(args: string[]): Options | string {
   let caseFile: string | null = null;
   let out: string | null = null;
-  let hub: string | null = null;
+  let hub: Options['hub'] = null;
   let timeoutMs = DEFAULT_TIMEOUT_S * 1000;
   for (let i = 0; i < args.length; i++) {
     const a = args[i] as string;
@@ -48,11 +54,12 @@ function parse(args: string[]): Options | string {
       out = value();
       if (out === null) return '--out needs a directory';
     } else if (a === '--hub') {
-      hub = value();
-      if (hub !== 'stdio' && hub !== 'stub') return '--hub is stdio or stub';
+      const v = value();
+      if (v !== 'stdio' && v !== 'stub') return '--hub is stdio or stub';
+      hub = v;
     } else if (a === '--timeout') {
       const seconds = Number(value());
-      if (!(seconds > 0)) return '--timeout needs a number of seconds';
+      if (!(seconds > 0 && seconds * 1000 <= MAX_TIMEOUT_MS)) return `--timeout needs a number of seconds, at most ${Math.floor(MAX_TIMEOUT_MS / 1000)}`;
       timeoutMs = seconds * 1000;
     } else return `unknown argument "${a}"`;
   }
@@ -92,7 +99,10 @@ function resultOf(stdout: string): Said | null {
 
 const tail = (text: string, lines = 15): string => text.trim().split('\n').slice(-lines).join('\n');
 
-/** Kill what is left of the Neovim's process group (it leads one): the hub it spawned, a terminal's job. */
+/**
+ * Kill what is left of the Neovim's process group (it leads one): the hub it spawned. A terminal's job is a
+ * session of its own: Neovim stops it when it quits, and the terminal closing hangs it up otherwise.
+ */
 function killGroup(pid: number | undefined): void {
   if (pid === undefined) return;
   try {
@@ -104,12 +114,12 @@ function killGroup(pid: number | undefined): void {
 
 export async function runQa(args: string[], cwd: string = process.cwd()): Promise<number> {
   if (args.includes('--help') || args.includes('-h')) {
-    process.stdout.write(`usage: cland --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]\n\n${QA_USAGE}`);
+    process.stdout.write(`${SYNOPSIS}\n\n${QA_USAGE}`);
     return 0;
   }
   const options = parse(args);
   if (typeof options === 'string') {
-    process.stderr.write(`cland: ${options}\n\nusage: cland --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]\n\n${QA_USAGE}`);
+    process.stderr.write(`cland: ${options}\n\n${SYNOPSIS}\n\n${QA_USAGE}`);
     return 2;
   }
   const started = Date.now();
@@ -120,7 +130,7 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
     process.stdout.write(`${JSON.stringify({ case: name, result, duration_ms: Date.now() - started, build: build(), ...rest })}\n`);
     return EXIT[result];
   };
-  const blocked = (message: string): number => report('BLOCKED', { hub: options.hub, message, evidence: out === null ? {} : [] });
+  const blocked = (message: string): number => report('BLOCKED', { ...(options.hub !== null ? { hub: options.hub } : {}), message, evidence: out === null ? {} : [] });
 
   if (!existsSync(caseFile)) return blocked(`no case file ${caseFile}`);
   let nvim: string;
@@ -148,10 +158,12 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
     XDG_DATA_HOME: join(home, 'xdg', 'data'),
     XDG_STATE_HOME: join(home, 'xdg', 'state'),
     XDG_CACHE_HOME: join(home, 'xdg', 'cache'),
+    XDG_RUNTIME_DIR: join(home, 'xdg', 'run'),
     NVIM_APPNAME: 'cland-qa',
     NVIM_LOG_FILE: '/dev/null',
     CLAND_NODE: process.execPath,
     CLAND_QA_CASE: caseFile,
+    CLAND_QA_NAME: name,
     CLAND_QA_TMP: dir ?? '',
     CLAND_QA_OUT: out ?? '',
     CLAND_QA_HUB: options.hub ?? '',
@@ -162,7 +174,12 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
   const child = spawn(nvim, ['--clean', '-u', join(NVIM_DIR, 'init.lua'), '--headless'], { cwd: dir ?? '/', env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
-  child.stdout.setEncoding('utf8').on('data', (c: string) => (stdout += c));
+  let quitting: NodeJS.Timeout | null = null;
+  child.stdout.setEncoding('utf8').on('data', (c: string) => {
+    stdout += c;
+    // the case is done: a Neovim that then does not quit is not waited for until the timeout
+    if (quitting === null && resultOf(stdout) !== null) quitting = setTimeout(() => killGroup(child.pid), QUIT_GRACE_MS);
+  });
   child.stderr.setEncoding('utf8').on('data', (c: string) => (stderr = (stderr + c).slice(-16_384)));
   // what ends the run before the case does: its timeout, or a signal to this process (Neovim would not get
   // it, in a group of its own)
@@ -182,9 +199,16 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
     child.on('close', (code, signal) => done(signal ? `signal ${signal}` : `code ${code}`));
   });
   clearTimeout(timer);
+  if (quitting !== null) clearTimeout(quitting);
   for (const signal of signals) process.off(signal, onSignal);
-  killGroup(child.pid);
-  if (dir !== null) rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  if (dir !== null) {
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    } catch (err) {
+      // the result stands; the directory is named for whoever cleans up
+      process.stderr.write(`cland: could not remove ${dir}: ${err instanceof Error ? err.message : String(err)}\n`);
+    }
+  }
 
   const said = ended === null ? resultOf(stdout) : null;
   if (said === null) {
@@ -192,6 +216,7 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
     return blocked(`${why}${stderr.trim() ? `:\n${tail(stderr)}` : ''}`);
   }
   // dump files are named the way --out was given
-  const evidence = Array.isArray(said.evidence) && out !== null ? said.evidence.map((p: unknown) => (typeof p === 'string' && isAbsolute(p) && !relative(out, p).startsWith('..') ? join(options.out as string, relative(out, p)) : p)) : said.evidence;
+  const asGiven = (p: unknown): unknown => (out !== null && typeof p === 'string' && p.startsWith(out + sep) ? `${(options.out as string).replace(/\/+$/, '')}${p.slice(out.length)}` : p);
+  const evidence = Array.isArray(said.evidence) ? said.evidence.map(asGiven) : said.evidence;
   return report(said.result, { hub: said.hub, ...(said.message !== undefined ? { message: said.message } : {}), evidence });
 }
