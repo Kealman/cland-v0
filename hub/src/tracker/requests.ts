@@ -107,7 +107,13 @@ export function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: A
       if (frame.text !== undefined && !isStr(frame.text)) throw new TrackerError('`text` must be a string');
       const v = frame.verdict as unknown;
       if (v !== undefined && (typeof v !== 'object' || v === null)) throw new TrackerError('`verdict` must be { verdict, result, run }');
-      return { item: tracker.comment(actor, needItem(f), frame.text ?? '', frame.verdict) };
+      const item = tracker.comment(actor, needItem(f), frame.text ?? '', frame.verdict);
+      const recorded = item.comments.at(-1)?.verdict;
+      if (!recorded) return { item };
+      const sha = recorded.commit ?? null;
+      const source = frame.verdict?.commit !== undefined ? 'explicit' : sha ? 'branch' : 'none';
+      const note = source === 'explicit' ? `verdict commit: ${sha}` : source === 'branch' ? `verdict records branch tip ${item.branch}: ${sha}` : 'verdict has no commit: the item has no resolving branch';
+      return { item, commit: { sha, source, note } };
     }
     case 'task.edit': {
       const { type: _t, id: _i, as: _a, item: _item, ...input } = frame;

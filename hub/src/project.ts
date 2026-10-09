@@ -44,6 +44,7 @@ run/
 artifacts/
 worktrees/
 territory.git/
+territory.lock*
 *.tmp
 `;
 

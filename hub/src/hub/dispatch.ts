@@ -10,7 +10,7 @@
 // holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
 // in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
 import { timingSafeEqual } from 'node:crypto';
-import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore } from './core.ts';
+import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { withRole } from '../names.ts';
@@ -228,7 +228,7 @@ export class Dispatcher {
     const v = verdictOfText(frame.text);
     if (!v) return null;
     if (readsAsVerdict(v.text)) return 'a verdict comment carries one verdict header: its text may not start with another';
-    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run };
+    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}) };
     frame.text = v.text;
     return null;
   }
@@ -354,6 +354,7 @@ export class Dispatcher {
     let kind: 'spoke' | 'client' | null = null;
     let done = false;
     let name: string | null = null;
+    let spoke: SpokeSocket | null = null;
     let connection: Connection | null = null;
     /** A client's event subscription, ended when the connection closes. */
     let unsubscribe: (() => void) | null = null;
@@ -402,6 +403,7 @@ export class Dispatcher {
         kind = 'spoke';
         name = result.name;
         connection = result.connection;
+        spoke = result.spoke;
         peer.send({ type: 'welcome', name, presence: core.presence(), ...(connection.role !== null ? { role: connection.role } : {}) });
         core.flushQueued(name);
         return;
@@ -621,7 +623,8 @@ export class Dispatcher {
             return peer.send(result);
           }
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
-          return spokeRequest(frame, name as string);
+          // the session's name as it is now: another of its spokes may have renamed it
+          return spokeRequest(frame, connection.name);
         }
         // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
         // exactly as the session's own tool call would be
@@ -676,7 +679,7 @@ export class Dispatcher {
         unsubscribe?.();
         unsubscribe = null;
         for (const fn of onClose.splice(0)) fn();
-        if (connection !== null) core.disconnect(connection);
+        if (connection !== null) core.disconnect(connection, spoke ?? undefined);
       },
     };
   }

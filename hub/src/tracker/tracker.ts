@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { TrackerIndex, type Claim, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
+import { commentKey, TrackerIndex, type Claim, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
   COMMENTS_HEADING,
   fileNameOf,
@@ -32,6 +32,7 @@ import {
   type VerdictResult,
 } from './item.ts';
 import type { LogFn } from '../log.ts';
+import { branchTip, resolveCommit, verdictBase, verdictCurrent } from './verdict-git.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
 /** How long the watcher waits for a file to settle before reading it. */
@@ -48,16 +49,18 @@ export type Actor = { id: string; name: string; role: string | null };
 export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
   path: string;
+  /** The integration branch used for patch-id comparisons, or null when neither exists. */
+  verdictBase: string | null;
   body: string;
   comments: Comment[];
-  verdicts: Array<Verdict & { author: string; at: string }>;
+  verdicts: IndexedVerdict[];
   claim: Claim | null;
   /** The GitHub issue the item was imported from, when it was. */
   github?: GithubRef;
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & { claim: Claim | null; verdicts: IndexedVerdict[] };
+export type ItemSummary = IndexedItem & { claim: Claim | null; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null };
@@ -95,7 +98,7 @@ export type LinkInput = {
   branch?: string | null;
 };
 
-export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string };
+export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string };
 
 export class TrackerError extends Error {}
 
@@ -180,7 +183,8 @@ export class Tracker {
   #changed(id: string): void {
     if (this.#changeListeners.size === 0) return;
     const indexed = this.#index.get(id);
-    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), verdicts: this.#index.verdicts().get(id) ?? [] } : null;
+    const base = verdictBase(this.#root);
+    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), verdicts: this.#freshness(indexed.branch, this.#index.verdicts().get(id) ?? [], base), verdictBase: base } : null;
     for (const listener of [...this.#changeListeners]) {
       try {
         listener({ id, item });
@@ -366,14 +370,16 @@ export class Tracker {
     } catch (err) {
       throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`);
     }
+    const base = verdictBase(this.#root);
     return {
       ...indexed,
+      verdictBase: base,
       ...item.fm,
       file,
       path: join(TASKS_REL, file),
       body: item.body,
       comments: item.comments,
-      verdicts: item.comments.flatMap((c) => (c.verdict ? [{ ...c.verdict, author: c.author, at: c.at }] : [])),
+      verdicts: this.#freshness(item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : []))), base),
       claim: this.#index.claimOf(id),
     };
   }
@@ -381,7 +387,16 @@ export class Tracker {
   list(filter: ListFilter = {}): ItemSummary[] {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
-    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, verdicts: verdicts.get(i.id) ?? [] }));
+    const base = verdictBase(this.#root);
+    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, verdictBase: base, verdicts: this.#freshness(i.branch, verdicts.get(i.id) ?? [], base) }));
+  }
+
+  #freshness(branch: string | null, verdicts: IndexedVerdict[], base: string | null): IndexedVerdict[] {
+    if (!verdicts.length) return verdicts;
+    const tip = branchTip(this.#root, branch);
+    const latest = new Map<VerdictKind, number>();
+    verdicts.forEach((v, i) => latest.set(v.verdict, i));
+    return verdicts.map((v, i) => latest.get(v.verdict) === i ? { ...v, current: verdictCurrent(this.#root, v.commit, tip, base) } : v);
   }
 
   // ---------------------------------------------------------------- writing
@@ -393,7 +408,7 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  #write(name: string, item: Item, read?: { id: string; op: string; hash: string; fd: number }): void {
+  #write(name: string, item: Item, read?: { id: string; op: string; hash: string; fd: number }, verdictWriter?: Actor): void {
     const text = serializeItem(item);
     // what is indexed is what the file says — the text read back the way a reader (and a rescan) reads it,
     // not the object it was written from: a comment whose text reads back as a verdict is one, everywhere
@@ -405,7 +420,7 @@ export class Tracker {
     if (this.#writePauseMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, this.#writePauseMs);
     const before = read ? hashOrNull(() => readFileSync(path, 'utf8')) : null;
     renameSync(tmp, path);
-    this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+    this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter);
     this.#changed(written.fm.id);
     if (read) {
       const replaced = hashOrNull(() => readWhole(read.fd));
@@ -426,7 +441,7 @@ export class Tracker {
    * Change one item: read its file as it is on disk now (a hand edit the watcher has not reached yet is
    * not lost — it is read, reported, and the change applied on top), apply `change`, write, index.
    */
-  #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void): ItemView {
+  #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, verdictWriter?: Actor): ItemView {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let text: string;
@@ -452,7 +467,7 @@ export class Tracker {
       }
       change(item);
       item.fm.updated = this.#now().toISOString();
-      this.#write(file, item, { id, op, hash: hashOf(text), fd });
+      this.#write(file, item, { id, op, hash: hashOf(text), fd }, verdictWriter);
     } finally {
       closeSync(fd);
     }
@@ -516,10 +531,20 @@ export class Tracker {
       if (!RESULTS.includes(verdict.result)) throw new TrackerError(`result must be ${RESULTS.map((r) => `"${r}"`).join(' or ')}`);
       if (!verdict.run?.trim() || /\n/.test(verdict.run)) throw new TrackerError('a verdict needs a run id (one line)');
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
+      if (verdict.commit !== undefined) {
+        if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
+        const commit = resolveCommit(this.#root, verdict.commit);
+        if (!commit) throw new TrackerError('commit does not resolve to a Git commit');
+        v.commit = commit;
+      }
     }
     const view = this.#mutate(rawId, actor, verdict ? 'verdict' : 'comment', (item) => {
+      if (v && verdict?.commit === undefined) {
+        const tip = branchTip(this.#root, item.fm.branch);
+        if (tip) v.commit = tip;
+      }
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
-    });
+    }, actor);
     // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
     // as one (its header lines), so every verdict on record is a notification
     const recorded = view.comments.at(-1)?.verdict;

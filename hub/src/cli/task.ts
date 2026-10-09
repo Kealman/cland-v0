@@ -13,7 +13,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-f
                   [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
   task view <id>
   task list [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
-  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id>]
+  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>]]
   task edit <id> [--title t] [--body t | --body-file f] [--kind k] [--state s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t]
@@ -38,7 +38,7 @@ const OPTIONS = {
   create: { ...COMMON, kind: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, label: { type: 'string', multiple: true }, assignee: { type: 'string' }, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   view: { ...COMMON },
   list: { ...COMMON, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
-  comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, 'body-file': { type: 'string' } },
+  comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, 'body-file': { type: 'string' } },
   edit: { ...COMMON, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
@@ -92,9 +92,9 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       const item = needId();
       const text = typeof v['body-file'] === 'string' ? readBody(v) : positionals.slice(1).join(' ');
       let verdict: Record<string, string> | undefined;
-      if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined) {
+      if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined || v.commit !== undefined) {
         if (typeof v.verdict !== 'string' || typeof v.result !== 'string' || typeof v.run !== 'string') throw new UsageError('a verdict needs --verdict review|qa, --result clear|"not clear" and --run <id>');
-        verdict = { verdict: v.verdict, result: v.result === 'not-clear' ? 'not clear' : v.result, run: v.run };
+        verdict = { verdict: v.verdict, result: v.result === 'not-clear' ? 'not clear' : v.result, run: v.run, ...(typeof v.commit === 'string' ? { commit: v.commit } : {}) };
       }
       return defined({ type: 'task.comment', item, text, verdict }) as { type: string };
     }
@@ -144,6 +144,7 @@ function viewText(i: ItemView): string {
     `  blocked   ${i.blocked_by.length ? i.blocked_by.join(', ') : '-'}`,
     `  topic     ${i.topic ?? '-'}`,
     `  branch    ${i.branch ?? '-'}`,
+    `  verdict base ${i.verdictBase ?? '-'}`,
     `  created   ${i.created}`,
     `  updated   ${i.updated}`,
     ...(i.github ? [`  github    ${i.github.repo}#${i.github.number}  ${i.github.url}`] : []),
@@ -152,8 +153,13 @@ function viewText(i: ItemView): string {
   if (i.body) lines.push('', i.body);
   if (i.comments.length) {
     lines.push('', `comments: ${i.comments.length}`);
+    let verdictIndex = 0;
     for (const c of i.comments) {
       lines.push(`  ${c.author} · ${c.at}${c.verdict ? `  [verdict ${c.verdict.verdict}: ${c.verdict.result}, by ${c.verdict.by}, run ${c.verdict.run}]` : ''}`);
+      if (c.verdict) {
+        const v = i.verdicts[verdictIndex++];
+        if (v) lines.push(`    ${v.commit?.slice(0, 8) ?? 'no commit'}${v.current === undefined ? '' : v.current ? ' · current' : ' · stale'} · from the ${v.source === 'hub' ? 'hub' : 'file'}`);
+      }
       if (c.text) lines.push(...c.text.split('\n').map((l) => `    ${l}`));
     }
   }
@@ -186,6 +192,10 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
     case 'claim': {
       const claim = value.claim as Claim | null;
       return claim ? `${String(value.id)} claimed by ${claimText(claim)}\n` : `${String(value.id)} released\n`;
+    }
+    case 'comment': {
+      const commit = value.commit as { note: string } | undefined;
+      return viewText(value.item as ItemView) + (commit ? `${commit.note}\n` : '');
     }
     case 'create': {
       const i = value.item as ItemView;
