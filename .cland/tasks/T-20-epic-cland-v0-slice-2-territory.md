@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:40:46Z
-updated: 2026-10-09T10:23:54.149Z
+updated: 2026-10-09T14:28:32.999Z
 github:
   repo: Kealman/cland-v0
   number: 20
@@ -104,3 +104,12 @@ Decision D15 executed 2026-10-09 10:11Z: `cland init` ran on cland's own reposit
 ### coord · 2026-10-09T10:23:54.149Z
 
 Addendum to the D15 deviation (10:23Z): T-58 makes the task base a territory setting, `cland.taskBase` in `.cland/territory.git/config` (must name an existing local branch; else `dev` when present, else `main`). On cland's own repository it is set to `main` now (`git --git-dir .cland/territory.git config cland.taskBase main`), so task branches start from main during the interim; the condition that ends the deviation gains one step: after T-59 merges and the hub restarts, `git --git-dir .cland/territory.git config --unset cland.taskBase`, the root to `dev`, merges only through `cland merge`.
+
+### coord · 2026-10-09T14:28:32.999Z
+
+The D15 interim ended on 2026-10-09 at 14:28Z, by decision of the human's stand-in (ask 23ed05f8, option 1), after T-59 merged and the hub restarted on a9a204f (pid 71019).
+- `dev` was fast-forwarded from a833dc5 to `main` 5ae9cc3, as an ancestor, so nothing was rewritten.
+- `dev` and `main` were pushed to the territory once with cland's marker, as a migration.
+- `cland.taskBase` is unset in the territory's config.
+- The root checkout is on `dev`, tracking `origin/dev`. Doctor's territory check is ok.
+From here D1 holds as written: task work reaches `dev` only through `cland merge`, the Coordinator's tracker and docs commits land on `dev`, and `main` moves only by release. Until T-63 (`cland release`), the Coordinator fast-forwards `main` to `dev` with the marker at milestones, and the stand-in pushes `main` to `github`. Branches still open from before the switch (T-70) are claimed from `main`. They merge through `cland merge` onto `dev`; the gate's conflict check covers the difference in base.

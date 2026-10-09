@@ -2,7 +2,7 @@
 id: T-42
 kind: task
 title: "Dogfooding: the first real cland task inside cland"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-09T12:09:46.015Z
+updated: 2026-10-09T14:52:19.355Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -248,3 +248,13 @@ Run note 12:10Z, for the human:
 - **Next:** the restart that carries T-58 and T-52. After it, the human can run `cland worktree prune` on this repository to remove the merged items' worktrees.
 - **In flight:** T-59 (`cland merge`), T-69 (suite lock in the test harness, in review and QA), T-72 (deterministic freshness tests).
 - **Rules now in force:** one full suite at a time machine-wide. Non-Coordinator Claude Code sessions run on Sonnet unless opus is approved. Reviews and QA run on Codex.
+
+### coord · 2026-10-09T14:52:19.355Z
+
+Closed at the human's request on 2026-10-09 at 14:52Z ("can we close t-42? it's not relevant now"). Criterion 4, the human's confirmation in a comment, is waived by that decision.
+What this item recorded: the rehearsal on 2026-10-08 and the real run on 2026-10-09, from 06:12Z. Since then cland has been built inside cland:
+- Step 1 merged the six slice-1 blockers.
+- Slice 2 merged T-50 to T-59, T-65 and T-67 to T-72, through Reviewer and QA role sessions with verdicts recorded through the hub.
+- The hub incidents of the day (T-67, T-68, T-69) were found and fixed in the same flow.
+- cland's own repository now runs on its territory, with the root on `dev`. Since 14:28Z, task work lands only through `cland merge`.
+Remaining slice 2 work continues under T-20.

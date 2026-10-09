@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-23
 branch: t/T-70-orphan-servers-and-sync-ps
 created: 2026-10-09T10:44:01.288Z
-updated: 2026-10-09T14:27:35.018Z
+updated: 2026-10-09T14:59:46.510Z
 ---
 
 ## Parent
@@ -115,3 +115,78 @@ Fix round: reproduced the verified-wrapper child kill at the CLI boundary, then 
 ### impl-70 · 2026-10-09T14:27:35.018Z
 
 Fix milestone: the sixteen TERM-resistant orphan test reproduced the CLI 15s startup abort, then passed after deferring bounded parallel cleanup until socket readiness. The slow-launch test kills the unpublished server when reservation protection is disabled, and preserves it with the production launch/resume reservation check restored. A shared deadline settles all workers and prevents later signals. The 400ms harness-ended logging test now increments actual resumed slow-request counters.
+
+### impl-70 · 2026-10-09T14:37:35.483Z
+
+Final fix checks are clear: all 17 T-70 boundary tests (including real OpenCode), all 3 PID-reuse cases, doctor tests, Claude fallback/escalation and typecheck. Retaining supervision exposed a real intentional-stop crash event; reproduced it, then suppressed crash/reconnect handling only while stop is in progress and kept supervision on refusal. The five stop/refusal tests and resumed/no-sync tests pass after that fix. Starting one final plain npm test; no manual suite lock.
+
+### impl-70 · 2026-10-09T14:48:28.505Z
+
+Review fixes complete. Suite snapshot: 8df48efe3e3aa0ffb38a1b7bba1a786dad531a5d. Final measurement-only commit: a459ed3939e4dbeb0082224d1be375ba7a51cd90 (both read back from git log -1). Full plain npm test: 385 hub + 91 Neovim = 476 passes, no failures/skips; 368.53s, lock wait 0.01s, peak load 8.90, cleanup completed. Final scope-combining change passed typecheck and both affected request/timing tests; no second suite, per Coordinator. A-82 holds details/reproductions and file locations. No T-70 fake harnesses remain in the final read-only process scan; working tree clean; no push/merge.
+
+### rev-6 · 2026-10-09T14:53:21.654Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-70-2
+commit: a459ed3939e4dbeb0082224d1be375ba7a51cd90
+
+medium (Standards) — hub/src/hub/worktrees.ts:212: lost-claim launch cleanup calls sessions.stop(process.name) without its available resumed guard, bypassing timing for process/tree/signal/harness-ended work on that session.launch request. Pass resumed as the second argument. Actual TaskWorktrees.launch → Sessions.stop → OpenCode/endProcess with a 400ms harness-ended consumer records zero slow requests; direct guarded stop records one.
+
+High: none. Other medium: none. Low: none new. All four original A-76 findings and the stale README reference are fixed. Spec clear: protected descendants, retained supervision on refused stop/relaunch, background parallel bounded sweep, PID-reuse policy and intentional-stop crash suppression are implemented.
+
+Reran A-76 pure production probes with fixed expectations: descendant child protected; unknown stop/relaunch keeps OpenCode/Codex running with no signals; direct stop logs 400ms as resumed; sixteen resistant servers take 2000ms simulated parallel time. Additional shared-deadline, late launch-reservation and unknown/running-reused/exited-reused probes pass. Inspected intentional-stop/supervision boundary tests. SQLite :memory: and mocked OS/process boundaries only; no actual signals/files/ref changes or suite. TypeScript noEmit and diff check pass.
+
+Separate axes and executable evidence: A-84, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-84-t-70-delta-review-rev-6-70-2-at-a459ed3.md.
+
+### qa-12 · 2026-10-09T14:54:04.001Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-70-2
+commit: a459ed3939e4dbeb0082224d1be375ba7a51cd90
+
+Delta after qa-12-70-1. Read item/A-82; isolated git archive a459ed3 with T-70 node_modules, Node24.21.0. No product changes.
+
+Ran:
+- npm run typecheck:pass.
+- node --test hub/test/orphan-servers.test.ts hub/test/session-async-processes.test.ts:17/17,zero failures/skips,56.43s.
+- Independent real.test.mjs:1/1. Real OpenCode2.0.24 server99797 is a child of recorded wrapper99796. Both survived SIGKILL of hub99564 and restart99876; journal confirms background sweep completed without ending them. Same real harness subsequently invoked cland MCP role.state,who,task.list,status, all audited ok. Server API retained the same session ID.
+- Unverifiable stop: cleared only scratch row pid_started, then actual CLI stop refused 'process identity cannot be verified; it is still watched'; row remained running and wrapper/child alive. Restored identity; ordinary stop ended both.
+- True untracked real OpenCode orphan1596 left with project cwd/log after hub SIGKILL. Background restart ended it. CLI start319.30ms, status134.45ms, completed check453.80ms from start. Journal names orphan-ended and sweep completion.
+- Independent race.test.mjs:1/1. Fake session creation delayed5s; production sweep saw server4367 with pending launch=true and zero published rows. Sweep ended none (123ms), server survived, same PID subsequently published running and stopped cleanly.
+- Actual scratch cland task list/create/view passed. CLI commands unset CLAND_HUB_FILE/CLAND_SESSION_ID/CLAND_SESSION_NAME.
+- hub status slow-request=0 in both live probes. slow-answer field absent on this branch, which predates T-71; Coordinator confirmed expected and not a finding.
+- Stopped all own hubs/wrappers/servers/fakes, removed both scratch projects, final process scan empty.
+
+No full suite repeated per request. A-82 reports476passes on8df48ef (385hub+91Neovim), with final a459ed3 measurement-only delta; this pass independently exercises final head above.
+
+Findings by severity: high none; medium none; low none.
+
+Evidence A-85: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-85-t-70-qa-a459ed3-wrapped-real-harness-restart-and-background-sweep-delta.zip — runnable probes, process tables, real MCP audits, journals, status/timing and cleanup.
+
+### impl-70 · 2026-10-09T14:57:39.245Z
+
+Final caller fix committed as c1894ab5a8e667ab8eb1354c4254447043ba8c37, read back from git log -1. Claim-conflict cleanup now forwards resumed to Sessions.stop. The actual Codex/TaskWorktrees/RequestGuard test reproduced zero slow-request records before the fix and now records exactly one for a 400ms harness-ended consumer. Typecheck and all 7 affected request/timing/worktree tests pass. No full suite, per Coordinator. A-88 is the corrected evidence artifact (supersedes A-87's placeholder commit line). Tree clean, no remaining T-70 fake harnesses, no push/merge.
+
+### impl-70 · 2026-10-09T14:57:56.456Z
+
+Evidence ID correction: the actual artifact returned by artifact.create is A-89, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-89-t-70-claim-conflict-cleanup-c1894ab-verification.md. It supersedes A-87. The previous comment/handoff incorrectly anticipated A-88; commit and test results are unchanged.
+
+### rev-6 · 2026-10-09T14:59:46.510Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-70-3
+commit: c1894ab5a8e667ab8eb1354c4254447043ba8c37
+
+High: none. Medium: none. Low: none. All prior review findings are resolved.
+
+hub/src/hub/worktrees.ts:212 now forwards resumed into lost-claim cleanup's Sessions.stop. Reran A-84's actual TaskWorktrees → Sessions → OpenCode/endProcess probe: the 400ms harness-ended consumer now records exactly one slow request, and the session stops. The added real-Codex regression verifies the winning claim remains with its holder and attributes the resumed slow-request to session.launch.
+
+Standards and Spec both clear. Exact head verified; TypeScript noEmit and diff check pass. Read A-89's seven targeted passes. No suite, file/ref edits or actual process signals; probe uses SQLite :memory: and in-memory OS/tracker boundaries.
+
+Separate axes and executable rerun: A-90, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-90-t-70-final-delta-review-rev-6-70-3-at-c1894ab.md.
