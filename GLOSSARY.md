@@ -127,5 +127,5 @@ A task's or epic's place among its siblings. The lowest rank is next; moving an 
 _Avoid_: priority, order, weight, position
 
 **Artifact**:
-A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note. An artifact has an id, a kind, a status (draft, sent, shared, archived) and may bind to a topic; it is not committed unless promoted into the repo.
-_Avoid_: scratch file, attachment, tmp file, output
+A file, or a folder with an entry file, that a session or the human shows to others: it has an id `A-<n>`, a kind, a status and an author. The human's and an Aide's artifacts live until deleted by hand; an agent's lives with its topic unless kept or promoted into the repository.
+_Avoid_: attachment, upload, document, file (that is a kind), output

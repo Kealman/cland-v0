@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T19:47:08.472Z
+updated: 2026-10-09T19:50:56.654Z
 ---
 
 ## Destination
@@ -47,6 +47,7 @@ updated: 2026-10-09T19:47:08.472Z
 - The human's own session (T-92, .cland/tasks/T-92-the-human-s-own-session.md): a non-exclusive Aide role that works for the human alone, addressed by name only, speaking for the human with decisions included; the tracker, artifacts, send and history but no launch, merge, handover or ask; a "yours" group in the sessions panel.
 - Structured acceptance criteria (T-93, .cland/tasks/T-93-structured-acceptance-criteria.md): criteria stay in the item file as a structured list with stable ids and marks (done by the implementer, verified by a reviewer or QA, failed by a verifier); the merge gate requires every criterion done and verified; the item view and panel rows show the marks.
 - Visibility levels: attention layers across the workbench (T-94, .cland/tasks/T-94-visibility-levels-attention-layers.md): four layers (now, watch, background, archive) with a default placement table for messages, inbox events, sessions, items and artifacts; surfaces show now and watch, fold background and reach archive on request; the human pins or mutes, agents raise only by addressing or asking.
+- Artifacts as a workspace: browser, folders, the human's own artifacts (T-95, .cland/tasks/T-95-artifacts-as-a-workspace-browser-folders.md): an artifact is a file or a folder with an entry file; the human's and Aides' artifacts never auto-archive or delete, agents' follow their topic unless kept; a centre "Artifacts" tree with sections mine, this topic, kept, by role and archived; keep, move and archive tools and a cland artifact CLI.
 
 ## Not yet specified
 
