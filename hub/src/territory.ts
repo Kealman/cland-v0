@@ -1,8 +1,10 @@
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
 import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { lstat, mkdir } from 'node:fs/promises';
+import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MergeError } from './merge.ts';
+import { withCleanup, withCleanupAsync } from './cleanup.ts';
 import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
@@ -40,36 +42,48 @@ export function withTerritoryLock<T>(root: string, operation: () => T | Promise<
   }
   let result;
   try { result = operation(); }
-  catch (err) {
-    lock.release();
-    throw err;
-  }
-  if (result instanceof Promise) return result.finally(lock.release);
+  catch (err) { return withCleanup(() => { throw err; }, lock.release); }
+  if (result instanceof Promise) return withCleanupAsync(() => result, async () => lock.release());
   lock.release();
   return result;
+}
+
+async function symlinkOnPathAsync(root: string, path: string, resumed: <R>(work: () => R) => R): Promise<string | null> {
+  const rel = relative(root, path);
+  if (rel.startsWith(`..${sep}`) || rel === '..' || isAbsolute(rel)) return rel;
+  let at = root;
+  for (const part of rel.split(sep)) {
+    at = join(at, part);
+    try {
+      const stat = await lstat(at);
+      const link = resumed(() => stat.isSymbolicLink() ? relative(root, at) : null);
+      if (link !== null) return link;
+    }
+    catch (err) { return resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null; throw err; }); }
+  }
+  return null;
 }
 
 /**
  * `withTerritoryLock` for the hub's request path: the lock is taken without blocking the event loop (its `ps` probes
  * awaited, `acquireLockAsync`), held until `operation` settles. A live holder refuses, as there.
  */
-export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>): Promise<T> {
+export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>, resumed: <R>(work: () => R) => R = work => work()): Promise<T> {
   const path = lockPath(root);
-  const link = symlinkOnPath(root, path);
-  if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`);
-  mkdirSync(join(root, '.cland'), { recursive: true });
+  const link = await symlinkOnPathAsync(root, path, resumed);
+  resumed(() => { if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`); });
+  await mkdir(join(root, '.cland'), { recursive: true });
   let lock;
   try {
-    lock = await acquireLockAsync(path);
+    lock = await acquireLockAsync(path, resumed);
   } catch (err) {
-    if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
+    resumed(() => {
+      if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
+      throw err;
+    });
     throw err;
   }
-  try {
-    return await operation();
-  } finally {
-    lock.release();
-  }
+  return withCleanupAsync(operation, lock.release, resumed);
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
@@ -77,7 +91,7 @@ export const TERRITORY_HOOK = `#!/bin/sh
 case "$1" in
   refs/heads/main|refs/heads/dev)
     if [ "$CLAND_TERRITORY_WRITE" != "1" ]; then
-      echo "cland: main and dev are protected; use cland merge and cland release (cland sync imports main)." >&2
+      echo "cland: main and dev are protected; use cland push for Coordinator dev commits, cland merge for tasks, and cland release (cland sync imports main)." >&2
       exit 1
     fi
     ;;
@@ -309,7 +323,7 @@ export const taskWorktreePath = (root: string, item: string): string => join(wor
 /** Whether the project has a cland-managed territory: the condition for task branches and worktrees. */
 export async function hasTerritory(root: string): Promise<boolean> {
   const path = territoryPath(root);
-  return existsSync(path) && (await maybeGitAsync(path, ['config', '--get', 'cland.managed'])) === 'true';
+  return (await maybeGitAsync(path, ['config', '--get', 'cland.managed'])) === 'true';
 }
 
 /**
@@ -486,6 +500,10 @@ export async function squashTask(
   const remoteTip = await refAsync(territoryPath(root), `refs/heads/${base}`);
   const ancestor = remoteTip ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', remoteTip, before]) : '';
   resumed(() => { if (ancestor === null) throw new MergeError('merge-base', `territory ${base} is not an ancestor of the root's ${base}`); });
+  if (base === 'dev' && remoteTip !== before) {
+    const unpublished = await territoryGitAsync(root, ['log', '--format=%h %s', remoteTip ? `${remoteTip}..${before}` : before, '--']);
+    resumed(() => { throw new MergeError('merge-unpublished', `root ${base} has unpublished commits:\n${unpublished}\nrun cland push before cland merge`); });
+  }
   let tree: string;
   try {
     const merged = await territoryGitAsync(root, ['merge-tree', '--write-tree', '--name-only', '-z', before, tip]);

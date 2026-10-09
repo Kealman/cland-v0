@@ -142,6 +142,7 @@ test('conflicts name the files, touched local edits refuse, and unrelated edits 
   await review(rev, conflict.id);
   await writeFile(join(root, 'README.md'), 'on dev\n');
   git(root, 'commit', '-qam', 'Dev readme');
+  ok(await cland(root, 'push'));
   await refused(ui, root, conflict.id, 'merge-conflict', ['README.md']);
   const work = await task(root, 'New parser');
   await review(rev, work.id);
@@ -271,6 +272,7 @@ test('patch-equivalent rebases stay reviewed, and later file-only headers cannot
   await writeFile(join(root, 'base-only.txt'), 'base work\n');
   git(root, 'add', 'base-only.txt');
   git(root, 'commit', '-qm', 'Base moves');
+  ok(await cland(root, 'push'));
   git(work.path, 'rebase', 'dev');
   const item = json<{ item: { path: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
   const file = join(root, item.path);
@@ -292,6 +294,7 @@ test('a named human CLI actor cannot impersonate a Reviewer with --role; overrid
   await refused(ui, root, work.id, 'review-role');
   await writeFile(join(root, 'README.md'), 'dev edit\n');
   git(root, 'commit', '-qam', 'Conflict on dev');
+  ok(await cland(root, 'push'));
   const before = git(root, 'show-ref');
   const r = await cland(root, 'merge', work.id, '--override', 'Human checked');
   assert.equal(r.code, 1);
@@ -474,6 +477,7 @@ test('a root switched during real merge-tree preparation is refused without chan
   await review(rev, work.id);
   await writeFile(join(root, 'driver.txt'), 'on dev\n');
   git(root, 'commit', '-qam', 'Dev changes the same file');
+  ok(await cland(root, 'push'));
   git(root, 'branch', 'other');
   const { mkdir } = await import('node:fs/promises');
   const dir = join(root, '.cland', 'scratch');

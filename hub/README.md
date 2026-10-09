@@ -467,6 +467,16 @@ QA-by: qa-12 (qa-run-id)
 
 `cland merge T-12 --override "<reason>"` is for the human's own shell only, including when the Coordinator would otherwise be allowed to merge. It skips verdict checks, keeps conflict and root safety checks, omits verdict trailers, and records the reason on the item, in Agents and in the journal. The shipped `merge` skill forbids delegating a merge to a sub-agent: one in the Coordinator's shell would inherit its authority.
 
+### Coordinator dev push
+
+`cland push [--json]` fast-forwards the local territory’s `dev` to the root’s committed `dev`, under the shared territory queue and lock. The Coordinator commits tracker and docs changes on the root’s `dev`, then runs this command from its own shell; the human may also run it. It requires the `push` grant for the Coordinator; existing projects with explicit `[coordinator.permissions] tools` add `"push"` to that list. Implementer, Reviewer and QA shells are refused, even if their environment claims Coordinator. It has no spoke tool. Identity comes from the shell’s session id: sub-agents inheriting a Coordinator shell inherit its authority, so the Coordinator performs this command itself.
+
+Push uses the on-disk territory path and a pinned commit, ignoring configurable push URLs. It fetches objects without writing tracking refs or `FETCH_HEAD`, verifies a fast-forward, and never forces. A behind or divergent root refuses with the territory commits’ hashes and subjects. The root must be on `dev`; pending merge checkout/item completion, release or sync recovery must finish first. Dirty root work is preserved. Repeating a successful push is harmless.
+
+Before publication, authorization, lock, inspection and fast-forward failures leave local and territory refs and the checkout unchanged. A rejected Git push also leaves them unchanged; repair its reported obstruction and retry. If Git loses the reply after acceptance, cland checks the pinned territory commit. If both the push reply and its confirmation fail, `push-outcome-unknown` exits 2, records a distinct outcome event, and names the pinned commit: publication may have occurred. Verify territory `dev` and retry `cland push`; this outcome makes no unchanged-refs claim. Verified refusal exits 1. Success returns `{dev, previous}`; record or lock-release failure after publication returns success with `followUp: {step, error}` saying `pushed; follow-up failed`. In that case dev has landed: repair the named obstruction (a retained lock may need removal once its owner has stopped) and retry to confirm publication without another commit.
+
+`cland merge` refuses unpublished root `dev` before preparing a landing, with `merge-unpublished`, listing those commits and saying `run cland push`. It leaves the checkout, integration refs, item and claim unchanged. Publish explicitly, then retry merge; tracker commits are never silently included in a task landing. A configured task base other than `dev` retains its existing merge behavior.
+
 ### Release and sync
 
 Only `cland release` pushes to `github`. Task branches and integration work stay on the local territory. These commands use the hub's queued territory operations, the async Git runner, and the territory lock; no synchronous subprocess runs on a request path.

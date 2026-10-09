@@ -21,5 +21,5 @@ This project's agent sessions run under cland: a hub connects every session, and
 - **Tasks go through `cland task`**, as `docs/agents/issue-tracker.md` describes. Items live in `.cland/tasks/`; never write item files by hand.
 - **Show work through `artifact.create`**, with a kind, title, topic and either `content` or a `path` to copy. The hub keeps the file and posts its artifact chip in the topic; use its id and durable path when referring to it, never files in tmp.
 - **Sub-agents never use the hub.** The cland tools belong to your session. A sub-agent you start reports back to you and does not call cland's tools through your session's connection.
-- **Only cland release pushes to GitHub:** only `cland release` pushes to `github`. Commit on your task branch; push it to the local territory (`origin`). Task work reaches `dev` through `cland merge`; `main` moves through `cland release` and `cland sync`.
+- **Only cland release pushes to GitHub:** only `cland release` pushes to `github`. Commit on your task branch; push it to the local territory (`origin`). Task work reaches `dev` through `cland merge`. The Coordinator commits tracker and docs work on the root’s `dev` and publishes it with `cland push` from its own shell (the human may also run it). `main` moves through `cland release` and `cland sync`.
 <!-- cland:end -->

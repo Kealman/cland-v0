@@ -1,7 +1,7 @@
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
 import type { LogFn } from '../log.ts';
-import { existsSync } from 'node:fs';
+import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MergeError } from '../merge.ts';
 import type { IndexedVerdict } from '../tracker/index-db.ts';
@@ -77,8 +77,12 @@ export class TaskMerges {
       let landingFailure: { step: string; error: string } | undefined;
       try {
         await withTerritoryLockAsync(this.tracker.root, async () => {
+          const pendingSync = await access(join(this.tracker.root, '.cland', 'sync.tmp')).then(() => true, err => resumed(() => {
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
+            throw err;
+          }));
           const prior = resumed(() => {
-            if (existsSync(join(this.tracker.root, '.cland', 'sync.tmp'))) throw new MergeError('merge-recovery', `finish pending cland sync before merging ${id}`);
+            if (pendingSync) throw new MergeError('merge-recovery', `finish pending cland sync before merging ${id}`);
             return this.tracker.mergeReceipt(id);
           });
           const existing = prior ? await landedTask(this.tracker.root, id, prior, resumed) : null;
@@ -150,7 +154,7 @@ export class TaskMerges {
               landingFailure = observed.published ? { step: 'checkout', error: `checkout reconciliation pending: ${error}` } : { step: 'rollback', error: `rollback failed: ${error}; publish pending` };
             });
           }
-        });
+        }, resumed);
       } catch (err) {
         if (state.landed) return this.#incomplete({ item: id, ...state.landed, cleanup: 'pending' }, step, err instanceof Error ? err.message : String(err), resumed);
         resumed(() => this.log({ event: err instanceof MergeError && err.code === 'merge-recovery' ? 'merge-recovery-pending' : 'merge-refused', id, session: actor.name, code: err instanceof MergeError ? err.code : 'merge-failed', error: err instanceof Error ? err.message : String(err), ...(err instanceof MergeError && err.recovery ? err.recovery : {}) }));

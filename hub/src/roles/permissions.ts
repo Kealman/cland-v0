@@ -48,6 +48,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'merge',
   'release',
   'sync',
+  'push',
   'artifact.create',
   'artifact.promote',
 ];
@@ -83,6 +84,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
     'merge',
   'release',
   'sync',
+  'push',
     'artifact.create',
     'artifact.promote',
     'rename',

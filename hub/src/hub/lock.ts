@@ -5,10 +5,13 @@
 // The file is created whole or not at all (written aside, then hard-linked into place, which fails when
 // the name exists) and holds the holder's pid and its process start time. A lock whose pid is gone, or
 // whose pid now belongs to a process started at another time (the pid was reused), is stale and broken.
-// Breaking is itself guarded (`hub.lock.break`, created the same way), so two starters that both found the
-// same stale lock cannot each remove what the other just created.
+// Every lifecycle change holds a crash-recoverable directory guard (`hub.lock.break`), so a stale-lock
+// recoverer cannot remove what another starter just created.
+import fs from 'node:fs/promises';
+import { withCleanup, withCleanupAsync } from '../cleanup.ts';
+import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { linkSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { linkSync, readFileSync, rmSync, writeFileSync, mkdirSync, renameSync, rmdirSync, readdirSync, lstatSync } from 'node:fs';
 import { run } from '../doctor/report.ts';
 import type { Resumed } from './worktrees.ts';
 import { pidAlive } from '../project.ts';
@@ -17,10 +20,9 @@ export type LockHolder = {
   pid: number;
   /** The holder's process start time as `ps -o lstart=` prints it; null when `ps` could not tell. */
   started: string | null;
+  /** New lock instances have a nonce; older pid/start-time records remain readable. */
+  token?: string;
 };
-
-/** A breaker that crashed mid-break leaves its guard behind; past this age the guard is ignored. */
-const BREAK_GUARD_STALE_MS = 10_000;
 
 /** `ps -o lstart=`'s answer as the lock stores it; null when it said nothing. */
 export const parseStarted = (stdout: string): string | null => stdout.trim().replace(/\s+/g, ' ') || null;
@@ -80,106 +82,212 @@ export async function liveHolderAsync(path: string, startedOf: (pid: number) => 
   return sameProcess(holder, await startedOf(holder.pid)) ? holder : null;
 }
 
-/** Create `path` with `text`, whole, only if it does not exist yet; false when it does. */
-function createExclusive(path: string, text: string): boolean {
-  const tmp = `${path}.${process.pid}.tmp`;
-  writeFileSync(tmp, text, { mode: 0o600 });
+// Creation, stale removal and release all hold the same guard. Its directory is installed nonempty in one
+// rename. Recovery removes only the dead owner's unique filename, then rmdir (which preserves a successor's
+// nonempty directory). This avoids check/unlink races, including two recoverers and an empty-directory rename.
+type RecordSnapshot = { exists: boolean; holder: LockHolder | null };
+const parseHolder = (text: string): LockHolder | null => {
   try {
-    linkSync(tmp, path);
-    return true;
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'EEXIST') return false;
-    throw err;
-  } finally {
-    rmSync(tmp, { force: true });
+    const v = JSON.parse(text) as Partial<LockHolder>;
+    if (typeof v.pid !== 'number') return null;
+    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null, ...(typeof v.token === 'string' ? { token: v.token } : {}) };
+  } catch { return null; } // malformed bytes are distinct from a failed filesystem read
+};
+const absent = (err: unknown) => (err as NodeJS.ErrnoException).code === 'ENOENT';
+const occupied = (err: unknown) => ['EEXIST', 'ENOTEMPTY'].includes((err as NodeJS.ErrnoException).code ?? '');
+const sameHolder = (a: LockHolder | null, b: LockHolder) => a?.pid === b.pid && a.started === b.started && a.token === b.token;
+
+function recordSync(path: string): RecordSnapshot {
+  try { return { exists: true, holder: parseHolder(readFileSync(path, 'utf8')) }; }
+  catch (err) { if (absent(err)) return { exists: false, holder: null }; throw err; }
+}
+async function recordAsync(path: string, resumed: Resumed): Promise<RecordSnapshot> {
+  try {
+    const text = await fs.readFile(path, 'utf8');
+    return resumed(() => ({ exists: true, holder: parseHolder(text) }));
+  } catch (err) { return resumed(() => { if (absent(err)) return { exists: false, holder: null }; throw err; }); }
+}
+
+function emptyGuardSync(path: string): void {
+  try { rmdirSync(path); } catch (err) { if (!absent(err) && !occupied(err)) throw err; }
+}
+async function emptyGuardAsync(path: string, resumed: Resumed): Promise<void> {
+  try { await fs.rmdir(path); }
+  catch (err) { resumed(() => { if (!absent(err) && !occupied(err)) throw err; }); }
+}
+
+function recoverGuardSync(path: string): void {
+  let names: string[];
+  try {
+    if (!lstatSync(path).isDirectory()) throw new Error(`lock guard ${path} is not a directory; preserve it and remove it after its owner stops`);
+    names = readdirSync(path);
+  } catch (err) { if (absent(err)) return; throw err; }
+  for (const name of names) {
+    if (!/^[a-f0-9-]+\.owner$/.test(name)) throw new Error(`invalid lock guard ${path}`);
+    const record = recordSync(`${path}/${name}`);
+    if (!record.exists) continue;
+    if (!record.holder) throw new Error(`unreadable lock guard owner ${path}/${name}`);
+    if (holderAlive(record.holder)) return;
+    rmSync(`${path}/${name}`, { force: true });
   }
+  emptyGuardSync(path);
+}
+async function recoverGuardAsync(path: string, resumed: Resumed): Promise<void> {
+  let names: string[];
+  try {
+    const stat = await fs.lstat(path);
+    resumed(() => { if (!stat.isDirectory()) throw new Error(`lock guard ${path} is not a directory; preserve it and remove it after its owner stops`); });
+    names = await fs.readdir(path);
+  } catch (err) { if (resumed(() => absent(err))) return; throw err; }
+  for (const name of names) {
+    resumed(() => { if (!/^[a-f0-9-]+\.owner$/.test(name)) throw new Error(`invalid lock guard ${path}`); });
+    const record = await recordAsync(`${path}/${name}`, resumed);
+    if (!record.exists) continue;
+    const holder = resumed(() => {
+      if (!record.holder) throw new Error(`unreadable lock guard owner ${path}/${name}`);
+      return record.holder;
+    });
+    if (resumed(() => pidAlive(holder.pid))) {
+      const now = holder.started === null ? null : await processStartedAsync(holder.pid, PS_TIMEOUT_MS, resumed);
+      if (resumed(() => sameProcess(holder, now))) return;
+    }
+    await fs.rm(`${path}/${name}`, { force: true });
+  }
+  await emptyGuardAsync(path, resumed);
+}
+
+function takeGuardSync(path: string, me: LockHolder): (() => void) | null {
+  const name = `${randomUUID()}.owner`;
+  const tmp = `${path}.${name}.tmp`;
+  mkdirSync(tmp, { mode: 0o700 });
+  return withCleanup(() => {
+    writeFileSync(`${tmp}/${name}`, JSON.stringify(me), { mode: 0o600, flag: 'wx' });
+    try { renameSync(tmp, path); }
+    catch (err) { if (!occupied(err)) throw err; recoverGuardSync(path); return null; }
+    return () => { rmSync(`${path}/${name}`, { force: true }); emptyGuardSync(path); };
+  }, () => rmSync(tmp, { recursive: true, force: true }));
+}
+async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed): Promise<(() => Promise<void>) | null> {
+  const name = `${randomUUID()}.owner`;
+  const tmp = `${path}.${name}.tmp`;
+  await fs.mkdir(tmp, { mode: 0o700 });
+  return withCleanupAsync(async () => {
+    await fs.writeFile(`${tmp}/${name}`, JSON.stringify(me), { mode: 0o600, flag: 'wx' });
+    try { await fs.rename(tmp, path); }
+    catch (err) {
+      resumed(() => { if (!occupied(err)) throw err; });
+      await recoverGuardAsync(path, resumed);
+      return null;
+    }
+    return resumed(() => async () => { await fs.rm(`${path}/${name}`, { force: true }); await emptyGuardAsync(path, resumed); });
+  }, () => fs.rm(tmp, { recursive: true, force: true }), resumed);
+}
+
+/** Create a whole main lock, exclusively, while the guard is held. */
+function createExclusive(path: string, text: string): boolean {
+  const tmp = `${path}.${randomUUID()}.tmp`;
+  writeFileSync(tmp, text, { mode: 0o600, flag: 'wx' });
+  return withCleanup(() => {
+    try { linkSync(tmp, path); return true; }
+    catch (err) { if ((err as NodeJS.ErrnoException).code === 'EEXIST') return false; throw err; }
+  }, () => rmSync(tmp, { force: true }));
+}
+async function createExclusiveAsync(path: string, text: string, resumed: Resumed): Promise<boolean> {
+  const tmp = `${path}.${randomUUID()}.tmp`;
+  await fs.writeFile(tmp, text, { mode: 0o600, flag: 'wx' });
+  return withCleanupAsync(async () => {
+    try { await fs.link(tmp, path); return resumed(() => true); }
+    catch (err) { return resumed(() => { if ((err as NodeJS.ErrnoException).code === 'EEXIST') return false; throw err; }); }
+  }, () => fs.rm(tmp, { force: true }), resumed);
 }
 
 export class HubLocked extends Error {
   readonly holder: LockHolder;
-  constructor(holder: LockHolder) {
-    super(`another hub holds the project's lock (pid ${holder.pid})`);
-    this.holder = holder;
-  }
+  constructor(holder: LockHolder) { super(`another hub holds the project's lock (pid ${holder.pid})`); this.holder = holder; }
 }
-
 export type HubLock = { holder: LockHolder; release: () => void };
+export type AsyncHubLock = { holder: LockHolder; release: () => Promise<void> };
+const pauseSync = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+const pauseAsync = () => new Promise(resolve => setTimeout(resolve, 20));
 
-/**
- * Take the lock for this process, breaking a stale one; throws HubLocked when a live process holds it.
- */
 export function acquireLock(path: string): HubLock {
-  const me: LockHolder = { pid: process.pid, started: processStarted(process.pid) };
+  const me = { pid: process.pid, started: processStarted(process.pid), token: randomUUID() };
   const text = `${JSON.stringify(me)}\n`;
+  const guarded = <T>(work: () => T): T => {
+    for (let attempt = 0; attempt < 250; attempt++) {
+      const release = takeGuardSync(`${path}.break`, me);
+      if (!release) { pauseSync(); continue; }
+      return withCleanup(work, release);
+    }
+    throw new Error(`could not take guard for ${path}`);
+  };
   for (let attempt = 0; attempt < 50; attempt++) {
-    if (createExclusive(path, text)) {
-      return {
-        holder: me,
-        // only our own lock is ever removed: a successor's is left alone
-        release: () => {
-          if (readLock(path)?.pid === me.pid) rmSync(path, { force: true });
-        },
-      };
-    }
-    const holder = readLock(path);
-    if (holder === null) {
-      // linked whole, so an unreadable lock is not one being written: it is junk, and broken like a stale one
-      breakStale(path, null);
-      continue;
-    }
-    if (holderAlive(holder)) throw new HubLocked(holder);
-    breakStale(path, holder);
+    const acquired = guarded(() => {
+      if (createExclusive(path, text)) return true;
+      const record = recordSync(path);
+      if (!record.exists) return false; // absent means retry creation, never unlink
+      if (record.holder && holderAlive(record.holder)) throw new HubLocked(record.holder);
+      rmSync(path, { force: true }); // creators and releasers are excluded until this guard is released
+      return false;
+    });
+    if (acquired) return { holder: me, release: () => {
+      // Shutdown and repeated release must not create a guard for an absent lock or directory.
+      if (!sameHolder(recordSync(path).holder, me)) return;
+      try { guarded(() => { if (sameHolder(recordSync(path).holder, me)) rmSync(path, { force: true }); }); }
+      catch (err) {
+        // The directory may disappear after the ownership check, before guard creation.
+        if (absent(err) && !recordSync(path).exists) return;
+        throw err;
+      }
+    } };
   }
   throw new Error(`could not take ${path}: it keeps changing under this process`);
 }
 
-/**
- * `acquireLock` without blocking the event loop, for a lock taken on the hub's request path (the territory's, T-58):
- * the start-time probes are awaited, this process's own asked once, and a breaker's wait is a timer.
- */
-export async function acquireLockAsync(path: string): Promise<HubLock> {
+export async function acquireLockAsync(path: string, resumed: Resumed = work => work()): Promise<AsyncHubLock> {
   ownStarted ??= processStartedAsync(process.pid);
-  const me: LockHolder = { pid: process.pid, started: await ownStarted };
-  const text = `${JSON.stringify(me)}\n`;
+  const started = await ownStarted;
+  const { me, text } = resumed(() => {
+    const me = { pid: process.pid, started, token: randomUUID() };
+    return { me, text: `${JSON.stringify(me)}\n` };
+  });
+  const guarded = async <T>(work: () => Promise<T>): Promise<T> => {
+    for (let attempt = 0; attempt < 250; attempt++) {
+      const release = await takeGuardAsync(`${path}.break`, me, resumed);
+      if (!release) { await pauseAsync(); continue; }
+      return withCleanupAsync(work, release, resumed);
+    }
+    return resumed(() => { throw new Error(`could not take guard for ${path}`); });
+  };
   for (let attempt = 0; attempt < 50; attempt++) {
-    if (createExclusive(path, text)) {
-      return {
-        holder: me,
-        release: () => {
-          if (readLock(path)?.pid === me.pid) rmSync(path, { force: true });
-        },
-      };
-    }
-    const holder = readLock(path);
-    if (holder !== null && pidAlive(holder.pid) && (holder.started === null || sameProcess(holder, await processStartedAsync(holder.pid)))) throw new HubLocked(holder);
-    if (!tryBreakStale(path, holder)) await new Promise((resolve) => setTimeout(resolve, 20));
+    const acquired = await guarded(async () => {
+      if (await createExclusiveAsync(path, text, resumed)) return true;
+      const record = await recordAsync(path, resumed);
+      if (!record.exists) return false;
+      if (record.holder && resumed(() => pidAlive(record.holder!.pid))) {
+        const holder = record.holder;
+        const now = holder.started === null ? null : await processStartedAsync(holder.pid, PS_TIMEOUT_MS, resumed);
+        resumed(() => { if (sameProcess(holder, now)) throw new HubLocked(holder); });
+      }
+      await fs.rm(path, { force: true });
+      return false;
+    });
+    if (acquired) return resumed(() => ({ holder: me, release: async () => {
+      const record = await recordAsync(path, resumed);
+      if (!resumed(() => sameHolder(record.holder, me))) return;
+      try {
+        await guarded(async () => {
+          const current = await recordAsync(path, resumed);
+          if (resumed(() => sameHolder(current.holder, me))) await fs.rm(path, { force: true });
+        });
+      } catch (err) {
+        if (resumed(() => absent(err))) {
+          const current = await recordAsync(path, resumed);
+          if (resumed(() => !current.exists)) return;
+        }
+        resumed(() => { throw err; });
+      }
+    } }));
   }
-  throw new Error(`could not take ${path}: it keeps changing under this process`);
-}
-
-/** Remove the lock at `path` if it is still `stale` (null: still unreadable), under the break guard. */
-function breakStale(path: string, stale: LockHolder | null): void {
-  // another starter is breaking it: let it, then look again
-  if (!tryBreakStale(path, stale)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
-}
-
-/** `breakStale`'s work, without the wait: false when another breaker holds the guard. */
-function tryBreakStale(path: string, stale: LockHolder | null): boolean {
-  const guard = `${path}.break`;
-  if (!createExclusive(guard, `${process.pid}\n`)) {
-    try {
-      if (Date.now() - statSync(guard).mtimeMs > BREAK_GUARD_STALE_MS) rmSync(guard, { force: true });
-    } catch {
-      /* the other breaker finished */
-    }
-    return false;
-  }
-  try {
-    const now = readLock(path);
-    const same = stale === null ? now === null : now !== null && now.pid === stale.pid && now.started === stale.started;
-    if (same) rmSync(path, { force: true });
-  } finally {
-    rmSync(guard, { force: true });
-  }
-  return true;
+  return resumed(() => { throw new Error(`could not take ${path}: it keeps changing under this process`); });
 }

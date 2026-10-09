@@ -20,7 +20,7 @@ const BLOCK = /<!-- cland:begin\b[^\n]*-->\n[\s\S]*?<!-- cland:end -->/;
 /** The managed block of `AGENTS.md`, markers included. */
 export const agentsBlock = (territory = false): string => {
   let text = readFileSync(join(TEMPLATES, 'AGENTS.block.md'), 'utf8').trimEnd();
-  if (territory) text = text.replace(/- \*\*Push to GitHub[^\n]*/, '- **Only cland release pushes to GitHub:** only `cland release` pushes to `github`. Commit on your task branch; push it to the local territory (`origin`). Task work reaches `dev` through `cland merge`; `main` moves through `cland release` and `cland sync`.');
+  if (territory) text = text.replace(/- \*\*Push to GitHub[^\n]*/, '- **Only cland release pushes to GitHub:** only `cland release` pushes to `github`. Commit on your task branch; push it to the local territory (`origin`). Task work reaches `dev` through `cland merge`. The Coordinator commits tracker and docs work on the root’s `dev` and publishes it with `cland push` from its own shell (the human may also run it). `main` moves through `cland release` and `cland sync`.');
   return `${BLOCK_BEGIN}\n${text}\n${BLOCK_END}`;
 };
 

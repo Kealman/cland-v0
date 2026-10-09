@@ -17,6 +17,7 @@ On refusal:
 - `verdict-missing`: preserve the durable record and restore its missing or altered comment; an older clear cannot replace it.
 - Freshness pending: let the async cache settle, then retry once; if still pending, report the refusal.
 - Conflict: send the named files to the Implementer to rebase in its worktree. After the rebase, let the gate check whether the reviewed patch is preserved.
+- `merge-unpublished`: the root’s `dev` has commits absent from the territory; commit any remaining tracker work, run `cland push` from your own shell, then retry merge. A refused merge leaves refs and checkout unchanged and names those unpublished commits.
 - Touched root edits or wrong checkout: preserve the root's work and restore the task-base checkout before retrying.
 - `merge-recovery`: neither integration ref landed the prepared commit, but checkout restoration is pending. Preserve the durable receipt, remove the named obstruction, and retry the same item; it restores the checkout before rechecking the gate.
 - If `merge-recovery` names pending `cland sync`, finish that sync retry before merging; its receipt pins dev until recovery completes.

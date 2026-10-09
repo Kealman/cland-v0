@@ -400,3 +400,31 @@ test('sync success-record failure prevents a later merge until its same-replay r
   assert.deepEqual(retry.value, { main: result.main, dev: result.dev });
   assert.equal((await ui.request({ type: 'merge', item: id, override: 'fixture' }, 30_000)).ok, true);
 });
+
+test('a sync replay conflict keeps its typed code and files when scratch cleanup fails too', async t => {
+  const bin = await tempProject(t, 'cland-sync-cleanup-bin-');
+  const marker = join(bin, 'fail-cleanup');
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
+  await writeFile(join(bin, 'git'), `#!/bin/sh
+if [ "$1" = worktree ] && [ -f ${quote(marker)} ]; then
+  case "$2" in remove|prune) echo 'fixture scratch cleanup unavailable' >&2; exit 1;; esac
+fi
+exec ${quote(realGit)} "$@"
+`, { mode: 0o755 });
+  const { root, github, territory, ui } = await project(t, { PATH: `${bin}:${process.env.PATH}` });
+  await merged(root, 'Change the readme', 'README.md');
+  await clean(root);
+  await collaborator(t, github, 'README.md', 'from github\n');
+  const before = snapshot(root, territory, github);
+  await writeFile(marker, 'fail');
+  const conflict = await ui.request({ type: 'sync' }, 30_000);
+  assert.equal(conflict.ok, false);
+  assert.match(conflict.error ?? '', /sync-conflict/);
+  assert.match(conflict.error ?? '', /cleanup failed:.*fixture scratch cleanup unavailable/);
+  assert.deepEqual((conflict as { files?: string[] }).files, ['README.md']);
+  assert.equal(snapshot(root, territory, github), before);
+  assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'finished\n');
+  await rm(marker);
+  git(root, 'worktree', 'prune');
+});

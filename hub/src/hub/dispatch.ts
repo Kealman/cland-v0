@@ -44,6 +44,7 @@ import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList, ArtifactPromote } from '../protocol.ts';
 import { TaskMerges } from './merge.ts';
 import { Releases } from './releases.ts';
+import { PushError } from '../territory-push.ts';
 import { ReleaseError } from '../release.ts';
 import { MergeError } from '../merge.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
@@ -186,6 +187,7 @@ export class Dispatcher {
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof PushError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof ReleaseError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}) };
     if (err instanceof MergeError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}), ...(err.recovery ? { recovery: err.recovery } : {}) };
     if (err instanceof ArtifactError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
@@ -892,7 +894,7 @@ export class Dispatcher {
           return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));
         }
         if (frame.type === 'prompt.send' || (frame.type === 'topic.send' && frame.artifacts !== undefined)) return attachedSend(frame, () => this.#asSession(frame));
-        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync')) {
+        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync' || frame.type === 'push')) {
           const tool = frame.type;
           if (caller && (client !== 'cli' || caller.role !== 'coordinator')) return this.#refuse(caller, frame, peer, tool, `${tool} belongs to the human or the Coordinator from its own shell`);
           if (!this.#releases) return peer.send(Dispatcher.#failure(frame.id, new ReleaseError('release-state', 'this hub has no tracker')));
@@ -908,10 +910,10 @@ export class Dispatcher {
               throw new ToolForbidden(now?.role ?? null, tool, reason);
             }
           };
-          const operation = frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize) : this.#releases.sync(resumed, authorize);
+          const operation = frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
           later(tool, operation.then(
-            (value): HubFrame => ({ type: 'result', id: frame.id, ok: true, value }),
-            (err: unknown) => Dispatcher.#failure(frame.id, err),
+            (value): HubFrame => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
+            (err: unknown) => resumed(() => Dispatcher.#failure(frame.id, err)),
           ));
           return;
         }

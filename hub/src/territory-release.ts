@@ -1,6 +1,7 @@
 // Release orchestration uses only the territory's async Git runner and lock. The annotated object is prepared
 // without a tag ref, so a rejected atomic GitHub push leaves every local ref unchanged.
-import { existsSync } from 'node:fs';
+import { access } from 'node:fs/promises';
+import { withCleanupAsync } from './cleanup.ts';
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { hasTerritory, territoryGitAsync as git, territoryPath } from './territory.ts';
@@ -17,7 +18,8 @@ export async function releaseState(root: string, resumed: Resumed): Promise<{ ma
   if (!await hasTerritory(root)) throw new ReleaseError('release-territory', 'this project has no managed territory');
   for (const state of ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer']) {
     const path = await git(root, ['rev-parse', '--git-path', state]);
-    resumed(() => { if (existsSync(resolve(root, path))) throw new ReleaseError('release-state', `${state} is in progress; finish or abort it first`); });
+    const present = await access(resolve(root, path)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
+    resumed(() => { if (present) throw new ReleaseError('release-state', `${state} is in progress; finish or abort it first`); });
   }
   const main = await ref(root, 'refs/heads/main');
   const dev = await ref(root, 'refs/heads/dev');
@@ -78,7 +80,8 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed): Promise
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
 export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => string | null, resumed: Resumed, authorize: () => void): Promise<ReleaseResult> {
-  resumed(() => { if (existsSync(syncReceiptPath(root))) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
+  const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
+  resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
   const state = await releaseState(root, resumed);
   const github = await fetchGithub(root, resumed, true);
   resumed(() => {
@@ -216,8 +219,7 @@ export async function syncGit(root: string, resumed: Resumed, authorize: () => v
   if (territoryDev && !await ancestor(root, territoryDev, state.dev)) throw new ReleaseError('sync-behind', 'territory dev contains work local dev lacks; reconcile the territory before syncing');
   await mkdir(join(root, '.cland', 'worktrees'), { recursive: true });
   const scratch = await mkdtemp(join(root, '.cland', 'worktrees', 'sync-'));
-  let replayed: string;
-  try {
+  const replayed = await withCleanupAsync(async () => {
     await git(root, ['worktree', 'add', '--detach', scratch, state.dev], true);
     try { await git(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'rebase', '--rebase-merges', '--onto', github.main, state.main], true); }
     catch (err) {
@@ -225,14 +227,14 @@ export async function syncGit(root: string, resumed: Resumed, authorize: () => v
       if (files) throw new ReleaseError('sync-conflict', `dev was kept; replay conflicts in:\n${files}`, resumed(() => files.split('\n')));
       throw err;
     }
-    replayed = await git(scratch, ['rev-parse', 'HEAD']);
-  } finally {
+    return git(scratch, ['rev-parse', 'HEAD']);
+  }, async () => {
     await git(scratch, ['rebase', '--abort'], true).catch(() => {});
     await git(root, ['worktree', 'remove', '--force', scratch], true).catch(async () => {
       await rm(scratch, { recursive: true, force: true });
       await git(root, ['worktree', 'prune'], true);
     });
-  }
+  }, resumed);
   const { receipt, path, text } = resumed(() => {
     const receipt = { oldMain: state.main, oldDev: state.dev, main: github.main, dev: replayed, territoryMain, territoryDev };
     return { receipt, path: syncReceiptPath(root), text: `${JSON.stringify(receipt)}\n` };

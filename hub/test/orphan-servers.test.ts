@@ -279,3 +279,27 @@ test('the shared sweep deadline preserves remaining servers and prevents later s
   await sleep(1300);
   assert.equal(pidAlive(pid), true, 'no worker keeps signalling after the deadline');
 });
+
+test('doctor --fix lets a foreground hub for a deleted project stop cleanly without recreating its directory', async t => {
+  const root = await tempProject(t), removed = await tempProject(t);
+  const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+  const child = spawn(process.execPath, [cli, 'hub', 'serve'], { cwd: removed, stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  const exited = Promise.withResolvers<{ code: number | null; signal: NodeJS.Signals | null }>();
+  child.once('error', exited.reject);
+  child.once('exit', (code, signal) => exited.resolve({ code, signal }));
+  let stderr = '';
+  child.stderr.setEncoding('utf8'); child.stderr.on('data', chunk => { stderr += chunk; });
+  child.stdout.resume();
+  await eventually('foreground hub listening', async () => {
+    const discovery = JSON.parse(await readFile(join(removed, '.cland', 'hub.json'), 'utf8')) as { pid: number };
+    return discovery.pid === child.pid ? true : undefined;
+  });
+  await rm(removed, { recursive: true });
+  const fixed = await clandWithEnv(root, {}, 'doctor', '--fix', '--json');
+  assert.match(fixed.stdout, new RegExp(`ended pid ${child.pid}`));
+  const result = await exited.promise;
+  assert.deepEqual(result, { code: 0, signal: null }, stderr);
+  assert.doesNotMatch(stderr, /ENOENT|unhandledRejection/);
+  await assert.rejects(readFile(join(removed, '.cland', 'hub.lock')), { code: 'ENOENT' });
+});
