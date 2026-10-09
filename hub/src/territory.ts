@@ -427,49 +427,80 @@ export async function removeTaskWorktree(root: string, item: string, check: () =
 
 // ---------------------------------------------------------------- the squash gate's Git work (T-59, D2/D9)
 /** The guard owns the lock and calls `message` again after preparation, before any ref moves. */
-export async function squashTask(root: string, branch: string, message: (tip: string) => Promise<string>): Promise<{ commit: string; base: string }> {
-  if (!(await hasTerritory(root))) throw new MergeError('merge-territory', 'the project has no managed territory');
-  const base = await taskBase(root);
-  if (!base) throw new MergeError('merge-base', 'no task base');
-  if (branch === base || branch === 'main' || branch === 'dev') throw new MergeError('merge-branch', 'the task branch is the integration branch');
-  const before = await refAsync(root, `refs/heads/${base}`);
-  const tip = await refAsync(root, `refs/heads/${branch}`);
-  if (!before || !tip) throw new MergeError('merge-branch', `no local branch ${branch}`);
-  if ((await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])) !== base) throw new MergeError('merge-checkout', `the project root must be on ${base}`);
+export async function squashTask(
+  root: string,
+  branch: string,
+  message: (tip: string, base: string, baseTip: string) => Promise<string>,
+  resumed: <T>(work: () => T) => T = (work) => work(),
+): Promise<{ commit: string; base: string }> {
+  const managed = await hasTerritory(root);
+  resumed(() => { if (!managed) throw new MergeError('merge-territory', 'the project has no managed territory'); });
+  const foundBase = await taskBase(root);
+  const base = resumed(() => {
+    if (!foundBase) throw new MergeError('merge-base', 'no task base');
+    if (branch === foundBase || branch === 'main' || branch === 'dev') throw new MergeError('merge-branch', 'the task branch is the integration branch');
+    return foundBase;
+  });
+  const foundBefore = await refAsync(root, `refs/heads/${base}`);
+  const foundTip = await refAsync(root, `refs/heads/${branch}`);
+  const { before, tip } = resumed(() => {
+    if (!foundBefore || !foundTip) throw new MergeError('merge-branch', `no local branch ${branch}`);
+    return { before: foundBefore, tip: foundTip };
+  });
+  const checkout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => { if (checkout !== base) throw new MergeError('merge-checkout', `the project root must be on ${base}`); });
   const remoteTip = await refAsync(territoryPath(root), `refs/heads/${base}`);
-  if (remoteTip && (await maybeGitAsync(root, ['merge-base', '--is-ancestor', remoteTip, before])) === null) throw new MergeError('merge-base', `territory ${base} is not an ancestor of the root's ${base}`);
+  const ancestor = remoteTip ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', remoteTip, before]) : '';
+  resumed(() => { if (ancestor === null) throw new MergeError('merge-base', `territory ${base} is not an ancestor of the root's ${base}`); });
   let tree: string;
   try {
-    tree = (await territoryGitAsync(root, ['merge-tree', '--write-tree', '--name-only', '-z', before, tip])).split('\0')[0]!;
+    const merged = await territoryGitAsync(root, ['merge-tree', '--write-tree', '--name-only', '-z', before, tip]);
+    tree = resumed(() => merged.split('\0')[0]!);
   } catch (err) {
-    if (!(err instanceof TerritoryGitError) || err.code !== 1) throw err;
-    const files = err.stdout.split('\0').slice(1).filter((f, i, all) => i < all.indexOf(''));
-    throw new MergeError('merge-conflict', `rebase ${branch} on ${base}; conflicts: ${files.join(', ')}`, files);
+    tree = resumed(() => {
+      if (!(err instanceof TerritoryGitError) || err.code !== 1) throw err;
+      const parts = err.stdout.split('\0').slice(1);
+      const files = parts.slice(0, parts.indexOf(''));
+      throw new MergeError('merge-conflict', `rebase ${branch} on ${base}; conflicts: ${files.join(', ')}`, files);
+    });
   }
-  const touched = (await territoryGitAsync(root, ['diff', '--name-only', '-z', before, tree, '--'])).split('\0').filter(Boolean);
-  const dirty = [
-    ...(await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--'])).split('\0'),
-    ...(await territoryGitAsync(root, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0'),
-  ].filter(Boolean);
-  const overlap = dirty.filter((f) => touched.some((p) => f === p || f.startsWith(p + '/') || p.startsWith(f + '/')));
-  if (overlap.length) throw new MergeError('merge-dirty', `uncommitted changes in ${overlap.join(', ')}`, overlap);
+  const touched = await territoryGitAsync(root, ['diff', '--name-only', '-z', before, tree, '--']);
+  const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--']);
+  const untracked = await territoryGitAsync(root, ['ls-files', '--others', '--exclude-standard', '-z']);
+  resumed(() => {
+    const paths = touched.split('\0').filter(Boolean);
+    const dirty = [...tracked.split('\0'), ...untracked.split('\0')].filter(Boolean);
+    const overlap = dirty.filter((f) => paths.some((p) => f === p || f.startsWith(p + '/') || p.startsWith(f + '/')));
+    if (overlap.length) throw new MergeError('merge-dirty', `uncommitted changes in ${overlap.join(', ')}`, overlap);
+  });
   // Git's own index/worktree safety checks also catch directory obstructions and staged changes. No ref yet.
   try { await territoryGitAsync(root, ['read-tree', '--dry-run', '-m', '-u', before, tree]); }
-  catch (err) { throw new MergeError('merge-dirty', err instanceof Error ? err.message : String(err)); }
-  const text = await message(tip);
+  catch (err) { resumed(() => { throw new MergeError('merge-dirty', err instanceof Error ? err.message : String(err)); }); }
+  const text = await message(tip, base, before);
   const commit = await territoryGitAsync(root, ['commit-tree', tree, '-p', before], false, text + '\n');
-  if ((await refAsync(root, `refs/heads/${branch}`)) !== tip || (await refAsync(root, `refs/heads/${base}`)) !== before) throw new MergeError('merge-changed', 'a branch changed while the merge was prepared; try again');
-  if ((await message(tip)) !== text) throw new MergeError('merge-changed', 'the item or verdicts changed during preparation; try again');
+  const latestText = await message(tip, base, before);
+  resumed(() => { if (latestText !== text) throw new MergeError('merge-changed', 'the item or verdicts changed during preparation; try again'); });
+  // These facts are read again after every preparation callback: a checkout or ref may move during its awaits.
+  const currentTip = await refAsync(root, `refs/heads/${branch}`);
+  const currentBase = await refAsync(root, `refs/heads/${base}`);
+  const currentCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  resumed(() => {
+    if (currentCheckout !== base) throw new MergeError('merge-checkout', `the project root moved off ${base} during preparation`);
+    if (currentTip !== tip || currentBase !== before) throw new MergeError('merge-changed', 'a branch changed while the merge was prepared; try again');
+  });
   // read-tree preserves unrelated local edits; update-ref is a compare-and-swap of the integration branch.
   await territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit]);
-  await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, commit, before]);
-  // Use the on-disk path, never origin's configurable push URL (and never github).
-  try { await territoryGitAsync(root, ['push', territoryPath(root), `refs/heads/${base}:refs/heads/${base}`], true); }
-  catch (err) {
-    // A rejected local push must not leave the task landed only in the root.
+  let advanced = false;
+  try {
+    await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, commit, before]);
+    advanced = true;
+    // Use the on-disk path, never origin's configurable push URL (and never github).
+    await territoryGitAsync(root, ['push', territoryPath(root), `refs/heads/${base}:refs/heads/${base}`], true);
+  } catch (err) {
+    // Either a failed ref update or a rejected push must restore the checkout, preserving unrelated local edits.
     await territoryGitAsync(root, ['read-tree', '-m', '-u', commit, before]);
-    await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, before, commit]);
-    throw err;
+    if (advanced) await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, before, commit]);
+    resumed(() => { throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
   }
   return { commit, base };
 }

@@ -20,6 +20,8 @@ type Want = { commit: string; tip: string; base: string | null; ids: Set<string>
 
 export type FreshnessOptions = {
   git: Git;
+  /** The territory task base, read asynchronously alongside branch tips; defaults to dev/main. */
+  readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
   log?: LogFn;
   intervalMs?: number;
   /** Answers are known for these items now: announce them again. */
@@ -30,6 +32,8 @@ export type FreshnessOptions = {
 
 export class Freshness {
   readonly #git: Git;
+  readonly #readBase: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
+  #base: string | null = null;
   readonly #log: LogFn;
   readonly #intervalMs: number;
   readonly #settled: (ids: string[]) => void;
@@ -57,6 +61,7 @@ export class Freshness {
 
   constructor(options: FreshnessOptions) {
     this.#git = options.git;
+    this.#readBase = options.readBase ?? (async (tips) => verdictBaseOf(tips));
     this.#log = options.log ?? (() => {});
     this.#intervalMs = options.intervalMs ?? TIP_CHECK_MS;
     this.#settled = options.settled;
@@ -81,7 +86,7 @@ export class Freshness {
 
   /** The integration branch patch ids are compared against, as last read; null when neither exists or not read yet. */
   base(): string | null {
-    return this.#tips ? verdictBaseOf(this.#tips) : null;
+    return this.#base;
   }
 
   /** Something changed in the tracker: read the tips again soon. */
@@ -137,7 +142,7 @@ export class Freshness {
       return missing.absent ? false : undefined;
     }
     if (commit === tip) return true;
-    const base = verdictBaseOf(tips);
+    const base = this.#base;
     const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null);
     const known = this.#results.get(key);
     if (known !== undefined) return known;
@@ -172,16 +177,19 @@ export class Freshness {
         this.#readAgain = false;
         const seq = ++this.#reads;
         let read: Map<string, string> | null;
+        let base: string | null;
         try {
           read = await branchTips(this.#git);
+          base = await this.#readBase(read ?? new Map());
         } catch (err) {
           this.#fail('read', err);
           return;
         }
         if (this.#stopped) return;
         const next = read ?? new Map<string, string>();
-        const moved = this.#tips === null || !sameTips(this.#tips, next);
+        const moved = this.#tips === null || !sameTips(this.#tips, next) || this.#base !== base;
         this.#tips = next;
+        this.#base = base;
         // a branch asked about before this read started and still missing has none: stale from now on
         let settled = false;
         for (const [branch, missing] of this.#missing) {
@@ -202,7 +210,7 @@ export class Freshness {
     const tips = this.#tips;
     if (!tips) return;
     const live = new Set(tips.values());
-    const base = verdictBaseOf(tips);
+    const base = this.#base;
     const baseKey = `${base ?? ''} ${base ? (tips.get(base) ?? '') : ''}`;
     const alive = (key: string) => {
       const [, tip, b, bt] = key.split(' ');

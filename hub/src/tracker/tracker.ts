@@ -9,6 +9,7 @@
 // verdict is written when Git has answered: a request that arrived after it (a plain comment, a close) may be
 // written first. The write itself is still one synchronous step.
 
+import { taskBase, territoryPath } from '../territory.ts';
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -168,6 +169,7 @@ export class Tracker {
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
       git: this.#git,
+      readBase: async (tips) => existsSync(territoryPath(this.#root)) ? await taskBase(this.#root) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       settled: (ids) => ids.forEach((id) => this.#announce(id, true)),

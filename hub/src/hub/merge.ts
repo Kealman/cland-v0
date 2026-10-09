@@ -62,14 +62,14 @@ export class TaskMerges {
           const view = resumed(() => this.#view(id));
           await this.tracker.refreshFreshness();
           resumed(() => this.#message(this.#view(id), override));
-          return squashTask(this.tracker.root, view.branch!, async (tip) => {
+          return squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip) => {
             await this.tracker.refreshFreshness();
             return resumed(() => {
               const now = this.#view(id);
-              if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
+              if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || now.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
               return this.#message(now, override);
             });
-          });
+          }, resumed);
         });
         resumed(() => {
           this.tracker.close(actor, id, `Merged ${landed.commit} onto ${landed.base}.${override === undefined ? '' : `\nHuman override: ${override}`}`);

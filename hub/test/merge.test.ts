@@ -321,3 +321,76 @@ test('merge measures the item close after awaited Git as resumed synchronous wor
   assert.equal(close.length, 1);
   assert.ok((close[0]?.ms ?? 0) >= 400);
 });
+
+test('freshness uses configured main after an unchanged task is rebased while dev lags', async (t) => {
+  const { root, ui, rev } = await project(t);
+  git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
+  git(root, 'switch', 'main');
+  const work = await task(root);
+  await review(rev, work.id);
+  await writeFile(join(root, 'base-only.txt'), 'main work\n');
+  git(root, 'add', 'base-only.txt');
+  git(root, 'commit', '-qm', 'Main moves while dev lags');
+  git(work.path, 'rebase', 'main');
+  const merged = await eventually('main-based unchanged patch', async () => {
+    const r = await ui.request({ type: 'merge', item: work.id }, 30_000);
+    if (r.ok) return r.value as { base: string };
+    assert.equal((r as { code?: string }).code, 'review-pending', r.error);
+    return undefined;
+  });
+  assert.equal(merged.base, 'main');
+});
+
+test('a failed integration ref update restores the root index and worktree and preserves unrelated staged changes', async (t) => {
+  const { root, rev } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  await writeFile(join(root, 'README.md'), 'local staged work\n');
+  git(root, 'add', 'README.md');
+  const beforeRefs = git(root, 'show-ref');
+  const beforeStatus = git(root, 'status', '--porcelain');
+  const beforeIndex = git(root, 'write-tree');
+  await writeFile(join(root, '.git', 'refs', 'heads', 'dev.lock'), 'held\n');
+  const r = await cland(root, 'merge', work.id);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /dev.lock/);
+  assert.equal(git(root, 'show-ref'), beforeRefs);
+  assert.equal(git(root, 'status', '--porcelain'), beforeStatus);
+  assert.equal(git(root, 'write-tree'), beforeIndex);
+  assert.equal(existsSync(join(root, 'parser.txt')), false);
+  assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'open');
+});
+
+test('a root switched during real merge-tree preparation is refused without changing the checkout or refs', async (t) => {
+  const { root, ui, rev } = await project(t);
+  await writeFile(join(root, '.gitattributes'), 'driver.txt merge=cland-test\n');
+  await writeFile(join(root, 'driver.txt'), 'initial\n');
+  git(root, 'add', '.gitattributes', 'driver.txt');
+  git(root, 'commit', '-qm', 'A merge driver');
+  const work = await task(root, 'Driver task', 'driver.txt');
+  await review(rev, work.id);
+  await writeFile(join(root, 'driver.txt'), 'on dev\n');
+  git(root, 'commit', '-qam', 'Dev changes the same file');
+  git(root, 'branch', 'other');
+  const { mkdir } = await import('node:fs/promises');
+  const dir = join(root, '.cland', 'scratch');
+  await mkdir(dir, { recursive: true });
+  const marker = join(dir, 'merging');
+  const release = join(dir, 'continue');
+  const driver = join(dir, 'merge-driver.mjs');
+  await writeFile(driver, `import { existsSync, writeFileSync } from 'node:fs';\nimport { setTimeout } from 'node:timers/promises';\nwriteFileSync(${JSON.stringify(marker)}, 'ready');\nconst deadline = Date.now() + 20000;\nwhile (!existsSync(${JSON.stringify(release)}) && Date.now() < deadline) await setTimeout(10);\nwriteFileSync(process.argv[2], 'combined\\n');\n`);
+  git(root, 'config', 'merge.cland-test.driver', `"${process.execPath}" "${driver}" %A`);
+  const refs = git(root, 'show-ref');
+  const merging = ui.request({ type: 'merge', item: work.id }, 30_000);
+  await eventually('real Git merge driver running', () => existsSync(marker) ? true : undefined);
+  git(root, 'switch', 'other');
+  const index = git(root, 'write-tree');
+  await writeFile(release, 'go');
+  const r = await merging;
+  assert.equal(r.ok, false);
+  assert.equal((r as { code?: string }).code, 'merge-checkout', r.error);
+  assert.equal(git(root, 'show-ref'), refs);
+  assert.equal(git(root, 'branch', '--show-current'), 'other');
+  assert.equal(git(root, 'write-tree'), index);
+  assert.equal(await readFile(join(root, 'driver.txt'), 'utf8'), 'on dev\n');
+});
