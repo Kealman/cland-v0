@@ -2,7 +2,7 @@
 id: T-69
 kind: task
 title: The test harness takes a machine-wide lock before spawning daemons, runs the hub suite at bounded concurrency, and kills its daemons on failure
-state: open
+state: closed
 labels:
   - ready-for-agent
   - tests
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-20
 branch: t/T-69-suite-lock-and-daemon-cleanup
 created: 2026-10-09T10:44:01.109Z
-updated: 2026-10-09T12:43:47.655Z
+updated: 2026-10-09T13:31:15.366Z
 ---
 
 ## Parent
@@ -171,3 +171,93 @@ All three requested fixes are verified: live ISO/missing/unreadable legacy holde
 Safe probes against the actual module pass the earlier ownership cases and both argv-only cases. The new OTHER_VAR-value case records -420009 SIGKILL with ps/lsof/process.kill stubbed; no real signal or environment access occurred. An in-memory probe of the exact legacy-holder adapter confirms live unknown starts are held and dead PID cases recoverable. No suite run or repository edits; git diff --check passes.
 
 Full review: A-40, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-40-t-69-widened-delta-review-fixes-verified-environment-value-ownership-ambiguity.md
+
+### coord · 2026-10-09T12:51:01.306Z
+
+Live finding by the Coordinator, 2026-10-09 12:47Z to 12:48Z. While impl-69's automatic `npm test` run on 1a20e65 held its lock, a manual `until mkdir /tmp/cland-suite.lock; do sleep 15; done` succeeded at 12:47:31Z. The automatic run ended at 12:48:45Z, so two full suites overlapped for 74 s. The automatic lock does not occupy the manual lock's directory, which the transition requires: each kind of lock must keep out the other. Sent to impl-69 as a fix with a regression test: an automatic holder makes a manual `mkdir` fail.
+
+### coord · 2026-10-09T12:51:40.962Z
+
+Correction to my 12:51Z comment: there was no overlap. impl-69's automatic run started at 12:41:37.863Z and ran for 347.00 s, so it exited at 12:47:24.9Z. My manual `mkdir` succeeded at 12:47:31Z, 6 seconds later. I took the time of impl-69's report, 12:48:45Z, for the end of the run. The automatic lock is `/tmp/cland-suite.lock` itself, with `.owner` metadata beside it, so the two kinds do exclude each other. A reverse regression (an automatic holder makes a manual `mkdir` fail) is optional extra coverage, not a fix.
+
+### impl-69 · 2026-10-09T12:54:05.397Z
+
+Final run on1a20e65: hub347/348, 346.21s test duration, 347.00s total, lockwait0.01s, peakload12.97 (<20). Neovim not started because the new crash injector incorrectly matched a nested lock path when running inside an outer suite root; scoped injection to basename. Log A-42. Implemented Coordinator's stricter rule: marker text only hints; ownership requires verified cwd or live ancestry to recorded PID/start. The OTHER_VAR probe reproduced an unrelated group signal before the fix and now passes; 7 ownership stubs and all16 runner checks pass with durable child gating. Checking the injector inside an outer runner before commit and the authorized replacement full run.
+
+### rev-65 · 2026-10-09T13:03:38.524Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-69-4
+commit: aa737dfc4c21d18bbe9e2818bbb631f67f617ebf
+
+Medium — hub/test/run-suite.ts:163,174: an abort during the awaited bootstrap write is missed before startup. SIGINT/SIGTERM sets interrupted while activeIdentity is null; after the write finishes, execution still spawns the child, publishes it, opens the gate and awaits the full suite at :182. Recheck interrupted after bootstrap preparation and before spawn, with a controlled regression for that transition.
+
+The rev-65-69-3 ownership medium is fixed. The actual OTHER_VAR stub probe records no signals and reports the candidate as preserved with ambiguous ownership. Current runner ancestry and cwd containment provide positive proof; reused anchors and marker-only claims do not. Earlier group/caller/path probes remain safe.
+
+The root-cwd bootstrap gate opens only after PID/start publication; the new stopped-before-publication regression covers recovery through cwd proof. Crash injection now matches the root basename. Reverse manual mkdir exclusion is asserted during an automatic hold.
+
+Standards: clear, 0. Spec: 1 medium, 0 high/low. Safe probes ran with OS calls stubbed; no real signals, environment reads, fixture writes or suite. Cancellation finding follows source ordering. git diff --check passes; no repository edits.
+
+Full review: A-46, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-46-t-69-ownership-delta-review-proof-fixed-pre-spawn-cancellation-gap.md
+
+### impl-69 · 2026-10-09T13:13:29.528Z
+
+Fix round complete at e06f9cce68d4522f5cba4e198cae074a6badd529 (read from git log -1). Commits daa1803,1a20e65,aa737df,e06f9cc address ownership, automatic/legacy locks, takeover, planned roots, durable child startup and interruption before spawn. Full aa737df typecheck+442/442 pass: hub283.34s, Neovim77.35s, total361.66s excluding139.56s wait, peak10.86 (<20). e06f9cc targeted-only per Coordinator: typecheck and18/18 runner regressions pass, including red→green paused-bootstrap SIGTERM with no spawn/root/sidecar/lock. Ownership7/7 earlier pass unchanged. Final old-run/worktree process scan clean, root absent, ownership released, tree clean. Full log A-48; final summary artifact attached in topic20. External final review/QA still in progress. No push/merge/closure.
+
+### rev-65 · 2026-10-09T13:14:55.254Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-69-5
+commit: e06f9cce68d4522f5cba4e198cae074a6badd529
+
+No high, medium or low findings. Standards: clear, 0. Spec: clear, 0. The rev-65-69-4 cancellation medium is fixed.
+
+Interruption guards follow root setup and bootstrap preparation awaits, precede spawn, and follow runner publication/gate opening. Early abort returns 130/143 through finally cleanup; a spawned child retains its identity for cleanup. The SIGTERM bootstrap regression asserts exit143, no spawn attempt and no remaining root/lock/sidecar.
+
+Controlled in-memory probes used the exact runSuite/sweep bodies from pinned versions with all process/filesystem/lease effects stubbed: aa737df attempted one spawn for both SIGTERM and SIGINT during preparation; e06f9cc attempted zero. New exits are143/130, and all virtual prepared paths are removed. No actual suite, test child, signal, filesystem mutation or process enumeration occurred. git diff --check passes; no repository edits.
+
+Earlier ownership and recovery review fixes remain intact. Full-suite and live QA validation are separate from this read-only review.
+
+Full evidence: A-52, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-52-t-69-final-delta-review-cancellation-fixed-zero-pre-start-spawns.md
+
+### qa-12 · 2026-10-09T13:16:21.849Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-69-2
+commit: e06f9cce68d4522f5cba4e198cae074a6badd529
+
+Checked final e06f9cc delta plus aa737df live base, using separate git archive exports with T-69 node_modules as requested. Evidence A-53: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-53-t-69-qa-e06f9cc-delta-and-aa737df-live-takeover-process-evidence.zip (scripts, full logs, process tables, load samples); interim A-50.
+
+Ran:
+- npm run typecheck on both exports: passed.
+- node --test hub/test/suite-runner.test.ts hub/test/process-cleanup.test.ts: aa737df 24/24; final e06f9cc 25/25 (18 runner + 7 ownership), no failures/skips.
+- cland task CLI via node hub/bin/cland.ts task list and task view T-69: success.
+- Live actual npm test holder SIGKILL during hook-bridge activity. Successor used the production runSuite with the complete npm-test hub/Neovim arguments. Independent first-spawn interception proved all 23 recorded first-run PIDs and its root were gone before successor spawned any test child. Outside-root OTHER_VAR='x TEST_SUITE_RUN_ID=<token>' canary survived.
+- Successor full suite: 352/352 hub and 90/90 Neovim, exit0, zero failures/skips. Duration360.70s excluding1.17s lock wait. Project Neovim harness exercises real UI.
+- SIGINT and SIGTERM once each during actual npm test hook activity: exit130/143, no recorded run processes, root or lock remained; corresponding outside-root misleading-marker canaries survived.
+- Independent final-head bootstrap write pause, external SIGTERM, release write: exit143, zero child spawn attempts, no prepared root, sidecar or lock remained.
+
+Load evidence: prior implementation lock was released; no yes hogs at start. Baseline 1/5/15m load3.42/7.57/9.29; successor peak1m7.49. Final-head typecheck/focused tests overlapped roughly13:12:20–13:13:20 UTC, starting just before the sequencing update arrived. This is a shared-machine observation, not a fully isolated performance benchmark. No additional final-head full run, per requested base-plus-delta validation.
+
+Findings by severity: high none; medium none; low none. Original live stale-takeover failure and ambiguous-marker canary defect do not reproduce. All QA canaries explicitly stopped after checks, and final lock/owner/run-root checks were empty.
+
+### coord · 2026-10-09T13:31:15.366Z
+
+Merged into main as 5d58396 (`git merge --no-ff`, by the Coordinator) at 13:16Z. Suite on main 5d58396, run through T-69's own runner (`npm test` with no manual wrapper): typecheck exit 0, hub 368/368, Neovim 91/91, 0 skipped. The runner reported 414.50 s, lock wait 0.01 s and a peak 1-minute load of 11.45.
+Verdicts:
+- Review: five rounds by rev-65. rev-65-69-1 to -4 were not clear, covering reused PIDs, sibling-path matching, unverified process groups, lock recovery with a reused PID or a crash before metadata, older-version holders, a marker hidden inside an environment value, and an interrupt during bootstrap. rev-65-69-5 is clear on e06f9cc.
+- QA: qa-12-69-1 not clear on 4583f99 (a SIGKILL takeover left 11 processes); qa-12-69-2 clear on e06f9cc. Its live SIGKILL takeover found all 23 first-run processes and the root gone before the successor's first spawn. The OTHER_VAR canary survived. SIGINT and SIGTERM ended cleanly, and an interrupt during bootstrap spawned nothing. Peak load was 7.49 against a 3.42 baseline.
+Full run on aa737df: 442/442, peak 10.86.
+What it does:
+- `npm test` and `npm run test:nvim` take `/tmp/cland-suite.lock` with owner metadata.
+- The hub suite runs at concurrency 4.
+- A dead holder's lock and its leftover processes are recovered before a successor starts.
+- An empty lock with no recorded owner, the manual kind, is never reclaimed by age, and the waiting line says how to remove it.
+- Cleanup signals only processes proven to be ours, by a cwd under the run root or descent from the runner. Ambiguous ones are preserved and reported.
+Briefs from now on: plain `npm test` in trees that contain hub/test/run-suite.ts, and never the manual wrapper around it. Implementer: impl-69 (Codex), launched 11:38Z.

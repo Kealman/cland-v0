@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-21
 branch: t/T-59-cland-merge
 created: 2026-10-09T08:34:54.729Z
-updated: 2026-10-09T12:38:50.502Z
+updated: 2026-10-09T13:31:04.939Z
 ---
 
 ## Parent
@@ -85,3 +85,73 @@ Standards and Spec evidence: A-31, /Users/evgeniyivanov/Projects/cland/v0/.cland
 ### impl-59 · 2026-10-09T12:38:50.502Z
 
 External review fix round started; queued full suite cancelled before acquiring the lock. Reproducing A-31 findings at real Git/hub/spoke seams: deleted durable evidence, close write obstruction after landing, a timed foreground freshness fan-out, and a role change while verdict Git resolution awaits. Applying TDD and diagnosing-bugs to the reported regressions; reviewer evidence identifies the causes directly.
+
+### impl-59 · 2026-10-09T12:50:00.057Z
+
+Fix milestone: all four primary regressions are now green individually. Durable write order blocks deleted/altered evidence with verdict-missing; prepared landing receipts survive hub restart and retries finish the lifecycle without another commit; foreground freshness stretches are measured; verdict writes re-read identity/role and recheck permissions. Added follow-up fault coverage for release, topic closure, dirty cleanup and interrupted branch deletion. Broader targeted verification is running; final suite remains cancelled until fixes are committed.
+
+### impl-59 · 2026-10-09T12:58:52.161Z
+
+A-31 fix round committed as eb85884. All four requested findings are covered and fixed. Internal delta review additionally reproduced CAS-before-push restart duplication, failed error-recording propagation and deferred branch-switch cleanup hazards; those are fixed and their real Git/storage regressions pass. Tests use public event/clock/storage boundaries. Both review axes confirmed their findings resolved. Targeted runs: 46/46 broader, 10/10 recovery/fan-out, 4/4 latest close/role; typecheck/skill validation/diff check pass. Evidence A-43; final full suite requeued under the machine-wide lock.
+
+### impl-59 · 2026-10-09T13:03:45.197Z
+
+Final verification on eb85884: the one machine-locked full run passed npm run typecheck and npm test, with 369 hub tests + 91 Neovim tests = 460 passed, zero failures or skips. No freshness rerun was needed. Full log: A-45, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-45-t-59-locked-full-suite-log-at-eb85884.log. Commits are 46f9ff9, 7f78434 and eb85884; worktree clean, local scratch logs removed after artifact capture, no T-59 scratch hub/harness remains. Implementation/fix review evidence is A-43; external rev-6 and qa-12 are in progress. Nothing in the implementation scope is left undone; no project push or merge performed.
+
+### qa-12 · 2026-10-09T13:04:46.248Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-59-1
+commit: eb858848d6ce720b4b946c166eb5cbe76fadfa93
+
+Verified isolated git archive eb858848d6ce720b4b946c166eb5cbe76fadfa93 with dependencies linked from T-59 and explicit Node v24.21.0. Read item, A-28/A-31 and fix summary A-43. No source fixes by QA.
+
+Ran independently:
+- npm run typecheck passed.
+- node --test hub/test/merge.test.ts: 28/28 passed, zero failures/skips. Includes CAS-before-push restart without a second squash; role-at-write validation; durable evidence deletion; post-landing release/topic/cleanup recovery; foreground timing; deferred cleanup preserving a switched branch.
+- Manual CLI/spoke driver against its own scratch hub under TMPDIR. Local bare stand-in GitHub only; cland init made root dev and territory HEAD=dev. Every cland command used env -u CLAND_HUB_FILE -u CLAND_SESSION_ID -u CLAND_SESSION_NAME node <export>/hub/bin/cland.ts … . A scratch Reviewer spoke wrote the clear review evidence.
+- Created and claimed two tasks, each with two task-branch commits. T-1 merged as exactly one dev commit with exact item title/id, Item: T-1 and Reviewed-by session/run. Root HEAD/dev and territory dev matched. Item closed with commit comment, claim released, bound topic closed, worktree and branch absent.
+- Compared every local and territory ref before/after refusals: no review, file-only review, not-clear, stale after a new commit, qa-required without QA, conflicting README.md, and touched dirty root file dirty.txt. Every refusal moved no ref and named the expected reason/files. Conflict still refused with override.
+- Deleted the newer not-clear scratch comment: verdict-missing named its run, rather than reviving the older clear. Refs unchanged. Explicitly requested scratch-file tampering only; no project item files were edited.
+- Reviewer merge through its spoke was forbidden; Agents showed its refusal. A shell carrying that session identity could not override. Human-shell override landed an item with no verdicts and recorded the reason.
+- Two simultaneous CLI merges produced a two-commit linear stack with both files; parent order and root/territory agreement verified.
+- Task list/view worked. Scratch Reviewer PID 85536 and hub PID 84815 stopped; hub socket removed and scratch Git repos removed. Final process scan found no QA-export processes. Artifact hash verified, QA export/staging removed, working tree clean.
+
+Full-suite criterion: as directed, read impl-59's final item result and A-45 raw log instead of running another suite. Locked typecheck and npm test passed at this head: 369/369 hub + 91/91 Neovim, zero failures/skips. Merge regressions appear passing, including restart recovery and deferred branch-switch cleanup.
+
+Findings by severity:
+- High: none.
+- Medium: none.
+- Low: none in requested scope.
+
+QA evidence A-47: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-47-t-59-qa-eb85884-manual-merge-gates-and-targeted-results.zip (independent driver, command/ref transcripts, Agents/journal observations, targeted/typecheck logs and cleanup). Full-suite evidence by impl-59: A-45, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-45-t-59-locked-full-suite-log-at-eb85884.log.
+
+### rev-6 · 2026-10-09T13:09:52.838Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-59-2
+commit: eb858848d6ce720b4b946c166eb5cbe76fadfa93
+
+medium (Spec) — hub/src/hub/worktrees.ts:268 / hub/src/territory.ts:428: deferred merged-task cleanup checks the receipt's branch name but not its recorded tip; a session can commit additional work on that same branch while cleanup waits, then stop, causing automatic worktree removal and branch -D to discard its unmerged branch reference. Pass/check the expected tip before removal and delete with compare-and-swap.
+
+medium (Spec) — hub/src/hub/merge.ts:106 / hub/src/territory.ts:508: a rejected push followed by a failed rollback update-ref leaves dev advanced, yet state.landed is still null and the caller reports merge-refused; if rollback read-tree already restored the old tree, retry publishes the recorded commit and reports success without bringing the root checkout back to that commit. Reconcile actual ref/checkout state and return the landed commit with a follow-up failure.
+
+Standards clear. Durable missing-evidence selection, resumed freshness timing and role-at-write revalidation are fixed. The close-failure probe now returns followUp close and retries the same SHA with one landing. Actual production cleanup/Git orchestration, with in-memory mocked process/filesystem/lock boundaries, reproduced both remaining findings; no real refs/files changed. TypeScript noEmit and diff check pass; no suite run.
+
+Separate Standards/Spec findings and executable probes: A-49, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-49-t-59-delta-review-rev-6-59-2-at-eb85884.md.
+
+### impl-59 · 2026-10-09T13:15:44.390Z
+
+Second fix round: both A-49 findings reproduced at the real Git/hub seam. A commit made on the task branch during deferred cleanup loses its worktree; a pre-push hook that rejects and locks dev's rollback leaves local dev advanced but returns refusal. Adding receipt-tip checks/CAS deletion and ref-based partial-landing detection with checkout reconciliation before retry completion.
+
+### impl-59 · 2026-10-09T13:27:50.153Z
+
+A-49 fix round: the moved-tip and failed-push/failed-rollback probes are now regression tests. Internal review also reproduced staged deletion/reversion loss on completed retries and the cleanup CAS window's invalid restoration command; both fixed with real Git regressions. Recovery records exact index snapshots durably before rollback, refuses later staged changes, and repairs checkout before publishing. Full targeted set and internal re-review are running; final locked suite follows the commit.
+
+### impl-59 · 2026-10-09T13:31:04.939Z
+
+Committed second review round as 3a86399 (3a8639913012845f45146cc74ec591817d48fbf0). Both A-49 findings fixed, plus internal review's completed-retry staged-edit and CAS restoration hazards. Typecheck, skill validation, 47 targeted checks and final 5 worktree checks pass. Durable evidence A-54 and A-55. Final full suite starts now under the manual machine-wide lock; external review/QA remain.

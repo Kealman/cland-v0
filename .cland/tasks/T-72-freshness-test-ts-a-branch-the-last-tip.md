@@ -2,7 +2,7 @@
 id: T-72
 kind: task
 title: freshness.test.ts "a branch the last tip read did not hold" races the 2 s tip timer and fails under load
-state: open
+state: closed
 labels:
   - ready-for-agent
   - tests
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-22
 branch: t/T-72-freshness-test-seam
 created: 2026-10-09T11:55:08.930Z
-updated: 2026-10-09T12:46:05.702Z
+updated: 2026-10-09T12:51:01.268Z
 ---
 
 ## Parent
@@ -128,3 +128,10 @@ Findings by severity:
 - Low: none in requested scope.
 
 Durable QA evidence: A-41, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-41-t-72-qa-4d07511-ten-repetitions-and-stress-full-evidence-audit.zip. Includes ten run logs, typecheck/CLI output, repetition audit, SHA256-linked audits of A-25/A-33/A-34/A-36 and cleanup checks. External evidence remains separately attributable to impl-72.
+
+### coord · 2026-10-09T12:51:01.268Z
+
+Merged into main as c04bcf6 (`git merge --no-ff`, by the Coordinator) at 12:46Z. Suite on main 65ac1a1: typecheck clean, hub 343/343, Neovim 91/91, 0 skipped. This is the first full run since T-67 in which the freshness tests passed without a rerun.
+Verdicts: review rev-65-72-1 clear and QA qa-12-72-1 clear, both on 4d07511. The proof was 50/50 iterations of the 7 changed tests under four CPU hogs, inside the suite lock (A-25, A-33, A-34). QA added 10 quiet repetitions of the three files, 160 executions.
+What it does: the freshness, worktree-cli and verdict-commit tests drive the tip reads through an injected scheduler, in hub/test/freshness-harness.ts. They no longer race the 2 s timer or the 50 ms change poke. The product's default scheduler is unchanged. A null `verdictBase` at hub start shows only as `verdict base -` in `cland task view`.
+Implementer: impl-72 (Codex), launched 12:07Z.
