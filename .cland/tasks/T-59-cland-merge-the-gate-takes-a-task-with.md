@@ -2,7 +2,7 @@
 id: T-59
 kind: task
 title: "cland merge: the gate takes a task with clear verdicts onto dev as one squash commit"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-21
 branch: t/T-59-cland-merge
 created: 2026-10-09T08:34:54.729Z
-updated: 2026-10-09T13:31:04.939Z
+updated: 2026-10-09T14:26:56.275Z
 ---
 
 ## Parent
@@ -155,3 +155,142 @@ A-49 fix round: the moved-tip and failed-push/failed-rollback probes are now reg
 ### impl-59 · 2026-10-09T13:31:04.939Z
 
 Committed second review round as 3a86399 (3a8639913012845f45146cc74ec591817d48fbf0). Both A-49 findings fixed, plus internal review's completed-retry staged-edit and CAS restoration hazards. Typecheck, skill validation, 47 targeted checks and final 5 worktree checks pass. Durable evidence A-54 and A-55. Final full suite starts now under the manual machine-wide lock; external review/QA remain.
+
+### impl-59 · 2026-10-09T13:37:18.893Z
+
+Final validation at 3a8639913012845f45146cc74ec591817d48fbf0: one full suite under the manual machine lock passed 376 hub + 91 Neovim = 467 tests, zero failures/skips (A-57 durable log). Typecheck, merge skill validation and targeted 47/47 passed. Manual lock released; two orphan init/adapter bridge clients from the suite stopped (34845, 49961), final process scan has no T-59 hub/bin test processes, scratch logs removed and branch clean. Implementer work complete; external review/QA and Coordinator landing remain.
+
+### qa-12 · 2026-10-09T13:38:08.666Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-59-2
+commit: 3a8639913012845f45146cc74ec591817d48fbf0
+
+Delta QA after qa-12-59-1: isolated git archive 3a86399, node_modules linked from T-59, Node24.21.0. No product changes.
+
+Ran:
+- npm run typecheck: pass.
+- node --test hub/test/merge.test.ts:34/34, zero failures/skips (178.69s).
+- Independent scratch project with own real hub, reviewer spoke, fake Claude session and actual CLI/Git: cland task list/view; normal reviewed merge lands exactly one commit with root/territory agreement; review-missing refusal leaves every local/territory ref unchanged.
+- Commit after landing while cleanup waits for session: stopped session, observed journal 'branch moved since merge (...), kept'; new branch SHA/worktree/file contents survive, dev stays at original landing.
+- Territory pre-receive hook rejects push and creates local dev.lock: CLI returns landed commit e6cb851adcdc8d2e86f435c22b29c78d543c7102 with followUp rollback, rollback failed/publish pending; local dev advanced, territory/index/root tree remain at prior state. Removed only injected hook/lock; retry returns same SHA, exactly one item commit, territory/local HEAD/dev/index/worktree consistent, item closed and task worktree removed.
+- Stopped scratch hub13596, reviewer15678 and fake session; removed scratch. Post-test scan has zero QA-export processes.
+- Full criterion delegated by request to impl-59: inspected A-57 log,376/376 hub+91/91 Neovim=467 passes, zero failures/skips; implementation reports exit0/manual lock released. No duplicate full run.
+
+Findings by severity: high none; medium none; low none in the T-59 delta. Known baseline note: this branch predates T-69 cleanup; implementation full suite left two init/adapter bridge clients34845/49961. impl-59 stopped them; QA independently confirmed both PIDs absent. Those were not from the new merge probes.
+
+Evidence A-58: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-58-t-59-qa-3a86399-moved-branch-and-failed-rollback-recovery.zip (runnable manual driver, command outputs, assertions, journal, test logs and cleanup). Interim A-56; full suite A-57.
+
+### rev-6 · 2026-10-09T13:38:58.208Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-59-3
+commit: 3a8639913012845f45146cc74ec591817d48fbf0
+
+medium (Spec) — hub/src/territory.ts:529: the post-read-tree write-tree runs before the rollback try; an index.lock failure leaves the prepared merge in the root index/worktree while both refs remain at the old base, reports merge-refused, and persists no checkout recovery snapshot. Protect the mutating checkout and subsequent index capture with snapshot restoration so this pre-ref failure leaves a usable root checkout.
+
+Both A-49 findings are fixed. Moved-tip cleanup keeps the branch/worktree; a lost deletion CAS restores the worktree; failed rollback returns the landed commit with follow-up; retry repairs the checkout before publishing. Changed staged work is refused and preserved, and completed retries preserve staged deletion/reversion. Standards clear.
+
+Reran A-49 probes and the two added hazard probes using actual production orchestration with in-memory process/filesystem/lock boundaries; no real refs/files changed, no suite. TypeScript noEmit and diff check pass. Separate review axes and executable evidence: A-59, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-59-t-59-second-delta-review-rev-6-59-3-at-3a86399.md.
+
+### impl-59 · 2026-10-09T13:42:49.003Z
+
+Third review round: reproduced the post-checkout write-tree/index.lock failure. Before the fix, merge refused with unchanged refs but left the prepared index/root file in place. Moving the whole mutation into one protected section; recovery snapshots will be persisted before read-tree, and blocked restoration will return an explicit merge-recovery receipt rather than a refusal. Targeted checks only per Coordinator.
+
+### impl-59 · 2026-10-09T13:50:21.065Z
+
+Third round's real Git index-lock regression passes for both adding a task file and changing tracked README, checking staged tree identity, exact working-file bytes, unchanged porcelain status and refs. Persistent lock returns merge-recovery with a durable prepared commit/base and survives restart. Crash-before-CAS test also passes; the receipt remains live until successful ref movement. Internal Standards/Spec re-review has zero unresolved findings. Final targeted set underway; no full suite in this round.
+
+### impl-59 · 2026-10-09T13:54:10.333Z
+
+Third fix round committed as e686076b2237e33d9d7f809f6d9ffb6ffb0e6148 (e686076). Protected all checkout mutations; recorded snapshots before read-tree and retained them through CAS; blocked prelanding restore reports merge-recovery with durable receipt, and retry restores before rechecking the gate. Added semantic restoration, persistent-lock, crash-before-CAS and later-staging retry regressions. Final targeted 52/52 and focused 6/6 pass (A-62/A-63); typecheck and skill validation pass. A-64 records changes and zero unresolved internal review findings. No full suite this round per Coordinator; last full suite A-57 was at 3a86399. Scratch removed, test bridge 60145 stopped, final process scan and git status clean.
+
+### impl-59 · 2026-10-09T13:54:18.277Z
+
+Artifact correction to the preceding milestone: third-round changes/review note is A-65 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-65-t-59-third-fix-round-at-e686076.md), not A-64. Test logs remain A-62 and A-63.
+
+### rev-6 · 2026-10-09T14:00:25.244Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-59-4
+commit: e686076b2237e33d9d7f809f6d9ffb6ffb0e6148
+
+No high or medium findings remain. A-59's post-checkout write-tree failure is fixed: snapshots precede mutation and survive through CAS; transient failure restores before refusal; blocked prelanding restoration retains a receipt and reports merge-recovery/pending; retry restores before rechecking current verdicts.
+
+low (Standards/interface completeness) — hub/src/spoke/hub-client.ts:356 / hub/src/spoke/spoke.ts:355: HubClient/Refused drops the new recovery {commit, base} field before the MCP error serializer; forward it through both layers. The code and descriptive error still expose the prepared SHA/base, so this is non-blocking.
+
+Spec clear. Reran the A-59 production-orchestration probe with actual SQLite :memory: receipts and in-memory process/filesystem/lock boundaries: transient restore, persistent recovery, a new merge-service instance, refusal after a newly not-clear verdict, and eventual landing all pass. Inspected the added/modified-file semantic equality and crash-before-CAS real-Git regressions; no suite run. TypeScript noEmit and diff check pass; working tree clean; no file/ref changes.
+
+Separate review axes and executable probe: A-68, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-68-t-59-third-delta-review-rev-6-59-4-at-e686076.md.
+
+### qa-12 · 2026-10-09T14:02:50.849Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-12-59-3
+commit: e686076b2237e33d9d7f809f6d9ffb6ffb0e6148
+
+Third-delta QA on isolated git archive e686076, T-59 node_modules, Node24.21.0. Read item/A-65; no product changes.
+
+Ran npm run typecheck (pass), node --test hub/test/merge.test.ts (39/39,0fail/skips,149.84s), plus independent own-hub CLI/Git probes and cland task list/view.
+
+Manual results:
+- Normal reviewed merge lands exactly one commit with root/territory agreement.
+- Real Git wrapper holds root index.lock at the post-checkout write-tree, releasing after the failed command. Merge refuses; exact write-tree ID700fc362da5af7cc2b4091bbc6c09f343db6c3a6, porcelain status, all refs and README/staged-local/untracked-file bytes match before. Git trace confirms actual write-tree failed with lock present; no mocked Git output.
+- Persistent index.lock produces distinct merge-recovery naming prepared ea20033752df420dc8ce288f72d81e378854d92a and checkout recovery pending, with refs unchanged.
+- While recovery is pending, real reviewer spoke writes newer not-clear verdict. Remove lock, retry: checkout restores to exact original tree/status/bytes, prepared file disappears, gate refuses review-not-clear. This verifies gate rechecking rather than blindly finishing the preparation.
+- Fresh clear review, retry: exactly one commit605256530def9bcc8875b533993f56e2967437f0 lands; local HEAD/dev and territory agree; unrelated staged/untracked contents survive.
+- Own scratch hub2572/reviewer3069 stopped, scratch removed; final QA-export process scan empty.
+
+Findings by severity: high none; medium none; low none.
+
+No full suite this round, per Coordinator decision. Last full A-57 covered previous3a86399,467passes; not claimed as final-head full validation.
+
+Evidence A-71: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-71-t-59-qa-e686076-index-lock-restoration-and-gate-recheck.zip (runnable wrapper/CLI probe, exact snapshots, Git trace, journal, test logs and cleanup). Interim A-69.
+
+### impl-59 · 2026-10-09T14:04:22.713Z
+
+Coordinator requested merging main forward after clear review/QA at e686076. Merged main bf4a674 once; only tracker.ts imports conflicted. Resolution keeps MergeError/MergeReceipt and adds TipSchedule to Freshness import. T-72 scheduleTips constructor wiring, T-59 durable mergeVerdicts selection, async cache annotations and role/permission reread inside the timed verdict write are retained. Typecheck passes. Targeted merge checks then one plain npm test through T-69's own lock follow before the merge commit.
+
+### impl-59 · 2026-10-09T14:15:52.956Z
+
+Merged main bf4a674 once into T-59, commit read back as 32271ab1bbd9e8e35e19966aacd228a51dbe5974. The only conflict was tracker.ts imports: retained MergeError/MergeReceipt and T-72 TipSchedule. Scheduler option/wiring, durable verdict selection and timed role/permission re-read all remain. Typecheck and targeted merge tests 39/39 pass (A-74). One plain npm test through T-69's own lock passed 408 hub + 91 Neovim = 499 tests, zero failures/skips (A-77). Resolution note A-78. Scratch removed, worktree clean and no T-59 test processes remain. No push or landing; resolution-only external review remains.
+
+### rev-6 · 2026-10-09T14:19:16.179Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-59-5
+commit: 32271ab1bbd9e8e35e19966aacd228a51dbe5974
+
+High: none. Medium: none. Low: no new findings in the resolution scope; the prior non-blocking recovery-metadata forwarding note is unchanged.
+
+The tracker resolution preserves both parents. Relative to e686076, its only additions are T-72's TipSchedule import, scheduleTips constructor option and forwarding to Freshness, matching the main-side diff. Relative to bf4a674, T-59's MergeError/MergeReceipt, configured-base freshness, durable verdict selection, receipt/lifecycle handling and authoritative role reread inside the timed verdict write remain intact.
+
+Standards and Spec both clear. Read task body/criteria and earlier verdicts; compared the requested parent diffs and reverse-parent diff. Diff check passes. Inspected A-77 raw evidence: 408 hub + 91 Neovim passes, zero failures/skips; no suite rerun or file/ref mutations.
+
+Separate review axes: A-81, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-81-t-59-resolution-review-rev-6-59-5-at-32271ab.md.
+
+### coord · 2026-10-09T14:26:56.275Z
+
+Merged into main as a13ae98 (`git merge --no-ff`, by the Coordinator) at 14:19Z. This was one of the last task merges done by hand, because this item is `cland merge` itself. Suite on main a13ae98: typecheck clean, hub 421/421, Neovim 91/91, 0 skipped, peak load 9.62.
+Verdicts:
+- Review: rev-6-59-1 to -4 were not clear. They covered deleted evidence reviving an older clear verdict, a failure after landing reported as refused, untimed freshness work, the role at write time, cleanup deleting a moved branch, a push rejection with a failed rollback, and checkout steps outside the rollback. rev-6-59-4 is clear on e686076, and rev-6-59-5 clears the forward-merge resolution 32271ab.
+- QA: qa-12-59-1 on eb85884, -2 on 3a86399 and -3 on e686076, all clear, with live refusals, recovery cases and stacked merges.
+What it does:
+- `cland merge T-n`, the Coordinator's `merge` spoke tool and the human's shell with `--override` all lead to one `merge` frame.
+- The gate selects verdicts by hub-recorded provenance, written by the role at write time, current and not by the claimer; an unknown freshness counts as not current.
+- It lands one `commit-tree` squash on the task base, with `Item:`, `Reviewed-by:` and `QA-by:` trailers.
+- Recovery receipts make every failure after landing finish idempotently.
+- Cleanup removes the worktree and branch only if the branch tip still matches.
+- The `merge` skill ships in .agents/skills/merge/.
+One low is left open from rev-6-59-4: the structured recovery details `{commit, base}` are dropped before MCP serialization, though the error text still carries them. It is a follow-up.
+Next: the hub restart that makes it live, then the end of the D15 interim on this repository. Implementer: impl-59 (Codex), launched 12:00Z. GitHub mirror #54.
