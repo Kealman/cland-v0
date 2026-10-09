@@ -9,9 +9,10 @@ export const territoryPath = (root: string): string => join(root, '.cland', 'ter
 const lockPath = (root: string): string => join(root, '.cland', 'territory.lock');
 
 /** Run Git locally; marked pushes are reserved for cland's guarded operations. Never invoke a shell. */
-export function territoryGit(cwd: string, args: string[], marked = false): string {
+export function territoryGit(cwd: string, args: string[], marked = false, input?: string): string {
   const r = spawnSync('git', args, {
-    cwd, encoding: 'utf8', timeout: 30_000,
+    cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024,
+    ...(input === undefined ? {} : { input }),
     env: { ...process.env, CLAND_TERRITORY_WRITE: marked ? '1' : '' },
   });
   if (r.error || r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.error?.message ?? r.stderr.trim()}`);
@@ -73,6 +74,42 @@ const originUrlsAreLocal = (root: string, push = false): boolean => {
   const urls = maybeGit(root, ['remote', 'get-url', ...(push ? ['--push'] : []), '--all', 'origin']);
   return urls !== null && urls.split('\n').every((url) => pointsAtTerritory(root, url));
 };
+
+type RepositoryRef = { name: string; oid: string; target: string };
+const repositoryRefs = (root: string): RepositoryRef[] =>
+  territoryGit(root, ['for-each-ref', '--format=%(refname) %(objectname) %(symref)']).split('\n').filter(Boolean).map((line) => {
+    const [name, oid, target = ''] = line.split(' ');
+    if (!name || !oid) throw new Error(`cannot read repository ref: ${line}`);
+    return { name, oid, target };
+  });
+
+/** Git fetch destinations can be exact refs or wildcard patterns, in any tracking namespace. */
+function matchesDestination(name: string, pattern: string): boolean {
+  const wildcard = pattern.indexOf('*');
+  if (wildcard === -1) return name === pattern;
+  const prefix = pattern.slice(0, wildcard);
+  const suffix = pattern.slice(wildcard + 1);
+  return name.length >= prefix.length + suffix.length && name.startsWith(prefix) && name.endsWith(suffix);
+}
+
+/** Tips being dropped must remain reachable from refs that survive remote removal, regardless of their names. */
+function unpreservedUndoRefs(root: string, territory: string): string[] {
+  const fetch = maybeGit(root, ['config', '--get-all', 'remote.origin.fetch']) ?? '';
+  const destinations = fetch.split('\n').flatMap((spec) => {
+    const colon = spec.indexOf(':');
+    return colon === -1 || colon === spec.length - 1 ? [] : [spec.slice(colon + 1)];
+  });
+  const removedByOrigin = (name: string): boolean => destinations.some((pattern) => matchesDestination(name, pattern));
+  const refs = repositoryRefs(root);
+  const dropped = refs.filter((r) => removedByOrigin(r.name));
+  // Symbolic aliases are not independent copies; their concrete targets must survive instead.
+  const survivingTips = refs.filter((r) => !removedByOrigin(r.name) && !r.target).map((r) => r.oid);
+  const headTarget = maybeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
+  const head = ref(root, 'HEAD');
+  if (head !== null && (headTarget === null || !removedByOrigin(headTarget))) survivingTips.push(head);
+  const reachable = new Set(survivingTips.length ? territoryGit(root, ['rev-list', '--objects', '--no-object-names', '--stdin'], false, `${survivingTips.join('\n')}\n`).split('\n') : []);
+  return [...new Set([...dropped, ...repositoryRefs(territory)].filter((r) => !reachable.has(r.oid)).map((r) => `${r.name} ${r.oid}`))];
+}
 
 /** Provision remotes, refs and the protection hook, under the shared lock; report even unchanged Git steps. */
 export function provisionTerritory(report: Report, root: string): void {
@@ -166,12 +203,8 @@ export function undoTerritory(root: string, force = false): Report {
     if (!pointsAtTerritory(root, remote(root, 'origin'))) throw new Error('territory undo: origin is not the territory; restore it before undo');
     const renamed = maybeGit(path, ['config', '--get', 'cland.originRenamed']) === 'true';
     if (renamed && remote(root, 'github') === null) throw new Error('territory undo: github is missing; restore it before undo');
-    const unique = territoryGit(path, ['for-each-ref', '--format=%(refname) %(objectname)']).split('\n').filter(Boolean).filter((line) => {
-      const [name, oid] = line.split(' ');
-      // Removing origin deletes its tracking refs; their matching tips will not survive undo.
-      return name === undefined || name.startsWith('refs/remotes/origin/') || ref(root, name) !== oid;
-    });
-    if (unique.length && !force) throw new Error(`territory holds refs the project lacks (or at different commits): ${unique.join(', ')}; preserve them locally or use cland init --undo --force`);
+    const unique = unpreservedUndoRefs(root, path);
+    if (unique.length && !force) throw new Error(`territory or origin tracking refs hold work unreachable from surviving local refs: ${unique.join(', ')}; preserve it locally or use cland init --undo --force`);
     const original = maybeGit(path, ['config', '--get', 'cland.originalBranch']);
     const branch = maybeGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
     // Generated, untracked init files do not prevent restoration; Git itself refuses an overlapping checkout.
@@ -187,7 +220,7 @@ export function undoTerritory(root: string, force = false): Report {
       report.add(join(path, 'remotes/github'), 'updated', 'github restored to origin, including upstreams');
     }
     rmSync(path, { recursive: true });
-    report.add(path, 'removed', unique.length ? `--force discarded: ${unique.join(', ')}` : 'every territory ref is preserved locally');
+    report.add(path, 'removed', unique.length ? `--force discarded: ${unique.join(', ')}` : 'all dropped refs remain reachable from surviving local refs');
   });
   return report;
 }

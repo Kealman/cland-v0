@@ -87,14 +87,17 @@ test('undo restores the remotes, upstream and main, keeps dev, and reinstates th
 test('undo names territory-only refs and differing tips, mutates nothing on refusal, and accepts --force', async (t) => {
   const { root, territory } = await fixture(t);
   await init(root);
-  git(territory, 'update-ref', 'refs/heads/t/T-99-only', git(root, 'rev-parse', 'HEAD'));
+  const unique = git(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Only the territory holds this work');
+  git(root, 'push', '-q', 'origin', `${unique}:refs/heads/t/T-99-only`);
   const denied = await clandWithEnv(root, {}, 'init', '--undo');
   assert.equal(denied.code, 1);
   assert.match(denied.stderr, /refs\/heads\/t\/T-99-only.*--force/);
   assert.equal(git(root, 'remote', 'get-url', 'origin'), territory);
   assert.equal(git(root, 'branch', '--show-current'), 'dev');
   git(territory, 'update-ref', '-d', 'refs/heads/t/T-99-only');
+  git(root, 'update-ref', '-d', 'refs/remotes/origin/t/T-99-only');
   git(root, 'commit', '--allow-empty', '-qm', 'New local dev');
+  git(territory, 'update-ref', 'refs/heads/dev', unique);
   const different = await clandWithEnv(root, {}, 'init', '--undo');
   assert.equal(different.code, 1);
   assert.match(different.stderr, /refs\/heads\/dev/);
@@ -121,6 +124,55 @@ test('undo refuses refs preserved only by origin tracking refs, then permits the
   await init(root, '--undo', '--force');
   assert.ok(!git(root, 'for-each-ref', '--format=%(objectname)').split('\n').includes(oid));
   await assert.rejects(readFile(join(territory, 'HEAD')));
+});
+
+test('undo refuses unique work under every custom origin fetch destination before mutation', async (t) => {
+  for (const mapping of ['+refs/remotes/cache/*:refs/remotes/cache/*', '+refs/heads/work:refs/remotes/cache/review-copy']) {
+    const { root, territory } = await fixture(t);
+    await init(root);
+    const oid = git(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Custom tracking work');
+    const name = 'refs/remotes/cache/review-copy';
+    git(root, 'config', '--add', 'remote.origin.fetch', mapping);
+    git(root, 'update-ref', name, oid);
+    git(root, 'push', '-q', 'origin', `${name}:${name}`);
+    const before = git(root, 'for-each-ref', '--format=%(refname) %(objectname)');
+    const denied = await clandWithEnv(root, {}, 'init', '--undo');
+    assert.equal(denied.code, 1, mapping);
+    assert.match(denied.stderr, /refs\/remotes\/cache\/review-copy.*--force/);
+    assert.equal(git(root, 'for-each-ref', '--format=%(refname) %(objectname)'), before);
+    assert.equal(git(territory, 'rev-parse', name), oid);
+    assert.equal(git(root, 'branch', '--show-current'), 'dev');
+    await init(root, '--undo', '--force');
+    assert.ok(!git(root, 'for-each-ref', '--format=%(objectname)').split('\n').includes(oid));
+    await assert.rejects(readFile(join(territory, 'HEAD')));
+  }
+});
+
+test('undo refuses unique commits held only by root tracking refs even without a territory copy', async (t) => {
+  const { root, territory } = await fixture(t);
+  await init(root);
+  const oid = git(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Root tracking only');
+  const name = 'refs/remotes/origin/review-copy';
+  git(root, 'update-ref', name, oid);
+  const before = git(root, 'for-each-ref', '--format=%(refname) %(objectname)');
+  const denied = await clandWithEnv(root, {}, 'init', '--undo');
+  assert.equal(denied.code, 1);
+  assert.match(denied.stderr, /refs\/remotes\/origin\/review-copy.*--force/);
+  assert.equal(git(root, 'for-each-ref', '--format=%(refname) %(objectname)'), before);
+  assert.equal(git(root, 'remote', 'get-url', 'origin'), territory);
+  await init(root, '--undo', '--force');
+  assert.ok(!git(root, 'for-each-ref', '--format=%(objectname)').split('\n').includes(oid));
+});
+
+test('undo allows dropped refs whose commits survive through another ref or its history', async (t) => {
+  const { root } = await fixture(t);
+  await init(root);
+  const oid = git(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Preserved in history');
+  git(root, 'push', '-q', 'origin', `${oid}:refs/heads/t/T-99-history`);
+  const descendant = git(root, 'commit-tree', 'HEAD^{tree}', '-p', oid, '-m', 'Durable descendant');
+  git(root, 'update-ref', 'refs/tags/keep-work', descendant);
+  await init(root, '--undo');
+  assert.equal(git(root, 'rev-parse', 'refs/tags/keep-work^'), oid);
 });
 
 test('dirty roots and other branches stay in place, with a reason in the init report', async (t) => {
