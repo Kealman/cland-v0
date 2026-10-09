@@ -321,13 +321,6 @@ async function guardedHub(t: TestContext, options: { clock?: { now: number }; se
   return { root, records, tracker, hub };
 }
 
-const hold = (ms: number) => {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    /* the synchronous work under test */
-  }
-};
-
 test("session.launch with an item: a synchronous branch-link subscriber after Git is timed once as resumed", async (t) => {
   const clock = { now: 0 };
   const { records, tracker, hub } = await guardedHub(t, { clock });
@@ -350,10 +343,15 @@ test("session.launch with an item: a synchronous branch-link subscriber after Gi
 });
 
 test('worktree.list: its work after the Git reads is timed as phase resumed (a slow one is logged once)', async (t) => {
+  const clock = { now: 0 };
   let slowSessions = false;
+  let snapshots = 0;
   const { records, hub } = await guardedHub(t, {
+    clock,
     sessionsList: () => {
-      if (slowSessions) hold(400);
+      snapshots++;
+      // Initial and final snapshots now surround async item/path reads: charge one continuation.
+      if (slowSessions) { slowSessions = false; clock.now += 400; }
       return [];
     },
   });
@@ -361,11 +359,13 @@ test('worktree.list: its work after the Git reads is timed as phase resumed (a s
   assert.equal((await ui.request({ type: 'task.create', title: 'Listed', kind: 'task' })).ok, true);
   assert.equal(((await ui.request({ type: 'task.claim', item: 'T-1' })).value as Claimed).worktree?.item, 'T-1');
   records.length = 0;
+  snapshots = 0;
   slowSessions = true;
   const r = await ui.request({ type: 'worktree.list' }, 30_000);
   slowSessions = false;
   assert.equal(r.ok, true, r.error);
   assert.deepEqual((r.value as { worktrees: Entry[] }).worktrees.map((w) => w.item), ['T-1']);
+  assert.equal(snapshots, 2, 'both the initial snapshot and the post-I/O snapshot must run');
   const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'worktree.list');
   assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'list-ui']], JSON.stringify(slow));
   assert.ok((slow[0]?.ms as number) >= 400, `${String(slow[0]?.ms)} ms`);

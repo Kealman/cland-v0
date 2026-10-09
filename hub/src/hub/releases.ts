@@ -55,8 +55,9 @@ export class Releases {
 
   release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void) {
     return this.worktrees.serial(() => withTerritoryLockAsync(this.tracker.root, async () => {
-      const result = await releaseGit(this.tracker.root, version, dryRun, id => {
-        try { return this.tracker.view(id).title; } catch { return null; }
+      const result = await releaseGit(this.tracker.root, version, dryRun, async id => {
+        try { const view = await this.tracker.viewAsync(id, resumed); return resumed(() => view.title); }
+        catch { return null; }
       }, resumed, authorize);
       try {
         resumed(() => this.log({ event: dryRun ? 'release-preview' : 'released', ...result }));
@@ -67,25 +68,32 @@ export class Releases {
         return { ...result, followUp: result.followUp ?? { step: 'record', error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } };
       }
       return result;
-    }, resumed)).catch((err: unknown) => {
-      try { resumed(() => this.log({ event: 'release-refused', error: err instanceof Error ? err.message : String(err), code: err instanceof ReleaseError ? err.code : 'release-git' })); } catch { /* preserve the original error */ }
+    }, resumed)).catch((err: unknown) => resumed(() => {
+      try { this.log({ event: 'release-refused', error: err instanceof Error ? err.message : String(err), code: err instanceof ReleaseError ? err.code : 'release-git' }); } catch { /* preserve the original error */ }
       throw err;
-    });
+    }));
   }
 
   sync(resumed: Resumed, authorize: () => void) {
     return this.worktrees.serial(() => withTerritoryLockAsync(this.tracker.root, async () => {
-      const pending = resumed(() => {
+      const items = resumed(() => {
         authorize();
-        return this.tracker.list().flatMap(item => {
+        return this.tracker.list().filter(item => this.tracker.mergeReceipt(item.id));
+      });
+      const pending = [];
+      for (const item of items) {
+        const view = await this.tracker.viewAsync(item.id, resumed);
+        const next = resumed(() => {
+          // Re-read the receipt, topic and claim after queued file I/O, before testing pending recovery.
+          authorize();
           const receipt = this.tracker.mergeReceipt(item.id);
-          if (!receipt) return [];
-          const view = this.tracker.view(item.id);
+          if (!receipt) return null;
           const topic = view.topic ? this.store.topic(view.topic) : null;
           if (receipt.checkout) throw new ReleaseError('sync-recovery', `finish pending cland merge ${item.id} checkout recovery before sync`);
-          return view.state !== 'closed' || view.claim || (topic && topic.status !== 'closed') ? [{ id: item.id, receipt }] : [];
+          return view.state !== 'closed' || this.tracker.claimOf(item.id) || (topic && topic.status !== 'closed') ? { id: item.id, receipt } : null;
         });
-      });
+        if (next) pending.push(next);
+      }
       for (const item of pending) {
         const landed = await landedTask(this.tracker.root, item.id, item.receipt, resumed);
         resumed(() => { if (landed) throw new ReleaseError('sync-recovery', `finish pending cland merge ${item.id} before sync rewrites its landing`); });
@@ -97,9 +105,9 @@ export class Releases {
       }
       catch (err) { return { ...result, followUp: result.followUp ?? { step: 'record', error: `synced locally; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } }; }
       return result;
-    }, resumed)).catch((err: unknown) => {
-      try { resumed(() => this.log({ event: 'sync-refused', error: err instanceof Error ? err.message : String(err), code: err instanceof ReleaseError ? err.code : 'sync-git' })); } catch { /* preserve the original error */ }
+    }, resumed)).catch((err: unknown) => resumed(() => {
+      try { this.log({ event: 'sync-refused', error: err instanceof Error ? err.message : String(err), code: err instanceof ReleaseError ? err.code : 'sync-git' }); } catch { /* preserve the original error */ }
       throw err;
-    });
+    }));
   }
 }

@@ -4,7 +4,7 @@
 // decides which items get a worktree, writes the branch into the item and records what it made in the journal
 // (`task-worktree`, an Agents notice through the log's tap). Its Git commands are awaited, never synchronous, and
 // run one operation at a time (`#serial`): the territory lock refuses a second holder rather than waiting for it.
-import { realpathSync } from 'node:fs';
+import { realpath, stat } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import type { LogFn } from '../log.ts';
 import type { Claim } from '../tracker/index-db.ts';
@@ -37,18 +37,25 @@ export type SessionCwd = { name: string; cwd: string };
 /** The hub writes the branch into the item; the file shows no author for a link. */
 const HUB_ACTOR: Actor = { id: 'hub', name: 'hub', role: null };
 
-const real = (path: string): string => {
+const real = async (path: string): Promise<string> => {
   try {
-    return realpathSync(path);
+    return await realpath(path);
   } catch {
     return resolve(path);
   }
 };
-const inside = (cwd: string, dir: string): boolean => {
-  const c = real(cwd);
-  const d = real(dir);
-  return c === d || c.startsWith(d + sep);
+
+type PathIdentity = { dev: number; ino: number } | null;
+const identity = async (path: string, resumed: Resumed): Promise<PathIdentity> => {
+  try { const value = await stat(path); return resumed(() => ({ dev: value.dev, ino: value.ino })); }
+  catch (err) {
+    return resumed(() => {
+      if (['ENOENT', 'ENOTDIR'].includes((err as NodeJS.ErrnoException).code ?? '')) return null;
+      throw err;
+    });
+  }
 };
+const sameIdentity = (a: PathIdentity, b: PathIdentity): boolean => a === null ? b === null : b !== null && a.dev === b.dev && a.ino === b.ino;
 
 /** Runs the synchronous write a handler resumes into after awaiting Git: the hub times it against its budget (T-67). */
 export type Resumed = <T>(write: () => T) => T;
@@ -94,7 +101,7 @@ export class TaskWorktrees {
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed): Promise<TaskWorktree> {
-    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch });
+    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     if (current.branch !== worktree.branch) await resumed(() => this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch }, resumed));
@@ -121,16 +128,18 @@ export class TaskWorktrees {
       try {
         view = await this.#tracker.viewAsync(id, resumed);
       } catch (err) {
-        return { worktree: null, reason: err instanceof Error ? err.message : String(err) };
+        return resumed(() => ({ worktree: null, reason: err instanceof Error ? err.message : String(err) }));
       }
       const reason = await this.#ineligible(view);
       if (reason !== null) return { worktree: null, reason };
       try {
         return { worktree: await this.#make(view, session, resumed) };
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.#log({ event: 'task-worktree-failed', id, error: message });
-        return { worktree: null, reason: `no worktree: ${message}` };
+        return resumed(() => {
+          const message = err instanceof Error ? err.message : String(err);
+          this.#log({ event: 'task-worktree-failed', id, error: message });
+          return { worktree: null, reason: `no worktree: ${message}` };
+        });
       }
     });
   }
@@ -225,21 +234,76 @@ export class TaskWorktrees {
     return this.serial(() => this.#list(resumed));
   }
 
-  /** Git's facts first, all awaited; then the items and the sessions, read in one stretch timed through `resumed`. */
+  /** Resolve containment after queued item reads; return a live check for the final step before removal. */
+  async #observe(entries: Array<{ item: string; path: string }>, resumed: Resumed): Promise<Array<{ view: ItemView | null; sessions: string[]; validate: () => Promise<void> }>> {
+    for (;;) {
+      const { sessions, indexed } = resumed(() => {
+        const items = this.#tracker.list();
+        return { sessions: this.#sessions(), indexed: entries.map(entry => items.find(item => item.id === entry.item)) };
+      });
+      const views: Array<ItemView | null> = [];
+      for (const entry of entries) {
+        try {
+          const view = await this.#tracker.viewAsync(entry.item, resumed);
+          resumed(() => views.push(view));
+        } catch { resumed(() => views.push(null)); }
+      }
+      const [cwds, dirs, cwdIdentities, dirIdentities] = await Promise.all([
+        Promise.all(sessions.map(s => real(s.cwd))),
+        Promise.all(entries.map(w => real(w.path))),
+        Promise.all(sessions.map(s => identity(s.cwd, resumed))),
+        Promise.all(entries.map(w => identity(w.path, resumed))),
+      ]);
+      const observed = resumed(() => {
+        // Sessions may enter/leave while paths or item files are read. Only use a still-current snapshot.
+        const now = this.#sessions();
+        if (now.length !== sessions.length || now.some((s, i) => s.name !== sessions[i]!.name || s.cwd !== sessions[i]!.cwd)) return null;
+        const current = this.#tracker.list();
+        if (entries.some((entry, i) => {
+          const item = current.find(item => item.id === entry.item);
+          return item?.updated !== indexed[i]?.updated || item?.state !== indexed[i]?.state || item?.file !== indexed[i]?.file;
+        })) return null;
+        return entries.map((entry, i) => ({
+          view: views[i]!,
+          sessions: [...new Set(sessions.filter((_, n) => cwds[n] === dirs[i] || cwds[n]!.startsWith(dirs[i] + sep)).map(s => s.name))],
+          validate: async () => {
+            // The territory's final lstat check also awaited: resolve aliases again after it, before Git.
+            const [currentCwds, currentDir] = await Promise.all([
+              Promise.all(sessions.map(s => real(s.cwd))),
+              real(entry.path),
+            ]);
+            // Detect a previously resolved alias or target replaced while a sibling lookup awaited.
+            const [currentCwdIdentities, currentDirIdentity] = await Promise.all([
+              Promise.all(sessions.map(s => identity(s.cwd, resumed))),
+              identity(entry.path, resumed),
+            ]);
+            resumed(() => {
+              const latest = this.#tracker.list().find(item => item.id === entry.item);
+              if (latest?.updated !== indexed[i]?.updated || latest?.state !== indexed[i]?.state || latest?.file !== indexed[i]?.file) throw new Error(`${entry.item} changed during prune: keeps its worktree and branch; try again`);
+              const now = this.#sessions();
+              if (now.length !== sessions.length || now.some((s, i) => s.name !== sessions[i]!.name || s.cwd !== sessions[i]!.cwd)) throw new Error(`${entry.item}: session locations changed during prune; recheck who stands inside its worktree`);
+              if (currentDir !== dirs[i] || !sameIdentity(currentDirIdentity, dirIdentities[i]!)) throw new Error(`${entry.item}: worktree identity or containment changed during prune; kept`);
+              const inside = [...new Set(sessions.filter((_, n) => currentCwds[n] === currentDir || currentCwds[n]!.startsWith(currentDir + sep)).map(s => s.name))];
+              if (inside.length) throw new Error(`${entry.item}: ${inside.join(', ')} now ${inside.length === 1 ? 'stands' : 'stand'} inside its worktree`);
+              if (currentCwds.some((cwd, i) => cwd !== cwds[i] || !sameIdentity(currentCwdIdentities[i]!, cwdIdentities[i]!))) throw new Error(`${entry.item}: session path identity changed during prune; recheck who stands inside its worktree`);
+            });
+          },
+        }));
+      });
+      if (observed) return observed;
+    }
+  }
+
+  /** Git's facts first, then queued item reads and the current sessions. */
   async #list(resumed: Resumed): Promise<WorktreeEntry[]> {
     const root = this.root;
     const base = await taskBase(root).catch(() => null);
     const found: Array<Awaited<ReturnType<typeof listTaskWorktrees>>[number] & { ahead: string[] }> = [];
     for (const w of await listTaskWorktrees(root)) found.push({ ...w, ahead: w.branch ? await commitsAhead(root, w.branch, base) : [] });
+    const observed = await this.#observe(found, resumed);
     return resumed(() => {
-      const sessions = this.#sessions();
-      return found.map((w): WorktreeEntry => {
-        let view: ItemView | null = null;
-        try {
-          view = this.#tracker.view(w.item);
-        } catch {
-          view = null;
-        }
+      return found.map((w, i): WorktreeEntry => {
+        const { view, sessions } = observed[i]!;
         return {
           item: w.item,
           path: w.path,
@@ -247,7 +311,7 @@ export class TaskWorktrees {
           title: view?.title ?? null,
           kind: view?.kind ?? null,
           state: view?.state ?? null,
-          sessions: [...new Set(sessions.filter((s) => inside(s.cwd, w.path)).map((s) => s.name))],
+          sessions,
           base,
           ahead: w.ahead,
         };
@@ -272,10 +336,20 @@ export class TaskWorktrees {
     if (pruned.failed[0]?.error !== `${item} has no worktree`) return pruned;
     return this.serial(async () => {
       try {
-        const done = await removeTaskWorktree(this.root, item, () => resumed(() => {
-          if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
-          if (this.#tracker.view(item).state !== 'closed') throw new Error(`${item} reopened: prune keeps its branch`);
-        }), expected, resumed);
+        const done = await removeTaskWorktree(this.root, item, async () => {
+          const view = await this.#tracker.viewAsync(item, resumed);
+          return resumed(() => {
+            const indexed = this.#tracker.list().find(row => row.id === item);
+            const validate = () => {
+              const now = this.#tracker.list().find(row => row.id === item);
+              if (now?.updated !== indexed?.updated || now?.state !== indexed?.state) throw new Error(`${item} changed during prune: keeps its branch; try again`);
+              if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
+            };
+            if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
+            if (view.state !== 'closed') throw new Error(`${item} reopened: prune keeps its branch`);
+            return validate;
+          });
+        }, expected, resumed);
         return resumed(() => ({ removed: [{ item, ...done }], failed: [] }));
       } catch (err) {
         return resumed(() => ({ removed: [], failed: [{ item, error: err instanceof Error ? err.message : String(err) }] }));
@@ -297,18 +371,19 @@ export class TaskWorktrees {
             if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
             return entry;
           });
-          const done = await removeTaskWorktree(this.root, item, () => resumed(() => {
-            if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
-            let state: string | null = null;
-            try {
-              state = this.#tracker.view(item).state;
-            } catch {
-              state = null;
-            }
-            if (state !== 'closed') throw new Error(`${item} is ${state ?? 'not in the tracker'} now: prune removes only the worktrees of closed items`);
-            const now = [...new Set(this.#sessions().filter((s) => inside(s.cwd, entry.path)).map((s) => s.name))];
-            if (now.length) throw new Error(`${item}: ${now.join(', ')} now ${now.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-          }), expectedBranches.get(item), resumed);
+          const done = await removeTaskWorktree(this.root, item, async () => {
+            const observed = await this.#observe([entry], resumed);
+            return resumed(() => {
+              const { view, sessions: now, validate } = observed[0]!;
+              if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
+              if (view?.state !== 'closed') throw new Error(`${item} is ${view?.state ?? 'not in the tracker'} now: prune removes only the worktrees of closed items`);
+              if (now.length) throw new Error(`${item}: ${now.join(', ')} now ${now.length === 1 ? 'stands' : 'stand'} inside its worktree`);
+              return async () => {
+                await validate();
+                resumed(() => { if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`); });
+              };
+            });
+          }, expectedBranches.get(item), resumed);
           resumed(() => {
             this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
             removed.push({ item, ...done });

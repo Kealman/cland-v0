@@ -534,14 +534,29 @@ export class Tracker {
   }
 
   viewAsync(rawId: string, resumed: Resumed = untimed): Promise<ItemView> {
+    return this.#readViewAsync(rawId, resumed, false);
+  }
+
+  mergeViewAsync(rawId: string, resumed: Resumed = untimed): Promise<ItemView> {
+    return this.#readViewAsync(rawId, resumed, true);
+  }
+
+  #readViewAsync(rawId: string, resumed: Resumed, evidence: boolean): Promise<ItemView> {
     return this.#serial(async () => {
       const { id, file } = this.#require(rawId);
+      let text: string;
       try {
-        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        return resumed(() => this.#viewOf(id, file, parseItem(text, file)));
+        text = await this.#files.readFile(join(this.#dir, file), 'utf8');
       } catch (err) {
         return resumed(() => { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); });
       }
+      return resumed(() => {
+        let view: ItemView;
+        try { view = this.#viewOf(id, file, parseItem(text, file)); }
+        catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); }
+        // Evidence and claims are read after the file await, within the same tracker admission.
+        return evidence ? this.#mergeViewOf(view) : view;
+      });
     }, resumed);
   }
 
@@ -571,7 +586,10 @@ export class Tracker {
   /** The gate selects the latest hub-written verdict per kind; file-only headers cannot replace its evidence.
    * Annotate that selection from the same async cache as view/list, even when a later file header exists. */
   mergeView(rawId: string): ItemView {
-    const view = this.view(rawId);
+    return this.#mergeViewOf(this.view(rawId));
+  }
+
+  #mergeViewOf(view: ItemView): ItemView {
     const evidence = this.#index.mergeVerdicts(view.id, view.comments.flatMap(c => c.verdict ? [{ key: commentKey(c), verdict: { ...c.verdict, author: c.author, at: c.at } }] : []));
     if (evidence.missing) throw new MergeError('verdict-missing', `${view.id}: hub verdict run ${evidence.missing.run}, commit ${evidence.missing.commit ?? 'none'}, is missing or altered in the item file`);
     const hub = evidence.verdicts.map(({ current: _current, ...v }) => v);

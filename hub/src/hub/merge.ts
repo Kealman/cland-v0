@@ -31,13 +31,15 @@ export class TaskMerges {
     this.log = log;
   }
 
-  #view(id: string, evidence = true): ItemView {
+  async #view(id: string, resumed: Resumed, evidence = true): Promise<ItemView> {
     let view: ItemView;
-    try { view = evidence ? this.tracker.mergeView(id) : this.tracker.view(id); }
-    catch (err) { if (err instanceof MergeError) throw err; throw new MergeError('merge-item', err instanceof Error ? err.message : String(err)); }
-    if (view.kind !== 'task' || view.state !== 'open') throw new MergeError('merge-item', `${view.id} must be an open task`);
-    if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
-    return view;
+    try { view = await (evidence ? this.tracker.mergeViewAsync(id, resumed) : this.tracker.viewAsync(id, resumed)); }
+    catch (err) { return resumed(() => { if (err instanceof MergeError) throw err; throw new MergeError('merge-item', err instanceof Error ? err.message : String(err)); }); }
+    return resumed(() => {
+      if (view.kind !== 'task' || view.state !== 'open') throw new MergeError('merge-item', `${view.id} must be an open task`);
+      if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
+      return view;
+    });
   }
 
   #verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
@@ -48,7 +50,7 @@ export class TaskMerges {
     if (v.writer?.role !== role || v.writer.sessionId === 'human' || v.writer.sessionId.startsWith('cli:')) throw new MergeError(`${kind}-role`, `${view.id}: the ${kind} writer did not hold ${role}`);
     if (view.claim?.sessionId === v.writer.sessionId) throw new MergeError(`${kind}-claimant`, `${view.id}: its claiming session cannot supply ${kind}`);
     if (v.result !== 'clear') throw new MergeError(`${kind}-not-clear`, `${view.id}: ${kind} is not clear`);
-    // mergeView annotates the latest hub verdict even when a later file-only header exists.
+    // mergeViewAsync annotates the latest hub verdict even when a later file-only header exists.
     const current = v.current;
     if (current !== true) throw new MergeError(current === undefined ? `${kind}-pending` : `${kind}-stale`, `${view.id}: ${kind} is ${current === undefined ? 'still checking freshness; try again' : 'stale'}`);
     return v;
@@ -91,7 +93,9 @@ export class TaskMerges {
               state.landed = { commit: prior.commit, base: prior.base };
               step = 'reconcile';
               if (!existing.current) throw new Error(`${id}: already landed, but the task branch changed since; reconcile the item before merging further work`);
-              const view = this.tracker.view(id);
+            });
+            const view = await this.tracker.viewAsync(id, resumed);
+            resumed(() => {
               if (view.branch !== prior.branch) throw new MergeError('merge-changed', `${id}: already landed, but the item's branch changed`);
               reason = prior.override;
               recovered = true;
@@ -121,14 +125,15 @@ export class TaskMerges {
               resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${prior.commit} on ${prior.base}: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit: prior.commit, base: prior.base }); });
             }
           }
-          const view = resumed(() => this.#view(id, override === undefined));
+          const view = await this.#view(id, resumed, override === undefined);
           await this.tracker.refreshFreshness(resumed);
-          resumed(() => this.#message(this.#view(id, override === undefined), override));
+          const checked = await this.#view(id, resumed, override === undefined);
+          resumed(() => this.#message(checked, override));
           try {
             const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip) => {
               await this.tracker.refreshFreshness(resumed);
+              const now = await this.#view(id, resumed, override === undefined);
               return resumed(() => {
-                const now = this.#view(id, override === undefined);
                 if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || now.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
                 return this.#message(now, override);
               });
@@ -156,9 +161,11 @@ export class TaskMerges {
           }
         }, resumed);
       } catch (err) {
-        if (state.landed) return this.#incomplete({ item: id, ...state.landed, cleanup: 'pending' }, step, err instanceof Error ? err.message : String(err), resumed);
-        resumed(() => this.log({ event: err instanceof MergeError && err.code === 'merge-recovery' ? 'merge-recovery-pending' : 'merge-refused', id, session: actor.name, code: err instanceof MergeError ? err.code : 'merge-failed', error: err instanceof Error ? err.message : String(err), ...(err instanceof MergeError && err.recovery ? err.recovery : {}) }));
-        throw err;
+        return resumed(() => {
+          if (state.landed) return this.#incomplete({ item: id, ...state.landed, cleanup: 'pending' }, step, err instanceof Error ? err.message : String(err), resumed);
+          this.log({ event: err instanceof MergeError && err.code === 'merge-recovery' ? 'merge-recovery-pending' : 'merge-refused', id, session: actor.name, code: err instanceof MergeError ? err.code : 'merge-failed', error: err instanceof Error ? err.message : String(err), ...(err instanceof MergeError && err.recovery ? err.recovery : {}) });
+          throw err;
+        });
       }
       const result: MergeResult = { item: id, ...state.landed!, cleanup: 'pending' };
       try {

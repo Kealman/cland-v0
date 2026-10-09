@@ -1,7 +1,7 @@
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
 import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
-import { lstat, mkdir } from 'node:fs/promises';
+import { access, lstat, mkdir, realpath, stat } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MergeError } from './merge.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
@@ -356,9 +356,9 @@ async function worktrees(root: string): Promise<Worktree[]> {
   return out;
 }
 
-const samePath = (a: string, b: string): boolean => {
+const samePath = async (a: string, b: string): Promise<boolean> => {
   try {
-    return realpathSync(a) === realpathSync(b);
+    return await realpath(a) === await realpath(b);
   } catch {
     return resolve(a) === resolve(b);
   }
@@ -366,13 +366,86 @@ const samePath = (a: string, b: string): boolean => {
 
 /** The project's task worktrees: the linked worktrees under `.cland/worktrees/`, each named by its item. */
 export async function listTaskWorktrees(root: string): Promise<Array<Worktree & { item: string }>> {
-  if (!existsSync(join(root, '.git'))) return [];
+  if (!await access(join(root, '.git')).then(() => true, () => false)) return [];
   const dir = worktreesPath(root);
-  return (await worktrees(root)).flatMap((w) => {
+  const found: Array<Worktree & { item: string }> = [];
+  for (const w of await worktrees(root)) {
     const parent = resolve(w.path, '..');
     const name = w.path.slice(parent.length + 1);
-    return samePath(parent, dir) && /^T-\d+$/.test(name) ? [{ ...w, item: name }] : [];
+    if (/^T-\d+$/.test(name) && await samePath(parent, dir)) found.push({ ...w, item: name });
+  }
+  return found;
+}
+
+async function checkWorktreePath(root: string, path: string, resumed: <T>(work: () => T) => T): Promise<void> {
+  const link = await symlinkOnPathAsync(root, path, resumed);
+  resumed(() => { if (link !== null) throw new Error(`worktree: refusing symlink ${link}`); });
+}
+
+async function findWorktree(root: string, path: string): Promise<Worktree | undefined> {
+  for (const worktree of await worktrees(root)) if (await samePath(worktree.path, path)) return worktree;
+  return undefined;
+}
+
+async function worktreeConfined(root: string, path: string, resumed: <T>(work: () => T) => T): Promise<boolean> {
+  const runRoot = await realpath(root);
+  const { paths, reading } = resumed(() => {
+    const paths = [path, resolve(path, '..'), resolve(path, '../..')];
+    return { paths, reading: Promise.all(paths.map(p => realpath(p))) };
   });
+  const actual = await reading;
+  return resumed(() => actual.every((p, i) => {
+    const rel = relative(runRoot, p);
+    return rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel) && p === resolve(runRoot, relative(root, paths[i]!));
+  }));
+}
+
+/** Verify after Git creates the worktree; roll back only this call's registered worktree and new branch. */
+async function verifyCreatedWorktree(root: string, path: string, branch: string | null, creationTip: string | null, createdBranch: boolean, resumed: <T>(work: () => T) => T): Promise<void> {
+  const confined = await worktreeConfined(root, path, resumed).catch(() => false);
+  if (resumed(() => confined)) return;
+  const registered = branch === null ? [await findWorktree(root, path)] : await worktrees(root);
+  const created = resumed(() => {
+    const created = branch === null ? registered[0] : registered.find(w => w?.branch === branch);
+    if (!created) throw new Error(`worktree: created worktree failed confinement; ownership of ${path} cannot be verified; kept for manual recovery`);
+    if (branch !== null && creationTip && created.head !== creationTip) throw new Error(`worktree: created worktree failed confinement; branch ${branch} moved; kept worktree ${created.path} and branch for manual recovery`);
+    return created;
+  });
+  if (resumed(() => branch === null)) {
+    let head: string;
+    try { head = await territoryGitAsync(created.path, ['rev-parse', 'HEAD']); }
+    catch (err) { return resumed(() => { throw new Error(`worktree: created worktree failed confinement; kept escaped detached worktree ${created.path}; HEAD unreadable: ${err instanceof Error ? err.message : String(err)}`); }); }
+    return resumed(() => { throw new Error(`worktree: created worktree failed confinement; kept escaped detached worktree ${created.path} at HEAD ${head} for manual recovery`); });
+  }
+  let removed = false;
+  try {
+    // Git checks for dirty work; use its registered path, never a resolved recursive delete.
+    await territoryGitAsync(root, ['worktree', 'remove', created.path]);
+    await resumed(() => {
+      removed = true;
+      if (!createdBranch || !creationTip || !branch) return;
+      return territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, creationTip]);
+    });
+    if (resumed(() => !createdBranch && creationTip !== null)) {
+      const current = await refAsync(root, `refs/heads/${branch}`);
+      resumed(() => { if (current !== creationTip) throw new Error(`branch ${branch} moved during rollback`); });
+    }
+  } catch (err) {
+    const reading = resumed(() => removed ? refAsync(root, `refs/heads/${branch}`) : null);
+    const current = await reading;
+    try {
+      await resumed(() => {
+        if (!removed) return;
+        return territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', created.path, creationTip!] : ['worktree', 'add', created.path, branch!]);
+      });
+    } catch (recovery) {
+      return resumed(() => { throw new Error(`worktree: created worktree failed confinement; branch ${branch} kept; could not restore worktree ${created.path}: ${recovery instanceof Error ? recovery.message : String(recovery)}`); });
+    }
+    return resumed(() => {
+      throw new Error(`worktree: created worktree failed confinement; rollback refused; ${removed ? 'restored' : 'kept'} worktree ${created.path} and branch ${branch} for manual recovery: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }
+  resumed(() => { throw new Error('worktree: created worktree escaped confinement; creation rolled back'); });
 }
 
 /** The commits on `branch` that `base` does not have, newest first, as `<short sha> <subject>`. */
@@ -389,37 +462,50 @@ export type TaskWorktree = { item: string; branch: string; path: string; base: s
  * own (its `branch` field), else `t/<id>-<slug>`, started at `taskBase`'s tip. The worktree is linked to the
  * project's own repository (decision D3). Under the territory lock; rejects with a reason meant for the asker.
  */
-export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }): Promise<TaskWorktree> {
+export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }, resumed: <T>(work: () => T) => T = work => work()): Promise<TaskWorktree> {
   if (!(await hasTerritory(root))) throw new Error('the project has no territory (run cland init)');
   if (!/^T-\d+$/.test(item.id)) throw new Error(`not an item id: ${item.id}`);
   return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item.id);
-    const link = symlinkOnPath(root, path);
-    if (link !== null) throw new Error(`worktree: refusing symlink ${link}`);
-    let registered = (await worktrees(root)).find((w) => samePath(w.path, path));
+    await checkWorktreePath(root, path, resumed);
+    let registered = await findWorktree(root, path);
+    const present = await access(path).then(() => true, () => false);
     // a worktree whose folder was deleted by hand: Git forgets it before the path is used again
-    if (registered && !existsSync(path)) {
+    if (registered && !present) {
       await territoryGitAsync(root, ['worktree', 'prune']);
       registered = undefined;
     }
     if (registered) {
+      await checkWorktreePath(root, path, resumed);
+      if (!await worktreeConfined(root, path, resumed)) throw new Error('worktree: reused worktree failed confinement');
       if (registered.branch === null) throw new Error(`${path} is a worktree on a detached HEAD: check out its task branch there first`);
       if (item.branch !== null && item.branch !== registered.branch) throw new Error(`${path} holds branch ${registered.branch}, but ${item.id} names ${item.branch}`);
       return { item: item.id, branch: registered.branch, path, base: null, createdBranch: false, createdWorktree: false };
     }
-    if (existsSync(path)) throw new Error(`${path} exists and is not a worktree of this repository: move it aside`);
+    if (present) throw new Error(`${path} exists and is not a worktree of this repository: move it aside`);
     const branch = item.branch ?? `t/${item.id}${item.slug ? `-${item.slug}` : ''}`;
     if ((await maybeGitAsync(root, ['check-ref-format', '--branch', branch])) === null) throw new Error(`${JSON.stringify(branch)} is not a valid branch name`);
-    mkdirSync(worktreesPath(root), { recursive: true });
-    if ((await refAsync(root, `refs/heads/${branch}`)) !== null) {
+    const existingTip = await refAsync(root, `refs/heads/${branch}`);
+    if (existingTip !== null) {
+      await checkWorktreePath(root, path, resumed);
+      await mkdir(worktreesPath(root), { recursive: true });
+      await checkWorktreePath(root, path, resumed);
       await territoryGitAsync(root, ['worktree', 'add', path, branch]);
+      await verifyCreatedWorktree(root, path, branch, existingTip, false, resumed);
       return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true };
     }
     const base = await taskBase(root);
     if (base === null) throw new Error('neither dev nor main has a commit to start the task branch from');
-    await territoryGitAsync(root, ['worktree', 'add', '--no-track', '-b', branch, path, `refs/heads/${base}`]);
+    const createdTip = await refAsync(root, `refs/heads/${base}`);
+    if (createdTip === null) throw new Error(`${base} no longer has a commit to start the task branch from`);
+    await checkWorktreePath(root, path, resumed);
+    await mkdir(worktreesPath(root), { recursive: true });
+    await checkWorktreePath(root, path, resumed);
+    // Pin the creation tip: a later listing may already contain another writer's commit.
+    await territoryGitAsync(root, ['worktree', 'add', '--no-track', '-b', branch, path, createdTip]);
+    await verifyCreatedWorktree(root, path, branch, createdTip, true, resumed);
     return { item: item.id, branch, path, base, createdBranch: true, createdWorktree: true };
-  });
+  }, resumed);
 }
 
 /**
@@ -429,13 +515,16 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
  */
 /** Merged cleanup may delete only this exact ref value; explicit human prune has no expected value. */
 export type ExpectedBranch = { branch: string; tip: string };
+/** Preparation may return a final containment/live check, run after the last path check and before Git. */
+type WorktreeValidation = () => void | Promise<void>;
+export type WorktreeCheck = () => void | WorktreeValidation | Promise<void | WorktreeValidation>;
 
-export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}, expected?: ExpectedBranch, resumed: <T>(work: () => T) => T = work => work()): Promise<{ path: string; branch: string | null }> {
+export async function removeTaskWorktree(root: string, item: string, check: WorktreeCheck = () => {}, expected?: ExpectedBranch, resumed: <T>(work: () => T) => T = work => work()): Promise<{ path: string; branch: string | null }> {
   return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item);
-    const listed = await worktrees(root);
+    const matched = await findWorktree(root, path);
     const { found, branch } = resumed(() => {
-      const found = listed.find(w => samePath(w.path, path));
+      const found = matched;
       if (!found && !expected) throw new Error(`${item} has no worktree`);
       if (found && expected && found.branch !== expected.branch) throw new Error(`${item}: worktree branch changed since merge`);
       const branch = found?.branch ?? expected?.branch ?? null;
@@ -443,15 +532,29 @@ export async function removeTaskWorktree(root: string, item: string, check: () =
       return { found, branch };
     });
     const tip = branch === null ? null : await refAsync(root, `refs/heads/${branch}`);
+    const identityRead = resumed(() => found ? stat(found.path) : null);
+    const identity = await identityRead;
     const gone = resumed(() => {
       if (expected && !found && tip === null) return true;
       if (expected && tip !== expected.tip) throw new Error(`${item}: branch moved since merge (${tip ?? 'none'}), kept`);
-      check();
       return false;
     });
     if (gone) return { path, branch };
-    if (found) await territoryGitAsync(root, ['worktree', 'remove', path]);
-    resumed(check);
+    await checkWorktreePath(root, path, resumed);
+    const validate = await resumed(check);
+    await checkWorktreePath(root, path, resumed);
+    const checking = resumed(() => found && identity ? stat(found.path) : null);
+    if (checking !== null && found && identity) {
+      const current = await checking;
+      const confined = await resumed(() => worktreeConfined(root, found.path, resumed));
+      resumed(() => {
+        if (current.dev !== identity.dev || current.ino !== identity.ino || !confined) throw new Error(`${item}: worktree identity or confinement changed during prune; kept`);
+      });
+    }
+    await resumed(() => validate?.());
+    if (found) await territoryGitAsync(root, ['worktree', 'remove', found.path]);
+    const validateBranch = await resumed(check);
+    await resumed(() => validateBranch?.());
     if (branch !== null && tip !== null) {
       if (expected) {
         try {
@@ -461,7 +564,11 @@ export async function removeTaskWorktree(root: string, item: string, check: () =
           const current = await refAsync(root, `refs/heads/${branch}`);
           if (current !== expected.tip) {
             // A writer moved the ref after the pre-removal check: preserve its branch and put its worktree back.
-            if (found) await territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', path, expected.tip] : ['worktree', 'add', path, branch]);
+            if (found) {
+              await checkWorktreePath(root, path, resumed);
+              await territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', path, expected.tip] : ['worktree', 'add', path, branch]);
+              await verifyCreatedWorktree(root, path, current === null ? null : branch, current ?? expected.tip, false, resumed);
+            }
             resumed(() => { throw new Error(`${item}: branch moved since merge (${current ?? 'none'}), kept`); });
           }
           throw err;
@@ -469,7 +576,7 @@ export async function removeTaskWorktree(root: string, item: string, check: () =
       } else await territoryGitAsync(root, ['branch', '-D', branch]);
     }
     return { path, branch };
-  });
+  }, resumed);
 }
 
 // ---------------------------------------------------------------- the squash gate's Git work (T-59, D2/D9)

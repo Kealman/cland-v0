@@ -79,7 +79,7 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed): Promise
 /** Remove recovery state only after the hub has recorded the successful result. */
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
-export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => string | null, resumed: Resumed, authorize: () => void): Promise<ReleaseResult> {
+export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void): Promise<ReleaseResult> {
   const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
   resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
   const state = await releaseState(root, resumed);
@@ -111,16 +111,24 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     throw new ReleaseError('release-behind', `github/main has commits dev lacks:\n${missing}\nrun \`cland sync\``);
   }
   const history = await git(root, ['log', '--reverse', '--format=%s%x00%(trailers:key=Item,valueonly)%x00%x1e', `${state.main}..${state.dev}`, '--']);
-  const { notes, preview } = resumed(() => {
+  const { items, other } = resumed(() => {
     if (state.main === state.dev) throw new ReleaseError('release-empty', 'nothing in main..dev to release');
-    const items: string[] = [], other: string[] = [];
+    const items: Array<{ id: string; subject: string }> = [], other: string[] = [];
     for (const message of history.split('\x1e').map(s => s.trim()).filter(Boolean)) {
       const [subject, trailers = ''] = message.split('\0');
       const ids = trailers.split('\n').map(s => s.trim()).filter(s => /^T-\d+$/.test(s));
-      if (ids.length) for (const id of ids) items.push(`${id} ${title(id) ?? subject!}`);
+      if (ids.length) for (const id of ids) items.push({ id, subject: subject! });
       else other.push(subject!);
     }
-    const notes = [...items, ...other].join('\n');
+    return { items, other };
+  });
+  const titled: string[] = [];
+  for (const item of items) {
+    const found = await title(item.id);
+    resumed(() => titled.push(`${item.id} ${found ?? item.subject}`));
+  }
+  const { notes, preview } = resumed(() => {
+    const notes = [...titled, ...other].join('\n');
     return { notes, preview: dryRun ? { version: name, commit: state.dev, notes, refs: [`${state.dev}:refs/heads/main`, `refs/tags/${name}:refs/tags/${name}`], dryRun } : null };
   });
   if (preview) return preview;
