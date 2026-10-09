@@ -18,7 +18,7 @@ import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type StateSignal } from './contract.ts';
+import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal } from './contract.ts';
 import { ProcessTable, processStarted } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText } from '../roles/clause.ts';
@@ -263,29 +263,32 @@ export class Sessions {
     this.#launching.set(request.name, []);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
     if (role !== null) this.#firstHello.set(request.name, { role, carried: clause !== null && adapter.clauseAtSpawn === true });
-    let early: SignalFrame[] = [];
-    let p: HarnessProcess;
+    const item = request.item ?? null;
+    let spawned: { process: HarnessProcess } | { error: unknown };
     try {
-      const item = request.item ?? null;
-      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy });
-      p = resumed(() => {
-        const recorded = { ...p, item, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
-        this.#table.put(recorded);
-        if (reservation) this.#core.launchSettled(request.name);
-        return recorded;
-      });
+      spawned = { process: await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }) };
     } catch (err) {
-      resumed(() => {
+      spawned = { error: err };
+    }
+    // Publication, cleanup, watch and replay form one continuous stretch after spawn settles.
+    return resumed(() => {
+      let early: SignalFrame[] = [];
+      let p: HarnessProcess;
+      try {
+        if ('error' in spawned) throw spawned.error;
+        const process = spawned.process;
+        p = { ...process, item, pidStarted: process.pidStarted ?? (process.pid !== null ? processStarted(process.pid) : null) };
+        this.#table.put(p);
+        if (reservation) this.#core.launchSettled(request.name);
+      } catch (err) {
         this.#earlyBridges.delete(request.name);
         this.#firstHello.delete(request.name);
         if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous);
         throw err;
-      });
-    } finally {
-      early = this.#launching.get(request.name) ?? [];
-      this.#launching.delete(request.name);
-    }
-    return resumed(() => {
+      } finally {
+        early = this.#launching.get(request.name) ?? [];
+        this.#launching.delete(request.name);
+      }
       this.#lastAt.delete(p.sessionId);
       this.#lastPush.delete(p.sessionId);
       adapter.watch(p);
@@ -325,15 +328,20 @@ export class Sessions {
     // the row as it is now, by the session's id: while the adapter works the session may rename itself (the
     // Coordinator does), and its row then stands under the new name
     const row = (): HarnessProcess => this.#table.bySessionId(p.sessionId) ?? p;
+    let resuming: Promise<ResumeResult>;
     if (relaunch && p.status === 'running') {
       await adapter.stop(p);
-      p = resumed(() => {
+      resuming = resumed(() => {
         this.#table.update(row().name, { status: 'stopped' });
         this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
-        return row();
+        p = row();
+        // The adapter's synchronous prefix belongs to this stretch, up to its next await.
+        return adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
       });
+    } else {
+      resuming = adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
     }
-    const r = await adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
+    const r = await resuming;
     return resumed(() => {
       if (!r.found) {
         if (p.status === 'running') this.#exited(p.sessionId, r.reason);

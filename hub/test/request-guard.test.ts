@@ -136,8 +136,8 @@ test('waiting for async Git is a slow-answer with its own counter, without a slo
 });
 
 
-for (const operation of ['launch', 'item-launch', 'stop', 'resume', 'relaunch'] as const) {
-  test(`session ${operation}: a 400 ms synchronous publication after an adapter await is timed once as resumed`, async (t) => {
+for (const aggregate of [false, true]) for (const operation of ['launch', 'item-launch', 'stop', 'resume', 'relaunch'] as const) {
+  test(`session ${operation}: ${aggregate ? '200 ms publication plus 200 ms lifecycle work' : '400 ms publication'} after an adapter await is timed once as resumed`, async (t) => {
     const root = await tempProject(t);
     const records: Array<Record<string, unknown>> = [];
     const tracker = operation === 'item-launch' ? new Tracker({ root, db: join(root, '.cland', 'hub.db') }) : undefined;
@@ -148,6 +148,11 @@ for (const operation of ['launch', 'item-launch', 'stop', 'resume', 'relaunch'] 
     const sessions = new Sessions({ core: hub.core, table, root });
     t.after(() => { sessions.close(); table.close(); });
     const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
+    const block = (ms: number) => {
+      const until = performance.now() + ms;
+      while (performance.now() < until) { /* deliberately slow synchronous work */ }
+    };
+    let nextPart = false;
     const adapter: HarnessAdapter = {
       harness: 'test',
       capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
@@ -156,12 +161,17 @@ for (const operation of ['launch', 'item-launch', 'stop', 'resume', 'relaunch'] 
         return { name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, pidStarted: null, harnessId: null, sessionId: 'test-session', harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' };
       },
       attachCommand: () => 'attach-test',
-      watch: () => {},
+      watch: () => { if (nextPart) { nextPart = false; block(200); } },
       inject: async () => {},
       confirm: () => {},
       interpret: () => ({}),
       stop: async () => { await wait(); },
-      resume: async (p) => { await wait(); return { found: true, process: { ...p, status: 'running' }, state: 'idle' }; },
+      resume: async (p) => {
+        // A relaunch reaches this synchronous prefix immediately after publishing its stopped row.
+        if (nextPart) { nextPart = false; block(200); }
+        await wait();
+        return { found: true, process: { ...p, status: 'running' }, state: 'idle' };
+      },
       close: () => {},
     };
     sessions.register(adapter);
@@ -173,12 +183,17 @@ for (const operation of ['launch', 'item-launch', 'stop', 'resume', 'relaunch'] 
     if (!launching) assert.equal((await ui.request(launch)).ok, true);
     records.length = 0;
     let publications = 0;
+    const afterPublication = () => { if (nextPart) { nextPart = false; block(200); } };
+    const unsubscribeState = hub.core.subscribe((event) => {
+      if (event.type === 'session.state') afterPublication();
+    });
+    t.after(unsubscribeState);
     const unsubscribe = hub.core.subscribe((event) => {
       if (event.type !== 'session.process') return;
       publications++;
       if (publications !== 1) return;
-      const until = performance.now() + 400;
-      while (performance.now() < until) { /* one deliberately slow synchronous subscriber */ }
+      block(aggregate ? 200 : 400);
+      nextPart = aggregate;
     });
     t.after(unsubscribe);
     const type = launching ? 'session.launch' : operation === 'stop' ? 'session.stop' : 'session.resume';
