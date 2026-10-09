@@ -1,11 +1,12 @@
 // The instructions every harness reads (spec 4.9, decision #17): `AGENTS.md` with cland's managed block, the
 // `@AGENTS.md` import in an existing `CLAUDE.md` (cland never creates one: its presence stops Claude Code from
 // reading `AGENTS.md`), and the `docs/agents/*` files the skills read. Their text is in `skills/templates/`.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MANAGED_BY } from '../project.ts';
 import { isManagedFile, readText, refuseSymlink, writeIfChanged, type Report } from './files.ts';
+import { territoryPath } from '../territory.ts';
 
 export const TEMPLATES = fileURLToPath(new URL('../../../skills/templates/', import.meta.url));
 
@@ -17,14 +18,18 @@ export const BLOCK_END = '<!-- cland:end -->';
 const BLOCK = /<!-- cland:begin\b[^\n]*-->\n[\s\S]*?<!-- cland:end -->/;
 
 /** The managed block of `AGENTS.md`, markers included. */
-export const agentsBlock = (): string => `${BLOCK_BEGIN}\n${readFileSync(join(TEMPLATES, 'AGENTS.block.md'), 'utf8').trimEnd()}\n${BLOCK_END}`;
+export const agentsBlock = (territory = false): string => {
+  let text = readFileSync(join(TEMPLATES, 'AGENTS.block.md'), 'utf8').trimEnd();
+  if (territory) text = text.replace(/- \*\*Push to GitHub[^\n]*/, '- **Only cland release pushes to GitHub:** only `cland release` pushes to `github`. Commit on your task branch; push it to the local territory (`origin`). Task work reaches `dev` through `cland merge`; `main` moves through `cland release` and `cland sync`.');
+  return `${BLOCK_BEGIN}\n${text}\n${BLOCK_END}`;
+};
 
 /** `AGENTS.md`: the block written in place, appended to a file without it, or the whole file when there is none. */
 export function provisionAgentsMd(report: Report, root: string): void {
   const path = join(root, 'AGENTS.md');
   if (refuseSymlink(report, path)) return;
   const current = readText(path);
-  const block = agentsBlock();
+  const block = agentsBlock(existsSync(territoryPath(root)));
   if (current === null) return writeIfChanged(report, path, `${block}\n`, null);
   if (BLOCK.test(current)) return writeIfChanged(report, path, current.replace(BLOCK, () => block), current);
   if (current.includes('<!-- cland:begin')) {
