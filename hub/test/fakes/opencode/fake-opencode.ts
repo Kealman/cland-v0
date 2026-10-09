@@ -15,6 +15,9 @@
 //       GET  /api/session/{id}/form, POST …/form/{frm}/reply, DELETE …/form/{frm}
 //       GET  /api/model                         one paid model and one free (`opencode/fake-free`); none in the
 //                                               first 400 ms, as a real server's catalog loads after it listens
+//                                               FAKE_OPENCODE_STAGED_CATALOG=1: three partial OpenRouter lists,
+//                                               then the full catalog with OpenCode Zen's big-pickle
+//                                               FAKE_OPENCODE_CHANGING_CATALOG=1: a changing list without Zen
 //   opencode --server <url> --session <id> [dir]  the TUI: prints `fake opencode TUI on <url> session <id> (<title>) in <dir>`
 //                                                 (dir: the argument, else its cwd).
 //
@@ -104,6 +107,7 @@ async function serve(args: string[]): Promise<number> {
   const password = process.env.OPENCODE_PASSWORD ?? '';
   const config = process.env.OPENCODE_CONFIG ? readJson<{ mcp?: { servers?: Record<string, McpServer> } }>(process.env.OPENCODE_CONFIG) : null;
   const turnMs = Number(process.env.FAKE_OPENCODE_TURN_MS ?? 300);
+  let catalogRequests = 0;
   const log = (line: string) => appendFileSync(join(HOME, `server-${process.pid}.log`), `${new Date().toISOString()} ${line}\n`);
 
   // ---------------------------------------------------------------- events
@@ -242,6 +246,22 @@ async function serve(args: string[]): Promise<number> {
       }
       // like the real one, a fresh server lists no model until its catalog has loaded
       if (url.pathname === '/api/model' && method === 'GET' && Date.now() - started < 400) return send(res, 200, { data: [] });
+      if (url.pathname === '/api/model' && method === 'GET' && process.env.FAKE_OPENCODE_CHANGING_CATALOG) {
+        const request = ++catalogRequests;
+        send(res, 200, { data: [
+          { id: request === 1 ? 'first-free' : 'latest-free', providerID: 'openrouter', status: 'active', cost: [{ input: 0, output: 0 }] },
+          { id: `paid-${request}`, providerID: 'openrouter', status: 'active', cost: [{ input: 1, output: 4 }] },
+        ] });
+        log(`changing catalog ${request}`);
+        return;
+      }
+      // A cold catalog can list another provider before OpenCode Zen has loaded (T-52).
+      if (url.pathname === '/api/model' && method === 'GET' && process.env.FAKE_OPENCODE_STAGED_CATALOG) {
+        const partial = [{ id: 'inclusionai/ling-3.1-flash', providerID: 'openrouter', status: 'active', enabled: true, capabilities: { tools: true }, cost: [{ input: 0, output: 0 }] }];
+        return send(res, 200, { data: ++catalogRequests <= 3 ? partial : [...partial,
+          { id: 'big-pickle', providerID: 'opencode', status: 'active', enabled: true, capabilities: { tools: true }, cost: [{ input: 0, output: 0 }] },
+        ] });
+      }
       if (url.pathname === '/api/model' && method === 'GET')
         return send(res, 200, {
           data: [
