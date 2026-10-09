@@ -495,7 +495,7 @@ The project's `.cland/`:
 | `log/hub.log` | no | The background hub's stdout and stderr: the process log. |
 | `run/` | no | The Codex adapter's app-server sockets (`cx-<id>.sock`), while its sessions run. |
 | `journal.jsonl` | no | The journal (above): the domain events and the audit records, JSON lines, append-only across restarts. |
-| `artifacts/`, `worktrees/`, `territory.git/`, `territory.lock*` | no | Local artifacts/worktrees, the bare territory and its shared operation lock. |
+| `artifacts/`, `worktrees/`, `territory.git/`, `territory.lock*`, `scratch/` | no | Local artifacts/worktrees, the bare territory and its shared operation lock, and scratch projects agents make for real-harness runs. |
 
 `hub.json` records the hub's root so a copied discovery file still identifies the correct lock and cleanup paths. Older files without `root` remain readable; `hub stop` through an override needs a successful probe to learn their root before signaling or removing a socket. If that root cannot be verified, it leaves the socket alone.
 

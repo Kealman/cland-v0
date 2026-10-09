@@ -45,6 +45,7 @@ artifacts/
 worktrees/
 territory.git/
 territory.lock*
+scratch/
 *.tmp
 `;
 
