@@ -24,10 +24,12 @@
 // An approval a session does ask for stays in the attached TUI: the hub never answers a server request; it only
 // shows `waiting for approval`.
 // The process table keeps the socket as `harnessId` and the thread id as `harnessSessionId`.
+import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { execFile, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { access, open, readFile, realpath, rm, stat } from 'node:fs/promises';
+import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { turnError } from './turn-error.ts';
@@ -39,7 +41,7 @@ import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './co
 import { processAlive } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
 
-const untimed: Resumed = work => work();
+
 
 export const CODEX = 'codex';
 
@@ -142,34 +144,24 @@ export function mcpOverrides(host: Pick<AdapterHost, 'node' | 'spoke' | 'discove
 /** The name of the permissions profile a launch defines for its thread. */
 export const CLAND_PROFILE = 'cland';
 
-const real = (path: string): string => {
-  try {
-    return realpathSync(path);
-  } catch {
-    return path;
-  }
-};
-const isDir = (path: string): boolean => {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-};
+const real = (path: string, resumed: Resumed = untimed): Promise<string> => realpath(path).then(value => resumed(() => value), () => resumed(() => path));
+const isDir = (path: string, resumed: Resumed = untimed): Promise<boolean> => stat(path).then(info => resumed(() => info.isDirectory()), () => resumed(() => false));
 const under = (path: string, dir: string): boolean => path === dir || path.startsWith(dir + sep);
 
 /** The git directory a worktree's `.git` file points at, or null (a main worktree, or no repository). */
-function worktreeGitDir(cwd: string): string | null {
-  try {
-    const m = /^gitdir: (.+)$/m.exec(readFileSync(join(cwd, '.git'), 'utf8'));
-    return m ? real(isAbsolute(m[1] as string) ? (m[1] as string) : resolve(cwd, m[1] as string)) : null;
-  } catch {
-    return null;
-  }
+async function worktreeGitDir(cwd: string, resumed: Resumed = untimed): Promise<string | null> {
+  return continueWith((function* (): Generator<Promise<unknown>, string | null, unknown> {
+    try {
+      const m = /^gitdir: (.+)$/m.exec((yield* wait(readFile(join(cwd, '.git'), 'utf8'))));
+      return m ? yield* wait(real(isAbsolute(m[1] as string) ? (m[1] as string) : resolve(cwd, m[1] as string), resumed)) : null;
+    } catch {
+      return null;
+    }
+  })(), resumed);
 }
 
 /** Where the app-servers' sockets live when the project's `.cland/run/` is too deep for a Unix socket path. */
-const tmpRunDir = (): string => join(real(tmpdir()), 'cland-run');
+const tmpRunDir = (resumed: Resumed = untimed): Promise<string> => real(tmpdir(), resumed).then(path => resumed(() => join(path, 'cland-run')));
 
 /** A value as TOML, for a `-c key=value` override: JSON's strings, numbers, booleans and arrays are TOML's; an object is an inline table. */
 const toml = (v: unknown): string => {
@@ -199,39 +191,49 @@ export type ThreadPolicy = { thread: { approvalPolicy: string; permissions?: str
  *               one of them takes `command/exec` under any profile, which would be a way out of the sandbox.
  *               `full`: the whole network, the proxy off.
  */
-export function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: string, policy: LaunchPolicy): ThreadPolicy {
-  const approvalPolicy = policy.approval ?? 'never';
-  const box = policy.sandbox;
-  if (!box) return { thread: { approvalPolicy }, overrides: [] };
-  if (box.mode === 'danger-full-access') return { thread: { approvalPolicy, permissions: ':danger-full-access' }, overrides: [] };
-  const base = box.mode === 'read-only' ? ':read-only' : ':workspace';
-  if (box.writableRoots.length === 0 && box.network === 'none') return { thread: { approvalPolicy, permissions: base }, overrides: [] };
-  const filesystem: Record<string, string> = {};
-  const gitDirs: string[] = [];
-  for (const root of box.writableRoots.map(real)) {
-    filesystem[root] = 'write';
-    const git = join(root, '.git');
-    if (isDir(git)) gitDirs.push(git);
-  }
-  const own = worktreeGitDir(cwd);
-  for (const git of gitDirs) filesystem[git] = 'write';
-  if (own !== null && gitDirs.some((git) => under(own, git))) filesystem[own] = 'write';
-  let network: Record<string, unknown> | null = null;
-  if (box.network === 'local') {
-    const cland = real(dirname(host.discoveryFile));
-    const unix_sockets: Record<string, string> = { [cland]: 'allow', [real(cwd)]: 'allow', [real(tmpdir())]: 'allow', [join(cland, 'run')]: 'deny', [tmpRunDir()]: 'deny' };
-    network = { enabled: true, allow_local_binding: true, unix_sockets };
-  } else if (box.network === 'full') network = { enabled: true };
-  const profile = { extends: base, ...(Object.keys(filesystem).length ? { filesystem } : {}), ...(network ? { network } : {}) };
-  return {
-    thread: { approvalPolicy, permissions: CLAND_PROFILE },
-    overrides: [
-      // Codex wants a default beside any profile it is given; the thread names the same one
-      `default_permissions=${toml(CLAND_PROFILE)}`,
-      `permissions.${CLAND_PROFILE}=${toml(profile)}`,
-      ...(network ? [`features.network_proxy=${toml(box.network === 'local')}`] : []),
-    ],
-  };
+export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: string, policy: LaunchPolicy, resumed: Resumed = untimed): Promise<ThreadPolicy> {
+  return continueWith((function* (): Generator<Promise<unknown>, ThreadPolicy, unknown> {
+    const approvalPolicy = policy.approval ?? 'never';
+    const box = policy.sandbox;
+    if (!box)
+      return { thread: { approvalPolicy }, overrides: [] };
+    if (box.mode === 'danger-full-access')
+      return { thread: { approvalPolicy, permissions: ':danger-full-access' }, overrides: [] };
+    const base = box.mode === 'read-only' ? ':read-only' : ':workspace';
+    if (box.writableRoots.length === 0 && box.network === 'none')
+      return { thread: { approvalPolicy, permissions: base }, overrides: [] };
+    const filesystem: Record<string, string> = {};
+    const gitDirs: string[] = [];
+    for (const root of yield* wait(Promise.all(box.writableRoots.map(root => real(root, resumed))))) {
+      filesystem[root] = 'write';
+      const git = join(root, '.git');
+      if (yield* wait(isDir(git, resumed)))
+        gitDirs.push(git);
+    }
+    const own = yield* wait(worktreeGitDir(cwd, resumed));
+    for (const git of gitDirs)
+      filesystem[git] = 'write';
+    if (own !== null && gitDirs.some((git) => under(own, git)))
+      filesystem[own] = 'write';
+    let network: Record<string, unknown> | null = null;
+    if (box.network === 'local') {
+      const cland = yield* wait(real(dirname(host.discoveryFile), resumed));
+      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed))]: 'allow', [yield* wait(real(tmpdir(), resumed))]: 'allow', [join(cland, 'run')]: 'deny', [yield* wait(tmpRunDir(resumed))]: 'deny' };
+      network = { enabled: true, allow_local_binding: true, unix_sockets };
+    }
+    else if (box.network === 'full')
+      network = { enabled: true };
+    const profile = { extends: base, ...(Object.keys(filesystem).length ? { filesystem } : {}), ...(network ? { network } : {}) };
+    return {
+      thread: { approvalPolicy, permissions: CLAND_PROFILE },
+      overrides: [
+        // Codex wants a default beside any profile it is given; the thread names the same one
+        `default_permissions=${toml(CLAND_PROFILE)}`,
+        `permissions.${CLAND_PROFILE}=${toml(profile)}`,
+        ...(network ? [`features.network_proxy=${toml(box.network === 'local')}`] : []),
+      ],
+    };
+  })(), resumed);
 }
 
 export type CodexOptions = {
@@ -289,6 +291,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly capabilities = CODEX_CAPABILITIES;
   readonly clauseAtSpawn = true;
   readonly #host: AdapterHost;
+  readonly #recoveries: FailedLaunches;
   readonly #bin: string;
   readonly #pollMs: number;
   readonly #stopGraceMs: number;
@@ -310,11 +313,13 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #earlyFailures = new Map<string, string[]>();
   #timer: NodeJS.Timeout | null = null;
   #versionChecked = false;
+  #tmpRun = join(tmpdir(), 'cland-run');
   #closed = false;
   readonly #stopping = new Set<string>();
 
   constructor(host: AdapterHost, options: CodexOptions = {}) {
     this.#host = host;
+    this.#recoveries = new FailedLaunches(host.log);
     this.#bin = options.bin ?? process.env.CLAND_CODEX_BIN ?? 'codex';
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
@@ -327,16 +332,18 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- the app-server process
 
-  async #checkVersion(cwd: string): Promise<void> {
-    if (this.#versionChecked) return;
-    const out = await new Promise<string>((resolve, reject) =>
-      execFile(this.#bin, ['--version'], { cwd, env: this.#env, encoding: 'utf8', timeout: 15_000 }, (err, stdout) => (err ? reject(new Error(`${this.#bin} --version: ${err.message}`)) : resolve(stdout))),
-    );
-    const v = /(\d+)\.(\d+)\.(\d+)/.exec(out);
-    const [a, b, c] = MIN_CODEX_VERSION;
-    const n = v ? [Number(v[1]), Number(v[2]), Number(v[3])] : null;
-    if (!n || n[0]! < a || (n[0] === a && (n[1]! < b || (n[1] === b && n[2]! < c)))) throw new Error(`Codex ${MIN_CODEX_VERSION.join('.')} or newer is needed (the app-server's toolOutput turns); found: ${out.trim() || 'nothing'}`);
-    this.#versionChecked = true;
+  async #checkVersion(cwd: string, resumed: Resumed = untimed): Promise<void> {
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, void, unknown> {
+      if (this.#versionChecked)
+        return;
+      const out = yield* wait(new Promise<string>((resolve, reject) => execFile(this.#bin, ['--version'], { cwd, env: this.#env, encoding: 'utf8', timeout: 15000 }, (err, stdout) => (err ? reject(new Error(`${this.#bin} --version: ${err.message}`)) : resolve(stdout)))));
+      const v = /(\d+)\.(\d+)\.(\d+)/.exec(out);
+      const [a, b, c] = MIN_CODEX_VERSION;
+      const n = v ? [Number(v[1]), Number(v[2]), Number(v[3])] : null;
+      if (!n || n[0]! < a || (n[0] === a && (n[1]! < b || (n[1] === b && n[2]! < c))))
+        throw new Error(`Codex ${MIN_CODEX_VERSION.join('.')} or newer is needed (the app-server's toolOutput turns); found: ${out.trim() || 'nothing'}`);
+      this.#versionChecked = true;
+    }).call(this), resumed);
   }
 
   /** The session's socket: in `.cland/run/`, or in the temp directory's `cland-run/` when that path is too long for
@@ -345,54 +352,62 @@ export class CodexAdapter implements HarnessAdapter {
     const file = `cx-${sessionId.replace(/-/g, '').slice(0, 12)}.sock`;
     const inProject = join(dirname(this.#host.discoveryFile), 'run', file);
     // sun_path is 104 bytes on macOS, 108 on Linux
-    return Buffer.byteLength(inProject) <= 100 ? inProject : join(tmpRunDir(), file);
+    return Buffer.byteLength(inProject) <= 100 ? inProject : join(this.#tmpRun, file);
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[]): Promise<{ pid: number; client: AppServerClient }> {
-    mkdirSync(dirname(socket), { recursive: true, mode: 0o700 });
-    rmSync(socket, { force: true });
-    const logDir = join(dirname(this.#host.discoveryFile), 'log');
-    mkdirSync(logDir, { recursive: true });
-    const logFile = join(logDir, `codex-${p.name}.log`);
-    const out = openSync(logFile, 'a');
-    const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(this.#host, p.name, p.role, p.sessionId), ...overrides.flatMap((o) => ['-c', o])];
-    let exited: string | null = null;
-    let pid: number | undefined;
-    try {
-      // detached, in its own process group: it outlives the hub, and its MCP children (the spoke) go with it
-      // the session's shell inherits the app-server's environment: `cland` run there acts as the session, not as the
-      // human, and `node` is the hub's own, whatever else the PATH holds (a Node outside the engines range fails the suite)
-      const env = {
-        ...this.#env,
-        PATH: [dirname(this.#host.node), this.#env.PATH].filter(Boolean).join(delimiter),
-        CLAND_SESSION_ID: p.sessionId,
-        CLAND_SESSION_NAME: p.name,
-        ...(p.role ? { CLAND_ROLE: p.role } : {}),
-      };
-      const child = spawn(this.#bin, args, { cwd: p.cwd, env, detached: true, stdio: ['ignore', out, out] });
-      child.once('exit', (code, signal) => (exited = `exited (${code ?? signal})`));
-      child.once('error', (err) => (exited = err.message));
-      child.unref();
-      pid = child.pid;
-    } finally {
-      closeSync(out);
-    }
-    this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, pid: pid ?? null, socket });
-    const deadline = Date.now() + this.#spawnDeadlineMs;
-    for (;;) {
-      if (exited !== null || pid === undefined) throw new Error(`codex app-server ${exited ?? 'did not start'}: ${tail(logFile)}`);
+  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed): Promise<{ pid: number; client: AppServerClient }> {
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
+      pid: number;
+      client: AppServerClient;
+    }, unknown> {
+      yield* wait(files.directory(dirname(socket), 0o700));
+      yield* wait(rm(socket, { force: true }));
+      files.removeOnFailure(socket);
+      const logDir = join(dirname(this.#host.discoveryFile), 'log');
+      yield* wait(files.directory(logDir));
+      const logFile = join(logDir, `codex-${p.name}.log`);
+      yield* wait(files.file(logFile, true));
+      const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(this.#host, p.name, p.role, p.sessionId), ...overrides.flatMap((o) => ['-c', o])];
+      const out = yield* wait(open(logFile, 'a'));
+      let exited: string | null = null;
+      let pid: number | undefined;
       try {
-        const client = await this.#connectTo(socket);
-        return { pid, client };
-      } catch (err) {
-        if (Date.now() > deadline) {
-          if (pidAlive(pid)) process.kill(pid, 'SIGTERM');
-          throw new Error(`codex app-server did not answer on ${socket} within ${this.#spawnDeadlineMs} ms (${err instanceof Error ? err.message : String(err)}): ${tail(logFile)}`);
-        }
-        await sleep(100);
+        // detached, in its own process group: it outlives the hub, and its MCP children (the spoke) go with it
+        // the session's shell inherits the app-server's environment: `cland` run there acts as the session, not as the
+        // human, and `node` is the hub's own, whatever else the PATH holds (a Node outside the engines range fails the suite)
+        const env = {
+          ...this.#env,
+          PATH: [dirname(this.#host.node), this.#env.PATH].filter(Boolean).join(delimiter),
+          CLAND_SESSION_ID: p.sessionId,
+          CLAND_SESSION_NAME: p.name,
+          ...(p.role ? { CLAND_ROLE: p.role } : {}),
+        };
+        const child = spawn(this.#bin, args, { cwd: p.cwd, env, detached: true, stdio: ['ignore', out.fd, out.fd] });
+        child.once('exit', (code, signal) => (exited = `exited (${code ?? signal})`));
+        child.once('error', (err) => (exited = err.message));
+        child.unref();
+        files.child(child, this.#host.log, this.#stopGraceMs);
+        pid = child.pid;
+      } finally {
+        yield* wait(out.close());
       }
-    }
+      this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, pid: pid ?? null, socket });
+      const deadline = Date.now() + this.#spawnDeadlineMs;
+      for (;;) {
+        if (exited !== null || pid === undefined)
+          throw new Error(`codex app-server ${exited ?? 'did not start'}: ${yield* wait(tail(logFile, resumed))}`);
+        try {
+          const client = yield* wait(this.#connectTo(socket));
+          return { pid, client };
+        } catch (err) {
+          if (Date.now() > deadline) {
+            throw new Error(`codex app-server did not answer on ${socket} within ${this.#spawnDeadlineMs} ms (${err instanceof Error ? err.message : String(err)}): ${yield* wait(tail(logFile, resumed))}`);
+          }
+          yield* wait(sleep(100));
+        }
+      }
+    }).call(this), resumed);
   }
 
   #connectTo(socket: string): Promise<AppServerClient> {
@@ -494,17 +509,23 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Subscribe a fresh connection to the thread: `thread/resume` (which needs a rollout), else `thread/read`. */
-  async #subscribe(live: Live, client: AppServerClient, extra: Record<string, unknown> = {}): Promise<{ state: SessionState; model: string | null }> {
-    const threadId = live.p.harnessSessionId as string;
-    try {
-      const r = await client.request<ThreadResult>('thread/resume', { threadId, ...extra });
-      return { state: stateOfStatus(r.thread.status), model: r.model ?? r.thread.model ?? null };
-    } catch (err) {
-      if (!(err instanceof RpcError) || Object.keys(extra).length) throw err;
-      // a thread with no turn yet has no rollout: still loaded, and its status is broadcast to every connection
-      const r = await client.request<ThreadResult>('thread/read', { threadId });
-      return { state: stateOfStatus(r.thread.status), model: r.thread.model ?? null };
-    }
+  async #subscribe(live: Live, client: AppServerClient, extra: Record<string, unknown> = {}, resumed: Resumed = untimed): Promise<{ state: SessionState; model: string | null }> {
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
+      state: SessionState;
+      model: string | null;
+    }, unknown> {
+      const threadId = live.p.harnessSessionId as string;
+      try {
+        const r = (yield* wait(client.request<ThreadResult>('thread/resume', { threadId, ...extra })));
+        return { state: stateOfStatus(r.thread.status), model: r.model ?? r.thread.model ?? null };
+      } catch (err) {
+        if (!(err instanceof RpcError) || Object.keys(extra).length)
+          throw err;
+        // a thread with no turn yet has no rollout: still loaded, and its status is broadcast to every connection
+        const r = (yield* wait(client.request<ThreadResult>('thread/read', { threadId })));
+        return { state: stateOfStatus(r.thread.status), model: r.thread.model ?? null };
+      }
+    }).call(this), resumed);
   }
 
   #gone(live: Live, detail: string): void {
@@ -517,53 +538,70 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- launch
 
-  async spawn(request: SpawnRequest): Promise<HarnessProcess> {
-    await this.#checkVersion(request.cwd);
-    const sessionId = randomUUID();
-    const socket = this.#socketPath(sessionId);
-    const base = { name: request.name, role: request.role, sessionId, cwd: request.cwd };
-    const policy = this.#threadPolicy(request.cwd, request);
-    const { pid, client } = await this.#startServer(base, socket, policy.overrides);
-    try {
-      const started = await client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread });
-      const threadId = started.thread.id;
-      const p: HarnessProcess = {
-        ...base,
-        harness: this.harness,
-        model: started.model ?? started.thread.model ?? request.model,
-        pid,
-        harnessId: socket,
-        harnessSessionId: threadId,
-        startedAt: new Date().toISOString(),
-        status: 'running',
-      };
-      const live: Live = { p, client: null, connecting: null, state: stateOfStatus(started.thread.status), turnId: null, tokens: null, rateLimits: null };
-      this.#live.set(sessionId, live);
-      this.#attach(live, client);
-      void this.#readRateLimits(live);
-      // the first turn carries the clause: the thread gets its rollout, so attach and resume work
-      // the launch's effort (roles.toml) rides on the first turn: `turn/start` takes it for this turn and the next ones
-      const turn = await client.request<{ turn?: { id?: string } }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause), text_elements: [] }], ...(request.effort ? { effort: request.effort } : {}) });
-      // the turn is accepted: the thread is active, though its `thread/status/changed` may come after this result
-      // (seen with 0.160.0); a launch never reports the idle that preceded the clause turn
-      if (typeof turn.turn?.id === 'string') live.turnId ??= turn.turn.id;
-      if (live.state === 'idle') live.state = 'busy';
-      this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
-      return p;
-    } catch (err) {
-      client.close();
-      this.#live.delete(sessionId);
-      if (pidAlive(pid)) process.kill(pid, 'SIGTERM');
-      rmSync(socket, { force: true });
-      throw err;
-    }
+  async spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
+      this.#recoveries.assertAvailable(request.name);
+      yield* wait(this.#checkVersion(request.cwd, resumed));
+      const files = new LaunchFiles(resumed);
+      const sessionId = randomUUID();
+      this.#tmpRun = yield* wait(tmpRunDir(resumed));
+      const socket = this.#socketPath(sessionId);
+      const base = { name: request.name, role: request.role, sessionId, cwd: request.cwd };
+      let pid: number | undefined;
+      let client: AppServerClient | undefined;
+      try {
+        const policy = yield* wait(this.#threadPolicy(request.cwd, request, files, resumed));
+        ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed)));
+        const started = yield* wait(client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread }));
+        const threadId = started.thread.id;
+        const p: HarnessProcess = {
+          ...base,
+          harness: this.harness,
+          model: started.model ?? started.thread.model ?? request.model,
+          pid,
+          harnessId: socket,
+          harnessSessionId: threadId,
+          startedAt: new Date().toISOString(),
+          status: 'running',
+        };
+        const live: Live = { p, client: null, connecting: null, state: stateOfStatus(started.thread.status), turnId: null, tokens: null, rateLimits: null };
+        this.#live.set(sessionId, live);
+        this.#attach(live, client);
+        void this.#readRateLimits(live);
+        // the first turn carries the clause: the thread gets its rollout, so attach and resume work
+        // the launch's effort (roles.toml) rides on the first turn: `turn/start` takes it for this turn and the next ones
+        const turn = yield* wait(client.request<{
+          turn?: {
+            id?: string;
+          };
+        }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause), text_elements: [] }], ...(request.effort ? { effort: request.effort } : {}) }));
+        // the turn is accepted: the thread is active, though its `thread/status/changed` may come after this result
+        // (seen with 0.160.0); a launch never reports the idle that preceded the clause turn
+        if (typeof turn.turn?.id === 'string')
+          live.turnId ??= turn.turn.id;
+        if (live.state === 'idle')
+          live.state = 'busy';
+        this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
+        files.commit();
+        return p;
+      } catch (err) {
+        return yield* wait(this.#recoveries.failed(sessionId, request.name, files, err, () => {
+          client?.close();
+          this.#live.delete(sessionId);
+        }));
+      }
+    }).call(this), resumed);
   }
 
   /** The launch's settings for Codex; the directories the sandbox denies sockets in exist first (Codex ignores a
    *  socket path it cannot normalize, and a deny that is ignored is a hole). */
-  #threadPolicy(cwd: string, policy: LaunchPolicy): ThreadPolicy {
-    if (policy.sandbox?.network === 'local') for (const dir of [join(dirname(this.#host.discoveryFile), 'run'), tmpRunDir()]) mkdirSync(dir, { recursive: true, mode: 0o700 });
-    return threadPolicy(this.#host, cwd, policy);
+  async #threadPolicy(cwd: string, policy: LaunchPolicy, files: LaunchFiles, resumed: Resumed = untimed): Promise<ThreadPolicy> {
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ThreadPolicy, unknown> {
+      if (policy.sandbox?.network === 'local')
+        for (const dir of [join(dirname(this.#host.discoveryFile), 'run'), yield* wait(tmpRunDir(resumed))])
+          yield* wait(files.directory(dir, 0o700));
+      return yield* wait(threadPolicy(this.#host, cwd, policy, resumed));
+    }).call(this), resumed);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -845,57 +883,72 @@ export class CodexAdapter implements HarnessAdapter {
           const live = this.#live.get(p.sessionId);
           live?.client?.close();
           this.#live.delete(p.sessionId);
-          if (p.harnessId) rmSync(p.harnessId, { force: true });
         }
         this.#stopping.delete(p.sessionId);
       });
+      if (ended && p.harnessId) await rm(p.harnessId, { force: true });
     }
   }
 
   async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
-    const socket = p.harnessId ?? this.#socketPath(p.sessionId);
-    if (!p.harnessSessionId) return { found: false, reason: 'no thread id recorded' };
-    const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
-    live.p = p;
-    this.#live.set(p.sessionId, live);
-    if (await processAlive(p, options.resumed) && existsSync(socket)) {
-      let client: AppServerClient | null = null;
-      try {
-        client = await this.#connectTo(socket);
-        live.client?.close();
-        this.#attach(live, client);
-        const r = await this.#subscribe(live, client);
-        live.state = r.state;
-        void this.#readRateLimits(live);
-        return { found: true, process: { ...p, harnessId: socket, model: r.model ?? p.model, status: 'running' }, state: r.state };
-      } catch (err) {
-        client?.close();
-        if (!options.relaunch) return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}` };
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
+      const resumed = options.resumed ?? untimed;
+      this.#recoveries.assertAvailable(p.name, p.sessionId);
+      if (!p.harnessId)
+        this.#tmpRun = yield* wait(tmpRunDir(resumed));
+      const socket = p.harnessId ?? this.#socketPath(p.sessionId);
+      if (!p.harnessSessionId)
+        return { found: false, reason: 'no thread id recorded' };
+      const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
+      live.p = p;
+      this.#live.set(p.sessionId, live);
+      if ((yield* wait(processAlive(p, options.resumed))) && (yield* wait(access(socket).then(() => true, () => false)))) {
+        let client: AppServerClient | null = null;
+        try {
+          client = yield* wait(this.#connectTo(socket));
+          live.client?.close();
+          this.#attach(live, client);
+          const r = yield* wait(this.#subscribe(live, client, {}, resumed));
+          live.state = r.state;
+          void this.#readRateLimits(live);
+          return { found: true, process: { ...p, harnessId: socket, model: r.model ?? p.model, status: 'running' }, state: r.state };
+        } catch (err) {
+          client?.close();
+          if (!options.relaunch)
+            return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}` };
+        }
       }
-    } else if (!options.relaunch) {
-      return { found: false, reason: await processAlive(p, options.resumed) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
-    }
-    await this.stop(p, options.resumed);
-    this.#live.set(p.sessionId, live);
-    // a new app-server on the same socket, resuming the thread from its rollout
-    const policy = this.#threadPolicy(p.cwd, options.policy ?? {});
-    const { pid, client } = await this.#startServer(p, socket, policy.overrides);
-    try {
-      this.#attach(live, client);
-      const r = await this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread });
-      live.state = r.state;
-      const relaunched: HarnessProcess = { ...p, pid, harnessId: socket, model: r.model ?? p.model, startedAt: new Date().toISOString(), status: 'running' };
-      live.p = relaunched;
-      this.#host.log({ event: 'harness-relaunched', harness: this.harness, session: p.name, pid, thread: p.harnessSessionId });
-      return { found: true, process: relaunched, state: r.state };
-    } catch (err) {
-      client.close();
-      if (pidAlive(pid)) process.kill(pid, 'SIGTERM');
-      throw err;
-    }
+      else if (!options.relaunch) {
+        return { found: false, reason: (yield* wait(processAlive(p, options.resumed))) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
+      }
+      yield* wait(this.stop(p, options.resumed));
+      this.#live.set(p.sessionId, live);
+      // a new app-server on the same socket, resuming the thread from its rollout
+      const files = new LaunchFiles(resumed);
+      let pid: number | undefined;
+      let client: AppServerClient | undefined;
+      try {
+        const policy = yield* wait(this.#threadPolicy(p.cwd, options.policy ?? {}, files, resumed));
+        ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed)));
+        this.#attach(live, client);
+        const r = yield* wait(this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread }, resumed));
+        live.state = r.state;
+        const relaunched: HarnessProcess = { ...p, pid, harnessId: socket, model: r.model ?? p.model, startedAt: new Date().toISOString(), status: 'running' };
+        live.p = relaunched;
+        this.#host.log({ event: 'harness-relaunched', harness: this.harness, session: p.name, pid, thread: p.harnessSessionId });
+        files.commit();
+        return { found: true, process: relaunched, state: r.state };
+      } catch (err) {
+        return yield* wait(this.#recoveries.failed(p.sessionId, p.name, files, err, () => {
+          client?.close();
+          this.#live.delete(p.sessionId);
+        }));
+      }
+    }).call(this), options.resumed ?? untimed);
   }
 
   close(): void {
+    this.#recoveries.close();
     this.#admissions.clear();
     this.#completedTurns.clear();
     this.#turnInputs.clear();
@@ -912,10 +965,12 @@ export class CodexAdapter implements HarnessAdapter {
 }
 
 /** The end of a log file, for an error message. */
-function tail(file: string): string {
-  try {
-    return readFileSync(file, 'utf8').trim().split('\n').slice(-5).join(' | ').slice(-800) || '(no output)';
-  } catch {
-    return '(no output)';
-  }
+async function tail(file: string, resumed: Resumed = untimed): Promise<string> {
+  return continueWith((function* (): Generator<Promise<unknown>, string, unknown> {
+    try {
+      return ((yield* wait(readFile(file, 'utf8')))).trim().split('\n').slice(-5).join(' | ').slice(-800) || '(no output)';
+    } catch {
+      return '(no output)';
+    }
+  })(), resumed);
 }

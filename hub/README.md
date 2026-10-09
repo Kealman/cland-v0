@@ -651,6 +651,8 @@ A turn that fails is reported separately from the session's idle state. OpenCode
 
 The capability table declares the optional capabilities (`history`, `usage`, `setModel`, `approvalRelay`) and each state signal as `reliable`, `heuristic` or `none`. What is `none` is never emulated. `session.list` returns every adapter's table.
 
+Failed-launch cleanup keeps resources and supervision until verified exit, but its pending ownership is currently in memory and is lost on hub restart; durable recovery is tracked in T-129.
+
 ### Session state
 
 `idle`, `busy`, `waiting for human`, `waiting for approval`, `unknown` (spec 4.2). Only adapters set it; the model's `status` tool sets the status line and never the state. Presence (`who`, `hub.status`) carries it, and subscribed clients get `session.state`. A session no adapter launched is `unknown`, and so is a launched one whose process died or was stopped.

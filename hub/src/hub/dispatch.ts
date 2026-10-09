@@ -798,7 +798,7 @@ export class Dispatcher {
                     try {
                       admission.validate();
                       return { type: 'result', id: frame.id, ok: true, value: assign() } as HubFrame;
-                    } finally { admission.release(); }
+                    } catch (err) { return Dispatcher.#failure(frame.id, err); } finally { admission.release(); }
                   });
                 } catch (err) {
                   return resumed(() => { admission.release(); return Dispatcher.#failure(frame.id, err); });

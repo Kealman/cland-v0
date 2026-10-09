@@ -142,7 +142,7 @@ export interface HarnessAdapter {
   /** The launch's first turn carries the role's clause (`SpawnRequest.clause`). */
   readonly clauseAtSpawn?: boolean;
   /** Launch a session; resolves once the harness process runs, with its process-table row. */
-  spawn(request: SpawnRequest): Promise<HarnessProcess>;
+  spawn(request: SpawnRequest, resumed?: Resumed): Promise<HarnessProcess>;
   /** The command a terminal runs to attach to the live session (a string, so a UI re-runs it intact). */
   attachCommand(process: HarnessProcess): string;
   /**

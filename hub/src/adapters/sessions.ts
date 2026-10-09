@@ -76,9 +76,22 @@ export class Sessions {
   readonly #unprocess: () => void;
   #closed = false;
   #resuming = 0;
+  readonly #lifecycle = new Map<string, Promise<void>>();
+
+  /** Reserve synchronously; queued operations re-read the row by its stable identity after admission. */
+  #lifecycleSlot(identity: string): { ready: Promise<void> | undefined; release: () => void } {
+    const ready = this.#lifecycle.get(identity);
+    let done!: () => void;
+    const tail = new Promise<void>(resolve => { done = resolve; });
+    this.#lifecycle.set(identity, tail);
+    return { ready, release: () => {
+      if (this.#lifecycle.get(identity) === tail) this.#lifecycle.delete(identity);
+      done();
+    } };
+  }
 
   /** The spawn-to-row gap is protected by these reservations, including relaunches. */
-  lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0; }
+  lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0; }
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -254,6 +267,7 @@ export class Sessions {
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     // Ticket every named role before I/O: even a nonexclusive cached definition may become exclusive at fresh.
     const admission = role !== null ? this.#core.admitRole(request.name, role) : null;
+    const slot = this.#lifecycleSlot(existing?.sessionId ?? `new:${request.name}`);
     let reservation: { previous: string | null } | null = null;
     const launching: SignalFrame[] = [];
     this.#launching.set(request.name, launching);
@@ -266,16 +280,23 @@ export class Sessions {
       admission?.release();
     };
     try {
-      if (this.#core.roles?.fresh) {
-        await this.#core.roles.fresh(resumed);
-        // Re-read the caller's grant against the fresh snapshot before starting cwd I/O.
-        resumed(() => {
-          try { authorize(); admission?.validate(); }
-          catch (err) { abort(); throw err; }
-        });
-      }
-      const cwd = resolve(this.#root, request.cwd ?? '.');
-      const info = await stat(cwd).catch(() => null);
+      if (slot.ready) await slot.ready;
+      if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+      const checking = resumed(() => {
+        try {
+          if (this.#closed) throw new Error('the hub is closing');
+          if (slot.ready) {
+            const current = this.#table.get(request.name);
+            if (current?.status === 'running' || (existing && current?.sessionId !== existing.sessionId)) throw new Error(`session "${request.name}" changed while waiting for its lifecycle slot`);
+          }
+          if (this.#core.roles?.fresh) { authorize(); admission?.validate(); }
+          const cwd = resolve(this.#root, request.cwd ?? '.');
+          return { cwd, info: stat(cwd) };
+        } catch (err) { abort(); throw err; }
+      });
+      const cwd = checking.cwd;
+      let info;
+      try { info = await checking.info; } catch { info = null; }
       return await resumed(() => {
         // Re-read the grant and exclusivity after stat, with refusal and rollback in this same timed stretch.
         try {
@@ -291,7 +312,7 @@ export class Sessions {
       // Await failures (fresh I/O or spawn preparation) resume here; synchronous refusals already rolled back.
       if (this.#launching.get(request.name) !== launching) throw err;
       return resumed(() => { abort(); throw err; });
-    }
+    } finally { resumed(() => slot.release()); }
   }
 
   async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null } | null, releaseAdmission: () => void): Promise<HarnessProcessView> {
@@ -309,7 +330,7 @@ export class Sessions {
     const item = request.item ?? null;
     let spawned: { process: HarnessProcess } | { error: unknown };
     try {
-      const process = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy });
+      const process = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed);
       const pidStarted = process.pidStarted ?? (process.pid !== null ? await processStarted(process.pid, undefined, resumed) : null);
       spawned = { process: { ...process, pidStarted } };
     } catch (err) {
@@ -353,33 +374,51 @@ export class Sessions {
     return this.adapter(p.harness).attachCommand(p);
   }
 
-  async stop(name: string, resumed: Resumed = untimed): Promise<HarnessProcessView> {
-    const p = this.#process(name);
-    await this.adapter(p.harness).stop(p, resumed);
-    return resumed(() => {
-      const current = this.#table.bySessionId(p.sessionId) ?? p;
-      this.#table.update(current.name, { status: 'stopped' });
-      this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
-      this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
-      this.#vacate(current, 'its session was stopped');
-      return this.view(this.#process(current.name));
-    });
+  async stop(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+    authorize();
+    const identity = this.#process(name).sessionId;
+    const slot = this.#lifecycleSlot(identity);
+    let released = false;
+    let p: HarnessProcess;
+    try {
+      if (slot.ready) await slot.ready;
+      await resumed(() => {
+        authorize();
+        const current = this.#table.bySessionId(identity);
+        if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        p = current;
+        return this.adapter(p.harness).stop(p, resumed);
+      });
+      return resumed(() => {
+        try {
+          const current = this.#table.bySessionId(p.sessionId) ?? p;
+          this.#table.update(current.name, { status: 'stopped' });
+          this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
+          this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
+          this.#vacate(current, 'its session was stopped');
+          return this.view(this.#process(current.name));
+        } finally { released = true; slot.release(); }
+      });
+    } finally { if (!released) resumed(() => slot.release()); }
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
-    if (relaunch && this.#core.roles?.fresh) {
-      await this.#core.roles.fresh(resumed);
-      return resumed(() => { authorize(); return this.#resumeTracked(name, relaunch, resumed); });
-    }
     authorize();
-    return this.#resumeTracked(name, relaunch, resumed);
-  }
-
-  async #resumeTracked(name: string, relaunch: boolean, resumed: Resumed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+    const identity = this.#process(name).sessionId;
+    const slot = this.#lifecycleSlot(identity);
     this.#resuming++;
-    try { return await this.#resume(name, relaunch, resumed); }
-    finally { resumed(() => this.#resuming--); }
+    try {
+      if (slot.ready) await slot.ready;
+      if (relaunch && this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+      return await resumed(() => {
+        if (this.#closed) throw new Error('the hub is closing');
+        authorize();
+        const current = this.#table.bySessionId(identity);
+        if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        return this.#resume(current.name, relaunch, resumed);
+      });
+    } finally { resumed(() => { this.#resuming--; slot.release(); }); }
   }
 
   async #resume(name: string, relaunch: boolean, resumed: Resumed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {

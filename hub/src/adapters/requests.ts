@@ -94,7 +94,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
       case 'session.stop':
-        return ok({ process: await sessions.stop(frame.session, resumed) });
+        return ok({ process: await sessions.stop(frame.session, resumed, authorize) });
       case 'session.resume':
         return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed, authorize));
       case 'session.retry':

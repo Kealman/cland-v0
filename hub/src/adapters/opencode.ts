@@ -18,9 +18,11 @@
 //   resume   the pid alive and the server answering for the recorded session; else, with `relaunch`, a new server
 //            on the same config and password, and the same session (OpenCode keeps sessions in its own database;
 //            a session it lost is created again under its id).
+import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
+import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { dirname } from 'node:path';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
@@ -31,7 +33,7 @@ import { SessionTracker, type Change } from './opencode/state.ts';
 import { processAlive } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
 
-const untimed: Resumed = work => work();
+
 
 export const OPENCODE = 'opencode';
 
@@ -88,6 +90,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly harness = OPENCODE;
   readonly capabilities = OPENCODE_CAPABILITIES;
   readonly #host: AdapterHost;
+  readonly #recoveries: FailedLaunches;
   readonly #bin: string;
   readonly #pollMs: number;
   readonly #stopGraceMs: number;
@@ -96,6 +99,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #env: NodeJS.ProcessEnv;
   readonly #clandDir: string;
   readonly #watched = new Map<string, Watch>();
+  readonly #watching = new Map<string, object>();
   readonly #usage = new Map<string, SessionUsage>();
   #timer: NodeJS.Timeout | null = null;
   #closed = false;
@@ -103,6 +107,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
+    this.#recoveries = new FailedLaunches(host.log);
     this.#bin = options.bin ?? process.env.CLAND_OPENCODE_BIN ?? 'opencode';
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
@@ -134,55 +139,69 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean): Promise<HarnessProcess> {
-    const files = this.#files(p.name);
-    const password = prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId), !relaunch);
-    const { pid, url } = await startServer({ bin: this.#bin, cwd: p.cwd, env: this.#env, files, password, deadlineMs: this.#spawnDeadlineMs });
-    const client = new OpenCodeClient(url, password);
-    try {
-      let model: ModelRef | null = p.model ? parseModel(p.model) : null;
-      let session = p.harnessSessionId ? await client.session(p.harnessSessionId) : null;
-      if (!session) {
-        if (!model) model = await this.#freeModel(client);
-        session = await client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd });
+  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed): Promise<HarnessProcess> {
+    return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
+      this.#recoveries.assertAvailable(p.name, p.sessionId);
+      const files = this.#files(p.name);
+      const transaction = new LaunchFiles(resumed);
+      let pid: number | undefined;
+      try {
+        const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
+        yield* wait(transaction.file(files.log, true));
+        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: this.#env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
+        pid = started.pid;
+        const { url } = started;
+        const client = new OpenCodeClient(url, password);
+        let model: ModelRef | null = p.model ? parseModel(p.model) : null;
+        let session = p.harnessSessionId ? yield* wait(client.session(p.harnessSessionId)) : null;
+        if (!session) {
+          if (!model)
+            model = yield* wait(this.#freeModel(client, resumed));
+          session = yield* wait(client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd }));
+        }
+        const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
+        this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, relaunch });
+        transaction.commit();
+        return { ...p, harness: this.harness, model: chosen ?? null, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
+      } catch (err) {
+        // a server whose session could not be made is of no use: it does not outlive the failed launch
+        return yield* wait(this.#recoveries.failed(p.sessionId, p.name, transaction, err, () => {}));
       }
-      const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
-      this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, relaunch });
-      return { ...p, harness: this.harness, model: chosen ?? null, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
-    } catch (err) {
-      // a server whose session could not be made is of no use: it does not outlive the failed launch
-      if (pidAlive(pid)) process.kill(pid, 'SIGTERM');
-      throw err;
-    }
+    }).call(this), resumed);
   }
 
   /** A cold catalog can be nonempty before Zen arrives. Choose a known-good model immediately; otherwise wait
    *  for a nonempty catalog to stay unchanged for 1 s, within a 10 s budget including requests and sleeps. */
-  async #freeModel(client: OpenCodeClient): Promise<ModelRef | null> {
-    const deadline = Date.now() + 10_000;
-    let catalog = '';
-    let stableSince = Date.now();
-    let choice: ModelRef | null = null;
-    while (Date.now() < deadline) {
-      const models = await client.models(Math.max(1, deadline - Date.now())).catch(() => null);
-      if (models) {
-        const current = JSON.stringify(models);
-        if (current !== catalog) {
-          catalog = current;
-          stableSince = Date.now();
+  async #freeModel(client: OpenCodeClient, resumed: Resumed = untimed): Promise<ModelRef | null> {
+    return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, ModelRef | null, unknown> {
+      const deadline = Date.now() + 10000;
+      let catalog = '';
+      let stableSince = Date.now();
+      let choice: ModelRef | null = null;
+      while (Date.now() < deadline) {
+        const models = yield* wait(client.models(Math.max(1, deadline - Date.now())).catch(() => null));
+        if (models) {
+          const current = JSON.stringify(models);
+          if (current !== catalog) {
+            catalog = current;
+            stableSince = Date.now();
+          }
+          choice = pickFreeModel(models);
+          if (choice && KNOWN_GOOD_FREE_MODELS.includes(formatModel(choice)))
+            return choice;
+          if (models.length && Date.now() - stableSince >= 1000)
+            return choice;
         }
-        choice = pickFreeModel(models);
-        if (choice && KNOWN_GOOD_FREE_MODELS.includes(formatModel(choice))) return choice;
-        if (models.length && Date.now() - stableSince >= 1000) return choice;
+        const remaining = deadline - Date.now();
+        if (remaining > 0)
+          yield* wait(new Promise((r) => setTimeout(r, Math.min(200, remaining))));
       }
-      const remaining = deadline - Date.now();
-      if (remaining > 0) await new Promise((r) => setTimeout(r, Math.min(200, remaining)));
-    }
-    return choice;
+      return choice;
+    }).call(this), resumed);
   }
 
-  spawn(request: SpawnRequest): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false);
+  spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
+    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, resumed);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -205,10 +224,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- inject
 
-  #client(p: HarnessProcess): OpenCodeClient {
+  async #client(p: HarnessProcess): Promise<OpenCodeClient> {
     const watched = this.#watched.get(p.sessionId);
     if (watched && watched.client.url === p.harnessId) return watched.client;
-    const password = readPassword(this.#files(p.name));
+    const password = await readPassword(this.#files(p.name));
     if (!p.harnessId || !password) throw new Error(`no server url or password recorded for ${p.name}`);
     return new OpenCodeClient(p.harnessId, password);
   }
@@ -218,7 +237,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     const tracker = this.#watched.get(p.sessionId)?.tracker;
     // during a turn the message steers it (at the next step boundary); otherwise it is queued as the next turn
     const delivery = tracker?.running ? 'steer' : 'queue';
-    const admitted = await this.#client(p).prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs);
+    const admitted = await (await this.#client(p)).prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs);
     if (!admitted?.id) throw new Error('the server admitted no inbox item');
     this.#host.log({ event: 'opencode-prompt', session: p.name, id: message.id, inbox: admitted.id, delivery });
   }
@@ -239,8 +258,15 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   watch(p: HarnessProcess): void {
     this.#unwatch(p.sessionId);
+    const ticket = {};
+    this.#watching.set(p.sessionId, ticket);
+    void this.#watch(p, ticket);
+  }
+
+  async #watch(p: HarnessProcess, ticket: object): Promise<void> {
     if (!p.harnessId || !p.harnessSessionId) return;
-    const password = readPassword(this.#files(p.name));
+    const password = await readPassword(this.#files(p.name));
+    if (this.#closed || this.#watching.get(p.sessionId) !== ticket) return;
     if (!password) {
       this.#host.log({ event: 'opencode-no-password', session: p.name });
       return;
@@ -333,6 +359,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #unwatch(sessionId: string): void {
+    this.#watching.delete(sessionId);
     const w = this.#watched.get(sessionId);
     if (w) {
       w.abort.abort();
@@ -361,35 +388,46 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   async resume(p: HarnessProcess, options: { relaunch?: boolean; resumed?: Resumed } = {}): Promise<ResumeResult> {
-    let reason: string;
-    if (!await processAlive(p, options.resumed)) reason = p.pid !== null && pidAlive(p.pid) ? `the server's pid ${p.pid} belongs to another process now` : `the server's pid ${p.pid ?? '?'} is gone`;
-    else if (!p.harnessId || !p.harnessSessionId) reason = 'no server url or session recorded';
-    else {
-      const password = readPassword(this.#files(p.name));
-      if (!password) reason = 'the server password file is gone';
+    return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
+      const resumed = options.resumed ?? untimed;
+      this.#recoveries.assertAvailable(p.name, p.sessionId);
+      let reason: string;
+      if (!(yield* wait(processAlive(p, options.resumed))))
+        reason = p.pid !== null && pidAlive(p.pid) ? `the server's pid ${p.pid} belongs to another process now` : `the server's pid ${p.pid ?? '?'} is gone`;
+      else if (!p.harnessId || !p.harnessSessionId)
+        reason = 'no server url or session recorded';
       else {
-        const client = new OpenCodeClient(p.harnessId, password);
-        try {
-          const session = await client.session(p.harnessSessionId);
-          if (session) {
-            const tracker = new SessionTracker(p.harnessSessionId);
-            tracker.reset(await client.snapshot(p.harnessSessionId));
-            return { found: true, process: { ...p, status: 'running' }, state: tracker.state() };
+        const password = yield* wait(readPassword(this.#files(p.name), resumed));
+        if (!password)
+          reason = 'the server password file is gone';
+        else {
+          const client = new OpenCodeClient(p.harnessId, password);
+          try {
+            const session = yield* wait(client.session(p.harnessSessionId));
+            if (session) {
+              const tracker = new SessionTracker(p.harnessSessionId);
+              tracker.reset(yield* wait(client.snapshot(p.harnessSessionId)));
+              return { found: true, process: { ...p, status: 'running' }, state: tracker.state() };
+            }
+            reason = `the server at ${p.harnessId} does not know session ${p.harnessSessionId}`;
           }
-          reason = `the server at ${p.harnessId} does not know session ${p.harnessSessionId}`;
-        } catch (err) {
-          reason = `the server at ${p.harnessId} does not answer: ${err instanceof Error ? err.message : String(err)}`;
+          catch (err) {
+            reason = `the server at ${p.harnessId} does not answer: ${err instanceof Error ? err.message : String(err)}`;
+          }
         }
       }
-    }
-    if (!options.relaunch) return { found: false, reason };
-    await this.stop(p, options.resumed);
-    const process_ = await this.#launch({ name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true);
-    return { found: true, process: process_, state: 'unknown' as SessionState };
+      if (!options.relaunch)
+        return { found: false, reason };
+      yield* wait(this.stop(p, options.resumed));
+      const process_ = yield* wait(this.#launch({ name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true, resumed));
+      return { found: true, process: process_, state: 'unknown' as SessionState };
+    }).call(this), options.resumed ?? untimed);
   }
 
   close(): void {
+    this.#recoveries.close();
     this.#closed = true;
+    this.#watching.clear();
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = null;
     for (const w of this.#watched.values()) w.abort.abort();

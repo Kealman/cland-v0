@@ -1,5 +1,7 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import fsp from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { parseRoles, type RolesSource } from '../src/roles/config.ts';
 import { createHubBase } from '../src/hub/server.ts';
@@ -14,11 +16,11 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function fixture(t: TestContext, fresh: NonNullable<RolesSource['fresh']>, exclusive = true, log?: (entry: Record<string, unknown>) => void) {
+async function fixture(t: TestContext, fresh: NonNullable<RolesSource['fresh']>, exclusive = true, log?: (entry: Record<string, unknown>) => void, requestGuard?: RequestGuard) {
   const root = await tempProject(t);
   const definitions = (exclusive: boolean) => parseRoles(`[coordinator]\nexclusive = ${exclusive}\n[coordinator.launch]\nharness = "test"\n`);
   let config = definitions(exclusive);
-  const hub = createHubBase({ secret: 'test', roles: { get: () => config, fresh }, ...(log ? { log } : {}) });
+  const hub = createHubBase({ secret: 'test', roles: { get: () => config, fresh }, ...(log ? { log } : {}), ...(requestGuard ? { requestGuard } : {}) });
   t.after(() => hub.close());
   const table = new ProcessTable();
   const sessions = new Sessions({ core: hub.core, table, root });
@@ -223,3 +225,50 @@ for (const failure of ['fresh read', 'bad cwd', 'spawn'] as const) {
     assert.equal(core.assignRole('next', 'coordinator').role, 'coordinator');
   });
 }
+
+
+test('cwd resolution and stat initiation share one resumed scope', async t => {
+  let clock = 0;
+  const records: Array<Record<string, unknown>> = [];
+  const { sessions } = await fixture(t, async () => {});
+  const guard = new RequestGuard({ now: () => clock, log: entry => records.push(entry) });
+  const native = fsp.stat;
+  t.mock.method(fsp, 'stat', (...args: Parameters<typeof native>) => { clock += 150; return Reflect.apply(native, fsp, args); });
+  syncBuiltinESMExports();
+  try {
+    await sessions.launch({ name: 'coord', role: 'coordinator', get cwd() { clock += 150; return '.'; } }, guard.resumer('session.launch', 'test'));
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+  assert.deepEqual(records.filter(entry => entry.event === 'slow-request').map(entry => [entry.tool, entry.phase, entry.ms]), [['session.launch', 'resumed', 300]]);
+});
+
+test('role assignment refusal, error conversion and admission release share one resumed scope', async t => {
+  let clock = 0;
+  const records: Array<Record<string, unknown>> = [];
+  const guard = new RequestGuard({ now: () => clock, log: entry => records.push(entry) });
+  const { hub, core } = await fixture(t, async () => {}, true, undefined, guard);
+  const error = new Error('assignment refused');
+  Object.defineProperty(error, 'message', { get() { clock += 150; return 'assignment refused'; } });
+  t.mock.method(core, 'assignRole', () => { clock += 150; throw error; });
+  const answers: Array<Record<string, unknown>> = [];
+  const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
+  t.after(() => conversation.closed());
+  conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
+  conversation.receive(JSON.stringify({ type: 'role.set', id: 'failed', session: 'target', role: 'coordinator' }));
+  const answer = await eventually('refusal answered', () => answers.find(frame => frame.id === 'failed'));
+  assert.equal(answer.ok, false);
+  assert.equal(answer.error, 'assignment refused');
+  assert.deepEqual(core.store.reservations(), []);
+  assert.deepEqual(records.filter(entry => entry.event === 'slow-request').map(entry => [entry.tool, entry.phase, entry.ms]), [['role.set', 'resumed', 300]]);
+});
+
+test('post-fresh authorization and cwd/stat initiation share one resumed scope', async t => {
+  let clock = 0;
+  const records: Array<Record<string, unknown>> = [];
+  const { sessions } = await fixture(t, async () => {});
+  const guard = new RequestGuard({ now: () => clock, log: entry => records.push(entry) });
+  let authorizations = 0;
+  await sessions.launch({ name: 'coord', role: 'coordinator', get cwd() { clock += 150; return '.'; } }, guard.resumer('session.launch', 'test'), () => {
+    if (++authorizations === 2) clock += 150;
+  });
+  assert.deepEqual(records.filter(entry => entry.event === 'slow-request').map(entry => [entry.tool, entry.phase, entry.ms]), [['session.launch', 'resumed', 300]]);
+});

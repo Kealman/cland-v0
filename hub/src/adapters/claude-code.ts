@@ -23,17 +23,19 @@
 //            the same flags (they are not restored by the harness).
 //
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
+import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
+import { processStarted } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
 import { turnError } from './turn-error.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 
-const untimed: Resumed = work => work();
+
 
 export const CLAUDE_CODE = 'claude-code';
 
@@ -191,24 +193,27 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- the harness's CLI
 
-  #run(args: string[], cwd: string, timeoutMs = 30_000): Promise<{ code: number; stdout: string; stderr: string }> {
+  #run(args: string[], cwd: string, timeoutMs = 30_000, resumed: Resumed = untimed): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      execFile(this.#bin, args, { cwd, env: this.#env, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+      execFile(this.#bin, args, { cwd, env: this.#env, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
         if (err && typeof err.code !== 'number') reject(new Error(`${this.#bin} ${args[0] ?? ''}: ${err.message}`));
         else resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
-      });
+      }));
     });
   }
 
-  async #agents(): Promise<AgentEntry[] | null> {
-    try {
-      const r = await this.#run(['agents', '--json'], this.#host.root, 15_000);
-      if (r.code !== 0) return null;
-      const parsed: unknown = JSON.parse(r.stdout);
-      return Array.isArray(parsed) ? (parsed as AgentEntry[]) : null;
-    } catch {
-      return null;
-    }
+  async #agents(resumed: Resumed = untimed): Promise<AgentEntry[] | null> {
+    return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
+      try {
+        const r = yield* wait(this.#run(['agents', '--json'], this.#host.root, 15000, resumed));
+        if (r.code !== 0)
+          return null;
+        const parsed: unknown = JSON.parse(r.stdout);
+        return Array.isArray(parsed) ? (parsed as AgentEntry[]) : null;
+      } catch {
+        return null;
+      }
+    }).call(this), resumed);
   }
 
   /** The entry of this session: by its session id, else its background id. A pid is only a match for an entry
@@ -260,42 +265,54 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return /claude attach (\S+)/.exec(stdout)?.[1]?.replace(/[`'".,]+$/, '') ?? /\(([0-9a-f]{6,})\)/.exec(stdout)?.[1] ?? /\b([0-9a-f]{8})\b/.exec(stdout)?.[1] ?? null;
   }
 
-  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null): Promise<HarnessProcess> {
-    const worktree = p.item ? p.cwd : null;
-    // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
-    // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
-    const args = [
-      '--bg',
-      ...(resume ? ['--resume', p.harnessSessionId ?? p.sessionId] : ['--session-id', p.sessionId]),
-      '--name',
-      p.name,
-      ...(p.model ? ['--model', p.model] : []),
-      ...(effort ? ['--effort', effort] : []),
-      ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree),
-    ];
-    const r = await this.#run(args, p.cwd);
-    if (r.code !== 0) throw new Error(`claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
-    const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
-    this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, harnessId, resume, out: r.stdout.trim().slice(0, 300) });
-    // the session's process: agent view lists it once its supervisor started it
-    let pid: number | null = null;
-    let found: AgentEntry | undefined;
-    const deadline = Date.now() + this.#spawnDeadlineMs;
-    while (Date.now() < deadline) {
-      const entries = await this.#agents();
-      found = entries ? this.#find(entries, { sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, harnessId, pid: null }) : undefined;
-      if (found?.pid !== undefined) {
-        pid = found.pid;
-        break;
+  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed): Promise<HarnessProcess> {
+    return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
+      const worktree = p.item ? p.cwd : null;
+      // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
+      // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
+      const args = [
+        '--bg',
+        ...(resume ? ['--resume', p.harnessSessionId ?? p.sessionId] : ['--session-id', p.sessionId]),
+        '--name',
+        p.name,
+        ...(p.model ? ['--model', p.model] : []),
+        ...(effort ? ['--effort', effort] : []),
+        ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree),
+      ];
+      const r = yield* wait(this.#run(args, p.cwd, undefined, resumed));
+      const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
+      const launched: HarnessProcess = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running' };
+      try {
+        if (r.code !== 0) throw new Error(`claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
+        this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, harnessId, resume, out: r.stdout.trim().slice(0, 300) });
+        // the session's process: agent view lists it once its supervisor started it
+        let pid: number | null = null;
+        let found: AgentEntry | undefined;
+        const deadline = Date.now() + this.#spawnDeadlineMs;
+        while (Date.now() < deadline) {
+          const entries = yield* wait(this.#agents(resumed));
+          found = entries ? this.#find(entries, { sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, harnessId, pid: null }) : undefined;
+          if (found?.pid !== undefined) {
+            pid = found.pid;
+            launched.pid = pid;
+            launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
+            launched.pidStarted = yield* wait(processStarted(pid, undefined, resumed));
+            break;
+          }
+          yield* wait(new Promise((resolve) => setTimeout(resolve, Math.min(250, this.#pollMs))));
+        }
+        if (pid === null)
+          this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
+        return { ...launched, harnessId: harnessId ?? found?.id ?? null };
+      } catch (err) {
+        if (launched.harnessId || launched.pid !== null) yield* wait(this.stop(launched, resumed));
+        throw err;
       }
-      await new Promise((resolve) => setTimeout(resolve, Math.min(250, this.#pollMs)));
-    }
-    if (pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
-    return { ...p, pid, harnessId: harnessId ?? found?.id ?? null, harnessSessionId: found?.sessionId ?? p.harnessSessionId, startedAt: new Date().toISOString(), status: 'running' };
+    }).call(this), resumed);
   }
 
-  spawn(request: SpawnRequest): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null);
+  spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null, resumed);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -468,18 +485,22 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   async resume(p: HarnessProcess, options: { relaunch?: boolean; resumed?: Resumed } = {}): Promise<ResumeResult> {
-    const entries = (await this.#agents()) ?? [];
-    const entry = this.#find(entries, p);
-    const pid = entry?.pid ?? p.pid;
-    // the same session: listed under its own session id (or background id), with a live process
-    if (entry && pid !== null && pid !== undefined && pidAlive(pid)) {
-      const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
-      return { found: true, process, state: stateOfAgent(entry) };
-    }
-    if (!options.relaunch) return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
-    await this.stop(p, options.resumed);
-    const process = await this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true);
-    return { found: true, process, state: 'unknown' };
+    return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
+      const resumed = options.resumed ?? untimed;
+      const entries = (yield* wait(this.#agents(resumed))) ?? [];
+      const entry = this.#find(entries, p);
+      const pid = entry?.pid ?? p.pid;
+      // the same session: listed under its own session id (or background id), with a live process
+      if (entry && pid !== null && pid !== undefined && pidAlive(pid)) {
+        const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
+        return { found: true, process, state: stateOfAgent(entry) };
+      }
+      if (!options.relaunch)
+        return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
+      yield* wait(this.stop(p, options.resumed));
+      const process = yield* wait(this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, null, resumed));
+      return { found: true, process, state: 'unknown' };
+    }).call(this), options.resumed ?? untimed);
   }
 
   close(): void {
