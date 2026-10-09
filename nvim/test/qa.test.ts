@@ -235,6 +235,42 @@ test('every run is given the fixed grid, the pinned TERM, LANG and TZ, paths of 
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
 });
 
+test('fixture values YAML would read as structure reach the client whole, the same under the stdio hub and the stub hub', { skip }, async (t) => {
+  for (const hub of ['stdio', 'stub']) {
+    const run = await qa(t, [`${CASES}LABELS-001.lua`, '--hub', hub]);
+    assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+    const { items } = (run.line.evidence as { state: { items: Array<Record<string, unknown>> } }).state;
+    const fields = (i: Record<string, unknown> | undefined) => [i?.id, i?.kind, i?.title, i?.state, i?.labels, i?.assignee ?? null, i?.parent ?? null, i?.blocked_by, i?.branch ?? null];
+    assert.deepEqual(fields(items[0]), ['T-1', 'task', 'Labels: "quoted", with a comma [and brackets] # and a hash', 'open', ['priority, high', 'ui: shell'], 'impl-1', null, [], 't/1-labels'], hub);
+    assert.deepEqual(fields(items[1]), ['T-2', 'question', 'Blocked', 'closed', [], null, 'T-1', ['T-1'], null], hub);
+    const screen = (run.line.evidence as { screen: string }).screen;
+    // the fields column is narrow: the labels start there, whole in the state above
+    assert.match(screen, /kind +task · priority,/, hub);
+    assert.match(screen, /With a rule in it\./, hub);
+    assert.match(screen, /COMMENTS · 1/, hub);
+  }
+});
+
+test('a fixture that would write outside the run directory (its project name, an item id) is BLOCKED before any write', { skip }, async (t) => {
+  // the run's temp dir is this test's own, so anything written beside the run directory shows
+  const tmp = realpathSync(await tempDir(t, 'cland-qa-tmp-'));
+  for (const [name, why] of [['ESCAPE-001', /the fixture's project "\.\.\/live" is not a plain directory name/], ['ESCAPE-002', /the fixture's item id "\.\.\/\.\.\/T-1" is not T-<n>/]] as const) {
+    for (const hub of ['stdio', 'stub']) {
+      const run = await qa(t, [`${CASES}${name}.lua`, '--hub', hub], { env: { TMPDIR: tmp } });
+      assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));
+      assert.equal(run.code, 2);
+      assert.match(run.line.message ?? '', why);
+      assert.deepEqual(await readdir(tmp), [], `${name} on ${hub}: nothing is left in the temp dir, beside the run directory or in it`);
+    }
+  }
+});
+
+test('keys longer than Neovim\'s input buffer are all typed, the last ones too', { skip }, async (t) => {
+  const run = await qa(t, [`${CASES}KEYS-001.lua`]);
+  assert.equal(run.line.message, undefined);
+  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+});
+
 test('a case that never returns is ended by --timeout: BLOCKED, exit 2, and no Neovim left spinning', { skip }, async (t) => {
   const nv = await pidWrapper(await tempDir(t, 'cland-qa-hang-'));
   const run = await qa(t, [`${CASES}HANG-001.lua`, '--timeout', '2'], { env: { CLAND_NVIM: nv.wrapper } });

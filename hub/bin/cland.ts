@@ -10,6 +10,7 @@ import { OPEN_USAGE, runOpen } from '../src/cli/open.ts';
 import { INIT_USAGE, runInit, runUpdate } from '../src/cli/init.ts';
 import { DOCTOR_USAGE, runDoctor } from '../src/cli/doctor.ts';
 import { QA_USAGE, runQa } from '../src/cli/qa.ts';
+import { runQaFixture } from '../src/cli/qa-fixture.ts';
 import { VERSION } from '../src/version.ts';
 
 const usage = `cland ${VERSION}
@@ -54,6 +55,10 @@ switch (command) {
       process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exitCode = 2;
     }
+    break;
+  case '--qa-fixture':
+    // internal: a QA case's Neovim writes its fixture project through the tracker's own writer
+    process.exitCode = await runQaFixture();
     break;
   case 'init':
   case 'update':

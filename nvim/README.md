@@ -144,8 +144,8 @@ return {
 | --- | --- |
 | `title` | One line saying what the case checks. |
 | `hub` | `stdio` (the default) or `stub`. A case that uses only what both hubs answer is portable: leave `scenario` out of what it asserts and it runs with either. |
-| `fixture.project` | The project's name, shown in the top bar (`qa-project` when left out). |
-| `fixture.items` | The items: `id` and `title`, and optionally `kind`, `state`, `labels`, `assignee`, `parent`, `blocked_by`, `topic`, `branch`, `created`, `updated`, `body`, `comments` (`{ author, at, text }`). For the stdio hub they become item files in `.cland/tasks/`, which the hub indexes; for the stub hub they are its `task.list`. Times left out are `2026-01-01T00:00:00.000Z`. |
+| `fixture.project` | The project's name, shown in the top bar (`qa-project` when left out): a plain directory name (letters, digits, `.`, `_`, `-`, not starting with `.`), or the case is `BLOCKED` before anything is written. |
+| `fixture.items` | The items: `id` and `title`, and optionally `kind`, `state`, `labels`, `assignee`, `parent`, `blocked_by`, `topic`, `branch`, `created`, `updated`, `body`, `comments` (`{ author, at, text }`). An `id` is `T-<n>`, or the case is `BLOCKED` before anything is written. For the stdio hub they become item files in `.cland/tasks/`, written by the tracker's own writer (`cland --qa-fixture`, `hub/src/cli/qa-fixture.ts`), so they read back as given; for the stub hub they are its `task.list`. Times left out are `2026-01-01T00:00:00.000Z`. |
 | `fixture.roles`, `fixture.config` | The text of `.cland/roles.toml` and `.cland/config.toml` (the stdio hub reads them). |
 | `scenario` | The stub hub's scenario (`test/stub-hub.ts`): `processes` (sessions with their states), `presence`, `adapters`, `coordinator`, `topics`, `messages`, `inbox`, `roles`, `attach`, `send`. Its `items` win over the fixture's. |
 | `run` | `function(qa)`: the case. |
@@ -154,7 +154,7 @@ return {
 
 | Call | What it does |
 | --- | --- |
-| `qa.keys(keys)` | Types the keys with `nvim_input()`, in its notation (`<CR>`, `<Esc>`, `<Space>`, `<C-v>`). They are consumed when it returns. |
+| `qa.keys(keys)` | Types the keys with `nvim_input()`, in its notation (`<CR>`, `<Esc>`, `<Space>`, `<C-v>`). They are consumed when it returns, however many: a long sequence goes in chunks of at most 4 KiB, each cut between two keys (Neovim's input buffer holds 16 KiB, and one filled to the brim takes nothing more). Input Neovim stops taking for about 5 s ends the case `BLOCKED`. |
 | `qa.wait_for(predicate, timeout, what)` | Waits (over `vim.wait()`) until `predicate()` is truthy and returns its value. After `timeout` ms (5000 when left out) the case ends `INCONCLUSIVE`, naming `what`. |
 | `qa.screen()` | The grid as text, read with `screenstring()` after a redraw: 45 lines joined by newlines, trailing blanks cut. Floating windows and terminal buffers are in it. |
 | `qa.state()` | What the client knows, as a table: `project`, `root`, `hub` (`state`, `detail`), `mode`, `view` (`kind`, `id`), `panels` (`left`, `right`, `dock`), `sessions` (`name`, `role`, `label`, `harness`, `model`, `state`, `status`, `live`, `launched`, `item`), `coordinator`, `roles`, `topics` (with their `status`), `asks` (the open ones), `needs_you`, `items`. Topics, asks, items and roles are as the hub sent them. |

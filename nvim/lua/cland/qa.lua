@@ -26,6 +26,24 @@ M.LINES = 45
 M.DEFAULT_TIMEOUT_MS = 5000
 --- How long `wait_for` lets events arrive (vim.wait) before it lets the main loop take typed keys again.
 local SLICE_MS = 30
+--- `keys` hands Neovim at most this many bytes at a time (its input buffer holds 16 KiB), lets the main
+--- loop read them for a few milliseconds, and gives up after that many pauses with nothing taken (about 5 s).
+local KEYS_CHUNK = 4096
+local KEYS_PAUSE_MS = 5
+local MAX_STALLED = 1000
+
+--- The longest prefix of `keys` within KEYS_CHUNK bytes that ends between two keys: a `<…>` key or a character.
+local function chunk_of(keys)
+  local i = 1
+  while i <= #keys do
+    local key = keys:match('^<[^<>%s]+>', i) or keys:match('^[%z\1-\127\194-\244][\128-\191]*', i)
+    if i - 1 + #key > KEYS_CHUNK and i > 1 then
+      break
+    end
+    i = i + #key
+  end
+  return keys:sub(1, i - 1)
+end
 local RESULT_MARK = 'CLAND-QA-RESULT '
 local STAMP = '2026-01-01T00:00:00.000Z'
 
@@ -103,52 +121,20 @@ end
 
 -- The fixture project -------------------------------------------------------------------------------------
 
-local function slug(title)
-  return (title:lower():gsub('[^%w]+', '-'):gsub('^%-+', ''):gsub('%-+$', '')):sub(1, 40)
+--- nvim/ (this file is nvim/lua/cland/qa.lua).
+local function nvim_dir()
+  return vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
 end
 
-local function item_file_name(item)
-  return ('%s-%s.md'):format(item.id, slug(item.title or ''))
+--- The `cland` command of this repository, as a list.
+local function cland_cli()
+  return { vim.env.CLAND_NODE or 'node', vim.fn.fnamemodify(nvim_dir(), ':h') .. '/hub/bin/cland.ts' }
 end
 
---- An item file as the tracker writes it (spec 4.6): frontmatter, the body, the comments.
-local function item_file(item)
-  local function scalar(v)
-    return (v == nil or v == vim.NIL) and 'null' or tostring(v)
-  end
-  local function list(v)
-    return '[' .. table.concat(v or {}, ', ') .. ']'
-  end
-  local lines = {
-    '---',
-    'id: ' .. item.id,
-    'kind: ' .. (item.kind or 'task'),
-    'title: ' .. vim.json.encode(item.title or ''),
-    'state: ' .. (item.state or 'open'),
-    'labels: ' .. list(item.labels),
-    'assignee: ' .. scalar(item.assignee),
-    'parent: ' .. scalar(item.parent),
-    'blocked_by: ' .. list(item.blocked_by),
-    'topic: ' .. scalar(item.topic),
-    'branch: ' .. scalar(item.branch),
-    'created: ' .. (item.created or STAMP),
-    'updated: ' .. (item.updated or STAMP),
-    '---',
-  }
-  if item.body and item.body ~= '' then
-    vim.list_extend(lines, { '', item.body })
-  end
-  if item.comments and #item.comments > 0 then
-    vim.list_extend(lines, { '', '## Comments' })
-    for _, c in ipairs(item.comments) do
-      vim.list_extend(lines, { '', ('### %s · %s'):format(c.author, c.at or STAMP), '', c.text })
-    end
-  end
-  return table.concat(lines, '\n') .. '\n'
-end
-
---- An item as `task.list` summarises it: what the stub hub answers with.
+--- An item as `task.list` summarises it: what the stub hub answers with. Its file name is for show only: the
+--- stub hub has no files (the stdio hub's are named by the tracker).
 local function item_summary(item)
+  local slug = (item.title or ''):lower():gsub('[^%w]+', '-'):gsub('^%-+', ''):gsub('%-+$', ''):sub(1, 40)
   return vim.tbl_extend('keep', vim.deepcopy(item), {
     kind = 'task',
     state = 'open',
@@ -156,15 +142,26 @@ local function item_summary(item)
     blocked_by = {},
     created = STAMP,
     updated = STAMP,
-    file = item_file_name(item),
+    file = ('%s-%s.md'):format(item.id, slug),
   })
 end
 
---- Build the fixture project under `tmp` and return its root. Where nothing may be written (no `tmp`), a
---- stub-hub case still runs: its hub holds the fixture, and the root is an empty directory outside any project.
+--- Build the fixture project under `tmp` and return its root and its name. The files are written by `cland
+--- --qa-fixture`, with the tracker's own writer, and only inside `tmp`. Where nothing may be written (no
+--- `tmp`), a stub-hub case still runs: its hub holds the fixture, and the root is an empty directory outside
+--- any project.
 local function build_fixture(case, tmp, hub)
   local fixture = case.fixture or {}
   local project = fixture.project or 'qa-project'
+  -- what the fixture names becomes paths: refused here, under either hub, before anything is written
+  if type(project) ~= 'string' or not project:match('^[%w][%w%._%-]*$') then
+    blocked(('the fixture\'s project "%s" is not a plain directory name'):format(tostring(project)))
+  end
+  for _, item in ipairs(fixture.items or {}) do
+    if type(item.id) ~= 'string' or not item.id:match('^T%-[1-9]%d*$') then
+      blocked(('the fixture\'s item id "%s" is not T-<n>'):format(tostring(item.id)))
+    end
+  end
   if tmp == '' then
     if hub ~= 'stub' then
       blocked('no temp dir to build the fixture project in: a read-only run takes a stub-hub case (--hub stub)')
@@ -175,27 +172,15 @@ local function build_fixture(case, tmp, hub)
       end
     end
   end
-  local root = tmp .. '/' .. project
-  vim.fn.mkdir(root .. '/.cland/tasks', 'p')
-  for _, item in ipairs(fixture.items or {}) do
-    write_file(root .. '/.cland/tasks/' .. item_file_name(item), item_file(item))
+  local spec = vim.json.encode({ dir = tmp, project = project, items = fixture.items or {}, roles = fixture.roles, config = fixture.config })
+  local done = vim.system(vim.list_extend(cland_cli(), { '--qa-fixture' }), { stdin = spec, text = true }):wait()
+  if done.code ~= 0 then
+    blocked('the fixture project was not built: ' .. vim.trim(done.stderr ~= '' and done.stderr or done.stdout))
   end
-  if fixture.roles then
-    write_file(root .. '/.cland/roles.toml', fixture.roles)
-  end
-  if fixture.config then
-    write_file(root .. '/.cland/config.toml', fixture.config)
-  end
-  return root, project
-end
-
---- nvim/ (this file is nvim/lua/cland/qa.lua).
-local function nvim_dir()
-  return vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
+  return vim.trim(done.stdout), project
 end
 
 local function start_shell(case, root, project, hub)
-  local node = vim.env.CLAND_NODE or 'node'
   local cli
   if hub == 'stub' then
     local scenario = vim.deepcopy(case.scenario or {})
@@ -204,9 +189,9 @@ local function start_shell(case, root, project, hub)
     end
     -- the scenario goes inline: a read-only run has nowhere to write it
     vim.env.CLAND_STUB_SCENARIO_JSON = next(scenario) and vim.json.encode(scenario) or '{}'
-    cli = { node, nvim_dir() .. '/test/stub-hub.ts' }
+    cli = { vim.env.CLAND_NODE or 'node', nvim_dir() .. '/test/stub-hub.ts' }
   else
-    cli = { node, vim.fn.fnamemodify(nvim_dir(), ':h') .. '/hub/bin/cland.ts' }
+    cli = cland_cli()
   end
   require('cland').start({ root = root, transport = 'stdio', cli = cli, serve_args = { '--no-listen' } })
   require('cland.state').S.project = project
@@ -285,12 +270,32 @@ function M.run()
     coroutine.yield()
   end
 
+  --- Back to the main loop for `ms` milliseconds.
+  local function pause(ms)
+    vim.defer_fn(resume, ms)
+    coroutine.yield()
+  end
+
   local qa = { screen = M.screen, state = M.state }
 
   --- Type keys as a human does (nvim_input notation: `<CR>`, `<Esc>`, `<Space>`); they are consumed before
   --- this returns. A mapping's keys go in one call: an event between two calls ends a pending mapping.
   function qa.keys(keys)
-    api.nvim_input(keys)
+    -- nvim_input() takes what its input buffer has room for, whole keys only, and says how many bytes that
+    -- was. A buffer filled to the brim takes nothing more, even once read (Neovim 0.12), so the keys go in
+    -- chunks well under its size, each cut between two keys, with a pause for the main loop to read them
+    local stalled = 0
+    while keys ~= '' do
+      local taken = api.nvim_input(chunk_of(keys))
+      keys = keys:sub(taken + 1)
+      stalled = taken > 0 and 0 or stalled + 1
+      if stalled > MAX_STALLED then
+        blocked(('keys: Neovim takes no more input, %d bytes were not typed'):format(#keys))
+      end
+      if keys ~= '' then
+        pause(KEYS_PAUSE_MS)
+      end
+    end
     settle()
   end
 
