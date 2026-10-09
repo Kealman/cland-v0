@@ -2,7 +2,7 @@
 id: T-76
 kind: task
 title: Orphan sweep misses the live app-server of a session recorded as exited
-state: open
+state: closed
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-33
 branch: t/T-76-orphan-sweep-misses-the-live-app-server
 created: 2026-10-09T16:38:16.092Z
-updated: 2026-10-09T19:16:16.200Z
+updated: 2026-10-09T19:43:48.648Z
 ---
 
 ## Parent
@@ -151,3 +151,37 @@ Separate pre-existing hazards, excluded from this verdict as requested:
 - hub/src/system-processes.ts:43: direct concurrent termination calls outside sweepOrphans do not share sweep serialization/claims; the direct-helper overlapping-thaw hazard remains for separate follow-up.
 
 Evidence A-168: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-168-t-76-final-design-review-8d30369-rev-65-76-5.md
+
+### impl-76 · 2026-10-09T19:25:20.333Z
+
+Full suite on the prior final-design head failed 1/585 hub tests (584 passed): deleted project raced background sweep lock acquisition and emitted ENOENT; Neovim did not run. Log A-171 is durable. Coordinator-approved narrow fix now async-stats root after ENOENT, logs orphan-sweep-skipped/project-removed and returns empty only when root is gone; existing-root failures retain the original error. New head 9ab3009b86eb6ee1af3193519016d24bed5ff162, all 4 sweep-lock tests and 2 concurrent focused doctor cases pass, typecheck inspected exit 0. Evidence A-174: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-174-t-76-deleted-project-race-fix-and-clean-typecheck.md. A fixture type error in the first follow-up commit/report was corrected explicitly; its queued suite was canceled before acquiring the lock. Final full suite restarted, head frozen.
+
+### rev-65 · 2026-10-09T19:26:15.490Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-76-6
+commit: 9ab3009b86eb6ee1af3193519016d24bed5ff162
+
+Standards: clear — 0 high, 0 medium, 0 low.
+Spec: clear — 0 high, 0 medium, 0 low for git diff 8d30369 9ab3009.
+
+ENOENT is treated as a skipped sweep only after async stat(root) independently confirms the root is gone. Existing roots and non-ENOENT confirmation failures preserve the exact original Error object; the code recreates no project root. The final commit only types the regression mock arguments; production behavior is unchanged from 28a0f05.
+
+Nine pinned-source read-only virtual cases pass: mkdir/acquisition/inner-work ENOENT with removed or surviving roots, EACCES/ENOTDIR confirmation failures, and original non-ENOENT. Inner-work failures release the lock before root confirmation. Diff check passed. Coordinator reports corrected typecheck 0 and 4 lock tests passing; the final suite remains separate. No Reviewer suite, writes or real process signals.
+
+Earlier README low and pre-existing helper/discovery hazards remain separately tracked in T-102; no new hazards identified in this delta. Evidence A-175: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-175-t-76-removed-root-review-9ab3009-rev-65-76-6.md
+
+### impl-76 · 2026-10-09T19:43:11.596Z
+
+Implementation complete at 9ab3009b86eb6ee1af3193519016d24bed5ff162, pushed to the task branch in local origin; worktree clean, no merge. Final npm test exited 0: hub 586/586 and Neovim 94/94 passed, no failures/cancellations/skips; package 671.94 s, lock wait 347.33 s, peak load 13.84. Typecheck inspected exit 0, 69 targeted cases passed including concurrent doctor files, self-review clear, external rev-65-76-6 clear on this head. Completion evidence A-180: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-180-t-76-final-implementation-and-passing-validation.md. Full durable log A-179: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-179-t-76-passing-final-full-suite-on-reviewed-head.log. This includes the deleted-root regression that failed the prior archived suite. Ready for Coordinator's merge gate.
+
+### coord · 2026-10-09T19:43:19.921Z
+
+Merged 12b2834c4e6f38a94ddfc6b84614b22f280dfca3 onto dev.
+
+### coord · 2026-10-09T19:43:48.648Z
+
+Merged by the Coordinator through `cland merge T-76`: squash 12b2834 on dev. Gate: review rev-65-76-6 clear on 9ab3009, after six review rounds (rev-65-76-1 to rev-65-76-5). Those found: a group signal planned across an await (high), a child escaping a positive-pid kill, a process left stopped on an inspection failure, overlapping workers on a shared child, concurrent sweeps, and the deleted-root lock race. Final design: one sweep per project under a lock, per-worker capture claims, freeze then re-walk then kill on positive pids, and logger-proof resumption of the call's own stopped pids. That resumption is an accepted identity-free SIGCONT, documented. Full suite on 9ab3009: 586 hub + 94 Neovim passed (A-179, A-180). Pre-existing hazards in the shared helper are T-102. impl-76 stopped.
+Observed at this merge: the root's dev again held unpushed commits from the human's other session, 082223b, 1bcbb41 and 717e08d: v0.1 spec, glossary and item notes for T-87, T-88 and T-92. The running hub predates T-74, so the gate did not refuse, and the merge published them to the territory beneath 12b2834.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-35
 branch: t/T-77-tracker-writes-on-hub-request-paths
 created: 2026-10-09T16:57:34.637Z
-updated: 2026-10-09T19:14:41.474Z
+updated: 2026-10-09T19:54:32.297Z
 ---
 
 ## Parent
@@ -75,3 +75,47 @@ Medium — hub/src/tracker/tracker.ts:487: watcher metadata lookup and indexing 
 Low — hub/src/adapters/sessions.ts:256: info.isDirectory() executes outside resumed after stat resolves; this bounded check is a timing consistency issue.
 
 The original four regressions now pass. Atomic-failure probes, both typechecks and diff check pass. No full suite run. Standards and Spec reports, reproducible memory probes and evidence: A-167, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-167-t-77-review-rev-6-77-1-at-1f3fa08.md. Combined review covers dev (0bc116e) through 1f3fa08.
+
+### impl-77 · 2026-10-09T19:20:24.528Z
+
+Coordinator's global-queue revision committed separately at 9a9ae16706ea363db148dcb42bb0125670580a11 and pushed to local origin. Removed all per-item/topic queue keys; async mutations, whole import batches, serving-time watcher reads/scans/polling and views share one admission tail. Pre-rename authorization remains. Deferred rename/reindex and moved-frontmatter-ID cases pass; watcher metadata/indexing, candidate dispatch and partial-read continuations each aggregate 150+150 ms into a 300 ms slow request. Three timing regressions fail on the previous head (A-169, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-169-t-77-three-continuation-timing-regressions-fail-on-previous-head.log). Typecheck, 29 async tracker tests, 2 native guard tests, 4 import tests and 5 freshness tests pass (A-170, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-170-t-77-global-queue-targeted-checks-and-timing-regressions.log). Both internal delta reviews clear. Old full suite cancelled (exit130); npm test restarted on this head; totals pending.
+
+### impl-77 · 2026-10-09T19:21:21.260Z
+
+Final head f1463bb940708b737618324190de4a723b8cdb4c adds the review's low launch timing finding as its own two-line commit: isDirectory() now runs inside the existing resumed scope after stat. Typecheck, 2 native-boundary and 14 request-guard tests pass. Final targeted evidence A-172 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-172-t-77-final-targeted-checks-including-launch-timing-fix.log includes 29 async tracker, 4 import, 5 freshness and 7 verdict-commit passes. Cancelled the still-waiting suite on the earlier head and restarted npm test on this final head; machine lock pending. No merge.
+
+### rev-6 · 2026-10-09T19:24:46.488Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-77-2
+commit: f1463bb940708b737618324190de4a723b8cdb4c
+
+No high, medium or low findings remain in the resolution delta 1f3fa08..f1463bb. The tracker-wide queue closes the filename ownership race; watcher/scan/read-loop continuation scopes and launch directory-check timing close the earlier timing findings. Read-your-writes, grant revocation, first-import reservation, moved IDs and atomic-failure probes pass; both comments survive the rename/reindex probe. Both typechecks and diff check pass. No full suite run.
+
+Accepted known limitation — hub/src/tracker/tracker.ts:619: storage promises have no deadline, so a stalled native operation holds queued tracker work and stop (:341) indefinitely. Git's timeout, client reply deadlines and slow-answer logging do not bound it. The Coordinator accepted this outside T-77 because the previous synchronous stall blocked the entire hub event loop, while asynchronous storage leaves other hub work serving; T-103 owns stall detection/status and safe recovery that fences late writes.
+
+Standards and Spec reports, checks and reproducible probes: A-173, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-173-t-77-resolution-review-rev-6-77-2-at-f1463bb.md.
+
+### impl-77 · 2026-10-09T19:32:00.253Z
+
+First full suite on f1463bb finished hub 586/588 pass, 2 fail, no cancelled/skipped, 562.43s (A-176, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-176-t-77-first-full-suite-final-head-two-obsolete-timing-assertions.log). Only failures were the obsolete merge-close and item-launch tests that treated the now-asynchronous injected write pause as synchronous blocking. Coordinator approved replacing both. Test-only commit 591650783eb0a2ba49f2a45af899d05a75d43c9e uses real close/branch-link task-event subscribers with fake guard clocks and asserts exactly one resumed 400ms slow-request. Typecheck and both targeted tests pass; both internal delta reviews clear (A-177, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-177-t-77-replacement-timing-assertions-pass-real-close-and-link-subscribers.log). Full npm test restarted on this head; implementation remains frozen.
+
+### rev-6 · 2026-10-09T19:33:27.519Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-77-3
+commit: 591650783eb0a2ba49f2a45af899d05a75d43c9e
+
+No high, medium or low findings in the tests-only delta f1463bb..5916507. Both replacements preserve the purpose: synchronous tracker publication after real awaited Git must produce exactly one resumed slow-request. They require the real close/branch-link subscriber to run and an exact 400 ms measurement; launch retains the client assertion. No other assertion is weakened, and the worktree.list helper keeps its real-clock behavior.
+
+Independent hub typecheck and diff check pass; A-177's two targeted passes were inspected. No suite run by this reviewer. Production remains covered by rev-6-77-2 / A-173; its accepted storage-bound limitation remains T-103.
+
+Separate Standards and Spec reports: A-178, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-178-t-77-test-only-review-rev-6-77-3-at-5916507.md.
+
+### impl-77 · 2026-10-09T19:54:32.297Z
+
+Completed on 591650783eb0a2ba49f2a45af899d05a75d43c9e, pushed to local origin; worktree clean, no merge. Tracker commits/views/imports/serving-time watcher reads now use asynchronous filesystem operations and one admission queue; temporary write + rename remains atomic, verdict evidence is indexed before success, every mutation rechecks its grant before rename, and whole resumed continuations are timed. Shared Sessions launch stat and directory validation are asynchronous/measured. README documents synchronous startup/CLI/init and T-78/T-79 exclusions. Deferred ordering, rename/moved-ID races, revocation, failure, crash/durability and timing regressions pass; native guard planted-stat failures are recorded in A-165. npm run typecheck passed; final npm test exited 0: hub 588/588, Neovim 104/104, no failures/cancelled/skipped. Suite 649.86s, lock wait596.24s, peak load13.27. Full evidence A-181 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-181-t-77-full-suite-passes-588-hub-and-104-neovim-tests.log; targeted evidence A-172 and A-177. Latest review rev-6-77-3 is clear/current on this head.
