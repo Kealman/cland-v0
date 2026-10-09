@@ -33,7 +33,9 @@
 //   connection" starts its turn and drops the client's connection instead of answering (the first time only); SIGUSR2 drops every
 //   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
 //   app-server lives). A body `rename to <name>` calls the spoke's `rename` tool before the pong. Each `turn/start`
-//   logs its `effort` when given. Each `thread/start` and `thread/resume` logs its params as one line of JSON, and is
+//   logs its `effort` when given. A turn announces each input it takes up (`item/completed`, a `userMessage`), and
+//   `thread/read` with `includeTurns` returns the turns with those items. A steer whose text contains "drop this
+//   steer" is accepted (its result says so) and never taken up, the first time only. Each `thread/start` and `thread/resume` logs its params as one line of JSON, and is
 //   refused when it names `permissions` together with `sandbox`, or a `permissions` id that is neither built-in
 //   (`:read-only`, `:workspace`, `:danger-full-access`) nor defined by a `-c permissions.<id>=…` override on the
 //   command line. (The real one also accepts a profile defined in the request's `config`, and then fails every turn
@@ -148,7 +150,8 @@ async function resume(args: string[]): Promise<number> {
 
 type Conn = { ws: WebSocket; initialized: boolean; subscribed: Set<string> };
 type Item = { text: string };
-type Thread = ThreadFile & { status: Status; turnId: string | null; queue: Item[]; tokens: number };
+type TurnRecord = { id: string; status: string; items: Array<{ type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> }> };
+type Thread = ThreadFile & { status: Status; turnId: string | null; queue: Item[]; tokens: number; history?: TurnRecord[] };
 
 async function appServer(args: string[]): Promise<number> {
   const listen = flag(args, '--listen') ?? '';
@@ -258,8 +261,14 @@ async function appServer(args: string[]): Promise<number> {
   const runTurn = async (t: Thread) => {
     const turnId = t.turnId as string;
     let error: { message: string } | null = null;
+    const record: TurnRecord = { id: turnId, status: 'inProgress', items: [] };
+    (t.history ??= []).push(record);
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
       log(`turn ${turnId} item: ${item.text}`);
+      // as the real one: an input the turn takes up becomes a userMessage item of the turn, and is announced
+      const taken = { type: 'userMessage' as const, id: randomUUID(), content: [{ type: 'text' as const, text: item.text }] };
+      record.items.push(taken);
+      toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
       await sleep(TURN_MS);
       const body = /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1];
       if (body === undefined) continue; // the clause, or text that is no cland message: nothing to answer
@@ -305,7 +314,8 @@ async function appServer(args: string[]): Promise<number> {
     t.turnId = null;
     // as the real one: idle is sent before turn/completed
     setStatus(t, { type: 'idle' });
-    toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: error ? 'failed' : 'completed', error, items: [] } });
+    record.status = error ? 'failed' : 'completed';
+    toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: record.status, error, items: [] } });
   };
 
   const textOf = (params: Record<string, unknown>): string => {
@@ -368,7 +378,7 @@ async function appServer(args: string[]): Promise<number> {
       case 'thread/read': {
         const t = threads.get(params.threadId as string) ?? load(params.threadId as string);
         if (!t) return { error: { code: -32600, message: `thread not found: ${String(params.threadId)}` } };
-        return { result: { thread: view(t) } };
+        return { result: { thread: { ...view(t), turns: params.includeTurns === true ? (t.history ?? []) : [] } } };
       }
       case 'turn/start': {
         const t = threads.get(params.threadId as string);
@@ -409,6 +419,12 @@ async function appServer(args: string[]): Promise<number> {
           while (t.turnId === expected) await sleep(5);
           await sleep(50); // completion reaches the hub before this admission result
           return accepted ? { result: { turnId: expected } } : { error: { code: -32600, message: 'the active turn ended before steering' } };
+        }
+        // an accepted steer the turn never takes up (what T-50 guards against; the real 0.160.0 was not seen to do it)
+        if (text.includes('drop this steer') && !lost.has(text)) {
+          lost.add(text);
+          log(`turn/steer ${t.turnId} accepted and dropped: ${text}`);
+          return { result: { turnId: t.turnId } };
         }
         t.queue.push({ text });
         log(`turn/steer ${t.turnId}: ${text}`);

@@ -419,3 +419,40 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
   const [implResumed] = threadCalls(await fake.log(implPid), 'thread/resume');
   assert.deepEqual([implResumed?.approvalPolicy, implResumed?.permissions], ['never', 'cland']);
 });
+
+// T-50. Measured with Codex 0.160.0 (11 steers in the last 5 to 120 ms of a turn): an accepted `turn/steer` is taken up
+// by the turn, which goes on and answers it, and one that comes too late is refused (`no active turn to steer`). The
+// adapter does not rest on that: a turn that ends without an accepted steer among its inputs gets it again.
+test('a steer the app-server accepted and the turn never took up is delivered again as a new turn, and the journal and Agents say so', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const first = await sendGeneral(ui, '@impl-1 start a turn');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === first && f.stage === 'injected', 15_000);
+  // steered into the running turn, twice: one the turn takes up, one it accepts and drops
+  const taken = await sendGeneral(ui, '@impl-1 a steer the turn takes up');
+  const dropped = await sendGeneral(ui, '@impl-1 drop this steer');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === dropped && f.stage === 'injected', 15_000);
+  const log = await fake.log(launched.pid as number);
+  assert.match(log, /turn\/steer [0-9a-f-]+: <channel [^\n]*>\n@impl-1 a steer the turn takes up/);
+  assert.match(log, /turn\/steer [0-9a-f-]+ accepted and dropped: <channel [^\n]*>\n@impl-1 drop this steer/);
+
+  // every message is answered: the dropped one in a turn of its own, after the first turn ended without it
+  for (const text of ['start a turn', 'a steer the turn takes up', 'drop this steer']) {
+    await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: @impl-1 ${text}`, 15_000);
+  }
+  await presentAs(ui, 'impl-1', 'idle');
+  const events = (await hubLog(root)).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string; session?: string });
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered').map((e) => [e.session, e.id]), [['impl-1', dropped]], 'only the dropped steer, once');
+  assert.equal(events.filter((e) => e.event === 'harness-steered' && e.id === taken).length, 1);
+  const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
+  assert.deepEqual(pongs.sort(), ['pong: @impl-1 a steer the turn takes up', 'pong: @impl-1 drop this steer', 'pong: @impl-1 start a turn'], 'each answered once');
+
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), ['impl-1 [Implementer]: its turn ended without a message it had accepted; the message was delivered again as a new turn']);
+});

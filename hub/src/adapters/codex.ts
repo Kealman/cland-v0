@@ -33,7 +33,7 @@ import { turnError } from './turn-error.ts';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { codexCounts } from './usage.ts';
 import { VERSION } from '../version.ts';
-import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive, sameProcess, signalProcess } from './processes.ts';
 
@@ -271,6 +271,9 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #admissions = new Map<string, number>();
   readonly #completedTurns = new Map<string, string | null>();
   readonly #turnInputs = new Map<string, Set<string>>();
+  /** Steers the app-server accepted that their turn has not been seen to take up: by `sessionId:turnId`, each
+   *  message id with its envelope. A turn that ends with one left gets it again (`#redeliver`). */
+  readonly #steers = new Map<string, Map<string, string>>();
   readonly #earlyFailures = new Map<string, string[]>();
   #timer: NodeJS.Timeout | null = null;
   #versionChecked = false;
@@ -371,6 +374,14 @@ export class CodexAdapter implements HarnessAdapter {
           if (!mine(params)) return;
           this.#setState(live, stateOfStatus(params.status));
           return;
+        case 'item/started':
+        case 'item/completed': {
+          // an input the turn took up is a userMessage item of the turn: a steer seen there is no longer owed
+          const item = params.item as { type?: unknown; content?: Array<{ text?: unknown }> } | undefined;
+          if (!mine(params) || item?.type !== 'userMessage') return;
+          this.#takenUp(live.p.sessionId, (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n'));
+          return;
+        }
         case 'turn/started': {
           const id = (params.turn as { id?: unknown } | undefined)?.id;
           if (mine(params) && typeof id === 'string') {
@@ -391,6 +402,11 @@ export class CodexAdapter implements HarnessAdapter {
             else this.#earlyFailures.set(live.p.sessionId, [...(this.#earlyFailures.get(live.p.sessionId) ?? []), error]);
           }
           if (!turn?.id || live.turnId === turn.id) live.turnId = null;
+          // a turn that failed reported the messages it held above (`turnFailed`); one that ended well owes
+          // nothing only once every steer it accepted is among its inputs
+          const owed = this.#steers.get(key);
+          this.#steers.delete(key);
+          if (owed?.size && !error && turn?.id) void this.#redeliver(live, turn.id, owed);
           void this.#readRateLimits(live);
           return;
         }
@@ -514,6 +530,52 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- inject
 
+  /** The turn took up an input: the steers whose envelope it carries are owed no more. */
+  #takenUp(sessionId: string, text: string): void {
+    const ids = envelopeIds(text);
+    if (ids.length === 0) return;
+    for (const [key, owed] of this.#steers) {
+      if (!key.startsWith(`${sessionId}:`)) continue;
+      for (const id of ids) owed.delete(id);
+      if (owed.size === 0) this.#steers.delete(key);
+    }
+  }
+
+  /**
+   * A turn ended well with steers it had accepted and was not seen to take up. Its own record decides (the
+   * notification may have been missed, or have come before the steer's result): what is not among the turn's
+   * inputs is handed over again as a turn of its own. A message delivered twice is the lesser harm; a record that
+   * cannot be read counts as not taken up. Measured with Codex 0.160.0, an accepted steer was always taken up: this
+   * is the guard for the case it is not.
+   */
+  async #redeliver(live: Live, turnId: string, owed: Map<string, string>): Promise<void> {
+    const client = live.client;
+    const threadId = live.p.harnessSessionId as string;
+    if (!client || client.closed) return;
+    try {
+      const r = await client.request<{ thread: { turns?: Array<{ id?: string; items?: Array<{ type?: string; content?: Array<{ text?: unknown }> }> }> } }>('thread/read', { threadId, includeTurns: true }, 15_000);
+      const items = r.thread.turns?.find((t) => t.id === turnId)?.items ?? [];
+      for (const item of items) {
+        if (item.type !== 'userMessage') continue;
+        for (const id of envelopeIds((item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n'))) owed.delete(id);
+      }
+    } catch (err) {
+      this.#host.log({ event: 'harness-turn-unread', harness: this.harness, session: live.p.name, turn: turnId, error: err instanceof Error ? err.message : String(err) });
+    }
+    for (const [id, text] of owed) {
+      try {
+        const idle = live.state === 'idle' || live.state === 'unknown';
+        const params = idle ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input: [{ type: 'text', text, text_elements: [] }] };
+        const r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
+        if (typeof r.turn?.id === 'string') this.#admitInput(live.p.sessionId, r.turn.id, id);
+        if (typeof r.turn?.id === 'string' && !idle) live.turnId ??= r.turn.id;
+        this.#host.log({ event: 'harness-redelivered', harness: this.harness, session: live.p.name, id, turn: turnId });
+      } catch (err) {
+        this.#host.log({ event: 'harness-redelivery-failed', harness: this.harness, session: live.p.name, id, turn: turnId, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  }
+
   #admitInput(sessionId: string, turnId: string, messageId: string): void {
     const key = `${sessionId}:${turnId}`;
     if (this.#completedTurns.has(key)) {
@@ -550,12 +612,19 @@ export class CodexAdapter implements HarnessAdapter {
     // into the active turn
     for (let attempt = 0; attempt < 2 && live.turnId; attempt++) {
       const expected = live.turnId;
+      const key = `${p.sessionId}:${expected}`;
+      // owed from before the request: the turn may take the steer up before the result is read here
+      const owed = this.#steers.get(key) ?? new Map<string, string>();
+      this.#steers.set(key, owed.set(message.id, text));
       try {
         await client.request('turn/steer', { threadId, expectedTurnId: expected, input }, this.#injectTimeoutMs);
         this.#admitInput(p.sessionId, expected, message.id);
         this.#host.log({ event: 'harness-steered', harness: this.harness, session: p.name, id: message.id, turn: expected });
         return;
       } catch (err) {
+        // not accepted (or not known to be): nothing is owed on this account; the paths below decide
+        owed.delete(message.id);
+        if (owed.size === 0 && this.#steers.get(key) === owed) this.#steers.delete(key);
         // sent and never answered: the steer may have landed, so it is never sent again on its own
         if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/steer: ${err.message}`);
         if (!(err instanceof RpcError)) throw err;
@@ -624,6 +693,7 @@ export class CodexAdapter implements HarnessAdapter {
     for (const key of this.#completedTurns.keys()) if (key.startsWith(`${sessionId}:`)) this.#completedTurns.delete(key);
     this.#earlyFailures.delete(sessionId);
     for (const key of this.#turnInputs.keys()) if (key.startsWith(`${sessionId}:`)) this.#turnInputs.delete(key);
+    for (const key of this.#steers.keys()) if (key.startsWith(`${sessionId}:`)) this.#steers.delete(key);
     this.#watched.delete(sessionId);
     if (this.#watched.size === 0 && this.#timer) {
       clearInterval(this.#timer);
@@ -730,6 +800,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#admissions.clear();
     this.#completedTurns.clear();
     this.#turnInputs.clear();
+    this.#steers.clear();
     this.#earlyFailures.clear();
     this.#closed = true;
     if (this.#timer) clearInterval(this.#timer);

@@ -18,7 +18,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'turn-failed', 'role-assign', 'role-revoke', 'claim', 'release', 'handover', 'mute', 'unmute', 'refusal'] as const;
+export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'handover', 'mute', 'unmute', 'refusal'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -29,6 +29,11 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
   switch (entry.event) {
     case 'turn-failed':
       return session ? { kind: 'turn-failed', text: str(entry.text) ?? `${label(session)}: its turn failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session } } : null;
+    case 'harness-redelivered':
+      // a steer its turn accepted and ended without (T-50): handed over again, so nothing is lost; the record says why it may come twice
+      return session ? { kind: 'redelivered', text: `${label(session)}: its turn ended without a message it had accepted; the message was delivered again as a new turn`, detail: { session, message: str(entry.id) } } : null;
+    case 'harness-redelivery-failed':
+      return session ? { kind: 'turn-failed', text: `${label(session)}: its turn ended without a message it had accepted, and delivering it again failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session, message: str(entry.id) } } : null;
     case 'session-launched':
       // the role it was launched for: its spoke has not said hello yet
       return session ? { kind: 'session-start', text: `${str(entry.role) ? withRole(session, entry.role as string) : label(session)} started (${str(entry.harness) ?? 'harness'}${str(entry.model) ? `, ${String(entry.model)}` : ''})`, detail: { session, harness: entry.harness ?? null } } : null;
