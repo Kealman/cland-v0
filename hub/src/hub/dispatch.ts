@@ -371,19 +371,25 @@ export class Dispatcher {
     let unsubscribe: (() => void) | null = null;
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
-    // a task request's answer may wait for Git (a verdict's commit), never on the event loop
-    const task = (frame: TaskRequest, actor: Actor | 'client') =>
-      void answerTask(this.#options.tracker, frame, actor)
+    // a task request's answer may wait for Git (a verdict's commit), never on the event loop; every stretch it runs on
+    // the loop is timed against the budget: the first in `receive`, the write after Git answered, the answer going out
+    const task = (frame: TaskRequest, actor: Actor | 'client') => {
+      const tool = String(frame.type);
+      const who = kind === 'spoke' ? (name ?? '?') : client;
+      void answerTask(this.#options.tracker, frame, actor, (write) => this.#guard.measure(tool, who, write, 'resumed'))
         .then((result) => {
           this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
           return result;
         })
         // what fails after the answer is known (the assignee's binding) is that request's failure, never the hub's
         .catch((err: unknown) => Dispatcher.#failure(frame.id, err))
-        .then((result) => {
-          if (peer.isOpen()) peer.send(result);
-          else settle(result);
-        });
+        .then((result) =>
+          this.#guard.measure(tool, who, () => {
+            if (peer.isOpen()) peer.send(result);
+            else settle(result);
+          }, 'answer'),
+        );
+    };
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }).then((result) => {
         if (peer.isOpen()) peer.send(result);

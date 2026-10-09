@@ -34,7 +34,7 @@ const READS: ReadonlySet<string> = new Set([
 export type RequestCounters = {
   /** Handlers over the budget since the hub started, and the latest of them. */
   slow: number;
-  lastSlow?: { tool: string; client: string; ms: number; at: string };
+  lastSlow?: { tool: string; client: string; ms: number; at: string; phase?: 'resumed' | 'answer' };
   /** Reads answered again from their previous answer. */
   replayed: number;
 };
@@ -63,8 +63,12 @@ export class RequestGuard {
     this.generation++;
   }
 
-  /** Time `handle` (one frame's handling on the event loop) and log it when it went over the budget. */
-  measure<T>(tool: string, client: string, handle: () => T): T {
+  /**
+   * Time `handle` (one stretch of a request's handling on the event loop) and log it when it went over the budget.
+   * `phase` names a stretch after the first: a handler that awaited (Git, for a verdict's commit) resumes synchronously,
+   * and that part blocks the loop as much as the first.
+   */
+  measure<T>(tool: string, client: string, handle: () => T, phase?: 'resumed' | 'answer'): T {
     const started = this.now();
     try {
       return handle();
@@ -72,8 +76,8 @@ export class RequestGuard {
       const ms = Math.round(this.now() - started);
       if (ms > this.#budgetMs) {
         this.counters.slow++;
-        this.counters.lastSlow = { tool, client, ms, at: new Date().toISOString() };
-        this.#log({ event: 'slow-request', tool, client, ms, budgetMs: this.#budgetMs });
+        this.counters.lastSlow = { tool, client, ms, at: new Date().toISOString(), ...(phase ? { phase } : {}) };
+        this.#log({ event: 'slow-request', tool, client, ms, budgetMs: this.#budgetMs, ...(phase ? { phase } : {}) });
       }
     }
   }

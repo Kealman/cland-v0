@@ -5,7 +5,10 @@
 // synchronous calls, so one runs to completion on the hub's single thread before the next starts.
 // Hand edits are picked up by a watcher on the folder (debounced) and re-indexed; last writer wins.
 // Nothing is ever committed. No git runs inside an operation either (T-67): verdict freshness comes from the
-// freshness cache, and the one fact a verdict write needs from Git (its commit) is resolved before the write.
+// freshness cache, and the one fact a verdict write needs from Git (its commit) is resolved before the write. So a
+// verdict is written when Git has answered: a request that arrived after it (a plain comment, a close) may be
+// written first. The write itself is still one synchronous step.
+
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -555,12 +558,17 @@ export class Tracker {
     return this.view(id);
   }
 
-  /** A comment, or a verdict: its commit (given, or the branch tip) is resolved with Git before the write, never inside it. */
-  async comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput): Promise<ItemView> {
+/**
+   * A comment, or a verdict: its commit (given, or the branch tip) is resolved with Git before the write, never inside
+   * it. `resumed` wraps the synchronous write that runs after Git answered (the hub times it against its budget).
+   */
+  async comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed?: <T>(write: () => T) => T): Promise<ItemView> {
     const body = (text ?? '').trim();
     if (!body && !verdict) throw new TrackerError('a comment needs text');
     checkText(body, 'comment');
     let v: Verdict | undefined;
+    /** Whether this call awaited Git: what follows then runs as a stretch of its own on the event loop. */
+    let awaited = false;
     if (verdict) {
       if (!VERDICT_KINDS.includes(verdict.verdict)) throw new TrackerError(`verdict must be ${VERDICT_KINDS.join(' or ')}`);
       if (!RESULTS.includes(verdict.result)) throw new TrackerError(`result must be ${RESULTS.map((r) => `"${r}"`).join(' or ')}`);
@@ -568,6 +576,7 @@ export class Tracker {
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
       if (verdict.commit !== undefined) {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
+        awaited = true;
         const commit = await this.#resolve(verdict.commit, `the verdict's commit ${verdict.commit}`);
         if (!commit) throw new TrackerError('commit does not resolve to a Git commit');
         v.commit = commit;
@@ -578,12 +587,18 @@ export class Tracker {
     if (v && verdict?.commit === undefined) {
       const branch = this.#index.get(this.#require(rawId).id)?.branch ?? null;
       if (branch) {
+        awaited = true;
         tip = { branch, sha: await this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`) };
         if (tip.sha) this.#fresh.noteTip(branch, tip.sha);
       }
     }
-    const view = this.#mutate(rawId, actor, verdict ? 'verdict' : 'comment', (item) => {
-      if (v && verdict?.commit === undefined) {
+    // without an await (a plain comment, a verdict with no branch) the write runs in the request's first stretch
+    return awaited && resumed ? resumed(() => this.#writeComment(actor, rawId, body, v, tip)) : this.#writeComment(actor, rawId, body, v, tip);
+  }
+
+  #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null): ItemView {
+    const view = this.#mutate(rawId, actor, v ? 'verdict' : 'comment', (item) => {
+      if (v && !v.commit) {
         // a hand edit moved the branch meanwhile: the tip the cache last read for it
         const sha = item.fm.branch === tip?.branch ? tip.sha : this.#fresh.tip(item.fm.branch);
         if (sha) v.commit = sha;

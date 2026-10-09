@@ -8,6 +8,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, connectWsUi, startDaemon, startHub, tempProject } from './harness.ts';
 import { BUDGET_MS } from '../src/hub/budget.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import type { Git } from '../src/tracker/verdict-git.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
 const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -75,4 +77,25 @@ test('a handler over the budget is logged as slow-request with its tool, client 
   assert.equal((await ui.request({ type: 'topic.list' })).ok, true);
   const slow = records.filter((r) => r.event === 'slow-request');
   assert.ok(slow.some((r) => r.tool === 'topic.list' && r.client === 'slow-ui' && (r.ms as number) >= 1000), JSON.stringify(slow));
+});
+
+test('a verdict write that resumes after Git into a slow synchronous write is timed and logged as slow-request (phase resumed)', async (t) => {
+  const root = await tempProject(t);
+  const records: Array<Record<string, unknown>> = [];
+  const log = (r: Record<string, unknown>) => records.push(r);
+  // Git answers after a real wait (the handler awaits), then the write holds the loop for 400 ms
+  const git: Git = (args) => new Promise((resolve) => setTimeout(() => resolve(args[0] === 'rev-parse' ? 'a'.repeat(40) : ''), 20));
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, git, writePauseMs: 400 });
+  tracker.start();
+  t.after(() => tracker.stop());
+  const hub = await startHub({ log, tracker });
+  t.after(() => hub.close());
+  const ui = await connectWsUi(t, hub, 'reviewer-ui');
+  assert.equal((await ui.request({ type: 'task.create', title: 'Reviewed', branch: 't/x' })).ok, true);
+  records.length = 0;
+  const r = await ui.request({ type: 'task.comment', item: 'T-1', text: 'checked', verdict: { verdict: 'review', result: 'clear', run: 'r-1' } });
+  assert.equal(r.ok, true, r.error);
+  const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'task.comment');
+  assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'reviewer-ui']], JSON.stringify(slow));
+  assert.ok((slow[0]?.ms as number) >= 400, `${String(slow[0]?.ms)} ms`);
 });

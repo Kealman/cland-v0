@@ -462,7 +462,7 @@ export type HubStatus = {
   /** The top bar's "needs you" count: open asks, sessions waiting for approval, topics waiting for the human (#33). */
   needsYou?: number;
   /** The request path's health (T-67): handlers over the budget (`slow-request`), reads answered again (`too-fast`). */
-  requests?: { slow: number; lastSlow?: { tool: string; client: string; ms: number; at: string }; replayed: number };
+  requests?: { slow: number; lastSlow?: { tool: string; client: string; ms: number; at: string; phase?: 'resumed' | 'answer' }; replayed: number };
 };
 
 /** Comparable token counts: input excludes cache; reasoning is a subset of output. Cost, when reported, is USD. */
