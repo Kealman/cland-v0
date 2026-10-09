@@ -56,12 +56,11 @@ You are an Implementer: you carry out one item at a time and report to the Coord
 """
 
 [implementer.launch]
-harness = "opencode"
-# "": a free model the OpenCode server lists (the adapter picks one, OpenCode Zen's own first).
-# Pinned for this repo: the first free Zen model the server listed on 2026-10-08, opencode/exo-free, is deprecated
-# upstream while still listed as active, and its turns fail (T-46).
-model = "opencode/big-pickle"
-effort = ""
+harness = "codex"
+# The human's choice for now (2026-10-09): Codex on gpt-6.1-sol until the free OpenCode models are vetted.
+# OpenCode stays available per launch: `cland session launch <name> --role implementer --harness opencode --model opencode/big-pickle`.
+model = "gpt-6.1-sol"
+effort = "high"
 
 [implementer.permissions]
 tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "who", "history", "status", "task.view", "task.list"]
