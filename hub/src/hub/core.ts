@@ -157,6 +157,8 @@ export class HubCore {
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
+  /** Ordered admissions for every named role, including roles whose fresh definition may become exclusive. */
+  readonly #roleAdmissions = new Map<string, Array<{ name: string }>>();
   /** The role a session was launched for, by the adapters' side (`Sessions`): `first` once, at the first hello of a
    *  launch (with `carried` when its first turn already carried the clause, Codex), else the role its process-table
    *  row keeps (a relaunch takes it back). A hello's role is honoured for it. */
@@ -751,6 +753,37 @@ export class HubCore {
     return { previous };
   }
 
+  /** Take a ticket before I/O, then validate against each fresh snapshot. A move may replace the current holder.
+   * Tickets do not grant a role; release on success or refusal, including failures before fresh validation. */
+  admitRole(name: string, role: string, move = false): { validate: () => void; release: () => void } {
+    if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const refusal = nameRefusal(name, this.#reserved);
+    if (refusal) throw new Error(refusal);
+    const reservation = { name };
+    const admissions = this.#roleAdmissions.get(role) ?? [];
+    admissions.push(reservation);
+    this.#roleAdmissions.set(role, admissions);
+    const release = () => {
+      const index = admissions.indexOf(reservation);
+      if (index < 0) return;
+      admissions.splice(index, 1);
+      if (!admissions.length) this.#roleAdmissions.delete(role);
+      this.#log({ event: 'role-admission-released', session: name, role });
+    };
+    const validate = () => {
+      if (!this.#roles?.get().get(role)?.exclusive) return;
+      const earlier = admissions[0] !== reservation ? admissions[0] : undefined;
+      const from = move ? this.holderOf(role, name) : null;
+      const taken = earlier ? `${withRole(earlier.name, role)} (admission pending)` : this.#exclusiveHolder(role, from === null ? name : [name, from]);
+      if (taken) {
+        if (earlier) throw new Error(`role "${role}" is held by ${taken}: the earlier request is still pending — retry after it finishes`);
+        throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
+      }
+    };
+    try { validate(); } catch (err) { release(); throw err; }
+    return { validate, release };
+  }
+
   /** A launch's process row is written: its reservation is the role itself now. */
   launchSettled(name: string): void {
     this.#store.dropReservation(name);
@@ -790,6 +823,8 @@ export class HubCore {
   #exclusiveHolder(role: string, except: string | readonly string[]): string | null {
     if (!this.#roles?.get().get(role)?.exclusive) return null;
     const skip = new Set(typeof except === 'string' ? [except] : except);
+    const pending = this.#roleAdmissions.get(role)?.[0];
+    if (pending && !skip.has(pending.name)) return `${withRole(pending.name, role)} (admission pending)`;
     const live = [...this.#live.values()].find((c) => c.role === role && !skip.has(c.name));
     if (live) return `${withRole(live.name, role)} (live)`;
     const since = this.#now().getTime() - this.#queueTtlMs;

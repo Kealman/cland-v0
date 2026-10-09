@@ -13,7 +13,7 @@ for (const operation of ['session.launch', 'session.resume'] as const) {
     const root = await tempProject(t);
     await mkdir(join(root, '.cland'), { recursive: true });
     const path = join(root, '.cland', 'roles.toml');
-    const text = (tools: string[]) => `[coordinator.launch]\nharness = "test"\n[coordinator.permissions]\ntools = ${JSON.stringify(tools)}\n`;
+    const text = (tools: string[]) => `[coordinator.launch]\nharness = "test"\n[coordinator.permissions]\ntools = ${JSON.stringify(tools)}\n[reviewer]\nexclusive = true\n[reviewer.launch]\nharness = "test"\n`;
     await writeFile(path, text([operation]));
     let armed = false;
     let entered!: () => void;
@@ -51,13 +51,23 @@ for (const operation of ['session.launch', 'session.resume'] as const) {
     t.after(() => conversation.closed());
     conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
     armed = true;
-    conversation.receive(JSON.stringify({ type: operation, id: 'operation', as: { name: 'coord' }, ...(operation === 'session.launch' ? { name: 'target', harness: 'test' } : { session: 'target', relaunch: true }) }));
+    conversation.receive(JSON.stringify({ type: operation, id: 'operation', as: { name: 'coord' }, ...(operation === 'session.launch' ? { name: 'target', role: 'reviewer', harness: 'test' } : { session: 'target', relaunch: true }) }));
     await reading;
+    if (operation === 'session.launch') {
+      assert.equal(hub.core.store.roleOf('target'), null, 'admission reserves the role without publishing it before the fresh read');
+      assert.throws(() => hub.core.assignRole('next', 'reviewer'), /held by target/);
+    }
     await writeFile(path, text([]));
     release();
     const result = await eventually('revoked session action refused', () => answers.find(frame => frame.id === 'operation'));
     assert.equal(result.code, 'forbidden', JSON.stringify(result));
     assert.deepEqual([starts, stops], [0, 0], 'no spawn or stop happens under a revoked grant');
     assert.equal(table.get('target')?.status, operation === 'session.resume' ? 'running' : undefined);
+    if (operation === 'session.launch') {
+      assert.equal(hub.core.store.roleOf('target'), null);
+      assert.deepEqual(hub.core.store.reservations(), []);
+      assert.equal(sessions.lifecyclePending(), false);
+      assert.equal(hub.core.assignRole('next', 'reviewer').role, 'reviewer', 'the revoked caller releases its reservation');
+    }
   });
 }

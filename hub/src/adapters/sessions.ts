@@ -29,7 +29,7 @@ export type SignalFrame = { session?: string; sessionId?: string; launch?: strin
 /** `item`: the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
 export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null; item?: string | null };
 
-/** A launch directory refused before the role is reserved or the harness is spawned. */
+/** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
 export class InvalidLaunchCwd extends Error {}
 
 export type SessionsOptions = {
@@ -243,29 +243,59 @@ export class Sessions {
   }
 
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
-    if (this.#core.roles?.fresh) {
-      await this.#core.roles.fresh(resumed);
-      return resumed(() => { authorize(); return this.#launch(request, resumed, authorize); });
-    }
     authorize();
-    return this.#launch(request, resumed, authorize);
-  }
-
-  async #launch(request: LaunchRequest, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
-    const cwd = resolve(this.#root, request.cwd ?? '.');
-    const info = await stat(cwd).catch(() => null);
-    return resumed(() => {
-      authorize();
-      if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
-      return this.#spawnLaunch(request, cwd, resumed);
-    });
-  }
-
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed): Promise<HarnessProcessView> {
     const refusal = nameRefusal(request.name, new Set(['human']));
     if (refusal) throw new Error(refusal);
     const role = request.role ?? null;
     if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const existing = this.#table.get(request.name);
+    if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
+    if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
+    if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
+    // Ticket every named role before I/O: even a nonexclusive cached definition may become exclusive at fresh.
+    const admission = role !== null ? this.#core.admitRole(request.name, role) : null;
+    let reservation: { previous: string | null } | null = null;
+    const launching: SignalFrame[] = [];
+    this.#launching.set(request.name, launching);
+    const abort = () => {
+      if (this.#launching.get(request.name) !== launching) return;
+      this.#launching.delete(request.name);
+      this.#earlyBridges.delete(request.name);
+      this.#firstHello.delete(request.name);
+      if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous);
+      admission?.release();
+    };
+    try {
+      if (this.#core.roles?.fresh) {
+        await this.#core.roles.fresh(resumed);
+        // Re-read the caller's grant against the fresh snapshot before starting cwd I/O.
+        resumed(() => {
+          try { authorize(); admission?.validate(); }
+          catch (err) { abort(); throw err; }
+        });
+      }
+      const cwd = resolve(this.#root, request.cwd ?? '.');
+      const info = await stat(cwd).catch(() => null);
+      return await resumed(() => {
+        // Re-read the grant and exclusivity after stat, with refusal and rollback in this same timed stretch.
+        try {
+          authorize();
+          admission?.validate();
+          if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
+          reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
+          if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
+          return this.#spawnLaunch(request, cwd, resumed, reservation, () => admission?.release());
+        } catch (err) { abort(); throw err; }
+      });
+    } catch (err) {
+      // Await failures (fresh I/O or spawn preparation) resume here; synchronous refusals already rolled back.
+      if (this.#launching.get(request.name) !== launching) throw err;
+      return resumed(() => { abort(); throw err; });
+    }
+  }
+
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null } | null, releaseAdmission: () => void): Promise<HarnessProcessView> {
+    const role = request.role ?? null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
     const harness = request.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
@@ -273,17 +303,7 @@ export class Sessions {
     const model = request.model ?? (forHarness ? defaults.model : null);
     const effort = request.effort ?? (forHarness ? defaults.effort : null);
     const policy = this.#launchPolicy(role);
-    const existing = this.#table.get(request.name);
-    if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
-    if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
-    if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     const adapter = this.adapter(harness);
-    // the role is reserved before anything is spawned: a second launch for an exclusive role is refused right here,
-    // and a launch that fails gives back what it reserved (its early hello's grant included)
-    const reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
-    // a test's crash between the reservation and the spawn (the next start gives the role back)
-    if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-    this.#launching.set(request.name, []);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
     if (role !== null) this.#firstHello.set(request.name, { role, carried: clause !== null && adapter.clauseAtSpawn === true });
     const item = request.item ?? null;
@@ -313,6 +333,7 @@ export class Sessions {
       } finally {
         early = this.#launching.get(request.name) ?? [];
         this.#launching.delete(request.name);
+        releaseAdmission();
       }
       this.#lastAt.delete(p.sessionId);
       this.#lastPush.delete(p.sessionId);

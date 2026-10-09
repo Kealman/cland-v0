@@ -788,11 +788,22 @@ export class Dispatcher {
               return { session: core.assignRole(frame.session, frame.role) };
             };
             if (core.roles?.fresh) {
+              // Reserve before the first await; the fresh snapshot and current holder are re-read in assign().
+              const admission = core.admitRole(frame.session, frame.role, frame.note !== undefined || frame.move === true);
               const resumed = this.#guard.resumer(frame.type, client);
-              const value = core.roles.fresh(resumed).then(() => resumed((): HubFrame => {
-                try { return { type: 'result', id: frame.id, ok: true, value: assign() }; }
-                catch (err) { return Dispatcher.#failure(frame.id, err); }
-              }), err => resumed(() => Dispatcher.#failure(frame.id, err)));
+              const value = (async (): Promise<HubFrame> => {
+                try {
+                  await core.roles!.fresh!(resumed);
+                  return resumed(() => {
+                    try {
+                      admission.validate();
+                      return { type: 'result', id: frame.id, ok: true, value: assign() } as HubFrame;
+                    } finally { admission.release(); }
+                  });
+                } catch (err) {
+                  return resumed(() => { admission.release(); return Dispatcher.#failure(frame.id, err); });
+                }
+              })();
               return later(frame.type, value);
             }
             return answer(assign());
