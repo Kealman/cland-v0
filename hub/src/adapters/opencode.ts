@@ -21,7 +21,8 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import { addUsage } from './usage.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { formatModel, OpenCodeClient, parseModel, pickFreeModel, type ModelRef } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
@@ -75,7 +76,7 @@ const pidAlive = (pid: number): boolean => {
 };
 
 /** One watched session: its server's client, the event subscription, and what the stream says. */
-type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; abort: AbortController; usage: Record<string, unknown> | null };
+type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; abort: AbortController };
 
 export class OpenCodeAdapter implements HarnessAdapter {
   readonly harness = OPENCODE;
@@ -88,6 +89,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #env: NodeJS.ProcessEnv;
   readonly #clandDir: string;
   readonly #watched = new Map<string, Watch>();
+  readonly #usage = new Map<string, SessionUsage>();
   #timer: NodeJS.Timeout | null = null;
   #closed = false;
 
@@ -206,8 +208,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return {};
   }
 
-  usage(p: HarnessProcess): Record<string, unknown> | null {
-    return this.#watched.get(p.sessionId)?.usage ?? null;
+  usage(p: HarnessProcess): SessionUsage | null {
+    return this.#usage.get(p.sessionId) ?? null;
   }
 
   // ---------------------------------------------------------------- watch: the event stream and liveness
@@ -220,7 +222,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#host.log({ event: 'opencode-no-password', session: p.name });
       return;
     }
-    const w: Watch = { process: p, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), abort: new AbortController(), usage: null };
+    const w: Watch = { process: p, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), abort: new AbortController() };
     this.#watched.set(p.sessionId, w);
     void this.#subscribe(w);
     if (!this.#timer) {
@@ -230,7 +232,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #apply(w: Watch, change: Change, at: number): void {
-    if (change.usage) w.usage = change.usage;
+    if (change.usage) this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
     if (change.state) this.#host.signal(w.process.sessionId, { state: change.state, source: 'sse', at });
   }
 

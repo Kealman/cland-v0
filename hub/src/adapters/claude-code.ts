@@ -23,7 +23,8 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import { addUsage } from './usage.ts';
 import { signalProcess } from './processes.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
 
@@ -158,8 +159,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   /** The mod's bridge of each session: where inject frames go. */
   readonly #bridges = new Map<string, (frame: InjectFrame) => boolean>();
   readonly #pending = new Map<string, Pending>();
-  /** The last usage the mod reported, by session id. */
-  readonly #usage = new Map<string, Record<string, unknown>>();
+  /** Running totals and the last usage the mod reported, by session id. */
+  readonly #usage = new Map<string, SessionUsage>();
   /** Sessions being stopped: still watched, but their exit is the stop's to report. */
   readonly #stopping = new Set<string>();
   #timer: NodeJS.Timeout | null = null;
@@ -338,10 +339,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   noteUsage(p: HarnessProcess, usage: Record<string, unknown>): void {
-    this.#usage.set(p.sessionId, usage);
+    this.#usage.set(p.sessionId, addUsage(this.#usage.get(p.sessionId), usage));
   }
 
-  usage(p: HarnessProcess): Record<string, unknown> | null {
+  usage(p: HarnessProcess): SessionUsage | null {
     return this.#usage.get(p.sessionId) ?? null;
   }
 

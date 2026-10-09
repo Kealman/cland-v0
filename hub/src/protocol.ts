@@ -435,6 +435,27 @@ export type HubStatus = {
   needsYou?: number;
 };
 
+/** Comparable token counts: input excludes cache; reasoning is a subset of output. Cost, when reported, is USD. */
+export type UsageCounts = {
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  cost?: number;
+};
+
+/** Running session totals and the latest turn/step. Counts are absent until the harness reports them. */
+export type SessionUsage = {
+  total?: UsageCounts;
+  last?: UsageCounts;
+  model?: string;
+  /** Codex's original token report, including its context window. */
+  tokens?: Record<string, unknown>;
+  rateLimits?: Record<string, unknown>;
+};
+
 /** A row of the hub's process table as clients see it. */
 export type HarnessProcessView = {
   name: string;
@@ -456,8 +477,8 @@ export type HarnessProcessView = {
   status: 'running' | 'exited' | 'stopped';
   state: SessionState;
   attach: string | null;
-  /** The latest usage the harness reported, where its adapter has the capability. */
-  usage?: Record<string, unknown>;
+  /** Session totals and latest turn/step, where its adapter has the capability. */
+  usage?: SessionUsage;
 };
 
 export function isClientHello(f: Record<string, unknown>): f is ClientHello {

@@ -512,7 +512,7 @@ The capability table declares the optional capabilities (`history`, `usage`, `se
 | Capability | |
 | --- | --- |
 | history | none: the transcript format is internal to Claude Code |
-| usage | reliable: the mod's `turn.complete` (`hub.status` shows the latest under `harnesses[].usage`) |
+| usage | reliable: the mod's `turn.complete`, summed into `usage.total`, with the turn under `usage.last` |
 | setModel | none |
 | approvalRelay | none: approvals stay in the harness's TUI (spec 4.3) |
 | busy, idle, waiting for approval | reliable (hooks, the mod) |
@@ -536,7 +536,7 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 | Capability | |
 | --- | --- |
 | history | none: the messages are readable (`GET /api/session/{id}/message`), but not read in v0 |
-| usage | reliable: per message, from `session.step.ended` |
+| usage | reliable: per message, from `session.step.ended`, summed into `usage.total`, with the step under `usage.last` |
 | setModel | none: `POST /api/session/{id}/model` exists, but the contract has no setModel yet |
 | approvalRelay | none: approvals stay in the OpenCode TUI (spec 4.3) |
 | busy, idle | reliable: the server reports a turn's start and end |
@@ -554,7 +554,7 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 | attach | `codex resume --remote unix://<socket> --cd <cwd> <thread id>`. Never a `-c` or a `--profile`: either one puts the TUI in embedded mode, which has no external surface (spec 9). The first attach in a new folder asks to trust it. |
 | inject | Idle: `turn/start {threadId, input: [], toolOutput: {name: "hub_event", namespace: "cland", output: <envelope>}}`. During a turn: `turn/steer {threadId, expectedTurnId, input}` with the envelope as text. The JSON-RPC result confirms `injected`; an error answer, or a connection that was not there to send on (or whose write of the request failed), leaves the message `delivered` for the next `idle` or the next reconnect. A request that went out and got no answer within `CLAND_INJECT_TIMEOUT_MS`, or whose connection closed, failed or brought a frame that is not JSON before its answer, is ambiguous (the turn may have started): the delivery is `uncertain`, never replayed on its own. A steer the app-server refuses because the turn just ended falls back to `turn/start`. A lost connection to a live app-server is reopened at the next poll and what waits for an inject is retried then. |
 | state | `thread/status/changed` for the session's thread id (the app-server sends it to every connection; other threads, such as ephemeral helpers, are ignored): `idle` → `idle`, `active` → `busy`, `active [waitingOnApproval]` → `waiting for approval`, `active [waitingOnUserInput]` → `waiting for human`, `systemError` → `idle`, `notLoaded` → `unknown`. Source `app-server`. The pid is checked every `CLAND_ADAPTER_POLL_MS` (5 s), and a lost connection is reopened and resubscribed. |
-| usage | `thread/tokenUsage/updated` (`usage.tokens`: total, last, context window) and `account/rateLimits/read` after each turn, plus `account/rateLimits/updated` (`usage.rateLimits`). |
+| usage | `thread/tokenUsage/updated` (the thread's total and last normalised under `usage.total` and `usage.last`; the original report including context window stays under `usage.tokens`) and `account/rateLimits/read` after each turn, plus `account/rateLimits/updated` (`usage.rateLimits`). |
 | stop, resume | Stop sends SIGTERM to the app-server (its MCP children end with it), then SIGKILL after 5 s, each only after checking the pid's start time. Resume needs the pid alive and the socket answering `thread/resume` for the recorded thread (or `thread/read` while the thread has no turn yet). A relaunch starts a new app-server on the same socket and resumes the thread from its rollout. |
 
 | Capability | |
@@ -581,6 +581,23 @@ What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/s
 | `{"type":"session.bridge","id":…,"session":…,"launch"?:…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
 
 `HarnessProcess` is `{"name","harness","role","label","model","cwd","pid","harnessId","sessionId","harnessSessionId","startedAt","status","state","attach","usage"?}`; `hub.status` lists them as `harnesses`.
+
+`usage.total` is the running total for that launched session; `usage.last` is its latest Claude Code turn,
+OpenCode step (one assistant message), or Codex turn. Both use the same shape:
+`{totalTokens, inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, cost?}`.
+`inputTokens` counts uncached input; cache reads and writes are separate. `totalTokens` includes all input
+(including cache) plus output; reasoning is a subset of output and is not added again. Codex's own
+`totalTokens` is authoritative; its input count is normalised by subtracting cached input. Token categories
+not reported by a harness are zero (Codex has no cache-write count). `cost` is USD when the harness reports it,
+including zero, and otherwise absent; the hub does not estimate it from model prices. `usage.model` names
+the latest reported model, not a model for the whole accumulated total.
+
+The sessions panel shows `usage.total.cost` when positive, otherwise `usage.total.totalTokens`; the item view's
+cost is the claiming session's `usage.total.cost`, including zero, or unknown when unreported. Counts are absent
+until a usage report arrives (Codex can report only rate limits at first). Claude Code and OpenCode totals live
+in adapter memory and reset when the hub restarts; they sum reports received by this hub and cannot recover
+ones missed while it was disconnected. Codex supplies its thread's running total, which survives with the thread
+and replaces the hub's total on each report. A new launch under a reused name starts a new total.
 
 | Command | What it does |
 | --- | --- |
