@@ -284,8 +284,16 @@ export class Sessions {
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
-    const p = this.#process(name);
+    let p = this.#process(name);
     const adapter = this.adapter(p.harness);
+    // a relaunch is a new harness process on the same conversation, whatever became of the old one: one that
+    // still runs is stopped first (its row keeps the role: this is not the session's end, so nothing is vacated)
+    if (relaunch && p.status === 'running') {
+      await adapter.stop(p);
+      this.#table.update(name, { status: 'stopped' });
+      this.#log({ event: 'session-stopped', session: name, harness: p.harness, relaunching: true });
+      p = this.#process(name);
+    }
     const r = await adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
     if (!r.found) {
       if (p.status === 'running') this.#exited(p.sessionId, r.reason);

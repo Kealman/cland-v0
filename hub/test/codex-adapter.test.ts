@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
+import { AppServerClient } from '../src/adapters/codex/app-server.ts';
 import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
@@ -418,4 +419,104 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
   assert.deepEqual(await overridesOf(implPid), impl.overrides);
   const [implResumed] = threadCalls(await fake.log(implPid), 'thread/resume');
   assert.deepEqual([implResumed?.approvalPolicy, implResumed?.permissions], ['never', 'cland']);
+});
+
+// T-51. Measured with Codex 0.160.0: every `thread/start` on an app-server spawns its MCP servers again, so any
+// further thread there (a helper's, a sub-agent's, a client's) brings a second spoke with the session's identity,
+// while the session's own thread goes on calling its tools through the first one.
+test('a second spoke of a live Codex session (another thread on its app-server) leaves the session its tools: the hub answers both, and says so once', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  const clauses = async () => (await hubLog(root)).split('\n').filter((l) => l.includes('"event":"role-clause"')).length;
+  const clausesBefore = await clauses();
+
+  // another client starts a thread on the session's app-server
+  const other = await AppServerClient.connect(launched.harnessId as string, { client: { name: 'test', title: 'test', version: '0' }, timeoutMs: 15_000, connectTimeoutMs: 3000 });
+  t.after(() => other.close());
+  await other.request('thread/start', { cwd: root });
+  await eventually('the second spoke said hello', async () => (/"event":"replaced","name":"impl-1","sessionId":"[^"]+","spokes":2/.test(await hubLog(root)) ? true : undefined));
+  assert.match(await fake.log(launched.pid as number), /mcp cland ready \(another thread's\)/);
+
+  // one session still, and nothing of a hello happened again: no clause is injected into its thread a second time
+  assert.equal((await status(ui)).sessions.filter((s) => s.name === 'impl-1').length, 1);
+  assert.equal(await clauses(), clausesBefore);
+
+  // the session's thread calls its tools through its first spoke, and they work: the pong is a `send`
+  const id = await sendGeneral(ui, '@impl-1 still there?');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 still there?', 15_000);
+  assert.doesNotMatch(await fake.log(launched.pid as number), /replaced/);
+
+  // the Agents record says there are two, once
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'spoke-joined').map((m) => m.text), ['impl-1 [Implementer]: another spoke of the session connected (2 now); each is answered, and deliveries go to the newest']);
+});
+
+test('session resume --relaunch on a live session relaunches it: the app-server is stopped and a new one resumes the thread, with its role and its tools', { skip: NO_PS }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  // without --relaunch a live session is only re-found
+  const found = await ui.request({ type: 'session.resume', session: 'impl-1' }, 30_000);
+  assert.equal((found.value as { process: Harness }).process.pid, launched.pid);
+
+  const r = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
+  assert.equal(r.ok, true, r.error);
+  const again = (r.value as { found: boolean; process: Harness }).process;
+  assert.notEqual(again.pid, launched.pid, 'a new app-server');
+  assert.equal(pidAlive(launched.pid as number), false, 'the old one was stopped');
+  assert.equal(again.harnessSessionId, launched.harnessSessionId, 'the same thread');
+  assert.equal(again.status, 'running');
+  assert.match(await hubLog(root), /"event":"session-resumed","session":"impl-1",.*"relaunched":true/);
+  const present = await presentAs(ui, 'impl-1', 'idle');
+  assert.equal(present.role, 'implementer', 'the relaunch kept its role');
+
+  const id = await sendGeneral(ui, '@impl-1 back?');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 back?', 15_000);
+});
+
+// T-51, the second occurrence: a hub restart with a session whose first spoke an older hub had told it was replaced.
+// That spoke never came back, and the session's thread went on calling it. Now every spoke reconnects and is taken.
+test('after a hub restart every spoke of a Codex session reconnects, and the session\'s thread still has its tools', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const first = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, first.discovery);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+  const other = await AppServerClient.connect(launched.harnessId as string, { client: { name: 'test', title: 'test', version: '0' }, timeoutMs: 15_000, connectTimeoutMs: 3000 });
+  t.after(() => other.close());
+  await other.request('thread/start', { cwd: root });
+  await eventually('two spokes', async () => (/"event":"replaced","name":"impl-1","sessionId":"[^"]+","spokes":2/.test(await hubLog(root)) ? true : undefined));
+  ui.close();
+
+  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+  const restarted = Date.now();
+  const second = await startDaemon(t, root, fake.env);
+  const ui2 = await connectUi(t, second.discovery);
+  assert.equal((await ui2.request({ type: 'subscribe' })).ok, true);
+  const since = async (event: string) =>
+    (await hubLog(root))
+      .split('\n')
+      .filter((l) => l.startsWith('{'))
+      .map((l) => JSON.parse(l) as { ts: string; event: string; name?: string; spokes?: number })
+      .filter((e) => e.event === event && Date.parse(e.ts) >= restarted && e.name === 'impl-1');
+  // both come back: one says hello, the other joins it
+  await eventually('both spokes are back', async () => ((await since('hello')).length === 1 && (await since('replaced')).some((e) => e.spokes === 2) ? true : undefined));
+  await presentAs(ui2, 'impl-1', 'idle');
+
+  const id = await sendGeneral(ui2, '@impl-1 after the restart?');
+  await ui2.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  await ui2.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 after the restart?', 15_000);
 });

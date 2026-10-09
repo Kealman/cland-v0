@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
-import type { Socket } from 'node:net';
 import { cland, DOCUMENTED_TOOLS, SPOKE_ENTRY, startDaemon, startHub, spawnSpoke, tempProject, TEST_SECRET, waitForAbsence } from './harness.ts';
 import { createHub } from '../src/hub/server.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
@@ -152,53 +151,6 @@ test('a spoke whose session vanished (stdin ended without an MCP close) exits in
   const code = await Promise.race([exited, new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 3000))]);
   assert.equal(code, 0, `exit code (stderr: ${stderr.join('')})`);
   assert.match(stderr.join(''), /stdin (ended|closed) — exiting/);
-});
-
-/** One masked client text frame, written straight to a socket (what a client sends, whatever its library thinks). */
-const maskedTextFrame = (text: string): Buffer => {
-  const payload = Buffer.from(text);
-  if (payload.length >= 126) throw new Error('short frames only');
-  const mask = Buffer.from([1, 2, 3, 4]);
-  const masked = Buffer.from(payload.map((b, i) => b ^ (mask[i % 4] as number)));
-  return Buffer.concat([Buffer.from([0x81, 0x80 | payload.length]), mask, masked]);
-};
-
-test('a replaced spoke whose socket is still closing cannot act under the name it lost', async () => {
-  const hub = await startHub();
-  const open = (): Promise<{ ws: WebSocket; frames: Array<Record<string, unknown>> }> =>
-    new Promise((resolve, reject) => {
-      const ws = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
-      const frames: Array<Record<string, unknown>> = [];
-      ws.on('error', reject);
-      ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, cwd: '/w', sessionId: 'sess-a', name: 'alpha' })));
-      ws.on('message', (d) => {
-        const f = JSON.parse(String(d)) as Record<string, unknown>;
-        frames.push(f);
-        if (f.type === 'welcome') resolve({ ws, frames });
-      });
-    });
-  const stale = await open();
-  // the stale spoke stops reading: it never sees the hub's close, and its socket stays half-open
-  const raw = (stale.ws as unknown as { _socket: Socket })._socket;
-  raw.pause();
-  const fresh = await open();
-  try {
-    fresh.ws.send(JSON.stringify({ type: 'status', id: 'f1', text: 'the fresh one' }));
-    await until(async () => fresh.frames.some((f) => f.id === 'f1'), (ok) => ok);
-    raw.write(maskedTextFrame(JSON.stringify({ type: 'status', id: 's1', text: 'stale overwrite' })));
-    await new Promise((r) => setTimeout(r, 200));
-    // asked over the wire, as any session would
-    fresh.ws.send(JSON.stringify({ type: 'who', id: 'w1' }));
-    const who = await until(
-      async () => fresh.frames.find((f) => f.id === 'w1') as { value: { sessions: Array<{ name: string; status: string | null }> } } | undefined,
-      (f) => f !== undefined,
-    );
-    assert.equal(who?.value.sessions.find((p) => p.name === 'alpha')?.status, 'the fresh one', 'the replaced socket changed nothing');
-  } finally {
-    stale.ws.terminate();
-    fresh.ws.terminate();
-    await hub.close();
-  }
 });
 
 test('a spoke acks every deliver and hands a message re-sent under the same id to its session once', async () => {

@@ -11,6 +11,8 @@
 //       `turn/started`, `turn/completed`, `thread/tokenUsage/updated` to the thread's subscribers.
 //       The MCP servers come from the `-c mcp_servers.<name>.*` overrides; each is started (the real spoke, which
 //       connects to the real hub) with only its configured environment beside PATH and HOME.
+//       Every further `thread/start` starts the servers again, as the real app-server does: a second spoke with the
+//       session's identity, while the first thread's turns keep calling their tools through the first.
 //       A turn answers each cland envelope it got (as input, tool output or steer) with a `send` through the spoke,
 //       "pong: <text>", into the message's topic. A message containing "needs approval" first sets the model's own
 //       status line to "idle" through the spoke's `status` tool (the hub must not take it for the state), then asks
@@ -185,7 +187,10 @@ async function appServer(args: string[]): Promise<number> {
   // the MCP servers, started once: the real spoke, connected to the real hub
   const mcp = new Map<string, Client>();
   type Server = { command: string; args?: string[]; env?: Record<string, string>; enabled?: boolean };
-  const mcpReady = (async () => {
+  // One set of MCP server processes per thread, as the real app-server starts them (measured with 0.160.0: every
+  // `thread/start` spawns the configured servers again, with the same environment). The first set is the session's
+  // thread's: its turns call their tools through it for as long as the app-server lives.
+  const startMcp = async (): Promise<void> => {
     for (const [name, server] of Object.entries((config.mcp_servers ?? {}) as Record<string, Server>)) {
       if (server.enabled === false) continue;
       const client = new Client({ name: 'fake-codex', version: VERSION }, { capabilities: {} });
@@ -193,10 +198,12 @@ async function appServer(args: string[]): Promise<number> {
       const transport = new StdioClientTransport({ command: server.command, args: server.args ?? [], env, cwd: process.cwd(), stderr: 'pipe' });
       transport.stderr?.on('data', (c: Buffer) => log(`[mcp ${name}] ${String(c).trim()}`));
       await client.connect(transport);
-      mcp.set(name, client);
-      log(`mcp ${name} ready`);
+      const first = !mcp.has(name);
+      if (first) mcp.set(name, client);
+      log(`mcp ${name} ready${first ? '' : ' (another thread\'s)'}`);
     }
-  })().catch((err: unknown) => log(`mcp startup failed: ${err instanceof Error ? err.message : String(err)}`));
+  };
+  const mcpReady = startMcp().catch((err: unknown) => log(`mcp startup failed: ${err instanceof Error ? err.message : String(err)}`));
   const callTool = async (name: string, toolArgs: Record<string, unknown>) => {
     const client = mcp.get('cland');
     if (!client) return null;
@@ -348,6 +355,7 @@ async function appServer(args: string[]): Promise<number> {
         const refusal = permissionsRefusal(params);
         if (refusal) return { error: { code: -32600, message: refusal } };
         await mcpReady;
+        if (threads.size > 0) await startMcp().catch((err: unknown) => log(`mcp startup failed: ${err instanceof Error ? err.message : String(err)}`));
         const t: Thread = { id: randomUUID(), cwd: (params.cwd as string) ?? process.cwd(), model: (params.model as string) ?? 'gpt-fake-1', turns: 0, status: { type: 'idle' }, turnId: null, queue: [], tokens: 0 };
         threads.set(t.id, t);
         save(t);
