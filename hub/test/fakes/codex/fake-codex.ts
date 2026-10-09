@@ -35,7 +35,8 @@
 //   connection" starts its turn and drops the client's connection instead of answering (the first time only); SIGUSR2 drops every
 //   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
 //   app-server lives). A body `rename to <name>` calls the spoke's `rename` tool before the pong. Each `turn/start`
-//   logs its `effort` when given. A turn announces each input it takes up (`item/completed`, a `userMessage`), and
+//   logs its `effort` when given. A turn announces each input it takes up (`item/completed`): as the real 0.160.0, a
+//   `toolOutput` is a `functionCallOutput` item (`name`, `namespace`, `output`) and text input a `userMessage`; and
 //   `thread/read` with `includeTurns` returns the turns with those items. A steer whose text contains "drop this
 //   steer" is accepted (its result says so) and never taken up, the first time only. Each `thread/start` and `thread/resume` logs its params as one line of JSON, and is
 //   refused when it names `permissions` together with `sandbox`, or a `permissions` id that is neither built-in
@@ -157,8 +158,9 @@ async function resume(args: string[]): Promise<number> {
 // ------------------------------------------------------------------ the app-server
 
 type Conn = { ws: WebSocket; initialized: boolean; subscribed: Set<string> };
-type Item = { text: string };
-type TurnRecord = { id: string; status: string; items: Array<{ type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> }> };
+type Item = { text: string; tool?: { name: string; namespace?: string } | undefined };
+type TurnItem = { type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> } | { type: 'functionCallOutput'; id: string; name: string; namespace: string | null; output: string };
+type TurnRecord = { id: string; status: string; items: TurnItem[] };
 type Thread = ThreadFile & { status: Status; turnId: string | null; queue: Item[]; tokens: number; history?: TurnRecord[] };
 
 async function appServer(args: string[]): Promise<number> {
@@ -278,8 +280,11 @@ async function appServer(args: string[]): Promise<number> {
     (t.history ??= []).push(record);
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
       log(`turn ${turnId} item: ${item.text}`);
-      // as the real one: an input the turn takes up becomes a userMessage item of the turn, and is announced
-      const taken = { type: 'userMessage' as const, id: randomUUID(), content: [{ type: 'text' as const, text: item.text }] };
+      // as the real one: an input the turn takes up becomes an item of the turn, and is announced; a tool output is a
+      // functionCallOutput (measured with 0.160.0, T-68), text input a userMessage
+      const taken: TurnItem = item.tool
+        ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
+        : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
       record.items.push(taken);
       toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
       if (item.text === 'newer recovery turn') {
@@ -334,6 +339,10 @@ async function appServer(args: string[]): Promise<number> {
     toSubscribers(t.id, 'turn/completed', { threadId: t.id, turn: { id: turnId, status: record.status, error, items: [] } });
   };
 
+  const toolOf = (params: Record<string, unknown>): Item['tool'] => {
+    const tool = params.toolOutput as { name?: unknown; namespace?: unknown } | undefined;
+    return tool && typeof tool.name === 'string' ? { name: tool.name, ...(typeof tool.namespace === 'string' ? { namespace: tool.namespace } : {}) } : undefined;
+  };
   const textOf = (params: Record<string, unknown>): string => {
     const tool = params.toolOutput as { name?: string; output?: unknown } | undefined;
     if (tool && typeof tool.output === 'string') return tool.output;
@@ -425,12 +434,12 @@ async function appServer(args: string[]): Promise<number> {
             log(`recovery accepted and dropped in newer turn: ${text}`);
             return { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
           }
-          t.queue.push({ text });
+          t.queue.push({ text, tool: toolOf(params) });
           log(`steered by turn/start: ${text}`);
           return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
         }
         t.turnId = randomUUID();
-        t.queue.push({ text: text.includes('drop every recovery') ? 'ignored recovery input' : text });
+        t.queue.push({ text: text.includes('drop every recovery') ? 'ignored recovery input' : text, tool: toolOf(params) });
         log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}${typeof params.effort === 'string' ? ` effort=${params.effort}` : ''}`);
         setStatus(t, { type: 'active', activeFlags: [] });
         toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });

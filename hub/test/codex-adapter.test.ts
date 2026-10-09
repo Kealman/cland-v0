@@ -591,6 +591,36 @@ test('a steer the app-server accepted and the turn never took up is delivered ag
   assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), ['impl-1 [Implementer]: its turn ended without a message it had accepted; the message was delivered again as a new turn']);
 });
 
+// T-68. Codex 0.160.0 records a delivery into an idle thread (`turn/start` with a `hub_event` toolOutput) as a
+// `functionCallOutput` item, not a `userMessage`: the turn that carries it took it up, and nothing is owed.
+test('a delivery to an idle Codex session runs one turn and is never redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  await sendGeneral(ui, '@impl-1 an idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 an idle delivery', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+  // a second idle delivery, answered after the first turn's check has run: a redelivery would have come before it
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const log = await fake.log(launched.pid as number);
+  assert.equal(log.split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string });
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
+  assert.equal((await hubLog(root)).split('\n').filter((line) => line.includes('"event":"harness-redelivered"') || line.includes('"event":"harness-redelivery-failed"')).length, 0);
+  const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
+  assert.deepEqual(pongs, ['pong: @impl-1 an idle delivery', 'pong: @impl-1 a later idle delivery'], 'each answered once');
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered' || m.kind === 'turn-failed'), []);
+});
+
 for (const mode of ['rejected', 'unanswered']) test(`a successful completion before a late ${mode} steer response never replays a pending admission`, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1500, turnMs: 100 });
