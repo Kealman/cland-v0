@@ -462,11 +462,11 @@ local function autocmds()
   api.nvim_create_autocmd('VimResized', {
     group = group,
     callback = function()
-      layout.fix()
+      layout.screen_resized()
       state.changed()
     end,
   })
-  api.nvim_create_autocmd('WinResized', { group = group, callback = state.changed })
+  api.nvim_create_autocmd('WinResized', { group = group, callback = layout.resized })
   api.nvim_create_autocmd('WinClosed', {
     group = group,
     callback = function(ev)
@@ -475,6 +475,7 @@ local function autocmds()
         return
       end
       local win = tonumber(ev.match)
+      layout.closing(win)
       vim.schedule(function()
         layout.on_win_closed(win)
       end)
@@ -511,6 +512,9 @@ local function autocmds()
   api.nvim_create_autocmd('VimLeavePre', {
     group = group,
     callback = function()
+      layout.flush_resize()
+      require('cland.ui').changed()
+      require('cland.ui').flush()
       M.client:stop()
     end,
   })
@@ -559,6 +563,7 @@ function M.start(opts)
   require('cland.bars').setup()
   state.reset({ root = root })
   state.S.ui.right = 'sessions'
+  require('cland.ui').load(root)
   M.root = root
   -- notices go to the status line, one line, never the message area (no hit-enter prompt)
   vim.notify = function(msg, level)
@@ -576,6 +581,7 @@ function M.start(opts)
   local layout = require('cland.layout')
   state.on_change(function()
     layout.render()
+    require('cland.ui').changed()
     require('cland.bars').redraw()
   end)
   vim.g.mapleader = ' '

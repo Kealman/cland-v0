@@ -35,6 +35,7 @@ export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; rem
 # Volatile hub state: never committed. tasks/, roles.toml and config.toml are.
 hub.db*
 hub.json
+ui.json
 hub.lock*
 hub.sock
 secret

@@ -327,9 +327,13 @@ test('presets are examples: watch opens items, topics docked over the inbox; ste
   const c = await startShell(t);
   await c.input('<Esc>:Cland preset watch<CR>');
   let s = await c.waitScreen((x) => x.includes('ITEMS') && x.includes('TOPICS') && x.includes('INBOX'), 'the watch preset');
+  assert.match(statusLine(s), /preset watch/);
+  // A long transient notice has priority over context; check the context after it expires.
+  await c.lua("require('cland.state').S.flash.at = vim.uv.now() - 8001; vim.cmd('redrawstatus')");
+  s = await c.waitScreen((x) => statusLine(x).includes('General · topic'), 'the preset context after its notice');
   assert.match(statusLine(s), /General · topic.*preset watch/);
   await c.input(':Cland preset steady<CR>');
-  s = await c.waitScreen((x) => statusLine(x).includes('Board') && x.includes('INBOX') && !x.includes('ITEMS'), 'the steady preset');
+  s = await c.waitScreen((x) => topBar(x).includes('Board') && x.includes('INBOX') && !x.includes('ITEMS'), 'the steady preset');
   assert.match(topBar(s), /│ Board/);
   // still toggles afterwards
   await c.input('<Space>i');

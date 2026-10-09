@@ -30,6 +30,33 @@ local function width(chunks)
   return w
 end
 
+-- Fit styled chunks to display cells, including the ellipsis in the same budget.
+local function fit(chunks, cells)
+  if cells <= 0 then return {} end
+  if width(chunks) <= cells then return chunks end
+  local ellipsis = { '…', 'ClandDimBar' }
+  if cells < width({ ellipsis }) then return {} end
+  local out, remaining = {}, cells - width({ ellipsis })
+  for _, chunk in ipairs(chunks) do
+    local text = tostring(chunk[1])
+    local size = api.nvim_strwidth(text)
+    if size <= remaining then
+      out[#out + 1] = chunk
+      remaining = remaining - size
+    else
+      local low, high = 0, vim.fn.strchars(text)
+      while low < high do
+        local mid = math.ceil((low + high) / 2)
+        if api.nvim_strwidth(vim.fn.strcharpart(text, 0, mid)) <= remaining then low = mid else high = mid - 1 end
+      end
+      out[#out + 1] = { vim.fn.strcharpart(text, 0, low), chunk[2] }
+      break
+    end
+  end
+  out[#out + 1] = ellipsis
+  return out
+end
+
 local function views()
   return require('cland.views')
 end
@@ -169,22 +196,13 @@ function M.status()
   local m = MODES[mode] or MODES[mode:sub(1, 1)] or { ' ' .. mode .. ' ', 'ClandModeN' }
   local hub = HUB_WORDS[state.S.hub.state] or { 'hub: ' .. state.S.hub.state, 'ClandDimBar' }
   local c = state.counts()
-  local left = {
-    m,
-    { ' ' .. M.context() .. ' ', 'ClandTextBar' },
+  local context_suffix = {
     { '│ ', 'ClandFaintBar' },
     hub,
-    { ' │ ', 'ClandFaintBar' },
-    { ('sessions: %d busy · %d waiting · %d idle'):format(c.busy, c.waiting, c.idle), 'ClandDimBar' },
   }
   if state.S.ui.preset then
-    left[#left + 1] = { ' │ ', 'ClandFaintBar' }
-    left[#left + 1] = { 'preset ' .. state.S.ui.preset, 'ClandBlueBar' }
-  end
-  local flash = state.S.flash
-  if flash and vim.uv.now() - flash.at < 8000 then
-    left[#left + 1] = { ' │ ', 'ClandFaintBar' }
-    left[#left + 1] = { flash.text, flash.group }
+    context_suffix[#context_suffix + 1] = { ' │ ', 'ClandFaintBar' }
+    context_suffix[#context_suffix + 1] = { 'preset ' .. state.S.ui.preset, 'ClandBlueBar' }
   end
   local hint
   local role = vim.b.cland_role
@@ -197,11 +215,36 @@ function M.status()
   else
     hint = '␣i ␣s ␣t ␣n panels · ␣p pick · ␣␣ back · gi gt gs'
   end
-  local room = vim.o.columns - width(left) - 1
-  if api.nvim_strwidth(hint) + 1 > room then
-    hint = room > 2 and vim.fn.strcharpart(hint, 0, room - 2) .. '…' or ''
+  -- Allocate once in priority order, independently of the segments' visual order.
+  local remaining = math.max(0, vim.o.columns - 1)
+  local separator = { ' │ ', 'ClandFaintBar' }
+  local gap = width({ separator })
+  local answer = fit({ { hint, 'ClandDimBar' } }, remaining)
+  remaining = remaining - width(answer)
+  local function take(chunks)
+    local fitted = fit(chunks, remaining - gap)
+    if #fitted > 0 then remaining = remaining - width(fitted) - gap end
+    return fitted
   end
-  return M.stl(left) .. '%<%#StatusLine#%=' .. M.stl({ { hint .. ' ', 'ClandDimBar' } })
+  local flash = state.S.flash
+  local notice = flash and vim.uv.now() - flash.at < 8000 and take({ { flash.text, flash.group } }) or {}
+  -- Within the context budget, shorten the view title before mode/hub/preset metadata.
+  local context = { m }
+  vim.list_extend(context, fit({ { ' ' .. M.context() .. ' ', 'ClandTextBar' } },
+    remaining - gap - width(context) - width(context_suffix)))
+  vim.list_extend(context, context_suffix)
+  context = take(context)
+  local counts = { { ('sessions: %d busy · %d waiting · %d idle'):format(c.busy, c.waiting, c.idle), 'ClandDimBar' } }
+  counts = width(counts) <= remaining - gap and take(counts) or {}
+  local left = {}
+  for _, segment in ipairs({ context, counts, notice }) do
+    if #segment > 0 then
+      if #left > 0 then left[#left + 1] = separator end
+      vim.list_extend(left, segment)
+    end
+  end
+  if #left > 0 then left[#left + 1] = separator end
+  return M.stl(left) .. '%#StatusLine#%=' .. M.stl(answer) .. ' '
 end
 
 -- Winbars: the panel headers ----------------------------------------------------------------------------

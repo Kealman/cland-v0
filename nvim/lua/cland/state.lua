@@ -30,6 +30,9 @@ function M.reset(opts)
       right = nil, -- 'inbox' | 'sessions' | 'topics'
       dock = false,
       preset = nil,
+      sizes = vim.empty_dict(), -- manual left/right widths and dock height; absent means use the formula
+      items_filter = 'all',
+      current_release = nil, -- reserved for the human's pick (T-128)
       confirm = nil, -- { session = name }: the sessions panel asks before stopping it
     },
     attached = {}, -- session name → true while a terminal is attached in this Neovim

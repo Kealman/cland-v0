@@ -28,7 +28,8 @@ end
 --- The widths of the left and right panels for this screen.
 function M.widths()
   local cols = vim.o.columns
-  return math.max(30, math.min(44, math.floor(cols * 0.22))), math.max(34, math.min(50, math.floor(cols * 0.25)))
+  local sizes = state.S.ui.sizes
+  return sizes.left or math.max(30, math.min(44, math.floor(cols * 0.22))), sizes.right or math.max(34, math.min(50, math.floor(cols * 0.25)))
 end
 
 local function panel_opts(win)
@@ -93,6 +94,53 @@ local function close_panel(key)
   end
 end
 
+-- The actual sizes after the last layout operation (including any constraint imposed by Neovim).
+local measured = {}
+local changing = false
+local closing = {}
+local screen_columns, screen_lines = vim.o.columns, vim.o.lines
+local function dimensions()
+  local out = {}
+  if valid(M.win.left) then out.left = api.nvim_win_get_width(M.win.left) end
+  local right = valid(M.win.right) and M.win.right or M.win.dock
+  if valid(right) then out.right = api.nvim_win_get_width(right) end
+  if valid(M.win.dock) and valid(M.win.right) then out.dock = api.nvim_win_get_height(M.win.dock) end
+  return out
+end
+
+local function record_resize()
+  if changing or next(closing) then return end
+  local now = dimensions()
+  local same_screen = screen_columns == vim.o.columns and screen_lines == vim.o.lines
+  for key, size in pairs(now) do
+    if same_screen and measured[key] and size ~= measured[key] then state.S.ui.sizes[key] = size end
+  end
+  measured = now
+  screen_columns, screen_lines = vim.o.columns, vim.o.lines
+end
+
+function M.flush_resize()
+  record_resize()
+end
+
+function M.resized()
+  record_resize()
+  state.changed()
+end
+
+-- WinClosed runs before its deferred state repair. Redistribution in that interval is automatic.
+function M.closing(win)
+  if not changing then
+    record_resize()
+    closing[win] = true
+  end
+end
+
+function M.screen_resized()
+  -- Screen constraints are temporary, not manual overrides.
+  M.fix()
+end
+
 -- Panels -------------------------------------------------------------------------------------------
 
 function M.open_left()
@@ -123,7 +171,7 @@ function M.open_right(kind)
 end
 
 local function dock_height()
-  return math.max(6, math.min(math.floor((vim.o.lines - 3) * 0.4), #state.S.topics + 6))
+  return state.S.ui.sizes.dock or math.max(6, math.min(math.floor((vim.o.lines - 3) * 0.4), #state.S.topics + 6))
 end
 
 function M.open_dock()
@@ -142,7 +190,7 @@ function M.open_dock()
   panels.render('topics', M.win.dock)
 end
 
---- Keep the sizes the design asks for after any layout change; a session terminal never gets below
+--- Use manual sizes when present, otherwise the design formulas; a session terminal never gets below
 --- three rows (ADR 0005: a one-row terminal keeps no scrollback).
 function M.fix()
   local lw, rw = M.widths()
@@ -467,6 +515,7 @@ end
 
 --- A panel closed with :q or CTRL-W c: the state follows the windows.
 function M.on_win_closed(win)
+  local redistributed = closing[win]
   local ui = state.S.ui
   if win == M.win.left then
     M.win.left, ui.left = nil, false
@@ -481,8 +530,21 @@ function M.on_win_closed(win)
   elseif M.win.splits and M.win.splits[win] then
     M.win.splits[win] = nil
   else
+    if redistributed then M.fix() end
+    closing[win] = nil
     return
   end
+  record_resize()
+  closing[win] = true
+  -- A sole centre column can disappear and give its width to a panel. Recreate it, then restore
+  -- preferences without ever storing that automatic redistribution.
+  if not valid(M.win.centre) then
+    close('composer')
+    M.apply_view({ focus = false, insert = false })
+  else
+    M.fix()
+  end
+  closing[win] = nil
   state.changed()
 end
 
@@ -502,6 +564,23 @@ function M.render()
   local c = M.win.centre
   if valid(c) and ui.view.kind ~= 'thread' and ui.view.kind ~= 'session' then
     require('cland.views').render_placeholder(ui.view)
+  end
+end
+
+-- Flush a pending human resize before a layout operation; pending closes exclude redistribution.
+-- Programmatic changes then establish the new automatic baseline.
+for _, name in ipairs({ 'centre', 'open_left', 'open_right', 'open_dock', 'fix', 'toggle_left', 'right_panel', 'toggle_dock', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'preset', 'build' }) do
+  local operation = M[name]
+  M[name] = function(...)
+    if changing then return operation(...) end
+    record_resize()
+    changing = true
+    local ok, result = pcall(operation, ...)
+    changing = false
+    measured = dimensions()
+    screen_columns, screen_lines = vim.o.columns, vim.o.lines
+    if not ok then error(result) end
+    return result
   end
 end
 
