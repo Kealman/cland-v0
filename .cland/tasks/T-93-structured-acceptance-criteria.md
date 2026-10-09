@@ -2,16 +2,16 @@
 id: T-93
 kind: question
 title: Structured acceptance criteria
-state: open
+state: closed
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: human
 parent: T-81
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:09:46.164Z
-updated: 2026-10-09T19:09:46.164Z
+updated: 2026-10-09T19:45:42.492Z
 ---
 
 ## Question
@@ -30,3 +30,22 @@ Acceptance criteria are Markdown checkboxes in the item body under "## Acceptanc
 - The GLOSSARY entry (Criterion) and the spec section.
 
 Record the resolution as a comment, the spec section and the GLOSSARY entry.
+
+## Comments
+
+### human · 2026-10-09T19:45:35.092Z
+
+Resolution (2026-10-09, the human accepted every point).
+
+- Criteria stay a list under "## Acceptance criteria" but become structured: a stable id per criterion (C1, C2, …) and marks as sub-items (done, verified, failed, each with who and when, verified with the run). The hub parses the section, exposes `criteria` in view --json and writes the marks; the checkbox mirrors done; the file stays the source of truth.
+- done: the Implementer holding the claim, or the Coordinator, the human or an Aide. verified: a Reviewer or QA, standalone (task.criterion verify) or inside a verdict (--verified C1,C3 or all). failed: a verifier with a note; it clears done and returns the task to in progress. Criteria are added, edited and removed by the Coordinator, the human or an Aide; ids are never reused.
+- The merge gate refuses while any criterion is not done or not verified by at least one verdict; the epic plan may require QA verification for specific criteria.
+- Item view: glyphs ○ open, ◐ done, ● verified, ✗ failed with marks; panel rows and board cards show verified/total for tasks in work.
+- Migration: existing checkboxes read as unmarked criteria; ids assigned when the hub first touches the section.
+- GLOSSARY: Criterion. No ADR.
+
+Recorded in docs/spec/v0.1.md §3.4 and GLOSSARY.md.
+
+### human · 2026-10-09T19:45:42.492Z
+
+Resolved: see the resolution comment; spec v0.1 §3.4

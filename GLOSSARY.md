@@ -94,6 +94,10 @@ _Avoid_: lock, checkout, assignment
 A structured comment on an item that records the result of a review or a QA run: clear or not clear, by which session and role, from which run.
 _Avoid_: review result, report, approval
 
+**Criterion**:
+One acceptance condition of a task, with a stable id and marks: done by the implementer, verified by a reviewer or QA, or failed by a verifier. A task merges only when every criterion is done and verified.
+_Avoid_: checkbox, requirement, check, test case
+
 **Territory**:
 The local bare git repository that is the project's `origin`: where agents branch, push, get reviewed and merge, out of sight of GitHub.
 _Avoid_: forge, local remote, agents' repo, mirror
