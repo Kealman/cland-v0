@@ -1,3 +1,4 @@
+import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 // The workbench shell (#25) against a stub hub over stdio (`stub-hub.ts`): deterministic topics,
 // sessions with states and capability tables, items and events on command. Driven like a human, with
 // nvim_input on a 160x45 UI, and read back with screenstring().
@@ -78,7 +79,7 @@ type Shell = Client & {
 
 async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}, env: Record<string, string> = {}): Promise<Shell> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-sh-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  ownDirectory(t, dir);
   const root = join(dir, 'proj-shell');
   await mkdir(join(root, '.git'), { recursive: true });
   const keylog = join(dir, 'keylog.txt');

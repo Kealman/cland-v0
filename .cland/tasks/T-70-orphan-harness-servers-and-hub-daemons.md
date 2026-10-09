@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T10:44:01.288Z
-updated: 2026-10-09T10:44:01.288Z
+updated: 2026-10-09T11:44:43.294Z
 ---
 
 ## Parent
@@ -34,3 +34,9 @@ Part of T-19. Found by the human's stand-in on 2026-10-09 at 10:45Z while chasin
 ## Notes
 
 Size S. Implementer: Codex gpt-6.1-sol. Independent of the test-harness lock item (same incident, different fix).
+
+## Comments
+
+### coord · 2026-10-09T11:44:43.294Z
+
+Added scope, from rev-6's review of T-58 on 2026-10-09 at 11:44Z. The session pid probes still reach `spawnSync('ps')` through `processStarted`, in hub/src/hub/lock.ts or the process table. That code is unchanged from main. It runs on hub request paths, such as `session.list` and launch or resume checks, so a slow `ps` blocks the event loop: the class of stall T-67 removed for git. T-58 made the territory lock's own `ps` asynchronous (`acquireLockAsync`). Do the same for every `ps` call reachable from a hub request: run it asynchronously, or cache the process start times on a timer. Add a test that the request handlers spawn no synchronous process.

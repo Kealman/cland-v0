@@ -1,3 +1,4 @@
+import { ownDirectory } from './process-cleanup.ts';
 // `cland doctor` (spec 4.9, #40) run as the CLI against an initialised temporary project, with the fake harnesses,
 // a fake `gh` and a stub Neovim as the only tools on its PATH and a real hub started there; each failure is made on
 // disk or in the fakes' environment, and the report is read from stdout and the exit code.
@@ -25,7 +26,7 @@ const HARNESS_DIRS = { claude: join(FAKES, 'claude-code'), codex: join(FAKES, 'c
  */
 async function toolchain(t: TestContext): Promise<{ env: Record<string, string>; path: (without?: keyof typeof HARNESS_DIRS) => string }> {
   const dir = await realpath(await mkdtemp(join(tmpdir(), 'cland-doctor-')));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  ownDirectory(t, dir);
   const bin = join(dir, 'bin');
   await mkdir(bin);
   await symlink(process.execPath, join(bin, 'node'));

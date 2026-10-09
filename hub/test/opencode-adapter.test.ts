@@ -1,3 +1,4 @@
+import { ownDirectory } from './process-cleanup.ts';
 // The OpenCode adapter (spec 4.2, 4.3; #27) against a fake OpenCode server at the harness boundary, HTTP plus SSE:
 // a real daemon in a temporary project launches the fake (`test/fakes/opencode/opencode`, first on the PATH) as
 // `opencode serve`; the fake reads the config the adapter generated and starts the real spoke, which connects to
@@ -5,11 +6,12 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, readFile, realpath, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -28,6 +30,7 @@ type FakeOpenCode = {
 
 async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number } = {}): Promise<FakeOpenCode> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
+  const cleanupHome = ownDirectory(undefined, home);
   const env = {
     PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_OPENCODE_HOME: home,
@@ -43,7 +46,7 @@ async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTi
   };
   t.after(async () => {
     for (const s of await servers()) await killDaemon(s.pid);
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   return { env, home, servers, prompts: (session) => readFile(join(home, 'prompts', `${session}.log`), 'utf8').catch(() => '') };
 }
@@ -196,6 +199,43 @@ test('a launch without a model prefers big-pickle over a listed but deprecated f
   await presentAs(ui, 'impl', 'idle');
   await sendGeneral(ui, 'does the default answer?');
   await replyTo(ui, 'impl', 'pong: does the default answer?');
+});
+
+test('a no-model OpenCode launch waits for big-pickle after a partial cold catalog', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_STAGED_CATALOG: '1' });
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'impl');
+  assert.equal(launched.model, 'opencode/big-pickle');
+});
+
+test('a changing OpenCode catalog falls back to the latest successful list at the deadline', { timeout: 8000 }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  await startDaemon(t, root, fake.env);
+  // Instantiate at the adapter's public spawn seam so only this process's clock is accelerated.
+  const adapter = new OpenCodeAdapter({
+    root, discoveryFile: join(root, '.cland', 'hub.json'), node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY,
+    log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {},
+  }, { bin: join(FAKE_OPENCODE_DIR, 'opencode'), env: { ...process.env, ...fake.env, FAKE_OPENCODE_CHANGING_CATALOG: '1' } });
+  t.after(() => adapter.close());
+  const spawning = adapter.spawn({ name: 'impl', role: null, model: null, cwd: root });
+  await eventually('two changing catalogs served', async () => {
+    const [server] = await fake.servers();
+    if (!server) return undefined;
+    const log = await readFile(join(fake.home, `server-${server.pid}.log`), 'utf8').catch(() => '');
+    return log.includes('changing catalog 2') ? true : undefined;
+  }, 5000);
+  // Spend the real ten-second budget without ten seconds of wall-clock waiting. The fake keeps changing its
+  // catalog on every request, so neither stability nor a known-good model can end selection.
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 10_000 });
+  try {
+    const launched = await spawning;
+    assert.equal(launched.model, 'openrouter/latest-free');
+  } finally {
+    t.mock.timers.reset();
+  }
 });
 
 test('a failed OpenCode turn is recorded in Agents and the inbox and reported to the sender', async (t) => {

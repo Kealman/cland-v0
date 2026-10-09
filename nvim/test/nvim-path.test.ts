@@ -1,3 +1,4 @@
+import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
 // The launcher's resolver run as a script prints the binary's path, also from a checkout whose path holds
 // characters a file URL escapes (a space, `#`, `%`).
 import { test, type TestContext } from 'node:test';
@@ -12,7 +13,7 @@ import { assetName, NVIM_DIR, NVIM_VERSION } from '../bin/nvim-path.ts';
 
 test('nvim-path.ts prints the binary from a path with a space, # and %', async (t) => {
   const base = await mkdtemp(join(tmpdir(), 'cland-path-'));
-  t.after(() => rm(base, { recursive: true, force: true }));
+  ownDirectory(t, base);
   const nvimDir = join(base, 'a b#c%20d', 'nvim');
   await mkdir(join(nvimDir, 'bin'), { recursive: true });
   for (const f of ['NVIM_VERSION', 'NVIM_SHA256SUMS']) await copyFile(join(NVIM_DIR, f), join(nvimDir, f));
@@ -27,7 +28,7 @@ test('nvim-path.ts prints the binary from a path with a space, # and %', async (
 /** A release tarball of our own, served from a file: URL, with its digest; `resolve()` runs the resolver as a script. */
 async function fakeRelease(t: TestContext, extra: Record<string, string> = {}) {
   const base = await mkdtemp(join(tmpdir(), 'cland-nvim-race-'));
-  t.after(() => rm(base, { recursive: true, force: true }));
+  ownDirectory(t, base);
   const asset = assetName();
   if (!asset) return null;
   const unpacked = asset.replace(/\.tar\.gz$/, '');
@@ -52,6 +53,7 @@ async function fakeRelease(t: TestContext, extra: Record<string, string> = {}) {
   const resolve = () =>
     new Promise<{ code: number | null; stdout: string; stderr: string }>((done) => {
       const child = spawn(process.execPath, [join(NVIM_DIR, 'bin', 'nvim-path.ts')], { env });
+      ownProcess(t, child.pid);
       // a resolver stuck on a lock never ends on its own (it waits up to ten minutes): fail the test instead
       const timer = setTimeout(() => child.kill('SIGKILL'), 20_000);
       let stdout = '';
@@ -115,7 +117,7 @@ test('a linked worktree with no Neovim of its own uses the one cached in the mai
   const asset = assetName();
   if (!asset) return t.skip('no pinned build for this platform');
   const base = await realpath(await mkdtemp(join(tmpdir(), 'cland-path-wt-')));
-  t.after(() => rm(base, { recursive: true, force: true }));
+  ownDirectory(t, base);
   const main = join(base, 'main');
   const worktree = join(main, '.cland', 'worktrees', 'T-1');
   for (const root of [main, worktree]) {

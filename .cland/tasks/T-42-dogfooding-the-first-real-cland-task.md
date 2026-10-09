@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-09T10:23:54.195Z
+updated: 2026-10-09T12:09:46.015Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -238,3 +238,13 @@ Run note 10:15Z: hub restarted at 10:08Z on main 55780b2 by the human's stand-in
 ### coord · 2026-10-09T10:23:54.195Z
 
 Run note 10:24Z, two hub incidents after the 10:08Z restart. (1) From 10:15Z hub calls timed out (10 s, then 60 s) and at 10:17:28Z the hub stopped answering its socket; the stand-in restarted it at about 10:18Z (pid 33252, on main 7162ee4 with T-50 and T-55). Cause: T-54's verdict freshness runs synchronous git on every `task.list` for every item, and the workbench polls `task.list` and `session.list` about twice a second; under load 30 to 60 the event loop never drains. Filed T-67 (no git in request handlers, freshness cached off the request path, a per-request budget, no UI polling floods; Claude Code impl-67 at work). T-66 is its client-side face. (2) Since the restart every message to an idle Codex session is delivered three times and then reported as lost (the T-50 check reads `userMessage` items only; idle deliveries are `hub_event` tool outputs). Filed T-68 (hub, high; Claude Code impl-68, hotfix first). Until both land: reviews and QA go to Claude Code role sessions rev-cc and qa-cc, Codex sessions get as few messages as possible, no broadcasts. Also: T-50 merged 7162ee4 (suite running), T-65 closed (phase 2 proven on fresh sessions, 0 skips, no approvals), T-57's forward merge 88779b0 under resolution review, T-58 in design (task base as a territory setting), rev-3/4/5, qa-65, impl-65 stopped.
+
+### coord · 2026-10-09T12:09:46.015Z
+
+Run note 12:10Z, for the human:
+- **Workbench:** it may stay open again. T-67 has been live since the hub restart at 11:37Z. The hub runs no git inside its request handlers, and the workbench no longer polls `task.list`. `cland hub status` has shown `requests: 0 slow` since then.
+- **Merged since the last note:** T-68 (57db751), T-67 (8bf458c), T-58 (97683b8, task branches and worktrees per claim, `--item` launches, `cland worktree list` and `prune`), and T-52 (f737f70, the OpenCode cold-catalog pick).
+- **Main:** 97683b8 is green, hub 341/341 and Neovim 91/91. The suite on f737f70 is running now.
+- **Next:** the restart that carries T-58 and T-52. After it, the human can run `cland worktree prune` on this repository to remove the merged items' worktrees.
+- **In flight:** T-59 (`cland merge`), T-69 (suite lock in the test harness, in review and QA), T-72 (deterministic freshness tests).
+- **Rules now in force:** one full suite at a time machine-wide. Non-Coordinator Claude Code sessions run on Sonnet unless opus is approved. Reviews and QA run on Codex.

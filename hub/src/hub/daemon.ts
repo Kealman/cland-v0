@@ -15,6 +15,7 @@ import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery
 import { acquireLock, HubLocked } from './lock.ts';
 import { VERSION } from '../version.ts';
 import { Tracker } from '../tracker/tracker.ts';
+import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { RolesFile } from '../roles/config.ts';
@@ -40,7 +41,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode; scheduleTips?: TipSchedule } = {}): Promise<Daemon> {
   const processLog = options.log ?? (() => {});
   const listen = options.listen ?? 'required';
   const l = layout(root);
@@ -74,7 +75,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
-  const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}) });
+  const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log);
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable

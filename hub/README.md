@@ -641,6 +641,8 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 
 `src/adapters/opencode.ts`, with `opencode/client.ts` (the HTTP API and the event stream), `opencode/state.ts` (events to states) and `opencode/server.ts` (the session's server and its files). Launched with `"harness": "opencode"`.
 
+Without an explicit model, launch polls `GET /api/model` every 200 ms: a cold catalog can list another provider before OpenCode Zen arrives. An eligible model from the known-good list (`opencode/big-pickle`) ends the wait immediately. Otherwise, a nonempty catalog must stay unchanged for 1 s before the usual free-model preference applies. The catalog wait has a 10 s budget, including HTTP requests and polling sleeps; at that deadline it uses the latest successful catalog's free choice, or the server's default when none qualifies. Empty catalogs and failed requests are retried within that budget. An explicit model or a restored session skips this wait.
+
 | | Surface (OpenCode 2.0.24) |
 | --- | --- |
 | spawn | A standalone `opencode serve --hostname 127.0.0.1 --port 0` per session, detached, in the session's cwd; the url comes from its `server listening on …` line. The spoke is a local MCP server of a generated config passed as `OPENCODE_CONFIG` (`mcp.servers.cland: {type: local, command, environment}` with the same `CLAND_*` variables as Claude Code's), and the server gets a password of its own as `OPENCODE_PASSWORD`. Both live in `.cland/opencode/<name>/` (`opencode.json`, `password` mode 600, `serve.log`), which a `.gitignore` of its own (`*`) keeps out of the repository. Then `POST /api/session {title, model, location}`. The model is `<provider>/<id>` (`opencode/big-pickle`); without one, a free model of `GET /api/model` (zero input/output price, tools supported, enabled and active). The known-good preference list is `opencode/big-pickle`; if it is not offered free, use the first free OpenCode Zen model, else the first free model from another provider. Selection is deterministic and makes no launch-time probe request; a listed model that later fails is reported as a failed turn. The row keeps the server's pid, its url as `harnessId` and the `ses_…` id as `harnessSessionId`. The server starts its MCP servers when the session is created, so the spoke connects right after the launch. |
@@ -818,6 +820,46 @@ node hub/bin/cland.ts --version
 ```
 
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
+
+### Tests
+
+Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
+`npm test --workspace hub`, or `npm run test:nvim`. These entry points take
+`/tmp/cland-suite.lock` before spawning tests; a second run prints the holder's
+pid and start time and waits. Automatic runs publish a PID/start-time sidecar
+before creating the directory. After a one-second grace period, a dead holder
+(including a reused PID) is reclaimed: its verified processes exit and its run
+directory is removed before the replacement suite starts. The short, unique
+run-root path is recorded before directory creation, so interrupted setup is
+recoverable too. A live older-version holder with an unreadable start time is
+preserved until its PID exits; the waiter identifies it as an older version.
+
+An empty lock from the manual `mkdir` convention has no recorded owner and is
+never reclaimed by age. Once a minute the waiter prints its age and recovery
+guidance, with a warning after 15 minutes. If no suite is running, remove an
+abandoned manual lock with `rmdir /tmp/cland-suite.lock`.
+`CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
+
+The suites run at concurrency 4. Targeted single-file runs are free:
+`node --test hub/test/daemon.test.ts`. If calling the runner directly, use
+`node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
+`node --test` is reserved for targeted runs.
+
+The runner uses a short temporary directory for each run (Unix socket paths must
+fit), verifies process start identities and either cwd containment in an owned
+directory or a current parent chain to its recorded runner before signalling,
+and prints any final leftovers, including detached hook bridges. Test helpers register temporary
+project ownership before spawning: their after hooks kill owned descendants
+(and groups only when every member and the leader are verified)
+before removing the directory, and signal handlers cover SIGINT/SIGTERM where
+Node's test after hooks do not run. New process fixtures must use `tempProject`
+or `ownDirectory` and register teardown before awaiting process startup.
+Each test runner waits at startup until its PID/start identity is durably
+recorded. Environment markers only identify candidates; they never prove
+ownership. Ambiguous candidates are preserved and printed in the sweep report.
+Cleanup uses `ps` plus `lsof` on macOS, or `/proc` on Linux.
+Each suite invocation prints its elapsed duration and peak sampled one-minute
+machine load, which includes other activity on the machine.
 
 ### `cland` on the PATH
 

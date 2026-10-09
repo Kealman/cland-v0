@@ -6,6 +6,7 @@ import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/pro
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cland, clandWithEnv, killDaemon, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { startFreshnessDaemon } from './freshness-harness.ts';
 
 const ok = (r: CliResult): CliResult => {
   assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
@@ -16,7 +17,7 @@ const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd,
 test('CLI commands from linked worktrees find the main project hub and write only its tracker', async (t) => {
   const root = await tempProject(t);
   git(root, 'init');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery, refresh } = await startFreshnessDaemon(t, root);
   const created = JSON.parse(ok(await cland(root, 'task', 'create', 'Main item', '--json')).stdout) as { item: { path: string } };
   git(root, 'add', '.cland');
   git(root, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-m', 'Project fixture');
@@ -24,6 +25,7 @@ test('CLI commands from linked worktrees find the main project hub and write onl
   const outside = join(await tempProject(t, 'cland-outside-'), 'task');
   git(root, 'worktree', 'add', '-b', 'inside', inside);
   git(root, 'worktree', 'add', '-b', 'outside', outside);
+  await refresh();
 
   for (const worktree of [inside, outside]) {
     const nested = join(worktree, 'src', 'deep');

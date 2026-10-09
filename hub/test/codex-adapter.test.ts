@@ -1,3 +1,4 @@
+import { ownDirectory } from './process-cleanup.ts';
 // The Codex adapter (spec 4.3; #26) against a fake Codex at the harness process boundary: a real daemon in a
 // temporary project launches the fake (`test/fakes/codex/codex`, first on the PATH) as an app-server on a Unix
 // socket; the fake speaks Codex's JSON-RPC over a WebSocket there and starts the real spoke from the `-c
@@ -76,6 +77,7 @@ type FakeCodex = {
 
 async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number } = {}): Promise<FakeCodex> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
+  const cleanupHome = ownDirectory(undefined, home);
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,
@@ -90,7 +92,7 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
   };
   t.after(async () => {
     for (const s of await servers()) await killDaemon(s.pid);
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   return {
     env,

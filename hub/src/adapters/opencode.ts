@@ -24,7 +24,7 @@ import { dirname } from 'node:path';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
 import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
-import { formatModel, OpenCodeClient, parseModel, pickFreeModel, type ModelRef } from './opencode/client.ts';
+import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
 import { processAlive, sameProcess, signalProcess } from './processes.ts';
@@ -147,15 +147,29 @@ export class OpenCodeAdapter implements HarnessAdapter {
     }
   }
 
-  /** A free model from the server's catalog. A fresh server lists none until its catalog has loaded (observed with
-   *  v2.0.24: an empty list for the first moments), so an empty answer is asked again for a while. */
+  /** A cold catalog can be nonempty before Zen arrives. Choose a known-good model immediately; otherwise wait
+   *  for a nonempty catalog to stay unchanged for 1 s, within a 10 s budget including requests and sleeps. */
   async #freeModel(client: OpenCodeClient): Promise<ModelRef | null> {
     const deadline = Date.now() + 10_000;
-    for (;;) {
-      const models = await client.models().catch(() => []);
-      if (models.length || Date.now() > deadline) return pickFreeModel(models);
-      await new Promise((r) => setTimeout(r, 200));
+    let catalog = '';
+    let stableSince = Date.now();
+    let choice: ModelRef | null = null;
+    while (Date.now() < deadline) {
+      const models = await client.models(Math.max(1, deadline - Date.now())).catch(() => null);
+      if (models) {
+        const current = JSON.stringify(models);
+        if (current !== catalog) {
+          catalog = current;
+          stableSince = Date.now();
+        }
+        choice = pickFreeModel(models);
+        if (choice && KNOWN_GOOD_FREE_MODELS.includes(formatModel(choice))) return choice;
+        if (models.length && Date.now() - stableSince >= 1000) return choice;
+      }
+      const remaining = deadline - Date.now();
+      if (remaining > 0) await new Promise((r) => setTimeout(r, Math.min(200, remaining)));
     }
+    return choice;
   }
 
   spawn(request: SpawnRequest): Promise<HarnessProcess> {

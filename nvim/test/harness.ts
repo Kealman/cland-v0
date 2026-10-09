@@ -2,12 +2,13 @@
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { ensureNvim, NVIM_DIR, NVIM_VERSION } from '../bin/nvim-path.ts';
 import { connectRpc, type Rpc } from './rpc.ts';
+import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
 
 export const INIT_LUA = join(NVIM_DIR, 'init.lua');
 
@@ -68,28 +69,18 @@ return rows`;
  */
 export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}): Promise<Client> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
+  ownDirectory(t, dir);
   const sock = join(dir, 'nvim.sock');
   const childEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
   // the restart snapshot lives under stdpath('state'): one per test
   Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
   const child = spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, stdio: ['ignore', 'ignore', 'pipe'] });
+  ownProcess(t, child.pid);
   let stderr = '';
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (c: string) => (stderr += c));
   let restartAddr: ((addr: string) => void) | null = null;
-  const pids: number[] = [];
-  t.after(async () => {
-    child.kill('SIGKILL');
-    for (const pid of pids) {
-      try {
-        process.kill(pid, 'SIGKILL');
-      } catch {
-        // gone already
-      }
-    }
-    await rm(dir, { recursive: true, force: true });
-  });
   const deadline = Date.now() + 10_000;
   while (!existsSync(sock)) {
     if (Date.now() > deadline || child.exitCode !== null) throw new Error(`nvim did not listen on ${sock}:\n${stderr}`);
@@ -109,7 +100,7 @@ export async function startClient(t: TestContext, bin: string, root: string, env
       }
     });
     await rpc.request('nvim_ui_attach', COLUMNS, LINES, { rgb: true, ext_linegrid: true });
-    pids.push(await rpc.request<number>('nvim_call_function', 'getpid', []));
+    ownProcess(t, await rpc.request<number>('nvim_call_function', 'getpid', []));
     return rpc;
   };
   const client: Client = {

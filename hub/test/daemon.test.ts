@@ -1,3 +1,4 @@
+import { ownProcess } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -251,6 +252,7 @@ test('cland hub stop never signals a process that is not the project\'s hub: it 
   const root = await tempProject(t);
   // a live process that is no hub at all — a reused pid, as far as hub.json can tell
   const stranger = spawn('sleep', ['30'], { stdio: 'ignore' });
+  ownProcess(t, stranger.pid);
   t.after(() => stranger.kill('SIGKILL'));
   const pid = stranger.pid as number;
   await mkdir(join(root, '.cland'), { recursive: true });

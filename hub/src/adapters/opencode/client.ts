@@ -60,8 +60,8 @@ export class OpenCodeClient {
     return r.data;
   }
 
-  async models(): Promise<ModelEntry[]> {
-    return (await this.request<{ data: ModelEntry[] }>('GET', '/api/model')).data;
+  async models(timeoutMs = 10_000): Promise<ModelEntry[]> {
+    return (await this.request<{ data: ModelEntry[] }>('GET', '/api/model', undefined, timeoutMs)).data;
   }
 
   /** `POST /api/session/{id}/prompt`: the server's reply is the admitted inbox item (`msg_…`). */
@@ -122,6 +122,8 @@ export function parseModel(model: string): ModelRef {
 
 export const formatModel = (m: ModelRef): string => `${m.providerID}/${m.id}`;
 
+export const KNOWN_GOOD_FREE_MODELS = ['opencode/big-pickle'];
+
 /**
  * The default model when the launch names none: a free one the server lists — zero input and output price,
  * tool calls supported (the spoke's `send` is a tool), active. Prefer the known-good `opencode/big-pickle`,
@@ -131,6 +133,7 @@ export function pickFreeModel(models: ModelEntry[]): ModelRef | null {
   const free = models.filter(
     (m) => m.enabled !== false && (m.status === undefined || m.status === 'active') && m.capabilities?.tools !== false && Array.isArray(m.cost) && m.cost.length > 0 && m.cost.every((c) => c.input === 0 && c.output === 0),
   );
-  const pick = free.find((m) => m.providerID === 'opencode' && m.id === 'big-pickle') ?? free.find((m) => m.providerID === 'opencode') ?? free[0];
+  const preferred = KNOWN_GOOD_FREE_MODELS.map((id) => free.find((m) => formatModel(m) === id)).find(Boolean);
+  const pick = preferred ?? free.find((m) => m.providerID === 'opencode') ?? free[0];
   return pick ? { providerID: pick.providerID, id: pick.id } : null;
 }

@@ -18,12 +18,37 @@ const POKE_MS = 50;
 
 type Want = { commit: string; tip: string; base: string | null; ids: Set<string> };
 
+/** Owns when tip reads run, including the first read; tests can drive and await them by hand. */
+export type TipSchedule = (read: () => Promise<void>, intervalMs: number) => { poke: () => void; stop: () => void };
+
+const scheduleTips: TipSchedule = (read, intervalMs) => {
+  const timer = setInterval(() => void read(), intervalMs);
+  timer.unref();
+  let poke: NodeJS.Timeout | null = null;
+  void read();
+  return {
+    poke: () => {
+      if (poke) return;
+      poke = setTimeout(() => {
+        poke = null;
+        void read();
+      }, POKE_MS);
+      poke.unref();
+    },
+    stop: () => {
+      clearInterval(timer);
+      if (poke) clearTimeout(poke);
+    },
+  };
+};
+
 export type FreshnessOptions = {
   git: Git;
   /** The territory task base, read asynchronously alongside branch tips; defaults to dev/main. */
   readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
   log?: LogFn;
   intervalMs?: number;
+  scheduleTips?: TipSchedule;
   /** Answers are known for these items now: announce them again. */
   settled: (ids: string[]) => void;
   /** A branch tip or the base moved (or the first read is done): every item's freshness may have changed. */
@@ -36,6 +61,7 @@ export class Freshness {
   #base: string | null = null;
   readonly #log: LogFn;
   readonly #intervalMs: number;
+  readonly #scheduleTips: TipSchedule;
   readonly #settled: (ids: string[]) => void;
   readonly #tipsMoved: () => void;
   /** Branch → tip as last read; null until the first read. */
@@ -54,8 +80,7 @@ export class Freshness {
   #reading = false;
   #readWaiters: Array<() => void> = [];
   #readAgain = false;
-  #timer: NodeJS.Timeout | null = null;
-  #poke: NodeJS.Timeout | null = null;
+  #schedule: ReturnType<TipSchedule> | null = null;
   #stopped = false;
   #failed = false;
 
@@ -64,23 +89,21 @@ export class Freshness {
     this.#readBase = options.readBase ?? (async (tips) => verdictBaseOf(tips));
     this.#log = options.log ?? (() => {});
     this.#intervalMs = options.intervalMs ?? TIP_CHECK_MS;
+    this.#scheduleTips = options.scheduleTips ?? scheduleTips;
     this.#settled = options.settled;
     this.#tipsMoved = options.tipsMoved;
   }
 
   start(): void {
     this.#stopped = false;
-    this.#timer = setInterval(() => void this.refresh(), this.#intervalMs);
-    this.#timer.unref();
-    void this.refresh();
+    this.#schedule = this.#scheduleTips(() => this.refresh(), this.#intervalMs);
   }
 
   stop(): void {
     this.#stopped = true;
     this.#workSoon = false;
-    if (this.#timer) clearInterval(this.#timer);
-    if (this.#poke) clearTimeout(this.#poke);
-    this.#timer = this.#poke = null;
+    this.#schedule?.stop();
+    this.#schedule = null;
     this.#wants.clear();
   }
 
@@ -91,12 +114,7 @@ export class Freshness {
 
   /** Something changed in the tracker: read the tips again soon. */
   poke(): void {
-    if (this.#stopped || this.#poke) return;
-    this.#poke = setTimeout(() => {
-      this.#poke = null;
-      void this.refresh();
-    }, POKE_MS);
-    this.#poke.unref();
+    if (!this.#stopped) this.#schedule?.poke();
   }
 
   /** A branch's tip as last read; null when it has none or nothing was read yet. */

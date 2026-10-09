@@ -40,7 +40,7 @@ import type { LogFn } from '../log.ts';
 import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
 import { MergeError } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
-import { Freshness, pending } from './freshness.ts';
+import { Freshness, pending, type TipSchedule } from './freshness.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
 /** How long the watcher waits for a file to settle before reading it. */
@@ -160,7 +160,7 @@ export class Tracker {
   /** Each item's freshness as last announced: an answer that arrives later is announced only when it differs. */
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number }) {
+  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     this.#root = options.root;
     this.#writePauseMs = options.writePauseMs ?? 0;
     this.#dir = join(options.root, TASKS_REL);
@@ -174,6 +174,7 @@ export class Tracker {
       readBase: async (tips) => existsSync(territoryPath(this.#root)) ? await taskBase(this.#root) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
+      ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
       settled: (ids) => ids.forEach((id) => this.#announce(id, true)),
       tipsMoved: () => this.#tipsMoved(),
     });
