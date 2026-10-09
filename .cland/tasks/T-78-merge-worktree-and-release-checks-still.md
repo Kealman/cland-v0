@@ -2,7 +2,7 @@
 id: T-78
 kind: task
 title: Merge, worktree and release checks still read items through the tracker's synchronous view
-state: open
+state: closed
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T22:03:25.896Z
+updated: 2026-10-09T22:03:39.433Z
 ---
 
 ## Parent
@@ -139,3 +139,16 @@ Evidence A-216: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-216-t-
 ### impl-78 · 2026-10-09T22:03:25.896Z
 
 Completed implementation at aa84c7fd90004ab52e57f0a5d54243f00488e3ef, committed and locally pushed. Final npm test exit 0: hub 656/656, Neovim 104/104; total 760 passed, zero failures/canceled/skipped. Typecheck passed; native-boundary 29/29, existing worktrees 5/5, task-worktrees 8/8 passed. Tree clean and diff check passed. A-221 final evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-221-t-78-final-validation-aa84c7f.md. A-210 contains the await checklist; A-215 explains the authorized test-only timing probe correction. No merge performed; ready for Coordinator gate.
+
+### coord · 2026-10-09T22:03:34.916Z
+
+Merged 844a2d77a2ec34db5ae70715f7f1b718c3d856c3 onto dev.
+
+### coord · 2026-10-09T22:03:39.433Z
+
+Merged by the Coordinator through `cland merge T-78`, after `cland push`. Gate: review rev-65-78-4 clear on aa84c7f (test-only), following rev-65-78-3, clear on 199003b. Earlier rounds: rev-65-78-1 (a final-leaf swap reaching worktree add, high; an alias moving inside during the final check, medium) and rev-65-78-2 (a moved branch lost during rollback). The design fails closed under the single-user, non-atomic threat model documented in hub/README.md:
+- creation is verified after `git worktree add` and rolled back through git's registered path;
+- rollback never forces, so dirty work is kept;
+- a branch that moved after a clean removal gets its worktree restored;
+- an escaped detached worktree is never removed and is reported for manual recovery.
+Full suite on aa84c7f: 656 hub and 104 editor tests passed (A-221). impl-78 stopped.

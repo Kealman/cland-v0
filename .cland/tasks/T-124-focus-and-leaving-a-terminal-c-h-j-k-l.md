@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-42
 branch: t/T-124-focus-and-leaving-a-terminal-c-h-j-k-l
 created: 2026-10-09T21:57:02.030Z
-updated: 2026-10-09T22:00:09.956Z
+updated: 2026-10-09T22:28:59.585Z
 ---
 
 ## Parent
@@ -46,3 +46,41 @@ Size M. Implementer: Codex. ADR 0005: Lua inside the standalone build, no plugin
 ### impl-124 · 2026-10-09T22:00:09.956Z
 
 Kitty probe A on the pinned 0.12.5 TUI decodes CSI 1088::104;5u as <C-р>, not <C-h>; Coordinator chose the English-only fallback, with Normal-mode Russian langmap. Evidence A-219 in topic-42. Implementing single-chord focus mappings and removing launcher Ctrl+H shadowing; terminal mitigations are preserved.
+
+### impl-124 · 2026-10-09T22:06:29.327Z
+
+Review head: 099802794581fabd8290e38adc3efaa90240faa4 (pushed to local origin; clean worktree). Targeted Neovim input, doctor CLI and init/config tests pass; typecheck passes. Full npm test is queued behind the machine suite lock. Kitty fallback evidence A-219; tmux default and extended replay A-222/A-223; tty erase replay A-224. Defaults: generated layouts = []; Coordinator will commit this project’s [keys] layouts = ["ru"].
+
+### rev-6 · 2026-10-09T22:09:45.380Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-124-1
+commit: 099802794581fabd8290e38adc3efaa90240faa4
+
+Medium — hub/src/doctor/keys.ts:19: the matcher warns on an earlier Shift+Enter LF binding even after a later safe override/unbind, misses valid quoted keybind values, and accepts invalid uppercase KEYBIND. Production checkKeys memory probes reproduce all three. Track the effective binding using Ghostty's supported value syntax/precedence, and cover these CLI cases to meet the no-false-positives criterion.
+
+No focus/input blocker: mode mappings, lone Ctrl-backslash/old pair, English-only kitty fallback, Russian Normal langmap, newline paths and ADR 0005 terminal workarounds look sound. daemon/protocol carry startup config in hub.status; no new synchronous filesystem read on serving request paths. Hub/Neovim typechecks and diff check pass; no reviewer native tests/full suite run. Physical Ghostty/tmux checks remain the human demo, as directed.
+
+Separate Standards/Spec reports, pinned Ghostty primary-source links and exact memory probe: A-229, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-229-t-124-review-rev-6-124-1-at-0998027.md.
+
+### impl-124 · 2026-10-09T22:12:21.169Z
+
+Fix-round head bf909079bf945cd31669e17025b3168b7d799a03, pushed to local origin; clean worktree. Ghostty detection now follows case-sensitive keys, value quoting and final-binding precedence, including unbind/clear and pinned legacy-before-modern file order. Requested CLI cases and file precedence pass; typecheck and diff check pass. The 0998027 full suite was terminated and cleaned up at the Coordinator’s request; one replacement npm test is queued on bf90907.
+
+### rev-6 · 2026-10-09T22:17:50.000Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-124-2
+commit: bf909079bf945cd31669e17025b3168b7d799a03
+
+Low — hub/src/doctor/keys.ts:36: removing only the final LF binding can reveal an earlier LF definition; recommend a safe final replacement or removal of all LF definitions. No high or medium remains.
+
+The prior detector finding is fixed. Production memory probes confirm quoted values, case-sensitive keys, final override/unbind/clear and legacy→modern→macOS precedence. Focus/input paths unchanged by this delta. Hub typecheck and diff check pass; full suite not run by Reviewer, and physical Ghostty/tmux checks remain the human demo. Separate Standards/Spec reports and exact probes: A-233, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-233-t-124-resolution-review-rev-6-124-2-at-bf90907.md.
+
+### impl-124 · 2026-10-09T22:28:59.585Z
+
+Complete on bf909079bf945cd31669e17025b3168b7d799a03 (pushed to local origin; clean worktree). npm run typecheck and npm test pass: 638 hub + 112 Neovim tests, 750 total, zero failures/skips. Review clear rev-6-124-2 (A-233). Final report A-239 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-239-t-124-final-implementation-report-bf90907.md; passing full-suite log A-238 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-238-t-124-full-suite-on-bf90907-750-passing-tests.log. Kitty fallback and PTY/tmux evidence A-219/A-222/A-223/A-224/A-225. Physical Ghostty/tmux keyboard checks remain the human demo, as agreed. Generated default layouts = []; Coordinator owns this project’s layouts = ["ru"]. No merge performed.

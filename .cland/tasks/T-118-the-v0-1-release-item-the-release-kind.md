@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T22:01:43.020Z
+updated: 2026-10-09T22:14:23.544Z
 ---
 
 ## Parent
@@ -49,3 +49,39 @@ Implementation started on the claimed task branch. I will cover release/version 
 ### impl-118 · 2026-10-09T22:01:43.020Z
 
 Release/version persistence, shared default parenting checks (including kind-edit bypass guards), descendant filtering, and CLI/MCP ancestry headers are implemented. Focused red→green tests passed for the first three slices. Map children follow the approved question/task exception. Migration remains post-merge/restart, with commands to follow in the report.
+
+### impl-118 · 2026-10-09T22:04:12.911Z
+
+Review head: 59961e26c063e14b3bd953d161b2e0e59c003ee1, pushed to local origin. npm run typecheck passed. Focused tests passed: tracker-hierarchy 4/4; tracker 16/16; native boundary 2/2; release no-worktree targeted case 1/1. Full npm test is running against this unchanged committed tree. Post-merge migration commands: artifact A-220, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-220-t-118-post-merge-migration-commands.md.
+
+### rev-65 · 2026-10-09T22:09:02.769Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-118-1
+commit: 59961e26c063e14b3bd953d161b2e0e59c003ee1
+
+Medium — .cland/artifacts/A-220-t-118-post-merge-migration-commands.md:9: unconditional task.create makes another 0.1.0 release on a full rerun and reparents all eleven epics to it, violating the requested idempotence; query/reuse the existing release and refuse ambiguity before creating.
+Low — hub/src/tracker/tracker.ts:892: converting an unparented task to release does not add the spec's ## Notes section, although release creation does.
+Low — hub/test/tracker-hierarchy.test.ts:85: isError alone accepts transport/permission failures as a successful parenting refusal check; assert the named parenting rule in error content.
+
+Standards: 0 findings. Spec: 1 medium, 2 low. Core parenting/version/subtree/ancestry behavior is clear. Actual pinned pure helpers passed 36 parenting and 25 version cases in memory. No suite run, per request. Full evidence: A-227, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-227-t-118-review-of-59961e2-migration-rerun-and-release-completeness.md.
+
+### impl-118 · 2026-10-09T22:12:22.795Z
+
+Fix round head baf6ecc02aff3cc5a2468e462c6e1a8d91ee2108, pushed to origin. Review fixes: migration now lives in hub/bin/migrate-v01-release.ts and is idempotent (reuse one open 0.1.0 release, refuse multiple naming ids/titles, create only when absent, skip already-parented epics). Release conversion adds Notes using the same helper as creation. MCP negative parenting test asserts the named rule. npm run typecheck passed; hierarchy 5/5 and migration 1/1 passed. A-230 supersedes A-220. The initial full suite on 59961e2 was cancelled at the Coordinator's request to free the lock; one full suite is now queued on baf6ecc.
+
+### rev-65 · 2026-10-09T22:14:23.544Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-118-2
+commit: baf6ecc02aff3cc5a2468e462c6e1a8d91ee2108
+
+High: none. Medium: none. Low: none. All three rev-65-118-1 findings are resolved: migration reuses one open 0.1.0 release and refuses ambiguity before writing; creation/kind conversion share Notes normalization; MCP refusal asserts the parenting rule.
+
+Standards: 0 findings. Spec: 0 findings. Actual pinned pure helpers passed 36 parenting, 25 version, four Notes and four Notes-idempotence cases in memory. Actual pinned migration body passed six virtual-CLI scenarios, including a full rerun with zero writes, duplicate-match refusal naming both IDs with zero writes, partial-link resumption, missing-epic preflight, link interruption/restart, and a closed prior release. Every migration write uses cland task through the hub; no direct item-file writes.
+
+No suite, actual migration or filesystem changes by Reviewer. Post-merge migration remains the Coordinator's step via A-230. Evidence A-231: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-231-t-118-resolution-review-of-baf6ecc-clear.md.
