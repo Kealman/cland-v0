@@ -34,9 +34,11 @@ test('two suite invocations serialize and report the holder', async (t) => {
   const dir = await fixture(t);
   const journal = join(dir, 'journal');
   const file = join(dir, 'pass.mjs');
-  await writeFile(file, `import { appendFile } from 'node:fs/promises'; import test from 'node:test'; test('fixture', async () => { await appendFile(${JSON.stringify(journal)}, 'start\\n'); await new Promise(r => setTimeout(r, 500)); await appendFile(${JSON.stringify(journal)}, 'end\\n'); });`);
+  await writeFile(file, `import assert from 'node:assert/strict'; import { appendFile, readFile } from 'node:fs/promises'; import test from 'node:test'; test('fixture', async () => { const owner = JSON.parse(await readFile(${JSON.stringify(join(dir, 'lock.owner'))}, 'utf8')); assert.equal(owner.runner.pid, process.ppid); assert.equal(typeof owner.runner.started, 'string'); await appendFile(${JSON.stringify(journal)}, 'start\\n'); await new Promise(r => setTimeout(r, 500)); await appendFile(${JSON.stringify(journal)}, 'end\\n'); });`);
   const first = run(t, dir, file);
   await until(async () => (await readFile(journal, 'utf8').catch(() => '')).includes('start')).catch(error => { throw new Error(String(error) + '\n' + first.output()); });
+  // The same directory also excludes the old manual mkdir convention in the reverse direction.
+  await assert.rejects(mkdir(join(dir, 'lock')), { code: 'EEXIST' });
   const second = run(t, dir, file);
   await until(() => second.output().includes('waiting for the suite lock held by pid'));
   assert.match(second.output(), new RegExp(`held by pid ${first.child.pid} since`));
@@ -86,8 +88,8 @@ test('takeover removes a root when the holder dies during its creation', async t
   const code = `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
 const mkdir = fs.mkdir; const mkdtemp = fs.mkdtemp;
 async function crash(root) { await fs.writeFile(${JSON.stringify(marker)}, root); process.kill(process.pid, 'SIGKILL'); }
-fs.mkdir = async (...args) => { const result = await mkdir(...args); if (String(args[0]).includes('/cland-suite-')) await crash(String(args[0])); return result; };
-fs.mkdtemp = async (...args) => { const result = await mkdtemp(...args); if (String(args[0]).includes('/cland-suite-')) await crash(result); return result; };
+fs.mkdir = async (...args) => { const result = await mkdir(...args); if (String(args[0]).split('/').at(-1).startsWith('cland-suite-')) await crash(String(args[0])); return result; };
+fs.mkdtemp = async (...args) => { const result = await mkdtemp(...args); if (String(args[0]).split('/').at(-1).startsWith('cland-suite-')) await crash(result); return result; };
 syncBuiltinESMExports();
 const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([], { lockDir: ${JSON.stringify(join(dir, 'lock'))} });`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
@@ -100,6 +102,39 @@ const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([],
   t.after(() => rm(root, { recursive: true, force: true }));
   const file = join(dir, 'pass.mjs');
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; test('crashed root gone before startup', () => assert.equal(existsSync(${JSON.stringify(root)}), false));`);
+  const successor = run(t, dir, file);
+  assert.equal(await successor.done, 0, successor.output());
+});
+
+test('takeover reaps a child paused before its identity is published', async t => {
+  const dir = await fixture(t);
+  const marker = join(dir, 'paused-runner.json');
+  const lock = join(dir, 'lock');
+  const file = join(dir, 'pass.mjs');
+  await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
+  const code = `import fs from 'node:fs/promises'; import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
+const spawn = cp.spawn; const rename = fs.rename;
+cp.spawn = (...args) => { const child = spawn(...args); process.kill(child.pid, 'SIGSTOP'); return child; };
+fs.rename = async (from, to) => {
+  if (to === ${JSON.stringify(`${lock}.owner`)}) {
+    const value = JSON.parse(await fs.readFile(from, 'utf8'));
+    if (value.runner) { await fs.writeFile(${JSON.stringify(marker)}, JSON.stringify(value)); process.kill(process.pid, 'SIGKILL'); }
+  }
+  return rename(from, to);
+};
+syncBuiltinESMExports();
+const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lock)} });`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+  const { ownProcess, cleanupProcesses } = await import('./process-cleanup.ts');
+  ownProcess(t, child.pid);
+  await exited;
+  assert.equal(child.signalCode, 'SIGKILL');
+  const previous = JSON.parse(await readFile(marker, 'utf8')) as { root: string; runner: { pid: number; started: string } };
+  t.after(async () => { await cleanupProcesses(previous.root, [previous.runner], () => {}, '', [previous.runner]); await rm(previous.root, { recursive: true, force: true }); });
+  // The durable sidecar still has no runner anchor: cwd proof alone must recover the stopped child.
+  assert.equal(JSON.parse(await readFile(`${lock}.owner`, 'utf8')).runner, undefined);
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; test('unpublished child gone before startup', () => { assert.throws(() => process.kill(${previous.runner.pid}, 0), { code: 'ESRCH' }); assert.equal(existsSync(${JSON.stringify(previous.root)}), false); });`);
   const successor = run(t, dir, file);
   assert.equal(await successor.done, 0, successor.output());
 });

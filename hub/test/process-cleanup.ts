@@ -1,7 +1,7 @@
-// Test-only ownership: immutable process identities plus a run marker or owned directory.
+// Test-only ownership: immutable process identities with verified directories or runner ancestry.
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFileSync, readlinkSync, readdirSync, realpathSync } from 'node:fs';
+import { readFileSync, readlinkSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import type { TestContext } from 'node:test';
 
@@ -91,19 +91,43 @@ export function captureRunProcesses(runId: string): ProcessIdentity[] {
   return rows.filter(row => markers.get(row.pid) === runId).map(row => ({ pid: row.pid, started: row.started }));
 }
 
-/** Select by scope, verify original identity and ownership, then signal only verified processes/groups. */
-export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report: (line: string) => void = () => {}, runId = RUN_ID): Promise<void> {
+const directories = new Map<string, { device: number; inode: number }>();
+const self = captureProcess(process.pid);
+function directoryStillOwned(path: string, identity: { device: number; inode: number }): boolean {
+  try { const info = statSync(path); return info.dev === identity.device && info.ino === identity.inode; }
+  catch { return false; }
+}
+function ownership(rows: ProcessRow[], cwd: Map<number, string>, roots: string[], anchors: ProcessIdentity[]): (row: ProcessRow) => boolean {
+  const starts = new Map(anchors.map(identity => [identity.pid, identity.started]));
+  const table = new Map(rows.map(row => [row.pid, row]));
+  return row => {
+    if (roots.some(root => within(cwd.get(row.pid) ?? '', root))) return true;
+    const visited = new Set<number>();
+    let ancestor: ProcessRow | undefined = row;
+    while (ancestor && !visited.has(ancestor.pid)) {
+      if (starts.get(ancestor.pid) === ancestor.started) return true;
+      visited.add(ancestor.pid); ancestor = table.get(ancestor.parent);
+    }
+    return false;
+  };
+}
+/** Scope candidates, then prove cwd containment or current ancestry to an original runner identity.
+ * Environment markers are hints only: macOS flattens other values into marker-looking text.
+ * `root` must be verified by the caller; helper-registered roots also retain device/inode proof.
+ */
+export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report: (line: string) => void = () => {}, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : []): Promise<number> {
   const rows = processes();
   const cwd = cwdPaths();
   const markers = runMarkers(rows);
-  const owned = (row: ProcessRow) => markers.get(row.pid) === runId || (root !== undefined && within(cwd.get(row.pid) ?? '', root));
+  const roots = [...directories].filter(([path, identity]) => directoryStillOwned(path, identity)).map(([path]) => path);
+  if (root) roots.push(root);
+  const owned = ownership(rows, cwd, roots, anchors);
   const protectedPids = new Set<number>();
   const protectedGroups = new Set<number>();
   let ancestor = rows.find(row => row.pid === process.pid);
   while (ancestor && !protectedPids.has(ancestor.pid)) {
     protectedPids.add(ancestor.pid); protectedGroups.add(ancestor.group);
-    const parent = ancestor.parent;
-    ancestor = rows.find(row => row.pid === parent);
+    ancestor = rows.find(row => row.pid === ancestor!.parent);
   }
   const expected = new Map<number, ProcessIdentity>();
   for (const seed of seeds) {
@@ -120,18 +144,21 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
       expected.set(row.pid, row); changed = true;
     }
   }
+  for (const row of rows) {
+    const candidate = markers.get(row.pid) === runId || seeds.some(seed => seed.pid === row.pid) || (root && commandNamesRoot(row.command, root));
+    if (candidate && !protectedPids.has(row.pid) && !expected.has(row.pid)) report(`preserved pid ${row.pid}: ambiguous ownership; ${row.command}`);
+  }
   const current = processes();
-  const currentCwd = cwdPaths();
-  const currentMarkers = runMarkers(current);
-  const verified = (row: ProcessRow) => expected.get(row.pid)?.started === row.started &&
-    (currentMarkers.get(row.pid) === runId || (root !== undefined && within(currentCwd.get(row.pid) ?? '', root)));
+  const currentRoots = [...directories].filter(([path, identity]) => directoryStillOwned(path, identity)).map(([path]) => path);
+  if (root) currentRoots.push(root);
+  const stillOwned = ownership(current, cwdPaths(), currentRoots, anchors);
+  const verified = (row: ProcessRow) => expected.get(row.pid)?.started === row.started && stillOwned(row);
   const targets = current.filter(verified);
   const groups = new Set<number>();
   for (const row of targets) {
     if (groups.has(row.group)) continue;
     const leader = current.find(member => member.pid === row.group);
     const members = current.filter(member => member.group === row.group);
-    // An unrelated group member/leader always prevents a group signal.
     const wholeGroup = !protectedGroups.has(row.group) && leader !== undefined && verified(leader) && members.every(verified);
     report(`cleanup pid ${row.pid}: ${row.command}`);
     try {
@@ -142,13 +169,12 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     const remaining = processes().filter(row => targets.some(target => target.pid === row.pid && target.started === row.started));
-    if (remaining.length === 0) return;
+    if (remaining.length === 0) return targets.length;
     await pause(50);
   }
   throw new Error('owned test processes did not exit after SIGKILL');
 }
 
-const directories = new Set<string>();
 const ownedPids = new Map<number, ProcessIdentity>();
 let installed = false;
 function installSignals(): void {
@@ -157,7 +183,7 @@ function installSignals(): void {
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => {
     void (async () => {
       await cleanupProcesses(undefined, [...ownedPids.values()]);
-      for (const dir of directories) { await cleanupProcesses(dir); await rm(dir, { recursive: true, force: true }); }
+      for (const [dir, identity] of directories) { if (!directoryStillOwned(dir, identity)) continue; await cleanupProcesses(dir); await rm(dir, { recursive: true, force: true }); }
     })().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
   });
 }
@@ -171,13 +197,18 @@ export function ownProcess(t: TestContext | undefined, pid: number | undefined):
       if (ownedPids.get(identity.pid) === identity) ownedPids.delete(identity.pid);
     }
   };
-  t?.after(cleanup);
+  t?.after(async () => { await cleanup(); });
   return cleanup;
 }
 export function ownDirectory(t: TestContext | undefined, path: string): () => Promise<void> {
   const root = realpathSync(path);
-  directories.add(root); installSignals();
-  const cleanup = async () => { await cleanupProcesses(root); await rm(root, { recursive: true, force: true }); directories.delete(root); };
-  t?.after(cleanup);
+  const info = statSync(root);
+  const identity = { device: info.dev, inode: info.ino };
+  directories.set(root, identity); installSignals();
+  const cleanup = async () => {
+    if (directoryStillOwned(root, identity)) { await cleanupProcesses(root); await rm(root, { recursive: true, force: true }); }
+    directories.delete(root);
+  };
+  t?.after(async () => { await cleanup(); });
   return cleanup;
 }

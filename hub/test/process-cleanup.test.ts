@@ -13,7 +13,7 @@ process.env.TEST_SUITE_RUN_ID = 'owned-run';
 let rows = []; let cwd = ''; const signals = [];
 cp.execFileSync = (command, args) => {
   if (command === 'lsof') return cwd;
-  if (args.includes('eww')) return rows.map(r => r.pid + ' ' + r.command + ' TEST_SUITE_RUN_ID=' + r.runId).join('\\n');
+  if (args.includes('eww')) return rows.map(r => r.pid + ' ' + r.command + ' ' + (r.environment ?? ('TEST_SUITE_RUN_ID=' + r.runId))).join('\\n');
   return rows.map(r => r.pid + ' ' + r.parent + ' ' + r.group + ' ' + r.started + ' R ' + r.command).join('\\n');
 };
 syncBuiltinESMExports();
@@ -30,10 +30,13 @@ console.log(JSON.stringify(signals));`;
 
 test('cleanup refuses a remembered PID reused by a different process', () => {
   assert.deepEqual(probe(`
-rows = [{ pid: 420001, parent: 1, group: 420001, started: start, command: 'node', runId: 'owned-run' }];
-const original = captureProcess(420001);
-rows[0].started = 'Tue Oct 6 12:00:00 2026';
-await cleanupProcesses(root, original ? [original] : []);`), []);
+rows = [
+ { pid: 420100, parent: 1, group: 420100, started: start, command: 'runner', runId: 'other-run' },
+ { pid: 420001, parent: 420100, group: 420001, started: start, command: 'node', runId: 'owned-run' }
+];
+const runner = captureProcess(420100); const original = captureProcess(420001);
+rows[1].started = 'Tue Oct 6 12:00:00 2026';
+await cleanupProcesses(undefined, original ? [original] : [], () => {}, 'owned-run', runner ? [runner] : []);`), []);
 });
 
 test('cleanup never treats a sibling path as a run-owned path', () => {
@@ -53,9 +56,38 @@ cwd = 'p420003\\nn' + root + '\\n';
 await cleanupProcesses(root);`), [{ pid: 420003, signal: 'SIGKILL' }]);
 });
 
-
 test('an argv assignment is not proof of run environment ownership', () => {
   assert.deepEqual(probe(`
 rows = [{ pid: 420005, parent: 1, group: 420005, started: start, command: 'node TEST_SUITE_RUN_ID=owned-run ' + root + '/config', runId: 'other-run' }];
 await cleanupProcesses(root);`), []);
+});
+
+test('marker text inside another environment variable never proves ownership', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420006, parent: 1, group: 420006, started: start, command: 'node ' + root + '/config', environment: 'OTHER_VAR=archived TEST_SUITE_RUN_ID=owned-run' }];
+const report = [];
+await cleanupProcesses(root, [], line => report.push(line));
+if (!report.some(line => /ambiguous ownership/.test(line))) throw new Error('ambiguous candidate must be reported');
+`), []);
+});
+
+test('a current parent chain to an original runner proves ownership without an environment marker', () => {
+  assert.deepEqual(probe(`
+rows = [
+ { pid: 420007, parent: 1, group: 420007, started: start, command: 'node --test', runId: 'other-run' },
+ { pid: 420008, parent: 420007, group: 420008, started: start, command: 'test worker', runId: 'other-run' }
+];
+const runner = captureProcess(420007); const child = captureProcess(420008);
+await cleanupProcesses(undefined, child ? [child] : [], () => {}, 'owned-run', runner ? [runner] : []);`), [{ pid: -420008, signal: 'SIGKILL' }]);
+});
+
+test('a reused ancestor PID never proves run ownership', () => {
+  assert.deepEqual(probe(`
+rows = [
+ { pid: 420009, parent: 1, group: 420009, started: start, command: 'node --test', runId: 'owned-run' },
+ { pid: 420010, parent: 420009, group: 420010, started: start, command: 'test worker', runId: 'owned-run' }
+];
+const runner = captureProcess(420009); const child = captureProcess(420010);
+rows[0].started = 'Tue Oct 6 12:00:00 2026';
+await cleanupProcesses(undefined, child ? [child] : [], () => {}, 'owned-run', runner ? [runner] : []);`), []);
 });

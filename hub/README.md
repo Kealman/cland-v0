@@ -804,14 +804,17 @@ The suites run at concurrency 4. Targeted single-file runs are free:
 `node --test` is reserved for targeted runs.
 
 The runner uses a short temporary directory for each run (Unix socket paths must
-fit), verifies process start identities and a run marker or exact directory
-containment before signalling, and prints any final
-leftovers, including detached hook bridges. Test helpers register temporary
+fit), verifies process start identities and either cwd containment in an owned
+directory or a current parent chain to its recorded runner before signalling,
+and prints any final leftovers, including detached hook bridges. Test helpers register temporary
 project ownership before spawning: their after hooks kill owned descendants
 (and groups only when every member and the leader are verified)
 before removing the directory, and signal handlers cover SIGINT/SIGTERM where
 Node's test after hooks do not run. New process fixtures must use `tempProject`
 or `ownDirectory` and register teardown before awaiting process startup.
+Each test runner waits at startup until its PID/start identity is durably
+recorded. Environment markers only identify candidates; they never prove
+ownership. Ambiguous candidates are preserved and printed in the sweep report.
 Cleanup uses `ps` plus `lsof` on macOS, or `/proc` on Linux.
 Each suite invocation prints its elapsed duration and peak sampled one-minute
 machine load, which includes other activity on the machine.

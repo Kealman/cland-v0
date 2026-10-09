@@ -1,15 +1,16 @@
 // All package suite entry points share this machine lock and temporary process boundary.
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { link, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { loadavg } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
 
-type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; device?: number; inode?: number };
-type Lease = { publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
+type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; device?: number; inode?: number; runner?: ProcessIdentity };
+type Lease = { publishRunner: (identity: ProcessIdentity) => Promise<void>; publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
   try {
@@ -42,8 +43,9 @@ async function sweep(holder: Holder): Promise<void> {
   };
   // The run marker is unique per invocation, including workers whose cwd is the repository.
   for (let n = 0; n < 10; n++) {
-    await cleanupProcesses(await ownedRoot(), captureRunProcesses(holder.token), line => process.stderr.write(`${line}\n`), holder.token);
-    if (captureRunProcesses(holder.token).length === 0) break;
+    const anchors = holder.runner ? [holder.runner] : [];
+    const count = await cleanupProcesses(await ownedRoot(), [...captureRunProcesses(holder.token), ...anchors], line => process.stderr.write(`${line}\n`), holder.token, anchors);
+    if (count === 0) break;
     if (n === 9) throw new Error('old suite still owns live processes; refusing to start another suite');
   }
   const root = await ownedRoot();
@@ -70,6 +72,7 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
           await sweep(previous);
           await rm(dir, { recursive: true, force: true });
           await rm(ownerPath, { force: true });
+          await rm(`${ownerPath}.${previous.token}`, { force: true });
           process.stderr.write(`taking over stale suite lock held by pid ${previous.pid}\n`);
           continue;
         }
@@ -81,6 +84,11 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
         catch (error) { await rm(ownerPath, { force: true }); if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; continue; }
         await publish(metadataPath, holder);
         return {
+          publishRunner: async identity => {
+            holder.runner = identity;
+            await publish(ownerPath, holder);
+            await publish(metadataPath, holder);
+          },
           publishRoot: async root => {
             const rootInfo = await stat(root);
             holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
@@ -121,7 +129,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
       interrupted = signal;
-      if (activeIdentity) void cleanupProcesses(undefined, [activeIdentity], () => {}, runId).catch(error => process.stderr.write(String(error) + '\n'));
+      if (activeIdentity) void cleanupProcesses(undefined, [activeIdentity], () => {}, runId, [activeIdentity]).catch(error => process.stderr.write(String(error) + '\n'));
     };
     process.on(signal, handler);
     return { signal, handler };
@@ -146,14 +154,33 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     const rootInfo = await stat(root);
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
     await lease?.publishRoot(root);
-    for (const args of suites) {
+    for (const [index, args] of suites.entries()) {
       if (interrupted) break;
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
       delete env.NODE_TEST_CONTEXT;
-      active = spawn(process.execPath, args, { cwd: options.cwd, env, detached: true, stdio: 'inherit' });
+      const gate = join(root, `start-${index}`);
+      const bootstrap = join(root, `bootstrap-${index}.mjs`);
+      await writeFile(bootstrap, `import { access } from 'node:fs/promises'; import { setTimeout } from 'node:timers/promises';
+const cwd = ${JSON.stringify(resolve(options.cwd ?? process.cwd()))};
+while (!await access(${JSON.stringify(gate)}).then(() => true, () => false)) await setTimeout(25);
+process.chdir(cwd);`);
+      const cwd = resolve(options.cwd ?? process.cwd());
+      // Node resolves test targets before imports; keep them absolute while spawning in the owned root.
+      const absoluteArgs = args.map((arg, index) => {
+        if (arg.startsWith('-') || ['--test-name-pattern', '--test-skip-pattern'].includes(args[index - 1] ?? '')) return arg;
+        const path = resolve(cwd, arg);
+        return existsSync(path) || arg.includes('*') ? path : arg;
+      });
+      active = spawn(process.execPath, ['--import', bootstrap, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
+      // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
+      const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
-      const code = await new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
-      await cleanupProcesses(root, [...captureRunProcesses(holder.token), ...(activeIdentity ? [activeIdentity] : [])], (line) => process.stderr.write(`${line}\n`), holder.token);
+      if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
+      holder.runner = activeIdentity;
+      await lease?.publishRunner(activeIdentity);
+      await writeFile(gate, 'ready');
+      const code = await done;
+      await cleanupProcesses(root, [...captureRunProcesses(holder.token), activeIdentity], (line) => process.stderr.write(`${line}\n`), holder.token, [activeIdentity]);
       active = undefined; activeIdentity = null;
       if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
