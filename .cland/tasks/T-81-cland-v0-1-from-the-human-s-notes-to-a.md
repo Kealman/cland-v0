@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T19:08:14.191Z
+updated: 2026-10-09T19:27:31.098Z
 ---
 
 ## Destination
@@ -42,9 +42,11 @@ updated: 2026-10-09T19:08:14.191Z
 
 ## Decisions so far
 
+- Item hierarchy: a release above epics, and whether levels are configurable (T-87, .cland/tasks/T-87-item-hierarchy-a-release-above-epics-and.md): container kinds come from config, default release above epic, leaves under any container; a release item carries a version that `cland release --item` ships and closes; containers with open children cannot close; a current release scopes the panel, board and graph; sprints are not a level.
+
 ## Not yet specified
 
-- Sprints and milestones as further hierarchy levels: whether levels beyond release are configurable, and what a sprint is in cland; waits on the item hierarchy decision.
+- Sprints and milestones: T-87 ruled them groupings across the tree, not levels. What a sprint would be in cland, and whether v0.1 needs one, waits on the status ticket and the cut.
 - Cost per item and per session: where usage is summed and shown; waits on the session hierarchy (cost rolls up the tree) and on visibility levels.
 - A journal and retrospective viewer: the A-96 retrospective was hand-made from the journal; what the workbench shows of the journal waits on visibility levels and subscriptions.
 - History search: searching messages and comments across topics and items; waits on the palette and visibility levels.

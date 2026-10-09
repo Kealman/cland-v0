@@ -99,8 +99,12 @@ The branch `t/<id>-<slug>` where one item's work happens, from `dev`, in its own
 _Avoid_: feature branch, PR branch, topic branch
 
 **Release**:
-A fast-forward of `main` to `dev`, tagged and pushed to GitHub as one deployable version.
-_Avoid_: deploy, publish, sync, push
+A versioned set of epics planned and shipped together: an item of kind release whose children are its contents. Releasing it is the act of moving `main` to the work, tagging it with the release's version and pushing to GitHub.
+_Avoid_: deploy, publish, sync, push, milestone, iteration
+
+**Unscheduled**:
+An item that belongs to no release: it has no parent, or its parents reach no release. The items panel shows these as their own group under the current release.
+_Avoid_: backlog (that is a status), orphan, loose
 
 **Artifact**:
 A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note. An artifact has an id, a kind, a status (draft, sent, shared, archived) and may bind to a topic; it is not committed unless promoted into the repo.
