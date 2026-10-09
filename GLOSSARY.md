@@ -48,6 +48,14 @@ _Avoid_: team (the harnesses use it for in-harness agents), staff, fleet, org ch
 A set of reusable sessions of one role, capped in size, from which a lead takes an idle member instead of launching a new session.
 _Avoid_: queue, farm, cluster
 
+**Event**:
+A change the hub announces: a session's state, a task's status, claim, verdict or criterion, a topic's wait, a usage threshold, an artifact. Delivered to subscribed sessions like a message, digested at the next turn by default.
+_Avoid_: notification (that is the human's inbox), signal, hook, trigger
+
+**Subscription**:
+A session's standing request to receive certain events about a subject: a session, an item, a topic, a role or a node of the item tree. A lead holds one for its subtree by default.
+_Avoid_: watch, monitor, listener, poll
+
 **Role clause**:
 The instruction text a role carries; the hub delivers it to the session that holds the role.
 _Avoid_: system prompt, role prompt, persona text

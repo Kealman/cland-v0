@@ -2,17 +2,17 @@
 id: T-91
 kind: question
 title: Event subscriptions for sessions
-state: open
+state: closed
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: human
 parent: T-81
 blocked_by:
   - T-89
 topic: null
 branch: null
 created: 2026-10-09T19:09:44.389Z
-updated: 2026-10-09T19:10:27.814Z
+updated: 2026-10-09T20:27:20.845Z
 ---
 
 ## Question
@@ -32,3 +32,23 @@ Only UI and CLI clients may subscribe to hub events today; sessions poll `who`, 
 - The ADR: extend 0001 or a new one on events.
 
 Record the resolution as a comment, the spec section and the ADR.
+
+## Comments
+
+### human · 2026-10-09T20:27:12.195Z
+
+Resolution (2026-10-09, the human accepted every point).
+
+- Tools: subscribe (subject: session, item, topic, role, or a node with its subtree; a list of events), unsubscribe, subscriptions. Events: session.state (idle, busy, waiting for human, waiting for approval, died, launched, stopped), task (status changed, claimed, verdict posted, criterion marked, closed), topic (waiting for human, closed), usage (threshold), artifact (created, shared). Messages are not events.
+- Delivery: an event is a delivery from hub with a one-line body through the same queue and injection as a message; digest = turn by default (one message at the next turn start), now for immediate delivery by steer where possible.
+- Progress notes: send gains a kind; progress never starts a turn and arrives in the next digest; report, question and decision start a turn; role clauses mark progress notes (up to 59% fewer turn starts in the v0 run).
+- Defaults: a lead is subscribed to its node's subtree less subtrees with their own lead (session died, waiting for approval, idle beyond idle_minutes; task verdict, status change, closed); explicit subscriptions widen this.
+- Hygiene: coalescing of equal events on one subject within 60 s, digests capped at 10 events with "and N more", subscriptions die with the subscriber, a subject's death sends a final event, events have their own limit.
+- The human: nothing in the inbox (background), `cland hub subscriptions` lists them, the journal records them like messages.
+- ADR 0007 "Events reach sessions as deliveries, digested at turn boundaries". GLOSSARY: Event, Subscription.
+
+Recorded in docs/spec/v0.1.md §3.9, GLOSSARY.md and docs/adr/0007-events-reach-sessions-as-deliveries.md.
+
+### human · 2026-10-09T20:27:20.845Z
+
+Resolved: see the resolution comment; spec v0.1 §3.9; ADR 0007
