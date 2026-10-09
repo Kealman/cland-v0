@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T19:32:03.459Z
+updated: 2026-10-09T19:38:05.893Z
 ---
 
 ## Destination
@@ -44,6 +44,7 @@ updated: 2026-10-09T19:32:03.459Z
 
 - Item hierarchy: a release above epics, and whether levels are configurable (T-87, .cland/tasks/T-87-item-hierarchy-a-release-above-epics-and.md): container kinds come from config, default release above epic, leaves under any container; a release item carries a version that `cland release --item` ships and closes; containers with open children cannot close; a current release scopes the panel, board and graph; sprints are not a level.
 - Item workflow status and order: explicit fields or derived (T-88, .cland/tasks/T-88-item-workflow-status-and-order-explicit.md): an explicit status field for tasks (backlog, planned, in progress, review, qa, ready, done) moved by hub events and editable by the Coordinator and the human; a sparse rank among siblings, lowest first, no priority flag; "in work" is everything from planned to ready; the merge gate is unchanged.
+- The human's own session (T-92, .cland/tasks/T-92-the-human-s-own-session.md): a non-exclusive Aide role that works for the human alone, addressed by name only, speaking for the human with decisions included; the tracker, artifacts, send and history but no launch, merge, handover or ask; a "yours" group in the sessions panel.
 
 ## Not yet specified
 

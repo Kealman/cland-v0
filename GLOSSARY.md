@@ -32,6 +32,10 @@ _Avoid_: code reviewer, judge
 The role that exercises the running product and returns a verdict to the Coordinator.
 _Avoid_: tester, verifier
 
+**Aide**:
+A session that works for the human alone: it holds no crew duty, is addressed by name only, and speaks for the human, decisions included. It can create and change items and artifacts and message any session, but never launches sessions, merges, hands over or asks.
+_Avoid_: assistant, helper, personal session, scratch session, human session
+
 **Role clause**:
 The instruction text a role carries; the hub delivers it to the session that holds the role.
 _Avoid_: system prompt, role prompt, persona text
