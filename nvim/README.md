@@ -192,12 +192,39 @@ In `init.lua`, and in the shell:
 - **UI updates through `vim.schedule`.** Every hub frame is handled in the main loop, never in a libuv callback, and lands while the human types: Insert mode in the composer is kept. A handler, a request's callback or a refresh timer that fails says so in one line on the status line (`cland: …`), never as an error in the message area; a hub text over several lines (an ask's question or options, a note) is split into buffer lines or flattened, never put in one line.
 - **Sessions owned outside Neovim.** Session terminals only attach, `:restart` re-attaches them, and no session terminal is below three rows.
 
+## Snapshot and event ordering
+
+On each connection the shell fetches its lists, then follows live events. A reply can arrive after events
+that changed the same data. Each snapshot request owns a client-side journal of the events received while
+it was pending. The shell installs the reply as its baseline, then reapplies the relevant updates in arrival
+order before rendering. Item upserts and removals, session fields, presence, the Coordinator chip, inbox
+counts, artifact metadata and ask cards are idempotent: replaying an event already included in the reply
+neither duplicates a row nor restores a deleted one. Topic events supply complete authoritative rows;
+message replay changes only `unread` and `lastMessageAt`, never cached titles or status. The fetched topic's
+`lastMessageAt` is the watermark: messages beyond it are counted once by id, messages before it are already
+represented. Equal or missing timestamps trigger another snapshot for an authoritative unread count,
+rather than guessing whether the reply included that message.
+
+The journals belong to individual requests, including overlapping refreshes. A successful reply releases
+its journal before applying it. Journals record only that panel's relevant events and are bounded by a
+30-second deadline, 2,048 events and 2 MiB. Hitting any limit drops the journal, cancels the old callback and
+requests a fresh snapshot; late replies to cancelled attempts are ignored. Live event handlers continue
+applying updates throughout. A failed request or disconnect releases the journal and keeps the live panel
+data already applied; reconnect fetches a new baseline, including removals missed while away. The inbox
+client already prefers its latest whole `inbox` event over a pending `inbox.list` reply. Topic histories
+merge messages by id and advance delivery stages; their journals also replay ask cards and delivery events
+that arrived before the history's messages. The Agents log merges immutable messages by id and rejects
+answers for superseded filters. Item detail fetches retain invalidation while pending and fetch again.
+
+This rule needs no hub sequence or wire protocol change: the new client works with existing hubs. Older
+clients keep their existing snapshot behavior. No polling delay or longer timeout establishes ordering.
+
 ## Modules
 
 | Path | What it is |
 | --- | --- |
 | `init.lua` | The entry point: the runtime path, the mitigations, the options the shell needs, then `require('cland').start()` on `VimEnter`. |
-| `lua/cland/init.lua` | Finds the project root, creates the hub client, loads the hub's data on every connect and every few seconds, applies events to the state, wires the keys, `:Cland` and the autocommands, and restores a restart snapshot. |
+| `lua/cland/init.lua` | Finds the project root, creates the hub client, loads the hub's data on every connect, applies events over pending snapshots, wires the keys, `:Cland` and the autocommands, and restores a restart snapshot. |
 | `lua/cland/hub.lua` | The hub client: the Unix socket through `hub.json` (reconnecting with backoff, re-reading the file each time, `cland hub start` when none answers) or a stdio child; JSON lines; requests by id; `message`, `delivery`, `session.state`, `session.role`, `role.vacant`, `role.filled`, `state` and `connected` handlers. It subscribes on every connect. |
 | `lua/cland/state.lua` | The state: topics, sessions (launched and connected), capability tables, items, the centre view and its history, the open panels; `changed()` renders once in the next tick. |
 | `lua/cland/layout.lua` | The windows: panels as top-level splits, the centre and its composer, the view switch and `␣␣`, the presets, the rebuild after a restart. |

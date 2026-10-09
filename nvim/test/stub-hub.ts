@@ -16,6 +16,8 @@
 //                        {"set": {...}}        replace parts of the scenario (processes, items, send, …)
 //                        {"requests": true}    answer with every request frame received so far
 //                        {"release": {"error"?: "…"}}  answer the held topic.send requests
+//                        {"waitSnapshot": type, "snapshotCount"?: n}  wait until n answers are captured
+//                        {"releaseSnapshots": [types], "snapshotError"?: "…"}  release newest first
 import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -40,6 +42,8 @@ export type Scenario = {
   stopError?: string;
   /** `task.view` never answers (a disconnect while the client waits for it). */
   holdView?: boolean;
+  /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
+  holdSnapshots?: string[];
   /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event. */
   inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>> };
 };
@@ -92,7 +96,24 @@ const requests: Frame[] = [];
 const held: Frame[] = [];
 
 const write = (frame: unknown) => process.stdout.write(`${JSON.stringify(frame)}\n`);
-const ok = (id: unknown, value: unknown) => write({ type: 'result', id, ok: true, value });
+const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
+const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
+const ok = (id: unknown, value: unknown) => {
+  const type = requests.find((f) => f.id === id)?.type;
+  const frame = { type: 'result', id, ok: true, value };
+  if (type && scenario.holdSnapshots?.includes(type)) {
+    const deferred = Promise.withResolvers<string | undefined>();
+    const captured = structuredClone(frame);
+    snapshots.push({ type, release: deferred.resolve });
+    for (let i = snapshotWaiters.length - 1; i >= 0; i--) {
+      const waiter = snapshotWaiters[i];
+      if (waiter?.type === type && snapshots.filter((s) => s.type === type).length >= waiter.count) { snapshotWaiters.splice(i, 1); waiter.resolve(); }
+    }
+    void deferred.promise.then((error) => error ? fail(id, error) : write(captured));
+    return;
+  }
+  write(frame);
+};
 const fail = (id: unknown, error: string) => write({ type: 'result', id, ok: false, error });
 
 function topicMessage(f: Frame): Record<string, unknown> {
@@ -275,6 +296,15 @@ if (controlPath) {
         if (cmd.emit) write(cmd.emit);
         if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map((f) => `${JSON.stringify(f)}\n`).join(''));
         if (cmd.set) Object.assign(scenario, cmd.set);
+        if (Array.isArray(cmd.releaseSnapshots)) {
+          for (let i = snapshots.length - 1; i >= 0; i--) {
+            const snapshot = snapshots[i];
+            if (snapshot && cmd.releaseSnapshots.includes(snapshot.type)) {
+              snapshots.splice(i, 1);
+              snapshot.release(typeof cmd.snapshotError === 'string' ? cmd.snapshotError : undefined);
+            }
+          }
+        }
         if (cmd.release) {
           const error = (cmd.release as { error?: string }).error;
           for (const f of held.splice(0)) {
@@ -282,7 +312,14 @@ if (controlPath) {
             else acceptSend(f);
           }
         }
-        sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}) })}\n`);
+        const count = typeof cmd.snapshotCount === 'number' ? cmd.snapshotCount : 1;
+        if (typeof cmd.waitSnapshot === 'string' && snapshots.filter((s) => s.type === cmd.waitSnapshot).length < count) {
+          const deferred = Promise.withResolvers<void>();
+          snapshotWaiters.push({ type: cmd.waitSnapshot, count, resolve: deferred.resolve });
+          void deferred.promise.then(() => sock.write(`${JSON.stringify({ ok: true })}\n`));
+        } else {
+          sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}) })}\n`);
+        }
         if (cmd.exit) {
           server?.close();
           if (controlPath) rmSync(controlPath, { force: true });

@@ -12,6 +12,9 @@ local MAX_RETRY_MS = 5000
 --- Failed socket connects in a row after which `cland hub start` runs: a `hub.json` left by a hub that was
 --- killed or a machine that rebooted names a socket nobody serves, and `hub start` replaces it.
 M.STALE_AFTER = 3
+M.SNAPSHOT_TIMEOUT_MS = 30000
+M.SNAPSHOT_MAX_EVENTS = 2048
+M.SNAPSHOT_MAX_BYTES = 2 * 1024 * 1024
 
 local Client = {}
 Client.__index = Client
@@ -42,6 +45,7 @@ function M.new(opts)
     autostart = opts.autostart ~= false,
     handlers = {},
     pending = {},
+    snapshots = {},
     next_id = 1,
     state = 'idle',
     detail = nil,
@@ -123,6 +127,59 @@ function Client:request(frame, cb, opts)
     self.nulls[id] = true
   end
   self:_write(vim.tbl_extend('force', frame, { id = id }))
+  return id
+end
+
+local snapshot_events = {
+  ['task.list'] = { task = true },
+  ['topic.list'] = { topic = true, message = true },
+  ['session.list'] = { ['session.process'] = true, ['session.state'] = true, ['session.role'] = true, ['session.usage'] = true },
+  ['hub.status'] = { presence = true, ['session.state'] = true, ['session.role'] = true, ['role.vacant'] = true, ['role.filled'] = true, inbox = true },
+  ['artifact.list'] = { artifact = true, message = true },
+  ['topic.history'] = { ask = true, delivery = true },
+}
+
+local function relevant(request, event)
+  if not (snapshot_events[request.type] or {})[event.type] then return false end
+  if request.type == 'topic.history' then return event.topic == request.topic end
+  if event.type == 'message' then
+    local m = event.message or {}
+    if request.type == 'topic.list' then return m.fromKind ~= 'human' end
+    return type(m.artifact) == 'table' or type(m.artifacts) == 'table' and #m.artifacts > 0
+  end
+  return true
+end
+
+--- A snapshot plus the events received while it was in flight. The caller installs the snapshot, then
+--- replays relevant idempotent updates. Each attempt owns a bounded journal. An unanswered or overfull
+--- attempt is discarded and retried; errors/disconnects release it and complete the caller normally.
+function Client:snapshot(frame, cb, opts)
+  local attempt
+  attempt = function()
+    local journal = { request = frame, events = {}, bytes = 0 }
+    self.snapshots[journal] = true
+    local timer, id
+    local function release()
+      self.snapshots[journal] = nil
+      if timer and not timer:is_closing() then timer:stop(); timer:close() end
+    end
+    journal.restart = function()
+      if not self.snapshots[journal] then return end
+      release()
+      if id then
+        self.pending[id] = nil
+        if self.nulls then self.nulls[id] = nil end
+      end
+      -- Start after the triggering event's handlers; no old reply can complete this new attempt.
+      vim.schedule(attempt)
+    end
+    timer = vim.defer_fn(journal.restart, M.SNAPSHOT_TIMEOUT_MS)
+    id = self:request(frame, function(err, value)
+      release()
+      cb(err, value, journal.events)
+    end, opts)
+  end
+  attempt()
 end
 
 --- One inbox snapshot per connection, shared by the shell and topic views, kept by inbox events.
@@ -324,6 +381,17 @@ function Client:_frame(frame, line)
       end
     end
   elseif t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'session.usage' then
+    for journal in pairs(self.snapshots) do
+      if relevant(journal.request, frame) then
+        local bytes = line and #line or #vim.json.encode(frame)
+        if #journal.events >= M.SNAPSHOT_MAX_EVENTS or journal.bytes + bytes > M.SNAPSHOT_MAX_BYTES then
+          journal.restart()
+        else
+          journal.events[#journal.events + 1] = vim.deepcopy(frame)
+          journal.bytes = journal.bytes + bytes
+        end
+      end
+    end
     if t == 'inbox' then self.inbox_value = frame.inbox end
     self:_emit(t, frame)
   end
@@ -342,13 +410,15 @@ function Client:_lost(reason)
   local pending = self.pending
   self.pending = {}
   self.nulls = {}
+  -- A completion may drain a queued refresh. Mark the transport lost first so it cannot create a new
+  -- pending request (and journal) on the dead connection while we are failing the old requests.
+  self:_set_state('disconnected', reason)
   for id, cb in pairs(pending) do
     self:_call('request ' .. tostring(id), cb, reason)
   end
   if self.stopping then
     return
   end
-  self:_set_state('disconnected', reason)
   self:_retry()
 end
 

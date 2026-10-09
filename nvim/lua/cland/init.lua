@@ -33,12 +33,53 @@ end
 -- Data from the hub ---------------------------------------------------------------------------------------
 
 local function refresh_topics()
-  M.client:request({ type = 'topic.list' }, function(err, value)
+  M.client:snapshot({ type = 'topic.list' }, function(err, value, events)
     if not err and value and value.topics then
       state.S.topics = value.topics
+      local counted, watermarks, ambiguous = {}, {}, false
+      for _, t in ipairs(state.S.topics) do watermarks[t.id] = t.lastMessageAt or false end
+      for _, event in ipairs(events) do
+        if event.type == 'topic' then
+          state.upsert_topic(event.topic)
+          if event.topic and event.topic.id then watermarks[event.topic.id] = event.topic.lastMessageAt or false end
+        elseif event.type == 'message' and event.topic then
+          local t, m = state.topic(event.topic.id), event.message or {}
+          if t and m.fromKind ~= 'human' and m.id and not counted[m.id] then
+            counted[m.id] = true
+            -- The fetched row's latest message time is its watermark. Never copy cached metadata or
+            -- cached unread totals across a reconnect, and count a replayed message only once.
+            local watermark = watermarks[t.id]
+            if type(m.ts) ~= 'string' or m.ts == watermark then
+              ambiguous = true
+            elseif not watermark or m.ts > watermark then
+              local v = state.S.ui.view
+              if v.kind ~= 'thread' or v.id ~= t.id then t.unread = (tonumber(t.unread) or 0) + 1 end
+              if not t.lastMessageAt or m.ts > t.lastMessageAt then t.lastMessageAt = m.ts end
+            end
+          end
+        end
+      end
       state.changed()
+      -- Equal timestamps cannot identify inclusion. Read an authoritative count instead of guessing.
+      if ambiguous then refresh_topics() end
     end
   end)
+end
+
+--- Idempotent session updates replayed over the corresponding fetched rows.
+local function replay_sessions(events, processes)
+  for _, e in ipairs(events) do
+    if e.type == 'session.role' then state.set_session_role(e.session, e.role)
+    elseif e.type == 'session.state' then state.set_session_state(e.session, e.state)
+    elseif processes and e.type == 'session.process' then state.upsert_process(e.process)
+    elseif processes and e.type == 'session.usage' then state.set_session_usage(e.sessionId, e.usage)
+    elseif not processes then
+      if e.type == 'presence' and type(e.sessions) == 'table' then state.S.presence = e.sessions
+      elseif e.type == 'role.vacant' then state.S.hub_coordinator = { name = nil }
+      elseif e.type == 'role.filled' then state.S.hub_coordinator = { name = e.session }
+      elseif e.type == 'inbox' then state.set_inbox(e.inbox) end
+    end
+  end
 end
 
 --- `fn(done)` with at most one run in flight: a call while one is out runs it once more after, never stacks
@@ -75,18 +116,18 @@ end
 
 local refresh_sessions = single_flight(function(done)
   local answered = after(4, done)
-  M.client:request({ type = 'session.list' }, function(err, value)
-    answered()
+  M.client:snapshot({ type = 'session.list' }, function(err, value, events)
     if not err and value then
       state.S.processes = value.processes or {}
       state.S.adapters = value.adapters or {}
+      replay_sessions(events, true)
       state.changed()
     end
+    answered()
   end)
   -- `coordinator: null` is the hub saying nobody holds the role (a role.vacant missed while away, #29): it
   -- arrives as vim.NIL; a hub.status without the field leaves the chip to the session rows
-  M.client:request({ type = 'hub.status' }, function(err, value)
-    answered()
+  M.client:snapshot({ type = 'hub.status' }, function(err, value, events)
     if not err and value then
       state.S.presence = value.sessions or {}
       if value.coordinator == vim.NIL then
@@ -97,8 +138,10 @@ local refresh_sessions = single_flight(function(done)
       if type(value.needsYou) == 'number' then
         state.S.needs_you = value.needsYou
       end
+      replay_sessions(events, false)
       state.changed()
     end
+    answered()
   end, { nulls = true })
   -- the roles and their launch defaults: the launcher's prefill and the labels
   M.client:request({ type = 'role.list' }, function(err, value)
@@ -121,14 +164,17 @@ M.refresh_sessions = refresh_sessions
 --- The whole list, on connecting: after that the `task` events keep it (an item as `task.list` shows it), so
 --- nothing polls `task.list` (T-67).
 local refresh_items = single_flight(function(done)
-  M.client:request({ type = 'task.list' }, function(err, value)
-    done()
+  M.client:snapshot({ type = 'task.list' }, function(err, value, events)
     if err then
-      state.S.items, state.S.items_note = {}, 'no items: ' .. tostring(err)
+      state.S.items_note = 'items: ' .. tostring(err)
     else
       state.S.items, state.S.items_note = value and value.items or {}, nil
+      for _, event in ipairs(events) do
+        if event.type == 'task' then require('cland.items').apply_event(event) end
+      end
     end
     state.changed()
+    done()
   end)
 end)
 

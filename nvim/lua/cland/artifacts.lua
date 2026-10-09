@@ -31,9 +31,16 @@ end
 function M.setup(client)
   M.client = client
   local function load()
-    client:request({ type = 'artifact.list' }, function(err, value)
+    client:snapshot({ type = 'artifact.list' }, function(err, value, events)
       if err then return state.say('artifacts: ' .. err, 'ClandRedBar') end
       M.entries = value.artifacts or {}
+      for _, e in ipairs(events) do
+        if e.type == 'artifact' then upsert(e.artifact)
+        elseif e.type == 'message' and e.message then
+          for _, a in ipairs(e.message.artifacts or {}) do upsert(a) end
+          if type(e.message.artifact) == 'table' then upsert(e.message.artifact) end
+        end
+      end
       state.changed()
     end)
   end

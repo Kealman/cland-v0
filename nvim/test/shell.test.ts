@@ -1177,6 +1177,201 @@ test('gi, gt and gs between items, topics and sessions, both ways; a topic event
   await c.waitScreen((x) => statusLine(x).includes('Items panel work · T-2 · topic'), 'gt from the T-2 card');
 });
 
+test('a delayed items snapshot keeps a newer claim, new item and removed file', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((x) => x.includes('ITEMS') && x.includes('T-13'), 'the initial items');
+  await c.control({ set: { holdSnapshots: ['task.list'] } });
+  await c.lua("require('cland').refresh()");
+  // The control socket's barrier proves the old answer was captured before the events.
+  await c.control({ waitSnapshot: 'task.list' });
+  await c.control({ emits: [
+    { type: 'task', id: 'T-7', item: item('T-7', 'question', 'Transport', { parent: 'T-5', claim: claimBy('impl-2') }) },
+    { type: 'task', id: 'T-14', item: item('T-14', 'task', 'New item') },
+    { type: 'task', id: 'T-13', item: null },
+  ] });
+  const newer = (x: string) => /^ {3}◐ T-7 Transport +impl-2 $/m.test(leftOf(x)) && x.includes('T-14 New item') && !leftOf(x).includes('T-13');
+  await c.waitScreen(newer, 'the newer task events');
+  await c.control({ releaseSnapshots: ['task.list'] });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  assert.ok(newer((await c.screen()).join('\n')), 'the late list must keep the newer tree');
+});
+
+test('events already reflected in a delayed items snapshot are idempotent; a failed snapshot keeps live items', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((x) => x.includes('T-13'), 'initial items');
+  const changed = item('T-7', 'question', 'Transport', { parent: 'T-5', claim: claimBy('impl-2') });
+  const added = item('T-14', 'task', 'New item');
+  const scenario = baseScenario(''); withItems(scenario);
+  const reflected = (scenario.items ?? []).filter((it) => it.id !== 'T-13' && it.id !== 'T-7').concat(changed, added);
+  for (const error of [undefined, 'snapshot failed']) {
+    await c.control({ set: { holdSnapshots: ['task.list'], items: reflected } });
+    await c.lua("require('cland').refresh()");
+    await c.control({ waitSnapshot: 'task.list' });
+    await c.control({ emits: [
+      { type: 'task', id: 'T-7', item: changed }, { type: 'task', id: 'T-14', item: added }, { type: 'task', id: 'T-13', item: null },
+    ] });
+    await c.waitScreen((x) => x.includes('T-14 New item') && !leftOf(x).includes('T-13'), 'the live updates');
+    await c.control({ releaseSnapshots: ['task.list'], snapshotError: error });
+    await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+    const screen = leftOf((await c.screen()).join('\n'));
+    assert.equal(screen.match(/T-14 New item/g)?.length, 1);
+    assert.equal(screen.match(/T-7 Transport/g)?.length, 1);
+    assert.ok(!screen.includes('T-13'));
+    assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0, 'completed requests release their journals');
+  }
+});
+
+test('disconnect releases snapshot journals even when another refresh is queued', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.control({ set: { holdSnapshots: ['task.list', 'session.list'] } });
+  await c.lua("require('cland').refresh(); require('cland').refresh()");
+  await c.control({ waitSnapshot: 'task.list' });
+  await c.control({ waitSnapshot: 'session.list' });
+  await c.reconnect((s) => { s.items = [item('T-14', 'task', 'After reconnect')]; });
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((x) => x.includes('T-14 After reconnect'), 'fresh items after reconnect');
+  assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0, 'no journal belongs to the dead connection');
+  assert.equal(await c.lua("return vim.tbl_count(require('cland').client.pending)"), 0, 'queued refreshes never request on the dead connection');
+});
+
+test('topic replay after reconnect preserves fresh metadata and counts only messages after the snapshot watermark', { skip }, async (t) => {
+  const cached = topic('topic-live', 'Cached title', 'open', { unread: 5, lastMessageAt: ts(1) });
+  const c = await startShell(t, (s) => { s.topics = [topic('general', 'General', 'open'), cached]; });
+  await c.reconnect((s) => {
+    s.topics = [topic('general', 'General', 'open'), { ...cached, title: 'Fresh title', status: 'waiting for human', unread: 10, lastMessageAt: ts(5) }];
+    s.holdSnapshots = ['topic.list'];
+  });
+  await c.control({ waitSnapshot: 'topic.list' });
+  const message = (id: string, at: string) => ({ type: 'message', topic: { id: cached.id, title: 'Fresh title' }, message: { id, from: 'impl-1', fromKind: 'agent', text: 'Count once', ts: at } });
+  await c.control({ emits: [message('already-counted', ts(4)), message('new-message', ts(6)), message('new-message', ts(6))] });
+  await c.control({ releaseSnapshots: ['topic.list'] });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  const data = await c.lua<{ topics: Array<{ id: string; title: string; status: string; unread: number }> }>("return require('cland.qa').state()");
+  const live = data.topics.find((x) => x.id === cached.id);
+  assert.equal(live?.title, 'Fresh title');
+  assert.equal(live?.status, 'waiting for human');
+  assert.equal(live?.unread, 11, 'fresh count plus one unique message beyond its watermark');
+});
+
+test('an unanswered items snapshot records only relevant frames and restarts at its deadline', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.control({ set: { holdSnapshots: ['task.list'] } });
+  await c.lua("require('cland.hub').SNAPSHOT_TIMEOUT_MS = 100; require('cland').refresh()");
+  await c.control({ waitSnapshot: 'task.list' });
+  await c.control({ emits: Array.from({ length: 100 }, () => ({ type: 'session.usage', sessionId: 'unrelated', usage: {} })) });
+  await c.lua("require('cland').client:request({ type = 'role.list' }, function() vim.g.unrelated_seen = true end); assert(vim.wait(5000, function() return vim.g.unrelated_seen end))");
+  assert.equal(await c.lua("local count = 0; for journal in pairs(require('cland').client.snapshots) do count = count + #(journal.events or journal) end; return count"), 0, 'unrelated frames are never recorded');
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 2 });
+  await c.control({ releaseSnapshots: ['task.list'], set: { holdSnapshots: [] } });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0);
+});
+
+test('an items snapshot restarts when its recording reaches the event cap', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.control({ set: { holdSnapshots: ['task.list'] } });
+  await c.lua("require('cland.hub').SNAPSHOT_MAX_EVENTS = 2; require('cland').refresh()");
+  await c.control({ waitSnapshot: 'task.list' });
+  const latest = item('T-14', 'task', 'New item 3');
+  await c.control({ set: { items: [latest] }, emits: [1, 2, 3].map((n) => ({ type: 'task', id: 'T-14', item: item('T-14', 'task', `New item ${n}`) })) });
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 2 });
+  await c.control({ releaseSnapshots: ['task.list'], set: { holdSnapshots: [] } });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((s) => s.includes('T-14 New item 3') && !leftOf(s).includes('T-13'), 'the replacement snapshot; the cancelled old reply is ignored');
+  assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0);
+});
+
+test('a single oversized relevant frame restarts a snapshot without retaining its bytes', { skip }, async (t) => {
+  const c = await startShell(t, withItems);
+  await c.control({ set: { holdSnapshots: ['task.list'] } });
+  await c.lua("require('cland.hub').SNAPSHOT_MAX_BYTES = 512; require('cland').refresh()");
+  await c.control({ waitSnapshot: 'task.list' });
+  const latest = item('T-14', 'task', 'Large frame', { body: 'x'.repeat(1024) });
+  await c.control({ set: { items: [latest] }, emit: { type: 'task', id: latest.id, item: latest } });
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 2 });
+  assert.equal(await c.lua("local bytes = 0; for journal in pairs(require('cland').client.snapshots) do bytes = bytes + journal.bytes end; return bytes"), 0);
+  await c.control({ releaseSnapshots: ['task.list'], set: { holdSnapshots: [] } });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((s) => s.includes('T-14 Large frame'), 'a fresh snapshot after the byte cap');
+});
+
+test('messages sharing the snapshot watermark use a fresh unread count', { skip }, async (t) => {
+  const original = topic('topic-live', 'Live title', 'open', { unread: 10, lastMessageAt: ts(5) });
+  const c = await startShell(t, (s) => { s.topics = [topic('general', 'General', 'open'), original]; });
+  await c.control({ set: { holdSnapshots: ['topic.list'] } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'topic.list' });
+  // One newer message has the same clock millisecond as the snapshot's last message. Only the next
+  // authoritative count tells whether this id was already represented in the first snapshot.
+  await c.control({ set: { holdSnapshots: [], topics: [topic('general', 'General', 'open'), { ...original, unread: 11 }] }, emit: { type: 'message', topic: { id: original.id, title: original.title }, message: { id: 'equal-time', from: 'impl-1', fromKind: 'agent', ts: ts(5), text: 'Same millisecond' } } });
+  await c.control({ releaseSnapshots: ['topic.list'] });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  const data = await c.lua<{ topics: Array<{ id: string; unread: number }> }>("return require('cland.qa').state()");
+  assert.equal(data.topics.find((x) => x.id === original.id)?.unread, 11);
+});
+
+test('overlapping delayed panel snapshots keep topic, session, artifact and inbox events', { skip }, async (t) => {
+  const types = ['topic.list', 'session.list', 'hub.status', 'artifact.list', 'inbox.list'];
+  const oldTopic = topic('topic-live', 'Live topic', 'open');
+  const artifact = { id: 'A-1', kind: 'note', title: 'Live artifact', creator: 'coord-1', status: 'shared', topic: 'general', time: ts(1), path: '/unused.md' };
+  const c = await startShell(t, (s) => {
+    s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), oldTopic];
+    s.artifacts = [artifact];
+    s.coordinator = 'coord-1';
+    s.inbox = { asks: [{ id: 'a-2', question: 'Old ask', topic: { id: 'general', title: 'General' }, from: 'coord-1', options: ['Yes'], free: true, ts: ts(1) }] };
+    s.holdSnapshots = types;
+  });
+  for (const type of types) await c.control({ waitSnapshot: type });
+  const latestTopic = { ...oldTopic, title: 'Updated topic', status: 'waiting for human' };
+  await c.control({ emits: [
+    { type: 'topic', topic: latestTopic },
+    { type: 'session.process', process: proc('coord-1', 'coordinator', 'busy') },
+    { type: 'session.state', session: 'coord-1', state: 'idle' },
+    { type: 'session.role', session: 'coord-1', role: 'implementer' },
+    { type: 'session.usage', sessionId: 'coord-1-id', usage: { total: { cost: 2.40 } } },
+    { type: 'presence', sessions: [{ name: 'external', role: 'qa', state: 'idle' }] },
+    { type: 'role.vacant', role: 'coordinator' },
+    { type: 'artifact', artifact: { ...artifact, status: 'archived' } },
+    { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } },
+  ] });
+  await c.waitScreen((x) => x.includes('coord-1 [Implementer]') && x.includes('$2.40'), 'the live session');
+  // This second topics snapshot already contains the status event. Its journal must be independent
+  // from the first request's; the stub releases the newer answer before the older one.
+  await c.control({ set: {
+    topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), latestTopic],
+    processes: [{ ...proc('coord-1', 'implementer', 'idle'), usage: { total: { cost: 2.40 } } }],
+    presence: [{ name: 'external', role: 'qa', state: 'idle' }], coordinator: null,
+    inbox: { asks: [], approvals: [], waiting: [], notifications: [] },
+    artifacts: [{ ...artifact, status: 'archived' }],
+  } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'topic.list', snapshotCount: 2 });
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-live', title: latestTopic.title }, message: { id: 'm-live', from: 'impl-1', fromKind: 'agent', text: 'Unread once', ts: ts(3) } } });
+  await c.lua("assert(vim.wait(5000, function() local t = require('cland.state').topic('topic-live'); return t and t.unread == 1 end))");
+  await c.control({ releaseSnapshots: types, set: { holdSnapshots: [] } });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  await c.input('<Esc><Space>t');
+  const topics = await c.waitScreen((x) => x.includes('TOPICS'), 'the topics panel');
+  assert.ok(topics.includes('Updated topic'), 'the late list keeps the topic update');
+  const data = await c.lua<{ topics: Array<{ id: string; unread: number; status: string }>; sessions: Array<{ name: string; role: string; state: string }>; asks: unknown[]; needs_you: number; coordinator?: string }>("return require('cland.qa').state()");
+  assert.equal(data.topics.find((x) => x.id === 'topic-live')?.unread, 1, 'message-derived unread count is preserved, never incremented twice');
+  assert.equal(data.topics.find((x) => x.id === 'topic-live')?.status, 'waiting for human');
+  assert.equal(data.sessions.find((x) => x.name === 'coord-1')?.role, 'implementer');
+  assert.equal(data.sessions.find((x) => x.name === 'coord-1')?.state, 'idle');
+  assert.ok(data.sessions.some((x) => x.name === 'external'));
+  assert.equal(data.coordinator, undefined);
+  assert.deepEqual(data.asks, []);
+  assert.equal(data.needs_you, 0);
+  await c.input(':Cland view artifacts general<CR>');
+  const artifacts = await c.waitScreen((x) => x.includes('ARTIFACTS'), 'artifact list');
+  assert.ok(artifacts.includes('archived'), 'the late artifact list keeps the event metadata');
+  assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0);
+});
+
 test('the tree follows task events: a claim, a new item, a removed file', { skip }, async (t) => {
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>i');
@@ -1445,6 +1640,21 @@ test('a question and options over several lines render as lines in the card and 
   await c.input('gg/by the spoke<CR>1');
   await c.waitScreen((x) => statusLine(x).includes('answered with 1'), 'answered with 1');
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 1]]);
+});
+
+test('a delayed topic history keeps an ask card answered by a newer event', { skip }, async (t) => {
+  const c = await startShell(t, withInbox);
+  await c.control({ set: { holdSnapshots: ['topic.history'] } });
+  await c.input('<Esc>:Cland view thread topic-1<CR>');
+  await c.control({ waitSnapshot: 'topic.history' });
+  await c.control({ emit: { type: 'ask', topic: 'topic-1', ask: 'a1', card: { question: 'Which should win?', options: ASK_OPTIONS, free: true, state: 'answered', option: 3, answer: 'ans-1' } } });
+  // A read request after the event is a client-side processing barrier even before history adds the card.
+  await c.lua("require('cland').client:request({ type = 'role.list' }, function() vim.g.ask_event_seen = true end); assert(vim.wait(5000, function() return vim.g.ask_event_seen end))");
+  await c.control({ releaseSnapshots: ['topic.history'] });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  const screen = (await c.screen()).join('\n');
+  assert.ok(screen.includes('ask · ✓ answered'), 'the old history must keep the newer answered card');
+  assert.ok(!screen.includes('ask · ▲ waiting for you'));
 });
 
 test('an ask closed while the client was away, now older than the history the reconnect reads: its card closes, a digit on it does nothing', { skip }, async (t) => {

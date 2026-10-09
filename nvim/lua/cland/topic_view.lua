@@ -43,11 +43,17 @@ function M.new(client, topic)
   })
 
   local function load()
-    client:request({ type = 'topic.history', topic = topic.id, limit = M.HISTORY_LIMIT }, function(err, value)
+    client:snapshot({ type = 'topic.history', topic = topic.id, limit = M.HISTORY_LIMIT }, function(err, value, events)
       if err then
         return view.thread:set_notice('no history: ' .. err)
       end
       view.thread:merge(value.messages)
+      for _, e in ipairs(events) do
+        if e.topic == topic.id then
+          if e.type == 'ask' then view.thread:set_card(e.ask, e.card)
+          elseif e.type == 'delivery' then view.thread:set_stage(e.message, e.stage) end
+        end
+      end
       -- a free answer armed for an ask that closed meanwhile goes
       local function disarm()
         local a = view.composer.answering
