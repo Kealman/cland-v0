@@ -63,8 +63,9 @@ export class TaskWorktrees {
   readonly #sessions: () => SessionCwd[];
   /** The tail of the operations queued so far: each Git operation of the hub starts when the previous one settled. */
   #queue: Promise<unknown> = Promise.resolve();
-  /** The items a launch is under way for, from its worktree to its claim: prune leaves their worktrees alone. */
-  readonly #launching = new Set<string>();
+  /** The items a launch is under way for, from its worktree to its claim, each with its launch's own token: prune
+   *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
+  readonly #launching = new Map<string, symbol>();
 
   constructor(options: { tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
     this.#tracker = options.tracker;
@@ -148,27 +149,37 @@ export class TaskWorktrees {
     const yields = (held: Claim | null): boolean => !held || held.session === request.name || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
     if (!yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
-    if (this.#launching.has(view.id)) throw new Error(`${view.id}: another session is being launched for it`);
-    // in the queue, after any prune queued before it: the item as it is then, and the launch marked before the queue
-    // moves on, so a prune queued after it leaves the worktree alone until the claim is the session's
+    const token = Symbol(request.name);
+    const release = () => {
+      if (this.#launching.get(view.id) === token) this.#launching.delete(view.id);
+    };
+    // in the queue, after any prune queued before it: the reservation is tested and taken in the same step as the
+    // worktree is made, so of two launches for one item only one goes on, and a prune queued after it leaves the
+    // worktree alone until the claim is the session's
     const { reason, worktree } = await this.#serial(async () => {
-      const now = this.#tracker.view(view.id);
-      const reason = await this.#ineligible(now);
-      let worktree: TaskWorktree | null = null;
-      if (reason === null) {
-        try {
-          worktree = await this.#make(now, request.name);
-        } catch (err) {
-          throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
+      if (this.#launching.has(view.id)) throw new Error(`${view.id}: another session is being launched for it`);
+      this.#launching.set(view.id, token);
+      try {
+        const now = this.#tracker.view(view.id);
+        const reason = await this.#ineligible(now);
+        let worktree: TaskWorktree | null = null;
+        if (reason === null) {
+          try {
+            worktree = await this.#make(now, request.name);
+          } catch (err) {
+            throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
+          }
         }
+        return { reason, worktree };
+      } catch (err) {
+        release();
+        throw err;
       }
-      this.#launching.add(view.id);
-      return { reason, worktree };
     });
     try {
       return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other);
     } finally {
-      this.#launching.delete(view.id);
+      release();
     }
   }
 

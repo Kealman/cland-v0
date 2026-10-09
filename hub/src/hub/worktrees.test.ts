@@ -131,3 +131,57 @@ test('while a launch for an item is under way, a prune leaves its worktree alone
   assert.deepEqual(pruned, { removed: [], failed: [{ item: 'T-1', error: 'T-1: a session is being launched in its worktree' }] });
   assert.ok(existsSync(path));
 });
+
+test('two launches for one item at once: only one goes on; its failed spawn releases only its own reservation, and a prune during the next launch is still refused (rev-6 on T-58)', async (t) => {
+  const { root, tracker, worktrees } = await territoryProject(t, () => []);
+  tracker.create(HUMAN, { title: 'Twice', kind: 'task' });
+  const path = join(root, '.cland', 'worktrees', 'T-1');
+  const spawning = Promise.withResolvers<void>();
+  const failSpawn = Promise.withResolvers<void>();
+  const spawned: string[] = [];
+  const first = {
+    launch: async () => {
+      spawned.push('impl-1');
+      spawning.resolve();
+      await failSpawn.promise;
+      throw new Error('the harness did not start');
+    },
+  } as unknown as Sessions;
+  const second = {
+    launch: async () => {
+      spawned.push('impl-2');
+      return { name: 'impl-2', role: 'implementer', sessionId: 'sess-impl-2', cwd: path, item: 'T-1' } as HarnessProcessView;
+    },
+  } as unknown as Sessions;
+
+  // both asked before the first worktree exists: the reservation is taken in the queued step, so the second is refused
+  const a = worktrees.launch(first, { name: 'impl-1', role: 'implementer', item: 'T-1' });
+  const b = worktrees.launch(second, { name: 'impl-2', role: 'implementer', item: 'T-1' });
+  await assert.rejects(b, /^Error: T-1: another session is being launched for it$/);
+  await spawning.promise;
+  tracker.close(HUMAN, 'T-1');
+  assert.deepEqual((await worktrees.prune(['T-1'])).failed, [{ item: 'T-1', error: 'T-1: a session is being launched in its worktree' }]);
+  tracker.edit(HUMAN, 'T-1', { state: 'open' });
+  // the first spawn fails: its cleanup releases its own reservation, nothing else
+  failSpawn.resolve();
+  await assert.rejects(a, /the harness did not start/);
+  assert.deepEqual(spawned, ['impl-1']);
+
+  // the next launch reserves the item afresh: a prune while it spawns is refused, and it ends with the claim
+  let prunedDuring: Awaited<ReturnType<TaskWorktrees['prune']>> | null = null;
+  const third = {
+    launch: async () => {
+      tracker.close(HUMAN, 'T-1');
+      prunedDuring = await worktrees.prune(['T-1']);
+      tracker.edit(HUMAN, 'T-1', { state: 'open' });
+      return { name: 'impl-2', role: 'implementer', sessionId: 'sess-impl-2', cwd: path, item: 'T-1' } as HarnessProcessView;
+    },
+  } as unknown as Sessions;
+  const launched = await worktrees.launch(third, { name: 'impl-2', role: 'implementer', item: 'T-1' });
+  assert.deepEqual(prunedDuring, { removed: [], failed: [{ item: 'T-1', error: 'T-1: a session is being launched in its worktree' }] });
+  assert.equal(launched.claim?.session, 'impl-2');
+  assert.ok(existsSync(path));
+  // once that launch is done the item is no longer reserved: closed, it can be pruned
+  tracker.close(HUMAN, 'T-1');
+  assert.deepEqual((await worktrees.prune(['T-1'])).removed.map((r) => r.item), ['T-1']);
+});
