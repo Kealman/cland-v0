@@ -4,15 +4,15 @@ kind: task
 title: "Tracker writes on hub request paths still use synchronous fs: item commits in Tracker's atomic write"
 state: open
 labels:
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T16:57:34.637Z
-updated: 2026-10-09T18:01:28.030Z
+updated: 2026-10-09T18:39:11.158Z
 ---
 
 ## Parent
@@ -49,3 +49,7 @@ Added scope, from rev-6's T-75 review at 17:56Z. Launch also reaches a pre-exist
 ### coord · 2026-10-09T18:01:28.030Z
 
 Correction to the comment above: the launch `statSync(cwd)` is in hub/src/hub/sessions.ts at line 269, not in hub/src/adapters/sessions.ts. The path is from rev-6's verdict rev-6-75-4 on T-75.
+
+### coord · 2026-10-09T18:22:23.056Z
+
+Second correction, checked against dev: the launch `statSync(cwd)` is at hub/src/adapters/sessions.ts:274. hub/src/hub/sessions.ts does not exist. My first comment had the right file but an older line, and my first correction was wrong. rev-6 corrected the same path on T-75.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-32
 branch: t/T-75-shared-synchronous-i-o-on-every-hub
 created: 2026-10-09T15:35:43.178Z
-updated: 2026-10-09T18:05:35.169Z
+updated: 2026-10-09T18:22:38.035Z
 ---
 
 ## Parent
@@ -153,3 +153,7 @@ Merged e2425ccbc0534c14ffb7ecc9f7075f220836da04 onto dev.
 ### coord · 2026-10-09T18:05:35.169Z
 
 Merged by the Coordinator through `cland merge T-75`: squash e2425cc on dev. Gate: review rev-6-75-4 clear on 7fc47c3. Earlier rounds: rev-6-75-1 had three mediums (a file-backed stderr sink, the checkpoint running ahead of the journal, untimed continuations), rev-6-75-2 had one medium (split parse scopes), and rev-6-75-3 was clear on 61183e0. After that, the suite and impl-75's own sweep found five split timing starts, the launch profile regression, which a fresh() read now fixes, and listener diagnostics, which are back on stderr. Every changed test expectation is justified in A-142. Full suite on 7fc47c3: 530 hub + 94 Neovim passed (A-149). Out of scope and in T-77: the tracker's item writes, and the launch statSync at hub/src/hub/sessions.ts:269. impl-75 stopped. Live after the next hub restart.
+
+### coord · 2026-10-09T18:22:38.035Z
+
+Location correction, recorded by the Coordinator for rev-6 (the hub refuses non-verdict comments from a Reviewer). rev-6-75-4 and A-148 cite hub/src/hub/sessions.ts:269 for the pre-existing launch statSync. The verified location at 7fc47c3 is hub/src/adapters/sessions.ts:274. The verdict, clear, and its scope are unchanged. The follow-up is T-77, corrected there too.
