@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T21:24:30.289Z
+updated: 2026-10-09T21:48:40.637Z
 ---
 
 ## Destination
@@ -60,6 +60,7 @@ updated: 2026-10-09T21:24:30.289Z
 - Workbench panels: vertical board, session groups, the palette (T-99, .cland/tasks/T-99-workbench-panels-vertical-board-session.md): the mockups ItemsBoard, SessionsPanel and Palette accepted; the prototype on prototype/panels is the behavioural reference; keys K/J/T for rank, za for folds, ␣A for an Aide, the palette with prefixes and every action's key; the focus keys recorded with them: C-h/j/k/l in every mode, a lone C-\ leaves a terminal, langmap for layouts, no Cyrillic duplicates.
 - Epic plan view on the canvas (T-100, .cland/tasks/T-100-epic-plan-view-on-the-canvas.md): the mockups PlanBefore and PlanMidway accepted; gp opens the plan from the epic, the graph and the palette; stages top to bottom with lanes as columns, the QA policy and the closing condition per stage; an approval card before the start; change marks at the watch colour mid-way; progress, gate, QA runs and cost in the right column.
 - Thread rendering in Neovim (T-97, .cland/tasks/T-97-thread-rendering-in-neovim.md): the mockup Thread and the prototype on prototype/thread accepted; role gutters, bands on the human's side, Markdown per message with conceal, date lines, verdicts with criteria marks, the ask as an amber band, manual folds for agent-to-agent runs, appends without a full rewrite.
+- Task graph view in Neovim (T-98, .cland/tasks/T-98-task-graph-view-in-neovim.md): the prototype on prototype/graph kept as an experimental extra view (␣G), layers top to bottom, the board stays on ␣b; crossing edges read badly at the v0 epic's density, revisited in the next version; with it, verifier holds for Reviewers and QA beside the Implementer's claim (spec §3.2).
 
 ## Not yet specified
 
@@ -68,6 +69,7 @@ updated: 2026-10-09T21:24:30.289Z
 - A journal and retrospective viewer: the A-96 retrospective was hand-made from the journal; what the workbench shows of the journal waits on visibility levels and subscriptions.
 - History search: searching messages and comments across topics and items; waits on the palette and visibility levels.
 - Notifications beyond the inbox: whether now-layer events (T-94) also reach the human outside the workbench (system notifications, sounds); not sharp enough to ticket.
+- Graph legibility at the density of a real epic (22 items, 36 edges): hiding transitive edges by default, bundling, collapsing done layers or another projection; the next version decides after v0.1 is used.
 
 ## Out of scope
 

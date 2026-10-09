@@ -2,7 +2,7 @@
 id: T-98
 kind: question
 title: Task graph view in Neovim
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:50.060Z
-updated: 2026-10-09T21:39:23.419Z
+updated: 2026-10-09T21:48:19.213Z
 ---
 
 ## Question
@@ -268,3 +268,15 @@ Measured on the live hub at a load average of about 6.5, medians of 20 renders:
   - over 335 composes of T-19, T-20, T-81 and T-200 from 40 to 238 columns.
   - Below 55 columns, a single node with the lines passing beside it can be wider than the window, so the view scrolls sideways there.
 - **Tests.** The shell tests pass (60 of 60), and so do the shipped QA cases.
+
+### human · 2026-10-09T21:48:07.922Z
+
+Resolution (2026-10-09). The human tried the prototype on prototype/graph (e34618f, 476a0fd, 847d4ff; the vertical layout in 0490b89) on the v0 epic: with many crossing edges it reads badly, so the graph stays in v0.1 as an experimental extra view (␣G, :Cland graph), the board stays as it is on ␣b, and legibility is revisited in the next version. The vertical layout is the default, o turns it sideways; ready is green ◉ as the spec says.
+
+Also decided in the same round: a Reviewer or QA takes a verifier hold beside the Implementer's claim instead of a claim; the hold sets review or qa; the merge gate refuses a verdict only from the Implementer's claim holder (spec §3.2 amended, GLOSSARY Claim).
+
+Recorded in docs/spec/v0.1.md §3.15 and §3.2.
+
+### human · 2026-10-09T21:48:19.213Z
+
+Resolved: see the resolution comment; spec v0.1 §3.15; §3.2 amended

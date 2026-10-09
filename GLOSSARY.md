@@ -123,7 +123,7 @@ A task or an epic: the kinds of item a topic can bind to.
 _Avoid_: work item, job, assignment
 
 **Claim**:
-A session's live hold on an item while it works on it, kept by the hub; distinct from the item's assignee, its long-term owner.
+A session's live hold on an item while it works on it, kept by the hub; distinct from the item's assignee, its long-term owner. A Reviewer or QA holds an item for verification beside the Implementer's claim, tagged with the role; that hold is not a claim.
 _Avoid_: lock, checkout, assignment
 
 **Verdict**:
