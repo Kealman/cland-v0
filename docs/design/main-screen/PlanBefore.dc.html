@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: epic plan before start</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.ep{color:#5b6472;font-size:12px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px}
+.card{border:1px solid #3a3320;background:#171510;border-radius:6px;padding:7px 12px;display:flex;flex-direction:column;gap:4px}
+.opt{display:flex;gap:8px;align-items:center;white-space:nowrap}
+.k{display:inline-block;min-width:18px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23;padding:0 4px}
+.field{display:flex;flex-direction:column;gap:2px;font-size:12px}
+.field .l{color:#8a94a3}
+.meta{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:10px;row-gap:2px;font-size:12px;white-space:nowrap}
+.meta .l{color:#8a94a3}
+.stg{border:1px solid #222a35;border-radius:6px;background:#0d1117;padding:6px 10px 8px;display:flex;flex-direction:column}
+.sh{display:flex;align-items:center;gap:10px;height:22px}
+.stag{display:inline-block;min-width:20px;padding:0 5px;border-radius:3px;border:1px solid #3a4452;background:#141a23;color:#d6dbe4;font-size:11px;line-height:16px;text-align:center}
+.sn{font-weight:600}
+.sr{margin-left:auto;display:flex;align-items:center;gap:8px;color:#8a94a3;font-size:12px}
+.sl{font-size:12px;line-height:18px;color:#8a94a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qa{color:#d6dbe4}
+.lanes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:5px}
+.lane{display:flex;flex-direction:column;min-width:0;border-left:1px solid #2a3340}
+.lc{font-size:12px;line-height:18px;color:#8a94a3;padding-left:8px;white-space:nowrap;overflow:hidden}
+.lr{display:flex;align-items:center;gap:5px;height:22px;padding:0 2px 0 8px;white-space:nowrap;overflow:hidden}
+.lr.sel{background:#182131}
+.lid{color:#8a94a3;min-width:36px}
+.lf{color:#8a94a3;font-size:12px;min-width:22px;text-align:right}
+.lx{font-size:12px;line-height:16px;color:#8a94a3;padding:0 2px 3px 62px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk{margin-left:auto;font-size:12px;color:#8a94a3}
+.gate{display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:5px;border-top:1px dashed #2a3340;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.then{font-size:12px;line-height:16px;color:#5b6472;padding-left:14px}
+.src{margin:2px 0 0;padding:6px 8px;border:1px solid #222a35;border-radius:4px;background:#0b0e14;color:#c9d1dc;font-family:inherit;font-size:11px;line-height:15px;white-space:pre;overflow:hidden}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">E-6 Panels · plan</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord-1 <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">1</span></span>
+    <span class="chip">sessions <span class="badge n">5</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 440px">
+      <div class="ph"><span>items · <span style="text-transform: none">v0.1 › E-6</span></span><span>board · 8 planned</span></div>
+      <div class="tabs"><span style="color: #5b6472">epic</span><span>all</span><span>E-5 Tracker</span><span class="cur">E-6 Panels</span><span>E-7 Crew</span><span>E-8 Thread</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+
+        <div class="row sel" style="margin-top: 4px"><span class="dim">▾</span><span class="id">E-6</span><span class="t">Panels</span><span class="claim">lead-6 <span class="warn">▲ plan</span></span><span class="frac">0/8</span></div>
+
+        <div class="sec"><span>▾</span><span>planned (8)</span><span class="r">in plan order</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-66</span><span class="ep">S1 ›</span><span class="t">Palette action registry</span><span class="claim"></span><span class="frac">0/3</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-67</span><span class="ep">S1 ›</span><span class="t">Key hints in footers</span><span class="claim"></span><span class="frac">0/2</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-63</span><span class="ep">S1 ›</span><span class="t">Sessions grouped by state</span><span class="claim"></span><span class="frac">0/4</span></div>
+        <div class="row dim"><span>◌</span><span class="id">T-68</span><span class="ep">S2 ›</span><span class="t">Vertical items board</span><span class="claim dim">by T-58</span><span class="frac">0/5</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-73</span><span class="ep">S2 ›</span><span class="t">Stage tag on rows</span><span class="claim"></span><span class="frac">0/3</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-70</span><span class="ep">S2 ›</span><span class="t">Aide key and yours group</span><span class="claim"></span><span class="frac">0/2</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-72</span><span class="ep">S2 ›</span><span class="t">Thread folds agent runs</span><span class="claim"></span><span class="frac">0/3</span></div>
+        <div class="row dim"><span>◔</span><span class="id">T-71</span><span class="ep">S3 ›</span><span class="t">Plan view from the epic</span><span class="claim"></span><span class="frac">0/4</span></div>
+
+        <div class="sec" style="padding-top: 12px"><span>▸</span><span>backlog (0)</span><span class="r">every item is in the plan</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">K J rank among siblings · T to the top</div>
+      <div class="row dim" style="font-size: 12px">↵ open · za fold · 1-5 or f filter · gt gs · gp plan</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div class="ph"><span>E-6 · epic · plan</span><span>a approve · d discuss with the Lead · e edit plan</span></div>
+      <div style="display: flex; flex: 1; min-height: 0">
+        <div style="flex: 1; min-width: 0; padding: 11px 16px; display: flex; flex-direction: column; gap: 7px; overflow: hidden">
+          <div class="dim" style="font-size: 12px">v0.1 › E-6 Panels › plan</div>
+          <div style="font-size: 18px; line-height: 24px; font-weight: 600">Plan of E-6 Panels</div>
+          <div class="meta">
+            <span class="l">lead</span><span><span class="teal">lead-6</span> · Lead · Claude Code · opus · <span class="dim">idle until you approve</span></span>
+            <span class="l">plan</span><span>written by lead-6 with the plan-epic skill · 2026-10-12 16:40</span>
+          </div>
+
+          <div class="card">
+            <div><span class="warn">▲ awaiting your approval</span> <span class="dim">· since 16:40 · [plan] approval = "human"</span></div>
+            <div>lead-6 launches no session for E-6 until you approve. Nothing has started.</div>
+            <div class="opt"><span class="k">a</span><span>approve</span><span class="k" style="margin-left: 10px">d</span><span>discuss with the Lead</span><span class="k" style="margin-left: 10px">e</span><span>edit plan</span><span class="dim" style="margin-left: auto; font-size: 12px">d writes to @lead E-6</span></div>
+          </div>
+
+          <div class="stg">
+            <div class="sh"><span class="stag">S1</span><span class="sn">registry and sessions panel</span><span class="sr">3 items · 2 lanes</span></div>
+            <div class="sl"><span class="qa">qa: affected · after stage</span> · items merge on review, one qa run closes the stage</div>
+            <div class="sl">delivers: one registry for all actions and keys, and sessions grouped by state</div>
+            <div class="lanes">
+              <div class="lane">
+                <div class="lc">lane a · one session</div>
+                <div class="lr sel"><span class="dim">◔</span><span class="lid">T-66</span><span class="t">Palette action registry</span><span class="mk"></span><span class="lf">0/3</span></div>
+                <div class="lr"><span class="dim">◔</span><span class="lid">T-67</span><span class="t">Key hints in footers</span><span class="mk">qa none</span><span class="lf">0/2</span></div>
+                <div class="lx">override: review is enough</div>
+              </div>
+              <div class="lane">
+                <div class="lc">lane b · one session</div>
+                <div class="lr"><span class="dim">◔</span><span class="lid">T-63</span><span class="t">Sessions grouped by state</span><span class="mk"></span><span class="lf">0/4</span></div>
+              </div>
+            </div>
+            <div class="gate"><span>◔</span><span>qa after S1 · affected, T-66 and T-63 · one run on dev once all three merged · qa-12</span></div>
+          </div>
+
+          <div class="then">↓ S2 starts when S1 closes on a clear qa run</div>
+
+          <div class="stg">
+            <div class="sh"><span class="stag">S2</span><span class="sn">items board and the yours group</span><span class="sr">4 items · 2 lanes</span></div>
+            <div class="sl"><span class="qa">qa: none · review only</span> · S3's full runs cover this ground</div>
+            <div class="sl">delivers: the vertical board with stage tags, the yours group, folded agent runs</div>
+            <div class="lanes">
+              <div class="lane">
+                <div class="lc">lane a · one session</div>
+                <div class="lr"><span class="dim">◌</span><span class="lid">T-68</span><span class="t">Vertical items board</span><span class="mk">by T-58</span><span class="lf">0/5</span></div>
+                <div class="lx">blocked by T-58 (E-5)</div>
+                <div class="lr"><span class="dim">◔</span><span class="lid">T-73</span><span class="t">Stage tag on rows</span><span class="mk"></span><span class="lf">0/3</span></div>
+              </div>
+              <div class="lane">
+                <div class="lc">lane b · one session</div>
+                <div class="lr"><span class="dim">◔</span><span class="lid">T-70</span><span class="t">Aide key and yours group</span><span class="mk"></span><span class="lf">0/2</span></div>
+                <div class="lr"><span class="dim">◔</span><span class="lid">T-72</span><span class="t">Thread folds agent runs</span><span class="mk"></span><span class="lf">0/3</span></div>
+              </div>
+            </div>
+            <div class="gate"><span>○</span><span>no qa run · S2 closes when its four items have merged on review</span></div>
+          </div>
+
+          <div class="then">↓ S3 starts when S2 closes</div>
+
+          <div class="stg">
+            <div class="sh"><span class="stag">S3</span><span class="sn">plan view</span><span class="sr">1 item · 1 lane</span></div>
+            <div class="sl"><span class="qa">qa: full · per item</span> · the full suite on each item's branch before it merges</div>
+            <div class="sl">delivers: the plan view, opened from the epic, the graph and the palette</div>
+            <div class="lanes">
+              <div class="lane">
+                <div class="lc">lane a · one session</div>
+                <div class="lr"><span class="dim">◔</span><span class="lid">T-71</span><span class="t">Plan view from the epic</span><span class="mk">qa</span><span class="lf">0/4</span></div>
+              </div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width: 290px; border-left: 1px solid #222a35; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; background: #0d1117">
+          <div class="field"><span class="l">plan</span><span class="warn">▲ awaiting your approval</span><span class="dim">since 16:40 · no session launched</span></div>
+          <div class="field"><span class="l">on approve</span><span>lead-6 launches 2 sessions, one per S1 lane</span></div>
+          <div class="field"><span class="l">items · stages</span><span>8 items in 3 stages</span></div>
+          <div class="field"><span class="l">implementers</span><span>2 per stage at most</span><span class="dim">one session per lane (crew: implementer per-group)</span></div>
+          <div class="field"><span class="l">review</span><span>every item · rev-6 from the reviewer pool</span></div>
+          <div class="field"><span class="l">qa runs</span><span>2 · one after S1, one per item in S3</span><span class="dim">qa-12 runs them · T-67 opts out</span></div>
+          <div class="field"><span class="l">estimated qa cost</span><span>[cost]</span></div>
+          <div class="field"><span class="l">outside the epic</span><span>T-68 waits on T-58 Rank among siblings (E-5)</span></div>
+          <div class="field" style="margin-top: auto"><span class="l">source · § Plan of E-6-panels.md</span><div class="src">stages:
+  - name: registry and sessions panel
+    qa: { scope: affected,
+          when: after-stage }
+    lanes:
+      - [T-66, T-67]
+      - [T-63]
+  …</div><span class="dim">e opens it · the hub validates on save</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>E-6 · plan · awaiting your approval</span>
+    <span>hub: ok</span>
+    <span>sessions: 2 busy · 3 idle</span>
+    <span style="margin-left: auto">plan view: gp on the epic, a stage in the graph, or ␣p · stages top to bottom, lanes side by side</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

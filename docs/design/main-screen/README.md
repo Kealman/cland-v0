@@ -15,9 +15,10 @@ The approved design of cland's main screen (wayfinder ticket #15, 2026-10-08). A
 - `Inbox.dc.html`: the inbox sections, what feeds them, the row actions, and the three motions `gi` / `gt` / `gs`.
 - `ItemsBoard.dc.html`, `SessionsPanel.dc.html`, `Palette.dc.html`: v0.1, the items panel as a vertical board, the sessions panel grouped by state, and the command palette (map ticket T-99; behaviour on branch `prototype/panels`).
 - `Thread.dc.html`: v0.1, the thread rendering with role gutters, layers and folded agent runs (map ticket T-97; behaviour on branch `prototype/thread`).
+- `PlanBefore.dc.html`, `PlanMidway.dc.html`: v0.1, the epic plan view before the epic starts and mid-way (map ticket T-100; the plan itself is spec v0.1 §3.10).
 - `canvas.json`: the artboard layout of the design canvas (https://claude.ai/artifact/TuzGTeNLthjo2RLwMyhZfp, private to the owner).
 - `screens/`: PNG renders of the Neovim prototype at 200x50 for the v0 workbench and the three presets, and `v01-*.png` renders of the v0.1 mockups.
 
 ## Visual vocabulary
 
-Dark ground `#0b0e14`, panels `#10141b`, borders `#222a35`, text `#d6dbe4`, muted `#8a94a3`. Amber `#f0b429` for what needs the human, teal `#35c4a0` for in progress and agent activity, green `#7ddc8a` for done and clear, red `#ff7b72` for died and not clear, blue `#6aa5ff` for links and selection. Monospace throughout (JetBrains Mono in the mockups); glyphs: ○ backlog, ◔ planned, ◐ in progress, ◉ review or qa, ● done, ◌ blocked, ▲ waiting for approval or attention, ? open ask, ✓ ✓✓ ⌁ delivery stages. No emoji.
+Dark ground `#0b0e14`, panels `#10141b`, borders `#222a35`, text `#d6dbe4`, muted `#8a94a3`. Amber `#f0b429` for what needs the human, muted amber `#c2a15e` for the watch layer and for changes since the human's last look, teal `#35c4a0` for in progress and agent activity, green `#7ddc8a` for done, clear and ready, red `#ff7b72` for died and not clear, blue `#6aa5ff` for links, selection and the human's own messages; role gutters in the thread: violet for Implementers, pink for Reviewers, sky for QA. Monospace throughout (JetBrains Mono in the mockups); glyphs: ○ backlog and planned, ◐ in progress, ◉ review and qa in amber or ready in green, ● done, ◌ blocked, ▲ waiting for approval or attention, ? open ask, ✗ a failed verdict or criterion, ✓ ✓✓ ⌁ delivery stages. No emoji.

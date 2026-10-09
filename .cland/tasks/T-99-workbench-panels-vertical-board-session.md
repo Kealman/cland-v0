@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:50.900Z
-updated: 2026-10-09T20:50:26.068Z
+updated: 2026-10-09T21:02:00.287Z
 ---
 
 ## Question
@@ -164,3 +164,7 @@ Recorded in docs/spec/v0.1.md §3.11 (the panels) and §3.12 (focus and keys, fr
 ### human · 2026-10-09T20:50:26.068Z
 
 Resolved: see the resolution comment; spec v0.1 §3.11 and §3.12
+
+### human · 2026-10-09T21:02:00.287Z
+
+2026-10-09: the human tried the prototype on prototype/panels and accepted it as well as the mockups; no changes requested.
