@@ -447,9 +447,9 @@ test('a steer the app-server accepted and the turn never took up is delivered ag
     await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: @impl-1 ${text}`, 15_000);
   }
   await presentAs(ui, 'impl-1', 'idle');
-  const events = (await hubLog(root)).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string; session?: string });
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string; session?: string });
   assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered').map((e) => [e.session, e.id]), [['impl-1', dropped]], 'only the dropped steer, once');
-  assert.equal(events.filter((e) => e.event === 'harness-steered' && e.id === taken).length, 1);
+  assert.equal((await hubLog(root)).split('\n').filter((line) => line.includes('"event":"harness-steered"') && line.includes(taken)).length, 1);
   const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
   assert.deepEqual(pongs.sort(), ['pong: @impl-1 a steer the turn takes up', 'pong: @impl-1 drop this steer', 'pong: @impl-1 start a turn'], 'each answered once');
 
@@ -502,6 +502,11 @@ test('a recovery accepted and dropped in a newer turn retains its obligation', a
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   const recoveries = journal.split('\n').filter((line) => line.includes('"event":"harness-redelivered"') && line.includes(id));
   assert.equal(recoveries.length, 2, 'the recovery in the newer turn is recovered again, then consumed');
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), [
+    'impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again into a running turn',
+    'impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again as a new turn',
+  ]);
 });
 
 test('a recovered turn failing before its admission response notifies the original sender', async (t) => {
@@ -530,4 +535,75 @@ test('a recovered turn failing before its admission response notifies the origin
   assert.equal(sender.events.filter((e) => e.params.content.includes(expected)).length, 1);
   const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
   assert.equal(inbox.notifications.filter((n) => n.kind === 'turn-failed' && n.text === expected).length, 1);
+});
+
+test('a refused recovery request records journal, Agents and inbox failure and tells the sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(() => sender.close());
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = 'drop this steer; refuse recovered request';
+  assert.equal((await sender.call<{ ok: boolean }>('send', { to: ['impl'], text: body })).ok, true);
+  const frame = await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === body);
+  const id = (frame.message as { id: string }).id;
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await fake.approve();
+  const expected = 'impl [Implementer]: its turn ended without a message it had accepted, and delivering it again failed: recovery request refused';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string; error?: string });
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id && e.error === 'recovery request refused').length, 1);
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 0);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.equal(inbox.notifications.filter((n) => n.kind === 'turn-failed' && n.text === expected).length, 1);
+  await sender.waitForEvent((e) => e.params.content.includes('redelivery failed: recovery request refused'));
+});
+
+for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful completion reconciles a late ${mode} pending steer response`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = `@impl ${mode} pending steer response`;
+  const id = await sendGeneral(ui, body);
+  await eventually('pending steer received', async () => (await fake.log(launched.pid as number)).includes(`pending response: ${body}`) || undefined);
+  // The fake holds this result until the turn has completed, with uptake only in accept mode.
+  await fake.approve();
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`);
+  await presentAs(ui, 'impl', 'idle');
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string });
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, mode === 'accept dropped' ? 1 : 0);
+  assert.equal(ui.frames.filter((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`).length, 1);
+});
+
+test('repeated dropped recoveries stop with a visible failure after two attempts', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const id = await sendGeneral(ui, '@impl drop this steer; drop every recovery');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await fake.approve();
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text.includes('still missing after two redeliveries'));
+  await presentAs(ui, 'impl', 'idle');
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string });
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 2);
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id).length, 1);
 });

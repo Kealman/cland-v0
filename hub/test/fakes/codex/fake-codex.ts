@@ -41,6 +41,11 @@
 //   command line. (The real one also accepts a profile defined in the request's `config`, and then fails every turn
 //   with "failed to load workspace requirements": the fake refuses that at once.)
 //
+// T-50 ordering probes: "late rejected/unanswered steer" waits for release-steer-response after completion;
+// "pending steer response" answers after completion (accept/accept dropped/reject). The file new-turn-during-read
+// starts a newer turn at readback, held until release-newer-turn; "drop recovery in newer turn" drops that recovery
+// once. "fail recovered turn before response" completes the recovery as failed before replying; "refuse recovered
+// request" refuses it, and "drop every recovery" admits empty recovery turns to test the bounded failure outcome.
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300).
 import { randomUUID } from 'node:crypto';
@@ -396,6 +401,7 @@ async function appServer(args: string[]): Promise<number> {
         const t = threads.get(params.threadId as string);
         if (!t) return { error: { code: -32600, message: `thread not loaded: ${String(params.threadId)}` } };
         const text = textOf(params);
+        if (text.includes('refuse recovered request')) return { error: { code: -32603, message: 'recovery request refused' } };
         if (process.env.FAKE_CODEX_FAIL_FIRST_TURN === '1' && t.turns === 0 && !t.turnId) {
           // the turn fails once the spoke is in the hub (its `who` answers): a failure after the session said hello
           const deadline = Date.now() + 15_000;
@@ -415,7 +421,7 @@ async function appServer(args: string[]): Promise<number> {
           return lose ? { lost: true } : { result: { turn: { id: t.turnId, status: 'inProgress', items: [] } } };
         }
         t.turnId = randomUUID();
-        t.queue.push({ text });
+        t.queue.push({ text: text.includes('drop every recovery') ? 'ignored recovery input' : text });
         log(`turn/start ${params.toolOutput ? `toolOutput ${(params.toolOutput as { name: string }).name}` : 'input'}${typeof params.effort === 'string' ? ` effort=${params.effort}` : ''}`);
         setStatus(t, { type: 'active', activeFlags: [] });
         toSubscribers(t.id, 'turn/started', { threadId: t.id, turn: { id: t.turnId, status: 'inProgress', items: [] } });
@@ -445,12 +451,13 @@ async function appServer(args: string[]): Promise<number> {
           return text.includes('late unanswered steer') ? { lost: true } : { error: { code: -32600, message: 'no active turn to steer' } };
         }
         if (text.includes('pending steer response')) {
+          log(`pending response: ${/<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(text)?.[1]}`);
           const expected = t.turnId;
-          const accepted = text.includes('accept pending steer response');
-          if (accepted) t.queue.push({ text });
+          const accepted = text.includes('accept pending steer response') || text.includes('accept dropped pending steer response');
+          if (accepted && !text.includes('accept dropped')) t.queue.push({ text });
           while (t.turnId === expected) await sleep(5);
           await sleep(50); // completion reaches the hub before this admission result
-          return accepted ? { result: { turnId: expected } } : { error: { code: -32600, message: 'the active turn ended before steering' } };
+          return accepted ? { result: { turnId: expected } } : { error: { code: -32600, message: 'no active turn to steer' } };
         }
         // an accepted steer the turn never takes up (what T-50 guards against; the real 0.160.0 was not seen to do it)
         if (text.includes('drop this steer') && !lost.has(text)) {

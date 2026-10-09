@@ -277,7 +277,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #completedTurns = new Map<string, string | null>();
   readonly #turnInputs = new Map<string, Set<string>>();
   /** Steers the app-server accepted that their turn has not been seen to take up: by `sessionId:turnId`, each
-   *  message id with its envelope. A turn that ends with one left gets it again (`#redeliver`). */
+   *  message id with its envelope and recovery count. A turn that ends with one left gets it again (`#redeliver`). */
   readonly #steers = new Map<string, Map<string, OwedInput>>();
   readonly #earlyFailures = new Map<string, string[]>();
   #timer: NodeJS.Timeout | null = null;
@@ -560,7 +560,7 @@ export class CodexAdapter implements HarnessAdapter {
     const client = live.client;
     const threadId = live.p.harnessSessionId as string;
     try {
-      if (!client || client.closed) throw new Error("the hub is not connected to this session\'s app-server");
+      if (!client || client.closed) throw new Error("the hub is not connected to this session's app-server");
       const r = await client.request<{ thread: { turns?: Array<{ id?: string; items?: Array<{ type?: string; content?: Array<{ text?: unknown }> }> }> } }>('thread/read', { threadId, includeTurns: true }, 15_000);
       const items = r.thread.turns?.find((t) => t.id === turnId)?.items ?? [];
       for (const item of items) {
@@ -584,7 +584,7 @@ export class CodexAdapter implements HarnessAdapter {
           if (typeof r.turn?.id !== 'string') throw new Error('the app-server accepted redelivery without a turn id');
           this.#acceptedInput(live, r.turn.id, id, { text, recoveries: obligation.recoveries + 1 }, pending);
           if (live.state !== 'idle') live.turnId ??= r.turn.id;
-          this.#host.log({ event: 'harness-redelivered', harness: this.harness, session: live.p.name, id, turn: turnId });
+          this.#host.log({ event: 'harness-redelivered', harness: this.harness, session: live.p.name, id, turn: turnId, admittedTurn: r.turn.id, intoActiveTurn: !idle });
         });
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);

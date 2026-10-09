@@ -31,7 +31,7 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return session ? { kind: 'turn-failed', text: str(entry.text) ?? `${label(session)}: its turn failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session } } : null;
     case 'harness-redelivered':
       // a steer its turn accepted and ended without (T-50): handed over again, so nothing is lost; the record says why it may come twice
-      return session ? { kind: 'redelivered', text: `${label(session)}: its turn ended without a message it had accepted; the message was delivered again as a new turn`, detail: { session, message: str(entry.id) } } : null;
+      return session ? { kind: 'redelivered', text: `${label(session)}: its turn ended without a message it had accepted; the message was delivered again ${entry.intoActiveTurn === true ? 'into a running turn' : 'as a new turn'}`, detail: { session, message: str(entry.id) } } : null;
     case 'harness-redelivery-failed':
       return session ? { kind: 'turn-failed', text: `${label(session)}: its turn ended without a message it had accepted, and delivering it again failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session, message: str(entry.id) } } : null;
     case 'session-launched':
