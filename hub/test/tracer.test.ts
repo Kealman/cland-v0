@@ -7,6 +7,7 @@ test('a message from one session arrives in the other session as a channel event
   const alpha = await spawnSpoke({ hub, name: 'alpha', role: 'coordinator' });
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-beta' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
 
     const outcome = await alpha.call<{ ok: boolean; outcomes: Array<{ to: string; outcome: string }> }>('send', {

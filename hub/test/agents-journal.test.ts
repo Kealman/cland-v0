@@ -27,6 +27,7 @@ const history = async (ui: FrameClient, topic: string) => (await ok<{ messages: 
 async function spoke(t: TestContext, root: string, name: string, role: string): Promise<Session> {
   const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
   t.after(() => s.close());
+  await s.waitForPresence([name]);
   return s;
 }
 

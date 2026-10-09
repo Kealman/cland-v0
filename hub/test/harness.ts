@@ -59,6 +59,8 @@ export type SpokeOptions = {
   heartbeatMs?: number;
   /** How long a request waits for the hub's reply (CLAND_HUB_REQUEST_TIMEOUT_MS). */
   requestTimeoutMs?: number;
+  /** How long a silent hub has to welcome the spoke (CLAND_HUB_WELCOME_TIMEOUT_MS). */
+  welcomeTimeoutMs?: number;
 };
 
 export type Session = {
@@ -94,6 +96,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     env.CLAND_HUB_SECRET = options.secret ?? TEST_SECRET;
   }
   if (options.requestTimeoutMs !== undefined) env.CLAND_HUB_REQUEST_TIMEOUT_MS = String(options.requestTimeoutMs);
+  if (options.welcomeTimeoutMs !== undefined) env.CLAND_HUB_WELCOME_TIMEOUT_MS = String(options.welcomeTimeoutMs);
   if (options.discover && options.name && options.assignRole !== false) await assignRole(options.cwd as string, options.name, options.role ?? 'implementer');
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;

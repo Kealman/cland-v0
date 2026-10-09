@@ -260,7 +260,7 @@ test('a hub that takes the connection but never welcomes it is left at the welco
       if ((JSON.parse(String(d)) as { type: string }).type === 'hello') hellos += 1;
     });
   });
-  const spoke = await spawnSpoke({ hub: { url: `ws://127.0.0.1:${(wss.address() as { port: number }).port}` }, name: 'alpha', sessionId: 'sess-a', requestTimeoutMs: 300 });
+  const spoke = await spawnSpoke({ hub: { url: `ws://127.0.0.1:${(wss.address() as { port: number }).port}` }, name: 'alpha', sessionId: 'sess-a', welcomeTimeoutMs: 300 });
   try {
     const seen = await until(async () => hellos, (n) => n >= 2, 5000);
     assert.ok(seen >= 2, `a fresh hello after the welcome deadline (saw ${seen})`);

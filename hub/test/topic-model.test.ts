@@ -22,14 +22,15 @@ async function hubFor(t: TestContext): Promise<Hub> {
   return hub;
 }
 
-/** A scripted session; with `role`, the human assigns it first (`role.set`), as a hub with a role table requires. */
-async function spoke(t: TestContext, hub: Hub, name: string, role?: string): Promise<Session> {
+/** A ready scripted session; the human assigns its role first (`role.set`), as a hub with a role table requires. */
+async function spoke(t: TestContext, hub: Hub, name: string, role: string): Promise<Session> {
   if (role) {
     const human = await connectWsUi(t, hub);
     await ok(human, { type: 'role.set', session: name, role });
   }
   const s = await spawnSpoke({ hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
   t.after(() => s.close());
+  await s.waitForPresence([name]);
   return s;
 }
 
@@ -180,11 +181,13 @@ test('a message to a vacant Coordinator is queued: the topic waits for an agent 
 
   // a session without a role stays off the hub: nothing changes; the human assigns it the Coordinator: it
   // connects on its next retry and takes the message
-  const coord = await spoke(t, hub, 'coord');
+  const coord = await spawnSpoke({ hub, name: 'coord', sessionId: 'sess-coord' });
+  t.after(() => coord.close());
   await sleep(300);
   assert.equal((await topicOf(ui, topic.id)).warning, 'no coordinator');
   const mark = ui.frames.length;
   await ok(ui, { type: 'role.set', session: 'coord', role: 'coordinator' });
+  await coord.waitForPresence(['coord']);
   await coord.waitForEvent((e) => e.params.content === 'what is next?', 15_000);
   const cleared = await topicEvent(ui, topic.id, (x) => x.warning === undefined, mark);
   assert.equal(cleared.status, 'waiting for agent', 'the human still waits for the answer');

@@ -25,6 +25,7 @@ test('a failed Codex turn is recorded in Agents and the inbox and reported to th
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
   await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
   await launch(ui, 'impl', { role: 'implementer' });
   await presentAs(ui, 'impl', 'idle');
@@ -47,6 +48,8 @@ for (const accepted of [false, true]) test(`Codex failure before a pending steer
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
   t.after(async () => { await coord.close(); await sender.close(); });
+  await coord.waitForPresence(['coord']);
+  await sender.waitForPresence(['sender']);
   await launch(ui, 'impl', { role: 'implementer' });
   await presentAs(ui, 'impl', 'idle');
   await coord.call('send', { to: ['impl'], text: 'fail this turn' });
@@ -757,6 +760,7 @@ test('a recovered turn failing before its admission response notifies the origin
   await ui.request({ type: 'subscribe' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
   t.after(() => sender.close());
+  await sender.waitForPresence(['sender']);
   const launched = await launch(ui, 'impl', { role: 'implementer' });
   await presentAs(ui, 'impl', 'idle');
   await sendGeneral(ui, '@impl needs approval');
@@ -785,6 +789,7 @@ test('a refused recovery request records journal, Agents and inbox failure and t
   await ui.request({ type: 'subscribe' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
   t.after(() => sender.close());
+  await sender.waitForPresence(['sender']);
   await launch(ui, 'impl', { role: 'implementer' });
   await presentAs(ui, 'impl', 'idle');
   await sendGeneral(ui, '@impl needs approval');

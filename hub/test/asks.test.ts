@@ -28,6 +28,7 @@ async function hubFor(t: TestContext, options: Parameters<typeof startHub>[0] = 
 async function spoke(t: TestContext, hub: Hub, name: string, role?: string): Promise<Session> {
   const s = await spawnSpoke({ hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
   t.after(() => s.close());
+  await s.waitForPresence([name]);
   return s;
 }
 

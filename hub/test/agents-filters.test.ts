@@ -25,6 +25,7 @@ test('Agents item history searches before the latest window and includes claims,
   t.after(() => alpha.close());
   const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
   t.after(() => beta.close());
+  await beta.waitForPresence(['beta']);
   await alpha.waitForPresence(['alpha', 'beta']);
   const claimed = await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' });
   assert.equal(claimed.ok, true, JSON.stringify(claimed));
@@ -58,8 +59,10 @@ test('session filters match sender, addressees and notice facts exactly; spoke i
   t.after(() => alpha.close());
   const other = await spawnSpoke({ discover: true, cwd: root, name: 'alpha-2', sessionId: 'sess-other', role: 'implementer' });
   t.after(() => other.close());
+  await other.waitForPresence(['alpha-2']);
   const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
   t.after(() => beta.close());
+  await beta.waitForPresence(['beta']);
   await alpha.waitForPresence(['alpha', 'alpha-2', 'beta']);
   await alpha.call('task.claim', { id: 'T-1' });
   await other.call('task.claim', { id: 'T-2' });

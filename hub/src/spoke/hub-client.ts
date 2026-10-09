@@ -19,6 +19,8 @@ export type HubClientOptions = {
   reconnectMs?: number;
   /** How long a request waits for its reply before it fails, ms. */
   requestTimeoutMs?: number;
+  /** How long a silent peer has to answer hello before its socket is closed, ms. */
+  welcomeTimeoutMs?: number;
   /** The heartbeat interval while connected, ms; absent means no heartbeat. Each ping must be answered
    *  within one interval; MISSED_HEARTBEATS unanswered in a row close the socket, and the spoke reconnects. */
   heartbeatMs?: number;
@@ -40,6 +42,12 @@ const SEEN_LIMIT = 1000;
 
 /** The default request deadline: the hub is on loopback, so a reply this late means it is stuck. */
 export const REQUEST_TIMEOUT_MS = 10_000;
+
+/** Maximum wait for a connecting spoke's welcome, below the harnesses' MCP tool deadlines. */
+export const READINESS_TIMEOUT_MS = 20_000;
+
+/** Silent-welcome liveness detection matches the readiness allowance; ordinary replies still get 10 s. */
+export const WELCOME_TIMEOUT_MS = READINESS_TIMEOUT_MS;
 
 /** Unanswered heartbeats in a row after which the hub counts as gone and the spoke reconnects. */
 export const MISSED_HEARTBEATS = 2;
@@ -74,6 +82,7 @@ export class Refused extends Error {
 }
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
+type ReadinessWaiter = { resolve: () => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
 
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -82,6 +91,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   #ws: WebSocket | null = null;
   #state: ConnectionState = { kind: 'connecting' };
   #pending = new Map<string, Pending>();
+  #readiness = new Set<ReadinessWaiter>();
   #attempt = 0;
   #stopped = false;
   #requestedName: string | undefined;
@@ -141,17 +151,23 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
 
   stop(): void {
     this.#stopped = true;
+    this.#failReadiness(new Error('the spoke stopped before the hub welcome'));
     if (this.#timer) clearTimeout(this.#timer);
     this.#stopHeartbeat();
     this.#clearWelcomeTimer();
     this.#ws?.close();
   }
 
-  /** Send a request and await its result; rejects at once when there is no connection, and with a
-   *  ReplyTimeout when no reply comes within the deadline. */
-  request(frame: DistributiveOmit<SpokeRequest | TaskRequest | SessionRequest, 'id'>, timeoutMs = this.#options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS): Promise<unknown> {
+  /** While connecting, await the welcome with a separate bounded deadline. Outages/refusals fail at once;
+   *  after sending, a missing reply fails with ReplyTimeout. */
+  async request(frame: DistributiveOmit<SpokeRequest | TaskRequest | SessionRequest, 'id'>, timeoutMs = this.#options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS): Promise<unknown> {
+    if (this.#stopped) throw new Error('the spoke is stopped');
+    if (this.#state.kind === 'connecting') await this.#waitForWelcome();
+    // Await checklist: re-read the live welcome's identity/role and socket. Nothing captured before the wait
+    // may authorize or route this request; the hub checks permissions for this connection on every call.
+    if (this.#stopped) throw new Error('the spoke is stopped');
     if (this.#state.kind !== 'connected' || !this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
-      return Promise.reject(new Error(this.describeOutage()));
+      throw new Error(this.describeOutage());
     }
     const id = randomUUID();
     const ws = this.#ws;
@@ -168,6 +184,24 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         }
       });
     });
+  }
+
+  #waitForWelcome(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const waiter: ReadinessWaiter = { resolve, reject, timer: setTimeout(() => {
+        this.#readiness.delete(waiter);
+        reject(new Error(`the hub did not become ready within ${READINESS_TIMEOUT_MS / 1000} s (waiting for welcome)`));
+      }, READINESS_TIMEOUT_MS) };
+      this.#readiness.add(waiter);
+    });
+  }
+
+  #failReadiness(error: Error): void {
+    for (const waiter of this.#readiness) {
+      clearTimeout(waiter.timer);
+      waiter.reject(error);
+    }
+    this.#readiness.clear();
   }
 
   /** While connected: a ping each interval, answered within it; too many unanswered and the socket is cut. */
@@ -218,6 +252,15 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
 
   #setState(state: ConnectionState): void {
     this.#state = state;
+    if (state.kind === 'connected') {
+      for (const waiter of this.#readiness) {
+        clearTimeout(waiter.timer);
+        waiter.resolve();
+      }
+      this.#readiness.clear();
+    } else if (state.kind !== 'connecting') {
+      this.#failReadiness(new Error(this.describeOutage()));
+    }
     this.emit('state', state);
   }
 
@@ -242,7 +285,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       ws.send(JSON.stringify(hello));
       // The heartbeat starts only with the welcome: until then this deadline is the liveness check. A hub
       // that took the connection and stays silent is left, and the close schedules the reconnect.
-      const within = this.#options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+      const within = this.#options.welcomeTimeoutMs ?? WELCOME_TIMEOUT_MS;
       this.#welcomeTimer = setTimeout(() => {
         if (this.#ws !== ws || this.#state.kind === 'connected') return;
         this.#log(`the hub did not welcome this spoke within ${within / 1000} s — closing the connection and reconnecting`);
@@ -265,6 +308,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       this.#stopHeartbeat();
       this.#clearWelcomeTimer();
       const why = reason.toString() || `code ${code}`;
+      this.#failReadiness(new Error(`the hub connection closed (${why}) before the welcome`));
       for (const [id, p] of this.#pending) {
         clearTimeout(p.timer);
         p.reject(new Error(`the hub connection closed (${why}) before the reply`));

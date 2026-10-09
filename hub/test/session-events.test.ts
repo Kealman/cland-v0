@@ -9,7 +9,7 @@ import { Sessions } from '../src/adapters/sessions.ts';
 const presence = (f: Record<string, unknown>): Presence[] => f.sessions as Presence[];
 const row = (f: Record<string, unknown>): HarnessProcessView => f.process as HarnessProcessView;
 
-test('rename before the spoke welcome is refused; after welcome its process event survives a held transport', async t => {
+test('rename before the spoke welcome waits; after welcome its process event survives a held transport', async t => {
   const root = await tempProject(t);
   const hub = await startHub();
   t.after(() => hub.close());
@@ -36,13 +36,14 @@ test('rename before the spoke welcome is refused; after welcome its process even
   t.after(() => spoke.close());
   await ui.waitFor(f => f.type === 'presence' && presence(f).some(p => p.sessionId === 'held-coord'));
   assert.ok(releaseWelcome, 'the hub welcomed the spoke, but the transport holds that frame');
-  const premature = await spoke.call<{ ok: boolean; error?: string }>('rename', { name: 'renamed-coord' });
-  assert.equal(premature.ok, false, 'a call before welcome is refused, never queued');
-  assert.match(premature.error ?? '', /not connected yet/);
+  let settled = false;
+  const pending = spoke.call<{ ok: boolean; name?: string; error?: string }>('rename', { name: 'renamed-coord' }).then(value => { settled = true; return value; });
+  // A later MCP request is a transport barrier: the rename has reached the spoke, with no welcome yet.
+  await spoke.client.listTools();
+  assert.equal(settled, false, 'a call before welcome waits instead of returning an outage');
   assert.equal(ui.frames.some(f => f.type === 'session.process' && row(f).name === 'renamed-coord'), false);
   releaseWelcome();
-  await spoke.waitForPresence(['coord']);
-  const renamed = await spoke.call<{ ok: boolean; name?: string; error?: string }>('rename', { name: 'renamed-coord' });
+  const renamed = await pending;
   assert.equal(renamed.ok, true, renamed.error);
   assert.equal(renamed.name, 'renamed-coord');
   const published = ui.waitFor(f => f.type === 'session.process' && row(f).sessionId === 'held-coord' && row(f).name === 'renamed-coord');
@@ -60,6 +61,7 @@ test('presence events follow hello, status, role, rename and the last spoke leav
   await ui.request({ type: 'subscribe' });
   const spoke = await spawnSpoke({ hub, name: 'manual', sessionId: 'manual-id', role: 'coordinator' });
   t.after(() => spoke.close());
+  await spoke.waitForPresence(['manual']);
   await ui.waitFor((f) => f.type === 'presence' && presence(f).some((s) => s.name === 'manual' && s.role === 'coordinator'));
   await spoke.call('status', { text: 'working on T-71' });
   await ui.waitFor((f) => f.type === 'presence' && presence(f).some((s) => s.status === 'working on T-71'));

@@ -249,6 +249,7 @@ test('a failed OpenCode turn is recorded in Agents and the inbox and reported to
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
   await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
   const launched = await launch(ui, 'impl', { role: 'implementer' });
   await presentAs(ui, 'impl', 'idle');
@@ -275,6 +276,8 @@ test('OpenCode failure attribution follows delivered inbox items when two idle a
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
   t.after(async () => { await coord.close(); await sender.close(); });
+  await coord.waitForPresence(['coord']);
+  await sender.waitForPresence(['sender']);
   await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
   await sender.waitForEvent((e) => e.params.meta?.kind === 'role');
   const launched = await launch(ui, 'impl', { role: 'implementer' });
@@ -298,6 +301,8 @@ test('OpenCode forgets prior execution inputs when completion is missed during a
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
   t.after(async () => { await coord.close(); await sender.close(); });
+  await coord.waitForPresence(['coord']);
+  await sender.waitForPresence(['sender']);
   const launched = await launch(ui, 'impl', { role: 'implementer' });
   await eventually('clause turn ended', () => stateEvents(ui, 'impl').some((e) => e.state === 'busy') && stateEvents(ui, 'impl').at(-1)?.state === 'idle' ? true : undefined);
   await coord.call('send', { to: ['impl'], text: 'successful turn before outage' });

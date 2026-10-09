@@ -244,6 +244,7 @@ test('a claim belongs to the session, not its name: a rename keeps it, and whoev
   // another session takes the old name: it is not the one that claimed, nor the one T-1 was assigned to
   const beta = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-b', role: 'implementer' });
   t.after(() => beta.close());
+  await beta.waitForPresence(['alpha']);
   await alpha.waitForPresence(['alpha', 'alpha-2']);
   const taken = await beta.call<{ ok: boolean; error?: string; code?: string }>('task.claim', { id: 'T-1' });
   assert.equal(taken.ok, false, JSON.stringify(taken));

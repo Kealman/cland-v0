@@ -68,6 +68,7 @@ test('a second spoke of the same session joins it: both are answered as the sess
   const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
   let second: Session | null = null;
   try {
+    await first.waitForPresence(['alpha']);
     await witness.waitForPresence(['alpha', 'witness']);
     await first.call('status', { text: 'mid-task' });
     second = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
@@ -166,6 +167,7 @@ test("a new unnamed session never takes an offline session's generated name, and
   let first = await spawnSpoke({ hub, sessionId: 'sess-first' });
   let newcomer: Session | null = null;
   try {
+    await first.waitForPresence(['session-1']);
     await witness.waitForPresence(['witness', 'session-1']);
     await first.close();
     await waitForAbsence(witness, 'session-1');
@@ -182,6 +184,7 @@ test("a new unnamed session never takes an offline session's generated name, and
 
     // the first session comes back with no name requested: the hub knows it by its session id
     first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+    await first.waitForPresence(['session-1']);
     await first.waitForEvent((e) => e.params.content === 'for the first session only');
     assert.equal((await first.call<{ me: string }>('who')).me, 'session-1');
   } finally {

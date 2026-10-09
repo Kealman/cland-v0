@@ -55,6 +55,7 @@ async function setup(t: TestContext, verdicts: Partial<Record<'review' | 'qa', S
   ok(await cland(root, 'task', 'create', 'Review and QA smoke: the cland task CLI', '--body', 'Check that `cland task list --state open` lists this item.'));
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
   t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
   return { root, fake, ui, coord };
 }
 

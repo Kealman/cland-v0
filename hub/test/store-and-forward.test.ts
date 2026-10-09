@@ -17,6 +17,8 @@ test('a message to an offline session waits for it and arrives on its next hello
   const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
   let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
+    await gamma.waitForPresence(['gamma']);
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta', 'gamma']);
     await beta.close();
     await waitForAbsence(alpha, 'beta');
@@ -28,6 +30,7 @@ test('a message to an offline session waits for it and arrives on its next hello
     assert.deepEqual(second.outcomes.map((o) => `${o.to}:${o.outcome}`), ['beta:queued', 'alpha:delivered'], 'one addressee queued, the other delivered at once');
 
     beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+    await beta.waitForPresence(['beta']);
     await beta.waitForEvent((e) => e.params.content === 'second, to both of you');
     assert.deepEqual(beta.events.map((e) => e.params.content), ['first while you were away', 'second, to both of you']);
     assert.deepEqual(beta.events.map((e) => e.params.meta?.from), ['alpha', 'gamma']);
@@ -55,6 +58,7 @@ test('a queued message survives a hub restart on the same store and is delivered
   let beta = await spawnSpoke({ hub: first, name: 'beta', sessionId: 'sess-b' });
   let second: Awaited<ReturnType<typeof createHub>> | null = null;
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.close();
     await waitForAbsence(alpha, 'beta');
@@ -62,6 +66,7 @@ test('a queued message survives a hub restart on the same store and is delivered
     await first.close();
     second = await createHub({ port, host: '127.0.0.1', secret: 'test-secret', store: new Store(file) });
     beta = await spawnSpoke({ hub: second, name: 'beta', sessionId: 'sess-b' });
+    await beta.waitForPresence(['beta']);
     await beta.waitForEvent((e) => e.params.content === 'kept across the restart');
     assert.equal(beta.events.length, 1);
   } finally {
@@ -79,6 +84,7 @@ test('a queued message older than the TTL is dropped, and the session never sees
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.close();
     await waitForAbsence(alpha, 'beta');
@@ -104,6 +110,7 @@ test('messages older than the retention window are pruned', async () => {
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     await alpha.call('send', { to: ['beta'], text: 'old news' });
     await sleep(250);
@@ -124,6 +131,8 @@ test("history returns a session's own traffic, newest last, filtered to one coun
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
   try {
+    await beta.waitForPresence(['beta']);
+    await gamma.waitForPresence(['gamma']);
     await alpha.waitForPresence(['alpha', 'beta', 'gamma']);
     await alpha.call('send', { to: ['beta'], text: 'a→b 1' });
     await beta.call('send', { to: ['alpha'], text: 'b→a 2' });
@@ -157,6 +166,8 @@ test('history filtered to one counterpart finds an older exchange behind a burst
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
   try {
+    await beta.waitForPresence(['beta']);
+    await gamma.waitForPresence(['gamma']);
     await alpha.waitForPresence(['alpha', 'beta', 'gamma']);
     await alpha.call('send', { to: ['beta'], text: 'the one with beta' });
     // more traffic with gamma than any multiple of the limit a pre-filter window would cover

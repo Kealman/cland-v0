@@ -126,6 +126,8 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
   const a = await spawnSpoke({ cwd: root, discover: true, name: 'sender-a', role: 'implementer' });
   const b = await spawnSpoke({ cwd: root, discover: true, name: 'sender-b', role: 'reviewer' });
   t.after(async () => { await a.close(); await b.close(); });
+  await a.waitForPresence(['sender-a']);
+  await b.waitForPresence(['sender-b']);
   await a.call('send', { to: ['coord'], text: 'first turn' });
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first turn');
   await presentAs(ui, 'coord', 'idle');

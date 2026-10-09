@@ -11,6 +11,7 @@ test('@all and a glob reach the connected and the known-offline sessions, never 
   const impl1 = await spawnSpoke({ hub, name: 'impl-1', sessionId: 'sess-1' });
   const impl2 = await spawnSpoke({ hub, name: 'impl-2', sessionId: 'sess-2' });
   try {
+    await impl1.waitForPresence(['impl-1']);
     await alpha.waitForPresence(['alpha', 'impl-1', 'impl-2']);
     await impl2.close();
     await waitForAbsence(alpha, 'impl-2');
@@ -25,6 +26,7 @@ test('@all and a glob reach the connected and the known-offline sessions, never 
   } finally {
     await alpha.close();
     await impl1.close();
+    await impl2.close();
     await hub.close();
   }
 });

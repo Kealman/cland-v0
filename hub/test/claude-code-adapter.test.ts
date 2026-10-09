@@ -22,6 +22,7 @@ test('a Claude Code StopFailure is recorded in Agents and the inbox and reported
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
   await coord.waitForEvent((e) => e.params.meta?.kind === 'role');
   const mark = ui.frames.length;
   await launch(ui, 'impl', { role: 'implementer' });

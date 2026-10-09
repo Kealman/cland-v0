@@ -92,6 +92,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
   const spawn = async (name: string, role: string) => {
     const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
     t.after(() => s.close());
+    await s.waitForPresence([name]);
     return s;
   };
   const coordS = await spawn('coord', 'coordinator');
@@ -215,6 +216,7 @@ test('a session the human @mentioned in a topic may reply to the human there, wh
   const spawn = async (name: string, role: string) => {
     const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
     t.after(() => s.close());
+    await s.waitForPresence([name]);
     return s;
   };
   const coordS = await spawn('coord', 'coordinator');

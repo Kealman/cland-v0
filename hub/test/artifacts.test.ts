@@ -79,6 +79,7 @@ test('all roles can share in a delivered request topic; other topics and CLI imp
   const other = (await ui.request({ type: 'topic.create', title: 'Elsewhere' })).value as { topic: { id: string } };
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
   for (const role of ['implementer', 'reviewer', 'qa']) {
     const name = `role-${role}`;
     const s = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId: `session-${role}` });

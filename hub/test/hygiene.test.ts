@@ -34,6 +34,7 @@ test('two agents in a reply loop are muted for the mute time in both directions,
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta', 'gamma']);
     const volley = [alpha, beta, alpha, beta];
     for (const [i, s] of volley.entries()) {
@@ -66,6 +67,7 @@ test('an oversized message is refused with the size, and nothing is delivered', 
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     const big = await alpha.call<Send>('send', { to: ['beta'], text: 'x'.repeat(1025) });
     assert.equal(big.ok, false);
@@ -185,6 +187,7 @@ test('a rename does not reset the rate window: the limit follows the session, no
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     for (let i = 1; i <= 2; i += 1) assert.equal((await alpha.call<Send>('send', { to: ['beta'], text: `m${i}` })).ok, true);
     assert.equal((await alpha.call<{ ok: boolean }>('rename', { name: 'alpha-2' })).ok, true);
@@ -203,6 +206,7 @@ test('a rename does not lift a mute: the loop breaker follows the pair of sessio
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
   try {
+    await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     await alpha.call<Send>('send', { to: ['beta'], text: 'one' });
     await beta.call<Send>('send', { to: ['alpha'], text: 'two' });
