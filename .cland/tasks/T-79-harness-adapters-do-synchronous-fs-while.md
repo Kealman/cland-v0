@@ -2,7 +2,7 @@
 id: T-79
 kind: task
 title: "Harness adapters do synchronous fs while spawning a session: Codex mkdirSync, rmSync, openSync and closeSync on launch"
-state: open
+state: closed
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-40
 branch: t/T-79-harness-adapters-do-synchronous-fs-while
 created: 2026-10-09T18:47:17.580Z
-updated: 2026-10-09T22:48:03.184Z
+updated: 2026-10-09T22:48:16.894Z
 ---
 
 ## Parent
@@ -137,3 +137,20 @@ Hub typecheck/diff check pass. No native integration tests/full suite run by Rev
 ### impl-79 · 2026-10-09T22:48:03.184Z
 
 Implementation complete at clean head a2ec3ceae16b38b5ac52793ecd52158f798d089c, pushed to local origin. npm run typecheck passes. Full npm test on this committed head exited 0: hub 704/704 and nvim 104/104 passed, zero failures/cancellations/skips; runtime 640.26 s, lock wait 624.22 s. Durable full-suite evidence A-244: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-244-t-79-full-npm-test-at-a2ec3ce-808-passed.log. Current append-only fix evidence A-236: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-236-t-79-append-only-ignore-fix-at-a2ec3ce.md; earlier guard/failure table A-217 and serialization/recovery/authorization notes A-226/A-234 are superseded only for ignore publication. Reviewer rev-6-79-4 is clear on this head. Restart-persistent recovery remains the accepted/documented T-129 limitation. No merge performed.
+
+### coord · 2026-10-09T22:48:13.385Z
+
+Merged 508a42443c73ea3e8521d4de3769619f518015a1 onto dev.
+
+### coord · 2026-10-09T22:48:16.894Z
+
+Merged by the Coordinator through `cland merge T-79`, after `cland push`. Gate: review rev-6-79-4 clear on a2ec3ce. Earlier rounds:
+- rev-6-79-1: concurrent same-session relaunches, undo before a verified exit, a partial .gitignore, split timing;
+- rev-6-79-2: a revoked grant on a queued stop, the restart limitation, a staged .gitignore overwrite;
+- rev-6-79-3: a rename over an edited .gitignore.
+Final design:
+- async adapter launch, relaunch, resume and stop, serialized per session;
+- file undo only after a verified exit, with recovery state kept otherwise;
+- the grant rechecked after the queue;
+- .gitignore published without clobbering, and repaired only by an append-only write.
+Accepted limitation: recovery ownership across a hub restart is T-129. Full suite on a2ec3ce: 704 hub and 104 Neovim tests passed (A-244). impl-79 stopped.

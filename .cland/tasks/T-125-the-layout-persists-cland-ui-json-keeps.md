@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-43
 branch: t/T-125-the-layout-persists-cland-ui-json-keeps
 created: 2026-10-09T21:57:18.371Z
-updated: 2026-10-09T22:44:59.673Z
+updated: 2026-10-09T23:00:11.258Z
 ---
 
 ## Parent
@@ -81,3 +81,43 @@ Medium — nvim/lua/cland/layout.lua:115 (via delayed on_win_closed capture at :
 Actual pinned headless-Neovim probe: saved/actual widths 48/46 → close board centre without composer → actual 48/111 → delayed close stores 48/111 → reopening centre retains right111 and constrains left to27. No human resize occurred. The new test's Watch centre retains its composer column and checks only the left survivor, so misses this case.
 
 Both prior findings are resolved: A-241 virtual-window probe now preserves pending48 across split/centre/composer and stale closes; preset validation uses PRESETS. Standards: 0 findings. Spec: 1 medium. No suite, hub writes or file changes by Reviewer. Evidence A-243: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-243-t-125-resolution-review-of-d4ac23e-automatic-close-resize-persists.md.
+
+### impl-125 · 2026-10-09T22:51:01.284Z
+
+Second fix round rev-65-125-2 (A-243): removed close/layout/exit-time preference capture. Only WinResized records manual sizes; external close redistribution is marked automatic until deferred repair restores the stored dimensions. Regression now uses real C-w resizes, checks all saved sizes after every tracked close and an untracked split, and verifies a later genuine resize still persists. Ran it against pristine d4ac23e layout/init: it fails in 1.9 seconds because the board centre close stores left=113 instead of 48 without user resizing. The new event-based implementation passes that scenario; final targeted verification is in progress.
+
+### impl-125 · 2026-10-09T22:52:06.800Z
+
+Second fix committed at 94ad3194b279c8f5eca32fdfcec035d59bc6af0a and pushed to origin. Final close regression covers board centres with/without the dock, centre/composer/session/left/right/dock closes, untracked splits and stale callbacks, asserting all stored sizes and subsequent human resizes. The pristine d4ac23e source fails the board regression; 94ad319 passes. Full targeted UI tests, PANELS-005/006 and typecheck pass. The full package suite was launched after commit and is queued behind pid 82638.
+
+### rev-65 · 2026-10-09T22:54:42.647Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-125-3
+commit: 94ad3194b279c8f5eca32fdfcec035d59bc6af0a
+
+Medium — nvim/lua/cland/layout.lua:112: a genuine resize made while close repair is pending is discarded by suppression/repair; real close-and-resize commands set left50, then deferred repair restores saved48. Preserve human intent during the suppression window.
+Medium — nvim/lua/cland/layout.lua:565: even with no close pending, a view operation before WinResized restores the old size and replaces the baseline at :568; real vertical resize50 followed immediately by show(board) ends at saved/actual48. Preserve pending manual intent before layout operations.
+
+A-243 automatic-centre redistribution probe now passes: stored/actual48/46 are restored after close and reopening. The two new failures were confirmed with actual pinned layout in standalone headless Neovim, scratch buffers and in-memory state ports. Existing tests resize after repair or wait for initial capture, so miss both interleavings. Standards: 0 findings. Spec: 2 medium. No suite, hub writes or file changes by Reviewer.
+Evidence A-246: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-246-t-125-review-of-94ad319-human-resize-lost-before-capture.md.
+
+### impl-125 · 2026-10-09T22:57:34.519Z
+
+Third fix committed at 1e2fc96aa5bade152e288e27aaace03431fd8cd9. Pending human differences flush synchronously before every layout operation (including show/view/preset/repair) and exit, while close-origin redistribution remains suppressed through the full repair. No-wait vertical resize 50 followed by show(board) failed on 94ad319 (stored/actual48) and passes here; preset/fix/build same-turn cases pass too. Documented the Coordinator-accepted typeahead close/select/resize limitation in nvim/README.md and added a real command-batch test with A-246 provenance. All 6 targeted UI tests, PANELS-005/006 and typecheck pass. Old queued suite cancelled before starting; full suite now launched after the new commit.
+
+### rev-65 · 2026-10-09T23:00:11.258Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-125-4
+commit: 1e2fc96aa5bade152e288e27aaace03431fd8cd9
+
+Medium — nvim/lua/cland/layout.lua:133: a pending human resize BEFORE a native close is not flushed before suppression; actual `vertical resize 50 | close` on items leaves storedleft48, and reopening returns48. Capture the prior resize while the first native closing window still exists, before marking redistribution, keeping existing programmatic/previous-close guards.
+
+Strict requested checks pass: no-wait resize→view and resize→charting/watch presets retain50. A-243 automatic-centre redistribution remains fixed. The documented accepted close→resize typeahead interval is excluded from findings; this new trigger is resize→close.
+
+Standards: 0 findings. Spec: 1 medium. Actual pinned standalone headless-Neovim probes; no suite, hub writes or files changed. Evidence A-248: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-248-t-125-review-of-1e2fc96-pending-resize-before-native-close.md.

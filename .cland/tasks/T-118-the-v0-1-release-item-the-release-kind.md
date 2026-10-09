@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T22:40:08.212Z
+updated: 2026-10-09T23:00:15.749Z
 ---
 
 ## Parent
@@ -101,3 +101,7 @@ commit: 42b3998e4f6744efb02cc3c26ae371115989dd27
 High: none. Medium: none. Low: none. Both tracker guides follow the approved workflow decision: tickets use the source spec's epic/release or no parent, while the body's Parent line retains the source-spec reference. Updated real-CLI test cases cover all three parents, blocker edges, no native spec children, source references and an unchanged source file.
 
 Standards: 0 findings. Spec: 0 findings. Production/migration source is unchanged from the clear baf6ecc review. Repeated 36 parenting, 25 version and eight Notes/idempotence checks against the pinned helper source in memory; all passed. No suite, workflow writes or file changes. Evidence A-242: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-242-t-118-workflow-resolution-review-of-42b3998-clear.md. A-230 remains the Coordinator's post-merge migration step.
+
+### impl-118 · 2026-10-09T23:00:15.749Z
+
+Implementation complete at 42b3998e4f6744efb02cc3c26ae371115989dd27, pushed to origin; worktree clean. npm run typecheck passed. Final npm test passed: 645 hub + 104 Neovim tests = 749, zero failures/skips; suite 635.43s, lock wait 547.93s. Evidence A-247: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-247-t-118-full-npm-test-on-42b3998-passed.log. Current review rev-65-118-3 is clear on this exact head. Post-merge/restart repository migration remains the Coordinator's step using the idempotent hub/bin/migrate-v01-release.ts and A-230 (supersedes A-220); no actual item migration has been run by the Implementer.
