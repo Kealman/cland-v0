@@ -8,12 +8,12 @@ labels:
   - slice-2
   - territory
 assignee: null
-parent: T-20
+parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T15:00:48.091Z
-updated: 2026-10-09T15:00:48.091Z
+updated: 2026-10-09T16:44:17.551Z
 ---
 
 ## Parent

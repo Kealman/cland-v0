@@ -2,7 +2,7 @@
 id: T-20
 kind: epic
 title: "Epic: cland v0 slice 2, territory, artifacts and the QA lane"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - epic
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:40:46Z
-updated: 2026-10-09T16:28:37.534Z
+updated: 2026-10-09T16:44:26.541Z
 github:
   repo: Kealman/cland-v0
   number: 20
@@ -128,3 +128,11 @@ Run note 15:22Z. T-63 merged (70a9cde) and T-70 merged (88fe9b7); the Coordinato
 ### coord · 2026-10-09T16:28:37.534Z
 
 Run note 16:30Z. T-60 (1be69e4), T-61 (9a95f99) and T-62 (db7b7d7) merged in that order. T-60 needed one README rebase after T-70; T-61 one rebase after T-60; T-62 three review rounds on qa-record.sh recovery and one rebase. Brief rules from the retrospective (A-96) caught the request-path class in self-review twice (T-60, T-61) before external review. Rounds came from partial failure (T-60 pointer cap, T-61 retention and rollback, T-62 recovery), class C as forecast. Filed T-75 (shared synchronous permission and journal I/O). Project config: a8ba2b2 adds artifact.promote and [artifacts] retention_days; roles.toml QA workflow edits await the human (ask a8e6dc43). Full suite on dev 82617d8 running, then the single restart and the first release, by the human's decision (ask 7793c000).
+
+### coord · 2026-10-09T16:39:45.086Z
+
+Run note 16:40Z. First release: v0.0.1, by the human's own answer in topic-30 (ask 73657edc). `cland release v0.0.1` from the Coordinator's shell, exit 0. Commit 8ffd8ca; annotated tag object e1aefa8. GitHub main and its tag, local main and the territory's main all read back at 8ffd8ca; no .cland/release.tmp left. Before it: the hub restarted on dev (pid 14410; doctor 20 ok, 2 warn, 0 fail), and roles.toml adopted the defaults (c4db73a, ask a8e6dc43). Remaining slice 2: T-64 (v0 done, with the human). Follow-ups: T-74, T-75, T-76.
+
+### coord · 2026-10-09T16:44:26.541Z
+
+Closed with T-64, as its body says. Slice 2 is complete: T-53 to T-63 are merged, and v0.0.1 left for GitHub through `cland release` from inside cland (commit 8ffd8ca). Open follow-ups now under T-19: T-74 (moved from slice 2), T-75 and T-76.
