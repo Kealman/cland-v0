@@ -75,7 +75,7 @@ _Avoid_: prompt, poll, question dialog, request
 ## Work
 
 **Item**:
-An entry in the project's tracker: an epic, a spec, a task, a question or a map. An item has a stable id, a state, labels, an assignee, a parent and blocking edges, and lives as one Markdown file.
+An entry in the project's tracker: a release, an epic, a spec, a task, a question or a map. An item has a stable id, a state, labels, an assignee, a parent and blocking edges, and lives as one Markdown file; a task also has a status and a rank.
 _Avoid_: ticket, issue, card, story
 
 **Unit of work**:
@@ -105,6 +105,14 @@ _Avoid_: deploy, publish, sync, push, milestone, iteration
 **Unscheduled**:
 An item that belongs to no release: it has no parent, or its parents reach no release. The items panel shows these as their own group under the current release.
 _Avoid_: backlog (that is a status), orphan, loose
+
+**Status**:
+Where a task is in its workflow: backlog, planned, in progress, review, qa, ready or done. The hub moves it on claims, verdicts, merges and closes; the Coordinator and the human may set it directly. Containers, questions and specs have none.
+_Avoid_: state (that is open or closed), stage (that is a step of a plan), column, phase
+
+**Rank**:
+A task's or epic's place among its siblings. The lowest rank is next; moving an item to the top is how it is made a priority.
+_Avoid_: priority, order, weight, position
 
 **Artifact**:
 A file made by the human or an agent to show or hand something to the other side: a prompt draft, a diagram, an HTML page, a Markdown note. An artifact has an id, a kind, a status (draft, sent, shared, archived) and may bind to a topic; it is not committed unless promoted into the repo.

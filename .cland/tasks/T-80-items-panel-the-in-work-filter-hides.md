@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:04.194Z
-updated: 2026-10-09T19:08:04.194Z
+updated: 2026-10-09T19:31:04.179Z
 ---
 
 ## Observed
@@ -26,3 +26,9 @@ The items panel filter "in work" (filter 2) selects open items that are claimed 
 ## Note
 
 The proper fix waits on the v0.1 map ticket "Item workflow status and order: explicit fields or derived", which decides whether status is an explicit field or derived by fixed rules. A stopgap that also includes items with a pending verdict or a `qa-required` label is acceptable before that.
+
+## Comments
+
+### human · 2026-10-09T19:31:04.179Z
+
+Decided in T-88: in work = planned, in progress, review, qa, ready, once the explicit status field exists (spec v0.1 §3.2). Until then a stopgap that also counts items with a pending verdict or the qa-required label is acceptable.
