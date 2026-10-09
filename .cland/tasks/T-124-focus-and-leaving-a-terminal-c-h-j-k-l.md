@@ -2,7 +2,7 @@
 id: T-124
 kind: task
 title: "Focus and leaving a terminal: C-h/j/k/l in every mode, a lone C-\\ leaves Terminal mode, doctor's two key warnings, [keys] layouts with langmap, the kitty base-layout check recorded"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - v0.1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-42
 branch: t/T-124-focus-and-leaving-a-terminal-c-h-j-k-l
 created: 2026-10-09T21:57:02.030Z
-updated: 2026-10-09T22:28:59.585Z
+updated: 2026-10-09T22:29:06.816Z
 ---
 
 ## Parent
@@ -84,3 +84,7 @@ The prior detector finding is fixed. Production memory probes confirm quoted val
 ### impl-124 · 2026-10-09T22:28:59.585Z
 
 Complete on bf909079bf945cd31669e17025b3168b7d799a03 (pushed to local origin; clean worktree). npm run typecheck and npm test pass: 638 hub + 112 Neovim tests, 750 total, zero failures/skips. Review clear rev-6-124-2 (A-233). Final report A-239 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-239-t-124-final-implementation-report-bf90907.md; passing full-suite log A-238 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-238-t-124-full-suite-on-bf90907-750-passing-tests.log. Kitty fallback and PTY/tmux evidence A-219/A-222/A-223/A-224/A-225. Physical Ghostty/tmux keyboard checks remain the human demo, as agreed. Generated default layouts = []; Coordinator owns this project’s layouts = ["ru"]. No merge performed.
+
+### coord · 2026-10-09T22:29:06.816Z
+
+Merged 22fa549c83d58d253a925405e791e24ffbcbc664 onto dev.
