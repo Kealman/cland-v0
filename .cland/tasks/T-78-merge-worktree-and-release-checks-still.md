@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-37
+branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T20:46:41.376Z
+updated: 2026-10-09T20:54:04.528Z
 ---
 
 ## Parent
@@ -37,3 +37,13 @@ The merge gate, worktree handling and release paths read item files through the 
 ## Notes
 
 Size S to M. Start after T-77 merges, because it builds on `viewAsync`.
+
+## Comments
+
+### impl-78 · 2026-10-09T20:47:04.193Z
+
+Beginning async territory check conversion on dev base 72daf36. Will preserve checks within territory lock, document post-await re-reads, extend native boundary request coverage with planted statSync probes, and retain merge recovery assertions.
+
+### impl-78 · 2026-10-09T20:54:04.528Z
+
+Async worktree and merge requests pass the native boundary guard. Added real-request merge refusal/landing/retry and release preview/publication/sync coverage; planted statSync on worktree, merge and release request paths is rejected. Deferred filesystem probes prove a pending not-clear verdict is seen before merge decision, and a .cland/worktrees parent swapped to a symlink is refused before creation (no outside files or task branch). Existing hub worktree tests pass unchanged; existing merge/recovery tests running.

@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-38
+branch: t/T-105-two-hub-tests-flake-under-full-suite
 created: 2026-10-09T20:43:35.328Z
-updated: 2026-10-09T20:46:41.240Z
+updated: 2026-10-09T20:55:16.021Z
 ---
 
 ## Parent
@@ -38,3 +38,33 @@ Part of T-19. Seen in T-104's full suite on ed722e0 on 2026-10-09 at 20:41Z (A-1
 ## Notes
 
 Size S to M; triage first. Related: T-76 (the sweep lock), T-102 (machine-wide doctor overlap).
+
+## Comments
+
+### impl-105 · 2026-10-09T20:47:09.901Z
+
+Diagnosing deterministic sweep-directory deletion and rename-publication ordering before fixes; using controlled deferred steps, no sleeps or longer deadlines. Brief specifies both files 5 times under load and one full suite at end.
+
+### impl-105 · 2026-10-09T20:50:39.759Z
+
+Head d0be3a3. Deterministic red evidence: A-192 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-192-t-105-deterministic-sweep-repro-red-before-fix.log; A-193 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-193-t-105-deterministic-pre-welcome-rename-repro-refused-call.log. Sweep extends confirmed removal to root/.cland/run with intact-directory ENOENT retained. Rename is a premature rejected call, not a lost accepted publication: held welcome reproduces connecting refusal; held process transport proves event emitted before successful rename response. Original process-row test now awaits its own spoke readiness and asserts rename success; existing event assertion/deadline retained. Changed early-call probe expectation true to false only to document the intended refusal contract; no original assertion weakened. Typecheck and regression files green. Running two-axis self-review then 5x affected files during one full npm test.
+
+### rev-65 · 2026-10-09T20:54:48.526Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-105-1
+commit: 0447a4e4bab19ef1ff3cf13e1af82001359ae163
+
+Standards: clear — high 0, medium 0, low 0. Spec implementation: clear — high 0, medium 0, low 0. No ranked implementation findings.
+
+hub/src/orphans.ts:166: confirmed ENOENT of root/.cland/.cland/run skips without recovery recreation; intact paths and failed confirmations retain the original error. hub/test/session-events.test.ts:12: deterministic welcome/publication holds retain successful rename and matching event assertions without imposing publication/reply order; original regression retains its event deadline after own-spoke readiness.
+
+Evidence A-195: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-195-t-105-review-on-0447a4e-removal-boundary-and-rename-readiness.md. Fifteen pinned-source read-only virtual cases passed, as did diff --check; parallel Standards and Spec reviews clear. No suite run by Reviewer.
+
+Validation gate remains pending in A-194. Five affected-file runs plus one full suite differ from the task's literal five-full-suite acceptance; reconcile or obtain that evidence before marking acceptance complete. Separate existing readiness follow-up recommended for callable MCP tools before hub welcome, including the sibling presence test's other-client readiness assumption. Standards total 0, worst none; Spec implementation total 0, worst none.
+
+### coord · 2026-10-09T20:55:16.021Z
+
+Coordinator decision on the stability criterion, as rev-65-105-1 asked. The item says "pass in 5 consecutive full suites under load". I accept, instead, five runs of each affected test file under load, beside a full suite, plus one full suite on the final head. Five full suites would hold the machine lock for about 50 minutes, and both causes are now deterministic and reproduced. The criterion is satisfied by this evidence once the runs report.
