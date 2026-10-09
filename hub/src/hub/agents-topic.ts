@@ -18,7 +18,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'role-assign', 'role-revoke', 'claim', 'release', 'handover', 'mute', 'unmute', 'refusal'] as const;
+export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'handover', 'mute', 'unmute', 'refusal'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -29,6 +29,11 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
   switch (entry.event) {
     case 'turn-failed':
       return session ? { kind: 'turn-failed', text: str(entry.text) ?? `${label(session)}: its turn failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session } } : null;
+    case 'harness-redelivered':
+      // a steer its turn accepted and ended without (T-50): handed over again, so nothing is lost; the record says why it may come twice
+      return session ? { kind: 'redelivered', text: `${label(session)}: its turn ended without a message it had accepted; the message was delivered again ${entry.intoActiveTurn === true ? 'into a running turn' : 'as a new turn'}`, detail: { session, message: str(entry.id) } } : null;
+    case 'harness-redelivery-failed':
+      return session ? { kind: 'turn-failed', text: `${label(session)}: its turn ended without a message it had accepted, and delivering it again failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session, message: str(entry.id) } } : null;
     case 'replaced': {
       // another spoke of a connected session said hello (T-51): nothing is lost, and the record says why there are two
       const name = str(entry.name);
