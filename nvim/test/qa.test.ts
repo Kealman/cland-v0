@@ -271,10 +271,24 @@ test('keys longer than Neovim\'s input buffer are all typed, the last ones too',
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
 });
 
-test('a mapping is never split between two chunks of keys: rev-6\'s x×4084 then <Esc><Space>i, and mappings before, after and across every chunk boundary', { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}KEYS-002.lua`], { env: {} });
+test('a long sequence is cut only right after <Esc> or <CR>: rev-6\'s x×4084 then <Esc><Space>i, and the cut at every distance from the limit', { skip }, async (t) => {
+  const run = await qa(t, [`${CASES}KEYS-002.lua`, '--timeout', '120']);
   assert.equal(run.line.message, undefined);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+});
+
+test('a Normal-mode command after a long stretch arrives whole when there is an <Esc> to cut at; with none in over 4 KiB the keys are refused, never left hanging', { skip }, async (t) => {
+  const gi = await qa(t, [`${CASES}KEYS-003.lua`, '--timeout', '60']);
+  assert.equal(gi.line.message, undefined);
+  assert.equal(gi.line.result, 'PASS', JSON.stringify(gi.line));
+
+  const refused = await qa(t, [`${CASES}KEYS-004.lua`, '--timeout', '60']);
+  assert.equal(refused.line.result, 'BLOCKED', JSON.stringify(refused.line));
+  assert.equal(refused.code, 2);
+  assert.match(refused.line.message ?? '', /^keys: 4097 bytes from byte 1 on hold no <Esc> or <CR> within 4096 bytes, the most typed at once; put an <Esc> or a <CR> where the mode is known/);
+  assert.ok(refused.line.duration_ms < 30_000, `refused at once, not after a wait: ${refused.line.duration_ms} ms`);
+  const { state } = refused.line.evidence as { state: { mode: string } };
+  assert.equal(state.mode, 'n', 'nothing was typed: no command is pending');
 });
 
 test('`cland --qa-fixture` writes a new fixture project only: an existing one is refused and left as it was', async (t) => {

@@ -32,47 +32,48 @@ local KEYS_CHUNK = 4096
 local KEYS_PAUSE_MS = 5
 local MAX_STALLED = 1000
 
---- The keys of `keys`, each a `<…>` notation or one character, with where each ends.
-local function key_ends(keys, limit)
-  local ends, plain = {}, {}
+--- The chunks `keys` sends `keys` in, or nil and why it cannot. A pause between two chunks ends whatever
+--- command or mapping is pending, in any mode, so a long sequence is cut only right after `<Esc>` or `<CR>`,
+--- where none is: the latest such cut within KEYS_CHUNK bytes. A stretch longer than that with neither is
+--- refused before anything is typed.
+local function chunks_of(keys)
+  if #keys <= KEYS_CHUNK then
+    return { keys }
+  end
+  -- where each `<Esc>` or `<CR>` ends: the places a cut is safe
+  local cuts = {}
   local i = 1
-  while i <= #keys and i <= limit + 1 do
+  while i <= #keys do
     local notation = keys:match('^<[^<>%s]+>', i)
     local key = notation or keys:match('^[%z\1-\127\194-\244][\128-\191]*', i)
     i = i + #key
-    ends[#ends + 1] = i - 1
-    plain[#plain + 1] = not notation
-  end
-  return ends, plain
-end
-
---- What `keys` sends next: a prefix within KEYS_CHUNK bytes, cut where no mapping can be pending, as a
---- mapping's keys must arrive together. The latest cut wins of, in order: one inside a run of text (two plain
---- characters on each side), one right after `<CR>` or `<Esc>`, one after a plain character (never between
---- a notation and the key after it); only a sequence with none of these is cut anywhere.
-local function chunk_of(keys)
-  if #keys <= KEYS_CHUNK then
-    return keys
-  end
-  local ends, plain = key_ends(keys, KEYS_CHUNK)
-  local function last(ok)
-    for k = #ends - 1, 1, -1 do
-      if ends[k] <= KEYS_CHUNK and ok(k) then
-        return ends[k]
-      end
+    local name = notation and notation:lower()
+    if name == '<esc>' or name == '<cr>' then
+      cuts[#cuts + 1] = i - 1
     end
   end
-  local cut = last(function(k)
-    return k >= 2 and plain[k - 1] and plain[k] and plain[k + 1] and plain[k + 2] ~= false
-  end) or last(function(k)
-    local key = keys:sub((ends[k - 1] or 0) + 1, ends[k]):lower()
-    return key == '<cr>' or key == '<esc>'
-  end) or last(function(k)
-    return plain[k]
-  end) or last(function()
-    return true
-  end) or ends[1]
-  return keys:sub(1, cut)
+  local out, from, k = {}, 0, 1
+  while #keys - from > KEYS_CHUNK do
+    local cut
+    while cuts[k] and cuts[k] - from <= KEYS_CHUNK do
+      if cuts[k] > from then
+        cut = cuts[k]
+      end
+      k = k + 1
+    end
+    if not cut then
+      return nil,
+        ('keys: %d bytes from byte %d on hold no <Esc> or <CR> within %d bytes, the most typed at once; put an <Esc> or a <CR> where the mode is known, or split the keys over several qa.keys calls'):format(
+          #keys - from,
+          from + 1,
+          KEYS_CHUNK
+        )
+    end
+    out[#out + 1] = keys:sub(from + 1, cut)
+    from = cut
+  end
+  out[#out + 1] = keys:sub(from + 1)
+  return out
 end
 local RESULT_MARK = 'CLAND-QA-RESULT '
 local STAMP = '2026-01-01T00:00:00.000Z'
@@ -312,18 +313,24 @@ function M.run()
   --- this returns. A mapping's keys go in one call: an event between two calls ends a pending mapping.
   function qa.keys(keys)
     -- nvim_input() takes what its input buffer has room for, whole keys only, and says how many bytes that
-    -- was. A buffer filled to the brim takes nothing more, even once read (Neovim 0.12), so the keys go in
-    -- chunks well under its size, each cut between two keys, with a pause for the main loop to read them
-    local stalled = 0
-    while keys ~= '' do
-      local taken = api.nvim_input(chunk_of(keys))
-      keys = keys:sub(taken + 1)
-      stalled = taken > 0 and 0 or stalled + 1
-      if stalled > MAX_STALLED then
-        blocked(('keys: Neovim takes no more input, %d bytes were not typed'):format(#keys))
-      end
-      if keys ~= '' then
-        pause(KEYS_PAUSE_MS)
+    -- was. A buffer filled to the brim takes nothing more, even once read (Neovim 0.12), so a long sequence
+    -- goes in chunks well under its size, with a pause for the main loop to read each
+    local chunks, why = chunks_of(keys)
+    if not chunks then
+      blocked(why)
+    end
+    for n, chunk in ipairs(chunks) do
+      local stalled = 0
+      while chunk ~= '' do
+        local taken = api.nvim_input(chunk)
+        chunk = chunk:sub(taken + 1)
+        stalled = taken > 0 and 0 or stalled + 1
+        if stalled > MAX_STALLED then
+          blocked(('keys: Neovim takes no more input, %d bytes were not typed'):format(#chunk))
+        end
+        if chunk ~= '' or n < #chunks then
+          pause(KEYS_PAUSE_MS)
+        end
       end
     end
     settle()
