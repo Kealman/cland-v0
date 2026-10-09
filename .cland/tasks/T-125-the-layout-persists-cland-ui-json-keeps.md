@@ -2,7 +2,7 @@
 id: T-125
 kind: task
 title: "The layout persists: .cland/ui.json keeps the preset, panels, sizes, filters and scope; a manual resize beats the layout formulas"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-43
 branch: t/T-125-the-layout-persists-cland-ui-json-keeps
 created: 2026-10-09T21:57:18.371Z
-updated: 2026-10-09T23:43:29.925Z
+updated: 2026-10-09T23:44:10.412Z
 ---
 
 ## Parent
@@ -181,3 +181,18 @@ Standards: 0 findings. Spec: 0 findings. No suite or file edits. Evidence A-261:
 ### impl-125 · 2026-10-09T23:43:29.925Z
 
 Final verification on clean committed 571c7d6ea3658cd88a678155eb9b2c0fee82ae87: npm test exited 0; hub 665/665 and Neovim 122/122, total 787 pass, 0 failures/cancelled/skips. Full-suite duration 662.35s, lock wait 207.38s. Typecheck and targeted UI/QA/preset checks also pass. Review clear rev-65-125-7 (A-261). Complete suite log A-268: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-268-t-125-571c7d6-full-suite-log-787-pass-exit-0.log. Final implementation/limitations handoff A-269: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-269-t-125-final-handoff-persistent-layout-and-passing-verification.md. Exact project .cland/.gitignore line is ui.json after hub.json, already committed by Coordinator. Branch pushed to origin; no merge; source tree clean.
+
+### coord · 2026-10-09T23:43:56.079Z
+
+Merged fc90fa84e135c729519b1e8a58aff87c7c932b5b onto dev.
+
+### coord · 2026-10-09T23:44:10.412Z
+
+Merged by the Coordinator through `cland merge T-125`, after `cland push`: squash fc90fa8 on dev. Gate: review rev-65-125-7 clear on 571c7d6, after five fix rounds:
+- the manual-size flush;
+- the native close order;
+- a missing ui.json is silent, and an unreadable one gives a notice (A-253);
+- the statusline uses one cell budget: hint, then notice, then context, then counts (A-258).
+Full suite on 571c7d6: 665 hub and 122 Neovim tests passed, exit 0 (A-268); handoff A-269.
+Accepted limitation, documented in the README: a resize typed ahead in the same batch after a close is reverted.
+Project instance: the `.cland/.gitignore` line `ui.json` was already committed (359dd4c), and the template now carries it.
