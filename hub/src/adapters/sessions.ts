@@ -25,7 +25,8 @@ import { clauseText } from '../roles/clause.ts';
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
-export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null };
+/** `item`: the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
+export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null; item?: string | null };
 
 /** A launch directory refused before the role is reserved or the harness is spawned. */
 export class InvalidLaunchCwd extends Error {}
@@ -168,6 +169,7 @@ export class Sessions {
       label: withRole(p.name, p.role),
       model: p.model,
       cwd: p.cwd,
+      item: p.item ?? null,
       pid: p.pid,
       harnessId: p.harnessId,
       sessionId: p.sessionId,
@@ -242,8 +244,9 @@ export class Sessions {
     let early: SignalFrame[] = [];
     let p: HarnessProcess;
     try {
-      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...policy });
-      p = { ...p, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
+      const item = request.item ?? null;
+      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy });
+      p = { ...p, item, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
       this.#table.put(p);
       if (reservation) this.#core.launchSettled(request.name);
     } catch (err) {
@@ -258,7 +261,7 @@ export class Sessions {
     this.#lastAt.delete(p.sessionId);
     this.#lastPush.delete(p.sessionId);
     adapter.watch(p);
-    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, early: early.length });
+    this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: early.length });
     // the bridges first: the early SessionStart's idle retries what the spoke accepted, through them
     for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
     this.#earlyBridges.delete(p.name);
@@ -306,7 +309,7 @@ export class Sessions {
     // while the adapter worked stays as it was made
     const current = this.#table.bySessionId(p.sessionId) ?? p;
     const pidStarted = r.process.pid === current.pid ? (current.pidStarted ?? (r.process.pid !== null ? processStarted(r.process.pid) : null)) : r.process.pid !== null ? processStarted(r.process.pid) : null;
-    const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, pidStarted };
+    const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
     this.#table.put(process);
     adapter.watch(process);
     this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
@@ -363,6 +366,11 @@ export class Sessions {
     }
     const adapter = this.adapter(p.harness);
     const payload = frame.payload ?? {};
+    // the harness tried to make a worktree of its own and was refused (`cland hook worktree-create`): a record, no state
+    if (frame.event === 'worktree-refused') {
+      this.#log({ event: 'worktree-refused', session: p.name, worktree: typeof payload.worktree === 'string' ? payload.worktree : null, requested: typeof payload.name === 'string' ? payload.name : null, ...(p.item ? { item: p.item } : {}) });
+      return { applied: true };
+    }
     if (frame.event === 'injected') {
       const id = typeof payload.message === 'string' ? payload.message : null;
       if (id) this.#confirm(p, id);

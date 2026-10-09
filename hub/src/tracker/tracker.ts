@@ -175,6 +175,11 @@ export class Tracker {
     });
   }
 
+  /** The project root the tracker's folder lies in. */
+  get root(): string {
+    return this.#root;
+  }
+
   /** Route the `topic` field through the hub's binding; returns the undo. */
   bindTopicsThrough(binding: TopicBinding): () => void {
     this.#topicBinding = binding;

@@ -15,7 +15,11 @@
 //       SIGUSR1 (the approval), then PostToolUse. A prompt that is "rename to <name>" calls the spoke's `rename`
 //       tool first. A prompt that is `[@<name> ]cland <args…>` runs the cland CLI (`$CLAND_NODE $CLAND_CLI <args…>`,
 //       split on spaces) in the session's own environment, as a Bash tool call would, and answers
-//       "ran: cland <args…>: exit <code>" with its stdout and stderr instead of the pong.
+//       "ran: cland <args…>: exit <code>" with its stdout and stderr instead of the pong. A prompt that is
+//       `worktree <name>` asks for a worktree as `--worktree` and sub-agents do: the WorktreeCreate hooks run with
+//       `{name}` (awaited, whatever `async` says); the first that exits non-zero refuses it, a zero exit's stdout is
+//       the path; with no hook, the default. It answers "worktree <name>: refused (exit <code>): <stderr>",
+//       "worktree <name>: <path>" or "worktree <name>: default git worktree".
 //   claude agents --json   the live sessions (pid, id, sessionId, cwd, kind, status, waitingFor)
 //   claude attach <id>     prints `fake claude attached to <id>` (each attached client prints it)
 //   claude stop <id>       SIGTERM to the session (SessionEnd, then exit)
@@ -225,6 +229,28 @@ async function runSession(id: string): Promise<number> {
     void Promise.all(background).then(() => log(`hooks ${event} done`));
   };
 
+  // WorktreeCreate replaces Claude Code's own `git worktree add`: its stdout is the path, a non-zero exit refuses
+  const createWorktree = async (name: string): Promise<string> => {
+    const commands = hooksOf('WorktreeCreate').flatMap((e) => e.hooks.filter((h) => h.type === 'command').map((h) => h.command));
+    if (!commands.length) return `worktree ${name}: default git worktree`;
+    for (const command of commands) {
+      const r = await new Promise<{ code: number | null; out: string; err: string }>((resolve) => {
+        const child = spawn('sh', ['-c', command], { cwd: job.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
+        let out = '';
+        let err = '';
+        child.stdout.on('data', (c: Buffer) => (out += String(c)));
+        child.stderr.on('data', (c: Buffer) => (err += String(c)));
+        child.on('close', (code) => resolve({ code, out, err }));
+        child.on('error', (e) => resolve({ code: -1, out, err: e.message }));
+        child.stdin.end(JSON.stringify({ session_id: job.sessionId, hook_event_name: 'WorktreeCreate', cwd: job.cwd, name }));
+      });
+      log(`hook WorktreeCreate exited ${r.code}: ${r.err.trim()}`);
+      if (r.code !== 0) return `worktree ${name}: refused (exit ${r.code}): ${r.err.trim()}`;
+      if (r.out.trim()) return `worktree ${name}: ${r.out.trim()}`;
+    }
+    return `worktree ${name}: default git worktree`;
+  };
+
   // the MCP servers: the real spoke, connected to the real hub
   const tools = new Map<string, Client>();
   for (const [name, server] of Object.entries(job.mcp.mcpServers ?? {})) {
@@ -403,6 +429,16 @@ async function runSession(id: string): Promise<number> {
     }
     const topic = /\btopic="([^"]+)"/.exec(next.text)?.[1];
     const msgId = /\bmsg_id="([^"]+)"/.exec(next.text)?.[1];
+    const wanted = /^(?:@\S+\s+)*worktree\s+(\S+)$/.exec(body.trim());
+    if (wanted) {
+      const ran = await createWorktree(wanted[1] as string);
+      log(ran);
+      await callTool('send', { text: ran, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) });
+      setStatus('idle');
+      await runHooks('Stop', { last_assistant_message: ran });
+      await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer' }, (e) => ({ text: e.answer }));
+      continue;
+    }
     const cli = /^(?:@\S+\s+)*cland\s+(.+)$/.exec(body.trim());
     if (cli) {
       const argv = (cli[1] as string).split(/\s+/);

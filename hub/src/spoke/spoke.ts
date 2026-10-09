@@ -110,6 +110,7 @@ const TOOLS = [
         harness: { type: 'string', description: "The harness (`claude-code`, `opencode`); the role's default, else `claude-code`, when absent" },
         effort: { type: 'string', description: "The reasoning effort (Claude Code: low … max); the role's default when absent" },
         cwd: { type: 'string', description: 'The working directory: absolute or relative to the project root; the project root when absent' },
+        item: { type: 'string', description: "An Implementer's item (T-12): the session starts in the item's task worktree, made first when missing, and the item's claim becomes the session's. Not with cwd" },
       },
       required: ['name'],
     },
@@ -329,6 +330,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
               ...(typeof args.harness === 'string' ? { harness: args.harness } : {}),
               ...(typeof args.effort === 'string' ? { effort: args.effort } : {}),
               ...(typeof args.cwd === 'string' ? { cwd: args.cwd } : {}),
+              ...(typeof args.item === 'string' ? { item: args.item } : {}),
             },
             60_000,
           )) as Record<string, unknown>;

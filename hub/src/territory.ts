@@ -1,8 +1,8 @@
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { acquireLock, HubLocked } from './hub/lock.ts';
+import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
 export const territoryPath = (root: string): string => join(root, '.cland', 'territory.git');
@@ -46,6 +46,29 @@ export function withTerritoryLock<T>(root: string, operation: () => T | Promise<
   if (result instanceof Promise) return result.finally(lock.release);
   lock.release();
   return result;
+}
+
+/**
+ * `withTerritoryLock` for the hub's request path: the lock is taken without blocking the event loop (its `ps` probes
+ * awaited, `acquireLockAsync`), held until `operation` settles. A live holder refuses, as there.
+ */
+export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>): Promise<T> {
+  const path = lockPath(root);
+  const link = symlinkOnPath(root, path);
+  if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`);
+  mkdirSync(join(root, '.cland'), { recursive: true });
+  let lock;
+  try {
+    lock = await acquireLockAsync(path);
+  } catch (err) {
+    if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
+    throw err;
+  }
+  try {
+    return await operation();
+  } finally {
+    lock.release();
+  }
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
@@ -179,6 +202,15 @@ export function provisionTerritory(report: Report, root: string): void {
     const head = maybeGit(path, ['symbolic-ref', 'HEAD']);
     if (head !== 'refs/heads/dev') territoryGit(path, ['symbolic-ref', 'HEAD', 'refs/heads/dev']);
     report.add(join(path, 'HEAD'), head === 'refs/heads/dev' ? 'unchanged' : 'updated', 'default branch dev');
+    // origin's default branch is dev in the root too, so what branches from it (Claude Code's sub-agent worktrees,
+    // `worktree.baseRef: fresh`) starts from dev (T-20 decision D8); fetched from the on-disk path, as the seeding
+    const originHead = maybeGit(root, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD']);
+    const setHead = originHead !== 'refs/remotes/origin/dev' && ref(path, 'refs/heads/dev') !== null;
+    if (setHead) {
+      territoryGit(root, ['fetch', '--quiet', path, '+refs/heads/dev:refs/remotes/origin/dev']);
+      territoryGit(root, ['remote', 'set-head', 'origin', 'dev']);
+    }
+    report.add(join(path, 'remotes/origin/HEAD'), setHead ? 'updated' : 'unchanged', originHead === 'refs/remotes/origin/dev' || setHead ? 'origin/HEAD is origin/dev' : 'no territory dev yet');
 
     const branch = maybeGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
     if (branch === 'main' && clean && ref(root, 'refs/heads/dev') !== null) {
@@ -237,7 +269,149 @@ export function territoryProblems(root: string): string[] | null {
     if (ref(path, `refs/heads/${branch}`) === null) problems.push(`territory ${branch} is missing`);
   }
   if (maybeGit(path, ['symbolic-ref', 'HEAD']) !== 'refs/heads/dev') problems.push('territory HEAD is not dev');
+  const base = maybeGit(path, ['config', '--get', 'cland.taskBase']);
+  if (base && ref(root, `refs/heads/${base}`) === null) problems.push(`cland.taskBase names ${base}, which has no local branch: task branches cannot start`);
   const hook = join(path, 'hooks', 'update');
   if (readText(hook) !== TERRITORY_HOOK || !existsSync(hook) || (statSync(hook).mode & 0o111) !== 0o111 || maybeGit(path, ['config', '--get', 'core.hooksPath']) !== 'hooks') problems.push('territory protection hook is missing, changed or not executable');
   return problems;
+}
+
+// ---------------------------------------------------------------- task worktrees (T-58, decisions D3, D7)
+// Called from the hub's request path, so every Git command here is awaited (`execFile`), never `spawnSync`: a claim
+// or a listing never holds the hub's event loop. The hub runs them one at a time (`src/hub/worktrees.ts`); the
+// writes also hold the territory lock against other processes, taken without blocking (`withTerritoryLockAsync`).
+
+/** `territoryGit`, awaited: trimmed stdout, or a rejection naming the command and Git's message. */
+export function territoryGitAsync(cwd: string, args: string[]): Promise<string> {
+  return new Promise((resolvePromise, reject) => {
+    execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CLAND_TERRITORY_WRITE: '' } }, (err, stdout, stderr) => {
+      if (err) reject(new Error(`git ${args.join(' ')}: ${String(stderr).trim() || err.message}`));
+      else resolvePromise(String(stdout).trim());
+    });
+  });
+}
+
+const maybeGitAsync = (cwd: string, args: string[]): Promise<string | null> => territoryGitAsync(cwd, args).catch(() => null);
+const refAsync = (cwd: string, name: string): Promise<string | null> => maybeGitAsync(cwd, ['rev-parse', '--verify', '--quiet', name]);
+
+export const worktreesPath = (root: string): string => join(root, '.cland', 'worktrees');
+export const taskWorktreePath = (root: string, item: string): string => join(worktreesPath(root), item);
+
+/** Whether the project has a cland-managed territory: the condition for task branches and worktrees. */
+export async function hasTerritory(root: string): Promise<boolean> {
+  const path = territoryPath(root);
+  return existsSync(path) && (await maybeGitAsync(path, ['config', '--get', 'cland.managed'])) === 'true';
+}
+
+/**
+ * The branch task branches start from: the territory's `cland.taskBase` when set, else `dev` when the project has
+ * it, else `main`; null when none of them has a commit. The override names a local branch that must exist.
+ */
+export async function taskBase(root: string): Promise<string | null> {
+  const configured = (await hasTerritory(root)) ? await maybeGitAsync(territoryPath(root), ['config', '--get', 'cland.taskBase']) : null;
+  if (configured) {
+    if ((await refAsync(root, `refs/heads/${configured}`)) === null) throw new Error(`the territory's cland.taskBase names ${configured}, which has no local branch`);
+    return configured;
+  }
+  for (const branch of ['dev', 'main']) if ((await refAsync(root, `refs/heads/${branch}`)) !== null) return branch;
+  return null;
+}
+
+/** A linked worktree of the project's own repository, as `git worktree list --porcelain` shows it. */
+export type Worktree = { path: string; head: string | null; branch: string | null; prunable: boolean };
+
+async function worktrees(root: string): Promise<Worktree[]> {
+  const out: Worktree[] = [];
+  for (const block of (await territoryGitAsync(root, ['worktree', 'list', '--porcelain'])).split('\n\n')) {
+    const lines = block.split('\n');
+    const path = lines.find((l) => l.startsWith('worktree '))?.slice('worktree '.length);
+    if (!path) continue;
+    const head = lines.find((l) => l.startsWith('HEAD '))?.slice('HEAD '.length) ?? null;
+    const branch = lines.find((l) => l.startsWith('branch refs/heads/'))?.slice('branch refs/heads/'.length) ?? null;
+    out.push({ path, head, branch, prunable: lines.some((l) => l.startsWith('prunable')) });
+  }
+  return out;
+}
+
+const samePath = (a: string, b: string): boolean => {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return resolve(a) === resolve(b);
+  }
+};
+
+/** The project's task worktrees: the linked worktrees under `.cland/worktrees/`, each named by its item. */
+export async function listTaskWorktrees(root: string): Promise<Array<Worktree & { item: string }>> {
+  if (!existsSync(join(root, '.git'))) return [];
+  const dir = worktreesPath(root);
+  return (await worktrees(root)).flatMap((w) => {
+    const parent = resolve(w.path, '..');
+    const name = w.path.slice(parent.length + 1);
+    return samePath(parent, dir) && /^T-\d+$/.test(name) ? [{ ...w, item: name }] : [];
+  });
+}
+
+/** The commits on `branch` that `base` does not have, newest first, as `<short sha> <subject>`. */
+export async function commitsAhead(root: string, branch: string, base: string | null): Promise<string[]> {
+  if ((await refAsync(root, `refs/heads/${branch}`)) === null) return [];
+  const range = base !== null && (await refAsync(root, `refs/heads/${base}`)) !== null ? [`refs/heads/${base}..refs/heads/${branch}`] : [`refs/heads/${branch}`];
+  return (await territoryGitAsync(root, ['log', '--format=%h %s', ...range, '--'])).split('\n').filter(Boolean);
+}
+
+export type TaskWorktree = { item: string; branch: string; path: string; base: string | null; createdBranch: boolean; createdWorktree: boolean };
+
+/**
+ * The item's task branch and worktree, made when missing (decision D7), reused when present: `branch` is the item's
+ * own (its `branch` field), else `t/<id>-<slug>`, started at `taskBase`'s tip. The worktree is linked to the
+ * project's own repository (decision D3). Under the territory lock; rejects with a reason meant for the asker.
+ */
+export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }): Promise<TaskWorktree> {
+  if (!(await hasTerritory(root))) throw new Error('the project has no territory (run cland init)');
+  if (!/^T-\d+$/.test(item.id)) throw new Error(`not an item id: ${item.id}`);
+  return withTerritoryLockAsync(root, async () => {
+    const path = taskWorktreePath(root, item.id);
+    const link = symlinkOnPath(root, path);
+    if (link !== null) throw new Error(`worktree: refusing symlink ${link}`);
+    let registered = (await worktrees(root)).find((w) => samePath(w.path, path));
+    // a worktree whose folder was deleted by hand: Git forgets it before the path is used again
+    if (registered && !existsSync(path)) {
+      await territoryGitAsync(root, ['worktree', 'prune']);
+      registered = undefined;
+    }
+    if (registered) {
+      if (registered.branch === null) throw new Error(`${path} is a worktree on a detached HEAD: check out its task branch there first`);
+      if (item.branch !== null && item.branch !== registered.branch) throw new Error(`${path} holds branch ${registered.branch}, but ${item.id} names ${item.branch}`);
+      return { item: item.id, branch: registered.branch, path, base: null, createdBranch: false, createdWorktree: false };
+    }
+    if (existsSync(path)) throw new Error(`${path} exists and is not a worktree of this repository: move it aside`);
+    const branch = item.branch ?? `t/${item.id}${item.slug ? `-${item.slug}` : ''}`;
+    if ((await maybeGitAsync(root, ['check-ref-format', '--branch', branch])) === null) throw new Error(`${JSON.stringify(branch)} is not a valid branch name`);
+    mkdirSync(worktreesPath(root), { recursive: true });
+    if ((await refAsync(root, `refs/heads/${branch}`)) !== null) {
+      await territoryGitAsync(root, ['worktree', 'add', path, branch]);
+      return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true };
+    }
+    const base = await taskBase(root);
+    if (base === null) throw new Error('neither dev nor main has a commit to start the task branch from');
+    await territoryGitAsync(root, ['worktree', 'add', '--no-track', '-b', branch, path, `refs/heads/${base}`]);
+    return { item: item.id, branch, path, base, createdBranch: true, createdWorktree: true };
+  });
+}
+
+/**
+ * Remove a task worktree and its branch (the human's prune). Git refuses a worktree with changes. Under the lock;
+ * `check` runs there right before the removal and refuses it by throwing (the caller's item state and sessions, which
+ * may have changed while Git was read).
+ */
+export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}): Promise<{ path: string; branch: string | null }> {
+  return withTerritoryLockAsync(root, async () => {
+    const path = taskWorktreePath(root, item);
+    const found = (await worktrees(root)).find((w) => samePath(w.path, path));
+    if (!found) throw new Error(`${item} has no worktree`);
+    check();
+    await territoryGitAsync(root, ['worktree', 'remove', path]);
+    if (found.branch !== null && (await refAsync(root, `refs/heads/${found.branch}`)) !== null) await territoryGitAsync(root, ['branch', '-D', found.branch]);
+    return { path, branch: found.branch };
+  });
 }

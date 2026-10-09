@@ -1,8 +1,10 @@
 // The `session.*` frames: launching and managing harness sessions (UI, CLI, spokes), and the signals and
 // bridge that come from inside a launched session (`cland hook`). Called from the dispatcher.
 //
-//   session.launch  {name, role?, model?, harness?, cwd?, effort?} → {process}   the human, and a spoke whose role grants it; a role's
-//                                                              launch defaults (roles.toml) fill what is not given
+//   session.launch  {name, role?, model?, harness?, cwd?, effort?, item?} → {process}   the human, and a spoke whose role grants it; a role's
+//                                                              launch defaults (roles.toml) fill what is not given; with `item`
+//                                                              (an Implementer's): {process, claim, worktree, reason?}, in the
+//                                                              item's worktree (`src/hub/worktrees.ts`)
 //   session.list    {}                                         → {processes, adapters: {<harness>: capabilities}, coordinator}
 //   session.attach  {session}                                  → {command}
 //   session.stop    {session}                                  → {process}
@@ -16,9 +18,10 @@
 import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';
 import { InvalidLaunchCwd, type Sessions } from './sessions.ts';
+import type { Resumed, TaskWorktrees } from '../hub/worktrees.ts';
 
 export type SessionRequest =
-  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string }
+  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string; item?: string }
   | { type: 'session.list'; id: string }
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.stop'; id: string; session: string }
@@ -36,7 +39,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
   if (typeof f.id !== 'string' || typeof f.type !== 'string' || !f.type.startsWith('session.')) return false;
   switch (f.type) {
     case 'session.launch':
-      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd) && optString(f.effort);
+      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.cwd) && optString(f.effort) && optString(f.item);
     case 'session.list':
       return true;
     case 'session.attach':
@@ -66,22 +69,25 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
 export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolean; onClose: (fn: () => void) => void };
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
-export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer): Promise<HubFrame> {
+/** `resumed` times the synchronous work a launch with an item does after it awaited (Git, the spawn): the hub's guard. */
+export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
   try {
     switch (frame.type) {
-      case 'session.launch':
-        return ok({
-          process: await sessions.launch({
-            name: frame.name,
-            ...(frame.role !== undefined ? { role: frame.role } : {}),
-            ...(frame.model !== undefined ? { model: frame.model } : {}),
-            ...(frame.harness !== undefined ? { harness: frame.harness } : {}),
-            ...(frame.cwd !== undefined ? { cwd: frame.cwd } : {}),
-            ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
-          }),
-        });
+      case 'session.launch': {
+        const request = {
+          name: frame.name,
+          ...(frame.role !== undefined ? { role: frame.role } : {}),
+          ...(frame.model !== undefined ? { model: frame.model } : {}),
+          ...(frame.harness !== undefined ? { harness: frame.harness } : {}),
+          ...(frame.cwd !== undefined ? { cwd: frame.cwd } : {}),
+          ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
+        };
+        if (frame.item === undefined) return ok({ process: await sessions.launch(request) });
+        if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
+        return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed));
+      }
       case 'session.list':
         return ok({ processes: sessions.list(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
       case 'session.attach':

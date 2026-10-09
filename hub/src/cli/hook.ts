@@ -6,6 +6,11 @@
 //   cland hook bridge  --session <name> [--launch <id>] [--hub-file <.cland/hub.json>]   the mod's bridge: stays
 //                                                       connected, prints each inject frame as a JSON line
 //
+//   cland hook worktree-create --session <name> --worktree <path> [--launch <id>] [--hub-file <path>]
+//                                                       Claude Code's WorktreeCreate hook in a session launched
+//                                                       with an item: refuses (exit 2), naming the session's own
+//                                                       worktree, and tells the hub (T-20 decision D8)
+//
 // `--launch` is the cland session id the hub launched the session with: the hub ignores what an earlier
 // launch under the same name still sends.
 import { createConnection, type Socket } from 'node:net';
@@ -15,6 +20,7 @@ import { askHubFrame } from './socket-client.ts';
 
 export const HOOK_USAGE = `  hook <event>    from inside a launched session (its hooks, the cland mod): post a signal to the hub
                   --session <name> --launch <id> --hub-file <path>; the harness's JSON payload on stdin
+                  (worktree-create --worktree <path>: refuses the harness's own worktree, exit 2)
 `;
 
 /** The payload fields the hub reads; the prompt itself never leaves the session, only the message ids it carries. */
@@ -168,6 +174,35 @@ function bridgeOnce(d: { socket: string; secret: string }, session: string, laun
   });
 }
 
+/**
+ * The harness asked for a worktree of its own: refused, with the session's own named on stderr (what the harness
+ * shows the model), and recorded at the hub. The only hook that fails the harness: that is its whole point.
+ */
+async function refuseWorktree(args: string[]): Promise<number> {
+  const at = startedAt();
+  const session = flag(args, '--session') ?? process.env.CLAND_SESSION_NAME;
+  const worktree = flag(args, '--worktree') ?? '';
+  const launch = flag(args, '--launch');
+  let requested: string | null = null;
+  const input = await readStdin(2000);
+  try {
+    const v = JSON.parse(input) as Record<string, unknown>;
+    requested = typeof v.name === 'string' ? v.name : null;
+  } catch {
+    // no payload: the refusal stands all the same
+  }
+  process.stderr.write(`cland: ${session ?? 'this session'} works in its own task worktree ${worktree}; another worktree is refused. Work there (cd ${worktree}), on its branch.\n`);
+  const { d } = discovery(args);
+  if (d) {
+    try {
+      await askHubFrame(d, { type: 'session.signal', event: 'worktree-refused', at, payload: { worktree, ...(requested ? { name: requested } : {}) }, ...(session ? { session } : {}), ...(launch ? { launch } : {}) }, 3000);
+    } catch (err) {
+      process.stderr.write(`cland hook worktree-create: ${err instanceof Error ? err.message : String(err)}\n`);
+    }
+  }
+  return 2;
+}
+
 export async function runHook(args: string[]): Promise<number> {
   const [event, ...rest] = args;
   if (!event) {
@@ -175,5 +210,6 @@ export async function runHook(args: string[]): Promise<number> {
     return 2;
   }
   if (event === 'bridge') return bridge(rest);
+  if (event === 'worktree-create') return refuseWorktree(rest);
   return post(event, rest);
 }

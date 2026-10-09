@@ -45,6 +45,9 @@ test('init redirects origin locally, preserves GitHub and upstreams, seeds main/
   assert.equal(git(territory, 'rev-parse', 'main'), git(root, 'rev-parse', 'main'));
   assert.equal(git(territory, 'rev-parse', 'dev'), git(root, 'rev-parse', 'dev'));
   assert.equal(git(territory, 'symbolic-ref', 'HEAD'), 'refs/heads/dev');
+  // origin's default branch in the root is dev: Claude Code's sub-agent worktrees start there (T-58, D8)
+  assert.equal(git(root, 'symbolic-ref', 'refs/remotes/origin/HEAD'), 'refs/remotes/origin/dev');
+  assert.equal(git(root, 'rev-parse', 'origin/dev'), git(root, 'rev-parse', 'dev'));
   assert.equal(git(github, 'show-ref'), before);
   assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /only `cland release` pushes to `github`/);
   const again = (await init(root)).filter((c) => c.path.startsWith('.cland/territory.git'));
@@ -229,6 +232,12 @@ test('doctor checks the territory and names corrupted origin, missing dev, HEAD 
     return JSON.parse(r.stdout).checks.find((c: { name: string }) => c.name === 'territory') as { verdict: string; detail: string; fix?: string };
   };
   assert.equal((await check()).verdict, 'ok');
+  // the task branches' base override (T-58) must name a local branch
+  git(territory, 'config', 'cland.taskBase', 'main');
+  assert.equal((await check()).verdict, 'ok');
+  git(territory, 'config', 'cland.taskBase', 'gone');
+  assert.match((await check()).detail, /cland\.taskBase names gone, which has no local branch/);
+  git(territory, 'config', '--unset', 'cland.taskBase');
   await chmod(join(territory, 'hooks', 'update'), 0o641);
   assert.match((await check()).detail, /not executable/);
   await chmod(join(territory, 'hooks', 'update'), 0o755);

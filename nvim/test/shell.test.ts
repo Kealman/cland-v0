@@ -550,6 +550,19 @@ test('the launcher: ␣l opens the form, a role fills its launch defaults, typed
   assert.equal((await requestsOf(c, 'session.launch')).length, 2, 'Esc launches nothing');
 });
 
+test("the launcher's item line sends `item` instead of the directory: the hub starts the Implementer in the item's worktree", { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc><Space>l');
+  await c.waitScreen((x) => x.includes('launch a session') && /item +T-<n>/.test(x), 'the launcher form with its item line');
+  // name, role, then past harness, model, directory and effort to the item
+  await c.input('impl-7<Tab>implementer<Tab><Tab><Tab><Tab><Tab>T-7<CR>');
+  await c.waitScreen((x) => /impl-7 \[Implementer\]/.test(x), 'impl-7 in the panel');
+  const [frame] = (await requestsOf(c, 'session.launch')).filter((f) => f.name === 'impl-7');
+  assert.equal(frame?.item, 'T-7');
+  assert.equal(frame?.role, 'implementer');
+  assert.equal(frame?.cwd, undefined, 'the item replaces the directory');
+});
+
 test('the launcher shows what the hub refuses in the form and the panel, never a hit-enter prompt; a roleless launch asks first', { skip }, async (t) => {
   const c = await startShell(t, (s) => {
     s.launchError = 'role "coordinator" is held by coord-1 [Coordinator] (live): one session holds it at a time';

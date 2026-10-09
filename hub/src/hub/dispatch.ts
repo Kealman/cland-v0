@@ -40,6 +40,7 @@ import { handOver, roleState, settleAllClaims, type HandoverContext } from '../r
 import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
+import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
 import { RequestGuard, type GuardOptions } from './budget.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
@@ -84,7 +85,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['artifact.list', 'hub.status', 'inbox.list', 'role.list']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -100,12 +101,15 @@ export class Dispatcher {
   readonly #log: LogFn;
   /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
   #sessions: Sessions | undefined;
+  /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
+  readonly #worktrees: TaskWorktrees | null;
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
+    this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
     this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(() => this.#guard.changed());
@@ -130,6 +134,23 @@ export class Dispatcher {
     this.#options.core.inbox.useProcesses(sessions ? () => sessions.list() : null);
   }
 
+  /** Where the sessions stand: the connected spokes' cwds and the running launched harnesses'. */
+  #sessionCwds(): SessionCwd[] {
+    const out: SessionCwd[] = this.#options.core.presence().filter((p) => typeof p.cwd === 'string' && p.cwd !== '').map((p) => ({ name: p.name, cwd: p.cwd }));
+    for (const p of this.#sessions?.list() ?? []) if (p.status === 'running') out.push({ name: p.name, cwd: p.cwd });
+    return out;
+  }
+
+  /**
+   * A task request's result, with what a claim of an open task made of its branch and worktree (decision D7): the
+   * worktree, or the reason there is none; the claim stands either way. Its write after Git runs through `resumed`.
+   */
+  async #withWorktree(frame: TaskRequest, result: HubFrame, resumed: <T>(write: () => T) => T): Promise<HubFrame> {
+    if (frame.type !== 'task.claim' || frame.release === true || result.type !== 'result' || !result.ok || !this.#worktrees) return result;
+    const value = result.value as { id: string; claim: { session: string } | null };
+    return { ...result, value: { ...value, ...(await this.#worktrees.afterClaim(value.id, value.claim?.session ?? null, resumed)) } };
+  }
+
   /** What a handover and `role.state` read beyond the core (#31): the tracker's claims, the launched sessions. */
   #handover(): HandoverContext {
     return {
@@ -137,6 +158,12 @@ export class Dispatcher {
       tracker: this.#options.tracker,
       launched: (name) => this.#sessions?.list().find((p) => p.name === name && p.status === 'running') ?? null,
     };
+  }
+
+  /** The task worktrees, or the error a hub without a tracker answers `worktree.*` with. */
+  #needWorktrees(): TaskWorktrees {
+    if (!this.#worktrees) throw new Error('this hub has no tracker: it was started without a project (`cland hub start` serves one)');
+    return this.#worktrees;
   }
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
@@ -371,15 +398,25 @@ export class Dispatcher {
     let unsubscribe: (() => void) | null = null;
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
-    // a task request's answer may wait for Git (a verdict's commit), never on the event loop; every stretch it runs on
-    // the loop is timed against the budget: the first in `receive`, the write after Git answered, the answer going out
+    /** A result that comes later (Git work): its answer going out is timed against the budget as `answer`. */
+    const later = (tool: string, result: Promise<HubFrame>): void =>
+      void result.then((frame) =>
+        this.#guard.measure(tool, kind === 'spoke' ? (name ?? '?') : client, () => {
+          if (peer.isOpen()) peer.send(frame);
+          else settle(frame);
+        }, 'answer'),
+      );
+    // a task request's answer may wait for Git (a verdict's commit, a claim's worktree), never on the event loop; every
+    // stretch it runs on the loop is timed against the budget: the first in `receive`, the writes after Git answered,
+    // the answer going out
     const task = (frame: TaskRequest, actor: Actor | 'client') => {
       const tool = String(frame.type);
       const who = kind === 'spoke' ? (name ?? '?') : client;
-      void answerTask(this.#options.tracker, frame, actor, (write) => this.#guard.measure(tool, who, write, 'resumed'))
+      const resumed = <T,>(write: () => T): T => this.#guard.measure(tool, who, write, 'resumed');
+      void answerTask(this.#options.tracker, frame, actor, resumed)
         .then((result) => {
           this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
-          return result;
+          return this.#withWorktree(frame, result, resumed);
         })
         // what fails after the answer is known (the assignee's binding) is that request's failure, never the hub's
         .catch((err: unknown) => Dispatcher.#failure(frame.id, err))
@@ -391,7 +428,13 @@ export class Dispatcher {
         );
     };
     const session = (frame: Parameters<typeof answerSession>[1]) =>
-      void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }).then((result) => {
+      void answerSession(
+        this.#sessions,
+        frame,
+        { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) },
+        this.#worktrees ?? undefined,
+        (write) => this.#guard.measure(frame.type, kind === 'spoke' ? (name ?? '?') : client, write, 'resumed'),
+      ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);
       });
@@ -590,6 +633,21 @@ export class Dispatcher {
             return answer(core.inbox.dismiss(frame.notification));
           case 'inbox.dismiss_all':
             return answer(core.inbox.dismissAll());
+          case 'worktree.list':
+          case 'worktree.prune': {
+            // Git work, awaited; prune is the human's (a session's shell is refused before this): without items the
+            // closed items' worktrees, with items those removed
+            const worktrees = this.#needWorktrees();
+            const id = frame.id;
+            const resumed = <T,>(write: () => T): T => this.#guard.measure(frame.type, client, write, 'resumed');
+            const value: Promise<unknown> =
+              frame.type === 'worktree.list'
+                ? worktrees.list(resumed).then((w) => ({ worktrees: w }))
+                : frame.dryRun === true || !frame.items?.length
+                  ? worktrees.prunable(resumed).then((candidates) => ({ candidates }))
+                  : worktrees.prune(frame.items, resumed);
+            return later(frame.type, value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
+          }
           case 'subscribe':
             if (!unsubscribe) {
               const fromCore = core.subscribe((event) => {

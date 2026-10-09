@@ -18,7 +18,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'handover', 'mute', 'unmute', 'refusal'] as const;
+export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'worktree', 'handover', 'mute', 'unmute', 'refusal'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -75,6 +75,28 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       const by = str(entry.by);
       const why = entry.reason === 'closed' ? ': the item closed' : by && by !== session ? ` by ${by}` : '';
       return { kind: 'release', text: `${id} released${session ? ` (held by ${session})` : ''}${why}`, detail: { item: id, session } };
+    }
+    case 'task-worktree': {
+      const id = str(entry.id);
+      const branch = str(entry.branch);
+      const path = str(entry.path);
+      if (!id || !branch || !path) return null;
+      const base = str(entry.base);
+      const made = entry.createdBranch === true ? `branch ${branch} from ${base ?? 'its base'} and worktree ${path}` : `worktree ${path} on its branch ${branch}`;
+      return { kind: 'worktree', text: `${id}: ${made} created${session ? ` for ${label(session)}` : ''}`, detail: { item: id, branch, path, ...(session ? { session } : {}) } };
+    }
+    case 'task-worktree-removed': {
+      const id = str(entry.id);
+      const path = str(entry.path);
+      if (!id || !path) return null;
+      const branch = str(entry.branch);
+      return { kind: 'worktree', text: `${id}: worktree ${path}${branch ? ` and branch ${branch}` : ''} removed (prune)`, detail: { item: id, path, ...(branch ? { branch } : {}) } };
+    }
+    case 'worktree-refused': {
+      if (!session) return null;
+      const worktree = str(entry.worktree);
+      const item = str(entry.item);
+      return { kind: 'worktree', text: `${label(session)}: its harness's own worktree was refused; it works in ${worktree ?? 'its task worktree'}`, detail: { session, ...(item ? { item } : {}) } };
     }
     default:
       return null;

@@ -39,6 +39,9 @@ export type HarnessProcess = {
   harnessSessionId: string | null;
   startedAt: string;
   status: 'running' | 'exited' | 'stopped';
+  /** The item whose task worktree the session was launched in (`session.launch` with an item; its cwd is that
+   *  worktree), else null. */
+  item?: string | null;
   /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
    *  still this process before any signal (`processes.ts` `signalProcess`). Null when unknown. */
   pidStarted?: string | null;
@@ -87,6 +90,9 @@ export type SpawnRequest = LaunchPolicy & {
    *  a thread has no rollout before one). An adapter that uses it declares `clauseAtSpawn`, and the hub does not
    *  inject the clause again at the session's first hello. */
   clause?: string | null;
+  /** The item the session was launched for: its cwd is the item's task worktree. A harness that makes worktrees of
+   *  its own is told to refuse them there (decision D8). */
+  item?: string | null;
 };
 
 /** A state signal from the harness, with where it came from and when it happened (ms epoch): an older signal
