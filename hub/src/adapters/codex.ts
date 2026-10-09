@@ -70,6 +70,21 @@ export function firstTurn(name: string, clause: string | null | undefined): stri
   return clause ? `${clause}\n\n${note}` : `You are "${name}", a session of cland with no role yet. ${note} Wait for the hub's events.`;
 }
 
+/** An item of a turn, as `item/completed` and `thread/read` give it. */
+type TurnItem = { type?: unknown; name?: unknown; output?: unknown; content?: Array<{ text?: unknown }> };
+
+/** The text of an input the turn took up, or null for any other item. Measured with Codex 0.160.0 (T-68): text
+ *  input (a steer, a text `turn/start`) is a `userMessage` with text content; a `turn/start` with a `toolOutput` (a
+ *  delivery into an idle thread) is a `functionCallOutput` carrying the tool's `name` and its `output`. */
+function inputText(item: TurnItem | undefined): string | null {
+  if (item?.type === 'userMessage') return (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n');
+  if (item?.type === 'functionCallOutput' && item.name === 'hub_event') {
+    if (typeof item.output === 'string') return item.output;
+    if (Array.isArray(item.output)) return item.output.map((c: { text?: unknown }) => (typeof c?.text === 'string' ? c.text : '')).join('\n');
+  }
+  return null;
+}
+
 /** A thread status from the app-server as a cland state. */
 export function stateOfStatus(status: unknown): SessionState {
   if (!status || typeof status !== 'object') return 'unknown';
@@ -381,10 +396,9 @@ export class CodexAdapter implements HarnessAdapter {
           return;
         case 'item/started':
         case 'item/completed': {
-          // an input the turn took up is a userMessage item of the turn: a steer seen there is no longer owed
-          const item = params.item as { type?: unknown; content?: Array<{ text?: unknown }> } | undefined;
-          if (!mine(params) || item?.type !== 'userMessage') return;
-          this.#takenUp(live.p.sessionId, String(params.turnId), (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n'));
+          // an input the turn took up is an item of the turn (`inputText`): a message seen there is no longer owed
+          const text = mine(params) ? inputText(params.item as TurnItem | undefined) : null;
+          if (text !== null) this.#takenUp(live.p.sessionId, String(params.turnId), text);
           return;
         }
         case 'turn/started': {
@@ -561,11 +575,11 @@ export class CodexAdapter implements HarnessAdapter {
     const threadId = live.p.harnessSessionId as string;
     try {
       if (!client || client.closed) throw new Error("the hub is not connected to this session's app-server");
-      const r = await client.request<{ thread: { turns?: Array<{ id?: string; items?: Array<{ type?: string; content?: Array<{ text?: unknown }> }> }> } }>('thread/read', { threadId, includeTurns: true }, 15_000);
+      const r = await client.request<{ thread: { turns?: Array<{ id?: string; items?: TurnItem[] }> } }>('thread/read', { threadId, includeTurns: true }, 15_000);
       const items = r.thread.turns?.find((t) => t.id === turnId)?.items ?? [];
       for (const item of items) {
-        if (item.type !== 'userMessage') continue;
-        for (const id of envelopeIds((item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n'))) owed.delete(id);
+        const text = inputText(item);
+        if (text !== null) for (const id of envelopeIds(text)) owed.delete(id);
       }
     } catch (err) {
       this.#host.log({ event: 'harness-turn-unread', harness: this.harness, session: live.p.name, turn: turnId, error: err instanceof Error ? err.message : String(err) });
