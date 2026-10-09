@@ -1,10 +1,11 @@
 -- The session launcher (spec 4.3, 4.4; #28): a floating form, `␣l` anywhere or `l` in the sessions panel.
--- One line per field (name, role, harness, model, working directory, effort), the labels drawn as inline
+-- One line per field (name, role, harness, model, working directory, effort, item), the labels drawn as inline
 -- virtual text so the lines hold only the values. Choosing a role fills the harness, the model and the
 -- effort from its launch defaults (`role.list`, i.e. roles.toml); changing the harness away from the role's
 -- clears the model and effort that were meant for the other one. Enter submits `session.launch`; what the
 -- hub refuses (a name in use, the Coordinator held, an unknown harness) shows under the fields and atop the
--- sessions panel, never in the message area.
+-- sessions panel, never in the message area. An item (T-12, an Implementer's) replaces the directory: the hub
+-- starts the session in the item's task worktree, made first when missing, and gives it the item's claim.
 --
 -- Insert mode throughout: Tab and Shift+Tab move between fields, C-n and C-p cycle the choices of the role
 -- and harness fields, Enter launches, Esc or C-c cancels.
@@ -21,6 +22,7 @@ M.FIELDS = {
   { key = 'model', label = 'model', hint = "empty: the harness's default" },
   { key = 'cwd', label = 'directory', hint = '' },
   { key = 'effort', label = 'effort', hint = "empty: the harness's default" },
+  { key = 'item', label = 'item', hint = "T-<n>: an Implementer in the item's worktree" },
 }
 M.HARNESSES = { 'claude-code', 'codex', 'opencode' }
 local LABEL_W = 11
@@ -172,10 +174,14 @@ end
 --- The frame the form submits: what is empty is left to the hub (the role's defaults, the harness's own).
 function M.frame(v)
   local frame = { type = 'session.launch', name = v.name }
-  for _, k in ipairs({ 'harness', 'model', 'cwd', 'effort' }) do
+  for _, k in ipairs({ 'harness', 'model', 'cwd', 'effort', 'item' }) do
     if v[k] ~= '' then
       frame[k] = v[k]
     end
+  end
+  -- the item's worktree is the directory
+  if frame.item then
+    frame.cwd = nil
   end
   if v.role ~= '' then
     local def = state.role_def(v.role)
@@ -281,7 +287,7 @@ local function cycle(f, d)
   draw(f)
 end
 
---- opts: name (prefilled), role (prefilled; its defaults follow).
+--- opts: name (prefilled), role (prefilled; its defaults follow), item (prefilled).
 function M.open(opts)
   opts = opts or {}
   M.close()
@@ -291,7 +297,7 @@ function M.open(opts)
   f.buf = api.nvim_create_buf(false, true)
   vim.bo[f.buf].bufhidden = 'wipe'
   vim.b[f.buf].cland_role = 'launcher'
-  api.nvim_buf_set_lines(f.buf, 0, -1, false, { opts.name or '', opts.role or '', '', '', state.S.root ~= '' and state.S.root or vim.fn.getcwd(), '' })
+  api.nvim_buf_set_lines(f.buf, 0, -1, false, { opts.name or '', opts.role or '', '', '', state.S.root ~= '' and state.S.root or vim.fn.getcwd(), '', opts.item or '' })
   f.win = api.nvim_open_win(f.buf, true, {
     relative = 'editor', row = math.max(1, math.floor(vim.o.lines / 5)), col = math.floor((vim.o.columns - width) / 2),
     width = width, height = #M.FIELDS + 1, border = 'rounded', style = 'minimal', zindex = 85,

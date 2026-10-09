@@ -237,7 +237,132 @@ export function territoryProblems(root: string): string[] | null {
     if (ref(path, `refs/heads/${branch}`) === null) problems.push(`territory ${branch} is missing`);
   }
   if (maybeGit(path, ['symbolic-ref', 'HEAD']) !== 'refs/heads/dev') problems.push('territory HEAD is not dev');
+  const base = maybeGit(path, ['config', '--get', 'cland.taskBase']);
+  if (base && ref(root, `refs/heads/${base}`) === null) problems.push(`cland.taskBase names ${base}, which has no local branch: task branches cannot start`);
   const hook = join(path, 'hooks', 'update');
   if (readText(hook) !== TERRITORY_HOOK || !existsSync(hook) || (statSync(hook).mode & 0o111) !== 0o111 || maybeGit(path, ['config', '--get', 'core.hooksPath']) !== 'hooks') problems.push('territory protection hook is missing, changed or not executable');
   return problems;
+}
+
+// ---------------------------------------------------------------- task worktrees (T-58, decisions D3, D7)
+
+export const worktreesPath = (root: string): string => join(root, '.cland', 'worktrees');
+export const taskWorktreePath = (root: string, item: string): string => join(worktreesPath(root), item);
+
+/** Whether the project has a cland-managed territory: the condition for task branches and worktrees. */
+export function hasTerritory(root: string): boolean {
+  const path = territoryPath(root);
+  return existsSync(path) && maybeGit(path, ['config', '--get', 'cland.managed']) === 'true';
+}
+
+/**
+ * The branch task branches start from: the territory's `cland.taskBase` when set, else `dev` when the project has
+ * it, else `main`; null when none of them has a commit. The override names a local branch that must exist.
+ */
+export function taskBase(root: string): string | null {
+  const configured = hasTerritory(root) ? maybeGit(territoryPath(root), ['config', '--get', 'cland.taskBase']) : null;
+  if (configured) {
+    if (ref(root, `refs/heads/${configured}`) === null) throw new Error(`the territory's cland.taskBase names ${configured}, which has no local branch`);
+    return configured;
+  }
+  for (const branch of ['dev', 'main']) if (ref(root, `refs/heads/${branch}`) !== null) return branch;
+  return null;
+}
+
+/** A linked worktree of the project's own repository, as `git worktree list --porcelain` shows it. */
+export type Worktree = { path: string; head: string | null; branch: string | null; prunable: boolean };
+
+function worktrees(root: string): Worktree[] {
+  const out: Worktree[] = [];
+  for (const block of territoryGit(root, ['worktree', 'list', '--porcelain']).split('\n\n')) {
+    const lines = block.split('\n');
+    const path = lines.find((l) => l.startsWith('worktree '))?.slice('worktree '.length);
+    if (!path) continue;
+    const head = lines.find((l) => l.startsWith('HEAD '))?.slice('HEAD '.length) ?? null;
+    const branch = lines.find((l) => l.startsWith('branch refs/heads/'))?.slice('branch refs/heads/'.length) ?? null;
+    out.push({ path, head, branch, prunable: lines.some((l) => l.startsWith('prunable')) });
+  }
+  return out;
+}
+
+const samePath = (a: string, b: string): boolean => {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return resolve(a) === resolve(b);
+  }
+};
+
+/** The project's task worktrees: the linked worktrees under `.cland/worktrees/`, each named by its item. */
+export function listTaskWorktrees(root: string): Array<Worktree & { item: string }> {
+  if (!gitProject(root)) return [];
+  const dir = worktreesPath(root);
+  return worktrees(root).flatMap((w) => {
+    const parent = resolve(w.path, '..');
+    const name = w.path.slice(parent.length + 1);
+    return samePath(parent, dir) && /^T-\d+$/.test(name) ? [{ ...w, item: name }] : [];
+  });
+}
+
+/** The commits on `branch` that `base` does not have, newest first, as `<short sha> <subject>`. */
+export function commitsAhead(root: string, branch: string, base: string | null): string[] {
+  if (ref(root, `refs/heads/${branch}`) === null) return [];
+  const range = base !== null && ref(root, `refs/heads/${base}`) !== null ? [`refs/heads/${base}..refs/heads/${branch}`] : [`refs/heads/${branch}`];
+  return territoryGit(root, ['log', '--format=%h %s', ...range, '--']).split('\n').filter(Boolean);
+}
+
+export type TaskWorktree = { item: string; branch: string; path: string; base: string | null; createdBranch: boolean; createdWorktree: boolean };
+
+/**
+ * The item's task branch and worktree, made when missing (decision D7), reused when present: `branch` is the item's
+ * own (its `branch` field), else `t/<id>-<slug>`, started at `taskBase`'s tip. The worktree is linked to the
+ * project's own repository (decision D3). Under the territory lock; throws a reason meant for the asker.
+ */
+export function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }): TaskWorktree {
+  if (!hasTerritory(root)) throw new Error('the project has no territory (run cland init)');
+  if (!/^T-\d+$/.test(item.id)) throw new Error(`not an item id: ${item.id}`);
+  return withTerritoryLock(root, () => {
+    const path = taskWorktreePath(root, item.id);
+    const link = symlinkOnPath(root, path);
+    if (link !== null) throw new Error(`worktree: refusing symlink ${link}`);
+    let registered = worktrees(root).find((w) => samePath(w.path, path));
+    // a worktree whose folder was deleted by hand: Git forgets it before the path is used again
+    if (registered && !existsSync(path)) {
+      territoryGit(root, ['worktree', 'prune']);
+      registered = undefined;
+    }
+    if (registered) {
+      if (registered.branch === null) throw new Error(`${path} is a worktree on a detached HEAD: check out its task branch there first`);
+      if (item.branch !== null && item.branch !== registered.branch) throw new Error(`${path} holds branch ${registered.branch}, but ${item.id} names ${item.branch}`);
+      return { item: item.id, branch: registered.branch, path, base: null, createdBranch: false, createdWorktree: false };
+    }
+    if (existsSync(path)) throw new Error(`${path} exists and is not a worktree of this repository: move it aside`);
+    const branch = item.branch ?? `t/${item.id}${item.slug ? `-${item.slug}` : ''}`;
+    try {
+      territoryGit(root, ['check-ref-format', '--branch', branch]);
+    } catch {
+      throw new Error(`${JSON.stringify(branch)} is not a valid branch name`);
+    }
+    mkdirSync(worktreesPath(root), { recursive: true });
+    if (ref(root, `refs/heads/${branch}`) !== null) {
+      territoryGit(root, ['worktree', 'add', path, branch]);
+      return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true };
+    }
+    const base = taskBase(root);
+    if (base === null) throw new Error('neither dev nor main has a commit to start the task branch from');
+    territoryGit(root, ['worktree', 'add', '--no-track', '-b', branch, path, `refs/heads/${base}`]);
+    return { item: item.id, branch, path, base, createdBranch: true, createdWorktree: true };
+  });
+}
+
+/** Remove a task worktree and its branch (the human's prune). Git refuses a worktree with changes. Under the lock. */
+export function removeTaskWorktree(root: string, item: string): { path: string; branch: string | null } {
+  return withTerritoryLock(root, () => {
+    const path = taskWorktreePath(root, item);
+    const found = worktrees(root).find((w) => samePath(w.path, path));
+    if (!found) throw new Error(`${item} has no worktree`);
+    territoryGit(root, ['worktree', 'remove', path]);
+    if (found.branch !== null && ref(root, `refs/heads/${found.branch}`) !== null) territoryGit(root, ['branch', '-D', found.branch]);
+    return { path, branch: found.branch };
+  });
 }

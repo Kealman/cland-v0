@@ -426,7 +426,12 @@ export type ClientRequest =
   /** Dismiss one notification: `Inbox`. Asks and approvals are not dismissable. */
   | { type: 'inbox.dismiss'; id: string; notification: string }
   /** Dismiss every notification: `Inbox`. */
-  | { type: 'inbox.dismiss_all'; id: string };
+  | { type: 'inbox.dismiss_all'; id: string }
+  /** The task worktrees with their items and the sessions inside (T-58): `{ worktrees: WorktreeEntry[] }`. */
+  | { type: 'worktree.list'; id: string }
+  /** The human's prune: without items (or `dryRun`), the closed items' worktrees `{ candidates }`; with items, each
+   *  one's worktree and branch removed: `{ removed, failed }`. Refused from a session's shell. */
+  | { type: 'worktree.prune'; id: string; items?: string[]; dryRun?: boolean };
 
 /** A session and its role as the role frames answer. */
 export type RoleHolder = { name: string; role: string | null; label: string; live: boolean };
@@ -493,6 +498,8 @@ export type HarnessProcessView = {
   label?: string;
   model: string | null;
   cwd: string;
+  /** The item whose task worktree the session was launched in (`session.launch` with an item), else null. */
+  item: string | null;
   pid: number | null;
   /** The harness's own handle for the session (Claude Code: the background session id). */
   harnessId: string | null;
@@ -529,6 +536,10 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return true;
     case 'inbox.dismiss':
       return typeof f.notification === 'string';
+    case 'worktree.list':
+      return true;
+    case 'worktree.prune':
+      return (f.items === undefined || (Array.isArray(f.items) && f.items.every((i) => typeof i === 'string'))) && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'topic.answer':
       return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string');
     case 'role.set':

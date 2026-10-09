@@ -6,6 +6,9 @@
 //            identity; the settings add the cland hooks and the variables the mod reads. Both are passed inline:
 //            nothing is written into the project. The hub's secret is never on the command line — the spoke,
 //            the hooks and the mod read the project's `hub.json`.
+//            A session launched with an item (its cwd is the item's task worktree) also gets a `WorktreeCreate`
+//            hook, `cland hook worktree-create`, which refuses every worktree the harness would make and names the
+//            session's own (T-20 decision D8): its sub-agents work there too.
 //   attach   `claude attach <background id>`, the harness's own.
 //   inject   the cland mod (`hub/mod/cland`): it keeps a bridge to the hub (`cland hook bridge`), submits each
 //            message with `$.prompt.submit` (which waits for the session to be idle) and confirms it with
@@ -222,8 +225,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return [this.#host.node, this.#host.cli, 'hook', event, '--session', name, '--launch', launch, '--hub-file', this.#host.discoveryFile].map(sq).join(' ');
   }
 
-  /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. */
-  #sessionFlags(name: string, role: string | null, sessionId: string): string[] {
+  /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. `worktree`:
+   *  the session's own task worktree, where the harness's own worktrees are refused. */
+  #sessionFlags(name: string, role: string | null, sessionId: string, worktree: string | null): string[] {
     const spokeEnv: Record<string, string> = {
       CLAND_HUB_FILE: this.#host.discoveryFile,
       CLAND_SESSION_ID: sessionId,
@@ -238,6 +242,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       // async: a hook never holds the session up; each signal carries its time, so order is restored at the hub
       hooks[hookEvent] = [{ hooks: [{ type: 'command', command: this.#hookCommand(event, name, sessionId), async: true, timeout: 10 }] }];
     }
+    // not async: its exit status is the refusal
+    if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, sessionId)} --worktree ${sq(worktree)}`, timeout: 10 }] }];
     const settings = {
       hooks,
       // what the mod reads to find its session and the hub
@@ -252,6 +258,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null): Promise<HarnessProcess> {
+    const worktree = p.item ? p.cwd : null;
     // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
     // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
     const args = [
@@ -261,7 +268,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       p.name,
       ...(p.model ? ['--model', p.model] : []),
       ...(effort ? ['--effort', effort] : []),
-      ...this.#sessionFlags(p.name, p.role, p.sessionId),
+      ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree),
     ];
     const r = await this.#run(args, p.cwd);
     if (r.code !== 0) throw new Error(`claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}`);
@@ -285,7 +292,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, request.effort ?? null);
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -470,7 +477,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       return { found: true, process, state: stateOfAgent(entry) };
     }
     if (!options.relaunch) return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
-    const process = await this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true);
+    const process = await this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true);
     return { found: true, process, state: 'unknown' };
   }
 

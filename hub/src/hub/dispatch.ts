@@ -31,7 +31,7 @@ import {
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
-import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
+import { answerTask, isTaskRequest, sessionActor, type TaskRequest } from '../tracker/requests.ts';
 import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
@@ -40,6 +40,8 @@ import { handOver, roleState, settleAllClaims, type HandoverContext } from '../r
 import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
+import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
+import type { Actor } from '../tracker/tracker.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -81,7 +83,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['artifact.list', 'hub.status', 'inbox.list', 'role.list']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -97,10 +99,13 @@ export class Dispatcher {
   readonly #log: LogFn;
   /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
   #sessions: Sessions | undefined;
+  /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
+  readonly #worktrees: TaskWorktrees | null;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
+    this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
     // a role moved to a name with no session yet: its claims follow at that session's hello; and what a hub that
     // died between a move's commit and its claims left pending is finished now
     options.core.onSessionHello((name, sessionId) => this.#settleClaims({ name, sessionId }));
@@ -121,6 +126,25 @@ export class Dispatcher {
     this.#options.core.inbox.useProcesses(sessions ? () => sessions.list() : null);
   }
 
+  /** Where the sessions stand: the connected spokes' cwds and the running launched harnesses'. */
+  #sessionCwds(): SessionCwd[] {
+    const out: SessionCwd[] = this.#options.core.presence().filter((p) => typeof p.cwd === 'string' && p.cwd !== '').map((p) => ({ name: p.name, cwd: p.cwd }));
+    for (const p of this.#sessions?.list() ?? []) if (p.status === 'running') out.push({ name: p.name, cwd: p.cwd });
+    return out;
+  }
+
+  /**
+   * One task request's result. A claim of an open task also makes or reuses its branch and worktree (decision D7):
+   * the result carries the worktree, or the reason there is none; the claim stands either way.
+   */
+  #answerTask(frame: TaskRequest, actor: Actor | 'client'): HubFrame {
+    const result = answerTask(this.#options.tracker, frame, actor);
+    this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
+    if (frame.type !== 'task.claim' || frame.release === true || result.type !== 'result' || !result.ok || !this.#worktrees) return result;
+    const value = result.value as { id: string; claim: { session: string } | null };
+    return { ...result, value: { ...value, ...this.#worktrees.afterClaim(value.id, value.claim?.session ?? null) } };
+  }
+
   /** What a handover and `role.state` read beyond the core (#31): the tracker's claims, the launched sessions. */
   #handover(): HandoverContext {
     return {
@@ -128,6 +152,12 @@ export class Dispatcher {
       tracker: this.#options.tracker,
       launched: (name) => this.#sessions?.list().find((p) => p.name === name && p.status === 'running') ?? null,
     };
+  }
+
+  /** The task worktrees, or the error a hub without a tracker answers `worktree.*` with. */
+  #needWorktrees(): TaskWorktrees {
+    if (!this.#worktrees) throw new Error('this hub has no tracker: it was started without a project (`cland hub start` serves one)');
+    return this.#worktrees;
   }
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
@@ -361,7 +391,7 @@ export class Dispatcher {
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
     const session = (frame: Parameters<typeof answerSession>[1]) =>
-      void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }).then((result) => {
+      void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }, this.#worktrees ?? undefined).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);
       });
@@ -558,6 +588,23 @@ export class Dispatcher {
             return answer(core.inbox.dismiss(frame.notification));
           case 'inbox.dismiss_all':
             return answer(core.inbox.dismissAll());
+          case 'worktree.list':
+            return answer({ worktrees: this.#needWorktrees().list() });
+          case 'worktree.prune': {
+            // the human's (a session's shell is refused before this): the closed items' worktrees, removed as named
+            const worktrees = this.#needWorktrees();
+            if (frame.dryRun === true || !frame.items?.length) return answer({ candidates: worktrees.prunable() });
+            const removed = [];
+            const failed = [];
+            for (const item of frame.items) {
+              try {
+                removed.push(worktrees.remove(item));
+              } catch (err) {
+                failed.push({ item, error: err instanceof Error ? err.message : String(err) });
+              }
+            }
+            return answer({ removed, failed });
+          }
           case 'subscribe':
             if (!unsubscribe) {
               const fromCore = core.subscribe((event) => {
@@ -617,11 +664,7 @@ export class Dispatcher {
             if (!this.#permitted(connection, frame, peer)) return;
           }
           // a spoke always acts as its own session
-          if (isTaskRequest(frame)) {
-            const result = answerTask(this.#options.tracker, frame, sessionActor(connection, UNKNOWN_SESSION));
-            this.#bindAssignee(frame, result);
-            return peer.send(result);
-          }
+          if (isTaskRequest(frame)) return peer.send(this.#answerTask(frame, sessionActor(connection, UNKNOWN_SESSION)));
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
           return spokeRequest(frame, connection.name);
@@ -634,9 +677,7 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           if (!this.#permitted(as, frame, peer)) return;
-          const result = answerTask(this.#options.tracker, frame, sessionActor(as, UNKNOWN_SESSION));
-          this.#bindAssignee(frame, result);
-          return peer.send(result);
+          return peer.send(this.#answerTask(frame, sessionActor(as, UNKNOWN_SESSION)));
         }
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
@@ -659,9 +700,7 @@ export class Dispatcher {
         if (isTaskRequest(frame)) {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
-          const result = answerTask(this.#options.tracker, frame, 'client');
-          this.#bindAssignee(frame, result);
-          return peer.send(result);
+          return peer.send(this.#answerTask(frame, 'client'));
         }
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {

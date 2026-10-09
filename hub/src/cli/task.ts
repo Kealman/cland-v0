@@ -19,6 +19,8 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--body t | --body-f
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task claim <id> [--release] [--force]
+                  claiming an open task in a project with a territory makes (or reuses) its branch
+                  t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
 ${IMPORT_USAGE}                  every task command takes --json, and --as <name> [--role r] (default: "human"). In a
                   launched session's shell ($CLAND_SESSION_ID / $CLAND_SESSION_NAME) the call is always
                   that session's, checked against its role as its own tools are; --as cannot change it.
@@ -191,7 +193,9 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
       return listText(value.items as ItemSummary[]);
     case 'claim': {
       const claim = value.claim as Claim | null;
-      return claim ? `${String(value.id)} claimed by ${claimText(claim)}\n` : `${String(value.id)} released\n`;
+      const worktree = value.worktree as { path: string; branch: string; createdWorktree: boolean } | null | undefined;
+      const where = worktree ? `  worktree  ${worktree.path} on ${worktree.branch}${worktree.createdWorktree ? ' (created)' : ''}\n` : typeof value.reason === 'string' ? `  worktree  none: ${value.reason}\n` : '';
+      return claim ? `${String(value.id)} claimed by ${claimText(claim)}\n${where}` : `${String(value.id)} released\n`;
     }
     case 'comment': {
       const commit = value.commit as { note: string } | undefined;

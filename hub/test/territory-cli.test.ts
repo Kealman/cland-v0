@@ -229,6 +229,12 @@ test('doctor checks the territory and names corrupted origin, missing dev, HEAD 
     return JSON.parse(r.stdout).checks.find((c: { name: string }) => c.name === 'territory') as { verdict: string; detail: string; fix?: string };
   };
   assert.equal((await check()).verdict, 'ok');
+  // the task branches' base override (T-58) must name a local branch
+  git(territory, 'config', 'cland.taskBase', 'main');
+  assert.equal((await check()).verdict, 'ok');
+  git(territory, 'config', 'cland.taskBase', 'gone');
+  assert.match((await check()).detail, /cland\.taskBase names gone, which has no local branch/);
+  git(territory, 'config', '--unset', 'cland.taskBase');
   await chmod(join(territory, 'hooks', 'update'), 0o641);
   assert.match((await check()).detail, /not executable/);
   await chmod(join(territory, 'hooks', 'update'), 0o755);

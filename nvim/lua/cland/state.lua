@@ -152,8 +152,14 @@ function M.sessions()
       seen[p.name] = true
     end
   end
+  local launched_for = {}
+  for _, p in ipairs(M.S.processes) do
+    if type(p.item) == 'string' and p.item ~= '' then
+      launched_for[p.name] = p.item
+    end
+  end
   for _, s in ipairs(out) do
-    s.item = M.item_of_session(s.name)
+    s.item = M.item_of_session(s.name) or launched_for[s.name]
   end
   return out
 end

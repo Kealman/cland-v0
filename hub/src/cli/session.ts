@@ -4,9 +4,10 @@ import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { withRole } from '../names.ts';
 
-export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--effort e] [--cwd dir]
+export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--effort e] [--cwd dir | --item T-<n>]
                   launch a harness session through the hub; a role's launch defaults
-                  (.cland/roles.toml) fill the harness, model and effort not given
+                  (.cland/roles.toml) fill the harness, model and effort not given; --item (an
+                  Implementer's) starts it in the item's task worktree and gives it the item's claim
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
@@ -32,7 +33,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     return 1;
   }
   const json = rest.includes('--json');
-  const valueFlags = new Set(['--role', '--model', '--harness', '--cwd', '--effort']);
+  const valueFlags = new Set(['--role', '--model', '--harness', '--cwd', '--effort', '--item']);
   const name = rest.find((a, i) => !a.startsWith('--') && !valueFlags.has(rest[i - 1] ?? ''));
   const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
@@ -43,12 +44,14 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       const harness = flag(rest, '--harness');
       const dir = flag(rest, '--cwd');
       const effort = flag(rest, '--effort');
+      const item = flag(rest, '--item');
       const v = (await askHubFrame(
         d,
-        { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(dir ? { cwd: dir } : {}), ...(effort ? { effort } : {}) },
+        { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(dir ? { cwd: dir } : {}), ...(effort ? { effort } : {}), ...(item ? { item } : {}) },
         60_000,
-      )) as { process: HarnessProcessView };
-      out(v, `launched ${line(v.process)}`);
+      )) as { process: HarnessProcessView; claim?: { session: string } | null; worktree?: { path: string; branch: string } | null; reason?: string };
+      const where = item ? `\n    ${item}: ${v.worktree ? `worktree ${v.worktree.path} on ${v.worktree.branch}` : (v.reason ?? 'no worktree')}; claimed by ${v.claim?.session ?? '-'}` : '';
+      out(v, `launched ${line(v.process)}${where}`);
       return 0;
     }
     case 'list': {
