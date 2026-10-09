@@ -11,13 +11,15 @@
 #                           approval        never (the default: the session never stops to ask the human; a command
 #                                           its sandbox refuses just fails) | on-request | untrusted
 #                           sandbox         read-only | workspace-write (the session's directory and the temp dir)
-#                                           | danger-full-access (no sandbox); absent = the harness's own
+#                                           | danger-full-access (no sandbox) | "" (the harness's own)
 #                           writable_roots  with workspace-write: more writable directories, relative to the
 #                                           project root. One that holds .git is writable with it, and with the
 #                                           session's own worktree git directory, so the session can commit.
 #                           network         none (the default) | local (Unix sockets under .cland/, the session's
 #                                           directory and the temp dir, and loopback: the hub's socket, `cland`,
 #                                           tests that start hubs; every other host refused) | full
+#                         A key left out takes the role's built-in value (the ones written below), so a
+#                         launch table without these keys is still sandboxed; write "" for none.
 #                         A session that reaches the hub's socket can act as the human there (`cland topic
 #                         answer`): `network = "local"` trusts the role with that. See docs/review-and-qa.md.
 #   [<role>.permissions]  tools: the spoke tools the role may use, enforced by the hub on every call. A grant is

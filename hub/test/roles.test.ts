@@ -210,23 +210,29 @@ test('the holder leaving raises the vacancy; a launched Coordinator gets its cla
 
 test('roles.toml: approval, sandbox, writable_roots and network of a launch are parsed, defaulted and checked (T-48)', () => {
   const launch = (lines: string) => parseRoles(`[qa.launch]\nharness = "codex"\n${lines}\n`).get('qa')?.launch;
-  // nothing given: the adapter's default approval and the harness's own sandbox
-  assert.deepEqual(launch(''), { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
-  assert.deepEqual(launch('approval = "on-request"\nsandbox = "workspace-write"\nwritable_roots = [".", "../shared"]\nnetwork = "local"'), {
-    harness: 'codex',
-    model: null,
-    effort: null,
-    approval: 'on-request',
-    sandbox: { mode: 'workspace-write', writableRoots: ['.', '../shared'], network: 'local' },
-  });
-  // the network is closed unless the file opens it; with no sandbox there is none to close
-  assert.deepEqual(launch('sandbox = "read-only"')?.sandbox, { mode: 'read-only', writableRoots: [], network: 'none' });
+  // nothing given (a roles.toml written before these keys existed): the role's built-in approval and sandbox, not none
+  const qaSandbox = { mode: 'workspace-write', writableRoots: [], network: 'local' };
+  assert.deepEqual(launch(''), { harness: 'codex', model: null, effort: null, approval: 'never', sandbox: qaSandbox });
+  const implementer = parseRoles('[implementer.launch]\nharness = "codex"\nmodel = "gpt-6.1-sol"\n').get('implementer')?.launch;
+  assert.deepEqual([implementer?.approval, implementer?.sandbox], ['never', { mode: 'workspace-write', writableRoots: ['.'], network: 'local' }]);
+  // the Coordinator has none built in
+  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
+  // only what is written overrides, key by key
+  assert.deepEqual(launch('approval = "on-request"'), { harness: 'codex', model: null, effort: null, approval: 'on-request', sandbox: qaSandbox });
+  assert.deepEqual(launch('network = "full"')?.sandbox, { ...qaSandbox, network: 'full' });
+  assert.deepEqual(launch('writable_roots = [".", "../shared"]')?.sandbox, { ...qaSandbox, writableRoots: ['.', '../shared'] });
+  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nwritable_roots = []\n').get('implementer')?.launch.sandbox, { mode: 'workspace-write', writableRoots: [], network: 'local' });
+  // "" is the adapter's default approval and the harness's own sandbox
+  assert.deepEqual(launch('approval = ""\nsandbox = ""'), { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
+  // a written mode keeps what still fits it: no roots outside workspace-write, nothing closed without a sandbox
+  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "read-only"\n').get('implementer')?.launch.sandbox, { mode: 'read-only', writableRoots: [], network: 'local' });
+  assert.deepEqual(launch('sandbox = "read-only"\nnetwork = "none"')?.sandbox, { mode: 'read-only', writableRoots: [], network: 'none' });
   assert.deepEqual(launch('sandbox = "danger-full-access"')?.sandbox, { mode: 'danger-full-access', writableRoots: [], network: 'full' });
 
   assert.throws(() => launch('approval = "always"'), /qa\.launch\.approval must be one of never, on-request, untrusted/);
   assert.throws(() => launch('sandbox = "open"'), /qa\.launch\.sandbox must be one of read-only, workspace-write, danger-full-access/);
   assert.throws(() => launch('sandbox = "read-only"\nnetwork = "lan"'), /qa\.launch\.network must be one of none, local, full/);
-  assert.throws(() => launch('network = "local"'), /qa\.launch\.writable_roots and qa\.launch\.network need qa\.launch\.sandbox/);
+  assert.throws(() => launch('sandbox = ""\nnetwork = "local"'), /qa\.launch\.writable_roots and qa\.launch\.network need qa\.launch\.sandbox/);
   assert.throws(() => launch('sandbox = "read-only"\nwritable_roots = ["."]'), /qa\.launch\.writable_roots needs sandbox = "workspace-write"/);
   assert.throws(() => launch('sandbox = "danger-full-access"\nnetwork = "none"'), /nothing is closed there/);
 

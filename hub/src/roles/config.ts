@@ -60,18 +60,28 @@ const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string
   return s as T | null;
 };
 
-/** `sandbox`, with `writable_roots` and `network` beside it: both need a sandbox to belong to. */
-const sandboxOf = (launch: Record<string, unknown>, where: string): Sandbox | null => {
-  const mode = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`);
-  const writableRoots = strings(launch.writable_roots, `${where}.writable_roots`);
+/**
+ * `sandbox`, `writable_roots` and `network`. A key the table leaves out takes the role's built-in value (`base`), so
+ * a `[<role>.launch]` written before these keys existed still gets its role's sandbox; `sandbox = ""` is the
+ * harness's own. Inherited roots and network follow the mode that was written: roots only with `workspace-write`,
+ * nothing closed with `danger-full-access`.
+ */
+const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox | null): Sandbox | null => {
+  const written = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`);
+  const roots = launch.writable_roots === undefined ? null : strings(launch.writable_roots, `${where}.writable_roots`);
   const network = oneOf(launch.network, SANDBOX_NETWORKS, `${where}.network`);
+  const mode = launch.sandbox === undefined ? (base?.mode ?? null) : written;
   if (mode === null) {
-    if (writableRoots.length || network !== null) throw new Error(`${where}.writable_roots and ${where}.network need ${where}.sandbox`);
+    if (roots?.length || network !== null) throw new Error(`${where}.writable_roots and ${where}.network need ${where}.sandbox`);
     return null;
   }
-  if (writableRoots.length && mode !== 'workspace-write') throw new Error(`${where}.writable_roots needs sandbox = "workspace-write"`);
+  if (roots?.length && mode !== 'workspace-write') throw new Error(`${where}.writable_roots needs sandbox = "workspace-write"`);
   if (mode === 'danger-full-access' && network !== null && network !== 'full') throw new Error(`${where}.network cannot be ${network} with sandbox = "danger-full-access": nothing is closed there`);
-  return { mode, writableRoots, network: network ?? (mode === 'danger-full-access' ? 'full' : 'none') };
+  return {
+    mode,
+    writableRoots: mode === 'workspace-write' ? (roots ?? base?.writableRoots ?? []) : [],
+    network: mode === 'danger-full-access' ? 'full' : (network ?? base?.network ?? 'none'),
+  };
 };
 
 /** A role's grants: each one checked against the table's tools and scopes; absent → the built-in list. */
@@ -84,6 +94,9 @@ const grants = (v: unknown, role: string): string[] => {
   }
   return [...new Set(list)];
 };
+
+/** The built-in definitions once they are parsed (null while they are): what a launch table's missing keys take. */
+let BUILT_IN: RolesConfig | null = null;
 
 /** Parse the file's text. Throws with the place that is wrong; a role the file leaves out takes its default. */
 export function parseRoles(text: string, fallback: RolesConfig | null = null): RolesConfig {
@@ -101,6 +114,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
     if (!isRecord(t)) throw new Error(`[${role}] must be a table`);
     const launch = t.launch ?? {};
     const permissions = t.permissions ?? {};
+    const builtin = BUILT_IN?.get(role)?.launch ?? null;
     if (!isRecord(launch)) throw new Error(`[${role}.launch] must be a table`);
     if (!isRecord(permissions)) throw new Error(`[${role}.permissions] must be a table`);
     if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${role}.exclusive must be true or false`);
@@ -115,8 +129,9 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
         harness,
         model: optString(launch.model, `${role}.launch.model`),
         effort: optString(launch.effort, `${role}.launch.effort`),
-        approval: oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
-        sandbox: sandboxOf(launch, `${role}.launch`),
+        // a key left out is the role's built-in value; `""` is the adapter's or the harness's own
+        approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
+        sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null),
       },
       permissions: { tools: grants(permissions.tools, role) },
     });
@@ -126,6 +141,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
 
 /** The built-in defaults: the file cland writes. */
 export const DEFAULTS: RolesConfig = parseRoles(DEFAULT_ROLES_TOML, new Map());
+BUILT_IN = DEFAULTS;
 
 /** A fixed set of definitions, for a hub with no project file. */
 export const fixedRoles = (config: RolesConfig = DEFAULTS): RolesSource => ({ get: () => config });
