@@ -5,7 +5,6 @@
 --
 -- The panel (␣i): a tree of epics and items by `parent`, orphans at the root, ordered by id; filters all,
 -- in work, needs you, done and map, set with 1–5 or cycled with f / F.
-local api = vim.api
 local state = require('cland.state')
 
 local M = {}
@@ -428,13 +427,6 @@ function M.keys(buf)
   map('F', function()
     M.cycle(-1)
   end, 'previous items filter')
-end
-
---- Whether the items are on screen (the panel, the board, an item view): they refresh at least each second.
-function M.visible()
-  local layout = require('cland.layout')
-  local v = state.S.ui.view
-  return (layout.win and layout.win.left and api.nvim_win_is_valid(layout.win.left)) or v.kind == 'board' or v.kind == 'item'
 end
 
 return M
