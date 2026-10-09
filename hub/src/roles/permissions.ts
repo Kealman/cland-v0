@@ -46,6 +46,8 @@ export const KNOWN_TOOLS: readonly string[] = [
   'hub.stop',
   'role.handover',
   'merge',
+  'release',
+  'sync',
   'artifact.create',
 ];
 
@@ -78,6 +80,8 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
     'hub.stop',
     'role.handover',
     'merge',
+  'release',
+  'sync',
     'artifact.create',
     'rename',
     ...READS,

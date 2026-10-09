@@ -1,6 +1,8 @@
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
 import type { LogFn } from '../log.ts';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { MergeError } from '../merge.ts';
 import type { IndexedVerdict } from '../tracker/index-db.ts';
 import { normalizeId } from '../tracker/item.ts';
@@ -75,7 +77,10 @@ export class TaskMerges {
       let landingFailure: { step: string; error: string } | undefined;
       try {
         await withTerritoryLockAsync(this.tracker.root, async () => {
-          const prior = resumed(() => this.tracker.mergeReceipt(id));
+          const prior = resumed(() => {
+            if (existsSync(join(this.tracker.root, '.cland', 'sync.tmp'))) throw new MergeError('merge-recovery', `finish pending cland sync before merging ${id}`);
+            return this.tracker.mergeReceipt(id);
+          });
           const existing = prior ? await landedTask(this.tracker.root, id, prior, resumed) : null;
           if (prior && existing) {
             resumed(() => {

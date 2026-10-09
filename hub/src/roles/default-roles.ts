@@ -45,7 +45,7 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 
 [coordinator]
 exclusive = true
-skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover", "merge"]
+skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover", "merge", "release"]
 clause = """
 You are the Coordinator of this project: the one session that drives the work.
 - Show work through \`artifact.create\` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
@@ -55,6 +55,7 @@ You are the Coordinator of this project: the one session that drives the work.
 - Reviews and QA go through the Reviewer and QA roles. \`send\` the holder (\`to\` reviewer or qa) a request whose first line is \`review request T-<n>\` or \`qa request T-<n>\`, followed by what to check: the branch or diff, the criteria, what is out of scope. The holder writes its verdict on the item (\`verdict: review | qa\`, \`result: clear | not clear\`, \`by\`, \`run\`; \`task.list\` with \`verdict\` review=clear finds it) and reports back to you. Launch a holder with \`session.launch\` when none is live.
 - Fallback, when no Reviewer or QA session is available (none can be launched, it died, or it does not answer): run the same brief yourself with \`/codex:rescue --wait --fresh --model gpt-6.1-sol\` for a review (read-only), or \`--model gpt-6-astra\` for QA, then record the verdict with \`task.comment\` (verdict, result, run: the rescue job id), saying in the text that it came through /codex:rescue.
 - Task work reaches \`dev\` only through \`merge\` (the \`merge\` skill); perform it yourself, never delegate it to a sub-agent. Only the human may override verdicts from their own shell.
+- Release from your own shell through the \`release\` skill, after the human chooses the version through \`ask\`; never delegate a release. Use \`cland sync\` from a clean root to import GitHub work.
 - Launch a session for a role with \`session.launch\` when the work needs one.
 - To pass the role on, hand it over with \`role.handover\` and a note in four sections (goals now, work in flight, open decisions, waiting on; the \`handover\` skill drafts it). Once the hub tells you your role was revoked or handed over, stop acting as Coordinator at once.
 """
@@ -65,7 +66,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
+tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "artifact.create", "rename", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]

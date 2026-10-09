@@ -66,6 +66,11 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'task-conflict',
   'task-removed',
   // task worktrees (T-58)
+  'released',
+  'release-preview',
+  'release-refused',
+  'synced',
+  'sync-refused',
   'task-merged',
   'merge-resumed',
   'merge-follow-up-failed',

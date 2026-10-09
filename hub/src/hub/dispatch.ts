@@ -41,6 +41,8 @@ import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
 import { TaskMerges } from './merge.ts';
+import { Releases } from './releases.ts';
+import { ReleaseError } from '../release.ts';
 import { MergeError } from '../merge.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
 import { RequestGuard, type GuardOptions } from './budget.ts';
@@ -106,6 +108,7 @@ export class Dispatcher {
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
   readonly #worktrees: TaskWorktrees | null;
   readonly #merges: TaskMerges | null;
+  readonly #releases: Releases | null;
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
 
@@ -114,6 +117,7 @@ export class Dispatcher {
     this.#log = options.log ?? (() => {});
     this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
     this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log) : null;
+    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.core.store) : null;
     this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(() => this.#guard.changed());
@@ -174,6 +178,7 @@ export class Dispatcher {
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof ReleaseError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}) };
     if (err instanceof MergeError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}), ...(err.recovery ? { recovery: err.recovery } : {}) };
     if (err instanceof ArtifactError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };
@@ -790,6 +795,29 @@ export class Dispatcher {
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
           try { peer.send({ type: 'result', id: String(frame.id), ok: true, value: this.#artifact(frame as ArtifactCreate | ArtifactList, caller) }); }
           catch (err) { peer.send(Dispatcher.#failure(String(frame.id), err)); }
+          return;
+        }
+        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync')) {
+          const tool = frame.type;
+          if (caller && (client !== 'cli' || caller.role !== 'coordinator')) return this.#refuse(caller, frame, peer, tool, `${tool} belongs to the human or the Coordinator from its own shell`);
+          if (!this.#releases) return peer.send(Dispatcher.#failure(frame.id, new ReleaseError('release-state', 'this hub has no tracker')));
+          const resumed = <T,>(write: () => T): T => this.#guard.measure(tool, client, write, 'resumed');
+          const authorize = () => {
+            if (!caller) return;
+            const now = this.#asSession(frame);
+            const grants = core.roles?.get().get(now?.role ?? '')?.permissions.tools;
+            const decision = decide(now?.role ?? null, grants, { tool });
+            if (!now || now.role !== 'coordinator' || !decision.ok) {
+              const reason = decision.ok ? `the calling session no longer holds Coordinator` : decision.reason;
+              if (now) this.#refuse(now, frame, peer, tool, reason, '', false);
+              throw new ToolForbidden(now?.role ?? null, tool, reason);
+            }
+          };
+          const operation = frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize) : this.#releases.sync(resumed, authorize);
+          later(tool, operation.then(
+            (value): HubFrame => ({ type: 'result', id: frame.id, ok: true, value }),
+            (err: unknown) => Dispatcher.#failure(frame.id, err),
+          ));
           return;
         }
         if (frame.type === 'merge' && isClientRequest(frame)) return merge(frame as import('../protocol.ts').MergeRequest, caller);
