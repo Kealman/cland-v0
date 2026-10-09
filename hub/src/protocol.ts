@@ -42,6 +42,14 @@ export type Presence = {
 export type SessionState = 'idle' | 'busy' | 'waiting for human' | 'waiting for approval' | 'unknown';
 export const SESSION_STATES: readonly SessionState[] = ['idle', 'busy', 'waiting for human', 'waiting for approval', 'unknown'];
 
+export type ArtifactKind = 'prompt' | 'note' | 'page' | 'diagram' | 'file';
+export type Artifact = {
+  id: string; title: string; kind: ArtifactKind; path: string; creator: string; time: string;
+  topic: string; status: 'draft' | 'sent' | 'shared' | 'archived';
+};
+export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string };
+export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string };
+
 export type Message = {
   id: string;
   from: string;
@@ -63,6 +71,7 @@ export type Message = {
   detail?: Record<string, unknown>;
   /** The human's answer to an ask (#33): the ask's message id. */
   answerTo?: string;
+  artifact?: Artifact;
 };
 
 /** Why hygiene refused a send (spec 4.2): the size cap, the session's rate limit, or the pair's loop breaker
@@ -221,6 +230,8 @@ export type Hello = {
 };
 
 export type SpokeRequest =
+  | ArtifactCreate
+  | ArtifactList
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
   | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string }
   | { type: 'who'; id: string }
@@ -259,7 +270,7 @@ export type HubFrame =
   | { type: 'result'; id: string; ok: true; value: unknown }
   /** A failed request. `code: 'forbidden'`: the permission table refused it (spec 4.4): `permission` is the one
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
-  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden' | 'note-incomplete' | 'invalid-cwd'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
+  | { type: 'result'; id: string; ok: false; error: string; code?: 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
   | { type: 'error'; code: RefusalCode; message: string }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
@@ -297,6 +308,9 @@ export function isAck(f: Record<string, unknown>): f is Ack {
 export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'artifact.create':
+    case 'artifact.list':
+      return true;
     case 'who':
     case 'ping':
       return true;
@@ -365,6 +379,8 @@ export type ClientHello = {
 };
 
 export type ClientRequest =
+  | ArtifactCreate
+  | ArtifactList
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'hub.status'; id: string }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
@@ -497,6 +513,9 @@ export function isClientHello(f: Record<string, unknown>): f is ClientHello {
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'artifact.create':
+    case 'artifact.list':
+      return true;
     case 'hub.status':
     case 'hub.stop':
     case 'topic.list':

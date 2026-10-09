@@ -193,6 +193,7 @@ export function envelope(message: Message, topic: TopicRef | null): string {
     ['msg_id', message.id],
     ...(message.replyTo !== undefined ? ([['reply_to', message.replyTo]] as Array<[string, string]>) : []),
     ['ts', message.ts],
+    ...(message.artifact ? [['artifact_id', message.artifact.id], ['artifact_path', message.artifact.path]] as Array<[string, string]> : []),
     ...(topic ? ([['topic', topic.id], ['topic_title', topic.title]] as Array<[string, string]>) : message.topic !== undefined ? ([['topic', message.topic]] as Array<[string, string]>) : []),
   ];
   const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');

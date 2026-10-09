@@ -5,6 +5,7 @@ import {
   PROTOCOL_VERSION,
   REPLACED_CLOSE_CODE,
   UPDATE_HINT,
+  type Artifact,
   type HandoverNote,
   type Hello,
   type HubEvent,
@@ -1232,7 +1233,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -1276,6 +1277,7 @@ export class HubCore {
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
       ...(answerTo !== undefined ? { answerTo } : {}),
+      ...(artifact ? { artifact } : {}),
     };
     this.#store.record(
       message,
@@ -1306,8 +1308,8 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
-    const sender = this.#live.get(from);
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+    const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
     const toHuman = to.length === 0;
     const topic = this.#topicOrThrow(topicId ?? (toHuman ? GENERAL.id : AGENTS.id));
@@ -1365,6 +1367,7 @@ export class HubCore {
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
+      ...(artifact ? { artifact } : {}),
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
     if (sessions.size > 0 || toHuman) {

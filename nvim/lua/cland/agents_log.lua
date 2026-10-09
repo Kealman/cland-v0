@@ -80,6 +80,13 @@ function M.buffer()
   vim.keymap.set('n', 'r', function()
     M.reply_at(api.nvim_win_get_cursor(0)[1])
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: reply to the sender of this message' })
+  vim.keymap.set('n', '<CR>', function()
+    local m = M.at(api.nvim_win_get_cursor(0)[1])
+    if m and m.artifact then require('cland.artifacts').open(m.artifact) end
+  end, { buffer = b, desc = 'cland: open artifact' })
+  vim.keymap.set('n', 'ga', function()
+    require('cland.layout').show({ kind = 'artifacts', id = M.TOPIC }, { insert = false })
+  end, { buffer = b, desc = 'cland: topic artifacts' })
   M.buf = b
   M.render()
   return b
@@ -112,6 +119,10 @@ function M.render()
   for _, m in ipairs(M.messages) do
     local time = ' ' .. clock(m.ts) .. '  '
     local text_lines = vim.split(tostring(m.text or ''), '\n', { plain = true })
+    if m.artifact then
+      local a = m.artifact
+      text_lines = { '▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title }
+    end
     if m.fromKind == 'hub' then
       local g = M.GLYPHS[m.kind] or M.OTHER_GLYPH
       local head = time .. g[1] .. ' '
@@ -122,7 +133,7 @@ function M.render()
       for _, n in ipairs(m.to or {}) do
         to[#to + 1] = who(n)
       end
-      local dest = #to > 0 and table.concat(to, ', ') or 'nobody'
+      local dest = #to > 0 and table.concat(to, ', ') or (m.artifact and 'you' or 'nobody')
       local head = time .. from .. ' → ' .. dest .. '  '
       local s_from = #time
       local s_to = s_from + #from + #' → '
@@ -131,6 +142,7 @@ function M.render()
         { s_from, s_from + #from, m.fromKind == 'human' and 'ClandAmber' or 'ClandBold' },
         { s_from + #from, s_to, 'ClandDim' },
         { s_to, s_to + #dest, 'ClandTeal' },
+        { #head, -1, m.artifact and 'ClandBlue' or 'ClandText' },
       })
       local pad = string.rep(' ', #time)
       for i = 2, #text_lines do

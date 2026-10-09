@@ -216,7 +216,7 @@ function M.thread_marks(t)
   if not t then
     return { { 'topic', 'ClandDimBar' } }
   end
-  local out = {}
+  local out = { { #require('cland.artifacts').all(t.id) .. ' artifacts · ga  ', 'ClandBlueBar' } }
   if t.item and t.item ~= vim.NIL then
     out[#out + 1] = { t.item .. '  ', 'ClandBlueBar' }
   end
@@ -244,6 +244,10 @@ function M.winbar(win)
   elseif role == 'inbox' then
     local n = state.needs_you()
     return head(win, 'INBOX', { n > 0 and { n .. ' need you', 'ClandAmberBar' } or { 'nothing needs you', 'ClandGreenBar' } })
+  elseif role == 'artifacts' then
+    return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open · q back', 'ClandDimBar' } })
+  elseif role == 'artifact' then
+    return head(win, tostring(vim.b[buf].cland_artifact), { { 'read-only · R render Mermaid · q back', 'ClandDimBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)
     return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', M.thread_marks(t))
@@ -263,7 +267,9 @@ function M.winbar(win)
     end
     local g, ghl = require('cland.panels').session_glyph(s)
     return head(win, s.label, { { g .. ' ' .. require('cland.panels').session_meta(s), ghl .. 'Bar' }, { s.item and (' · ' .. s.item) or '', 'ClandDimBar' } })
-  elseif role == 'item' or role == 'board' or role == 'log' or role == 'inbox_full' then
+  elseif role == 'log' then
+    return head(win, 'AGENTS LOG', { { #require('cland.artifacts').all('agents') .. ' artifacts · ga  ', 'ClandBlueBar' }, { '␣␣ back', 'ClandDimBar' } })
+  elseif role == 'item' or role == 'board' or role == 'inbox_full' then
     return head(win, views().title(state.S.ui.view):upper(), { { '␣␣ back', 'ClandDimBar' } })
   end
   return ''

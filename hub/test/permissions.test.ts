@@ -36,7 +36,7 @@ const notice = (ui: FrameClient, text: string) =>
   });
 
 /** One call through a session, and what it must come to. `forbidden` is the permission the refusal names. */
-type Case = { tool: string; args?: Record<string, unknown>; forbidden?: string; reason?: RegExp; error?: RegExp; target?: string };
+type Case = { tool: string; args?: Record<string, unknown>; forbidden?: string; reason?: RegExp; error?: RegExp; errorCode?: string; target?: string };
 
 type Caller = { name: string; sessionId: string; role: string | null; label: string; call: (tool: string, args: Record<string, unknown>) => Promise<ToolResult> };
 
@@ -60,7 +60,7 @@ async function check(root: string, ui: FrameClient, who: Caller, c: Case): Promi
   } else if (c.error) {
     outcome = 'error';
     assert.equal(r.ok, false, what);
-    assert.equal(r.code, undefined, `${what} is not refused by the table: ${JSON.stringify(r)}`);
+    assert.equal(r.code, c.errorCode, `${what} is not refused by the table: ${JSON.stringify(r)}`);
     assert.match(r.error ?? '', c.error, what);
   } else assert.equal(r.ok, true, `${what}: ${JSON.stringify(r)}`);
   const records = (await audits(root)).slice(before).filter((a) => a.session === who.name);
@@ -300,7 +300,7 @@ test('role.set changes what a session may do on its next call, without a reconne
 });
 
 // ------------------------------------------------------------------ the tools with no MCP tool yet
-// `ask`, `merge`, `artifact.create` and `task.import` are in the table before their frames exist: a spoke's raw
+// Future tools and incomplete calls are checked through the table: a spoke's raw
 // frame is checked like any other. Allowed, it reaches the dispatcher's "unknown request type" (an `error` in the
 // audit); refused, it is `forbidden`. `resolve` and `topic.create` (#32) and `role.handover` (#31) go through the
 // same rows with their frames.
@@ -369,7 +369,7 @@ test('the tools still to come are checked through the same table: one session, i
         // role.handover exists (#31): allowed by the table, then refused for a receiver the hub does not know
         { ...future('role.handover', { to: 'x', note: { goals_now: 'g', work_in_flight: 'w', open_decisions: 'o', waiting_on: 'n' } }), error: /"x" is not a session the hub knows/ },
         { ...future('merge', { item: 'T-2' }), error: unknown },
-        { ...future('artifact.create', { name: 'a' }), error: unknown },
+        { ...future('artifact.create', { name: 'a' }), error: /no such artifact topic/, errorCode: 'artifact-topic' },
         { ...future('task.import', { repo: 'o/r' }), forbidden: 'task.import' },
       ],
     ],
@@ -387,7 +387,7 @@ test('the tools still to come are checked through the same table: one session, i
         { ...future('topic.create', { title: 'Missing', item: 'T-99' }), forbidden: 'topic.create', reason: /bound to its own item/, target: ' T-99' },
         { ...future('role.handover'), forbidden: 'role.handover' },
         { ...future('merge', { item: 'T-1' }), forbidden: 'merge', target: ' T-1' },
-        { ...future('artifact.create'), error: unknown },
+        { ...future('artifact.create'), error: /no such artifact topic/, errorCode: 'artifact-topic' },
         { ...future('task.import'), forbidden: 'task.import' },
       ],
     ],
@@ -401,7 +401,7 @@ test('the tools still to come are checked through the same table: one session, i
           { ...future('topic.create', { title: 'x', item: 'T-1' }), forbidden: 'topic.create', target: ' T-1' },
           { ...future('role.handover'), forbidden: 'role.handover' },
           { ...future('merge'), forbidden: 'merge' },
-          { ...future('artifact.create'), error: unknown },
+          { ...future('artifact.create'), error: /no such artifact topic/, errorCode: 'artifact-topic' },
           { ...future('task.import'), forbidden: 'task.import' },
         ],
       ],
