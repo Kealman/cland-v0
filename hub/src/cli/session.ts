@@ -10,7 +10,8 @@ export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
-  session resume <name> [--relaunch]   re-find the session's process, or start it again
+  session resume <name> [--relaunch]   re-find the session's process; --relaunch starts a new one on the same
+                  conversation, stopping the old one first when it still runs (the session keeps its role)
   session retry <name> <message id>    send again a message whose inject got no answer
                   (its delivery is uncertain: the turn may have started; never retried on its own)
 `;
