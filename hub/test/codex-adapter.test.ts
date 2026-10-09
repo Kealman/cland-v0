@@ -621,6 +621,77 @@ test('a delivery to an idle Codex session runs one turn and is never redelivered
   assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered' || m.kind === 'turn-failed'), []);
 });
 
+test('an idle delivery whose item the turn never announced is found in the turn record and not redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  await sendGeneral(ui, '@impl-1 leave unannounced');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 leave unannounced', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string });
+  assert.deepEqual(events.filter((e) => /^harness-(redelivered|redelivery-failed|turn-unread)$/.test(e.event)), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+});
+
+for (const [body, error] of [
+  ['leave unannounced, lose its envelope', "the turn's record shows no input item of the shape it was admitted in"],
+  ['leave unannounced, fail the readback', 'readback refused'],
+] as const) test(`an idle delivery the turn record cannot vouch for (${body}) is reported as unread and not redelivered`, async (t) => {
+  // a tool output owed in a turn that shows only a userMessage is not judged; nor is anything when the read fails
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const id = await sendGeneral(ui, `@impl-1 ${body}`);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: @impl-1 ${body}`, 15_000);
+  await eventually('the unread turn is journaled', async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).includes('"event":"harness-turn-unread"') || undefined);
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; ids?: string[]; error?: string });
+  assert.deepEqual(events.filter((e) => e.event === 'harness-turn-unread').map((e) => [e.ids, e.error]), [[[id], error]]);
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 1, 'one turn');
+});
+
+test('a turn whose input items the hub cannot classify is reported once as unread and not redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const id = await sendGeneral(ui, '@impl-1 record an unknown item');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 record an unknown item', 15_000);
+  await eventually('the unread turn is journaled', async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).includes('"event":"harness-turn-unread"') || undefined);
+  await presentAs(ui, 'impl-1', 'idle');
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; ids?: string[]; error?: string });
+  const unread = events.filter((e) => e.event === 'harness-turn-unread');
+  assert.equal(unread.length, 1, 'reported once');
+  assert.deepEqual(unread[0]?.ids, [id]);
+  assert.equal(unread[0]?.error, "the turn's record shows no input item of the shape it was admitted in");
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+  const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
+  assert.deepEqual(pongs, ['pong: @impl-1 record an unknown item', 'pong: @impl-1 a later idle delivery'], 'each answered once');
+});
+
 for (const mode of ['rejected', 'unanswered']) test(`a successful completion before a late ${mode} steer response never replays a pending admission`, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1500, turnMs: 100 });
