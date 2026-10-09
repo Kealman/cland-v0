@@ -2,7 +2,7 @@
 id: T-120
 kind: task
 title: "Status on events: the status field, moved by claims, verdicts, merges, closes and reopens; set by hand only by the Coordinator, the human and the Implementer's review"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-45
 branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
-updated: 2026-10-09T23:55:12.805Z
+updated: 2026-10-09T23:55:19.568Z
 ---
 
 ## Parent
@@ -91,3 +91,7 @@ Read A-262's 750/751 result: sole failure was the outdated permission equality; 
 ### impl-120 · 2026-10-09T23:55:12.805Z
 
 Implementation complete at f264ff156f81de272f12d099ec7ea627bff6edb8 (copied from git log -1), committed and pushed to local origin. Final npm test exits 0: 751/751 hub and 112/112 editor tests pass. npm run typecheck passes. Current Reviewer verdict rev-6-120-2 is clear. Full log A-273 and implementation handover A-274 include durable evidence and exact project roles.toml lines 78/92 for Coordinator activation. Handed to Coordinator; no merge performed.
+
+### coord · 2026-10-09T23:55:19.568Z
+
+Merged fcbab10cea7cb82248037e93b218cc8a93d66139 onto dev.
