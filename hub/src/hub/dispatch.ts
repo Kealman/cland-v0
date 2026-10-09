@@ -40,6 +40,7 @@ import { handOver, roleState, settleAllClaims, type HandoverContext } from '../r
 import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
+import { RequestGuard, type GuardOptions } from './budget.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -72,6 +73,8 @@ export type DispatcherOptions = {
   log?: LogFn;
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
   tracker?: Tracker;
+  /** The request budget and the repeat guard's timings (tests). */
+  guard?: Omit<GuardOptions, 'log'>;
 };
 
 /** Who the UI's and the CLI's calls are audited as. */
@@ -97,10 +100,16 @@ export class Dispatcher {
   readonly #log: LogFn;
   /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
   #sessions: Sessions | undefined;
+  /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
+  readonly #guard: RequestGuard;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
+    this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
+    // what a read shows changed: no earlier answer is replayed
+    options.core.subscribe(() => this.#guard.changed());
+    options.tracker?.onChange(() => this.#guard.changed());
     // a role moved to a name with no session yet: its claims follow at that session's hello; and what a hub that
     // died between a move's commit and its claims left pending is finished now
     options.core.onSessionHello((name, sessionId) => this.#settleClaims({ name, sessionId }));
@@ -341,10 +350,12 @@ export class Dispatcher {
       queue.push(base);
       audits.set(id, queue);
     };
-    // every result passes the audit on its way out
+    const guard = this.#guard.conversation();
+    // every result passes the audit on its way out, and a read's answer is kept for a repeat
     const peer: Peer = {
       send: (frame) => {
         settle(frame);
+        guard.answered(frame);
         wire.send(frame);
       },
       close: (code, reason) => wire.close(code, reason),
@@ -408,6 +419,8 @@ export class Dispatcher {
           return refuse(result.code, result.message);
         }
         kind = 'spoke';
+        // presence moved: `who` and `hub.status` answer anew
+        this.#guard.changed();
         name = result.name;
         connection = result.connection;
         spoke = result.spoke;
@@ -593,7 +606,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'hub.status':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou() } satisfies HubStatus });
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
           break;
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });
@@ -603,12 +616,14 @@ export class Dispatcher {
       }
     };
 
-    return {
-      receive: (raw) => {
-        if (done) return;
-        const frame = parseFrame(raw);
-        if (!frame) return refuse('bad-hello', 'not a frame');
-        if (kind === null) return hello(frame);
+    /** A read repeated too fast: its last answer goes out again (unaudited: `too-fast` is logged once); true when it did. */
+    const replayed = (frame: Record<string, unknown>): boolean => {
+      const again = guard.replay(frame, kind === 'spoke' ? (name ?? '?') : client);
+      if (again) wire.send(again);
+      return again !== null;
+    };
+
+    const handle = (frame: Record<string, unknown>): void => {
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
           if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
@@ -618,6 +633,7 @@ export class Dispatcher {
           if (isAck(frame)) return core.ack(connection, frame.id);
           // the heartbeat is not a tool call
           if (frame.type !== 'ping') {
+            if (replayed(frame)) return;
             audit(frame.id, { session: connection.name, sessionId: connection.sessionId, role: connection.role, tool: String(frame.type), args: summarize(frame) });
             const bad = Dispatcher.#verdictFromText(frame);
             if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
@@ -631,6 +647,7 @@ export class Dispatcher {
           // the session's name as it is now: another of its spokes may have renamed it
           return spokeRequest(frame, connection.name);
         }
+        if (replayed(frame)) return;
         // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
         // exactly as the session's own tool call would be
         const as = isTaskRequest(frame) ? this.#asSession(frame) : null;
@@ -671,9 +688,20 @@ export class Dispatcher {
           return;
         }
         clientRequest(frame);
+    };
+
+    return {
+      receive: (raw) => {
+        if (done) return;
+        const frame = parseFrame(raw);
+        if (!frame) return refuse('bad-hello', 'not a frame');
+        if (kind === null) return hello(frame);
+        // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
+        this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame));
       },
       closed: () => {
         done = true;
+        if (kind === 'spoke') this.#guard.changed();
         for (const queue of audits.values()) for (const base of queue) log({ event: 'audit', ...base, outcome: 'error', error: 'the connection closed before the answer' });
         audits.clear();
         clearTimeout(helloTimer);

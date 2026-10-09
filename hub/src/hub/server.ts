@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket } from 'ws';
 import { HubCore, type CoreOptions } from './core.ts';
-import { Dispatcher, secretMatches, type Control } from './dispatch.ts';
+import { Dispatcher, secretMatches, type Control, type DispatcherOptions } from './dispatch.ts';
 import { trackerItems } from './topics.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import { HEARTBEAT_MS, MAX_FRAME_BYTES } from '../protocol.ts';
@@ -17,6 +17,8 @@ export type HubBaseOptions = CoreOptions & {
   helloTimeoutMs?: number;
   /** How often the retention prune runs, ms (default: daily); it also runs at start. */
   pruneEveryMs?: number;
+  /** The request budget and the repeat guard's timings (tests). */
+  guard?: DispatcherOptions['guard'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
@@ -72,6 +74,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.control ? { control: options.control } : {}),
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
+    ...(options.guard ? { guard: options.guard } : {}),
   });
   core.prune();
   const pruneTimer = setInterval(() => core.prune(), options.pruneEveryMs ?? 24 * 60 * 60 * 1000);

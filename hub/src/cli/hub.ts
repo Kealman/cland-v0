@@ -53,6 +53,10 @@ function describe(s: HubStatus): string {
   const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`, `sessions: ${s.sessions.length}`];
   for (const p of s.sessions) lines.push(`  ${withRole(p.name, p.role)}  [${p.state ?? 'unknown'}]${p.status ? `  — ${p.status}` : ''}`);
   if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');
+  if (s.requests) {
+    const last = s.requests.lastSlow;
+    lines.push(`requests: ${s.requests.slow} slow${last ? ` (latest ${last.tool} from ${last.client}, ${last.ms} ms at ${last.at})` : ''} · ${s.requests.replayed} answered again (too fast)`);
+  }
   const launched = s.harnesses ?? [];
   if (launched.length) lines.push(`launched: ${launched.length}`);
   for (const h of launched) lines.push(`  ${withRole(h.name, h.role)}  ${h.harness}  ${h.status}  [${h.state}]  pid ${h.pid ?? '?'}${h.attach ? `  — ${h.attach}` : ''}`);
