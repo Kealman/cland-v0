@@ -4,7 +4,8 @@
 // Writes are serialized by construction: every operation reads, changes, writes and indexes with
 // synchronous calls, so one runs to completion on the hub's single thread before the next starts.
 // Hand edits are picked up by a watcher on the folder (debounced) and re-indexed; last writer wins.
-// Nothing is ever committed.
+// Nothing is ever committed. No git runs inside an operation either (T-67): verdict freshness comes from the
+// freshness cache, and the one fact a verdict write needs from Git (its commit) is resolved before the write.
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -32,7 +33,8 @@ import {
   type VerdictResult,
 } from './item.ts';
 import type { LogFn } from '../log.ts';
-import { branchTip, resolveCommit, verdictBase, verdictCurrent } from './verdict-git.ts';
+import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
+import { Freshness, pending } from './freshness.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
 /** How long the watcher waits for a file to settle before reading it. */
@@ -139,8 +141,13 @@ export class Tracker {
   readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict) => void>();
   /** The hub's topic binding; without one (a tracker on its own) the `topic` field is written as given. */
   #topicBinding: TopicBinding | null = null;
+  readonly #git: Git;
+  /** Verdict freshness, computed off the request path; the reads only look it up. */
+  readonly #fresh: Freshness;
+  /** Each item's freshness as last announced: an answer that arrives later is announced only when it differs. */
+  readonly #shown = new Map<string, string>();
 
-  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number }) {
+  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number }) {
     this.#root = options.root;
     this.#writePauseMs = options.writePauseMs ?? 0;
     this.#dir = join(options.root, TASKS_REL);
@@ -148,6 +155,14 @@ export class Tracker {
     this.#now = options.now ?? (() => new Date());
     mkdirSync(this.#dir, { recursive: true });
     this.#index = new TrackerIndex(options.db);
+    this.#git = options.git ?? gitIn(options.root);
+    this.#fresh = new Freshness({
+      git: this.#git,
+      log: this.#log,
+      ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
+      settled: (ids) => ids.forEach((id) => this.#announce(id, true)),
+      tipsMoved: () => this.#tipsMoved(),
+    });
   }
 
   /** Route the `topic` field through the hub's binding; returns the undo. */
@@ -180,11 +195,29 @@ export class Tracker {
     return () => this.#changeListeners.delete(listener);
   }
 
+  /** The index changed for `id`: the `task` event, and a fresh look at the branch tips (a verdict may need one). */
   #changed(id: string): void {
-    if (this.#changeListeners.size === 0) return;
+    this.#fresh.poke();
+    this.#announce(id, false);
+  }
+
+  /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
+  #tipsMoved(): void {
+    for (const item of this.list()) if (item.verdicts.length) this.#announce(item.id, true);
+  }
+
+  /**
+   * The `task` event for `id`. `ifMoved`: only when its freshness changed from what was last announced and none of
+   * it is still being computed (that announces itself once known), so a tip read does not flood the UI.
+   */
+  #announce(id: string, ifMoved: boolean): void {
     const indexed = this.#index.get(id);
-    const base = verdictBase(this.#root);
-    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), verdicts: this.#freshness(indexed.branch, this.#index.verdicts().get(id) ?? [], base), verdictBase: base } : null;
+    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), verdicts: this.#fresh.annotate(id, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    const shown = item ? JSON.stringify([item.verdictBase, item.verdicts.map((v) => v.current ?? null)]) : '';
+    if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
+    if (item) this.#shown.set(id, shown);
+    else this.#shown.delete(id);
+    if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
         listener({ id, item });
@@ -231,6 +264,7 @@ export class Tracker {
       { log: this.#log, event: 'task-watch-error' },
     );
     this.#polled = this.#folderStamp();
+    this.#fresh.start();
   }
 
   /** The item files with their times and sizes: what a poll compares when the folder cannot be watched. */
@@ -252,6 +286,7 @@ export class Tracker {
   }
 
   stop(): void {
+    this.#fresh.stop();
     this.#watcher?.close();
     this.#watcher = null;
     for (const t of this.#pending.values()) clearTimeout(t);
@@ -370,33 +405,25 @@ export class Tracker {
     } catch (err) {
       throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`);
     }
-    const base = verdictBase(this.#root);
     return {
       ...indexed,
-      verdictBase: base,
+      verdictBase: this.#fresh.base(),
       ...item.fm,
       file,
       path: join(TASKS_REL, file),
       body: item.body,
       comments: item.comments,
-      verdicts: this.#freshness(item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : []))), base),
+      verdicts: this.#fresh.annotate(id, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id),
     };
   }
 
+  /** The items, each latest verdict with `current` when the freshness cache knows it (absent: not known yet). */
   list(filter: ListFilter = {}): ItemSummary[] {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
-    const base = verdictBase(this.#root);
-    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, verdictBase: base, verdicts: this.#freshness(i.branch, verdicts.get(i.id) ?? [], base) }));
-  }
-
-  #freshness(branch: string | null, verdicts: IndexedVerdict[], base: string | null): IndexedVerdict[] {
-    if (!verdicts.length) return verdicts;
-    const tip = branchTip(this.#root, branch);
-    const latest = new Map<VerdictKind, number>();
-    verdicts.forEach((v, i) => latest.set(v.verdict, i));
-    return verdicts.map((v, i) => latest.get(v.verdict) === i ? { ...v, current: verdictCurrent(this.#root, v.commit, tip, base) } : v);
+    const base = this.#fresh.base();
+    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, verdictBase: base, verdicts: this.#fresh.annotate(i.id, i.branch, verdicts.get(i.id) ?? []) }));
   }
 
   // ---------------------------------------------------------------- writing
@@ -521,7 +548,8 @@ export class Tracker {
     return this.view(id);
   }
 
-  comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput): ItemView {
+  /** A comment, or a verdict: its commit (given, or the branch tip) is resolved with Git before the write, never inside it. */
+  async comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput): Promise<ItemView> {
     const body = (text ?? '').trim();
     if (!body && !verdict) throw new TrackerError('a comment needs text');
     checkText(body, 'comment');
@@ -533,15 +561,25 @@ export class Tracker {
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
       if (verdict.commit !== undefined) {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
-        const commit = resolveCommit(this.#root, verdict.commit);
+        const commit = await resolveCommit(this.#git, verdict.commit);
         if (!commit) throw new TrackerError('commit does not resolve to a Git commit');
         v.commit = commit;
       }
     }
+    // the branch tip a verdict without a commit records, read now: the write itself runs no git
+    let tip: { branch: string; sha: string | null } | null = null;
+    if (v && verdict?.commit === undefined) {
+      const branch = this.#index.get(this.#require(rawId).id)?.branch ?? null;
+      if (branch) {
+        tip = { branch, sha: await resolveCommit(this.#git, `refs/heads/${branch}`) };
+        if (tip.sha) this.#fresh.noteTip(branch, tip.sha);
+      }
+    }
     const view = this.#mutate(rawId, actor, verdict ? 'verdict' : 'comment', (item) => {
       if (v && verdict?.commit === undefined) {
-        const tip = branchTip(this.#root, item.fm.branch);
-        if (tip) v.commit = tip;
+        // a hand edit moved the branch meanwhile: the tip the cache last read for it
+        const sha = item.fm.branch === tip?.branch ? tip.sha : this.#fresh.tip(item.fm.branch);
+        if (sha) v.commit = sha;
       }
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
     }, actor);

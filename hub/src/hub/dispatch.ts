@@ -31,9 +31,9 @@ import {
 } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
-import { answerTask, isTaskRequest, sessionActor } from '../tracker/requests.ts';
+import { answerTask, isTaskRequest, sessionActor, type TaskRequest } from '../tracker/requests.ts';
 import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
-import type { Tracker } from '../tracker/tracker.ts';
+import type { Actor, Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
@@ -360,6 +360,13 @@ export class Dispatcher {
     let unsubscribe: (() => void) | null = null;
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
+    // a task request's answer may wait for Git (a verdict's commit), never on the event loop
+    const task = (frame: TaskRequest, actor: Actor | 'client') =>
+      void answerTask(this.#options.tracker, frame, actor).then((result) => {
+        this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
+        if (peer.isOpen()) peer.send(result);
+        else settle(result);
+      });
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }).then((result) => {
         if (peer.isOpen()) peer.send(result);
@@ -618,9 +625,7 @@ export class Dispatcher {
           }
           // a spoke always acts as its own session
           if (isTaskRequest(frame)) {
-            const result = answerTask(this.#options.tracker, frame, sessionActor(connection, UNKNOWN_SESSION));
-            this.#bindAssignee(frame, result);
-            return peer.send(result);
+            return task(frame, sessionActor(connection, UNKNOWN_SESSION));
           }
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
@@ -634,9 +639,7 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           if (!this.#permitted(as, frame, peer)) return;
-          const result = answerTask(this.#options.tracker, frame, sessionActor(as, UNKNOWN_SESSION));
-          this.#bindAssignee(frame, result);
-          return peer.send(result);
+          return task(frame, sessionActor(as, UNKNOWN_SESSION));
         }
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
@@ -659,9 +662,7 @@ export class Dispatcher {
         if (isTaskRequest(frame)) {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
-          const result = answerTask(this.#options.tracker, frame, 'client');
-          this.#bindAssignee(frame, result);
-          return peer.send(result);
+          return task(frame, 'client');
         }
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {

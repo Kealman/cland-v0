@@ -72,7 +72,9 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const startedAt = new Date();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
   const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
-  const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}) });
+  // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
+  const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
+  const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log);
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
