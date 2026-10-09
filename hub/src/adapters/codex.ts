@@ -24,6 +24,7 @@
 // An approval a session does ask for stays in the attached TUI: the hub never answers a server request; it only
 // shows `waiting for approval`.
 // The process table keeps the socket as `harnessId` and the thread id as `harnessSessionId`.
+import type { Resumed } from '../hub/worktrees.ts';
 import { execFile, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
@@ -35,7 +36,10 @@ import { codexCounts } from './usage.ts';
 import { VERSION } from '../version.ts';
 import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
-import { processAlive, sameProcess, signalProcess } from './processes.ts';
+import { processAlive } from './processes.ts';
+import { endProcess } from '../system-processes.ts';
+
+const untimed: Resumed = work => work();
 
 export const CODEX = 'codex';
 
@@ -231,6 +235,8 @@ export function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: stri
 }
 
 export type CodexOptions = {
+  /** Grace before a verified process tree is killed. */
+  stopGraceMs?: number;
   /** The `codex` executable: `CLAND_CODEX_BIN`, else `codex` on the PATH. */
   bin?: string;
   /** How often the app-servers' pids are checked and lost connections re-made, ms. */
@@ -285,6 +291,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #host: AdapterHost;
   readonly #bin: string;
   readonly #pollMs: number;
+  readonly #stopGraceMs: number;
   readonly #injectTimeoutMs: number;
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
@@ -304,11 +311,13 @@ export class CodexAdapter implements HarnessAdapter {
   #timer: NodeJS.Timeout | null = null;
   #versionChecked = false;
   #closed = false;
+  readonly #stopping = new Set<string>();
 
   constructor(host: AdapterHost, options: CodexOptions = {}) {
     this.#host = host;
     this.#bin = options.bin ?? process.env.CLAND_CODEX_BIN ?? 'codex';
     this.#pollMs = options.pollMs ?? 5000;
+    this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 30_000;
     const env: NodeJS.ProcessEnv = {};
@@ -499,6 +508,7 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   #gone(live: Live, detail: string): void {
+    if (this.#stopping.has(live.p.sessionId)) return;
     this.#unwatch(live.p.sessionId);
     live.client?.close();
     live.client = null;
@@ -797,7 +807,7 @@ export class CodexAdapter implements HarnessAdapter {
 
   /** The connection is lost while the app-server runs: connect again and subscribe to the thread. */
   #reconnect(live: Live): Promise<void> {
-    if (live.connecting || this.#closed) return live.connecting ?? Promise.resolve();
+    if (live.connecting || this.#closed || this.#stopping.has(live.p.sessionId)) return live.connecting ?? Promise.resolve();
     const socket = live.p.harnessId;
     if (!socket) return Promise.resolve();
     live.connecting = (async () => {
@@ -822,27 +832,33 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  async stop(p: HarnessProcess): Promise<void> {
-    this.#unwatch(p.sessionId);
-    const live = this.#live.get(p.sessionId);
-    live?.client?.close();
-    this.#live.delete(p.sessionId);
-    // only the app-server the hub started: a pid reused by another process is never signalled
-    if (signalProcess(p, 'SIGTERM', this.#host.log)) {
-      const deadline = Date.now() + 5000;
-      while (sameProcess(p) && Date.now() < deadline) await sleep(50);
-      signalProcess(p, 'SIGKILL', this.#host.log);
+  async stop(p: HarnessProcess, resumed: Resumed = untimed): Promise<void> {
+    this.#stopping.add(p.sessionId);
+    let ended = false;
+    try {
+      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      ended = true;
+    } finally {
+      resumed(() => {
+        if (ended) {
+          this.#unwatch(p.sessionId);
+          const live = this.#live.get(p.sessionId);
+          live?.client?.close();
+          this.#live.delete(p.sessionId);
+          if (p.harnessId) rmSync(p.harnessId, { force: true });
+        }
+        this.#stopping.delete(p.sessionId);
+      });
     }
-    if (p.harnessId) rmSync(p.harnessId, { force: true });
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     const socket = p.harnessId ?? this.#socketPath(p.sessionId);
     if (!p.harnessSessionId) return { found: false, reason: 'no thread id recorded' };
     const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
     live.p = p;
     this.#live.set(p.sessionId, live);
-    if (processAlive(p) && existsSync(socket)) {
+    if (await processAlive(p, options.resumed) && existsSync(socket)) {
       let client: AppServerClient | null = null;
       try {
         client = await this.#connectTo(socket);
@@ -855,11 +871,12 @@ export class CodexAdapter implements HarnessAdapter {
       } catch (err) {
         client?.close();
         if (!options.relaunch) return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}` };
-        signalProcess(p, 'SIGTERM', this.#host.log);
       }
     } else if (!options.relaunch) {
-      return { found: false, reason: processAlive(p) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
+      return { found: false, reason: await processAlive(p, options.resumed) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
     }
+    await this.stop(p, options.resumed);
+    this.#live.set(p.sessionId, live);
     // a new app-server on the same socket, resuming the thread from its rollout
     const policy = this.#threadPolicy(p.cwd, options.policy ?? {});
     const { pid, client } = await this.#startServer(p, socket, policy.overrides);

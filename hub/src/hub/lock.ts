@@ -7,8 +7,10 @@
 // whose pid now belongs to a process started at another time (the pid was reused), is stale and broken.
 // Breaking is itself guarded (`hub.lock.break`, created the same way), so two starters that both found the
 // same stale lock cannot each remove what the other just created.
-import { execFile, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { linkSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { run } from '../doctor/report.ts';
+import type { Resumed } from './worktrees.ts';
 import { pidAlive } from '../project.ts';
 
 export type LockHolder = {
@@ -34,10 +36,9 @@ export function processStarted(pid: number): string | null {
 }
 
 /** `processStarted` without blocking: `ps` awaited, killed at the same deadline. */
-export function processStartedAsync(pid: number): Promise<string | null> {
-  return new Promise((resolve) => {
-    execFile('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: PS_TIMEOUT_MS, killSignal: 'SIGKILL' }, (err, stdout) => resolve(err ? null : parseStarted(stdout)));
-  });
+export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS, resumed: Resumed = work => work()): Promise<string | null> {
+  const result = await run('ps', ['-o', 'lstart=', '-p', String(pid)], process.env, timeoutMs);
+  return resumed(() => result.code === 0 && !result.error ? parseStarted(result.stdout) : null);
 }
 
 /** This process's own start time, asked once: it never changes. */

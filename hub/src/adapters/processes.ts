@@ -1,8 +1,9 @@
 // The hub's process table (spec 4.3): the harness processes the hub launched, kept in `hub.db` in a table of
 // its own, through a connection of its own, so a restarted hub re-finds the sessions that outlived it.
+import type { Resumed } from '../hub/worktrees.ts';
 import { DatabaseSync } from 'node:sqlite';
 import type { HarnessProcess } from './contract.ts';
-import { processStarted } from '../hub/lock.ts';
+import { processStartedAsync as processStarted } from '../hub/lock.ts';
 
 export { processStarted };
 
@@ -21,37 +22,20 @@ export function pidAlive(pid: number): boolean {
  * row says (`ps -o lstart=`, recorded at spawn, as the hub lock does). A pid reused by another process is not it.
  * A row with no recorded start time cannot be verified: false, so nothing is ever signalled on a guess.
  */
-export function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>): boolean {
+export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work()): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
   if (!p.pidStarted) return false;
-  return processStarted(p.pid) === p.pidStarted;
+  const started = await processStarted(p.pid, undefined, resumed);
+  return resumed(() => started === p.pidStarted);
 }
 
 /** Whether the row's process still runs: its pid is alive and, when its start time was recorded, started then. */
-export function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>): boolean {
+export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work()): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
   if (!p.pidStarted) return true;
-  const now = processStarted(p.pid);
+  const now = await processStarted(p.pid, undefined, resumed);
   // `ps` failing for a live pid says nothing either way
-  return now === null || now === p.pidStarted;
-}
-
-/**
- * Send `signal` to the row's process, only after verifying it is still the one the hub launched (`sameProcess`):
- * a pid reused by an unrelated process after a restart or a crash is never signalled. Whether it was sent.
- */
-export function signalProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, signal: NodeJS.Signals, log?: (entry: Record<string, unknown>) => void): boolean {
-  if (p.pid === null) return false;
-  if (!sameProcess(p)) {
-    if (pidAlive(p.pid)) log?.({ event: 'signal-refused', pid: p.pid, signal, reason: p.pidStarted ? 'the pid belongs to another process now (its start time differs)' : 'no start time recorded for the pid: its identity cannot be verified' });
-    return false;
-  }
-  try {
-    process.kill(p.pid, signal);
-    return true;
-  } catch {
-    return false;
-  }
+  return resumed(() => now === null || now === p.pidStarted);
 }
 
 const SCHEMA = `

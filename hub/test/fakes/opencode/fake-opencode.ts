@@ -30,6 +30,7 @@
 //
 // State lives under FAKE_OPENCODE_HOME: sessions/<ses>.json (shared by every server, like OpenCode's database),
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
+import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -277,6 +278,7 @@ async function serve(args: string[]): Promise<number> {
       if (url.pathname === '/api/session/active' && method === 'GET') return send(res, 200, { data: Object.fromEntries([...runs.keys()].map((id) => [id, { type: 'running' }])) });
       if (url.pathname === '/api/session' && method === 'GET') return send(res, 200, { data: readdirSync(SESSIONS).map((f) => readJson<SessionInfo>(join(SESSIONS, f))).filter(Boolean), cursor: {} });
       if (url.pathname === '/api/session' && method === 'POST') {
+        await sleep(Number(process.env.FAKE_OPENCODE_SESSION_DELAY_MS ?? 0));
         const body = await readBody(req);
         const id = typeof body.id === 'string' ? body.id : rid('ses');
         const info: SessionInfo = {
@@ -352,7 +354,8 @@ async function serve(args: string[]): Promise<number> {
   await new Promise<void>((resolve) => server.listen(port, hostname, resolve));
   const address = server.address();
   const url = `http://${hostname}:${typeof address === 'object' && address ? address.port : port}`;
-  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ pid: process.pid, url, cwd: process.cwd(), config: process.env.OPENCODE_CONFIG ?? null }));
+  const descendant = process.env.FAKE_OPENCODE_CHILD === '1' ? spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }) : null;
+  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, url, cwd: process.cwd(), config: process.env.OPENCODE_CONFIG ?? null }));
   process.stdout.write(`server listening on ${url}\n`);
 
   const shutdown = async () => {
@@ -361,7 +364,7 @@ async function serve(args: string[]): Promise<number> {
     rmSync(join(SERVERS, `${process.pid}.json`), { force: true });
     process.exit(0);
   };
-  process.on('SIGTERM', () => void shutdown());
+  process.on('SIGTERM', () => { if (process.env.FAKE_OPENCODE_IGNORE_TERM !== '1') void shutdown(); });
   process.on('SIGINT', () => void shutdown());
   return new Promise<number>(() => {});
 }

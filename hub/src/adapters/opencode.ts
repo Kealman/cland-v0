@@ -18,6 +18,7 @@
 //   resume   the pid alive and the server answering for the recorded session; else, with `relaunch`, a new server
 //            on the same config and password, and the same session (OpenCode keeps sessions in its own database;
 //            a session it lost is created again under its id).
+import type { Resumed } from '../hub/worktrees.ts';
 import { randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -27,7 +28,10 @@ import { envelope, envelopeIds, type AdapterHost, type Capabilities, type Harnes
 import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
-import { processAlive, sameProcess, signalProcess } from './processes.ts';
+import { processAlive } from './processes.ts';
+import { endProcess } from '../system-processes.ts';
+
+const untimed: Resumed = work => work();
 
 export const OPENCODE = 'opencode';
 
@@ -52,6 +56,8 @@ export const OPENCODE_CAPABILITIES: Capabilities = {
 };
 
 export type OpenCodeOptions = {
+  /** Grace before a verified process tree is killed. */
+  stopGraceMs?: number;
   /** The `opencode` executable: `CLAND_OPENCODE_BIN`, else `opencode` on the PATH. */
   bin?: string;
   /** How often the servers' pids are checked, ms. */
@@ -84,6 +90,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #host: AdapterHost;
   readonly #bin: string;
   readonly #pollMs: number;
+  readonly #stopGraceMs: number;
   readonly #injectTimeoutMs: number;
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
@@ -92,11 +99,13 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #usage = new Map<string, SessionUsage>();
   #timer: NodeJS.Timeout | null = null;
   #closed = false;
+  readonly #stopping = new Set<string>();
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
     this.#bin = options.bin ?? process.env.CLAND_OPENCODE_BIN ?? 'opencode';
     this.#pollMs = options.pollMs ?? 5000;
+    this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 30_000;
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 30_000;
     const env: NodeJS.ProcessEnv = {};
@@ -317,6 +326,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #gone(w: Watch, detail: string): void {
+    if (this.#stopping.has(w.process.sessionId)) return;
     if (this.#watched.get(w.process.sessionId) !== w) return;
     this.#unwatch(w.process.sessionId);
     this.#host.exited(w.process.sessionId, detail);
@@ -336,18 +346,23 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  async stop(p: HarnessProcess): Promise<void> {
-    this.#unwatch(p.sessionId);
-    // only the server the hub started: a pid reused by another process is never signalled
-    if (!signalProcess(p, 'SIGTERM', this.#host.log)) return;
-    const deadline = Date.now() + 5000;
-    while (sameProcess(p) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-    signalProcess(p, 'SIGKILL', this.#host.log);
+  async stop(p: HarnessProcess, resumed: Resumed = untimed): Promise<void> {
+    this.#stopping.add(p.sessionId);
+    let ended = false;
+    try {
+      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      ended = true;
+    } finally {
+      resumed(() => {
+        if (ended) this.#unwatch(p.sessionId);
+        this.#stopping.delete(p.sessionId);
+      });
+    }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; resumed?: Resumed } = {}): Promise<ResumeResult> {
     let reason: string;
-    if (!processAlive(p)) reason = p.pid !== null && pidAlive(p.pid) ? `the server's pid ${p.pid} belongs to another process now` : `the server's pid ${p.pid ?? '?'} is gone`;
+    if (!await processAlive(p, options.resumed)) reason = p.pid !== null && pidAlive(p.pid) ? `the server's pid ${p.pid} belongs to another process now` : `the server's pid ${p.pid ?? '?'} is gone`;
     else if (!p.harnessId || !p.harnessSessionId) reason = 'no server url or session recorded';
     else {
       const password = readPassword(this.#files(p.name));
@@ -368,7 +383,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       }
     }
     if (!options.relaunch) return { found: false, reason };
-    signalProcess(p, 'SIGTERM', this.#host.log);
+    await this.stop(p, options.resumed);
     const process_ = await this.#launch({ name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true);
     return { found: true, process: process_, state: 'unknown' as SessionState };
   }

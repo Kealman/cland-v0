@@ -16,21 +16,24 @@
 //   state    the hooks (`cland hook <event>`: SessionStart, UserPromptSubmit, Stop, StopFailure, PermissionRequest,
 //            PostToolUse, Notification, Elicitation) and the mod's `turn.start`/`turn.complete` (which also fires on
 //            an interrupt, where `Stop` does not) — pushed, reliable; `claude agents --json`, polled, as the fallback.
-//   stop     `claude stop <background id>`, then SIGTERM if the pid outlives it; the process stays watched until
+//   stop     `claude stop <background id>`, then verified process-tree SIGTERM/SIGKILL; the process stays watched until
 //            its pid is gone, and a stop that cannot confirm that fails (the row stays running, supervised).
 //   resume   re-find the process by its session id or background id in `claude agents --json` (a pid alone
 //            never: it may be reused by another process); or relaunch it with `claude --bg --resume <uuid>` and
 //            the same flags (they are not restored by the harness).
 //
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
+import type { Resumed } from '../hub/worktrees.ts';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
-import { signalProcess } from './processes.ts';
+import { endProcess } from '../system-processes.ts';
 import { turnError } from './turn-error.ts';
 import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
+
+const untimed: Resumed = work => work();
 
 export const CLAUDE_CODE = 'claude-code';
 
@@ -430,44 +433,41 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  /** Whether the pid is gone within `ms`. */
-  async #gone(pid: number, ms: number): Promise<boolean> {
-    const deadline = Date.now() + ms;
-    while (pidAlive(pid)) {
-      if (Date.now() >= deadline) return false;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    return true;
-  }
-
-  async stop(p: HarnessProcess): Promise<void> {
+  async stop(p: HarnessProcess, resumed: Resumed = untimed): Promise<void> {
     // watched until the process is known to be gone: a stop that fails leaves it supervised
     this.#stopping.add(p.sessionId);
+    let ended = false;
     try {
       let stopped = false;
-      if (p.harnessId) {
-        try {
-          const r = await this.#run(['stop', p.harnessId], p.cwd);
-          stopped = r.code === 0;
-          if (!stopped) this.#host.log({ event: 'harness-stop-failed', session: p.name, out: (r.stderr || r.stdout).trim().slice(0, 300) });
-        } catch (err) {
-          this.#host.log({ event: 'harness-stop-failed', session: p.name, error: err instanceof Error ? err.message : String(err) });
+      const cliStop = async () => {
+        if (p.harnessId) {
+          try {
+            const r = await this.#run(['stop', p.harnessId], p.cwd);
+            resumed(() => {
+              stopped = r.code === 0;
+              if (!stopped) this.#host.log({ event: 'harness-stop-failed', session: p.name, out: (r.stderr || r.stdout).trim().slice(0, 300) });
+            });
+          } catch (err) {
+            resumed(() => this.#host.log({ event: 'harness-stop-failed', session: p.name, error: err instanceof Error ? err.message : String(err) }));
+          }
         }
-      }
+      };
       if (p.pid === null) {
+        await cliStop();
         if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
-      } else if (!(stopped && (await this.#gone(p.pid, this.#stopGraceMs)))) {
-        // only the session's own process: a pid reused by another process is never signalled
-        signalProcess(p, 'SIGTERM', this.#host.log);
-        if (!(await this.#gone(p.pid, this.#stopGraceMs))) throw new Error(`could not stop "${p.name}": pid ${p.pid} outlived \`claude stop\` and SIGTERM; it is still watched`);
+      } else {
+        if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, cliStop, { resumed, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       }
-      this.#unwatch(p.sessionId);
+      ended = true;
     } finally {
-      this.#stopping.delete(p.sessionId);
+      resumed(() => {
+        if (ended) this.#unwatch(p.sessionId);
+        this.#stopping.delete(p.sessionId);
+      });
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; resumed?: Resumed } = {}): Promise<ResumeResult> {
     const entries = (await this.#agents()) ?? [];
     const entry = this.#find(entries, p);
     const pid = entry?.pid ?? p.pid;
@@ -477,6 +477,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       return { found: true, process, state: stateOfAgent(entry) };
     }
     if (!options.relaunch) return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
+    await this.stop(p, options.resumed);
     const process = await this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true);
     return { found: true, process, state: 'unknown' };
   }

@@ -74,6 +74,11 @@ export class Sessions {
   #vacating = false;
   readonly #usageTimers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #unprocess: () => void;
+  #closed = false;
+  #resuming = 0;
+
+  /** The spawn-to-row gap is protected by these reservations, including relaunches. */
+  lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0; }
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -152,7 +157,14 @@ export class Sessions {
       },
       recordPid: (sessionId, pid) => {
         const p = this.#table.bySessionId(sessionId);
-        if (p) this.#table.update(p.name, { pid, pidStarted: processStarted(pid) });
+        if (p) {
+          this.#table.update(p.name, { pid, pidStarted: null });
+          void processStarted(pid).then(started => {
+            if (this.#closed) return;
+            const current = this.#table.bySessionId(sessionId);
+            if (current?.pid === pid && current.status === 'running') this.#table.update(current.name, { pidStarted: started });
+          });
+        }
       },
     };
   }
@@ -266,7 +278,9 @@ export class Sessions {
     const item = request.item ?? null;
     let spawned: { process: HarnessProcess } | { error: unknown };
     try {
-      spawned = { process: await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }) };
+      const process = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy });
+      const pidStarted = process.pidStarted ?? (process.pid !== null ? await processStarted(process.pid, undefined, resumed) : null);
+      spawned = { process: { ...process, pidStarted } };
     } catch (err) {
       spawned = { error: err };
     }
@@ -277,7 +291,7 @@ export class Sessions {
       try {
         if ('error' in spawned) throw spawned.error;
         const process = spawned.process;
-        p = { ...process, item, pidStarted: process.pidStarted ?? (process.pid !== null ? processStarted(process.pid) : null) };
+        p = { ...process, item, pidStarted: process.pidStarted ?? null };
         this.#table.put(p);
         if (reservation) this.#core.launchSettled(request.name);
       } catch (err) {
@@ -309,18 +323,25 @@ export class Sessions {
 
   async stop(name: string, resumed: Resumed = untimed): Promise<HarnessProcessView> {
     const p = this.#process(name);
-    await this.adapter(p.harness).stop(p);
+    await this.adapter(p.harness).stop(p, resumed);
     return resumed(() => {
-      this.#table.update(name, { status: 'stopped' });
-      this.#core.setSessionState(p.sessionId, name, 'unknown', 'stopped');
-      this.#log({ event: 'session-stopped', session: name, harness: p.harness });
-      this.#vacate(p, 'its session was stopped');
-      return this.view(this.#process(name));
+      const current = this.#table.bySessionId(p.sessionId) ?? p;
+      this.#table.update(current.name, { status: 'stopped' });
+      this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
+      this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
+      this.#vacate(current, 'its session was stopped');
+      return this.view(this.#process(current.name));
     });
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false, resumed: Resumed = untimed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+    this.#resuming++;
+    try { return await this.#resume(name, relaunch, resumed); }
+    finally { resumed(() => this.#resuming--); }
+  }
+
+  async #resume(name: string, relaunch: boolean, resumed: Resumed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
     let p = this.#process(name);
     const adapter = this.adapter(p.harness);
     // a relaunch is a new harness process on the same conversation, whatever became of the old one: one that
@@ -330,35 +351,43 @@ export class Sessions {
     const row = (): HarnessProcess => this.#table.bySessionId(p.sessionId) ?? p;
     let resuming: Promise<ResumeResult>;
     if (relaunch && p.status === 'running') {
-      await adapter.stop(p);
+      await adapter.stop(p, resumed);
       resuming = resumed(() => {
         this.#table.update(row().name, { status: 'stopped' });
         this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
         p = row();
         // The adapter's synchronous prefix belongs to this stretch, up to its next await.
-        return adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
+        return adapter.resume(p, { relaunch, resumed, policy: this.#launchPolicy(p.role) });
       });
     } else {
-      resuming = adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
+      resuming = adapter.resume(p, { relaunch, resumed, policy: this.#launchPolicy(p.role) });
     }
     const r = await resuming;
-    return resumed(() => {
-      if (!r.found) {
-        if (p.status === 'running') this.#exited(p.sessionId, r.reason);
-        return { found: false, reason: r.reason, process: this.view(row()) };
-      }
-      // what the row says now, not the snapshot the resume started from: a role assigned or revoked, or a rename,
-      // while the adapter worked stays as it was made
-      const current = this.#table.bySessionId(p.sessionId) ?? p;
-      const pidStarted = r.process.pid === current.pid ? (current.pidStarted ?? (r.process.pid !== null ? processStarted(r.process.pid) : null)) : r.process.pid !== null ? processStarted(r.process.pid) : null;
-      const process: HarnessProcess = { ...r.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
+    const publish = (found: Extract<ResumeResult, { found: true }>, pidStarted: string | null) => {
+      // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
+      const current = row();
+      const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
       this.#table.put(process);
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));
-      this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: r.process.pid, state: r.state, relaunched: relaunch && p.status !== 'running' });
-      if (r.state !== 'unknown') this.#signal(p.sessionId, { state: r.state, source: 'resume', at: Date.now() }, false);
+      this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running' });
+      if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at: Date.now() }, false);
       return { found: true, process: this.view(process) };
+    };
+    const settled = resumed(() => {
+      if (!r.found) {
+        if (p.status === 'running') this.#exited(p.sessionId, r.reason);
+        return { answer: { found: false, reason: r.reason, process: this.view(row()) } };
+      }
+      const current = row();
+      const cached = r.process.pid === current.pid ? current.pidStarted : null;
+      // Cached identities publish in this same stretch; only an actual OS probe introduces another await.
+      if (cached != null || r.process.pid === null) return { answer: publish(r, cached ?? null) };
+      return { identity: processStarted(r.process.pid, undefined, resumed), resumed: r };
     });
+    if ('answer' in settled) return settled.answer!;
+    const pidStarted = await settled.identity;
+    return resumed(() => publish(settled.resumed, pidStarted));
   }
 
   /** At the hub's start, before any frame is read: the roles reserved by launches the hub died in are given back. */
@@ -606,6 +635,7 @@ export class Sessions {
   }
 
   close(): void {
+    this.#closed = true;
     for (const a of this.#adapters.values()) a.close();
     this.#core.onDelivered(null);
     this.#core.launchedRole(null);

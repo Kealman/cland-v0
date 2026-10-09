@@ -89,6 +89,7 @@ async function waitForExit(pid: number, ms: number): Promise<boolean> {
 }
 
 async function start(root: string, io: Io): Promise<number> {
+  const since = new Date();
   const l = layout(root);
   const found = await inspect(l);
   if (found.kind === 'live') {
@@ -122,6 +123,10 @@ async function start(root: string, io: Io): Promise<number> {
     if (d && (d.pid === child.pid || d.pid === holder?.pid)) {
       const status = await probe(d);
       if (status) {
+        for (const entry of readJournal(journalPath(l.dir), { since: since.toISOString(), kinds: ['orphan-ended', 'orphan-preserved', 'orphan-sweep-failed'] })) {
+          io.out(entry.event === 'orphan-ended' ? `ended orphan ${entry.kind} pid ${entry.pid}: ${entry.reason}\n` : entry.event === 'orphan-preserved' ? `preserved possible orphan pid ${entry.pid}: ${entry.reason}\n` : `orphan sweep: ${entry.reason}\n`);
+        }
+        io.out('orphan cleanup runs in the background; cland doctor reports what ended\n');
         io.out(d.pid === child.pid ? `hub started for ${root}\n${describe(status)}` : `hub already running for ${root}\n${describe(status)}`);
         return 0;
       }

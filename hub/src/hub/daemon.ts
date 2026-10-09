@@ -8,6 +8,7 @@
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { sweepOrphans } from '../orphans.ts';
 import { Store } from './store.ts';
 import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
@@ -130,11 +131,13 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
+  let sweep: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
       log({ event: 'stopping' });
       await edge?.close();
       await ws?.close();
+      await sweep;
       adapters?.close();
       await hub.close();
       tracker.stop();
@@ -184,5 +187,11 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   void adapters.sessions.resumeAll();
+  // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.
+  sweep = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
+    log({ event: 'orphan-sweep-started' });
+    const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
+    log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });
+  }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
   return { layout: l, discovery, hub, stopped, stop };
 }

@@ -312,21 +312,16 @@ test('a stop whose `claude stop` fails falls back to SIGTERM and stops the sessi
   assert.doesNotMatch(await hubLog(root), /"event":"harness-exited"/, 'a stop is no crash');
 });
 
-test('a stop that cannot end the process fails and leaves it running and watched: its later death is caught', async (t) => {
+test('stop kills a Claude Code process that ignores SIGTERM and waits for its exit', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { stopCrash: true, ignoreTerm: true, stopGraceMs: 500 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
   const r = await ui.request({ type: 'session.stop', session: 'coord' }, 15_000);
-  assert.equal(r.ok, false);
-  assert.match(r.error ?? '', /still watched/);
-  assert.equal((await harness(ui, 'coord')).status, 'running');
-
-  process.kill(launched.pid as number, 'SIGKILL');
-  const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'coord' && f.state === 'unknown', 15_000);
-  assert.equal(event.source, 'process');
-  assert.equal((await harness(ui, 'coord')).status, 'exited');
+  assert.equal(r.ok, true, r.error);
+  assert.equal((await harness(ui, 'coord')).status, 'stopped');
+  assert.equal(pidAlive(launched.pid as number), false, 'stop returns only after exit');
+  assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"harness-ended"/);
 });

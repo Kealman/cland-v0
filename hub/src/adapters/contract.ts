@@ -4,6 +4,7 @@
 // Mandatory: spawn, attachCommand, inject (confirming `injected`), a state stream, stop, resume.
 // Optional: history, usage, setModel, approval relay — each declared in the capability table and never
 // emulated when declared `none`. Every state signal is published with its reliability too.
+import type { Resumed } from '../hub/worktrees.ts';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 
 /** How far a signal or a capability can be trusted. `none`: the adapter does not have it, and nothing pretends it does. */
@@ -43,7 +44,7 @@ export type HarnessProcess = {
    *  worktree), else null. */
   item?: string | null;
   /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
-   *  still this process before any signal (`processes.ts` `signalProcess`). Null when unknown. */
+   *  still this process before any signal (`system-processes.ts` `endProcess`). Null when unknown. */
   pidStarted?: string | null;
 };
 
@@ -165,13 +166,13 @@ export interface HarnessAdapter {
   /** Start watching a process (after spawn or resume): the polled fallback and the liveness check. */
   watch(process: HarnessProcess): void;
   /** Stop through the harness; the process table then says `stopped`. */
-  stop(process: HarnessProcess): Promise<void>;
+  stop(process: HarnessProcess, resumed?: Resumed): Promise<void>;
   /**
    * Re-find a process from the table after a hub restart: alive and still the same session → `found`, with
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own
    * conversation id, under `policy` (its role's launch defaults as they are now).
    */
-  resume(process: HarnessProcess, options?: { relaunch?: boolean; policy?: LaunchPolicy }): Promise<ResumeResult>;
+  resume(process: HarnessProcess, options?: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
   /** The hub stops: timers end; the harness processes keep running (they outlive the hub). */
   close(): void;
 }
