@@ -7,6 +7,7 @@
 //                        attach commands per session, roles, and how topic.send answers (ok | refuse | hold),
 //                        session.launch (adds an idle process, or launchError) and session.stop (marks it
 //                        stopped and emits session.state unknown, or stopError)
+//   CLAND_STUB_SCENARIO_JSON  the same scenario as JSON text, when no file names it (`cland --headless --qa`)
 //   CLAND_STUB_CONTROL   a Unix socket the test drives it through, one JSON line per command:
 //                        {"emit": frame}       push an event frame to the client
 //                        {"emits": [frames]}   push several event frames in one write (a burst)
@@ -46,7 +47,9 @@ type Frame = Record<string, unknown> & { type?: string; id?: string };
 
 const scenarioFile = process.env.CLAND_STUB_SCENARIO;
 const controlPath = process.env.CLAND_STUB_CONTROL;
-const scenario: Scenario = scenarioFile ? (JSON.parse(readFileSync(scenarioFile, 'utf8')) as Scenario) : {};
+// a QA case's scenario comes inline: a read-only run has nowhere to write the file
+const scenarioJson = process.env.CLAND_STUB_SCENARIO_JSON;
+const scenario: Scenario = scenarioFile ? (JSON.parse(readFileSync(scenarioFile, 'utf8')) as Scenario) : scenarioJson ? (JSON.parse(scenarioJson) as Scenario) : {};
 const now = () => new Date().toISOString();
 scenario.topics ??= [
   { id: 'general', title: 'General', status: 'open', standing: true, createdAt: now(), updatedAt: now() },

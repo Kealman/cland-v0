@@ -318,17 +318,20 @@ local function commands()
       M.refresh()
     elseif sub == 'launch' then
       require('cland.launcher').open({ name = a })
+    elseif sub == 'qa' and a == 'dump' and o.fargs[3] then
+      local ok, files = pcall(require('cland.qa').dump, o.fargs[3])
+      state.say(ok and ('qa dump: ' .. table.concat(files, ' · ')) or ('qa dump failed: ' .. tostring(files)), ok and 'ClandDimBar' or 'ClandRedBar')
     elseif sub == 'help' or not sub then
       M.help()
     else
-      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | refresh | help', 'ClandRedBar')
+      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | qa dump <path> | refresh | help', 'ClandRedBar')
     end
   end, {
     nargs = '*',
     complete = function(_, line)
       local words = vim.split(line, '%s+', { trimempty = true })
       if #words <= 1 or (#words == 2 and not line:match('%s$')) then
-        return { 'preset', 'view', 'panel', 'launch', 'topic', 'refresh', 'help' }
+        return { 'preset', 'view', 'panel', 'launch', 'topic', 'qa', 'refresh', 'help' }
       end
       local sub = words[2]
       if sub == 'preset' then
@@ -339,6 +342,8 @@ local function commands()
         return { 'items', 'inbox', 'sessions', 'topics', 'dock' }
       elseif sub == 'topic' then
         return { 'new', 'close', 'resolve' }
+      elseif sub == 'qa' then
+        return { 'dump' }
       end
       return {}
     end,
@@ -439,7 +444,8 @@ local function reattach(snap)
 end
 
 --- opts: root (a directory inside the project; default the cwd), transport ('socket' | 'stdio'),
---- restore (read a restart snapshot even without v:startreason "restart").
+--- restore (read a restart snapshot even without v:startreason "restart"). A QA run also gives cli (the
+--- `cland` command as a list, instead of CLAND_COMMAND or this repository's) and serve_args (for the stdio hub).
 function M.start(opts)
   opts = opts or {}
   local start = opts.root and opts.root ~= '' and opts.root or vim.fn.getcwd()
@@ -458,7 +464,7 @@ function M.start(opts)
     state.say(msg, level and level >= vim.log.levels.WARN and 'ClandAmberBar' or 'ClandDimBar')
   end
 
-  M.client = hub.new({ root = root, transport = transport, cli = cli_command(repo) })
+  M.client = hub.new({ root = root, transport = transport, cli = opts.cli or cli_command(repo), serve_args = opts.serve_args })
   wire_client(M.client)
   require('cland.views').setup(M.client)
   require('cland.sessions').setup(M.client)

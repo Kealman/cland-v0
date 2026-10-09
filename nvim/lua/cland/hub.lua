@@ -31,12 +31,14 @@ local function first_line(s)
 end
 
 --- opts: root (the project), transport ('socket' | 'stdio'), cli (the `cland` command as a list),
---- autostart (run `cland hub start` when no hub runs; default true, socket transport only).
+--- autostart (run `cland hub start` when no hub runs; default true, socket transport only),
+--- serve_args (more arguments for the stdio child's `hub serve --stdio`, such as `--no-listen`).
 function M.new(opts)
   return setmetatable({
     root = opts.root,
     transport = opts.transport or 'socket',
     cli = opts.cli,
+    serve_args = opts.serve_args or {},
     autostart = opts.autostart ~= false,
     handlers = {},
     pending = {},
@@ -194,7 +196,7 @@ function Client:_hub_start(why)
 end
 
 function Client:_spawn()
-  local cmd = vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'serve', '--stdio' })
+  local cmd = vim.list_extend(vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'serve', '--stdio' }), self.serve_args)
   local proc
   self:_set_state('connecting', 'starting a hub on stdio')
   local ok, result = pcall(vim.system, cmd, {

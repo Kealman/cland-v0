@@ -4,6 +4,7 @@
 -- files under nvim/. CLAND_ROOT names the project (default: the current directory); CLAND_HUB_TRANSPORT
 -- is `socket` (the project's hub over `.cland/hub.json`, the default) or `stdio` (a hub spawned as a child).
 -- CLAND_COMMAND (a JSON array) replaces the `cland` command the client runs (the tests' stub hub).
+-- CLAND_QA_CASE names a QA case to run instead (`cland --headless --qa`, lua/cland/qa.lua).
 local here = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
 vim.opt.runtimepath:prepend(here)
 
@@ -49,6 +50,10 @@ vim.o.fillchars = 'eob: ,vert:│,horiz:─'
 vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
+    -- `cland --headless --qa <case.lua>`: the case builds its fixture project and starts the shell itself
+    if (vim.env.CLAND_QA_CASE or '') ~= '' then
+      return require('cland.qa').run()
+    end
     require('cland').start({ root = vim.env.CLAND_ROOT, transport = vim.env.CLAND_HUB_TRANSPORT })
   end,
 })
