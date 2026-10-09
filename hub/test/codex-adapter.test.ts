@@ -520,3 +520,32 @@ test('after a hub restart every spoke of a Codex session reconnects, and the ses
   await ui2.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
   await ui2.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 after the restart?', 15_000);
 });
+
+// Review rev-20261009-51-2c2e706: the stop of a live relaunch is awaited, and the session may rename itself meanwhile.
+test('session resume --relaunch on a live session that renames itself while it is being stopped relaunches it under its new name', { skip: NO_PS }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_CODEX_TERM_DELAY_MS: '1200' });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+
+  // its turn renames it 300 ms in; the relaunch's stop is under way by then, and takes 1200 ms
+  const id = await sendGeneral(ui, 'rename to coord-2');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
+  const r = await ui.request({ type: 'session.resume', session: 'coord', relaunch: true }, 30_000);
+  assert.equal(r.ok, true, r.error);
+  const again = (r.value as { found: boolean; process: Harness }).process;
+  assert.match(await fake.log(launched.pid as number), /tool rename → \{"ok":true/, 'the rename landed while the app-server was going');
+  assert.equal(again.name, 'coord-2');
+  assert.equal(again.status, 'running');
+  assert.notEqual(again.pid, launched.pid);
+  assert.equal(pidAlive(launched.pid as number), false);
+  assert.equal(again.harnessSessionId, launched.harnessSessionId, 'the same thread');
+  // one row, under the new name, with a live process behind it
+  const rows = (await status(ui)).harnesses.filter((h) => h.sessionId === launched.sessionId);
+  assert.deepEqual(rows.map((h) => [h.name, h.status, h.pid]), [['coord-2', 'running', again.pid]]);
+  const present = await presentAs(ui, 'coord-2', 'idle');
+  assert.equal(present.role, 'coordinator');
+});

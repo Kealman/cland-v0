@@ -42,7 +42,8 @@
 //   with "failed to load workspace requirements": the fake refuses that at once.)
 //
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
-// log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300).
+// log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
+// app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
 import { randomUUID } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -468,6 +469,8 @@ async function appServer(args: string[]): Promise<number> {
   });
   const shutdown = async () => {
     log('SIGTERM');
+    // FAKE_CODEX_TERM_DELAY_MS: how long the app-server takes to go once told to (its turn runs on meanwhile)
+    await sleep(Number(process.env.FAKE_CODEX_TERM_DELAY_MS ?? 0));
     for (const client of mcp.values()) await client.close().catch(() => {});
     for (const c of conns) c.ws.terminate();
     http.close();
