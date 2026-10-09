@@ -2,7 +2,7 @@
 id: T-50
 kind: task
 title: A message injected into a Codex session in the last second of its turn is marked injected but never acted on
-state: open
+state: closed
 labels:
   - slice-1
   - ready-for-agent
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-9
 branch: t/T-50-steer-lost-at-turn-end
 created: 2026-10-09T07:04:04.157Z
-updated: 2026-10-09T10:09:18.106Z
+updated: 2026-10-09T10:28:21.242Z
 ---
 
 ## Parent
@@ -197,3 +197,32 @@ Merge-forward complete at 57b08abae645b04c7cff6da58ce003408abcaeb2, merging main
 Conflicted files only: hub/README.md, hub/src/hub/agents-topic.ts, hub/test/codex-adapter.test.ts. Kept both notice table rows, both lifecycle kinds and handlers. Adapter test file preserves main verbatim plus the complete T-50 regression block appended. Static comparison confirmed hub/src/adapters/codex.ts remains byte-identical to pre-merge T-50 HEAD. Fake app-server/spoke paths merged automatically, preserving both behaviors. No implementation changes beyond resolution; no tracker files manually edited (main's tracked files came through the merge).
 
 Ran npm run typecheck && npm test once: typecheck passed; hub 307 total, 298 passed, 0 failed, 9 sandbox skips (8 ps-dependent + nested sandbox-exec); Neovim 65 total, 65 passed, 0 failed, 0 skipped. Exit 0, no isolated reruns needed. T-51's multiple-spoke/restart tests and all T-50 regressions passed. git diff --cached --check passed. Full log: /tmp/impl-T50-merge-full.log. No push.
+
+### rev-7 · 2026-10-09T10:12:19.299Z
+
+verdict: review
+result: clear
+by: rev-7 [reviewer]
+run: rev-2026-10-09-T50-resolution-1
+commit: 57b08abae645b04c7cff6da58ce003408abcaeb2
+
+Resolution-only review of merge 57b08abae645b04c7cff6da58ce003408abcaeb2, parents 9fa165632901a963207bea56cf17bc28dcdc2431 and main 55780b28ad551601f18cf66721b0030b87eea490. Read T-50/T-51, earlier verdicts and accepted deviations. Main thread only; no edits or test runs.
+
+## Standards
+No documented violations or actionable baseline smell findings in the three resolved files.
+
+## Spec
+No findings: high none; medium none; low none. Exact read-only comparisons establish:
+- hub/test/codex-adapter.test.ts is main 55780b2's complete file byte for byte, plus one blank line and the unchanged full T-50 regression block from 9fa1656. T-51 multi-spoke/restart/live-relaunch cases and every T-50 recovery case are retained.
+- hub/src/hub/agents-topic.ts is main's file plus T-50's unchanged redelivered/redelivery-failed handlers and redelivered lifecycle kind. T-51's spoke-joined kind and replaced handler are intact.
+- hub/README.md is main's file with exactly T-50's recovery notice row added and its Codex inject row retained. T-51's complete multi-spoke/reconnect/relaunch documentation and spoke-joined table row are unchanged; the recovery semantics include accepted-only obligations, newer-turn tracking, shared reconciliation, ambiguity and bounded failure.
+
+Additional read-only comparison confirms codex.ts is unchanged from premerge T-50. git diff --check passes for the three resolved files. This verdict covers the requested merge resolution, not a fresh review of the automatically merged files or either feature's original implementation.
+
+Evidence: /tmp/impl-T50-merge-full.log confirms hub 307 total, 298 passed, 0 failed, 9 skipped; Neovim 65 passed, 0 failed, 0 skipped. The T-50 regressions and T-51 multi-spoke/restart cases passed; ps-dependent live-relaunch scenarios skipped. Typecheck success and command exit 0 are reported on the item. Skips are not passes; no independent suite rerun.
+
+Totals: Standards 0 findings; Spec 0 findings.
+
+### coord · 2026-10-09T10:28:21.242Z
+
+Merged into main as 7162ee4 (`git merge --no-ff`, by the Coordinator) at 10:14Z from impl-50's forward merge 57b08ab (resolution reviewed clear by rev-7, rev-2026-10-09-T50-resolution-1; the feature cleared earlier at 9fa1656: review rev-7, QA qa-2026-10-09-10-T50-9fa1656). Suite on main after it (415507c, with T-57): typecheck clean, hub 315/315, Neovim 89/89. Live since the 10:18Z hub restart. Known regression filed the same hour: T-68 (the thread check reads `userMessage` items only, so a delivery into an idle Codex session, a `hub_event` tool output, is taken for lost and redelivered twice; hotfix c55dfd2 in review). The steer path this item fixed (a steer accepted in the last second of a turn and never taken up) stays as built.

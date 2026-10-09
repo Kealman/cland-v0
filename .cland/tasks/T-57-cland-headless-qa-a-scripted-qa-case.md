@@ -2,7 +2,7 @@
 id: T-57
 kind: task
 title: "cland --headless --qa: a scripted QA case drives a headless workbench and exits with its verdict"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-14
 branch: t/T-57-headless-qa-runner
 created: 2026-10-09T08:33:53.699Z
-updated: 2026-10-09T10:07:35.010Z
+updated: 2026-10-09T10:28:19.880Z
 ---
 
 ## Parent
@@ -177,3 +177,67 @@ Regressions:
 - KEYS-004: the reported `h×4095 gi` is refused at once with the message above, with nothing typed (Normal mode, nothing pending). On db59c1b the same case hung until the run's timeout.
 
 Checks: typecheck clean; nvim/test/qa.test.ts 22/22. The README's qa.keys row says the same.
+
+### qa-12 · 2026-10-09T10:09:53.941Z
+
+verdict: qa
+result: clear
+by: qa-12 [qa]
+run: qa-20261009-57-0fd3df9
+commit: 0fd3df976e058df91fe2a566013b1965dfc19c8f
+
+Refreshed QA on 0fd3df976e058df91fe2a566013b1965dfc19c8f (t/T-57-headless-qa-runner). git log/rev-parse matched before and after; working tree clean. This supersedes qa-20261009-57-db59c1b for the changed keys contract. No implementation changes by QA.
+
+Ran:
+- npm run typecheck: passed.
+- node --test nvim/test/qa.test.ts: 22 total, 19 passed, 0 failed, 3 sandbox-profile skips. Read revised KEYS-001/002 and new KEYS-003/004. The suite checks Normal-mode gi with an explicit cut point, immediate refusal of h×4095 + gi, long input with boundaries, existing-target refusal, labels/path isolation, result codes, evidence, environment/state and cleanup.
+- python3 /tmp/qa-20261009-57-3/probes.py: three independent cases through node hub/bin/cland.ts --headless --qa <case> --timeout 15, with an external 20-second watchdog. Each returned one JSON line naming build 0fd3df9 and a 45-row screen; each temporary fixture directory was removed.
+  - NORMAL-GI.lua: the actual Normal-mode h×4095 + gi sequence, on a stub General topic bound to T-1, returned BLOCKED/exit 2 in 1.681 s. Message starts 'keys: 4097 bytes' and names <Esc> or <CR> within 4096 bytes. Mode stayed Normal; the before/after screen was identical. It did not hang or reach the watchdog.
+  - LONG-INSERT.lua: 8 segments of 3,000 a characters, separated by <Esc>A, followed by <Esc><Space>i, against the real stdio hub. PASS/exit 0 in 3.450 s. All 24,000 characters were present exactly after the prompt prefix; Normal mode, Items open and T-1 Long insert target visible.
+  - NO-BOUNDARY.lua: 5,000 q characters in Insert mode with no boundary returned BLOCKED/exit 2 in 2.466 s. The actionable message names <Esc> or <CR>; the screen was identical to the pre-input dump and mode stayed Insert, proving refusal before typing.
+- cland task list --json and task view T-57 --json succeeded. Compared tracker summaries before/after the probes.
+- Read nvim/README.md:156: documents the 4 KiB limit, only <Esc>/<CR> cut points, upfront BLOCKED result and guidance to split calls. It matches the observed contract; continuous over-limit input without boundaries is now deliberately refused.
+
+Findings by severity: no high, medium or low product findings in this refresh. The reported Normal-mode hang no longer reproduces; the requested refusal is prompt and actionable.
+
+Evidence limits: the three sandbox-exec profile tests skipped because nested sandbox-exec is unavailable in this session. Automated normal/timeout/SIGTERM cleanup checks passed. The prior ps/manual-process-inspection limitation remains; this refresh does not claim independent process-table inspection. This was the Coordinator-requested targeted refresh, not another full npm test run; the earlier full-run timeout and passing isolated rerun remain documented in the previous verdict.
+
+Evidence: /tmp/qa-20261009-57-3/typecheck.log, qa-test.log, probes.py, probes.log, NORMAL-GI.lua/.json, LONG-INSERT.lua/.json, NO-BOUNDARY.lua/.json, and tracker snapshots. Prior broader evidence remains under /tmp/qa-20261009-57-1 and /tmp/qa-20261009-57-2.
+
+### rev-6 · 2026-10-09T10:10:08.343Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-20261009-57-4
+commit: 0fd3df976e058df91fe2a566013b1965dfc19c8f
+
+Fourth review: 0fd3df976e058df91fe2a566013b1965dfc19c8f against db59c1b, plus main...t/T-57-headless-qa-runner. Main thread only.
+
+High/medium/low findings: none remaining. Standards: no outstanding documented-standard or baseline-smell findings. Spec: the previous mapping-boundary medium is closed by precomputing all chunks before input, cutting only after <Esc>/<CR>, and refusing an unsafe over-limit stretch as BLOCKED before any of it is typed. The stricter 4 KiB contract and author guidance are explicit in nvim/README.md; this is an acceptable bounded API rather than silent loss or a hang. The existing-directory low, fixture confinement, and canonical tracker writer fixes remain closed. The hidden --qa-fixture serializer bridge remains within scope and refuses existing targets. No .cland/tasks files are changed in the branch diff.
+
+Validation: npm run typecheck and git diff --check pass. Read-only probes with the real pinned Neovim and stub hub: KEYS-001/002/003 PASS, KEYS-004 immediately BLOCKED with the documented message. Independent original gi reproduction: 4094 h characters followed by gi opens the fixture-bound T-1 and passes; 4095 h characters followed by gi now returns BLOCKED, remains on General in Normal mode, and does not hang. All probes performed no fixture-file writes. The full file-writing process suite and sandbox profiles were not rerun by this read-only Reviewer; the latest implementer report records nvim/test/qa.test.ts 22/22. The earlier full-suite timing failure and environment skips remain QA evidence limits, not an outstanding code-review finding.
+
+### rev-cc · 2026-10-09T10:23:58.086Z
+
+verdict: review
+result: clear
+by: rev-cc [reviewer]
+run: rev-cc-57-resolution-1
+commit: 88779b02f9a39467e3837cbf8fa98df07c034222
+
+Scope: the conflict resolution in the forward merge 88779b0 (parents 0fd3df9, e7abf62), hub/bin/cland.ts and nvim/README.md, plus `npm run typecheck` in .cland/worktrees/T-57.
+
+Checked:
+- Main side kept: `git diff 0fd3df9 88779b0` and `git diff 0fd3df9...main` contain the same hunks for both files. In cland.ts that is the ARTIFACT_USAGE import, the usage line and the `artifact` case. In nvim/README.md it is the intro line, the T-56 Filters bullet, the `␣a`/`f F`/`L` key rows, the agents_log.lua row, the agents-filters test line and the "Shared artifacts" section.
+- T-57 side kept: the T-57 changes to both files (merge-base b8368b3..0fd3df9) reappear unchanged in e7abf62..88779b0. The only difference is the expected one: the usage line now carries both `${QA_USAGE}` and `${ARTIFACT_USAGE}`. The QA_USAGE/runQa/runQaFixture imports and the `qa` case are still there. Both sides of the branch add 27 files, 1625 insertions and 8 deletions.
+- `npm run typecheck` (hub tsc + nvim tsconfig) passes with exit 0. The worktree stays clean.
+
+Findings:
+- low: the second parent of 88779b0 is e7abf62, not main's tip 7162ee4 (Merge T-50), so the branch does not contain T-50 (hub/src/adapters/codex.ts, hub/src/hub/agents-topic.ts, hub/src/hub/journal.ts, hub/README.md, codex tests and fake). T-50 touches neither conflict file, and `git merge-tree 88779b0 7162ee4` merges cleanly. So this is not a defect in the resolution. It only means the branch is one merge behind main, and the typecheck above did not include T-50.
+
+No high or medium findings.
+
+### coord · 2026-10-09T10:28:19.880Z
+
+Merged into main as 415507c (`git merge --no-ff`, by the Coordinator) at 10:25Z from impl-57's forward merge 88779b0 (resolution reviewed clear by rev-cc, rev-cc-57-resolution-1). Suite on main after the merge: typecheck clean, hub 315/315, Neovim 89/89, 0 skips. Verdict history: four review rounds (rev-6: rev-20261009-57-1 to -4; findings on the fixture root, on the 4096-byte key chunking across a leader mapping, then across a Normal-mode plain-character mapping; the final rule cuts only after `<Esc>` or `<CR>` and refuses an over-limit stretch without one), QA clear qa-20261009-57-db59c1b then qa-20261009-57-0fd3df9 (qa-12: 24,000-character Insert input with boundaries passes, `h`×4095 + `gi` returns BLOCKED in 1.7 s). The scripted QA runner (`cland --headless --qa <case>`, the Lua QA API, `qa/cases/*.lua`, the fixture project, the JSON state snapshot and the exit code) is live on the next hub restart; T-62 builds on it. Implementer: impl-57 (Claude Code, claude-opus-5-5), launched 08:37Z, done 10:07Z with fixes. GitHub mirror #52.

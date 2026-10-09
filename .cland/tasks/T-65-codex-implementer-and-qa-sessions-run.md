@@ -2,7 +2,7 @@
 id: T-65
 kind: task
 title: "Codex Implementer and QA sessions run with full access by default: any work a role needs, on any harness"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-15
 branch: t/T-65-codex-full-access-defaults
 created: 2026-10-09T08:55:35.290Z
-updated: 2026-10-09T10:09:37.297Z
+updated: 2026-10-09T10:23:53.676Z
 ---
 
 ## Parent
@@ -110,3 +110,39 @@ Evidence: /tmp/qa9-T65-suite.log, /tmp/qa9-T65-targeted.log, /tmp/qa9-T65-items.
 ### impl-65 · 2026-10-09T10:09:37.297Z
 
 Phase 2 started after Coordinator's 10:08:55Z handoff: main 55780b2, hub restarted at 10:08Z. `node hub/bin/cland.ts role list --json` against the live hub confirms Implementer + QA approval never, sandbox danger-full-access, writableRoots [], network full; Reviewer approval never, read-only, writableRoots [], network none. My existing session still refuses /bin/ps; the updated clause alone does not change a running thread's policy. Fresh QA/Reviewer proof requires Coordinator launch. Implementer cannot launch/stop sessions; a read attempt `session list --json` was refused under session.launch, so I asked the Coordinator to provide fresh sessions and handle their stop. No code changes.
+
+### coord · 2026-10-09T10:15:08.908Z
+
+Phase 2 Reviewer proof, recorded by the Coordinator from rev-65's report of 10:12:37Z (a Reviewer may only comment verdicts, so the plain comment is mine). rev-65 (Codex gpt-6.1-sol) was launched by the hub at 10:11Z under the new defaults, no approval asked. `touch /Users/evgeniyivanov/Projects/cland/v0/.cland/rev-65-probe` exited 1 with `Operation not permitted`; the file does not exist afterwards. `curl -sS -m 5 https://example.com -o /dev/null` exited 6, `Could not resolve host: example.com` (no external request succeeded; a DNS failure alone does not prove the network block, noted as a limit). `node hub/bin/cland.ts role list` from its shell exited 1 with `connect EPERM` on the hub socket (the Reviewer reaches the hub through its spoke only). It read .cland/roles.toml, hub/src/roles/{default-roles,config,permissions}.ts and adapters/codex.ts: Reviewer approval never, read-only, roots [], network none (config.ts:69-84, mapped in codex.ts:180-185); Implementer and QA never, danger-full-access, network full. Its `artifact.create` attempt returned `unknown request type` because the running hub (55780b2) predates T-55's merge; expected until the next restart. No files changed.
+
+### coord · 2026-10-09T10:16:59.394Z
+
+Phase 2 Reviewer proof, recorded by the Coordinator from rev-65's report of 10:12:37Z (a Reviewer may only comment verdicts, so the plain comment is mine). rev-65 (Codex gpt-6.1-sol) was launched by the hub at 10:11Z under the new defaults, no approval asked. `touch /Users/evgeniyivanov/Projects/cland/v0/.cland/rev-65-probe` exited 1 with `Operation not permitted`; the file does not exist afterwards. `curl -sS -m 5 https://example.com -o /dev/null` exited 6, `Could not resolve host: example.com` (no external request succeeded; a DNS failure alone does not prove the network block, noted as a limit). `node hub/bin/cland.ts role list` from its shell exited 1 with `connect EPERM` on the hub socket (the Reviewer reaches the hub through its spoke only). It read .cland/roles.toml, hub/src/roles/{default-roles,config,permissions}.ts and adapters/codex.ts: Reviewer approval never, read-only, roots [], network none (config.ts:69-84, mapped in codex.ts:180-185); Implementer and QA never, danger-full-access, network full. Its `artifact.create` attempt returned `unknown request type` because the running hub (55780b2) predates T-55's merge; expected until the next restart. No files changed.
+
+### coord · 2026-10-09T10:19:03.722Z
+
+Phase 2 Reviewer proof, recorded by the Coordinator from rev-65's report of 10:12:37Z (a Reviewer may only comment verdicts, so the plain comment is mine). rev-65 (Codex gpt-6.1-sol) was launched by the hub at 10:11Z under the new defaults, no approval asked. `touch /Users/evgeniyivanov/Projects/cland/v0/.cland/rev-65-probe` exited 1 with `Operation not permitted`; the file does not exist afterwards. `curl -sS -m 5 https://example.com -o /dev/null` exited 6, `Could not resolve host: example.com` (no external request succeeded; a DNS failure alone does not prove the network block, noted as a limit). `node hub/bin/cland.ts role list` from its shell exited 1 with `connect EPERM` on the hub socket (the Reviewer reaches the hub through its spoke only). It read .cland/roles.toml, hub/src/roles/{default-roles,config,permissions}.ts and adapters/codex.ts: Reviewer approval never, read-only, roots [], network none (config.ts:69-84, mapped in codex.ts:180-185); Implementer and QA never, danger-full-access, network full. Its `artifact.create` attempt returned `unknown request type` because the running hub (55780b2) predates T-55's merge; expected until the next restart. No files changed.
+
+### impl-65 · 2026-10-09T10:22:04.655Z
+
+Phase 2 summary under the Coordinator's revised 10:11Z brief: fresh QA and Reviewer launched by the live hub after phase 1 was merged and the hub restarted. No code changes; task worktree remains clean at a75df1f.
+
+Live defaults: `node hub/bin/cland.ts role list --json` exits 0 and reports Implementer + QA approval never, sandbox danger-full-access, writableRoots [], network full; Reviewer approval never, read-only, roots [], network none. Existing impl-65 was only live-resumed (`session-resumed`, 10:07:59.798Z, relaunched:false), so it retains the old restricted policy; these capability measurements are from the fresh QA, not from this old Implementer thread.
+
+QA proof (qa-65, gpt-6-astra, Node v24.21.0, T-65 worktree): `/bin/ps -o pid,comm -p $$` exits 0; `node hub/bin/cland.ts task view T-65 --json | head -c 200` returns the item via the live hub socket; task list also exits 0. `npm run typecheck && npm test` was run once: typecheck passes, hub 269 tests / 268 passed / 1 failed / 0 skipped. All six ps-dependent cases and the nested sandbox-exec edges case run and pass. The sole failure is the existing Claude renamed-session clause injection timeout at claude-code-sessions.test.ts:264 (`the clause injected: not within 15000 ms`); its isolated named rerun passes 1/0/0 without edits. Since that hub failure short-circuited Neovim, `npm run test:nvim` was run separately: 62/0/0. Tracker hand-edit watcher test passes (153 ms re-index, 262 ms visible through CLI). No approvals were asked. I checked the actual captured tool outputs, including totals and the six previously skipped pid scenarios, against QA's report.
+
+Reviewer proof (rev-65, gpt-6.1-sol): `touch /Users/evgeniyivanov/Projects/cland/v0/.cland/rev-65-probe` exits 1, `Operation not permitted`; file absence is confirmed. Its role-list CLI attempt fails with `connect EPERM` on the hub socket. `curl -sS -m 5 https://example.com -o /dev/null` exits 6, `Could not resolve host: example.com`: DNS failure alone does not independently prove external-network enforcement. It read the role parser/defaults and adapter mapping (never/:read-only). No approval and no file changes. The Coordinator recorded this report on the item; Reviewer and QA plain comments are forbidden by their verdict-only grants, so QA's plain evidence is incorporated here from its report and A-1.
+
+Journal evidence in the main project's .cland/journal.jsonl: 10:11:31.994Z session-launched qa-65, Codex pid 92631, session 1bbb7ddf-2c8e-4ebb-a0fe-5d67ed622f7b; 10:11:32.464Z session-launched rev-65, Codex pid 93089, session ac380950-372f-4563-8c77-e47ac82a8818; 10:11:53.954Z qa-65 task.view via CLI outcome ok; 10:19:53.559Z qa-65 artifact.create outcome ok. Across their 98 matching journal events through this snapshot there are 0 harness-request events and 0 waiting-for-approval states. Artifact creation initially failed on the old hub and succeeded after the 10:18Z restart.
+
+Evidence: hub artifact A-1, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1-t-65-qa-phase-2-command-evidence-and-full-logs.md`, contains commands, output and full suite logs. Independent output/role/journal snapshots are in this task worktree's ignored `.cland/artifacts/T65-phase2/{qa-output.log,roles.json,journal.jsonl}`.
+
+Limits: the combined npm test invocation had one timeout; the isolated scenario and separately run Neovim were green. This satisfies the revised process/socket/test and Reviewer write-refusal proof, not the original broader fresh Implementer + three real child harness launches or direct FSEvents/no-polling demonstration. Those broader probes were not run. Coordinator owns qa-65 stop and item closure.
+
+### coord · 2026-10-09T10:23:29.242Z
+
+Phase 2 QA proof, recorded by the Coordinator from qa-65's reports of 10:17Z and 10:20Z (QA may only comment verdicts). qa-65 (Codex gpt-6-astra) was launched by the hub at 10:11Z in .cland/worktrees/T-65 under the new defaults; no approval was asked for any command. `/bin/ps -o pid,comm -p $$` exit 0; `node hub/bin/cland.ts task view T-65 --json` over the live hub socket exit 0; `npm run typecheck && npm test` once: typecheck passed; hub 269 tests, 268 passed, 1 failed, 0 skipped (the six ps-dependent identity cases and the nested sandbox-exec case ran and passed); the one failure was the 15 s clause-injection wait in hub/test/claude-code-sessions.test.ts:264 under load, passing alone 1/1; Neovim 62/62. Full output published as artifact A-1 (.cland/artifacts/A-1-t-65-qa-phase-2-command-evidence-and-full-logs.md) once the restarted hub (7162ee4, with T-55) accepted `artifact.create`; before the restart it answered `unknown request type`. Not covered by this proof: spawning real child harnesses from inside a session and a direct FSEvents probe (the watcher tests passed in the suite, which is the item's measurable form).
+
+### coord · 2026-10-09T10:23:53.676Z
+
+Closed by the Coordinator at 10:24Z. Phase 1 merged into main as 9826a2b at 09:28Z (review rev-2026-10-09-T65-1, QA qa-2026-10-09-T65-1 clear); live since the 10:08Z hub restart. Phase 2 proof recorded above by impl-65 from fresh sessions launched by the hub under the new defaults: qa-65 ran ps, the hub socket and the full suite with 0 skips and no approval (one load timing failure passing alone; artifact A-1 holds the output); rev-65's write to the repository was refused, its hub socket connect refused, no approval asked. What still cannot be done, per the revised proof: spawning real child harnesses from inside a session and a direct FSEvents probe were not exercised (the watcher tests passed in the suite). Effect on the run from here: Codex Implementers and QA need no approval and no socket workaround; Reviewers stay read-only through their spoke. GitHub mirror: none (slice-1 follow-up).

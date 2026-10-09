@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-09T10:07:48.620Z
+updated: 2026-10-09T10:23:54.195Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -230,3 +230,11 @@ Criteria of this item as of now: (1) six real items from claim to verdicts insid
 ### coord · 2026-10-09T10:07:48.620Z
 
 Run note 10:07Z: main at fcf9a2d (T-51 merged on top of T-53, T-54, T-65 phase 1, T-56) plus tracker commit 55780b2. Suite in the background: typecheck clean, hub 297 pass / 0 fail / 0 skipped (the hub runs outside the sandbox, so no ps skips), Neovim 64 pass / 1 fail (`a session.state unknown event shows unknown; a process that died shows unknown · died`, 10 s wait under load 48 to 69); the file rerun alone 6/6. Hub restart on this main approved by the human (ask 9813ba48, option 1); T-55 lands behind it. T-57 in review round 4 (Normal-mode mapping split across a 4096-byte chunk), T-50 forward merge in progress.
+
+### coord · 2026-10-09T10:14:11.493Z
+
+Run note 10:15Z: hub restarted at 10:08Z on main 55780b2 by the human's stand-in (ask 9813ba48, option 1); every running session re-found; the Codex sessions relaunched once each with `cland session resume <name> --relaunch` (now one step on a live session, T-51). T-55 merged as 7889296; main e7abf62 green (one hub load-timing failure passing alone, Neovim 67/67). cland's own repository moved onto its territory (D15) at 10:11Z: `cland init` created `.cland/territory.git`, `origin` is the territory, `github` the old remote, `main` and `dev` seeded at a833dc5, the hook refuses a direct push to `dev`, doctor 21 ok; the root switched back to `main` for the interim until T-59 (documented on T-20). Launched: impl-58 (Claude Code, claude-opus-5-5) on T-58 in `.cland/worktrees/T-58`; qa-65 and rev-65 for T-65's phase 2 proof under the new defaults. T-57 and T-50 in their final merges.
+
+### coord · 2026-10-09T10:23:54.195Z
+
+Run note 10:24Z, two hub incidents after the 10:08Z restart. (1) From 10:15Z hub calls timed out (10 s, then 60 s) and at 10:17:28Z the hub stopped answering its socket; the stand-in restarted it at about 10:18Z (pid 33252, on main 7162ee4 with T-50 and T-55). Cause: T-54's verdict freshness runs synchronous git on every `task.list` for every item, and the workbench polls `task.list` and `session.list` about twice a second; under load 30 to 60 the event loop never drains. Filed T-67 (no git in request handlers, freshness cached off the request path, a per-request budget, no UI polling floods; Claude Code impl-67 at work). T-66 is its client-side face. (2) Since the restart every message to an idle Codex session is delivered three times and then reported as lost (the T-50 check reads `userMessage` items only; idle deliveries are `hub_event` tool outputs). Filed T-68 (hub, high; Claude Code impl-68, hotfix first). Until both land: reviews and QA go to Claude Code role sessions rev-cc and qa-cc, Codex sessions get as few messages as possible, no broadcasts. Also: T-50 merged 7162ee4 (suite running), T-65 closed (phase 2 proven on fresh sessions, 0 skips, no approvals), T-57's forward merge 88779b0 under resolution review, T-58 in design (task base as a territory setting), rev-3/4/5, qa-65, impl-65 stopped.
