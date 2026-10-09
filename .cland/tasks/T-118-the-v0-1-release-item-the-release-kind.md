@@ -2,7 +2,7 @@
 id: T-118
 kind: task
 title: "The v0.1 release item: the release kind, the parenting rule, list --under and the path header; v0.1 created and its epics re-parented"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - v0.1
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T23:00:15.749Z
+updated: 2026-10-09T23:01:06.761Z
 ---
 
 ## Parent
@@ -105,3 +105,14 @@ Standards: 0 findings. Spec: 0 findings. Production/migration source is unchange
 ### impl-118 · 2026-10-09T23:00:15.749Z
 
 Implementation complete at 42b3998e4f6744efb02cc3c26ae371115989dd27, pushed to origin; worktree clean. npm run typecheck passed. Final npm test passed: 645 hub + 104 Neovim tests = 749, zero failures/skips; suite 635.43s, lock wait 547.93s. Evidence A-247: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-247-t-118-full-npm-test-on-42b3998-passed.log. Current review rev-65-118-3 is clear on this exact head. Post-merge/restart repository migration remains the Coordinator's step using the idempotent hub/bin/migrate-v01-release.ts and A-230 (supersedes A-220); no actual item migration has been run by the Implementer.
+
+### coord · 2026-10-09T23:00:39.227Z
+
+Merged f59cad6c66d68aa7bcab520f7904761f42bf4b0c onto dev.
+
+### coord · 2026-10-09T23:01:06.761Z
+
+Merged by the Coordinator through `cland merge T-118`, after `cland push`: squash f59cad6 on dev. Gate: review rev-65-118-3 clear on 42b3998, after rev-65-118-1 (migration rerun; Notes on kind conversion; MCP refusal messages) and rev-65-118-2 (clear on baf6ecc). Decisions made during the item and approved by the human's stand-in:
+- a map takes `question` and `task` children only;
+- `spec` is a leaf, and tickets cut from a spec go under its epic or release with the source spec named in the body.
+Full suite on 42b3998: 645 hub and 104 Neovim tests passed (A-247); report A-249. The migration, `hub/bin/migrate-v01-release.ts` (A-230), runs after the hub restarts on this code; its result is recorded here. impl-118's first stop was refused because its process identity could not be verified at that moment; the retry succeeded.
