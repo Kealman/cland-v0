@@ -2,7 +2,8 @@
 // its worktree, `session.launch` with an item makes them before the session starts there and claims the item for
 // it, and the human lists and prunes them. The Git work is the territory module's, under its lock; this module
 // decides which items get a worktree, writes the branch into the item and records what it made in the journal
-// (`task-worktree`, an Agents notice through the log's tap).
+// (`task-worktree`, an Agents notice through the log's tap). Its Git commands are awaited, never synchronous, and
+// run one operation at a time (`#serial`): the territory lock refuses a second holder rather than waiting for it.
 import { realpathSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import type { LogFn } from '../log.ts';
@@ -56,6 +57,8 @@ export class TaskWorktrees {
   readonly #tracker: Tracker;
   readonly #log: LogFn;
   readonly #sessions: () => SessionCwd[];
+  /** The tail of the operations queued so far: each Git operation of the hub starts when the previous one settled. */
+  #queue: Promise<unknown> = Promise.resolve();
 
   constructor(options: { tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
     this.#tracker = options.tracker;
@@ -67,18 +70,26 @@ export class TaskWorktrees {
     return this.#tracker.root;
   }
 
+  /** Run `operation` after every operation queued before it, whatever their outcome. */
+  #serial<T>(operation: () => Promise<T>): Promise<T> {
+    const run = this.#queue.then(operation, operation);
+    this.#queue = run.catch(() => {});
+    return run;
+  }
+
   /** Why an item gets no worktree, or null when it does: an open task, in a project with a territory. */
-  #ineligible(view: ItemView): string | null {
+  async #ineligible(view: ItemView): Promise<string | null> {
     if (view.kind !== 'task') return `${view.id} is ${view.kind === 'epic' ? 'an' : 'a'} ${view.kind}: only a task gets a branch and a worktree`;
     if (view.state !== 'open') return `${view.id} is closed: no worktree`;
-    if (!hasTerritory(this.root)) return 'the project has no territory (cland init makes one): no branch or worktree';
+    if (!(await hasTerritory(this.root))) return 'the project has no territory (cland init makes one): no branch or worktree';
     return null;
   }
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
-  #make(view: ItemView, session: string | null): TaskWorktree {
-    const worktree = ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch });
-    if (view.branch !== worktree.branch) this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch });
+  async #make(view: ItemView, session: string | null): Promise<TaskWorktree> {
+    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch });
+    // the item as it is now: it may have changed while Git worked
+    if (this.#tracker.view(view.id).branch !== worktree.branch) this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch });
     if (worktree.createdWorktree) {
       this.#log({
         event: 'task-worktree',
@@ -94,64 +105,79 @@ export class TaskWorktrees {
   }
 
   /** After a claim (decision D7): the worktree made or reused, or why there is none. A failure never undoes the claim. */
-  afterClaim(id: string, session: string | null): WorktreeOutcome {
-    let view: ItemView;
-    try {
-      view = this.#tracker.view(id);
-    } catch (err) {
-      return { worktree: null, reason: err instanceof Error ? err.message : String(err) };
-    }
-    const reason = this.#ineligible(view);
-    if (reason !== null) return { worktree: null, reason };
-    try {
-      return { worktree: this.#make(view, session) };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.#log({ event: 'task-worktree-failed', id, error: message });
-      return { worktree: null, reason: `no worktree: ${message}` };
-    }
+  afterClaim(id: string, session: string | null): Promise<WorktreeOutcome> {
+    return this.#serial(async () => {
+      let view: ItemView;
+      try {
+        view = this.#tracker.view(id);
+      } catch (err) {
+        return { worktree: null, reason: err instanceof Error ? err.message : String(err) };
+      }
+      const reason = await this.#ineligible(view);
+      if (reason !== null) return { worktree: null, reason };
+      try {
+        return { worktree: await this.#make(view, session) };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.#log({ event: 'task-worktree-failed', id, error: message });
+        return { worktree: null, reason: `no worktree: ${message}` };
+      }
+    });
   }
 
   /**
    * `session.launch` with an item: an Implementer's alone. The worktree is made first (a failure refuses the launch),
    * the session starts in it, and the item's claim is the session's, taken over from the Coordinator's or the
-   * human's; another session's claim refuses the launch. An item that gets no worktree launches at the project root.
+   * human's; another session's claim refuses the launch. So does one another session took while the harness started:
+   * the session just launched is stopped, the claim left with its holder. An item that gets no worktree launches at
+   * the project root.
    */
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     if (request.role !== 'implementer') throw new Error('`item` is for an Implementer (--role implementer); a Reviewer or QA session stands in a worktree with cwd');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = this.#tracker.view(request.item);
-    const held = view.claim;
-    if (held && held.session !== request.name && held.role !== 'coordinator' && held.sessionId !== 'human') {
-      throw new Error(`${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}: release it before launching another session for it`);
-    }
-    const reason = this.#ineligible(view);
+    // a claim the launch may take over: none, the Coordinator's, the human's, or one under the new session's name
+    const yields = (held: Claim | null): boolean => !held || held.session === request.name || held.role === 'coordinator' || held.sessionId === 'human';
+    const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
+    if (!yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
+    const reason = await this.#ineligible(view);
     let worktree: TaskWorktree | null = null;
     if (reason === null) {
       try {
-        worktree = this.#make(view, request.name);
+        worktree = await this.#serial(() => this.#make(view, request.name));
       } catch (err) {
         throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     const { item: _item, ...launch } = request;
     const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: view.id } : {}) });
+    // the claim as it is now: another session may have taken it while the harness started. The check and the claim
+    // below run in one turn of the event loop, so nothing comes between them.
+    const held = this.#tracker.view(view.id).claim;
+    if (!yields(held) && held?.sessionId !== process.sessionId) {
+      this.#log({ event: 'launch-claim-lost', id: view.id, session: process.name, holder: held?.session ?? null });
+      const stopped = await sessions.stop(process.name).then(
+        () => `${process.name} was stopped`,
+        (err: unknown) => `stopping ${process.name} failed (${err instanceof Error ? err.message : String(err)}): stop it by hand`,
+      );
+      throw new Error(`${other(held as Claim)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
+    }
     const actor: Actor = { id: process.sessionId, name: process.name, role: process.role };
     const { claim } = this.#tracker.claim(actor, view.id, { force: true });
     return { process, claim, worktree, ...(reason !== null ? { reason } : {}) };
   }
 
   /** The task worktrees with their items and the sessions standing inside. */
-  list(): WorktreeEntry[] {
+  list(): Promise<WorktreeEntry[]> {
+    return this.#serial(() => this.#list());
+  }
+
+  async #list(): Promise<WorktreeEntry[]> {
     const root = this.root;
     const sessions = this.#sessions();
-    let base: string | null = null;
-    try {
-      base = taskBase(root);
-    } catch {
-      base = null;
-    }
-    return listTaskWorktrees(root).map((w) => {
+    const base = await taskBase(root).catch(() => null);
+    const out: WorktreeEntry[] = [];
+    for (const w of await listTaskWorktrees(root)) {
       let view: ItemView | null = null;
       try {
         view = this.#tracker.view(w.item);
@@ -159,7 +185,7 @@ export class TaskWorktrees {
         view = null;
       }
       const names = [...new Set(sessions.filter((s) => inside(s.cwd, w.path)).map((s) => s.name))];
-      return {
+      out.push({
         item: w.item,
         path: w.path,
         branch: w.branch,
@@ -168,24 +194,40 @@ export class TaskWorktrees {
         state: view?.state ?? null,
         sessions: names,
         base,
-        ahead: w.branch ? commitsAhead(root, w.branch, base) : [],
-      };
-    });
+        ahead: w.branch ? await commitsAhead(root, w.branch, base) : [],
+      });
+    }
+    return out;
   }
 
   /** The worktrees `prune` offers: those of closed items. */
-  prunable(): WorktreeEntry[] {
-    return this.list().filter((w) => w.state === 'closed');
+  async prunable(): Promise<WorktreeEntry[]> {
+    return (await this.list()).filter((w) => w.state === 'closed');
   }
 
-  /** Remove a closed item's worktree and branch; refused while a session stands inside, or for an open item. */
-  remove(item: string): { item: string; path: string; branch: string | null } {
-    const entry = this.list().find((w) => w.item === item);
-    if (!entry) throw new Error(`${item} has no worktree`);
-    if (entry.state !== 'closed') throw new Error(`${item} is ${entry.state ?? 'not in the tracker'}: prune removes only the worktrees of closed items`);
-    if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-    const removed = removeTaskWorktree(this.root, item);
-    this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, removed.path), branch: removed.branch, ahead: entry.ahead.length });
-    return { item, ...removed };
+  /**
+   * Remove closed items' worktrees and branches, from one listing: each is refused while a session stands inside,
+   * for an open item, or when Git refuses (changes in the worktree).
+   */
+  prune(items: string[]): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
+    return this.#serial(async () => {
+      const entries = await this.#list();
+      const removed = [];
+      const failed = [];
+      for (const item of items) {
+        try {
+          const entry = entries.find((w) => w.item === item);
+          if (!entry) throw new Error(`${item} has no worktree`);
+          if (entry.state !== 'closed') throw new Error(`${item} is ${entry.state ?? 'not in the tracker'}: prune removes only the worktrees of closed items`);
+          if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
+          const done = await removeTaskWorktree(this.root, item);
+          this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
+          removed.push({ item, ...done });
+        } catch (err) {
+          failed.push({ item, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+      return { removed, failed };
+    });
   }
 }

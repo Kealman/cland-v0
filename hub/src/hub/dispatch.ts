@@ -137,12 +137,12 @@ export class Dispatcher {
    * One task request's result. A claim of an open task also makes or reuses its branch and worktree (decision D7):
    * the result carries the worktree, or the reason there is none; the claim stands either way.
    */
-  #answerTask(frame: TaskRequest, actor: Actor | 'client'): HubFrame {
+  async #answerTask(frame: TaskRequest, actor: Actor | 'client'): Promise<HubFrame> {
     const result = answerTask(this.#options.tracker, frame, actor);
     this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
     if (frame.type !== 'task.claim' || frame.release === true || result.type !== 'result' || !result.ok || !this.#worktrees) return result;
     const value = result.value as { id: string; claim: { session: string } | null };
-    return { ...result, value: { ...value, ...this.#worktrees.afterClaim(value.id, value.claim?.session ?? null) } };
+    return { ...result, value: { ...value, ...(await this.#worktrees.afterClaim(value.id, value.claim?.session ?? null)) } };
   }
 
   /** What a handover and `role.state` read beyond the core (#31): the tracker's claims, the launched sessions. */
@@ -390,6 +390,12 @@ export class Dispatcher {
     let unsubscribe: (() => void) | null = null;
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
+    /** A result that comes later (Git work, a launch): sent if the peer is still there, audited either way. */
+    const later = (result: Promise<HubFrame>): void =>
+      void result.then((frame) => {
+        if (peer.isOpen()) peer.send(frame);
+        else settle(frame);
+      });
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }, this.#worktrees ?? undefined).then((result) => {
         if (peer.isOpen()) peer.send(result);
@@ -589,21 +595,18 @@ export class Dispatcher {
           case 'inbox.dismiss_all':
             return answer(core.inbox.dismissAll());
           case 'worktree.list':
-            return answer({ worktrees: this.#needWorktrees().list() });
           case 'worktree.prune': {
-            // the human's (a session's shell is refused before this): the closed items' worktrees, removed as named
+            // Git work, awaited; prune is the human's (a session's shell is refused before this): without items the
+            // closed items' worktrees, with items those removed
             const worktrees = this.#needWorktrees();
-            if (frame.dryRun === true || !frame.items?.length) return answer({ candidates: worktrees.prunable() });
-            const removed = [];
-            const failed = [];
-            for (const item of frame.items) {
-              try {
-                removed.push(worktrees.remove(item));
-              } catch (err) {
-                failed.push({ item, error: err instanceof Error ? err.message : String(err) });
-              }
-            }
-            return answer({ removed, failed });
+            const id = frame.id;
+            const value: Promise<unknown> =
+              frame.type === 'worktree.list'
+                ? worktrees.list().then((w) => ({ worktrees: w }))
+                : frame.dryRun === true || !frame.items?.length
+                  ? worktrees.prunable().then((candidates) => ({ candidates }))
+                  : worktrees.prune(frame.items);
+            return later(value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
           }
           case 'subscribe':
             if (!unsubscribe) {
@@ -664,7 +667,7 @@ export class Dispatcher {
             if (!this.#permitted(connection, frame, peer)) return;
           }
           // a spoke always acts as its own session
-          if (isTaskRequest(frame)) return peer.send(this.#answerTask(frame, sessionActor(connection, UNKNOWN_SESSION)));
+          if (isTaskRequest(frame)) return later(this.#answerTask(frame, sessionActor(connection, UNKNOWN_SESSION)));
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
           return spokeRequest(frame, connection.name);
@@ -677,7 +680,7 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           if (!this.#permitted(as, frame, peer)) return;
-          return peer.send(this.#answerTask(frame, sessionActor(as, UNKNOWN_SESSION)));
+          return later(this.#answerTask(frame, sessionActor(as, UNKNOWN_SESSION)));
         }
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
@@ -700,7 +703,7 @@ export class Dispatcher {
         if (isTaskRequest(frame)) {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
-          return peer.send(this.#answerTask(frame, 'client'));
+          return later(this.#answerTask(frame, 'client'));
         }
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
