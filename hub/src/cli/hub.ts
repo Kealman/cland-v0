@@ -2,11 +2,12 @@
 // anywhere inside it).
 import { spawn } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serveProject } from '../hub/daemon.ts';
 import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
-import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
+import { hubDiscovery, layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
 import { withRole } from '../names.ts';
 import { askHub, askHubFrame, probe } from './socket-client.ts';
@@ -134,12 +135,12 @@ async function start(root: string, io: Io): Promise<number> {
   return 1;
 }
 
-async function status(root: string, json: boolean, io: Io): Promise<number> {
-  const l = layout(root);
+async function status(l: Layout, json: boolean, io: Io): Promise<number> {
+  const root = l.root;
   const found = await inspect(l);
   switch (found.kind) {
     case 'live':
-      io.out(json ? `${JSON.stringify(found.status)}\n` : `hub running for ${root}\n${describe(found.status)}`);
+      io.out(json ? `${JSON.stringify(found.status)}\n` : `hub running for ${found.status.root}\n${describe(found.status)}`);
       return 0;
     case 'none':
       io.out(json ? `${JSON.stringify({ running: false, root })}\n` : `no hub running for ${root}\n`);
@@ -153,8 +154,8 @@ async function status(root: string, json: boolean, io: Io): Promise<number> {
   }
 }
 
-async function stop(root: string, io: Io): Promise<number> {
-  const l = layout(root);
+async function stop(l: Layout, io: Io): Promise<number> {
+  const root = l.root;
   const d = readDiscovery(l.discovery);
   if (!d) {
     io.out(`no hub running for ${root}\n`);
@@ -260,15 +261,15 @@ const usageError = (io: Io, why: string): number => {
   io.err(`cland: hub audit: ${why}\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
   return 2;
 };
-async function unmute(root: string, names: string[], io: Io): Promise<number> {
+async function unmute(l: Layout, names: string[], io: Io): Promise<number> {
   const [a, b] = names;
   if (!a || !b || names.length !== 2) {
     io.err('usage: cland hub unmute <session> <session>\n');
     return 2;
   }
-  const d = readDiscovery(layout(root).discovery);
+  const d = readDiscovery(l.discovery);
   if (!d) {
-    io.err(`cland: no hub running for ${root}: a mute is lifted on the running hub (it is kept in hub.db until then)\n`);
+    io.err(`cland: no hub running for ${l.root}: a mute is lifted on the running hub (it is kept in hub.db until then)\n`);
     return 1;
   }
   try {
@@ -312,17 +313,27 @@ function journal(root: string, args: string[], io: Io): number {
 export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio): Promise<number> {
   const [sub, ...rest] = args;
   const root = projectRoot(cwd);
+  // Start/serve own the cwd's project. An explicit file selects an existing hub. Stop needs its
+  // actual root for lock checks and cleanup, even when that file is a copy outside the project.
+  const discovery = hubDiscovery(cwd);
+  const overridden = process.env.CLAND_HUB_FILE?.trim() && ['status', 'stop', 'unmute'].includes(sub ?? '');
+  let target = overridden ? dirname(dirname(discovery)) : root;
+  if (overridden && sub === 'stop') {
+    const d = readDiscovery(discovery);
+    target = (d && await probe(d))?.root ?? target;
+  }
+  const l = { ...layout(target), discovery };
   switch (sub) {
     case 'start':
       return start(root, io);
     case 'status':
-      return status(root, rest.includes('--json'), io);
+      return status(l, rest.includes('--json'), io);
     case 'stop':
-      return stop(root, io);
+      return stop(l, io);
     case 'audit':
       return audit(root, rest, io);
     case 'unmute':
-      return unmute(root, rest, io);
+      return unmute(l, rest, io);
     case 'journal':
       return journal(root, rest, io);
     case 'serve':

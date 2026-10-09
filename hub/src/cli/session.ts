@@ -1,5 +1,5 @@
 // `cland session …`: launch and manage harness sessions through the project's hub (spec 4.3).
-import { layout, projectRoot, readDiscovery } from '../project.ts';
+import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { withRole } from '../names.ts';
@@ -25,7 +25,7 @@ const line = (p: HarnessProcessView): string =>
 
 export async function runSession(args: string[], cwd: string = process.cwd()): Promise<number> {
   const [sub, ...rest] = args;
-  const d = readDiscovery(layout(projectRoot(cwd)).discovery);
+  const d = readDiscovery(hubDiscovery(cwd));
   if (!d) {
     process.stderr.write('cland: no hub runs for this project — run `cland hub start`\n');
     return 1;

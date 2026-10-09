@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { VERSION } from './version.ts';
 
 export const CLAND_DIR = '.cland';
@@ -91,14 +91,36 @@ export function layout(root: string): Layout {
 }
 
 /**
- * The project a command run in `cwd` belongs to: the nearest ancestor holding `.git` or an existing
- * `.cland/` (a project with no repository), else `cwd` itself.
+ * The project a command run in `cwd` belongs to. Linked worktrees share the main worktree's project;
+ * their gitdir's `commondir` points back to its `.git/`. A copied `.cland/` without a hub does not
+ * hide that repository. Otherwise use the nearest `.git` or `.cland/`, else `cwd` itself.
  */
 export function projectRoot(cwd: string): string {
+  let cland: string | null = null;
   for (let dir = cwd; ; dir = dirname(dir)) {
-    if (existsSync(join(dir, '.git')) || existsSync(join(dir, CLAND_DIR))) return dir;
-    if (dirname(dir) === dir) return cwd;
+    const git = join(dir, '.git');
+    if (existsSync(git)) {
+      if (statSync(git).isFile()) {
+        const gitdir = /^gitdir: (.+)$/m.exec(readFileSync(git, 'utf8'))?.[1]?.trim();
+        if (gitdir) {
+          const admin = resolve(dir, gitdir);
+          const common = join(admin, 'commondir');
+          if (existsSync(common)) return dirname(resolve(admin, readFileSync(common, 'utf8').trim()));
+        }
+      }
+      return cland ?? dir;
+    }
+    if (existsSync(join(dir, CLAND_DIR))) {
+      cland ??= dir;
+      if (existsSync(join(dir, CLAND_DIR, 'hub.json'))) return dir;
+    }
+    if (dirname(dir) === dir) return cland ?? cwd;
   }
+}
+
+/** The CLI's hub discovery: an explicit file wins, including when it is absent or invalid. */
+export function hubDiscovery(cwd: string, env: NodeJS.ProcessEnv = process.env): string {
+  return env.CLAND_HUB_FILE?.trim() ? resolve(cwd, env.CLAND_HUB_FILE.trim()) : layout(projectRoot(cwd)).discovery;
 }
 
 /** The nearest ancestor of `cwd` whose `.cland/hub.json` exists — where a spoke finds its hub — or null. */

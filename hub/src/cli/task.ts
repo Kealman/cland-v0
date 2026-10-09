@@ -2,7 +2,7 @@
 // its Unix socket. Every write goes through the hub; this side only parses arguments and prints.
 import { readFileSync } from 'node:fs';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { layout, pidAlive, projectRoot, readDiscovery } from '../project.ts';
+import { hubDiscovery, pidAlive, projectRoot, readDiscovery } from '../project.ts';
 import type { Claim } from '../tracker/index-db.ts';
 import type { ItemSummary, ItemView } from '../tracker/tracker.ts';
 import { actorOf } from './actor.ts';
@@ -221,8 +221,7 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   if (as) frame.as = as;
 
   const root = projectRoot(cwd);
-  const l = layout(root);
-  const d = readDiscovery(l.discovery);
+  const d = readDiscovery(hubDiscovery(cwd, env));
   if (!d || !pidAlive(d.pid)) {
     io.err(`cland: no hub running for ${root} — start it with \`cland hub start\`\n`);
     return 1;
