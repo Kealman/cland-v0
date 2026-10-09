@@ -4,15 +4,15 @@ kind: task
 title: "Harness adapters do synchronous fs while spawning a session: Codex mkdirSync, rmSync, openSync and closeSync on launch"
 state: open
 labels:
-  - needs-triage
   - hub
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T18:47:17.580Z
-updated: 2026-10-09T20:23:19.252Z
+updated: 2026-10-09T21:39:38.872Z
 ---
 
 ## Parent

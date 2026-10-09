@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:50.060Z
-updated: 2026-10-09T21:11:47.235Z
+updated: 2026-10-09T21:39:23.419Z
 ---
 
 ## Question
@@ -174,3 +174,97 @@ Checks:
   - Grouped by stages, the synthetic T-200 shows what the plan view T-100 will need: lanes, QA policy, and edges against the plan.
 - **What it does not show.** It is wide: T-19 is 371 columns, so it always scrolls. And it says nothing about the 27 children of T-19 that have no edges; the tray does.
 - **Board or graph.** My observation, not a decision: the graph shows order and parallelism, which the board cannot. It joins the board (or the vertical board of T-99) rather than replacing `␣b`, which is what this branch does.
+
+### human · 2026-10-09T21:39:23.419Z
+
+The second iteration follows the human's reaction, "the graph is better vertical".
+
+- **Commit** `0490b89` on `prototype/graph`, pushed to `origin` only and never merged.
+- **Layout.** Top to bottom is now the default. The first iteration's left-to-right layout is one key away (`o`).
+
+## Try it on the live hub
+
+From the main worktree, with the hub running:
+
+```sh
+git worktree add --detach /tmp/cland-graph-2 prototype/graph && /tmp/cland-graph-2/nvim/bin/cland-nvim .
+```
+
+Then `␣G`. If the first iteration's `/tmp/cland-graph` still exists, `git -C /tmp/cland-graph switch --detach prototype/graph` updates it instead. Remove either with `git worktree remove <path>`.
+
+## The vertical layout
+
+- **Layers top to bottom.** A node's layer is one past its furthest blocker. The items of a layer stand side by side and can run in parallel. A gutter on the left numbers the layers.
+- **Edges go down.** Every edge has its own track in the rows under its layer. A source's tracks lie one under the other, and the sources are ordered for the fewest crossings.
+  - Tracks that do not overlap then share a row. Two tracks that do not overlap never cross whichever lies higher, so this only shortens the channels: T-19 went from 72 to 64 rows at 118 columns, with the same crossings.
+  - A crossing is a vertical drawn over a broken horizontal. Lines join only where a track ends or parts from its source's line, so `┼` never appears.
+  - A line leaves a node from under its glyph, through the first cell of the node's second line.
+- **Kept from the first iteration:**
+  - the tray for edgeless items, with the done ones folded (`d`);
+  - the stage grouping (`s`), with the bands labelled S1, S2 and the stage names and QA policies in the footer;
+  - the status glyphs and marks; `gi`, `gt`, `gs`, Enter; `p`/`P`; and the live-update cursor.
+- **Glyphs.** They are now those of spec §3.11: ◉ green for ready, ◉ amber for review and qa, ○ for planned as for backlog.
+
+## Keys
+
+| Key | Top to bottom |
+| --- | --- |
+| `j` `k` | The next / previous layer, at the nearest column; from the last layer into the tray and back. |
+| `h` `l` | Along the layer. |
+| `^` `$` | The layer's ends. |
+| `gg` `G` | The first / last layer. |
+| `o` | Left to right (the first iteration's layout and keys), and back. |
+| `+` `-` | The narrowest a node may get before a layer wraps (20 by default). |
+| `↵` `gi` `gt` `gs` `p` `P` `r` `s` `d` | As before. |
+
+The view scrolls down like any buffer, and sideways only where a row is still wider than the window. A sideways scroll left over from a wider window goes away.
+
+## Wide rows
+
+- **Node width.** It is fitted to the window: the widest node, from 36 columns down to 20, at which every layer fits one row.
+- **Wrapping.** A layer too wide even at 20 goes on under itself on rows marked `↳` in the gutter. Its nodes are cut, in order, into rows of their own, keeping room for the lines that pass through. The lines into the later rows pass the earlier ones as straight verticals.
+- **Width when wrapping.** The nodes then take the widest width that needs no more rows than 20 would. Every row holds at least one node.
+
+T-19's widest layer is layer 9, with six nodes:
+
+| Window | Layer 9 | Nodes | Whole graph |
+| --- | --- | --- | --- |
+| 120 columns, with the sessions panel the workbench opens with (centre 85) | 2 + 2 + 2, under two `↳` | 21 wide | 3 rows wrapped in all |
+| 120 columns alone | 3 + 3, under one `↳` | 24 wide | 1 row wrapped, 84 lines |
+| 200 columns, with the sessions panel | 6 in one row | 20 wide | nothing wrapped |
+| 200 columns alone | 6 in one row | 29 wide | nothing wrapped, 63 lines |
+
+T-81 is the other epic checked. Its first layer has ten roots, so it wraps even at 200 columns: 7 bands, one under `↳`, nodes 33 wide. At 120 columns it has 9 bands, three under `↳`, nodes 20 wide.
+
+## Costs
+
+Measured on the live hub at a load average of about 6.5, medians of 20 renders:
+
+| Parent, window | Layout | Draw | Buffer write | `redraw!` |
+| --- | --- | --- | --- | --- |
+| T-19, 200 | 2.8 ms | 4.2 ms | 0.29 ms | 0.80 ms |
+| T-19, 120 | 5.8 ms | 4.3 ms | 0.36 ms | 0.77 ms |
+| T-81, 200 | 5.1 ms | 4.7 ms | 0.43 ms | 0.75 ms |
+| T-81, 120 | 5.7 ms | 6.0 ms | 0.74 ms | 0.76 ms |
+| T-20, 200 | 1.5 ms | 2.0 ms | 0.17 ms | 0.72 ms |
+| T-20, 120 | 3.9 ms | 3.3 ms | 0.34 ms | 0.74 ms |
+
+- Layout covers the labels, layers, order, fitting, wrapping and places. Wrapping costs one more layout pass.
+- A cursor move redraws only the focus highlight: at most 0.13 ms.
+- A render runs only when something the graph shows has changed.
+
+## Checks
+
+- **The QA case.** `qa/cases/GRAPH-001.lua` passes on the stub hub, rewritten for the vertical layout. It checks:
+  - T-19's layers and wrapping at 160, 120 and 200 columns, with and without the sessions panel, and no sideways scroll;
+  - every key above, Enter and `␣␣`, `gi`, `gt`, `gs` and `␣b`;
+  - the sampler's statuses and the spec's glyphs;
+  - the stage grouping, with the lane gap;
+  - `o` to left to right and back;
+  - two task events;
+  - T-20 with `r`, and `+`.
+- **The drawing.** No false merge, no line through a label, and no `┼`:
+  - over 900 random top-to-bottom layouts (free, packed and staged, 942,223 cells);
+  - over 335 composes of T-19, T-20, T-81 and T-200 from 40 to 238 columns.
+  - Below 55 columns, a single node with the lines passing beside it can be wider than the window, so the view scrolls sideways there.
+- **Tests.** The shell tests pass (60 of 60), and so do the shipped QA cases.

@@ -2,7 +2,7 @@
 id: T-106
 kind: task
 title: "Spoke tools are callable before the hub's welcome and fail with \"not connected yet\": queue or wait for readiness"
-state: open
+state: closed
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-39
 branch: t/T-106-spoke-tools-are-callable-before-the-hub
 created: 2026-10-09T20:55:16.129Z
-updated: 2026-10-09T21:39:11.558Z
+updated: 2026-10-09T21:39:31.785Z
 ---
 
 ## Parent
@@ -95,3 +95,11 @@ commit: 375d2970b90332566fecb3fcc52e7592321f613a
 No high, medium or low findings. hub/test/routing.test.ts:29 now closes impl2 unconditionally on readiness failure; repeated close after the existing success-path close is safe under the SDK and harness cleanup semantics. Assertions and production behavior are unchanged.
 
 Hub typecheck and diff check pass; clean requested head. Read A-212 confirming the parent ad6641e full suite passed 741/741 (637 hub, 104 Neovim); no tests/full suite run by reviewer. Separate Standards/Spec reports: A-214, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-214-t-106-final-cleanup-review-rev-6-106-3-at-375d297.md. Earlier production review/probe A-205 and roleless correction review A-209 remain applicable.
+
+### coord · 2026-10-09T21:39:24.489Z
+
+Merged b55dc01beabfe436a5caa16f4628c1b2dc2c0c03 onto dev.
+
+### coord · 2026-10-09T21:39:31.785Z
+
+Merged by the Coordinator through `cland merge T-106`: squash b55dc01 on dev. Gate: review rev-6-106-3 clear on 375d297, after rev-6-106-1 (clear on c595ac0, one cleanup-order low) and rev-6-106-2 (clear on ad6641e, one more cleanup low). Spoke tool calls wait for the welcome up to READINESS_TIMEOUT_MS = 20 s. Close, refusal and stop fail waiters at once, and the identity and socket are re-checked after the wait. WELCOME_TIMEOUT_MS = 20 s is separate from the 10 s request timeout; detecting a silent hub now costs up to 20 s. Full acceptance suite on ad6641e: 741 of 741 (A-212). The final one-line test cleanup, 375d297, passed routing.test.ts and typecheck (A-213). Dev was pushed with `cland push` before the merge; it included the human's other session's unpushed 44a6205. impl-106 stopped.
