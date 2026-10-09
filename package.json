@@ -14,7 +14,7 @@
   },
   "scripts": {
     "typecheck": "npm run typecheck --workspace hub && tsc -p nvim/tsconfig.json",
-    "test": "npm test --workspace hub && npm run test:nvim",
-    "test:nvim": "node --test \"nvim/test/**/*.test.ts\""
+    "test": "node hub/test/run-suite.ts all",
+    "test:nvim": "node hub/test/run-suite.ts nvim"
   }
 }

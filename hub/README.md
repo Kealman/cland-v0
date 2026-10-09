@@ -779,6 +779,31 @@ node hub/bin/cland.ts --version
 
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
+### Tests
+
+Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
+`npm test --workspace hub`, or `npm run test:nvim`. These entry points take
+`/tmp/cland-suite.lock` before spawning tests; a second run prints the holder's
+pid and start time and waits. A dead holder is reclaimed. An empty lock directory
+from the manual `mkdir` convention is respected until its owner removes it.
+`CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
+
+The suites run at concurrency 4. Targeted single-file runs are free:
+`node --test hub/test/daemon.test.ts`. If calling the runner directly, use
+`node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
+`node --test` is reserved for targeted runs.
+
+The runner uses a short temporary directory for each run (Unix socket paths must
+fit), cleans processes by cwd/arguments and process group, and prints any final
+leftovers, including detached hook bridges. Test helpers register temporary
+project ownership before spawning: their after hooks kill descendants/groups
+before removing the directory, and signal handlers cover SIGINT/SIGTERM where
+Node's test after hooks do not run. New process fixtures must use `tempProject`
+or `ownDirectory` and register teardown before awaiting process startup.
+Cleanup uses `ps` plus `lsof` on macOS, or `/proc` on Linux.
+Each suite invocation prints its elapsed duration and peak sampled one-minute
+machine load, which includes other activity on the machine.
+
 ### `cland` on the PATH
 
 The project hooks `cland init` writes into `.claude/settings.json` call `cland` from the PATH, and do nothing when it is not there (a Claude Code session the hub launches does not need it: its hooks name the CLI by path). To run them for a session started by hand, and to type `cland` instead of `node hub/bin/cland.ts`, put the CLI on the PATH once, from the repository root, with either:

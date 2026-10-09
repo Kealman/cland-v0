@@ -1,3 +1,4 @@
+import { ownDirectory } from './process-cleanup.ts';
 // Review and QA through the roles (spec 4.10 and 6 (g), #41): the Coordinator sends a review or QA request through
 // the hub to the session holding Reviewer or QA; that session, a Codex launched for the role (its first turn is the
 // role's clause from roles.toml), writes its verdict on the item with `task.comment` and reports back with `send`.
@@ -31,6 +32,7 @@ const listed = async (root: string, filter: string) => (JSON.parse(ok(await clan
 /** The fake Codex on the PATH, with its scripted verdicts written to `verdicts.json`. */
 async function fakeCodex(t: TestContext, verdicts: Partial<Record<'review' | 'qa', Script>>) {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
+  ownDirectory(t, home);
   await writeFile(join(home, 'verdicts.json'), JSON.stringify(verdicts));
   const env = { PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`, FAKE_CODEX_HOME: home, FAKE_CODEX_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200', CLAND_INJECT_TIMEOUT_MS: '5000' };
   const pids = async () => {

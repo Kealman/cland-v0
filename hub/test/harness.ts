@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import { processStarted } from '../src/hub/lock.ts';
+import { cleanupProcesses, ownDirectory, ownProcess } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -79,7 +80,6 @@ export type Session = {
 export const PRESENCE_DEADLINE_MS = 30_000;
 
 export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
-  const workDir = await mkdtemp(join(tmpdir(), 'cland-spoke-'));
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '',
     CLAND_SESSION_ID: options.sessionId ?? 'sess-test',
@@ -97,6 +97,8 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
   if (options.discover && options.name && options.assignRole !== false) await assignRole(options.cwd as string, options.name, options.role ?? 'implementer');
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
+  const workDir = await mkdtemp(join(tmpdir(), 'cland-spoke-'));
+  const cleanup = ownDirectory(undefined, workDir);
   const transport = new StdioClientTransport({ command: process.execPath, args: [SPOKE_ENTRY], env, cwd: options.cwd ?? workDir, stderr: 'pipe' });
   const client = new Client({ name: 'harness', version: '0.0.0' }, { capabilities: {} });
   const events: ChannelEvent[] = [];
@@ -110,7 +112,14 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
       }
     }
   });
-  await client.connect(transport);
+  try { await client.connect(transport); }
+  catch (error) {
+    await client.close();
+    if (transport.pid) await killDaemon(transport.pid);
+    await cleanup();
+    throw error;
+  }
+  const cleanupSpoke = ownProcess(undefined, transport.pid ?? undefined);
   // Always kept, printed only when asked: a failing case can quote what the spoke decided and why.
   let log = '';
   transport.stderr?.on('data', (chunk: Buffer) => {
@@ -164,7 +173,8 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     call,
     close: async () => {
       await client.close();
-      await rm(workDir, { recursive: true, force: true });
+      await cleanupSpoke();
+      await cleanup();
     },
   };
 }
@@ -237,7 +247,7 @@ export const NO_PS: string | false = processStarted(process.pid) === null ? 'nee
 /** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
 export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promise<string> {
   const root = await realpath(await mkdtemp(join(tmpdir(), prefix)));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  ownDirectory(t, root);
   return root;
 }
 
@@ -267,20 +277,13 @@ export async function startDaemon(t: TestContext, root: string, env: Record<stri
     /* asserted by the caller through `result` */
   }
   const pid = discovery?.pid;
-  if (pid !== undefined) t.after(() => killDaemon(pid));
+  if (pid !== undefined) ownProcess(t, pid);
   if (result.code !== 0 || !discovery) throw new Error(`cland hub start failed (${result.code}):\n${result.stdout}\n${result.stderr}`);
   return { result, discovery };
 }
 
 export async function killDaemon(pid: number): Promise<void> {
-  if (!pidAlive(pid)) return;
-  try {
-    process.kill(pid, 'SIGKILL');
-  } catch {
-    /* gone already */
-  }
-  const deadline = Date.now() + 5000;
-  while (pidAlive(pid) && Date.now() < deadline) await sleep(20);
+  await cleanupProcesses(undefined, [pid]);
 }
 
 /** A JSON-lines client on the hub's Unix socket: send frames, await the next one. */
@@ -482,6 +485,7 @@ export async function fakeClaude(
   timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
 ): Promise<FakeClaude> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
+  ownDirectory(t, home);
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CLAUDE_HOME: home,
@@ -559,6 +563,7 @@ export type FakeCodex = {
 
 export async function fakeCodex(t: TestContext, options: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number; env?: Record<string, string> } = {}): Promise<FakeCodex> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
+  ownDirectory(t, home);
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,

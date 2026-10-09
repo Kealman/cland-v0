@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { ensureNvim, NVIM_DIR, NVIM_VERSION } from '../bin/nvim-path.ts';
 import { connectRpc, type Rpc } from './rpc.ts';
+import { cleanupProcesses, ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
 
 export const INIT_LUA = join(NVIM_DIR, 'init.lua');
 
@@ -68,19 +69,21 @@ return rows`;
  */
 export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}): Promise<Client> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
+  ownDirectory(t, dir);
   const sock = join(dir, 'nvim.sock');
   const childEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
   // the restart snapshot lives under stdpath('state'): one per test
   Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
   const child = spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, stdio: ['ignore', 'ignore', 'pipe'] });
+  ownProcess(t, child.pid);
   let stderr = '';
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (c: string) => (stderr += c));
   let restartAddr: ((addr: string) => void) | null = null;
   const pids: number[] = [];
   t.after(async () => {
-    child.kill('SIGKILL');
+    await cleanupProcesses(undefined, child.pid ? [child.pid, ...pids] : pids);
     for (const pid of pids) {
       try {
         process.kill(pid, 'SIGKILL');

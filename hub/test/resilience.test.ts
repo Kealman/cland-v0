@@ -1,3 +1,4 @@
+import { ownProcess } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
@@ -140,8 +141,9 @@ test('a spoke survives a hub outage: tools report it, and it reconnects when the
   }
 });
 
-test('a spoke whose session vanished (stdin ended without an MCP close) exits instead of haunting the hub', async () => {
+test('a spoke whose session vanished (stdin ended without an MCP close) exits instead of haunting the hub', async (t) => {
   const child = spawn(process.execPath, [SPOKE_ENTRY], { stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: process.env.PATH ?? '' } });
+  ownProcess(t, child.pid);
   const stderr: string[] = [];
   child.stderr.on('data', (c: Buffer) => stderr.push(c.toString()));
   const exited = new Promise<number | null>((resolve) => child.on('exit', (code) => resolve(code)));

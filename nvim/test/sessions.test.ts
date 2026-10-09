@@ -1,3 +1,4 @@
+import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 // The session launcher and the sessions panel (#28) against a real hub: the three fake harnesses (Claude Code,
 // Codex, OpenCode, from hub/test/fakes, first on the PATH as the adapter tests put them) are launched from the
 // UI, show in the panel with their live state, attach in a terminal on Enter (each fake's attach client prints a
@@ -21,6 +22,7 @@ const FAKE_OPENCODE_DIR = fileURLToPath(new URL('../../hub/test/fakes/opencode',
 /** A fake's home (its state, the servers it started), its servers killed when the test ends. */
 async function fakeHome(t: TestContext, prefix: string): Promise<string> {
   const home = await realpath(await mkdtemp(join(tmpdir(), prefix)));
+  ownDirectory(t, home);
   t.after(async () => {
     const files = await readdir(join(home, 'servers')).catch(() => [] as string[]);
     for (const f of files) {

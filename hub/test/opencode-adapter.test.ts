@@ -1,3 +1,4 @@
+import { ownDirectory } from './process-cleanup.ts';
 // The OpenCode adapter (spec 4.2, 4.3; #27) against a fake OpenCode server at the harness boundary, HTTP plus SSE:
 // a real daemon in a temporary project launches the fake (`test/fakes/opencode/opencode`, first on the PATH) as
 // `opencode serve`; the fake reads the config the adapter generated and starts the real spoke, which connects to
@@ -28,6 +29,7 @@ type FakeOpenCode = {
 
 async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number } = {}): Promise<FakeOpenCode> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
+  ownDirectory(t, home);
   const env = {
     PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_OPENCODE_HOME: home,

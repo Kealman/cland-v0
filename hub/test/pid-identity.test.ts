@@ -1,3 +1,4 @@
+import { ownDirectory, ownProcess } from './process-cleanup.ts';
 // A pid is never signalled on a guess (Codex review of #26): the process table records each harness process's
 // start time, and every adapter (Codex, OpenCode, Claude Code) verifies it before a SIGTERM or SIGKILL. A pid that
 // now belongs to an unrelated process (reused after a crash or a restart) is left alone. The reuse is staged by
@@ -23,6 +24,7 @@ const nextSecond = () => sleep(1000 - (Date.now() % 1000) + 50);
 async function bystander(t: TestContext): Promise<number> {
   await nextSecond();
   const child = spawn('sleep', ['120'], { stdio: 'ignore', detached: true });
+  ownProcess(t, child.pid);
   child.unref();
   const pid = child.pid as number;
   t.after(() => killDaemon(pid));
@@ -106,6 +108,7 @@ const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.
 test('OpenCode: stop never signals a pid that another process reuses', async (t) => {
   const root = await tempProject(t);
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
+  ownDirectory(t, home);
   const env = { PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200' };
   t.after(async () => {
     for (const f of await readdir(join(home, 'servers')).catch(() => [] as string[])) {
