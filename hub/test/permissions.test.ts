@@ -137,7 +137,7 @@ test('every row of the permission table, for every role, over MCP: allowed calls
   ] satisfies Case[])
     await check(root, ui, coord, c);
 
-  // the Implementer: send to sessions, reads, claims and comments on its own item only
+  // the Implementer: send to sessions, reads, claims and comments on its own item, and only review on its claim
   for (const c of [
     { tool: 'send', args: { to: ['coord'], text } },
     { ...toHuman, forbidden: 'send:human', reason: notHuman },
@@ -152,7 +152,10 @@ test('every row of the permission table, for every role, over MCP: allowed calls
     { tool: 'task.comment', args: { id: 'T-2', text: 'Not mine.' }, forbidden: 'task.comment', reason: /only on its own item/, target: ' T-2' },
     { tool: 'task.comment', args: { id: 'T-1', text: 'Self-review.', verdict: 'review', result: 'clear', run: 'r-self' }, forbidden: 'task.comment:verdict', reason: /may not write verdicts/, target: ' T-1' },
     { tool: 'task.create', args: { title: 'Mine' }, forbidden: 'task.create', reason: /Implementer may not use task\.create/ },
-    { tool: 'task.edit', args: { id: 'T-1', assignee: 'rev' }, forbidden: 'task.edit', target: ' T-1' },
+    { tool: 'task.edit', args: { id: 'T-1', assignee: 'rev' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
+    { tool: 'task.edit', args: { id: 'T-1', status: 'review', assignee: 'rev' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
+    { tool: 'task.edit', args: { id: 'T-1', status: 'planned' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-1' },
+    { tool: 'task.edit', args: { id: 'T-2', status: 'review' }, forbidden: 'task.edit:review', reason: /may set only review on its claimed item, without other edits/, target: ' T-2' },
     { tool: 'task.close', args: { id: 'T-1' }, forbidden: 'task.close', target: ' T-1' },
     { tool: 'task.link', args: { id: 'T-1', branch: 'x' }, forbidden: 'task.link', target: ' T-1' },
     { tool: 'session.launch', args: { name: 'helper' }, forbidden: 'session.launch' },

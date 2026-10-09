@@ -3,7 +3,7 @@
 // state (a session's live hold on an item) and are never written to a file.
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type VerdictKind, type VerdictResult } from './item.ts';
+import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type VerdictKind, type VerdictResult } from './item.ts';
 
 const SCHEMA = `
 create table if not exists tracker_items (
@@ -90,6 +90,7 @@ export type IndexedItem = {
   version?: string;
   title: string;
   state: State;
+  status?: Status;
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -137,6 +138,7 @@ export class TrackerIndex {
     // Additive columns for databases created by earlier hub versions.
     const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
     if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
+    if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
     const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
@@ -168,10 +170,10 @@ export class TrackerIndex {
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
       this.#db
         .prepare(
-          `insert into tracker_items (id, n, file, kind, version, title, state, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into tracker_items (id, n, file, kind, version, title, state, status, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
+        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
@@ -273,6 +275,7 @@ export class TrackerIndex {
       ...(r.version !== null ? { version: r.version as string } : {}),
       title: r.title as string,
       state: r.state as State,
+      ...(r.status !== null ? { status: r.status as Status } : {}),
       labels: (this.#db.prepare('select label from tracker_labels where item_id = ? order by rowid').all(id) as Row[]).map((x) => x.label as string),
       assignee: (r.assignee as string | null) ?? null,
       parent: (r.parent as string | null) ?? null,

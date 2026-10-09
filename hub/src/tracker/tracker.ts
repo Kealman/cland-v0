@@ -25,6 +25,7 @@ import {
   RESULTS,
   serializeItem,
   STATES,
+  statusRefusal,
   VERDICT_KINDS,
   versionRefusal,
   parentingRefusal,
@@ -34,6 +35,7 @@ import {
   type Item,
   type Kind,
   type State,
+  type Status,
   type Verdict,
   type VerdictKind,
   type VerdictResult,
@@ -91,6 +93,7 @@ export type CreateInput = {
 };
 
 export type EditInput = {
+  status?: Status;
   version?: string | null;
   title?: string;
   body?: string;
@@ -405,11 +408,14 @@ export class Tracker {
     this.#indexFile(name, text, !!(previous && previous.file !== name && existsSync(join(this.#dir, previous.file))));
   }
 
-  #indexFile(name: string, text: string, duplicate: boolean): void {
+  #indexFile(name: string, text: string, duplicate: boolean, resumed?: Resumed): void | Promise<void> {
     const hash = hashOf(text);
     const knownId = this.#index.idOfFile(name);
     const known = knownId ? this.#index.metaOf(knownId) : null;
-    if (known && known.hash === hash) return;
+    if (known && known.hash === hash) {
+      const indexed = this.#index.get(knownId!);
+      if (indexed?.kind !== 'task' || indexed.status !== undefined) return;
+    }
     let item: Item;
     try {
       item = parseItem(text, name);
@@ -423,6 +429,16 @@ export class Tracker {
       this.#index.remove(knownId);
       this.#changed(knownId);
     }
+    const statusBasis = this.#index.get(id);
+    const migrated = this.#normalizeStatus(item, statusBasis);
+    if (migrated && resumed) {
+      const wasOpen = this.#index.get(id)?.state === 'open';
+      return this.#write(name, item, resumed).then(() => resumed(() => {
+        this.#log({ event: 'task-status-migrated', id, file: name });
+        this.#log({ event: 'task-reindexed', id, file: name, source: 'hand' });
+        if (wasOpen && item.fm.state === 'closed') this.#closed(id);
+      }));
+    }
     const previous = this.#index.metaOf(id);
     if (previous && duplicate) {
       this.#log({ event: 'task-duplicate-id', id, files: [previous.file, name], indexed: name });
@@ -433,6 +449,12 @@ export class Tracker {
     }
     const wasOpen = this.#index.get(id)?.state === 'open';
     this.#index.put(item, { file: name, hash, source: 'hand', indexedAt: now });
+    if (migrated) {
+      // Bootstrap indexes synchronously before the hub serves requests. Its migrations still write through
+      // the same queue, reading again with the pre-scan state so an offline close/reopen keeps its meaning.
+      this.#runBackground(() => this.#serial(() => this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'status migration',
+        current => { this.#normalizeStatus(current, statusBasis); }, this.#watchResumed), this.#watchResumed));
+    }
     this.#log({ event: 'task-reindexed', id, file: name, source: 'hand' });
     this.#changed(id);
     if (wasOpen && item.fm.state === 'closed') this.#closed(id);
@@ -502,9 +524,9 @@ export class Tracker {
       try { id = parseItem(text, name).fm.id; }
       catch (err) { this.#log({ event: 'task-unreadable', file: name, error: String(err) }); return; }
       const previous = this.#index.metaOf(id);
-      if (!previous || previous.file === name) { this.#indexFile(name, text, false); return; }
+      if (!previous || previous.file === name) return this.#indexFile(name, text, false, resumed);
       return this.#files.stat(join(this.#dir, previous.file)).then(() => true, () => false)
-        .then(duplicate => resumed(() => this.#indexFile(name, text, duplicate)));
+        .then(duplicate => resumed(() => this.#indexFile(name, text, duplicate, resumed)));
     });
   }
 
@@ -568,6 +590,7 @@ export class Tracker {
   }
 
   #viewOf(id: string, file: string, item: Item): ItemView {
+    this.#normalizeStatus(item);
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     return {
@@ -630,6 +653,7 @@ export class Tracker {
         checkText(comment, 'comment');
         await this.#mutate(id, actor, 'close', item => {
           item.fm.state = 'closed';
+          this.#setStatus(item, 'done');
           if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
         }, resumed);
         return resumed(() => {
@@ -668,7 +692,8 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void): Promise<Item> {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void): Promise<Item> {
+    this.#normalizeStatus(item);
     const text = serializeItem(item);
     const written = parseItem(text, name);
     const path = join(this.#dir, name);
@@ -683,6 +708,7 @@ export class Tracker {
       const replaced = read ? await readWhole(read.fd, resumed).then(text => resumed(() => hashOf(text)), () => null) : null;
       return resumed(() => {
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter);
+        committed?.();
         this.#changed(written.fm.id);
         if (read && (before !== read.hash || replaced !== read.hash)) {
           this.#log({ event: 'task-conflict', id: read.id, file: name, winner: 'hub', op: read.op,
@@ -698,7 +724,7 @@ export class Tracker {
   }
 
   /** Called only with the tracker queue held: always read the latest committed file. */
-  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void): Promise<ItemView> {
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;
@@ -720,7 +746,7 @@ export class Tracker {
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         change(item);
         item.fm.updated = this.#now().toISOString();
-        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit);
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed);
       });
       result = { written };
     } catch (error) { result = { error }; }
@@ -861,6 +887,7 @@ export class Tracker {
         if (sha) v.commit = sha;
       }
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
+      if (v?.result === 'not clear') this.#setStatus(item, 'in progress');
     }, resumed, actor, beforeCommit);
     return resumed(() => {
       // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
@@ -886,6 +913,26 @@ export class Tracker {
     } catch (err) {
       throw new TrackerError(`cannot resolve ${what}: Git did not answer (${err instanceof Error ? err.message.split('\n')[0] : String(err)}); nothing was written, try again`, 'git-unavailable');
     }
+  }
+
+  /** Missing legacy status is initialized here, including durable claims. Hand edits keep state and status
+   * together: a changed state is a close/reopen event; otherwise the edited status determines the state. */
+  #normalizeStatus(item: Item, previous: IndexedItem | null = this.#index.get(item.fm.id)): boolean {
+    const fm = item.fm;
+    if (fm.kind !== 'task') return false;
+    const before = [fm.state, fm.status];
+    if (fm.status === undefined) this.#setStatus(item, fm.state === 'closed' ? 'done' : this.#index.claimOf(fm.id) ? 'in progress' : 'backlog');
+    else if ((fm.status === 'done') !== (fm.state === 'closed')) {
+      this.#setStatus(item, previous && previous.state !== fm.state ? fm.state === 'closed' ? 'done' : 'backlog' : fm.status);
+    }
+    return before[0] !== fm.state || before[1] !== fm.status;
+  }
+
+  /** The hub owns workflow transitions. Keeping state with status prevents a done/open split. */
+  #setStatus(item: Item, status: Status): void {
+    if (item.fm.kind !== 'task') return;
+    item.fm.status = status;
+    item.fm.state = status === 'done' ? 'closed' : 'open';
   }
 
   edit(actor: Actor, rawId: string, input: EditInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
@@ -919,14 +966,27 @@ export class Tracker {
             fm.version = input.version;
           }
         }
-        if (input.state !== undefined) fm.state = input.state;
+        if (fm.kind !== 'task') delete fm.status;
+        else this.#normalizeStatus(item);
+        if (input.state !== undefined) {
+          const changed = fm.state !== input.state;
+          fm.state = input.state;
+          if (input.state === 'closed') this.#setStatus(item, 'done');
+          else if (changed) this.#setStatus(item, 'backlog');
+        }
+        if (input.status !== undefined) {
+          const refusal = statusRefusal(fm.kind, input.status);
+          if (refusal) throw new TrackerError(refusal);
+          if (input.state !== undefined && (input.status === 'done') !== (input.state === 'closed')) throw new TrackerError('state and status disagree');
+          this.#setStatus(item, input.status);
+        }
         if (input.labels !== undefined) fm.labels = uniq(input.labels);
         if (input.add_labels) fm.labels = uniq([...fm.labels, ...input.add_labels]);
         if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
         if (input.assignee !== undefined) fm.assignee = input.assignee || null;
       }, resumed, undefined, authorize);
       return resumed(() => {
-        if (input.state === 'closed') {
+        if (view.state === 'closed') {
           this.#releaseOnClose(view.id);
           this.#closed(view.id);
         }
@@ -941,6 +1001,7 @@ export class Tracker {
       checkText(body, 'comment');
       const view = await this.#mutate(rawId, actor, 'close', (item) => {
         item.fm.state = 'closed';
+        this.#setStatus(item, 'done');
         if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
       }, resumed, undefined, authorize);
       return resumed(() => {
@@ -1060,6 +1121,7 @@ export class Tracker {
     const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
     const prepare = (): Promise<'created' | 'updated' | 'unchanged'> => {
       authorize();
+      this.#normalizeStatus(item);
       if (existing && serializeItem(item) === existing.text) return Promise.resolve('unchanged');
       item.fm.updated = this.#now().toISOString();
       return this.#write(file, item, resumed, undefined, undefined, authorize).then(() => resumed(() => {
@@ -1097,36 +1159,42 @@ export class Tracker {
   /** The live claim is an index fact, read without opening the item file. */
   claimOf(rawId: string): Claim | null { return this.#index.claimOf(this.#require(rawId).id); }
 
-  /** Take (or with `release`, let go of) the live hold on an item. Only the hub knows of it; the file is untouched. */
-  claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}): { id: string; claim: Claim | null } {
-    const { id } = this.#require(rawId);
-    const held = this.#index.claimOf(id);
-    // held by identity, never by name: a name moves with a rename and can be taken by another session
-    const other = held && held.sessionId !== actor.id;
-    if (other && !options.force) {
-      throw new TrackerError(`${id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''} since ${held.claimedAt}; force takes it over`);
-    }
-    if (options.release) {
-      if (held) {
-        this.#index.setClaim(id, null);
-        this.#log({ event: 'task-released', id, session: held.session, sessionId: held.sessionId, by: actor.name });
-        this.#changed(id);
+  /** Claims share the file queue: an Implementer's new claim persists in progress before it is announced. */
+  claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ id: string; claim: Claim | null }> {
+    return this.#serial(async () => {
+      authorize();
+      const { id } = this.#require(rawId);
+      const check = () => {
+        authorize();
+        const held = this.#index.claimOf(id);
+        if (held && held.sessionId !== actor.id && !options.force) {
+          throw new TrackerError(`${id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''} since ${held.claimedAt}; force takes it over`);
+        }
+        return held;
+      };
+      const held = check();
+      if (options.release) {
+        if (held) {
+          this.#index.setClaim(id, null);
+          this.#log({ event: 'task-released', id, session: held.session, sessionId: held.sessionId, by: actor.name });
+          this.#changed(id);
+        }
+        return { id, claim: null };
       }
-      return { id, claim: null };
-    }
-    if (held && !other) {
-      // the holder again, perhaps renamed since: the claim keeps its time and shows the name it has now
-      if (held.session === actor.name && held.role === actor.role) return { id, claim: held };
-      const renamed: Claim = { ...held, session: actor.name, role: actor.role };
-      this.#index.setClaim(id, renamed);
-      this.#changed(id);
-      return { id, claim: renamed };
-    }
-    const claim: Claim = { session: actor.name, sessionId: actor.id, role: actor.role, claimedAt: this.#now().toISOString() };
-    this.#index.setClaim(id, claim);
-    this.#changed(id);
-    this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: actor.id, role: actor.role, ...(other ? { took: held.session } : {}) });
-    return { id, claim };
+      if (held?.sessionId === actor.id && held.session === actor.name && held.role === actor.role) return { id, claim: held };
+      const claim: Claim = { session: actor.name, sessionId: actor.id, role: actor.role,
+        claimedAt: held?.sessionId === actor.id ? held.claimedAt : this.#now().toISOString() };
+      const persist = actor.role === 'implementer' && this.#index.get(id)?.kind === 'task';
+      if (persist) {
+        await this.#mutate(id, actor, 'claim', item => this.#setStatus(item, 'in progress'), resumed, undefined, () => { check(); }, () => this.#index.setClaim(id, claim));
+      }
+      return resumed(() => {
+        if (!persist) { this.#index.setClaim(id, claim); this.#changed(id); }
+        this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: actor.id, role: actor.role,
+          ...(held && held.sessionId !== actor.id ? { took: held.session } : {}) });
+        return { id, claim };
+      });
+    }, resumed);
   }
 }
 

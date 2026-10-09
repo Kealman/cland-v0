@@ -7,6 +7,8 @@ export const KINDS = ['release', 'epic', 'spec', 'task', 'question', 'map'] as c
 export type Kind = (typeof KINDS)[number];
 export const STATES = ['open', 'closed'] as const;
 export type State = (typeof STATES)[number];
+export const STATUSES = ['backlog', 'planned', 'in progress', 'review', 'qa', 'ready', 'done'] as const;
+export type Status = (typeof STATUSES)[number];
 export const VERDICT_KINDS = ['review', 'qa'] as const;
 export type VerdictKind = (typeof VERDICT_KINDS)[number];
 export const RESULTS = ['clear', 'not clear'] as const;
@@ -20,6 +22,8 @@ export type Frontmatter = {
   version?: string;
   title: string;
   state: State;
+  /** Task workflow status; other kinds have none. */
+  status?: Status;
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -119,6 +123,11 @@ export function versionRefusal(kind: Kind, version: unknown): string | null {
   return typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version) ? null : 'version must be semver without the v (for example 0.1.0)';
 }
 
+export function statusRefusal(kind: Kind, status: unknown): string | null {
+  if (kind !== 'task') return 'status belongs only to a task';
+  return STATUSES.includes(status as Status) ? null : `status must be one of ${STATUSES.join(', ')}`;
+}
+
 // ------------------------------------------------------------------ reading
 
 export class ItemParseError extends Error {}
@@ -133,7 +142,7 @@ const ref = (v: unknown): string | null => {
 /**
  * Parse an item file. A hand-edited file is read leniently: a missing field takes its default, a single
  * label is a list of one, `12` is `T-12`. Only a file with no frontmatter, unparsable YAML, an unknown
- * kind or state, an invalid release version, or no id at all (neither in the frontmatter nor in `fileName`) is refused.
+ * kind, state or status, status on a non-task, an invalid release version, or no id at all (neither in the frontmatter nor in `fileName`) is refused.
  */
 export function parseItem(text: string, fileName?: string): Item {
   const src = text.replace(/\r\n/g, '\n');
@@ -172,6 +181,11 @@ export function parseItem(text: string, fileName?: string): Item {
     const refusal = versionRefusal(kind, r.version);
     if (refusal) throw new ItemParseError(refusal);
     fm.version = r.version as string;
+  }
+  if (r.status !== undefined && r.status !== null) {
+    const refusal = statusRefusal(kind, r.status);
+    if (refusal) throw new ItemParseError(refusal);
+    fm.status = r.status as Status;
   }
   const github = githubOf(r.github);
   if (github) fm.github = github;
@@ -252,6 +266,7 @@ export function serializeItem(item: Item): string {
     ...(fm.version !== undefined ? { version: fm.version } : {}),
     title: fm.title,
     state: fm.state,
+    ...(fm.status !== undefined ? { status: fm.status } : {}),
     labels: fm.labels,
     assignee: fm.assignee,
     parent: fm.parent,

@@ -207,24 +207,27 @@ export class TaskWorktrees {
   ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
     const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) }, resumed, authorize);
-    // the claim as it is now: another session may have taken it while the harness started. The check and the claim
-    // run in one stretch of the event loop (timed through `resumed`), so nothing comes between them.
-    const taken = resumed(() => {
-      const held = this.#tracker.claimOf(id);
-      if (!yields(held) && held?.sessionId !== process.sessionId) {
-        this.#log({ event: 'launch-claim-lost', id, session: process.name, holder: held?.session ?? null });
-        return { lost: held as Claim };
-      }
+    // Claim admission and its final status write both recheck the hold and the launch grant.
+    let lost: Claim | null = null;
+    let taken: { claim: Claim | null };
+    try {
       const actor: Actor = { id: process.sessionId, name: process.name, role: process.role };
-      return { claim: this.#tracker.claim(actor, id, { force: true }).claim };
-    });
-    if ('lost' in taken) {
-      const held = taken.lost;
+      taken = await this.#tracker.claim(actor, id, { force: true }, resumed, () => {
+        authorize?.();
+        const held = this.#tracker.claimOf(id);
+        if (!yields(held) && held?.sessionId !== process.sessionId) {
+          lost = held;
+          this.#log({ event: 'launch-claim-lost', id, session: process.name, holder: held?.session ?? null });
+          throw new Error(other(held!));
+        }
+      });
+    } catch (err) {
       const stopped = await sessions.stop(process.name, resumed).then(
         () => `${process.name} was stopped`,
         (err: unknown) => `stopping ${process.name} failed (${err instanceof Error ? err.message : String(err)}): stop it by hand`,
       );
-      throw new Error(`${other(held)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
+      if (lost) throw new Error(`${other(lost)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
+      throw new Error(`launch claim failed (${err instanceof Error ? err.message : String(err)}); ${stopped}`);
     }
     return { process, claim: taken.claim, worktree, ...(reason !== null ? { reason } : {}) };
   }

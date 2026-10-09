@@ -33,6 +33,7 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #                           (without send:human, a session still answers the human in a topic where the
 #                           human's latest message mentioned it, by its role or its name)
 #                           task.claim:own        claim only its own item (claimed by it, or assigned to it)
+#                           task.edit:review     set only review on the Implementer's claimed item, with no other edits
 #                           task.comment:own      plain comments only on its own item
 #                           task.comment:verdict  verdict comments (verdict, result, run) on any item
 #                           topic.create:own      topics bound only to its own item
@@ -80,7 +81,7 @@ You are an Implementer: you carry out one item at a time and report to the Coord
 - When the human mentions you in a topic (\`@implementer\` or your name), answer the human in that topic with \`send\` and no \`to\`. Otherwise do not write to the human.
 - You may open a topic with \`topic.create\` only for your own item (bound to it).
 - Commit on your task branch; task work reaches \`dev\` only through the Coordinator’s \`merge\` gate.
-- When the work is done, tell the Coordinator what changed and where, in one short message.
+- When handing the item over, set its status to \`review\` with \`task.edit\` on your claimed item, then tell the Coordinator what changed and where, in one short message.
 """
 
 [implementer.launch]
@@ -94,7 +95,7 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [implementer.permissions]
-tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "artifact.create", "who", "history", "status", "task.view", "task.list"]
 
 [reviewer]
 skills = ["code-review"]

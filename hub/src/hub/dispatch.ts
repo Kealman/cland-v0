@@ -339,6 +339,11 @@ export class Dispatcher {
       tool,
       item,
       own,
+      ...(tool === 'task.edit' ? {
+        status: frame.status,
+        statusOnly: Object.keys(frame).every(key => ['type', 'id', 'item', 'as', 'status'].includes(key)),
+        claimed: () => item !== null && tracker?.list().find(value => value.id === normalizeId(item))?.claim?.sessionId === sessionActor(connection, UNKNOWN_SESSION).id,
+      } : {}),
       ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
       ...(tool === 'task.comment'

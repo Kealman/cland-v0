@@ -8,6 +8,7 @@
 //                        in a topic while the human's latest message there addressed it or its role (spec 4.5:
 //                        `@role` and `@name` pull it in), as long as the role has some `send` grant
 //   task.claim:own       claim or release only the session's own item
+//   task.edit:review     set only review on the Implementer's claimed item, with no other edits
 //   task.comment:own     plain comments (not verdicts) only on the session's own item
 //   task.comment:verdict verdict comments (the verdict header: verdict, result, run) on any item
 //   topic.create:own     a topic only bound to the session's own item
@@ -57,6 +58,7 @@ export const KNOWN_TOOLS: readonly string[] = [
 export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   send: ['agents', 'human'],
   'task.claim': ['own'],
+  'task.edit': ['review'],
   'task.comment': ['own', 'verdict'],
   'topic.create': ['own'],
 };
@@ -92,7 +94,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'artifact.create', ...READS],
+  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'artifact.create', ...READS],
   reviewer: ['send:agents', 'task.comment:verdict', 'artifact.create', ...READS],
   qa: ['send:agents', 'task.comment:verdict', 'artifact.create', ...READS],
 };
@@ -115,6 +117,10 @@ export function grantRefusal(grant: string, where: string): string | null {
  */
 export type ToolCall = {
   tool: string;
+  /** Manual status edit, limited to Coordinator or the claiming Implementer handing over. */
+  status?: unknown;
+  statusOnly?: boolean;
+  claimed?: () => boolean;
   /** `send`: no addressee, so the message is for the human. */
   toHuman?: boolean;
   /** `send` to the human: whether the human's latest message in the target topic addressed the caller (by name or
@@ -148,6 +154,11 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   if (tool === 'task.comment' && call.verdict && own !== null && call.verdictKind !== undefined && call.verdictKind !== own) {
     return { ok: false, permission: 'task.comment:verdict', reason: `${label(role)} may write only ${own === 'qa' ? 'QA' : 'review'} verdicts` };
   }
+  if (tool === 'task.edit' && call.status !== undefined && role !== 'coordinator') {
+    if (role !== 'implementer' || call.status !== 'review' || !call.statusOnly || call.claimed?.() !== true) {
+      return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator sets any status; an Implementer may set only review on its claimed item, without other edits' };
+    }
+  }
   const list = grants ?? [];
   const has = (g: string) => list.includes(g);
   if (has(tool)) return { ok: true };
@@ -165,6 +176,9 @@ export function decide(role: string | null, grants: readonly string[] | undefine
         return { ok: false, permission: 'send:human', reason: `only the Coordinator writes to the human, and a session the human's latest message in the topic mentioned: ${who} sends to the coordinator instead` };
       }
       return has('send:agents') ? { ok: true } : { ok: false, permission: 'send:agents', reason: `${who} may write only to the human` };
+    case 'task.edit':
+      if (has('task.edit:review') && call.status === 'review' && call.statusOnly && call.claimed?.() === true) return { ok: true };
+      return { ok: false, permission: 'task.edit:review', reason: `${who} may set only review on its claimed item, without other edits` };
     case 'task.comment': {
       if (call.verdict) {
         if (has('task.comment:verdict')) return { ok: true };

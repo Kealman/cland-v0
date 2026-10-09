@@ -291,6 +291,7 @@ The hub checks every spoke tool call against the calling session's role, as the 
 | --- | --- |
 | `send:agents` | `send` to sessions (names, globs, roles, `all`) |
 | `send:human` | `send` with no `to`: to the human (`send` alone grants both) |
+| `task.edit:review` | the Implementer setting only `review` on its own live claimed item, with no other fields |
 | `task.claim:own` | claiming or releasing only the session's own item |
 | `task.comment:own` | plain comments (not verdicts) only on the session's own item |
 | `task.comment:verdict` | verdict comments (`verdict`, `result`, `run`, or a text that reads back as a verdict header) on any item: a Reviewer only `review` verdicts, QA only `qa` verdicts |
@@ -307,7 +308,7 @@ An unknown tool or scope makes the file unreadable (the last good version stays 
 | Role | Tools |
 | --- | --- |
 | Coordinator | `send`, `ask`, `resolve`, `topic.create`, `task.create`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.comment`, `session.launch` (and `session.list`), `session.stop`, `session.resume`, `hub.stop` (the last three from its shell: The CLI in a session's shell), `role.handover`, `merge`, `release`, `sync` (release and sync from its shell only), `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
-| Implementer | `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Implementer | `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `task.edit:review`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | Reviewer, QA | `send:agents`, `task.comment:verdict`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
 
@@ -790,6 +791,7 @@ id: T-1
 kind: task            # release | epic | spec | task | question | map
 title: Add the login page
 state: open           # open | closed
+status: backlog       # tasks only: backlog | planned | in progress | review | qa | ready | done
 labels:
   - ui
 assignee: null
@@ -822,6 +824,8 @@ Looks right.
 
 A comment is headed `### <author> · <ISO time>`; one whose first lines are `verdict:` (`review` | `qa`), `result:` (`clear` | `not clear`), `by:` (`<session> [<role>]`) and `run:` is a verdict. Its optional `commit:` pins the Git commit covered by that run; older verdicts without it still parse.
 
+- **Task status (T-120).** Tasks carry explicit frontmatter `status`: `backlog` at creation, `planned`, `in progress`, `review`, `qa`, `ready` or `done`; containers, questions, specs and maps have none. The hub writes and indexes it on the tracker's single queue and carries it in view, list and the existing `task` event. A new Implementer claim or a not-clear verdict sets `in progress`; a merge or close sets `done`; a reopen without an explicit status sets `backlog`. Done tasks are closed and all other statuses are open. Migration on index persists `done` for closed tasks and `in progress` for open claimed tasks, otherwise `backlog`. Hand edits are re-indexed, including close/reopen edits to state.
+- **Manual status.** The Coordinator and the human use `cland task edit T-n --status <status>` or MCP `task.edit`'s `status` to choose any status. `done` closes the task and releases the claim; choosing another status reopens it at that status. The Implementer hands over with `task.edit {id, status: "review"}` on its own live claimed item, with no other edits. The permission table checks this right again after file I/O; assignment alone is insufficient. Other sessions cannot set status, even under a whole-tool `task.edit` grant. An explicit state and status in the same edit must agree. Clear verdicts do not set `ready` in this slice; verifier holds and ready calculation follow separately. The merge gate's requirements and provenance checks are unchanged.
 - **Release planning (T-118).** Kind `release` adds optional frontmatter `version`, semver without the `v` (for example `0.1.0`, including prerelease/build suffixes). Create it with `cland task create "v0.1" --kind release --version 0.1.0`; omit the version until planned and set it with `task edit --version` (`none` clears it). Other kinds cannot carry a version; malformed versions are refused. Its body holds the goal and `## Notes`, which creation and kind conversion add if missing. The version is indexed, returned in view/list/events and preserved through writes and restarts. Releasing from an item is a later slice.
 - **Parenting rule (T-118).** The built-in default levels are `release` › `epic`: a release has no parent; an epic takes a release or none; a leaf (`task`, `question`, `spec`) takes either container or none. Maps stay outside the ladder: no parent, children of kind `question` or `task` only (the wayfinder task exception). Create and link share the hub's check; changing a kind cannot leave an invalid parent or children. A refusal names the parenting rule. Legacy imported/hand-edited trees remain readable; unrelated edits do not rewrite them. Configured levels and refusing to close containers with open children are the next slice.
 - **Subtree and header (T-118).** `cland task list --under T-n` lists every descendant, excluding the named root, in id order. It traverses closed ancestors and combines with all other list filters; an unknown root is refused. `task view` prints the root-to-item path in its first line (`T-1  v0.1 › T-2  Schema › T-4  Parser`). CLI JSON and MCP views return it as `item.ancestry`, an ordered array of `{id, kind, title}` including the item. `item.path` remains the file path. Missing/cyclic legacy parents cannot hang a read. MCP tools mirror CLI arguments: `task.create` takes `kind: release` and `version`, `task.edit` takes `version` (null clears), `task.list` takes `under`, and `task.view` returns ancestry.
@@ -844,7 +848,7 @@ A comment is headed `### <author> · <ISO time>`; one whose first lines are `ver
 | `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, comments, verdicts and the claim. |
 | `cland task list [--under T-n] [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
 | `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id> [--commit <sha>]]` | `task.comment` | Appends a comment, or a verdict. |
-| `cland task edit <id> [--version] [--title] [--body] [--kind] [--state] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
+| `cland task edit <id> [--version] [--title] [--body] [--kind] [--state] [--status] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
 | `cland task close <id> [--comment]` | `task.close` | Closes the item. |
 | `cland task link <id> [--parent] [--blocked-by]… [--unblock]… [--topic] [--branch]` | `task.link` | Sets the links; `none` clears one. |
 | `cland task claim <id> [--release] [--force]` | `task.claim` | Takes or releases the claim. Claiming an open task in a project with a territory makes or reuses its branch and worktree (Task branches and worktrees). |

@@ -1,6 +1,6 @@
 // The spoke's `task.*` tools: the tracker's requests as MCP tools. Arguments name the item `id`; the frame
 // carries it as `item` (a frame's `id` is the request's). The hub validates; the spoke only reshapes.
-import { KINDS } from '../tracker/item.ts';
+import { KINDS, STATUSES } from '../tracker/item.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { DistributiveOmit } from './hub-client.ts';
 
@@ -42,8 +42,8 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.edit',
-    description: "Change an item's title, body, kind, version, state, labels (replace, add, remove) or assignee (null clears).",
-    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, version: nullableStr, state: STATE, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
+    description: "Change an item's title, body, kind, version, state, status, labels (replace, add, remove) or assignee (null clears).",
+    inputSchema: { type: 'object', properties: { id: itemId, title: str, body: str, kind: KIND, version: nullableStr, state: STATE, status: { type: 'string', enum: STATUSES, description: 'Coordinator: any status. Implementer: review on its claimed item only.' }, labels: strs, add_labels: strs, remove_labels: strs, assignee: nullableStr }, required: ['id'] },
   },
   {
     name: 'task.close',
@@ -57,7 +57,7 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.claim',
-    description: 'Claim an item as yours while you work on it (kept by the hub, not written to the file), or release it. A claim another session holds is refused unless `force`.',
+    description: 'Claim an item as yours while you work on it (the live hold stays in the hub; an Implementer claim writes in progress to task status), or release it. A claim another session holds is refused unless `force`.',
     inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' }, force: { type: 'boolean' } }, required: ['id'] },
   },
 ] as const;

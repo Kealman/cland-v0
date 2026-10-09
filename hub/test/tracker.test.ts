@@ -9,7 +9,7 @@ import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { cland, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
 
-type Summary = { id: string; title: string; state: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
+type Summary = { id: string; title: string; state: string; status?: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
 type View = Summary & {
   path: string;
   body: string;
@@ -63,7 +63,7 @@ test('task create writes an item file with the frontmatter and sequential ids', 
 
   const text = await readFile(join(tasksDir(root), 'T-1-add-the-login-page.md'), 'utf8');
   const fm = frontmatter(text);
-  assert.deepEqual(Object.keys(fm), ['id', 'kind', 'title', 'state', 'labels', 'assignee', 'parent', 'blocked_by', 'topic', 'branch', 'created', 'updated']);
+  assert.deepEqual(Object.keys(fm), ['id', 'kind', 'title', 'state', 'status', 'labels', 'assignee', 'parent', 'blocked_by', 'topic', 'branch', 'created', 'updated']);
   assert.equal(fm.id, 'T-1');
   assert.equal(fm.kind, 'task');
   assert.equal(fm.title, 'Add the login page');
@@ -199,7 +199,7 @@ test('a hand edit landing while the hub is writing the same item is overwritten,
   );
 });
 
-test('task claim records a claim in the hub only; task view shows the assignee and the claim', async (t) => {
+test('task claim keeps the live hold in the hub and persists Implementer status; view shows the assignee and claim', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', 'Claimable', '--assignee', 'alice'));
   const file = join(tasksDir(root), 'T-1-claimable.md');
@@ -207,7 +207,9 @@ test('task claim records a claim in the hub only; task view shows the assignee a
 
   const claimed = ok(await cland(root, 'task', 'claim', 'T-1', '--as', 'impl-1', '--role', 'implementer'));
   assert.match(claimed.stdout, /^T-1 claimed by impl-1 \(implementer\) since \d{4}-/);
-  assert.equal(await readFile(file, 'utf8'), before, 'the claim never touches the file');
+  const afterClaim = await readFile(file, 'utf8');
+  assert.deepEqual({ ...frontmatter(afterClaim), status: 'backlog', updated: frontmatter(before).updated }, frontmatter(before), 'the claim changes only status and updated in the file');
+  assert.equal(frontmatter(afterClaim).status, 'in progress');
 
   const view = await json<{ item: View }>(root, 'view', 'T-1');
   assert.equal(view.item.assignee, 'alice');
@@ -228,7 +230,7 @@ test('task claim records a claim in the hub only; task view shows the assignee a
   ok(await cland(root, 'hub', 'stop'));
   await startDaemon(t, root);
   assert.equal((await json<{ item: View }>(root, 'view', 'T-1')).item.claim?.session, 'impl-2');
-  assert.equal(await readFile(file, 'utf8'), before);
+  assert.equal(await readFile(file, 'utf8'), afterClaim);
 });
 
 test('a claim belongs to the session, not its name: a rename keeps it, and whoever takes the old name gets none of it', async (t) => {

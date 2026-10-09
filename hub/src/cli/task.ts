@@ -14,7 +14,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
   task view <id>
   task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>]]
-  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--label l]…
+  task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
@@ -41,7 +41,7 @@ const OPTIONS = {
   view: { ...COMMON },
   list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
   comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, 'body-file': { type: 'string' } },
-  edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
+  edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   claim: { ...COMMON, release: { type: 'boolean' }, force: { type: 'boolean' } },
@@ -104,6 +104,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
     case 'edit':
       return defined({
         type: 'task.edit',
+        status: v.status,
         version: clearable(v.version as string | undefined),
         item: needId(),
         title: v.title,
@@ -142,6 +143,7 @@ function viewText(i: ItemView): string {
     `  kind      ${i.kind}`,
     ...(i.version !== undefined ? [`  version   ${i.version}`] : []),
     `  state     ${i.state}`,
+    ...(i.status !== undefined ? [`  status    ${i.status}`] : []),
     `  labels    ${i.labels.length ? i.labels.join(', ') : '-'}`,
     `  assignee  ${i.assignee ?? '-'}`,
     `  claim     ${claimText(i.claim)}`,

@@ -24,12 +24,12 @@ test('a claim another session takes during the launch refuses it: the claim stay
   });
   // no territory here: the launch goes to the project root, which is all this race needs
   await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
-  tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
+  await tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
   const process = { name: 'impl-1', role: 'implementer', sessionId: 'sess-impl-1', cwd: root, item: null } as HarnessProcessView;
   const stopped: string[] = [];
   const sessions = {
     launch: async () => {
-      tracker.claim({ id: 'sess-impl-9', name: 'impl-9', role: 'implementer' }, 'T-1', { force: true });
+      await tracker.claim({ id: 'sess-impl-9', name: 'impl-9', role: 'implementer' }, 'T-1', { force: true });
       return process;
     },
     stop: async (name: string) => {
@@ -46,7 +46,7 @@ test('a claim another session takes during the launch refuses it: the claim stay
   assert.equal(tracker.view('T-1').claim?.session, 'impl-9');
 
   // the Coordinator's claim, still in place after the spawn, is taken over as before
-  tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1', { force: true });
+  await tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1', { force: true });
   const quiet = { launch: async () => process } as unknown as Sessions;
   const taken = await new TaskWorktrees({ tracker }).launch(quiet, { name: 'impl-1', role: 'implementer', item: 'T-1' });
   assert.equal(taken.claim?.session, 'impl-1');

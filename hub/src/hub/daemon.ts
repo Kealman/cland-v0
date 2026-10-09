@@ -112,6 +112,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   let edge: SocketEdge | null = null;
   try {
     tracker.start();
+    await tracker.rescanAsync();
     await roles.start();
     hub = createHubBase({
       secret,

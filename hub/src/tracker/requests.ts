@@ -1,6 +1,6 @@
 // The tracker's requests: the same frames from a spoke (WebSocket, the `task.*` tools) and from the CLI
 // (Unix socket). Field names follow the item's frontmatter (`blocked_by`), so a frame reads like the file.
-import { KINDS, parseVerdictFilter, STATES, type Kind, type State } from './item.ts';
+import { KINDS, parseVerdictFilter, STATES, type Kind, type State, type Status } from './item.ts';
 import type { HubFrame } from '../protocol.ts';
 import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { Connection } from '../hub/core.ts';
@@ -29,6 +29,7 @@ export type TaskRequest =
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
       type: 'task.edit';
+      status?: Status;
       version?: string | null;
       id: string;
       item: string;
@@ -131,7 +132,10 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       return { item: await tracker.link(actor, needItem(f), input, resumed, authorize) };
     }
     case 'task.claim':
-      return tracker.claim(actor, needItem(f), { release: frame.release === true, force: frame.force === true });
+      return tracker.claim(actor, needItem(f), { release: frame.release === true, force: frame.force === true }, resumed, () => {
+        const now = currentActor?.();
+        if (now && (now.id !== actor.id || now.name !== actor.name || now.role !== actor.role)) throw new TrackerError('claiming session changed while the item was being written; nothing was written, retry');
+      });
     case 'task.import':
       return importIssues(tracker, actor, frame, resumed, authorize);
   }

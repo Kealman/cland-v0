@@ -590,7 +590,7 @@ async function observableProject(t: TestContext, run?: (real: Git) => Git, clock
   const ui = await connectWsUi(t, hub);
   const human = { id: 'human', name: 'human', role: null };
   const id = (await tracker.create(human, { title: 'Observed parser' })).id;
-  tracker.claim(human, id);
+  await tracker.claim(human, id);
   // The claim frame uses the same real worktree path as the daemon seam.
   const claimed = await ui.request({ type: 'task.claim', item: id });
   assert.equal(claimed.ok, true, claimed.error);

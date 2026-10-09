@@ -169,13 +169,13 @@ test('claim-conflict cleanup counts harness-ended logging as one resumed slow re
   const tracker = new Tracker({ root, db: daemon.layout.db, log });
   t.after(() => tracker.stop());
   await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
-  tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
+  await tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
   const project = projectSessions({ core: daemon.hub.core, root, db: daemon.layout.db, discoveryFile: daemon.layout.discovery, log, env: { ...process.env, ...fake.env } });
   t.after(() => project.close());
   const launch = project.sessions.launch.bind(project.sessions);
   project.sessions.launch = async (request, resumed) => {
     const p = await launch(request, resumed);
-    tracker.claim({ id: 'sess-impl-9', name: 'impl-9', role: 'implementer' }, 'T-1', { force: true });
+    await tracker.claim({ id: 'sess-impl-9', name: 'impl-9', role: 'implementer' }, 'T-1', { force: true });
     return p;
   };
   const guard = new RequestGuard({ log });
