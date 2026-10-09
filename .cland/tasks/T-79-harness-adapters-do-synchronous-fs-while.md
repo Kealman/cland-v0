@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-40
+branch: t/T-79-harness-adapters-do-synchronous-fs-while
 created: 2026-10-09T18:47:17.580Z
-updated: 2026-10-09T21:39:38.872Z
+updated: 2026-10-09T21:54:18.161Z
 ---
 
 ## Parent
@@ -43,3 +43,15 @@ Size M. Start after T-77 merges. Can run beside T-78.
 ### coord · 2026-10-09T20:23:19.252Z
 
 Added scope, from rev-6-104-2 on T-104 (A-185), a low: the start of the launch's cwd stat, and the error timing of role assignment, are not yet timed consistently with the surrounding resumed scopes. They are bounded, so there is no stall risk. Fold this into T-79's launch-path timing pass.
+
+### impl-79 · 2026-10-09T21:40:01.962Z
+
+Auditing Codex, OpenCode and Claude Code launch/resume/stop dependencies. Will preserve ordered role admission and termination helper, add real-adapter native guards and staged failure cleanup evidence, then run typecheck and one full npm test.
+
+### impl-79 · 2026-10-09T21:52:44.294Z
+
+Implementation and targeted checks are complete: async Codex policy/socket/log helpers, async OpenCode config/password/log preparation and resume reads, launch rollback for created directories/files and identity-checked owned children. Real adapter native guards pass spawn/watch/live-resume/stop/relaunch and detect planted sync calls in all three. Failure injections cover directories, config/password partial writes, permissions, log snapshot/open/close/read, native spawn, readiness/exit/timeout, thread/session creation and logging; failed relaunch restores prior bytes/modes. Cwd-stat initiation and role-assignment error conversion timing regressions pass while T-104 admission ordering remains unchanged. Running the one required full npm test next.
+
+### impl-79 · 2026-10-09T21:54:18.161Z
+
+Committed implementation head 110943870a2b1236bd5291d504b39e5f284a3ef1 and pushed to local territory origin. Evidence A-217: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-217-t-79-native-guards-timing-and-failure-stage-table.md. Typecheck and targeted checks pass; one full npm test is queued behind the machine-wide suite lock.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T21:32:31.904Z
+updated: 2026-10-09T21:52:44.142Z
 ---
 
 ## Parent
@@ -116,3 +116,22 @@ hub/src/territory.ts:499 pins new creation SHA; :411 preserves an observed moved
 A-204/A-206 and sibling probes rerun on the pinned head: 17 read-only virtual cases passed, including clean/dirty × new/existing late writers and detached HEAD movement. diff --check passed; parallel Standards/Spec reviews clear. No real mutations or suites. Full suite remains separately running; Coordinator reports native guard 29/29, worktrees 5/5 and typecheck passing.
 
 Evidence A-211: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-211-t-78-final-resolution-review-on-199003b-preservation-probes-clear.md. Standards total 0, worst none; Spec total 0, worst none.
+
+### impl-78 · 2026-10-09T21:51:48.168Z
+
+Test-only head aa84c7fd90004ab52e57f0a5d54243f00488e3ef pushed to local origin. Full run at199003b ended hub656:655pass1fail (sole worktree.list timing probe), editor notrun. Trace proved both initial/final session snapshots each correctly measured400ms; async I/O now separates them. Coordinator authorized one fake-clock charge retaining exactly-one assertion plus both-snapshots==2. File8/8 and typecheck pass; deterministic two-charge mutation red, restored probe green. Evidence A-215: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-215-t-78-worktree-timing-probe-diagnosis-aa84c7f.md. Final full package retry is running now on aa84c7f.
+
+### rev-65 · 2026-10-09T21:52:44.142Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-78-4
+commit: aa84c7fd90004ab52e57f0a5d54243f00488e3ef
+
+Standards: clear — high 0, medium 0, low 0. Spec: clear — high 0, medium 0, low 0. No ranked findings.
+
+hub/test/task-worktrees.test.ts:354 charges one 400 ms continuation through the existing injected guard clock. :370–371 retain exactly one slow-request with phase resumed, client list-ui and >=400 ms; :368 additionally requires both session snapshots. Success/worktree assertions remain. The correction removes the obsolete assumption that two snapshots separated by async I/O produce one record. Timing coverage is preserved; production code unchanged from rev-65-78-3.
+
+Read A-215 diagnosis and pinned guard/helper wiring; parallel Standards/Spec reviews clear; diff --check passes. No Reviewer tests/suite. The reported 8/8 file run and typecheck are separate evidence; full suite rerun remains pending.
+Evidence A-216: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-216-t-78-test-only-timing-review-on-aa84c7f-coverage-preserved.md. Standards total 0, worst none; Spec total 0, worst none.
