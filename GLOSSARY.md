@@ -17,8 +17,8 @@ A function a session performs in the project's process. A role is assigned to a 
 _Avoid_: persona, agent type, mode, seat
 
 **Coordinator**:
-The role that drives the work: it plans, decides, hands tasks to other sessions and to its own sub-agents, and is the only role that asks the human. Exactly one session holds it, or none.
-_Avoid_: orchestrator, main agent, lead, driver
+The role that leads the root of the item tree: it plans, decides, launches Leads and sessions, merges what no Lead owns, releases, and is the only role that asks the human. Exactly one session holds it, or none.
+_Avoid_: orchestrator, main agent, driver, manager
 
 **Implementer**:
 The role that carries out a unit of work and reports to the Coordinator.
@@ -35,6 +35,10 @@ _Avoid_: tester, verifier
 **Aide**:
 A session that works for the human alone: it holds no crew duty, is addressed by name only, and speaks for the human, decisions included. It can create and change items and artifacts and message any session, but never launches sessions, merges, hands over or asks.
 _Avoid_: assistant, helper, personal session, scratch session, human session
+
+**Lead**:
+The session that owns a node of the item tree and receives its reports: the Coordinator for the root, a session of the role Lead for an epic or a release, the Implementer for the item it claims. One lead per node, or none.
+_Avoid_: manager, supervisor, commander, owner, parent
 
 **Role clause**:
 The instruction text a role carries; the hub delivers it to the session that holds the role.
