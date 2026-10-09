@@ -49,6 +49,8 @@
 // starts a newer turn at readback, held until release-newer-turn; "drop recovery in newer turn" drops that recovery
 // once. "fail recovered turn before response" completes the recovery as failed before replying; "refuse recovered
 // request" refuses it, and "drop every recovery" admits empty recovery turns to test the bounded failure outcome.
+// T-68: an input containing "record an unknown item" is recorded as an item of a type no Codex has (`hubInput`), as
+// a future app-server might, so the hub's reader cannot classify the turn.
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
@@ -159,7 +161,10 @@ async function resume(args: string[]): Promise<number> {
 
 type Conn = { ws: WebSocket; initialized: boolean; subscribed: Set<string> };
 type Item = { text: string; tool?: { name: string; namespace?: string } | undefined };
-type TurnItem = { type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> } | { type: 'functionCallOutput'; id: string; name: string; namespace: string | null; output: string };
+type TurnItem =
+  | { type: 'userMessage'; id: string; content: Array<{ type: 'text'; text: string }> }
+  | { type: 'functionCallOutput'; id: string; name: string; namespace: string | null; output: string }
+  | { type: 'hubInput'; id: string; payload: string };
 type TurnRecord = { id: string; status: string; items: TurnItem[] };
 type Thread = ThreadFile & { status: Status; turnId: string | null; queue: Item[]; tokens: number; history?: TurnRecord[] };
 
@@ -282,9 +287,11 @@ async function appServer(args: string[]): Promise<number> {
       log(`turn ${turnId} item: ${item.text}`);
       // as the real one: an input the turn takes up becomes an item of the turn, and is announced; a tool output is a
       // functionCallOutput (measured with 0.160.0, T-68), text input a userMessage
-      const taken: TurnItem = item.tool
-        ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
-        : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
+      const taken: TurnItem = item.text.includes('record an unknown item')
+        ? { type: 'hubInput', id: randomUUID(), payload: item.text }
+        : item.tool
+          ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
+          : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
       record.items.push(taken);
       toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
       if (item.text === 'newer recovery turn') {

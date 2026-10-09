@@ -73,14 +73,18 @@ export function firstTurn(name: string, clause: string | null | undefined): stri
 /** An item of a turn, as `item/completed` and `thread/read` give it. */
 type TurnItem = { type?: unknown; name?: unknown; output?: unknown; content?: Array<{ text?: unknown }> };
 
-/** The text of an input the turn took up, or null for any other item. Measured with Codex 0.160.0 (T-68): text
- *  input (a steer, a text `turn/start`) is a `userMessage` with text content; a `turn/start` with a `toolOutput` (a
- *  delivery into an idle thread) is a `functionCallOutput` carrying the tool's `name` and its `output`. */
-function inputText(item: TurnItem | undefined): string | null {
-  if (item?.type === 'userMessage') return (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n');
+/** How an input reached the app-server: text (`turn/steer`, or `turn/start` with `input`), or the `hub_event` tool
+ *  output of a `turn/start` into an idle thread. */
+type InputShape = 'text' | 'toolOutput';
+
+/** An input the turn took up, with its shape, or null for any other item. Measured with Codex 0.160.0 (T-68): text
+ *  input is a `userMessage` with text content; a `toolOutput` is a `functionCallOutput` carrying the tool's `name`,
+ *  `namespace` and `output`. */
+function turnInput(item: TurnItem | undefined): { shape: InputShape; text: string } | null {
+  if (item?.type === 'userMessage') return { shape: 'text', text: (item.content ?? []).map((c) => (typeof c.text === 'string' ? c.text : '')).join('\n') };
   if (item?.type === 'functionCallOutput' && item.name === 'hub_event') {
-    if (typeof item.output === 'string') return item.output;
-    if (Array.isArray(item.output)) return item.output.map((c: { text?: unknown }) => (typeof c?.text === 'string' ? c.text : '')).join('\n');
+    if (typeof item.output === 'string') return { shape: 'toolOutput', text: item.output };
+    if (Array.isArray(item.output)) return { shape: 'toolOutput', text: item.output.map((c: { text?: unknown }) => (typeof c?.text === 'string' ? c.text : '')).join('\n') };
   }
   return null;
 }
@@ -266,7 +270,9 @@ type Live = {
   rateLimits: Record<string, unknown> | null;
 };
 
-type OwedInput = { text: string; recoveries: number };
+/** An accepted input not yet seen taken up: its envelope, the shape it was admitted in, and how often it was
+ *  delivered again. */
+type OwedInput = { text: string; shape: InputShape; recoveries: number };
 
 type PendingInput = { id: string; takenUp: Set<string> };
 
@@ -396,9 +402,9 @@ export class CodexAdapter implements HarnessAdapter {
           return;
         case 'item/started':
         case 'item/completed': {
-          // an input the turn took up is an item of the turn (`inputText`): a message seen there is no longer owed
-          const text = mine(params) ? inputText(params.item as TurnItem | undefined) : null;
-          if (text !== null) this.#takenUp(live.p.sessionId, String(params.turnId), text);
+          // an input the turn took up is an item of the turn (`turnInput`): a message seen there is no longer owed
+          const input = mine(params) ? turnInput(params.item as TurnItem | undefined) : null;
+          if (input) this.#takenUp(live.p.sessionId, String(params.turnId), input.text);
           return;
         }
         case 'turn/started': {
@@ -564,26 +570,42 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /**
-   * A turn ended well with steers it had accepted and was not seen to take up. Its own record decides (the
-   * notification may have been missed, or have come before the steer's result): what is not among the turn's
-   * inputs is handed over again as a turn of its own. A message delivered twice is the lesser harm; a record that
-   * cannot be read counts as not taken up. Measured with Codex 0.160.0, an accepted steer was always taken up: this
-   * is the guard for the case it is not.
+   * A turn ended well with inputs it had accepted and was not seen to take up. Its own record decides (the
+   * notification may have been missed, or have come before the input's result): what is not among the turn's
+   * inputs is handed over again as a turn of its own. The record is read as `turnInput` knows it; an input owed in
+   * a shape the record does not show at all (a tool output starts its own turn, so that turn must show one; a steer
+   * may join a turn of either shape, so that turn must show some input) is not judged, and neither is a record that
+   * cannot be read: each is reported once (`harness-turn-unread`) and not delivered again. A message delivered once
+   * and unverified is the lesser harm than a turn run twice and a false alarm (T-68). Measured with Codex 0.160.0,
+   * an accepted steer was always taken up: this is the guard for the case it is not.
    */
   async #redeliver(live: Live, turnId: string, owed: Map<string, OwedInput>): Promise<void> {
     const client = live.client;
     const threadId = live.p.harnessSessionId as string;
+    let inputs: Array<{ shape: InputShape; text: string }> | null = null;
+    let unreadBecause = "the turn's record shows no input item of the shape it was admitted in";
     try {
       if (!client || client.closed) throw new Error("the hub is not connected to this session's app-server");
       const r = await client.request<{ thread: { turns?: Array<{ id?: string; items?: TurnItem[] }> } }>('thread/read', { threadId, includeTurns: true }, 15_000);
-      const items = r.thread.turns?.find((t) => t.id === turnId)?.items ?? [];
-      for (const item of items) {
-        const text = inputText(item);
-        if (text !== null) for (const id of envelopeIds(text)) owed.delete(id);
-      }
+      const turn = r.thread.turns?.find((t) => t.id === turnId);
+      if (!turn) throw new Error("the turn is not in the thread's record");
+      inputs = (turn.items ?? []).map(turnInput).filter((i) => i !== null);
     } catch (err) {
-      this.#host.log({ event: 'harness-turn-unread', harness: this.harness, session: live.p.name, turn: turnId, error: err instanceof Error ? err.message : String(err) });
+      unreadBecause = err instanceof Error ? err.message : String(err);
     }
+    const unread: string[] = [];
+    for (const [id, obligation] of owed) {
+      if (inputs?.some((i) => envelopeIds(i.text).includes(id))) {
+        owed.delete(id);
+        continue;
+      }
+      const judged = inputs?.some((i) => obligation.shape === 'text' || i.shape === obligation.shape) ?? false;
+      if (!judged) {
+        unread.push(id);
+        owed.delete(id);
+      }
+    }
+    if (unread.length > 0) this.#host.log({ event: 'harness-turn-unread', harness: this.harness, session: live.p.name, turn: turnId, ids: unread, error: unreadBecause });
     for (const [id, obligation] of owed) {
       try {
         // A newer turn may itself drop a recovery. Track every accepted attempt, but stop
@@ -596,7 +618,7 @@ export class CodexAdapter implements HarnessAdapter {
           const params = idle ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input: [{ type: 'text', text, text_elements: [] }] };
           const r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
           if (typeof r.turn?.id !== 'string') throw new Error('the app-server accepted redelivery without a turn id');
-          this.#acceptedInput(live, r.turn.id, id, { text, recoveries: obligation.recoveries + 1 }, pending);
+          this.#acceptedInput(live, r.turn.id, id, { text, shape: idle ? 'toolOutput' : 'text', recoveries: obligation.recoveries + 1 }, pending);
           if (live.state !== 'idle') live.turnId ??= r.turn.id;
           this.#host.log({ event: 'harness-redelivered', harness: this.harness, session: live.p.name, id, turn: turnId, admittedTurn: r.turn.id, intoActiveTurn: !idle });
         });
@@ -670,7 +692,7 @@ export class CodexAdapter implements HarnessAdapter {
       const expected = live.turnId;
       try {
         await client.request('turn/steer', { threadId, expectedTurnId: expected, input }, this.#injectTimeoutMs);
-        this.#acceptedInput(live, expected, message.id, { text, recoveries: 0 }, pending);
+        this.#acceptedInput(live, expected, message.id, { text, shape: 'text', recoveries: 0 }, pending);
         this.#host.log({ event: 'harness-steered', harness: this.harness, session: p.name, id: message.id, turn: expected });
         return;
       } catch (err) {
@@ -683,7 +705,8 @@ export class CodexAdapter implements HarnessAdapter {
       }
     }
     // an active turn whose id the hub missed (it reconnected mid-turn): `turn/start` steers it
-    const params = live.state === 'idle' || live.state === 'unknown' ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input };
+    const shape: InputShape = live.state === 'idle' || live.state === 'unknown' ? 'toolOutput' : 'text';
+    const params = shape === 'toolOutput' ? { threadId, input: [], toolOutput: { name: 'hub_event', namespace: 'cland', output: text } } : { threadId, input };
     let r: { turn?: { id?: string } };
     try {
       r = await client.request<{ turn?: { id?: string } }>('turn/start', params, this.#injectTimeoutMs);
@@ -691,7 +714,7 @@ export class CodexAdapter implements HarnessAdapter {
       if (err instanceof RpcNoAnswer) throw new InjectUncertain(`turn/start: ${err.message}`);
       throw err;
     }
-    if (typeof r.turn?.id === 'string') this.#acceptedInput(live, r.turn.id, message.id, { text, recoveries: 0 }, pending);
+    if (typeof r.turn?.id === 'string') this.#acceptedInput(live, r.turn.id, message.id, { text, shape, recoveries: 0 }, pending);
     if (typeof r.turn?.id === 'string' && live.state !== 'idle') live.turnId ??= r.turn.id;
   }
 
