@@ -198,6 +198,15 @@ test('a launch without a model prefers big-pickle over a listed but deprecated f
   await replyTo(ui, 'impl', 'pong: does the default answer?');
 });
 
+test('a no-model OpenCode launch waits for big-pickle after a partial cold catalog', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_OPENCODE_STAGED_CATALOG: '1' });
+  const ui = await connectUi(t, discovery);
+  const launched = await launch(ui, 'impl');
+  assert.equal(launched.model, 'opencode/big-pickle');
+});
+
 test('a failed OpenCode turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
