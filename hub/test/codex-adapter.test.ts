@@ -329,7 +329,7 @@ const threadCalls = (log: string, method: 'thread/start' | 'thread/resume'): Arr
     .filter((json) => json !== undefined)
     .map((json) => JSON.parse(json) as Record<string, unknown>);
 
-test('each role\'s launch defaults reach Codex: thread/start never asks for approvals and names the sandbox, whose writable roots and network the app-server is given as roles.toml has them (T-48)', async (t) => {
+test('Codex launches Implementer and QA with full access, Reviewer read-only, and the T-48 profile when configured (T-65)', async (t) => {
   const root = await tempProject(t);
   // a repository with a worktree under .cland/worktrees, as an Implementer's item gets
   const worktree = join(root, '.cland', 'worktrees', 'T-1');
@@ -362,25 +362,18 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
   const sockets = (cwd: string) => ({ [join(root, '.cland')]: 'allow', [cwd]: 'allow', [tmp]: 'allow', [join(root, '.cland', 'run')]: 'deny', [join(tmp, 'cland-run')]: 'deny' });
   const localNetwork = (cwd: string) => ({ enabled: true, allow_local_binding: true, unix_sockets: sockets(cwd) });
 
-  // the Implementer: its worktree, the main worktree and both git directories writable; Unix sockets and loopback only.
-  // The thread names the profile; the app-server's command line defines it
+  // the Implementer has full access even when launched in a worktree: no profile overrides are needed.
   const impl = await started('impl-1', { role: 'implementer', cwd: worktree });
   assert.equal(impl.cwd, worktree);
-  assert.deepEqual(impl.thread, { approvalPolicy: 'never', permissions: 'cland' });
-  assert.deepEqual(impl.overrides, {
-    default_permissions: 'cland',
-    'permissions.cland': { extends: ':workspace', filesystem: { [root]: 'write', [join(root, '.git')]: 'write', [gitDir]: 'write' }, network: localNetwork(worktree) },
-    'features.network_proxy': true,
-  });
+  assert.deepEqual([impl.thread, impl.overrides], [{ approvalPolicy: 'never', permissions: ':danger-full-access' }, {}]);
 
   // the Reviewer: read-only, no network, so a built-in profile is enough
   const rev = await started('rev-1', { role: 'reviewer' });
   assert.deepEqual([rev.thread, rev.overrides], [{ approvalPolicy: 'never', permissions: ':read-only' }, {}]);
 
-  // QA: writes in its own directory only (git directories stay read-only); Unix sockets and loopback
+  // QA can run all checks, including watchers, pid identity and nested harnesses.
   const qa = await started('qa-1', { role: 'qa' });
-  assert.deepEqual(qa.thread, { approvalPolicy: 'never', permissions: 'cland' });
-  assert.deepEqual(qa.overrides, { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', network: localNetwork(root) }, 'features.network_proxy': true });
+  assert.deepEqual([qa.thread, qa.overrides], [{ approvalPolicy: 'never', permissions: ':danger-full-access' }, {}]);
 
   // no role, so no launch defaults: approvals are still never asked, the sandbox is Codex's own
   const plain = await started('plain-1', {});
@@ -394,10 +387,17 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
 
   // roles.toml is read as it is at each launch: an edit changes the next one, and a relaunch takes it too
   const text = await readFile(file, 'utf8');
-  const qaLaunch = text.slice(text.indexOf('[qa.launch]'));
-  await writeFile(file, text.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"').replace('sandbox = "workspace-write"', 'sandbox = "danger-full-access"').replace('network = "local"', '')));
+  const profileText = text.replaceAll('sandbox = "danger-full-access"', 'sandbox = "workspace-write"\nnetwork = "local"');
+  const implStart = profileText.indexOf('[implementer.launch]');
+  const implEnd = profileText.indexOf('[implementer.permissions]', implStart);
+  const implLaunch = profileText.slice(implStart, implEnd);
+  const withRoots = profileText.replace(implLaunch, implLaunch + 'writable_roots = ["."]\n\n');
+  const qaLaunch = withRoots.slice(withRoots.indexOf('[qa.launch]'));
+  await writeFile(file, withRoots.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"')));
   const qa2 = await started('qa-2', { role: 'qa' });
-  assert.deepEqual([qa2.thread, qa2.overrides], [{ approvalPolicy: 'on-request', permissions: ':danger-full-access' }, {}]);
+  const qaProfile = { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', network: localNetwork(root) }, 'features.network_proxy': true };
+  assert.deepEqual(qa2.thread, { approvalPolicy: 'on-request', permissions: 'cland' });
+  assert.deepEqual(qa2.overrides, qaProfile);
 
   await presentAs(ui, 'qa-1', 'idle');
   await killDaemon(qa.launched.pid as number);
@@ -406,17 +406,21 @@ test('each role\'s launch defaults reach Codex: thread/start never asks for appr
   assert.equal(relaunched.ok, true, relaunched.error);
   const again = (relaunched.value as { process: Harness }).process;
   const [resumed] = threadCalls(await fake.log(again.pid as number), 'thread/resume');
-  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: ':danger-full-access' });
-  assert.deepEqual(await overridesOf(again.pid as number), {}, 'the relaunched app-server no longer defines the profile');
+  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: 'cland' });
+  assert.deepEqual(await overridesOf(again.pid as number), qaProfile, 'the relaunched app-server defines the configured profile');
 
-  // and the other way: a relaunch under the Implementer's defaults defines the profile again
+  // the Implementer's configured profile still grants the main worktree and both git directories
   await presentAs(ui, 'impl-1', 'idle');
   await killDaemon(impl.launched.pid as number);
   await eventually('impl-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'impl-1')?.state === 'unknown' ? true : undefined));
   const implAgain = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
   assert.equal(implAgain.ok, true, implAgain.error);
   const implPid = (implAgain.value as { process: Harness }).process.pid as number;
-  assert.deepEqual(await overridesOf(implPid), impl.overrides);
+  assert.deepEqual(await overridesOf(implPid), {
+    default_permissions: 'cland',
+    'permissions.cland': { extends: ':workspace', filesystem: { [root]: 'write', [join(root, '.git')]: 'write', [gitDir]: 'write' }, network: localNetwork(worktree) },
+    'features.network_proxy': true,
+  });
   const [implResumed] = threadCalls(await fake.log(implPid), 'thread/resume');
   assert.deepEqual([implResumed?.approvalPolicy, implResumed?.permissions], ['never', 'cland']);
 });

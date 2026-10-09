@@ -411,7 +411,7 @@ export class Dispatcher {
             break;
           case 'history':
             // with a topic: that topic's messages (a new role holder reads the topics waiting for it, #31)
-            peer.send({ type: 'result', id: frame.id, ok: true, value: { messages: frame.topic !== undefined ? core.topicHistory(frame.topic, frame.limit).messages : core.history(me, frame.limit, frame.with) } });
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { messages: frame.topic !== undefined ? core.topicHistory(frame.topic, frame.limit, frame).messages : core.history(me, frame.limit, frame.with) } });
             break;
           case 'role.handover': {
             const role = connection?.role ?? null;
@@ -485,7 +485,7 @@ export class Dispatcher {
           case 'topic.list':
             return answer({ topics: core.topics() });
           case 'topic.history':
-            return answer(core.topicHistory(frame.topic, frame.limit));
+            return answer(core.topicHistory(frame.topic, frame.limit, frame));
           case 'topic.send': {
             const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo);
             return answer({ message, outcomes });

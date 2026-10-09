@@ -383,6 +383,9 @@ function M.buf(id)
   vim.keymap.set('n', 'e', function()
     M.edit(id)
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: edit the item file' })
+  vim.keymap.set('n', 'L', function()
+    require('cland.agents_log').open({ item = id })
+  end, { buffer = b, nowait = true, silent = true, desc = 'cland: Agents log for this item' })
   return b
 end
 

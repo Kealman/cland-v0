@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:40:46Z
-updated: 2026-10-08T13:17:15.598Z
+updated: 2026-10-09T08:36:57.490Z
 github:
   repo: Kealman/cland-v0
   number: 20
@@ -86,3 +86,13 @@ Everything in the map's fog: a sessions board as a separate screen, cost per ite
 
 - The git-engines research (branch `research/git-engines`) records why no forge is used and what GitHub's personal-account limits are; the qa-astra research records that Computer Use cannot drive terminal apps and that the Codex sandbox blocks Unix sockets while network is off.
 - v0 is complete when slice 2 is closed and the first release of cland has left for GitHub through `cland release` from inside cland.
+
+## Comments
+
+### coord · 2026-10-09T08:36:57.490Z
+
+Slice 2 planned on 2026-10-09 (the Coordinator, from a sub-agent's draft read against main b8368b3; the human's stand-in approved the list, the merge order and the four shaping decisions through ask 343ab54b, option 1). Twelve tracer-bullet tickets under this epic, with native blocking edges: T-53 cland init territory (none); T-54 verdict commit and provenance (none); T-55 artifact.create and the topic's list (none); T-56 Agents topic filters (none); T-57 cland --headless --qa (none); T-58 task branches and launch with an item (T-53); T-59 cland merge (T-53, T-54); T-60 prompt drafting (T-55); T-61 promote, archive, cleanup (T-55); T-62 QA briefs and the qa skill (T-54, T-57); T-63 cland release and sync (T-59); T-64 v0 done, the definition of done (all). First wave: T-53, T-54, T-55, T-56, T-57. T-58 and T-59 run serially (both extend the territory module). T-52 (the cold OpenCode catalog) is a small slice-1 item scheduled beside T-58.
+
+Decisions (each ticket names the ones it rests on): D1 the project root lives on dev; the Coordinator's tracker and docs commits land there; task work reaches dev only through cland merge; main moves only by cland release and cland sync. D2 one territory module runs the territory's git commands, without a hub for cland init and inside the hub for worktrees, merges, releases and syncs, under one lock; spec 4.2 is amended accordingly (recorded with T-59). D3 task worktrees stay linked to the project's own repository; the territory is origin. D4 a verdict pins a commit; the gate counts it while its commit is the branch tip or has the same patch-id. D5 only the latest verdict of each kind written through the hub by a session holding the role, not claiming the item, satisfies the gate; a verdict the Coordinator records for a rescue run does not; the human overrides with a reason. D6 the label qa-required says an item needs a QA verdict for the gate. D7 a worktree is made at the first claim of an open task, and by session.launch with an item. D8 only Claude Code sessions launched with an item get the worktree-creation refusal; the Coordinator's sub-agent worktrees stay. D9 cland merge never rewrites a task branch; on a conflict the Implementer rebases. D10 a merge closes the item, releases the claim and removes the worktree and branch once no running session stands inside. D11 cland release is the human's, or the Coordinator's from its shell after the human answered the version ask (the human's own, not the stand-in's); cland never edits version files. D12 Mermaid renders as its source in a buffer plus a browser view. D13 a QA case always runs against a fixture project with its own stdio hub or the stub hub. D14 QA runs and evidence live under .cland/qa, briefs and cases under qa/. D15 cland's own repository moves onto its territory right after T-53 merges; until T-63 lands the Coordinator squashes onto dev by hand and the stand-in pushes a verified checkpoint of main to github at step-level milestones. D16 no check command in the gate in v0.
+
+Risks carried into the tickets: Unix sockets still blocked for rescue runs and network-less roles (the QA lane keeps one process over stdio); approvals auto-declined in rescue runs (self-contained briefs); the Codex embedded-mode trap (-c stays on the app-server); a sub-agent in the Coordinator's shell is taken for the Coordinator (the merge and release skills forbid delegating them); the size cap and rate limit apply to artifact messages; hand-written verdicts (provenance, D5); the root moving under the Coordinator during a merge (refusal on touched uncommitted files); a worktree removed under a live session (the merge waits); gh still reaches GitHub through the github remote (only the AGENTS.md rule stops it).

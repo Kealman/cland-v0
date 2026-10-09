@@ -10,7 +10,7 @@ How a change gets reviewed and checked in slice 1 (spec 4.10 and 6 (g), ticket #
    - Reviewer: reads the item with `task.view`, then the changes the request names, read-only, against the spec and the acceptance criteria. It edits nothing.
    - QA: reads the item, then runs shell-level checks, the `cland task` CLI, and where UI is involved a headless Neovim fed with `nvim_input` and read with `screenstring()`. It fixes nothing.
 
-   Neither waits on an approval: what each may touch is its role's sandbox (The Codex sandbox, below).
+   Neither waits on an approval: Reviewer is read-only with no network; QA has full access by default (The Codex sandbox, below).
 4. The holder writes its verdict on the item with one `task.comment` (`verdict`, `result`, `run`); the hub adds `by` and writes the header.
 5. The holder reports back with `send` to the Coordinator, in the request's topic.
 
@@ -63,18 +63,26 @@ run: rev-2026-10-08-1
 
 ## The Codex sandbox
 
-A Codex session launched by cland never stops to ask the human, and runs in a sandbox chosen for its role (the human's decision of 2026-10-09, item T-48). Both come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `hub/README.md`, "`.cland/roles.toml`") and are read at each launch. With `approval = "never"` a command the sandbox refuses fails, and the session goes on and reports it: nothing shows as `waiting for approval`.
+The human's second decision of 2026-10-09 (T-65, superseding T-48's defaults) is that every session of every harness must be able to do any work its role needs. Codex Implementer and QA launches therefore default to `approval = "never"` and `sandbox = "danger-full-access"`, the equivalent of Claude Code's auto mode. Harness choice no longer depends on whether Codex's restricted sandbox can run a check. Reviewer stays read-only with no network.
 
-| Role | Writes | Network | Why |
+These values come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `hub/README.md`, ".cland/roles.toml") and are read at each launch and relaunch. Existing sessions keep their policy until relaunched. With `approval = "never"` a command a chosen sandbox refuses fails; nothing waits for the human to approve it.
+
+| Role | Sandbox default | Network | Why |
 | --- | --- | --- | --- |
-| Implementer | its cwd (its worktree), the main worktree, the repository's `.git` and its own `.git/worktrees/<name>`, the temp dir | Unix sockets under `.cland/`, its cwd and the temp dir; loopback; nothing else | It commits on its branch, runs the suite (which starts hubs on Unix sockets and `127.0.0.1` in the temp dir) and talks to the hub with `cland`. |
-| Reviewer | nothing | none | It reads the item with `task.view` and the changes with git, and edits nothing. |
-| QA | its cwd and the temp dir; the git directories stay read-only | as the Implementer | It runs the checks where it stands and fixes nothing: it has no reason to commit. |
+| Implementer | `danger-full-access` | full | It can commit, install dependencies, run watchers, inspect processes and launch real harnesses as its work needs. |
+| Reviewer | `read-only` | none | It reads the item with `task.view` and the changes with git, and edits nothing. |
+| QA | `danger-full-access` | full | It can exercise the same product and checks on any harness, including real child harnesses. Its clause still says to fix nothing. |
 
-What the sandbox still refuses, whatever the role (macOS, Codex 0.160.0), and what follows from it:
+Full access changes the command sandbox, not the role: the hub still checks tool and CLI calls against the session's role, and pushing remains the Coordinator's explicit decision. Real-session verification of the new defaults is recorded on T-65 after merge, hub restart and relaunch.
+
+### Optional T-48 profile
+
+Projects that choose a restricted sandbox can still set `approval = "never"`, `sandbox = "workspace-write"` and `network = "local"` explicitly; add `writable_roots = ["."]` for an Implementer that needs the main worktree and its git directories. Without the roots, QA writes only in its cwd and the temp dir, and git directories stay read-only. Omitted keys inherit the current role defaults, so specifying just `workspace-write` leaves the network full for Implementer and QA.
+
+The following limitations were measured under that restricted profile (macOS, Codex 0.160.0); they do not describe the new full-access defaults:
 
 - **File watching.** Seatbelt denies FSEvents, so `fs.watch` fails with `EMFILE` a moment after it starts. A hub started in the sandbox (the suite starts many) polls `.cland/tasks/` and `roles.toml` every 500 ms instead (`task-watch-error` and `roles-unwatched` in its log, each with `polling`).
-- **`/bin/ps`.** It is setuid, and seatbelt refuses setuid binaries. The hub reads a process's start time from `ps` before it signals a pid, so in the sandbox it cannot stop a session or break a stale lock. Five tests need that and skip themselves when `ps` fails for the test process itself (never because of where they run: outside a sandbox they run), each printing the reason: in `daemon.test.ts`, `cland hub stop never signals a process that is not the project's hub` and `a stale hub.lock … does not stop a start`; in `claude-code-sessions.test.ts`, `a stop whose claude stop fails falls back to SIGTERM`; and two whole scenarios that end in a stop, `after a hub restart, resume re-finds the app-server` (`codex-adapter.test.ts`) and `a launched OpenCode session` (`opencode-adapter.test.ts`). A sixth, in `edges.test.ts`, needs `sandbox-exec`, which does not nest. A sandboxed `npm test` therefore ends with `fail 0` and `skipped 6`: a skip is not a pass, and a QA verdict reports the count. The whole suite runs in a Claude Code session (the Coordinator's, an Implementer's) or in the human's terminal.
+- **`/bin/ps`.** It is setuid, and seatbelt refuses setuid binaries. The hub reads a process's start time from `ps` before it signals a pid, so in the sandbox it cannot stop a session or break a stale lock. Six tests need that and skip themselves when `ps` fails for the test process itself (never because of where they run: outside a sandbox they run), each printing the reason: in `daemon.test.ts`, `cland hub stop never signals a process that is not the project's hub` and `a stale hub.lock … does not stop a start`; in `claude-code-sessions.test.ts`, `a stop whose claude stop fails falls back to SIGTERM`; and two whole scenarios that end in a stop, `after a hub restart, resume re-finds the app-server` (`codex-adapter.test.ts`) and `a launched OpenCode session` (`opencode-adapter.test.ts`); plus the Coordinator shell stop/resume scenario (`cli-identity.test.ts`, added in T-49). A seventh, in `edges.test.ts`, needs `sandbox-exec`, which does not nest. A passing restricted-profile hub suite therefore reports `skipped 7`: a skip is not a pass, and a QA verdict reports the count. The full suite needs a session with full access or the human's terminal.
 - **Every host but loopback.** A direct connection gets `EPERM`, and Codex's proxy answers 403 and then stops the whole command (`Network access to "github.com" was blocked: domain is not on the allowlist for the current sandbox mode`): `npm install`, `git fetch` and `git push` fail, and so does a longer command the moment any step of it tries a host. Pushing is the Coordinator's decision anyway. The suite's one download, the pinned Neovim, is why a worktree uses the main worktree's cached copy (`nvim/README.md`): run the Neovim tests once in the main worktree before sandboxed sessions need them.
 - **The app-servers' sockets** (`.cland/run/`, `$TMPDIR/cland-run/`). An app-server runs any command under any profile for whoever connects (`command/exec`), so a session that reached one would be out of its sandbox.
 - **For the Reviewer**, `/usr/bin/git` prints `couldn't create cache file '/tmp/xcrun_db-…'` on stderr with each command (Xcode's shim wants a cache); the command itself works.
@@ -83,11 +91,11 @@ What `network = "local"` gives the role: the hub's socket, and so the `cland` CL
 
 ADR 0003 records that QA runs where Unix sockets are blocked, which is why the UI can reach the hub over stdio. That still holds for a rescue run (The fallback, below) and for any role whose `network` is `none`; a QA session launched with these defaults is no longer such a place.
 
-A project whose root is itself a linked git worktree has no `.git` directory there, so `writable_roots = ["."]` opens no git directory and its sessions cannot commit.
+Under the restricted profile, a project whose root is itself a linked git worktree has no `.git` directory there, so `writable_roots = ["."]` opens no git directory and its sessions cannot commit.
 
 A session in a worktree runs `cland` where it stands: the CLI finds the project's hub from a linked worktree (T-44), and the hub's socket is among the allowed ones.
 
-### How it was measured
+### How the T-48 profile was measured
 
 Against the installed app-server (Codex 0.160.0, macOS), first with `command/exec` under each profile, then in a session the hub launched:
 
