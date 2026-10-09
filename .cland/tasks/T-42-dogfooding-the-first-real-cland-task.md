@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-09T08:10:09.660Z
+updated: 2026-10-09T10:07:48.620Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -226,3 +226,7 @@ Step 1 of the real run complete, 2026-10-09 08:09Z: the five blockers of the reh
 | T-46 failed turns reported, big-pickle preferred | 18dce79 08:07Z | 72 min | 2 | qa-4 |
 Main after the last merge: b8368b3 (tracker), typecheck clean, 269 hub + 62 Neovim tests. Not pushed. 06:20Z (first launches) to 08:07Z (last merge): 1 h 47 min for six items with up to three Implementers in parallel (Codex gpt-6.1-sol for five, Claude Code claude-opus-5-5 for T-48), two Reviewer sessions and four QA sessions on Codex. The hub was restarted once (07:47Z) to make T-48's policy live; every later Codex session ran with no approval.
 Criteria of this item as of now: (1) six real items from claim to verdicts inside cland with the three harnesses in their roles (Claude Code Coordinator and one Implementer, Codex Implementers, Reviewers and QA; OpenCode exercised by T-46's QA through a launched session); (2) four asks answered from the inbox by the human's side (c523ffe9, d614bc30, 280a12b6, and the T-48 decision relayed), reconnects of every session across a hub restart without losing the thread, two Codex relaunches (rev-1, impl-46) on their own threads; (3) every blocker fixed here or filed: T-50, T-51, T-52 open needs-triage, the Node-25 PATH and the Neovim cache fixed in T-48, the second-spoke family in T-51; (4) the human's confirmation that cland replaced the previous tools is still the human's to give. Next: slice 2 (T-20) through `to-tickets`, as the human's stand-in decided.
+
+### coord · 2026-10-09T10:07:48.620Z
+
+Run note 10:07Z: main at fcf9a2d (T-51 merged on top of T-53, T-54, T-65 phase 1, T-56) plus tracker commit 55780b2. Suite in the background: typecheck clean, hub 297 pass / 0 fail / 0 skipped (the hub runs outside the sandbox, so no ps skips), Neovim 64 pass / 1 fail (`a session.state unknown event shows unknown; a process that died shows unknown · died`, 10 s wait under load 48 to 69); the file rerun alone 6/6. Hub restart on this main approved by the human (ask 9813ba48, option 1); T-55 lands behind it. T-57 in review round 4 (Normal-mode mapping split across a 4096-byte chunk), T-50 forward merge in progress.

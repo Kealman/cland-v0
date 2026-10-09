@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-14
 branch: t/T-57-headless-qa-runner
 created: 2026-10-09T08:33:53.699Z
-updated: 2026-10-09T10:01:58.515Z
+updated: 2026-10-09T10:07:35.010Z
 ---
 
 ## Parent
@@ -149,3 +149,31 @@ Findings by severity:
 Evidence limits: nested sandbox-exec is unavailable here, so the three QA profiles skip; initial hub suite skipped six ps-dependent tests and one sandbox-exec test. /bin/ps is denied and normal runner reports expose no PID, so manual per-run process absence was not independently established. Automated process-group cleanup checks pass for normal completion, timeout and SIGTERM. No own-project hub start/stop, role set or topic answer was run.
 
 Evidence: /tmp/qa-20261009-57-2/{typecheck.log,qa-test.log,manual.py,manual.log,manual-summary.json,*.json}, manual Lua cases and fail-out/wait-out/error-out. Prior suite evidence: /tmp/qa-20261009-57-1/{full-test.log,relaunch-rerun.log,nvim-test.log,qa-test.log,tested-working-files.json}.
+
+### rev-6 · 2026-10-09T10:02:38.545Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-20261009-57-3
+
+Third review: db59c1b9b85239b8e9b67c6402037da278773bee, including main...t/T-57-headless-qa-runner. Main thread only.
+
+Medium (Spec) — nvim/lua/cland/qa.lua:65: consecutive plain characters are treated as a safe text boundary without considering Normal mode or plain-character mappings such as cland's gi/gt/gs. In Normal mode, qa.keys(string.rep('h', 4095) .. 'gi') splits gi after g: the first nvim_input call receives 4096 bytes ending 'hhhhhhhg', and the deferred callback never submits i while Neovim waits for the pending g command. A read-only pinned-Neovim probe remained inside qa.keys until its external 5 s watchdog stopped it (also reproduced with 10 s); no QA result was produced. With General bound to fixture T-1, the adjacent 4094-h control opens T-1 and returns PASS in Normal mode. Preserve plain-character mappings across chunk boundaries using mode/mapping context, or explicitly refuse sequences that cannot be safely split; add the Normal-mode gi regression. KEYS-002 verifies leader mappings around inserted text, which does not cover this path. The earlier mapping-boundary medium remains partially fixed, not closed.
+
+Closed: the exact 4084-x then <Esc><Space>i regression now passes through KEYS-002; KEYS-001 and KEYS-002 both PASS in read-only real-Neovim probes. The prior low in hub/src/cli/qa-fixture.ts is closed: an existing root is refused before mkdir or any file write, confirmed by a write-intercepted probe. Fixture path confinement and use of the canonical tracker serializer remain intact. No other high/medium Standards findings and no remaining low findings. No .cland/tasks files are in the branch diff.
+
+Validation: npm run typecheck and git diff --check pass. All probes used the stub hub without filesystem writes; fixture writes were intercepted. The full suite/sandbox checks remain implementer-reported (hub 266/267 with the timing failure passing alone; nvim 83/83).
+
+### impl-57 · 2026-10-09T10:07:35.010Z
+
+Fix for review rev-20261009-57-3 is in 0fd3df9.
+
+qa.keys now cuts a sequence longer than 4 KiB only right after `<Esc>` or `<CR>`. A cut inside plain text is never treated as safe, because the pause between chunks ends whatever command or mapping is pending, in any mode. A stretch of more than 4 KiB with neither key is BLOCKED before anything is typed, with this message: "keys: N bytes from byte K on hold no <Esc> or <CR> within 4096 bytes, the most typed at once; put an <Esc> or a <CR> where the mode is known, or split the keys over several qa.keys calls".
+
+Regressions:
+- KEYS-001 and KEYS-002 are kept; they now carry `<Esc>` cut points. KEYS-002 includes rev-6's x×4084 then `<Esc><Space>i`, and puts the cut at every distance from the limit (n = 4060…4091).
+- KEYS-003: a Normal-mode `gi` after `h×4000<Esc>h×200` runs once, and qa.keys returns.
+- KEYS-004: the reported `h×4095 gi` is refused at once with the message above, with nothing typed (Normal mode, nothing pending). On db59c1b the same case hung until the run's timeout.
+
+Checks: typecheck clean; nvim/test/qa.test.ts 22/22. The README's qa.keys row says the same.

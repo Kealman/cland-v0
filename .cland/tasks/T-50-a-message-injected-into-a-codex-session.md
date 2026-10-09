@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-9
 branch: t/T-50-steer-lost-at-turn-end
 created: 2026-10-09T07:04:04.157Z
-updated: 2026-10-09T09:38:41.809Z
+updated: 2026-10-09T10:09:18.106Z
 ---
 
 ## Parent
@@ -185,3 +185,15 @@ Findings, ranked by severity:
 Evidence limits: sandbox skips are not passes. A nested real Codex app-server cannot run under this role profile, so this pass did not repeat impl-48's real-Codex measurements. Accepted-but-dropped recovery remains proven at the fake boundary, as accepted by the Coordinator. The injected-at-acceptance semantics remain the approved deviation.
 
 Evidence: /tmp/qa-10-T50-full.log (npm test output), /tmp/qa-10-T50-focused.log; CLI outputs /tmp/qa-10-T50-list.json and /tmp/qa-10-T50-view.json. Typecheck success and both command exit codes were observed directly in the shell tool output.
+
+### impl-50 · 2026-10-09T10:04:02.652Z
+
+Merge-forward requested by Coordinator: merging main at 55780b2 (includes T-51 merge fcf9a2d) into T-50. Resolved only hub/README.md, hub/src/hub/agents-topic.ts and hub/test/codex-adapter.test.ts, keeping both notice kinds/cases/table rows and every test from both branches. Adapter unchanged from T-50; fake/spoke changes merged automatically. Typecheck passed; full suite running once.
+
+### impl-50 · 2026-10-09T10:09:18.106Z
+
+Merge-forward complete at 57b08abae645b04c7cff6da58ce003408abcaeb2, merging main 55780b28ad551601f18cf66721b0030b87eea490 (includes T-51 fcf9a2d) into t/T-50-steer-lost-at-turn-end; clean worktree.
+
+Conflicted files only: hub/README.md, hub/src/hub/agents-topic.ts, hub/test/codex-adapter.test.ts. Kept both notice table rows, both lifecycle kinds and handlers. Adapter test file preserves main verbatim plus the complete T-50 regression block appended. Static comparison confirmed hub/src/adapters/codex.ts remains byte-identical to pre-merge T-50 HEAD. Fake app-server/spoke paths merged automatically, preserving both behaviors. No implementation changes beyond resolution; no tracker files manually edited (main's tracked files came through the merge).
+
+Ran npm run typecheck && npm test once: typecheck passed; hub 307 total, 298 passed, 0 failed, 9 sandbox skips (8 ps-dependent + nested sandbox-exec); Neovim 65 total, 65 passed, 0 failed, 0 skipped. Exit 0, no isolated reruns needed. T-51's multiple-spoke/restart tests and all T-50 regressions passed. git diff --cached --check passed. Full log: /tmp/impl-T50-merge-full.log. No push.

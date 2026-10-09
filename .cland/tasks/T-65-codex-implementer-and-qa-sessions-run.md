@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-15
 branch: t/T-65-codex-full-access-defaults
 created: 2026-10-09T08:55:35.290Z
-updated: 2026-10-09T09:29:19.923Z
+updated: 2026-10-09T10:09:37.297Z
 ---
 
 ## Parent
@@ -106,3 +106,7 @@ Findings by severity: high none; medium none; low none for phase 1.
 Limits: the seven hub skips are six ps-identity scenarios (including T-49's cli-identity scenario) and the sandbox-exec edges scenario. This existing restricted QA session does not verify real full-access capabilities. Phase 2 remains required after merge, hub restart and Implementer relaunch: real ps/pid identity, FSEvents without polling fallback, nested sandbox-exec, real child harness launches, and the full suite under that policy. A clear phase-1 verdict does not complete that acceptance criterion.
 
 Evidence: /tmp/qa9-T65-suite.log, /tmp/qa9-T65-targeted.log, /tmp/qa9-T65-items.json, /tmp/qa9-T65-item.json. Typecheck success is established by the combined command reaching npm test and exiting 0.
+
+### impl-65 · 2026-10-09T10:09:37.297Z
+
+Phase 2 started after Coordinator's 10:08:55Z handoff: main 55780b2, hub restarted at 10:08Z. `node hub/bin/cland.ts role list --json` against the live hub confirms Implementer + QA approval never, sandbox danger-full-access, writableRoots [], network full; Reviewer approval never, read-only, writableRoots [], network none. My existing session still refuses /bin/ps; the updated clause alone does not change a running thread's policy. Fresh QA/Reviewer proof requires Coordinator launch. Implementer cannot launch/stop sessions; a read attempt `session list --json` was refused under session.launch, so I asked the Coordinator to provide fresh sessions and handle their stop. No code changes.
