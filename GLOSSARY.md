@@ -98,6 +98,10 @@ _Avoid_: review result, report, approval
 One acceptance condition of a task, with a stable id and marks: done by the implementer, verified by a reviewer or QA, or failed by a verifier. A task merges only when every criterion is done and verified.
 _Avoid_: checkbox, requirement, check, test case
 
+**Layer**:
+How much attention a thing asks of the human: now, watch, background or archive. Every message, event, session, item and artifact sits in one by default; the human may pin or mute it.
+_Avoid_: priority, level (that is the item hierarchy), importance, tier
+
 **Territory**:
 The local bare git repository that is the project's `origin`: where agents branch, push, get reviewed and merge, out of sight of GitHub.
 _Avoid_: forge, local remote, agents' repo, mirror

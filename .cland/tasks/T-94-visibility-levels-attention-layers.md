@@ -2,16 +2,16 @@
 id: T-94
 kind: question
 title: "Visibility levels: attention layers across the workbench"
-state: open
+state: closed
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: human
 parent: T-81
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:09:46.891Z
-updated: 2026-10-09T19:09:46.891Z
+updated: 2026-10-09T19:47:02.582Z
 ---
 
 ## Question
@@ -31,3 +31,21 @@ Screen space is critically short: the human kept folding and switching panels. A
 - GLOSSARY entry (Layer or Visibility level) and the canvas mockups of the layered views.
 
 Record the resolution as a comment, the spec section, the GLOSSARY entry and the canvas update.
+
+## Comments
+
+### human · 2026-10-09T19:47:02.041Z
+
+Resolution (2026-10-09, the human accepted every point).
+
+- Four layers: now (needs the human or changes their plan), watch (worth seeing, can wait), background (agent-to-agent traffic and bookkeeping, unfolded on purpose or in the Agents log), archive (closed and old, on explicit request).
+- Default placement by surface: messages (to the human and asks now; the Coordinator's reports watch; agent to agent background; older than 7 days archive), inbox events (ask, approval, waiting topic, verdict not clear, died now; clear verdict, release, import, long idle watch; the rest Agents only), sessions (waiting and busy now, Aides always now; idle watch; stopped background), items (current release in work now; planned watch; backlog, unscheduled, done background; closed releases archive), artifacts (the human's own and those sent to the human watch; agents' reports background; archived archive).
+- Surfaces show now and watch; background behind a fold or key; archive on action; the top bar counts now only; the inbox never shows background; agent-to-agent runs in a thread fold into one line; items panel filters are expressed through layers.
+- Overrides: the human pins or mutes topics, sessions and artifacts (ui.json); agents raise only by addressing the human or asking; project defaults in a [visibility] table of config.toml.
+- Visuals belong to the prototypes T-97 and T-99. GLOSSARY: Layer. No ADR.
+
+Recorded in docs/spec/v0.1.md §3.5 and GLOSSARY.md.
+
+### human · 2026-10-09T19:47:02.582Z
+
+Resolved: see the resolution comment; spec v0.1 §3.5

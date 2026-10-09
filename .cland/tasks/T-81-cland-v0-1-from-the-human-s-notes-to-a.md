@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T19:46:14.749Z
+updated: 2026-10-09T19:47:08.472Z
 ---
 
 ## Destination
@@ -46,6 +46,7 @@ updated: 2026-10-09T19:46:14.749Z
 - Item workflow status and order: explicit fields or derived (T-88, .cland/tasks/T-88-item-workflow-status-and-order-explicit.md): an explicit status field for tasks (backlog, planned, in progress, review, qa, ready, done) moved by hub events and editable by the Coordinator and the human; a sparse rank among siblings, lowest first, no priority flag; "in work" is everything from planned to ready; the merge gate is unchanged.
 - The human's own session (T-92, .cland/tasks/T-92-the-human-s-own-session.md): a non-exclusive Aide role that works for the human alone, addressed by name only, speaking for the human with decisions included; the tracker, artifacts, send and history but no launch, merge, handover or ask; a "yours" group in the sessions panel.
 - Structured acceptance criteria (T-93, .cland/tasks/T-93-structured-acceptance-criteria.md): criteria stay in the item file as a structured list with stable ids and marks (done by the implementer, verified by a reviewer or QA, failed by a verifier); the merge gate requires every criterion done and verified; the item view and panel rows show the marks.
+- Visibility levels: attention layers across the workbench (T-94, .cland/tasks/T-94-visibility-levels-attention-layers.md): four layers (now, watch, background, archive) with a default placement table for messages, inbox events, sessions, items and artifacts; surfaces show now and watch, fold background and reach archive on request; the human pins or mutes, agents raise only by addressing or asking.
 
 ## Not yet specified
 
@@ -53,7 +54,7 @@ updated: 2026-10-09T19:46:14.749Z
 - Cost per item and per session: where usage is summed and shown; waits on the session hierarchy (cost rolls up the tree) and on visibility levels.
 - A journal and retrospective viewer: the A-96 retrospective was hand-made from the journal; what the workbench shows of the journal waits on visibility levels and subscriptions.
 - History search: searching messages and comments across topics and items; waits on the palette and visibility levels.
-- Notifications beyond the inbox: whether anything reaches the human outside the workbench (system notifications, sounds); waits on visibility levels.
+- Notifications beyond the inbox: whether now-layer events (T-94) also reach the human outside the workbench (system notifications, sounds); not sharp enough to ticket.
 
 ## Out of scope
 
