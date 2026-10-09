@@ -20,6 +20,7 @@ export type HubBaseOptions = CoreOptions & {
   artifactRetentionDays?: number;
   /** The request budget and the repeat guard's timings (tests). */
   guard?: DispatcherOptions['guard'];
+  requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
   artifactFiles?: DispatcherOptions['artifactFiles'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
@@ -80,6 +81,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
     ...(options.readArtifact ? { readArtifact: options.readArtifact } : {}),
     ...(options.guard ? { guard: options.guard } : {}),
+    ...(options.requestGuard ? { requestGuard: options.requestGuard } : {}),
   });
   core.prune();
   // Background from start, even for a stdio-only hub. Readiness never awaits filesystem retention.

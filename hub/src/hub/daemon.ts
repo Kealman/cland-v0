@@ -21,9 +21,11 @@ import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { RolesFile } from '../roles/config.ts';
 import { readProjectConfig } from '../init/config.ts';
-import { Journal, journalPath, readJournal } from './journal.ts';
+import { Journal, journalPath, readJournal, type JournalOpen } from './journal.ts';
 import { agentsRecord, replayAgentsRecord } from './agents-topic.ts';
 import { idleNotifyMs } from './inbox.ts';
+import { RequestGuard } from './budget.ts';
+import { jsonLinesLog } from '../log.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -37,13 +39,15 @@ export type Daemon = {
   /** What `hub.json` says; null when the hub has no listeners (and so wrote no `hub.json`). */
   discovery: Discovery | null;
   hub: HubBase;
+  /** Production process log: asynchronous file appends; shared by every edge. */
+  log: LogFn;
   /** Resolves once the daemon has stopped (by `stop`, or by a client's `hub.stop`). */
   stopped: Promise<void>;
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode; scheduleTips?: TipSchedule } = {}): Promise<Daemon> {
-  const processLog = options.log ?? (() => {});
+export async function serveProject(root: string, options: { log?: LogFn; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen } = {}): Promise<Daemon> {
+
   const listen = options.listen ?? 'required';
   const l = layout(root);
   mkdirSync(l.dir, { recursive: true });
@@ -66,9 +70,29 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   }
   // the journal (`.cland/journal.jsonl`), appended to across restarts, and the Agents record: both fed by the log
   // closure every part of the hub logs through, so a domain event is journalled and recorded by being logged
-  const journal = new Journal(journalPath(l.dir));
+  const fatalLog = jsonLinesLog(line => process.stderr.write(line));
+  let log: LogFn = options.log ?? fatalLog;
+  const requestGuard = new RequestGuard({ log: entry => log(entry) });
+  // Node's file-backed stderr writes synchronously. Production request logs go to a separate async queue;
+  // stderr is reserved for a failed logging sink, startup diagnostics and other fatal errors.
+  const processJournal = options.log ? null : new Journal(l.log, undefined, { log: fatalLog, guard: requestGuard });
+  let starting = true;
+  const processLog: LogFn = options.log ?? (entry => {
+    // A stdio parent sees startup/listener diagnostics on its stderr pipe, as before.
+    // Once serving, ordinary events (including audit/refusal) use the async append sink.
+    if (starting || String(entry.event).startsWith('orphan-sweep-')) fatalLog(entry);
+    else processJournal!.write(entry as { event: string } & Record<string, unknown>);
+  });
+  const journal = new Journal(journalPath(l.dir), undefined, { log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
-  const log: LogFn = agents.tap(journal.tap(processLog));
+  log = agents.tap(journal.tap(processLog));
+  // Always close both sinks, including a failed journal, before releasing the lock.
+  const closeLogs = async () => {
+    let failure: unknown;
+    try { await journal.close(); } catch (err) { failure = err; }
+    try { await processJournal?.close(); } catch (err) { failure ??= err; }
+    if (failure) throw failure;
+  };
   journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root });
 
   const startedAt = new Date();
@@ -78,7 +102,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
   const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
-  const roles = new RolesFile(l.roles, log);
+  const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   const config = readProjectConfig(l.config, root);
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
@@ -88,11 +112,12 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   let edge: SocketEdge | null = null;
   try {
     tracker.start();
-    roles.start();
+    await roles.start();
     hub = createHubBase({
       secret,
       store: new Store(l.db),
       log,
+      requestGuard,
       ...(config ? { rateLimit: config.hygiene.rateLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
       tracker,
       roles,
@@ -101,6 +126,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       // tests only: how long a queued message and a remembered name last (the default is a day)
       ...(Number(process.env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(process.env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
+        flushLogs: async () => { await journal.flush(); await processJournal?.flush(); },
         // without listeners: port 0 and no socket
         status: () => ({
           pid: process.pid,
@@ -112,14 +138,13 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
           uptimeMs: Date.now() - startedAt.getTime(),
           harnesses: adapters?.sessions.list() ?? [],
         }),
-        stop: () => void stop(),
+        stop: () => { void stop().catch(err => processLog({ event: 'stop-failed', error: err instanceof Error ? err.message : String(err) })); },
       },
     });
   } catch (err) {
-    roles.stop();
+    await roles.stop();
     tracker.stop();
-    journal.close();
-    lock.release();
+    try { await closeLogs(); } finally { lock.release(); }
     throw err;
   }
   agents.attach(hub.core);
@@ -142,14 +167,16 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       adapters?.close();
       await hub.close();
       tracker.stop();
-      roles.stop();
+      await roles.stop();
       // the discovery file and then the lock go last: a successor can only start once this hub is gone
       removeDiscovery(l.discovery, process.pid);
       journal.write({ event: 'hub-stopped', pid: process.pid });
-      journal.close();
-      lock.release();
       log({ event: 'stopped' });
-      resolveStopped();
+      try { await closeLogs(); }
+      finally {
+        lock.release();
+        resolveStopped();
+      }
     })();
     return stopping;
   };
@@ -165,9 +192,8 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       if (listen === 'required') {
         await hub.close();
         tracker.stop();
-        roles.stop();
-        journal.close();
-        lock.release();
+        await roles.stop();
+        try { await closeLogs(); } finally { lock.release(); }
         throw err;
       }
       log({ event: 'listen-failed', error: err instanceof Error ? err.message : String(err), serving: 'stdio only' });
@@ -176,7 +202,8 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
 
   if (ws === null || edge === null) {
     log({ event: 'serving', root, pid: process.pid, listeners: false });
-    return { layout: l, discovery: null, hub, stopped, stop };
+    starting = false;
+    return { layout: l, discovery: null, hub, log, stopped, stop };
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
@@ -187,6 +214,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const discovery: Discovery = { root, socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
+  starting = false;
   void adapters.sessions.resumeAll();
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.
   sweep = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
@@ -194,5 +222,5 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
     log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, stopped, stop };
+  return { layout: l, discovery, hub, log, stopped, stop };
 }

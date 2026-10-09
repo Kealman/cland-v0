@@ -6,9 +6,11 @@
 // Every record is `{ ts, event, … }`, the hub log's own shape: the journal is a filter over the log closure (`tap`),
 // so an event is journalled by being logged, with no second call site. `write` is there for a record that is not
 // a log line (the audit log calls it, or logs `{ event: 'audit', … }`, which the filter journals too).
-import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, writeSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { LogEntry, LogFn } from '../log.ts';
+import type { RequestGuard, Resumed } from './budget.ts';
 
 /** The journal's file name inside `.cland/`. */
 export const JOURNAL_FILE = 'journal.jsonl';
@@ -77,6 +79,9 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'release-refused',
   'synced',
   'sync-refused',
+  'dev-pushed',
+  'push-refused',
+  'push-outcome-unknown',
   'task-merged',
   'merge-resumed',
   'merge-follow-up-failed',
@@ -104,62 +109,129 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
 
 export type JournalRecord = { ts: string; event: string } & Record<string, unknown>;
 
+/** The native append boundary, injectable to exercise delayed/short/failed disk writes. */
+export type JournalFile = {
+  stat: () => Promise<{ size: number }>;
+  read: (buffer: Buffer, offset: number, length: number, position: number) => Promise<{ bytesRead: number }>;
+  write: (buffer: Buffer, offset: number, length: number) => Promise<{ bytesWritten: number }>;
+  close: () => Promise<void>;
+};
+export type JournalOpen = (path: string) => Promise<JournalFile>;
+
 export class Journal {
   readonly #path: string;
   readonly #now: () => Date;
-  #fd: number | null;
+  readonly #report: LogFn;
+  readonly #guard: RequestGuard | undefined;
+  #file: JournalFile | null = null;
+  #tail: Promise<void>;
+  #error: Error | null = null;
+  #closing: Promise<void> | null = null;
 
-  /** Opens `path` for appending (created when missing): a restart adds lines after the last one, never truncates. */
-  constructor(path: string, now: () => Date = () => new Date()) {
+  constructor(path: string, now: () => Date = () => new Date(), options: { open?: JournalOpen; log?: LogFn; guard?: RequestGuard } = {}) {
     this.#path = path;
     this.#now = now;
-    this.#fd = openSync(path, 'a+');
-    // a previous run cut off mid-line (a crash, a full disk): the next record starts on a line of its own
-    const size = fstatSync(this.#fd).size;
-    if (size > 0) {
-      const last = Buffer.alloc(1);
-      readSync(this.#fd, last, 0, 1, size - 1);
-      if (last[0] !== 0x0a) this.#writeAll('\n');
+    this.#report = options.log ?? (() => {});
+    this.#guard = options.guard;
+    const resumed = this.#resumer('journal.open');
+    this.#tail = (async () => {
+      const opening = resumed(() => this.#attempt(() => (options.open ?? (path => open(path, 'a+')))(path)));
+      const file = await opening;
+      const stats = resumed(() => this.#attempt(() => { this.#file = file; return file.stat(); }));
+      const { size } = await stats;
+      const reading = resumed(() => this.#attempt(() => {
+        if (size === 0) return null;
+        const last = Buffer.alloc(1);
+        return { last, pending: file.read(last, 0, 1, size - 1) };
+      }));
+      if (reading) {
+        await reading.pending;
+        await resumed(() => reading.last[0] !== 0x0a ? this.#writeAll(Buffer.from('\n'), resumed) : undefined);
+      }
+    })().catch(err => resumed(() => { if (err !== this.#error) this.#failed(err); }));
+  }
+
+  #resumer(tool: string): Resumed { return this.#guard?.resumer(tool) ?? (work => work()); }
+
+  #failed(err: unknown): void {
+    this.#error = err instanceof Error ? err : new Error(String(err));
+    try { this.#report({ event: 'journal-failed', path: this.#path, error: this.#error.message }); }
+    catch { /* reporting failure must not reject the queue or prevent handle cleanup */ }
+  }
+
+  /** Native initiation can throw before returning a promise: report inside its caller's scope. */
+  #attempt<T>(work: () => T): T {
+    try { return work(); }
+    catch (err) { this.#failed(err); throw this.#error; }
+  }
+
+  /** Called inside one resumed scope; every next write begins in the preceding write's resumed continuation. */
+  async #writeAll(buf: Buffer, resumed: Resumed): Promise<void> {
+    let off = 0;
+    let writing: Promise<{ bytesWritten: number }> | null = this.#attempt(() => this.#file!.write(buf, 0, buf.length));
+    while (writing) {
+      const result = await writing;
+      writing = resumed(() => this.#attempt(() => {
+        if (result.bytesWritten <= 0) throw new Error('journal append made no progress');
+        off += result.bytesWritten;
+        return off < buf.length ? this.#file!.write(buf, off, buf.length - off) : null;
+      }));
     }
   }
 
-  /** Write all of `text`: a short write is continued until every byte is out. */
-  #writeAll(text: string): void {
-    if (this.#fd === null) return;
-    const buf = Buffer.from(text);
-    let off = 0;
-    while (off < buf.length) off += writeSync(this.#fd, buf, off, buf.length - off);
-  }
+  get path(): string { return this.#path; }
 
-  get path(): string {
-    return this.#path;
-  }
-
-  /** Append one record, `{ ts, event, … }` (a `ts` of its own wins). Nothing once closed. */
+  /** Enqueue a serialized record in call order. Accepted records drain on close; no durability acknowledgement. */
   write(record: { event: string } & Record<string, unknown>): void {
-    if (this.#fd === null) return;
-    this.#writeAll(`${JSON.stringify({ ts: this.#now().toISOString(), ...record })}\n`);
+    if (this.#closing || this.#error) return;
+    const bytes = Buffer.from(`${JSON.stringify({ ts: this.#now().toISOString(), ...record })}\n`);
+    const resumed = this.#resumer('journal.append');
+    this.#tail = this.#tail.then(() => resumed(() => this.#error ? undefined : this.#writeAll(bytes, resumed)))
+      .catch(err => resumed(() => { if (err !== this.#error) this.#failed(err); }));
   }
 
-  /** The log closure that also journals: every entry goes to `log`, the domain-level ones to the journal too. */
   tap(log: LogFn): LogFn {
     return (entry: LogEntry) => {
       log(entry);
       if (typeof entry.event === 'string' && JOURNALLED.has(entry.event)) {
-        try {
-          this.write(entry as { event: string } & Record<string, unknown>);
-        } catch (err) {
-          log({ event: 'journal-failed', error: err instanceof Error ? err.message : String(err) });
-        }
+        try { this.write(entry as { event: string } & Record<string, unknown>); }
+        catch (err) { log({ event: 'journal-failed', error: err instanceof Error ? err.message : String(err) }); }
       }
     };
   }
 
-  close(): void {
-    if (this.#fd === null) return;
-    closeSync(this.#fd);
-    this.#fd = null;
+  /** Drain records accepted before this call without closing the sink. Later producers may keep appending. */
+  async flush(): Promise<void> {
+    await this.#tail;
+    if (this.#error) throw this.#error;
   }
+
+  /** Drain once, then close the handle. Failure is reported and rejects stop rather than claiming a flush. */
+  close(): Promise<void> {
+    if (this.#closing) return this.#closing;
+    const resumed = this.#resumer('journal.close');
+    this.#closing = (async () => {
+      await this.#tail;
+      const closing = resumed(() => {
+        try { return this.#file?.close(); }
+        catch (err) {
+          // A native initiation error and its report belong to this same continuation.
+          this.#file = null;
+          this.#failed(err);
+          throw this.#error;
+        }
+      });
+      let failure: unknown;
+      try { await closing; } catch (err) { failure = err; }
+      return resumed(() => {
+        if (failure !== undefined) this.#failed(failure);
+        this.#file = null;
+        if (this.#error) throw this.#error;
+      });
+    })();
+    return this.#closing;
+  }
+
 }
 
 export type JournalQuery = {

@@ -14,6 +14,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
+import type { RolesConfig } from '../roles/config.ts';
 import { withRole } from '../names.ts';
 import {
   PROTOCOL_VERSION,
@@ -63,6 +64,7 @@ export type Peer = {
 export type Control = {
   status: () => Omit<HubStatus, 'sessions'>;
   stop: () => void;
+  flushLogs?: () => Promise<void>;
 };
 
 export type Conversation = {
@@ -83,6 +85,7 @@ export type DispatcherOptions = {
   tracker?: Tracker;
   /** The request budget and the repeat guard's timings (tests). */
   guard?: Omit<GuardOptions, 'log'>;
+  requestGuard?: RequestGuard;
   /** Artifact file read port; defaults to async filesystem I/O. */
   readArtifact?: (path: string) => Promise<Buffer>;
   artifactFiles?: ArtifactFiles;
@@ -117,6 +120,7 @@ export class Dispatcher {
   readonly #releases: Releases | null;
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
+  #rolesSnapshot: RolesConfig | undefined;
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
 
@@ -127,7 +131,8 @@ export class Dispatcher {
     this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log) : null;
     this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.core.store) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles);
-    this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
+    this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
+    this.#rolesSnapshot = options.core.roles?.get();
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(() => this.#guard.changed());
     options.tracker?.onChange(() => this.#guard.changed());
@@ -560,17 +565,25 @@ export class Dispatcher {
         err => resumed(() => Dispatcher.#failure(frame.id, err)),
       ));
     };
-    const session = (frame: Parameters<typeof answerSession>[1]) =>
+    const session = (frame: Parameters<typeof answerSession>[1]) => {
+      const original = kind === 'spoke' ? connection : this.#asSession(frame);
+      const authorize = () => {
+        const current = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
+        if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
+        if (current && !this.#permitted(current, frame, peer, false)) throw new ToolForbidden(current.role, frame.type, 'permission changed during roles refresh');
+      };
       void answerSession(
         this.#sessions,
         frame,
         { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) },
         this.#worktrees ?? undefined,
         (write) => this.#guard.measure(frame.type, kind === 'spoke' ? (name ?? '?') : client, write, 'resumed'),
+        authorize,
       ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);
       });
+    };
 
     const refuse = (code: RefusalCode, message: string) => {
       if (done) return;
@@ -746,13 +759,25 @@ export class Dispatcher {
             return answer({ topic: core.resolveTopic(frame.topic) });
           case 'topic.read':
             return answer({ topic: core.readTopic(frame.topic, frame.upTo) });
-          case 'role.set':
+          case 'role.set': {
             // with a note, or `move`: the role moves to the session from its holder, as a handover (#31); the note is optional
-            if (frame.note !== undefined || frame.move === true) {
-              const from = core.holderOf(frame.role, frame.session);
-              return answer({ session: handOver(this.#handover(), { role: frame.role, from, to: frame.session, by: 'human', note: frame.note, noteRequired: false, requireKnown: false }) });
+            const assign = () => {
+              if (frame.note !== undefined || frame.move === true) {
+                const from = core.holderOf(frame.role, frame.session);
+                return { session: handOver(this.#handover(), { role: frame.role, from, to: frame.session, by: 'human', note: frame.note, noteRequired: false, requireKnown: false }) };
+              }
+              return { session: core.assignRole(frame.session, frame.role) };
+            };
+            if (core.roles?.fresh) {
+              const resumed = this.#guard.resumer(frame.type, client);
+              const value = core.roles.fresh(resumed).then(() => resumed((): HubFrame => {
+                try { return { type: 'result', id: frame.id, ok: true, value: assign() }; }
+                catch (err) { return Dispatcher.#failure(frame.id, err); }
+              }), err => resumed(() => Dispatcher.#failure(frame.id, err)));
+              return later(frame.type, value);
             }
-            return answer({ session: core.assignRole(frame.session, frame.role) });
+            return answer(assign());
+          }
           case 'role.state':
             return answer(roleState(this.#handover(), frame.role));
           case 'role.clear':
@@ -811,9 +836,18 @@ export class Dispatcher {
         return;
       }
       switch (frame.type) {
-        case 'hub.status':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
+        case 'hub.status': {
+          const status = (): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
+          if (frame.flushLogs === true && control.flushLogs) {
+            const resumed = this.#guard.resumer(frame.type, client);
+            let timer: NodeJS.Timeout;
+            const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('log drain exceeded 5000 ms')), 5000); timer.unref(); });
+            const draining = Promise.race([control.flushLogs(), deadline]);
+            return later(frame.type, draining.then(() => resumed(() => { clearTimeout(timer); return status(); }), err => resumed(() => { clearTimeout(timer); return Dispatcher.#failure(frame.id, err); })));
+          }
+          peer.send(status());
           break;
+        }
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });
           peer.send({ type: 'result', id: frame.id, ok: true, value: { stopping: true } });
@@ -824,6 +858,12 @@ export class Dispatcher {
 
     /** A read repeated too fast: its last answer goes out again (unaudited: `too-fast` is logged once); true when it did. */
     const replayed = (frame: Record<string, unknown>): boolean => {
+      // A refresh can revoke a read grant without a core event. Never replay an answer from older roles.
+      const snapshot = core.roles?.get();
+      if (snapshot !== this.#rolesSnapshot) {
+        this.#rolesSnapshot = snapshot;
+        this.#guard.changed();
+      }
       const again = guard.replay(frame, kind === 'spoke' ? (name ?? '?') : client);
       if (again) wire.send(again);
       return again !== null;

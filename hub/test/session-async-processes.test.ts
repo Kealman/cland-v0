@@ -2,13 +2,77 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
+import fs from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { syncBuiltinESMExports } from 'node:module';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskWorktrees } from '../src/hub/worktrees.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { projectSessions } from '../src/adapters/index.ts';
 import { serveProject } from '../src/hub/daemon.ts';
-import { connectSocket, connectUi, eventually, fakeCodex, tempProject } from './harness.ts';
+import { connectSocket, connectUi, eventually, fakeCodex, startDaemon, tempProject } from './harness.ts';
+
+// T-75: shared gate + read/refusal dispatch + audit logging. Tracker item mutations remain T-77;
+// startup/shutdown are outside this guard. The session paths below retain T-70's process boundary coverage.
+test('shared permission gate, read/refusal dispatch and audit logging use no synchronous filesystem or process calls', async t => {
+  const root = await tempProject(t);
+  const daemon = await serveProject(root, { listen: 'never' });
+  t.after(() => daemon.stop());
+  const answers: Array<Record<string, unknown>> = [];
+  const conversation = daemon.hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
+  t.after(() => conversation.closed());
+  conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: fs.readFileSync(daemon.layout.secret, 'utf8').trim(), client: 'guard' }));
+  assert.ok(answers.some(frame => frame.type === 'welcome'));
+  conversation.receive(JSON.stringify({ type: 'role.set', id: 'role', session: 'impl', role: 'implementer' }));
+  assert.equal((await eventually('role assigned', () => answers.find(frame => frame.id === 'role'))).ok, true);
+  const originalsFs = { statSync: fs.statSync, readFileSync: fs.readFileSync, writeSync: fs.writeSync };
+  const originalsCp = { spawnSync: cp.spawnSync, execFileSync: cp.execFileSync, execSync: cp.execSync };
+  const calls: string[] = [];
+  const restore = () => { Object.assign(fs, originalsFs); Object.assign(cp, originalsCp); syncBuiltinESMExports(); };
+  t.after(restore);
+  for (const [native, originals] of [[fs, originalsFs], [cp, originalsCp]] as const) {
+    for (const key of Object.keys(originals)) Object.assign(native, { [key]: () => { calls.push(key); throw new Error(`synchronous ${key} in request`); } });
+  }
+  syncBuiltinESMExports();
+  try {
+    for (const [id, type] of [['allowed', 'task.list'], ['refused', 'task.close'], ['human', 'hub.status']]) {
+      conversation.receive(JSON.stringify({ type, id, ...(id === 'human' ? {} : { as: { name: 'impl' } }), item: 'T-1' }));
+      await eventually(`${id} answered`, () => answers.find(frame => frame.id === id));
+    }
+    assert.deepEqual(calls, []);
+    assert.equal(answers.find(frame => frame.id === 'allowed')?.ok, true);
+    assert.equal(answers.find(frame => frame.id === 'refused')?.code, 'forbidden');
+    assert.equal(answers.find(frame => frame.id === 'human')?.ok, true);
+  } finally { restore(); }
+});
+
+test('production CLI with file-backed stderr sends request audits through the async file logger', async t => {
+  const root = await tempProject(t);
+  const preload = join(root, 'guard-stderr.mjs');
+  await writeFile(preload, `
+    if (process.argv.includes('serve')) {
+      const stderr = process.stderr;
+      const nativeWrite = stderr.write.bind(stderr);
+      nativeWrite('file-backed-stderr=' + (stderr._type === 'fs') + '\\n');
+      stderr.write = (chunk, ...args) => {
+        if (String(chunk).includes('"event":"audit"')) nativeWrite('SYNC_REQUEST_LOG\\n');
+        return nativeWrite(chunk, ...args);
+      };
+    }
+  `);
+  const { discovery } = await startDaemon(t, root, { NODE_OPTIONS: `--import=${preload}` });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.list', as: { name: 'impl' } })).ok, true);
+  assert.match((await ui.request({ type: 'task.close', item: 'T-1', as: { name: 'impl' } })).error ?? '', /forbidden/);
+  const logs = await eventually('production audits appended', async () => {
+    const text = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+    return text.includes('"tool":"task.close"') ? text : undefined;
+  });
+  assert.match(logs, /file-backed-stderr=true/);
+  assert.doesNotMatch(logs, /SYNC_REQUEST_LOG/);
+});
 
 test('session launch, list, resume, relaunch and stop spawn no synchronous process', async t => {
   const root = await tempProject(t);

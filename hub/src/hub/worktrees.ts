@@ -141,7 +141,7 @@ export class TaskWorktrees {
    * the session just launched is stopped, the claim left with its holder. An item that gets no worktree launches at
    * the project root.
    */
-  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
+  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     if (request.role !== 'implementer') throw new Error('`item` is for an Implementer (--role implementer); a Reviewer or QA session stands in a worktree with cwd');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = this.#tracker.view(request.item);
@@ -177,7 +177,7 @@ export class TaskWorktrees {
       }
     });
     try {
-      return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed);
+      return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed, authorize);
     } finally {
       release();
     }
@@ -193,9 +193,10 @@ export class TaskWorktrees {
     yields: (held: Claim | null) => boolean,
     other: (held: Claim) => string,
     resumed: Resumed,
+    authorize?: () => void,
   ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
-    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) }, resumed);
+    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) }, resumed, authorize);
     // the claim as it is now: another session may have taken it while the harness started. The check and the claim
     // run in one stretch of the event loop (timed through `resumed`), so nothing comes between them.
     const taken = resumed(() => {

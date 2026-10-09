@@ -23,6 +23,11 @@ const audits = async (root: string): Promise<Audit[]> =>
     .filter((l) => l.includes('"event":"audit"'))
     .map((l) => JSON.parse(l) as Audit);
 
+async function flushLogs(ui: FrameClient): Promise<void> {
+  const result = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(result.ok, true, result.error);
+}
+
 const ok = (r: { code: number | null; stdout: string; stderr: string }) => {
   assert.equal(r.code, 0, `exit ${r.code}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
   return r;
@@ -44,6 +49,7 @@ const mcp = (s: Session, name: string, sessionId: string, role: string | null, l
 
 /** Make the call; check its answer, its audit record, and for a refusal the typed error and the Agents notice. */
 async function check(root: string, ui: FrameClient, who: Caller, c: Case): Promise<void> {
+  await flushLogs(ui);
   const before = (await audits(root)).length;
   const r = await who.call(c.tool, c.args ?? {});
   const what = `${who.label} ${c.tool} ${JSON.stringify(c.args ?? {})}`;
@@ -63,6 +69,7 @@ async function check(root: string, ui: FrameClient, who: Caller, c: Case): Promi
     assert.equal(r.code, c.errorCode, `${what} is not refused by the table: ${JSON.stringify(r)}`);
     assert.match(r.error ?? '', c.error, what);
   } else assert.equal(r.ok, true, `${what}: ${JSON.stringify(r)}`);
+  await flushLogs(ui);
   const records = (await audits(root)).slice(before).filter((a) => a.session === who.name);
   assert.equal(records.length, 1, `${what}: one audit record, got ${JSON.stringify(records)}`);
   const [a] = records as [Audit];
@@ -275,6 +282,7 @@ test('role.set changes what a session may do on its next call, without a reconne
     const r = await ui.request(frame);
     assert.equal(r.ok, true, `${frame.type}: ${r.error}`);
   }
+  await flushLogs(ui);
   const human = (await audits(root)).filter((a) => a.session === 'human' && a.client === 'ui');
   const byTool = (tool: string) => human.find((a) => a.tool === tool);
   for (const tool of ['task.create', 'role.set', 'task.close', 'topic.send', 'role.list']) {
@@ -283,6 +291,7 @@ test('role.set changes what a session may do on its next call, without a reconne
   assert.deepEqual(byTool('topic.send')?.args, { to: ['impl'], topic: 'general', textChars: 'secret words'.length });
   // a human call that fails is audited as an error
   assert.equal((await ui.request({ type: 'task.view', item: 'T-9' })).ok, false);
+  await flushLogs(ui);
   assert.equal((await audits(root)).filter((a) => a.session === 'human' && a.tool === 'task.view').at(-1)?.outcome, 'error');
 
   // cland hub audit: filtered by session, by time, as JSON or lines

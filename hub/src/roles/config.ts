@@ -1,13 +1,11 @@
 // The project's role definitions, `.cland/roles.toml` (spec 4.4, ADR 0001): per role a clause, skills, launch
 // defaults and the permission list (enforced by the hub on every spoke tool call: `permissions.ts`). Written with the defaults when missing, never rewritten;
-// watched, and read again before each use when it changed on disk, so the next launch or assignment uses
-// what the human last saved. A file that does not parse is logged and the last good version stays in force.
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname } from 'node:path';
+// refreshed asynchronously every 500 ms; every check reads the last parsed snapshot. A file that does not parse is logged and the last good version stays in force.
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { parse } from 'smol-toml';
 import { ROLE_NAMES } from '../names.ts';
 import type { LogFn } from '../log.ts';
-import { watchFolder, type FolderWatch } from '../watch.ts';
+import type { Resumed } from '../hub/budget.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
 import { APPROVALS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Sandbox } from '../adapters/contract.ts';
@@ -39,8 +37,8 @@ export type RoleDefinition = {
 
 export type RolesConfig = ReadonlyMap<string, RoleDefinition>;
 
-/** What the hub asks of the role definitions: the current ones, read again if the file changed. */
-export type RolesSource = { get: () => RolesConfig };
+/** What the hub asks of the role definitions: the last parsed snapshot, with no I/O at check time. */
+export type RolesSource = { get: () => RolesConfig; fresh?: (resumed?: Resumed) => Promise<void> };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const strings = (v: unknown, where: string): string[] => {
@@ -152,79 +150,112 @@ BUILT_IN = DEFAULTS;
 /** A fixed set of definitions, for a hub with no project file. */
 export const fixedRoles = (config: RolesConfig = DEFAULTS): RolesSource => ({ get: () => config });
 
-/** `.cland/roles.toml`: created with the defaults when missing, watched, re-read when it changed. */
+/** Maximum wait until the next refresh begins, independent of filesystem watch availability. */
+export const ROLES_REFRESH_MS = 500;
+
+/** `.cland/roles.toml`: created at startup, then refreshed off the request path. */
 export class RolesFile implements RolesSource {
   readonly path: string;
   readonly #log: LogFn;
+  readonly #resumed: Resumed;
+  readonly #read: (path: string) => Promise<string>;
   #config: RolesConfig = DEFAULTS;
-  /** What the loaded version looked like on disk: a different stamp means read again. */
-  #stamp = '';
-  #watcher: FolderWatch | null = null;
-  #debounce: NodeJS.Timeout | null = null;
+  #text: string | null = null;
+  #missing = false;
+  #timer: NodeJS.Timeout | null = null;
+  #running: Promise<boolean> | null = null;
+  #stopped = false;
+  #freshStamp: string | null = null;
 
-  constructor(path: string, log: LogFn = () => {}) {
+  constructor(path: string, log: LogFn = () => {}, read: (path: string) => Promise<string> = path => readFile(path, 'utf8'), resumed: Resumed = work => work()) {
     this.path = path;
     this.#log = log;
+    this.#read = read;
+    this.#resumed = resumed;
   }
 
-  /** Write the defaults when the file is missing, load it, start watching. */
-  start(): void {
-    if (!existsSync(this.path)) {
-      writeFileSync(this.path, DEFAULT_ROLES_TOML);
-      this.#log({ event: 'roles-written', path: this.path });
-    }
-    this.#reload();
-    // the folder, not the file: an editor that saves by rename replaces the file the watch was on
-    this.#watcher = watchFolder(
-      dirname(this.path),
-      {
-        changed: (name) => {
-          if (name !== null && name !== basename(this.path)) return;
-          if (this.#debounce) clearTimeout(this.#debounce);
-          this.#debounce = setTimeout(() => this.#reload(), 50);
-          this.#debounce.unref();
-        },
-        // `#reload` reads the file only when its stamp changed
-        poll: () => this.#reload(),
-      },
-      { log: this.#log, event: 'roles-unwatched', unref: true },
-    );
-  }
-
-  stop(): void {
-    this.#watcher?.close();
-    this.#watcher = null;
-    if (this.#debounce) clearTimeout(this.#debounce);
-  }
-
-  /** The current definitions; read again first when the file changed since (a watch event may still be due). */
-  get(): RolesConfig {
-    if (this.#stampNow() !== this.#stamp) this.#reload();
-    return this.#config;
-  }
-
-  #stampNow(): string {
+  /** Load before accepting requests; never replace an existing human-written file. */
+  async start(): Promise<void> {
     try {
-      const s = statSync(this.path);
-      return `${s.mtimeMs}:${s.size}:${s.ino}`;
-    } catch {
-      return 'missing';
-    }
-  }
-
-  #reload(): void {
-    const stamp = this.#stampNow();
-    if (stamp === this.#stamp) return;
-    this.#stamp = stamp;
-    if (stamp === 'missing') {
-      this.#log({ event: 'roles-missing', path: this.path, keeping: 'the last version read' });
-      return;
-    }
-    try {
-      this.#config = parseRoles(readFileSync(this.path, 'utf8'));
-      this.#log({ event: 'roles-loaded', path: this.path, launch: Object.fromEntries([...this.#config].map(([r, d]) => [r, d.launch])) });
+      await writeFile(this.path, DEFAULT_ROLES_TOML, { flag: 'wx' });
+      this.#resumed(() => this.#log({ event: 'roles-written', path: this.path }));
     } catch (err) {
-      this.#log({ event: 'roles-unreadable', path: this.path, error: err instanceof Error ? err.message : String(err), keeping: 'the last version read' });
+      this.#resumed(() => { if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err; });
     }
+    await this.#refresh();
+    this.#resumed(() => {
+      this.#timer = setInterval(() => { void this.#refresh(); }, ROLES_REFRESH_MS);
+      this.#timer.unref();
+    });
+  }
+
+  async stop(): Promise<void> {
+    this.#stopped = true;
+    if (this.#timer) clearInterval(this.#timer);
+    this.#timer = null;
+    await this.#running;
+  }
+
+  /** One immutable-in-use snapshot. A refresh publishes a replacement, never edits a check's map. */
+  get(): RolesConfig { return this.#config; }
+
+  /** Rare launch/assignment paths see an edit immediately; hot permission checks never await disk. */
+  async fresh(resumed: Resumed = this.#resumed): Promise<void> {
+    await this.#running;
+    const stating = resumed(() => {
+      try { return stat(this.path); }
+      catch (err) { this.#unreadable(err); return null; }
+    });
+    if (stating === null) return;
+    let stamp: string;
+    try {
+      const info = await stating;
+      stamp = resumed(() => `${info.dev}:${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`);
+    } catch (err) { resumed(() => this.#unreadable(err)); return; }
+    // A timer may have started while stat awaited. Finish it before starting the explicit fresh read.
+    await this.#running;
+    const changed = resumed(() => !this.#stopped && stamp !== this.#freshStamp);
+    if (!changed) return;
+    const read = await this.#refresh(resumed);
+    resumed(() => { if (read && !this.#stopped) this.#freshStamp = stamp; });
+  }
+
+  #refresh(resumed: Resumed = this.#resumed): Promise<boolean> {
+    if (this.#running) return this.#running;
+    this.#running = this.#reload(resumed).finally(() => resumed(() => { this.#running = null; }));
+    return this.#running;
+  }
+
+  /** Synchronous failure handling; the caller owns the whole resumed continuation's scope. */
+  #unreadable(err: unknown): void {
+    if (this.#stopped) return;
+    const missing = (err as NodeJS.ErrnoException).code === 'ENOENT';
+    if (missing && this.#missing) return;
+    if (missing) { this.#missing = true; this.#text = null; }
+    this.#log({ event: missing ? 'roles-missing' : 'roles-unreadable', path: this.path, error: err instanceof Error ? err.message : String(err), keeping: 'the last version read' });
+  }
+
+  async #reload(resumed: Resumed): Promise<boolean> {
+    const reading = resumed(() => {
+      try { return this.#read(this.path); }
+      catch (err) { this.#unreadable(err); return null; }
+    });
+    if (reading === null) return false;
+    let text: string;
+    try { text = await reading; }
+    catch (err) { resumed(() => this.#unreadable(err)); return false; }
+    return resumed(() => {
+      try {
+        if (this.#stopped) return false;
+        this.#missing = false;
+        if (text === this.#text) return true;
+        this.#text = text;
+        // Parse before publication. Parse errors and their immediate log share this one continuation.
+        const config = parseRoles(text);
+        this.#config = config;
+        this.#log({ event: 'roles-loaded', path: this.path, launch: Object.fromEntries([...config].map(([r, d]) => [r, d.launch])) });
+        return true;
+      } catch (err) { this.#unreadable(err); return false; }
+    });
   }
 }

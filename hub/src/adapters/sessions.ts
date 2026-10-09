@@ -242,7 +242,16 @@ export class Sessions {
     return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}) };
   }
 
-  async launch(request: LaunchRequest, resumed: Resumed = untimed): Promise<HarnessProcessView> {
+  async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+    if (this.#core.roles?.fresh) {
+      await this.#core.roles.fresh(resumed);
+      return resumed(() => { authorize(); return this.#launch(request, resumed); });
+    }
+    authorize();
+    return this.#launch(request, resumed);
+  }
+
+  async #launch(request: LaunchRequest, resumed: Resumed): Promise<HarnessProcessView> {
     const cwd = resolve(this.#root, request.cwd ?? '.');
     const refusal = nameRefusal(request.name, new Set(['human']));
     if (refusal) throw new Error(refusal);
@@ -335,7 +344,16 @@ export class Sessions {
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
-  async resume(name: string, relaunch = false, resumed: Resumed = untimed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+    if (relaunch && this.#core.roles?.fresh) {
+      await this.#core.roles.fresh(resumed);
+      return resumed(() => { authorize(); return this.#resumeTracked(name, relaunch, resumed); });
+    }
+    authorize();
+    return this.#resumeTracked(name, relaunch, resumed);
+  }
+
+  async #resumeTracked(name: string, relaunch: boolean, resumed: Resumed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
     this.#resuming++;
     try { return await this.#resume(name, relaunch, resumed); }
     finally { resumed(() => this.#resuming--); }

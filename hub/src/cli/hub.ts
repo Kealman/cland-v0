@@ -230,9 +230,9 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
     io.err('cland: --no-listen needs --stdio: a hub with neither could not be reached\n');
     return 2;
   }
-  const log = jsonLinesLog((line) => process.stderr.write(line));
   // A stdio hub serves its parent even where listening is forbidden; the project's lock is taken either way.
-  const daemon = await serveProject(root, { log, listen: !listen ? 'never' : stdio ? 'optional' : 'required' });
+  const daemon = await serveProject(root, { listen: !listen ? 'never' : stdio ? 'optional' : 'required' });
+  const log = daemon.log;
   if (stdio) {
     // a UI spawned this hub as its child: stdout carries frames only, and the parent leaving stops the hub
     createStdioEdge({ input: process.stdin, output: process.stdout, dispatcher: daemon.hub.dispatcher, log, onEnd: () => void daemon.stop() });

@@ -19,6 +19,7 @@ import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';
 import { InvalidLaunchCwd, type Sessions } from './sessions.ts';
 import type { Resumed, TaskWorktrees } from '../hub/worktrees.ts';
+import { ToolForbidden } from '../roles/permissions.ts';
 
 export type SessionRequest =
   | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; cwd?: string; effort?: string; item?: string }
@@ -70,7 +71,7 @@ export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolea
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
 /** `resumed` times the synchronous lifecycle work after adapter or Git awaits: the hub's guard. */
-export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed): Promise<HubFrame> {
+export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
   try {
@@ -84,9 +85,9 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
           ...(frame.cwd !== undefined ? { cwd: frame.cwd } : {}),
           ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
         };
-        if (frame.item === undefined) return ok({ process: await sessions.launch(request, resumed) });
+        if (frame.item === undefined) return ok({ process: await sessions.launch(request, resumed, authorize) });
         if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
-        return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed));
+        return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
       }
       case 'session.list':
         return ok({ processes: sessions.list(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
@@ -95,7 +96,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.stop':
         return ok({ process: await sessions.stop(frame.session, resumed) });
       case 'session.resume':
-        return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed));
+        return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed, authorize));
       case 'session.retry':
         return ok(sessions.retry(frame.session, frame.message));
       case 'session.signal':
@@ -124,6 +125,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       }
     }
   } catch (err) {
+    if (err instanceof ToolForbidden) return { type: 'result', id: frame.id, ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason };
     if (err instanceof InvalidLaunchCwd) return { type: 'result', id: frame.id, ok: false, error: err.message, code: 'invalid-cwd' };
     return { type: 'result', id: frame.id, ok: false, error: err instanceof Error ? err.message : String(err) };
   }

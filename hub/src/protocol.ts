@@ -411,7 +411,7 @@ export type ClientRequest =
   | PromptSend
   | ArtifactPromote
   /** What runs: the hub's process and the connected sessions. */
-  | { type: 'hub.status'; id: string }
+  | { type: 'hub.status'; id: string; flushLogs?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */

@@ -466,7 +466,7 @@ test('where the folder cannot be watched the hub polls: a hand edit of an item a
   const root = await tempProject(t);
   await startDaemon(t, root, { CLAND_TEST_WATCH_REFUSED: '1' });
   const fellBack = (await hubLog(root)).filter((e) => typeof e.polling === 'number').map((e) => e.event);
-  assert.deepEqual(fellBack.sort(), ['roles-unwatched', 'task-watch-error'], 'both watches say once that they poll');
+  assert.deepEqual(fellBack, ['task-watch-error'], 'only the tracker falls back: roles always use async polling');
 
   ok(await cland(root, 'task', 'create', 'Original title'));
   const file = join(tasksDir(root), 'T-1-original-title.md');

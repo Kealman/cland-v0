@@ -155,6 +155,16 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
 export function replayAgentsRecord(core: HubCore, records: ReadonlyArray<Record<string, unknown>>, log: LogFn = () => {}): number {
   const noticed = records.filter((r) => typeof r.agentsNotice === 'string');
   const checkpoint = core.store.meta(AGENTS_JOURNAL_CHECKPOINT);
+  // Appends are ordered. A persisted checkpoint absent from the surviving journal is beyond its durable
+  // prefix (an unflushed/failed append); every surviving notice precedes it and may already be pruned.
+  // Only a genuinely legacy store with no checkpoint may use the visible-notice fallback below.
+  if (checkpoint && !noticed.some(record => record.agentsNotice === checkpoint)) {
+    // Persist the durable prefix boundary for later runs: a new completed append whose Agents write fails
+    // must still recover at the following restart. An empty prefix has nothing old to suppress.
+    const durable = noticed.at(-1)?.agentsNotice;
+    core.store.setMeta(AGENTS_JOURNAL_CHECKPOINT, typeof durable === 'string' ? durable : '');
+    return 0;
+  }
   let from = 0;
   for (let i = noticed.length - 1; i >= 0; i--) {
     const id = noticed[i]?.agentsNotice as string;

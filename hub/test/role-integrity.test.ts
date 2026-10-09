@@ -180,11 +180,12 @@ test('a hub that dies between a launch reserving the Coordinator and its spawn g
       return true;
     }
   });
-  assert.match(await hubLog(root), /"event":"role-reserved","session":"coord","role":"coordinator"/);
+  // The store persists the reservation; its queued diagnostic may be lost at SIGKILL.
 
   const second = await startDaemon(t, root, fake.env);
   const again = await connectUi(t, second.discovery);
   assert.deepEqual(await holders(again, 'coordinator'), []);
+  assert.equal((await again.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"role-reservation-released","session":"coord","role":"coordinator"[^\n]*"reason":"interrupted"/);
   // the role is free: another launch for it goes through
   const launched = await again.request({ type: 'session.launch', name: 'coord-2', role: 'coordinator', harness: 'codex' }, 30_000);

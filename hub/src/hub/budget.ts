@@ -10,6 +10,7 @@
 //   nothing older than it would have had it asked a moment earlier, and its own write is always seen (any write
 //   on any connection ends every replay). It is logged once per connection and tool as `too-fast`.
 import type { LogFn } from '../log.ts';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { HubFrame } from '../protocol.ts';
 
 /** A handler taking longer than this, ms, is a `slow-request`. */
@@ -46,9 +47,11 @@ export type RequestCounters = {
 };
 
 export type GuardOptions = { log?: LogFn; budgetMs?: number; answerBudgetMs?: number; repeatMs?: number; now?: () => number };
+export type Resumed = <T>(work: () => T) => T;
 
 /** One per hub: the budget, the counters and the write generation every connection's replays check. */
 export class RequestGuard {
+  readonly #scope = new AsyncLocalStorage<{ tool: string; client: string }>();
   readonly #log: LogFn;
   readonly #budgetMs: number;
   readonly #answerBudgetMs: number;
@@ -79,7 +82,7 @@ export class RequestGuard {
   measure<T>(tool: string, client: string, handle: () => T, phase?: 'resumed' | 'answer'): T {
     const started = this.now();
     try {
-      return handle();
+      return this.#scope.run({ tool, client }, handle);
     } finally {
       const ms = Math.round(this.now() - started);
       if (ms > this.#budgetMs) {
@@ -88,6 +91,12 @@ export class RequestGuard {
         this.#log({ event: 'slow-request', tool, client, ms, budgetMs: this.#budgetMs, ...(phase ? { phase } : {}) });
       }
     }
+  }
+
+  /** Capture a queue producer's request identity; background work has an explicit fallback identity. */
+  resumer(tool: string, client = 'hub'): Resumed {
+    const origin = this.#scope.getStore() ?? { tool, client };
+    return work => this.measure(origin.tool, origin.client, work, 'resumed');
   }
 
   answerElapsed(tool: string, client: string, started: number): void {
@@ -127,6 +136,7 @@ export class ConversationGuard {
     const type = String(frame.type);
     if (typeof frame.id !== 'string') return null;
     this.#pending.set(frame.id, { tool: type, client, started: this.#hub.now() });
+    if (type === 'hub.status' && frame.flushLogs === true) return null; // every barrier drains anew
     if (!READS.has(type)) {
       this.#hub.changed();
       return null;
