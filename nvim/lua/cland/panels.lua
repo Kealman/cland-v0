@@ -379,6 +379,9 @@ function M.session_keys(b)
     require('cland.layout').show_split({ kind = 'session', id = name })
   end), 'attach in a vertical split')
   map('x', on_row(sessions.ask_stop), 'stop the session (asks first)')
+  map('L', on_row(function(name)
+    require('cland.agents_log').open({ session = name })
+  end), 'Agents log for this session')
   map('c', on_row(sessions.show_capabilities), "the adapter's capability table")
 end
 

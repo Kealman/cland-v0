@@ -49,6 +49,8 @@ export type Artifact = {
 };
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string };
 export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string };
+/** Filters on the Agents record; when both are given they intersect. */
+export type AgentsHistoryFilter = { item?: string; session?: string };
 
 export type Message = {
   id: string;
@@ -235,8 +237,8 @@ export type SpokeRequest =
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
   | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string }
   | { type: 'who'; id: string }
-  /** `topic`: that topic's latest messages instead of the session's own traffic. */
-  | { type: 'history'; id: string; limit?: number; with?: string; topic?: string }
+  /** `topic`: that topic's latest messages instead of the session's own traffic; Agents accepts item/session filters. */
+  | ({ type: 'history'; id: string; limit?: number; with?: string; topic?: string } & AgentsHistoryFilter)
   | { type: 'status'; id: string; text: string }
   | { type: 'rename'; id: string; name: string }
   /** Open a topic, with a title and optionally bound to an item: `{ topic: Topic }`. */
@@ -315,7 +317,7 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
     case 'ping':
       return true;
     case 'history':
-      return (f.limit === undefined || typeof f.limit === 'number') && (f.with === undefined || typeof f.with === 'string') && (f.topic === undefined || typeof f.topic === 'string');
+      return (f.limit === undefined || typeof f.limit === 'number') && (f.with === undefined || typeof f.with === 'string') && (f.topic === undefined || typeof f.topic === 'string') && isAgentsHistoryFilter(f);
     case 'role.handover':
       return typeof f.to === 'string' && (typeof f.note === 'string' || isObject(f.note) || f.note === undefined) && (f.then === undefined || typeof f.then === 'string');
     case 'role.state':
@@ -387,8 +389,8 @@ export type ClientRequest =
   | { type: 'hub.stop'; id: string }
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
   | { type: 'topic.list'; id: string }
-  /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. */
-  | { type: 'topic.history'; id: string; topic: string; limit?: number }
+  /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. Agents filters precede the limit. */
+  | ({ type: 'topic.history'; id: string; topic: string; limit?: number } & AgentsHistoryFilter)
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
@@ -535,7 +537,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'role.clear':
       return typeof f.session === 'string';
     case 'topic.history':
-      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number');
+      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && isAgentsHistoryFilter(f);
     case 'topic.send':
       return (
         typeof f.topic === 'string' &&
@@ -558,4 +560,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     default:
       return false;
   }
+}
+
+function isAgentsHistoryFilter(f: Record<string, unknown>): boolean {
+  return (f.item === undefined || typeof f.item === 'string') && (f.session === undefined || typeof f.session === 'string');
 }

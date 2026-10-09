@@ -1,7 +1,7 @@
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
-import type { Artifact, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import { vacancyWarning } from './topics.ts';
 
@@ -727,8 +727,24 @@ export class Store implements HygieneMemory {
   }
 
   /** A topic's latest messages, oldest first, each with its stage. */
-  topicMessages(topic: string, limit: number): TopicMessage[] {
-    const rows = this.#db.prepare('select * from messages where topic = ? order by created_at desc, rowid desc limit ?').all(topic, limit) as Row[];
+  topicMessages(topic: string, limit: number, filter: AgentsHistoryFilter = {}): TopicMessage[] {
+    const clauses = ['topic = ?'];
+    const args: Array<string | number | null> = [topic];
+    // Exact JSON values, including arrays/nested facts, avoid matching T-1 to T-12 or alpha to alpha-2.
+    // Filter before LIMIT: old matches remain reachable past the unfiltered window.
+    if (filter.item !== undefined) {
+      clauses.push("exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text' and value in (?, ?))");
+      args.push(filter.item, this.topicOfItem(filter.item)?.id ?? null);
+    }
+    if (filter.session !== undefined) {
+      // Only session-bearing facts: harness/role/rule metadata can equal a valid session name.
+      clauses.push(`(from_name = ? or exists (select 1 from json_each(to_json) where value = ?)
+        or exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text'
+          and (fullkey in ('$.session', '$.from', '$.to', '$.by') or path in ('$.to', '$.pair')) and value = ?))`);
+      args.push(filter.session, filter.session, filter.session);
+    }
+    args.push(limit);
+    const rows = this.#db.prepare(`select * from messages where ${clauses.join(' and ')} order by created_at desc, rowid desc limit ?`).all(...args) as Row[];
     return rows.reverse().map((row) => {
       const stage = this.stage(row.id as string);
       const ask = this.ask(row.id as string);

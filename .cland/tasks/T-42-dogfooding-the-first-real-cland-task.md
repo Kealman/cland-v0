@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-09T07:46:36.170Z
+updated: 2026-10-09T08:10:09.660Z
 github:
   repo: Kealman/cland-v0
   number: 42
@@ -212,3 +212,17 @@ Run notes, 2026-10-09 06:37Z to 07:47Z:
 - Approvals: Codex prompted on every socket-opening command even under "Approve for me" and, for `node --test`, even under Full Access (its automatic review flags Unix sockets). The stand-in approved through tmux, then lost that ability for a while (its own permission classifier refused to drive other agents' TUIs; the human re-authorised it), then polled `cland session list` every minute and approved unasked. An ask (d614bc30) with the fallback of moving T-46/T-47 to Claude Code Implementers was answered and then superseded. Node 25 on the launched session's PATH broke three exact-stderr tests until the briefs pinned nvm's Node 24 (T-48 fixes it at launch).
 - Incidents filed: T-50 (a steer injected in the last second of a Codex turn, marked injected, never acted on; seen by impl-48), T-51 (rev-1's spoke replaced at 07:08:15Z with no attach behind it; its turns then ran without tools until a stop and `resume --relaunch`; `resume --relaunch` alone re-found the live process and did not relaunch). Also seen: a Coordinator message delivered into a running Codex turn interrupts it; impl-46 went idle at 07:39Z with its fix committed but no report sent (nudged).
 - 07:47Z hub restarted on main 59043fa with the stand-in's go-ahead (ask 280a12b6): `hub stop` then `hub start`; all seven sessions re-found; `cland role list` shows the new per-role policy. qa-1 and qa-2 stopped; the next QA sessions launch under the new policy as T-48's closing proof on this hub.
+
+### coord · 2026-10-09T08:10:09.660Z
+
+Step 1 of the real run complete, 2026-10-09 08:09Z: the five blockers of the rehearsal and one item found on the way are merged into main, each after a Reviewer verdict and a QA verdict written through the roles, each merged by the Coordinator with `git merge --no-ff`:
+| Item | Merge | Launch to merge | Review rounds | QA |
+| --- | --- | --- | --- | --- |
+| T-45 spoke session.launch cwd | e404863 06:40Z | 19 min | 1 | qa-1 |
+| T-44 CLI finds the hub from a worktree | 66f1353 06:52Z | 31 min | 2 | qa-1 |
+| T-47 usage totals per session | 3306beb 07:23Z | 28 min | 1 | qa-1 |
+| T-48 Codex auto-approve, per-role sandbox | 4490cf7 07:43Z | 82 min | 2 | qa-2, proof by qa-3 |
+| T-49 CLI with a session identity | d063ff8 07:52Z | 47 min | 2 | qa-3 |
+| T-46 failed turns reported, big-pickle preferred | 18dce79 08:07Z | 72 min | 2 | qa-4 |
+Main after the last merge: b8368b3 (tracker), typecheck clean, 269 hub + 62 Neovim tests. Not pushed. 06:20Z (first launches) to 08:07Z (last merge): 1 h 47 min for six items with up to three Implementers in parallel (Codex gpt-6.1-sol for five, Claude Code claude-opus-5-5 for T-48), two Reviewer sessions and four QA sessions on Codex. The hub was restarted once (07:47Z) to make T-48's policy live; every later Codex session ran with no approval.
+Criteria of this item as of now: (1) six real items from claim to verdicts inside cland with the three harnesses in their roles (Claude Code Coordinator and one Implementer, Codex Implementers, Reviewers and QA; OpenCode exercised by T-46's QA through a launched session); (2) four asks answered from the inbox by the human's side (c523ffe9, d614bc30, 280a12b6, and the T-48 decision relayed), reconnects of every session across a hub restart without losing the thread, two Codex relaunches (rev-1, impl-46) on their own threads; (3) every blocker fixed here or filed: T-50, T-51, T-52 open needs-triage, the Node-25 PATH and the Neovim cache fixed in T-48, the second-spoke family in T-51; (4) the human's confirmation that cland replaced the previous tools is still the human's to give. Next: slice 2 (T-20) through `to-tickets`, as the human's stand-in decided.

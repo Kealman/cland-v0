@@ -116,12 +116,14 @@ const TOOLS = [
   },
   {
     name: 'history',
-    description: 'Your recent traffic on the hub (sent by you or addressed to you), oldest first — what you missed while restarting. Up to 50.',
+    description: 'Your recent traffic on the hub (sent by you or addressed to you), oldest first — what you missed while restarting. Up to 50. With topic: Agents accepts item and session filters over the whole record; both intersect.',
     inputSchema: {
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'How many, at most 50 (default 50)' },
         with: { type: 'string', description: 'Only messages exchanged with this session' },
+        item: { type: 'string', description: 'On Agents: an item id (T-12); notices naming it or its bound topic' },
+        session: { type: 'string', description: 'On Agents: traffic from, to or about this session; intersects item when both are given' },
         topic: { type: 'string', description: "A topic id: that topic's latest messages instead of your own traffic (the topics `role.state` lists as waiting)" },
       },
     },
@@ -297,6 +299,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
             ...(typeof args.limit === 'number' ? { limit: args.limit } : {}),
             ...(typeof args.with === 'string' ? { with: args.with } : {}),
             ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),
+            ...(typeof args.item === 'string' ? { item: args.item } : {}),
+            ...(typeof args.session === 'string' ? { session: args.session } : {}),
           })) as { messages: Message[] };
           return text({ ok: true, messages: value.messages.map((m) => ({ ...metaOf(m), text: m.text })) });
         }
