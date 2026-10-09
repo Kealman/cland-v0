@@ -415,10 +415,11 @@ The project's `.cland/`:
 | `journal.jsonl` | no | The journal (above): the domain events and the audit records, JSON lines, append-only across restarts. |
 | `artifacts/`, `worktrees/`, `territory.git/` | no | Ignored ahead of the tickets that write them. |
 
-`hub.json`:
+`hub.json` records the hub's root so a copied discovery file still identifies the correct lock and cleanup paths. Older files without `root` remain readable; `hub stop` through an override needs a successful probe to learn their root before signaling or removing a socket. If that root cannot be verified, it leaves the socket alone.
 
 ```json
 {
+  "root": "/path/to/project",
   "socket": "/path/to/project/.cland/hub.sock",
   "port": 53124,
   "secret": "<64 hex chars>",

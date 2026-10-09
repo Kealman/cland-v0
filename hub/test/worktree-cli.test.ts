@@ -2,10 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, clandWithEnv, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, clandWithEnv, killDaemon, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 const ok = (r: CliResult): CliResult => {
   assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
@@ -45,6 +45,53 @@ test('CLI commands from linked worktrees find the main project hub and write onl
   }
   ok(await cland(outside, 'hub', 'stop'));
   assert.equal((await cland(root, 'hub', 'status')).code, 1);
+});
+
+test('an initialized non-worktree child remains its own project beside a running parent hub', async (t) => {
+  const parent = await tempProject(t);
+  const { discovery } = await startDaemon(t, parent);
+  ok(await cland(parent, 'task', 'create', 'Parent item'));
+  const child = join(parent, 'child');
+  await mkdir(child);
+  ok(await cland(parent, 'init', child, '--json'));
+
+  const idle = await cland(child, 'hub', 'status', '--json');
+  assert.equal(idle.code, 1, idle.stdout);
+  assert.deepEqual(JSON.parse(idle.stdout), { running: false, root: child });
+  assert.equal((await cland(child, 'task', 'create', 'Must not reach parent')).code, 1);
+  const childHub = await startDaemon(t, child);
+  assert.notEqual(childHub.discovery.pid, discovery.pid);
+  ok(await cland(child, 'task', 'create', 'Child item'));
+  assert.match(ok(await cland(child, 'task', 'view', 'T-1')).stdout, /Child item/);
+  assert.match(ok(await cland(parent, 'task', 'view', 'T-1')).stdout, /Parent item/);
+  assert.equal(JSON.parse(ok(await cland(parent, 'task', 'list', '--json')).stdout).items.length, 1);
+});
+
+test('stop through stale copied discovery leaves the replacement hub socket and another project intact', async (t) => {
+  // A long root puts the socket in the temp directory; the socket path cannot identify the project.
+  const root = await tempProject(t, 'cland-discovery-root-with-long-name-');
+  const other = await tempProject(t);
+  const first = await startDaemon(t, root);
+  const otherHub = await startDaemon(t, other);
+  const recorded = join(other, 'recorded.json');
+  const legacy = join(other, 'legacy.json');
+  await copyFile(join(root, '.cland', 'hub.json'), recorded);
+  const old = JSON.parse(await readFile(recorded, 'utf8')) as { root?: string };
+  delete old.root;
+  await writeFile(legacy, JSON.stringify(old));
+  await killDaemon(first.discovery.pid);
+  // Rotate the secret so a probe through the old copy fails against the replacement.
+  await writeFile(join(root, '.cland', 'secret'), `${'a'.repeat(64)}\n`);
+  const replacement = await startDaemon(t, root);
+  assert.notEqual(replacement.discovery.pid, first.discovery.pid);
+  const socket = await stat(replacement.discovery.socket);
+  for (const file of [recorded, legacy]) {
+    ok(await clandWithEnv(other, { CLAND_HUB_FILE: file }, 'hub', 'stop'));
+    assert.equal((await stat(replacement.discovery.socket)).ino, socket.ino);
+    assert.equal(JSON.parse(ok(await cland(root, 'hub', 'status', '--json')).stdout).pid, replacement.discovery.pid);
+    assert.equal(JSON.parse(ok(await cland(other, 'hub', 'status', '--json')).stdout).pid, otherHub.discovery.pid);
+    await assert.rejects(stat(file), { code: 'ENOENT' });
+  }
 });
 
 test('CLAND_HUB_FILE selects the named hub from another project, including a copied discovery file', async (t) => {
@@ -98,6 +145,10 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
       assert.equal((await clandWithEnv(other, { CLAND_HUB_FILE: file }, ...args)).code, 1, args.join(' '));
     }
   }
+  // A live legacy discovery still supplies its root through a successful status probe.
+  const liveLegacy = JSON.parse(await readFile(copied, 'utf8')) as { root?: string };
+  delete liveLegacy.root;
+  await writeFile(copied, JSON.stringify(liveLegacy));
   ok(await clandWithEnv(other, env, 'hub', 'stop'));
   assert.equal((await cland(root, 'hub', 'status')).code, 1);
   assert.equal(JSON.parse(ok(await cland(other, 'hub', 'status', '--json')).stdout).pid, otherHub.discovery.pid);

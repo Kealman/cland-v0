@@ -3,13 +3,15 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { VERSION } from './version.ts';
 
 export const CLAND_DIR = '.cland';
 
 /** The discovery file: what a client needs to reach the project's hub. */
 export type Discovery = {
+  /** The hub's project root, independent of where this file is copied. Absent in older files. */
+  root?: string;
   /** The Unix socket the UI and the CLI speak JSON lines on. */
   socket: string;
   /** The 127.0.0.1 port spokes open their WebSocket on. */
@@ -112,7 +114,7 @@ export function projectRoot(cwd: string): string {
     }
     if (existsSync(join(dir, CLAND_DIR))) {
       cland ??= dir;
-      if (existsSync(join(dir, CLAND_DIR, 'hub.json'))) return dir;
+      if (existsSync(join(dir, CLAND_DIR, 'hub.json'))) return cland;
     }
     if (dirname(dir) === dir) return cland ?? cwd;
   }
@@ -165,6 +167,7 @@ export function readDiscovery(file: string): Discovery | null {
   try {
     const d = JSON.parse(readFileSync(file, 'utf8')) as Partial<Discovery>;
     if (typeof d.socket !== 'string' || typeof d.port !== 'number' || typeof d.secret !== 'string' || typeof d.pid !== 'number' || typeof d.version !== 'string') return null;
+    if (d.root !== undefined && (typeof d.root !== 'string' || !isAbsolute(d.root))) return null;
     return d as Discovery;
   } catch {
     return null;
