@@ -4,15 +4,15 @@ kind: task
 title: "Under load the items tree reverted to an earlier snapshot after live updates: a late full list overwriting newer events?"
 state: open
 labels:
-  - needs-triage
   - slice-1
+  - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T08:58:42.263Z
-updated: 2026-10-09T09:06:45.969Z
+updated: 2026-10-09T16:49:19.682Z
 ---
 
 ## Parent

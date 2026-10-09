@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T16:38:16.092Z
-updated: 2026-10-09T16:38:16.092Z
+updated: 2026-10-09T17:34:33.220Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ Part of T-19, a follow-up to T-70. Found by the human's stand-in at the 16:37Z r
 ## Notes
 
 Size S. Implementer: Codex. Follow T-70's ownership rules (A-96, class D).
+
+## Comments
+
+### coord · 2026-10-09T17:34:33.220Z
+
+Added scope, from impl-74 on T-74 at 17:34Z. The `cland doctor --fix` tests act machine-wide: one test's doctor ends the hub of another fixture whose project folder was deleted. They interfere when two of those test files run side by side, which happened during T-74's head and base comparison. While fixing the sweep, make doctor --fix's test fixtures isolated, for example by scoping the sweep under test to a fixture root, so parallel runs cannot end each other's hubs.
