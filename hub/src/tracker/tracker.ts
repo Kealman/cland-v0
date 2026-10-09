@@ -102,7 +102,14 @@ export type LinkInput = {
 
 export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string };
 
-export class TrackerError extends Error {}
+export class TrackerError extends Error {
+  /** `git-unavailable`: Git did not answer a question the write needs (a verdict's commit, a branch tip). */
+  readonly code?: 'git-unavailable';
+  constructor(message: string, code?: 'git-unavailable') {
+    super(message);
+    if (code) this.code = code;
+  }
+}
 
 /**
  * The hub's side of an item's `topic` field (spec 4.5): one topic per item and one item per topic, the topic's
@@ -561,7 +568,7 @@ export class Tracker {
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
       if (verdict.commit !== undefined) {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
-        const commit = await resolveCommit(this.#git, verdict.commit);
+        const commit = await this.#resolve(verdict.commit, `the verdict's commit ${verdict.commit}`);
         if (!commit) throw new TrackerError('commit does not resolve to a Git commit');
         v.commit = commit;
       }
@@ -571,7 +578,7 @@ export class Tracker {
     if (v && verdict?.commit === undefined) {
       const branch = this.#index.get(this.#require(rawId).id)?.branch ?? null;
       if (branch) {
-        tip = { branch, sha: await resolveCommit(this.#git, `refs/heads/${branch}`) };
+        tip = { branch, sha: await this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`) };
         if (tip.sha) this.#fresh.noteTip(branch, tip.sha);
       }
     }
@@ -596,6 +603,15 @@ export class Tracker {
       }
     }
     return view;
+  }
+
+  /** A ref resolved for a write; Git not answering at all is a typed refusal naming what it could not resolve. */
+  async #resolve(ref: string, what: string): Promise<string | null> {
+    try {
+      return await resolveCommit(this.#git, ref);
+    } catch (err) {
+      throw new TrackerError(`cannot resolve ${what}: Git did not answer (${err instanceof Error ? err.message.split('\n')[0] : String(err)}); nothing was written, try again`, 'git-unavailable');
+    }
   }
 
   edit(actor: Actor, rawId: string, input: EditInput): ItemView {

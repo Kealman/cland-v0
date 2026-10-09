@@ -176,6 +176,6 @@ export async function answerTask(tracker: Tracker | undefined, frame: TaskReques
     // a client's frame names who it acts as, checked here so a bad one is a failed result like any other
     return { type: 'result', id: frame.id, ok: true, value: await handleTaskRequest(tracker, frame, actor === 'client' ? actorOf(frame) : actor) };
   } catch (err) {
-    return { type: 'result', id: frame.id, ok: false, error: taskErrorMessage(err) };
+    return { type: 'result', id: frame.id, ok: false, error: taskErrorMessage(err), ...(err instanceof TrackerError && err.code ? { code: err.code } : {}) };
   }
 }

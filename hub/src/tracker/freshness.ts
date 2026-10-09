@@ -41,6 +41,12 @@ export class Freshness {
   /** Task patch ids by (base, base tip, commit): the tip's is shared by the review and the QA verdict. */
   readonly #patches = new Map<string, Promise<string | null>>();
   #working = false;
+  /** The worker is due to start: never from inside a read, where its first git would run in the handler. */
+  #workSoon = false;
+  /** Branches a read did not hold when they were asked about: the read count then, and whether a later read settled it. */
+  readonly #missing = new Map<string, { asked: number; absent: boolean }>();
+  /** Tip reads started so far. */
+  #reads = 0;
   #reading = false;
   #readAgain = false;
   #timer: NodeJS.Timeout | null = null;
@@ -65,6 +71,7 @@ export class Freshness {
 
   stop(): void {
     this.#stopped = true;
+    this.#workSoon = false;
     if (this.#timer) clearInterval(this.#timer);
     if (this.#poke) clearTimeout(this.#poke);
     this.#timer = this.#poke = null;
@@ -114,10 +121,20 @@ export class Freshness {
   }
 
   #current(id: string, branch: string | null, commit: string | undefined): boolean | undefined {
+    if (!commit || !branch || !/^[0-9a-f]{4,64}$/i.test(commit)) return false;
     const tips = this.#tips;
     if (!tips) return undefined;
-    const tip = branch ? (tips.get(branch) ?? null) : null;
-    if (!commit || !tip || !/^[0-9a-f]{4,64}$/i.test(commit)) return false;
+    const tip = tips.get(branch);
+    if (tip === undefined) {
+      // a branch the last read did not hold may be new: unknown until a read started after this question finds none
+      let missing = this.#missing.get(branch);
+      if (!missing) {
+        missing = { asked: this.#reads, absent: false };
+        this.#missing.set(branch, missing);
+        this.poke();
+      }
+      return missing.absent ? false : undefined;
+    }
     if (commit === tip) return true;
     const base = verdictBaseOf(tips);
     const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null);
@@ -127,9 +144,18 @@ export class Freshness {
       const want = this.#wants.get(key) ?? { commit, tip, base, ids: new Set<string>() };
       want.ids.add(id);
       this.#wants.set(key, want);
-      void this.#work();
+      this.#startWork();
     }
     return undefined;
+  }
+
+  #startWork(): void {
+    if (this.#working || this.#workSoon || this.#stopped) return;
+    this.#workSoon = true;
+    setImmediate(() => {
+      this.#workSoon = false;
+      void this.#work();
+    });
   }
 
   /** Read the branch tips (one at a time; a request while reading reads once more after). */
@@ -143,6 +169,7 @@ export class Freshness {
     try {
       do {
         this.#readAgain = false;
+        const seq = ++this.#reads;
         let read: Map<string, string> | null;
         try {
           read = await branchTips(this.#git);
@@ -154,10 +181,14 @@ export class Freshness {
         const next = read ?? new Map<string, string>();
         const moved = this.#tips === null || !sameTips(this.#tips, next);
         this.#tips = next;
-        if (moved) {
-          this.#prune();
-          this.#tipsMoved();
+        // a branch asked about before this read started and still missing has none: stale from now on
+        let settled = false;
+        for (const [branch, missing] of this.#missing) {
+          if (next.has(branch)) this.#missing.delete(branch);
+          else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
         }
+        if (moved) this.#prune();
+        if (moved || settled) this.#tipsMoved();
       } while (this.#readAgain && !this.#stopped);
     } finally {
       this.#reading = false;
