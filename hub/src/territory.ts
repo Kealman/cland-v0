@@ -376,12 +376,17 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
   });
 }
 
-/** Remove a task worktree and its branch (the human's prune). Git refuses a worktree with changes. Under the lock. */
-export async function removeTaskWorktree(root: string, item: string): Promise<{ path: string; branch: string | null }> {
+/**
+ * Remove a task worktree and its branch (the human's prune). Git refuses a worktree with changes. Under the lock;
+ * `check` runs there right before the removal and refuses it by throwing (the caller's item state and sessions, which
+ * may have changed while Git was read).
+ */
+export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}): Promise<{ path: string; branch: string | null }> {
   return withTerritoryLock(root, async () => {
     const path = taskWorktreePath(root, item);
     const found = (await worktrees(root)).find((w) => samePath(w.path, path));
     if (!found) throw new Error(`${item} has no worktree`);
+    check();
     await territoryGitAsync(root, ['worktree', 'remove', path]);
     if (found.branch !== null && (await refAsync(root, `refs/heads/${found.branch}`)) !== null) await territoryGitAsync(root, ['branch', '-D', found.branch]);
     return { path, branch: found.branch };

@@ -59,6 +59,8 @@ export class TaskWorktrees {
   readonly #sessions: () => SessionCwd[];
   /** The tail of the operations queued so far: each Git operation of the hub starts when the previous one settled. */
   #queue: Promise<unknown> = Promise.resolve();
+  /** The items a launch is under way for, from its worktree to its claim: prune leaves their worktrees alone. */
+  readonly #launching = new Set<string>();
 
   constructor(options: { tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
     this.#tracker = options.tracker;
@@ -140,22 +142,47 @@ export class TaskWorktrees {
     const yields = (held: Claim | null): boolean => !held || held.session === request.name || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
     if (!yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
-    const reason = await this.#ineligible(view);
-    let worktree: TaskWorktree | null = null;
-    if (reason === null) {
-      try {
-        worktree = await this.#serial(() => this.#make(view, request.name));
-      } catch (err) {
-        throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
+    if (this.#launching.has(view.id)) throw new Error(`${view.id}: another session is being launched for it`);
+    // in the queue, after any prune queued before it: the item as it is then, and the launch marked before the queue
+    // moves on, so a prune queued after it leaves the worktree alone until the claim is the session's
+    const { reason, worktree } = await this.#serial(async () => {
+      const now = this.#tracker.view(view.id);
+      const reason = await this.#ineligible(now);
+      let worktree: TaskWorktree | null = null;
+      if (reason === null) {
+        try {
+          worktree = await this.#make(now, request.name);
+        } catch (err) {
+          throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
+      this.#launching.add(view.id);
+      return { reason, worktree };
+    });
+    try {
+      return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other);
+    } finally {
+      this.#launching.delete(view.id);
     }
+  }
+
+  /** The launch itself, once its worktree is made and the item marked as launching: spawn, then claim. */
+  async #launchIn(
+    sessions: Sessions,
+    request: LaunchRequest & { item: string },
+    id: string,
+    worktree: TaskWorktree | null,
+    reason: string | null,
+    yields: (held: Claim | null) => boolean,
+    other: (held: Claim) => string,
+  ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
-    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: view.id } : {}) });
+    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) });
     // the claim as it is now: another session may have taken it while the harness started. The check and the claim
     // below run in one turn of the event loop, so nothing comes between them.
-    const held = this.#tracker.view(view.id).claim;
+    const held = this.#tracker.view(id).claim;
     if (!yields(held) && held?.sessionId !== process.sessionId) {
-      this.#log({ event: 'launch-claim-lost', id: view.id, session: process.name, holder: held?.session ?? null });
+      this.#log({ event: 'launch-claim-lost', id, session: process.name, holder: held?.session ?? null });
       const stopped = await sessions.stop(process.name).then(
         () => `${process.name} was stopped`,
         (err: unknown) => `stopping ${process.name} failed (${err instanceof Error ? err.message : String(err)}): stop it by hand`,
@@ -163,7 +190,7 @@ export class TaskWorktrees {
       throw new Error(`${other(held as Claim)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
     }
     const actor: Actor = { id: process.sessionId, name: process.name, role: process.role };
-    const { claim } = this.#tracker.claim(actor, view.id, { force: true });
+    const { claim } = this.#tracker.claim(actor, id, { force: true });
     return { process, claim, worktree, ...(reason !== null ? { reason } : {}) };
   }
 
@@ -207,7 +234,9 @@ export class TaskWorktrees {
 
   /**
    * Remove closed items' worktrees and branches, from one listing: each is refused while a session stands inside,
-   * for an open item, or when Git refuses (changes in the worktree).
+   * for an open item, while a launch for it is under way, or when Git refuses (changes in the worktree). What the
+   * listing said is checked again under the territory lock right before each removal: the item reopened or a session
+   * that entered while Git was read keeps the worktree (rev-6 on T-58).
    */
   prune(items: string[]): Promise<{ removed: Array<{ item: string; path: string; branch: string | null }>; failed: Array<{ item: string; error: string }> }> {
     return this.#serial(async () => {
@@ -220,7 +249,18 @@ export class TaskWorktrees {
           if (!entry) throw new Error(`${item} has no worktree`);
           if (entry.state !== 'closed') throw new Error(`${item} is ${entry.state ?? 'not in the tracker'}: prune removes only the worktrees of closed items`);
           if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-          const done = await removeTaskWorktree(this.root, item);
+          const done = await removeTaskWorktree(this.root, item, () => {
+            if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`);
+            let state: string | null = null;
+            try {
+              state = this.#tracker.view(item).state;
+            } catch {
+              state = null;
+            }
+            if (state !== 'closed') throw new Error(`${item} is ${state ?? 'not in the tracker'} now: prune removes only the worktrees of closed items`);
+            const now = [...new Set(this.#sessions().filter((s) => inside(s.cwd, entry.path)).map((s) => s.name))];
+            if (now.length) throw new Error(`${item}: ${now.join(', ')} now ${now.length === 1 ? 'stands' : 'stand'} inside its worktree`);
+          });
           this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
           removed.push({ item, ...done });
         } catch (err) {
