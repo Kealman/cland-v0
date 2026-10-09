@@ -1,3 +1,4 @@
+import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
 // `cland --headless --qa <case.lua>` as a process (#57): the exit code, the one JSON line and the dump
 // files, against the stdio hub and the stub hub, also under sandbox-exec profiles.
 import { test, type TestContext } from 'node:test';
@@ -53,7 +54,7 @@ async function groupGone(pgid: number): Promise<boolean> {
 
 async function tempDir(t: TestContext, prefix: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), prefix));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  ownDirectory(t, dir);
   return dir;
 }
 
@@ -68,6 +69,7 @@ function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: 
   Object.assign(env, options.env);
   const argv = [...(options.prefix ?? []), process.execPath, CLI, '--headless', '--qa', ...args];
   const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? process.cwd(), env, stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
   t.after(() => void child.kill('SIGKILL'));
   options.started?.(child);
   let stdout = '';

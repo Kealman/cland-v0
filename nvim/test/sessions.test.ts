@@ -1,10 +1,11 @@
+import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 // The session launcher and the sessions panel (#28) against a real hub: the three fake harnesses (Claude Code,
 // Codex, OpenCode, from hub/test/fakes, first on the PATH as the adapter tests put them) are launched from the
 // UI, show in the panel with their live state, attach in a terminal on Enter (each fake's attach client prints a
 // line of its own), and a killed one turns `unknown` while the hub's log records the death.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,13 +22,14 @@ const FAKE_OPENCODE_DIR = fileURLToPath(new URL('../../hub/test/fakes/opencode',
 /** A fake's home (its state, the servers it started), its servers killed when the test ends. */
 async function fakeHome(t: TestContext, prefix: string): Promise<string> {
   const home = await realpath(await mkdtemp(join(tmpdir(), prefix)));
+  const cleanupHome = ownDirectory(undefined, home);
   t.after(async () => {
     const files = await readdir(join(home, 'servers')).catch(() => [] as string[]);
     for (const f of files) {
       const s = JSON.parse(await readFile(join(home, 'servers', f), 'utf8').catch(() => 'null')) as { pid?: number } | null;
       if (s?.pid) await killDaemon(s.pid);
     }
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   return home;
 }
