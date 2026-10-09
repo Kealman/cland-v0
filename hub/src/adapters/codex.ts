@@ -575,7 +575,7 @@ export class CodexAdapter implements HarnessAdapter {
    * inputs is handed over again as a turn of its own. The record is read as `turnInput` knows it; an input owed in
    * a shape the record does not show at all (a tool output starts its own turn, so that turn must show one; a steer
    * may join a turn of either shape, so that turn must show some input) is not judged, and neither is a record that
-   * cannot be read: each is reported once (`harness-turn-unread`) and not delivered again. A message delivered once
+   * cannot be read: they are reported (`harness-turn-unread`, one per readback) and not delivered again. A message delivered once
    * and unverified is the lesser harm than a turn run twice and a false alarm (T-68). Measured with Codex 0.160.0,
    * an accepted steer was always taken up: this is the guard for the case it is not.
    */

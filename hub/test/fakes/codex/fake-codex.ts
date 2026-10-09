@@ -51,7 +51,9 @@
 // request" refuses it, and "drop every recovery" admits empty recovery turns to test the bounded failure outcome.
 // T-68: an input containing "record an unknown item" is recorded as an item of a type no Codex has (`hubInput`), as
 // a future app-server might, so the hub's reader cannot classify the turn; one containing "leave unannounced" is
-// recorded but never announced (`item/completed` missed), so only the turn's record shows it.
+// recorded but never announced (`item/completed` missed), so only the turn's record shows it; one containing "lose
+// its envelope" is recorded as a `userMessage` holding only the body (a shape the input was not sent in, no
+// envelope id); a thread whose turns hold "fail the readback" refuses `thread/read` with `includeTurns`.
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
@@ -290,9 +292,11 @@ async function appServer(args: string[]): Promise<number> {
       // functionCallOutput (measured with 0.160.0, T-68), text input a userMessage
       const taken: TurnItem = item.text.includes('record an unknown item')
         ? { type: 'hubInput', id: randomUUID(), payload: item.text }
-        : item.tool
-          ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
-          : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
+        : item.text.includes('lose its envelope')
+          ? { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: /<channel [^>]*>\n([\s\S]*?)\n<\/channel>/.exec(item.text)?.[1] ?? '' }] }
+          : item.tool
+            ? { type: 'functionCallOutput', id: `fco_${randomUUID()}`, name: item.tool.name, namespace: item.tool.namespace ?? null, output: item.text }
+            : { type: 'userMessage', id: randomUUID(), content: [{ type: 'text', text: item.text }] };
       record.items.push(taken);
       if (!item.text.includes('leave unannounced')) toSubscribers(t.id, 'item/completed', { threadId: t.id, turnId, item: taken });
       if (item.text === 'newer recovery turn') {
@@ -412,6 +416,7 @@ async function appServer(args: string[]): Promise<number> {
       case 'thread/read': {
         const t = threads.get(params.threadId as string) ?? load(params.threadId as string);
         if (!t) return { error: { code: -32600, message: `thread not found: ${String(params.threadId)}` } };
+        if (params.includeTurns === true && JSON.stringify(t.history ?? []).includes('fail the readback')) return { error: { code: -32603, message: 'readback refused' } };
         if (params.includeTurns === true && existsSync(join(HOME, 'new-turn-during-read'))) {
           rmSync(join(HOME, 'new-turn-during-read'));
           t.turnId = randomUUID();
