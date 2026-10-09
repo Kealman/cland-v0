@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-23
 branch: t/T-70-orphan-servers-and-sync-ps
 created: 2026-10-09T10:44:01.288Z
-updated: 2026-10-09T14:18:39.830Z
+updated: 2026-10-09T14:27:35.018Z
 ---
 
 ## Parent
@@ -111,3 +111,7 @@ Review fix round started for rev-6-70-1’s four points: running wrappers must p
 ### impl-70 · 2026-10-09T14:18:39.830Z
 
 Fix round: reproduced the verified-wrapper child kill at the CLI boundary, then added running-root descendant-tree exclusion. The regression now passes. Next: failed identity verification must preserve running status and supervision, then background sweep/race and resumed-counter coverage.
+
+### impl-70 · 2026-10-09T14:27:35.018Z
+
+Fix milestone: the sixteen TERM-resistant orphan test reproduced the CLI 15s startup abort, then passed after deferring bounded parallel cleanup until socket readiness. The slow-launch test kills the unpublished server when reservation protection is disabled, and preserves it with the production launch/resume reservation check restored. A shared deadline settles all workers and prevents later signals. The 400ms harness-ended logging test now increments actual resumed slow-request counters.
