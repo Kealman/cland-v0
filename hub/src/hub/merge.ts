@@ -5,7 +5,7 @@ import { MergeError } from '../merge.ts';
 import type { IndexedVerdict } from '../tracker/index-db.ts';
 import { normalizeId } from '../tracker/item.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
-import { landedTask, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
+import { landedTask, reconcileTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
 
 type MergeResult = { item: string; commit: string; base: string; cleanup: string; followUp?: { step: string; error: string } };
@@ -72,6 +72,7 @@ export class TaskMerges {
       let reason = override;
       let recovered = false;
       let step = 'territory lock';
+      let landingFailure: { step: string; error: string } | undefined;
       try {
         await withTerritoryLockAsync(this.tracker.root, async () => {
           const prior = resumed(() => this.tracker.mergeReceipt(id));
@@ -86,6 +87,11 @@ export class TaskMerges {
               reason = prior.override;
               recovered = true;
             });
+            resumed(() => { step = 'checkout'; });
+            await reconcileTaskCheckout(this.tracker.root, prior, resumed, () => {
+              const { checkout: _checkout, ...coherent } = prior;
+              this.tracker.recordMerge(id, coherent);
+            });
             if (!existing.published) {
               resumed(() => { step = 'publish'; });
               await territoryGitAsync(this.tracker.root, ['push', territoryPath(this.tracker.root), `refs/heads/${prior.base}:refs/heads/${prior.base}`], true);
@@ -95,15 +101,28 @@ export class TaskMerges {
           const view = resumed(() => this.#view(id, override === undefined));
           await this.tracker.refreshFreshness(resumed);
           resumed(() => this.#message(this.#view(id, override === undefined), override));
-          const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip) => {
-            await this.tracker.refreshFreshness(resumed);
-            return resumed(() => {
-              const now = this.#view(id, override === undefined);
-              if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || now.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
-              return this.#message(now, override);
+          try {
+            const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip) => {
+              await this.tracker.refreshFreshness(resumed);
+              return resumed(() => {
+                const now = this.#view(id, override === undefined);
+                if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || now.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
+                return this.#message(now, override);
+              });
+            }, resumed, landing => this.tracker.recordMerge(id, { ...landing, branch: view.branch!, ...(override === undefined ? {} : { override }) }));
+            resumed(() => { state.landed = result; });
+          } catch (err) {
+            // The failing step alone cannot decide the outcome: a failed rollback can leave either ref landed.
+            const receipt = resumed(() => this.tracker.mergeReceipt(id));
+            const observed = receipt ? await landedTask(this.tracker.root, id, receipt, resumed) : null;
+            resumed(() => {
+              if (!receipt || !observed) throw err;
+              state.landed = { commit: receipt.commit, base: receipt.base };
+              reason = receipt.override;
+              const error = err instanceof Error ? err.message : String(err);
+              landingFailure = observed.published ? { step: 'checkout', error: `checkout reconciliation pending: ${error}` } : { step: 'rollback', error: `rollback failed: ${error}; publish pending` };
             });
-          }, resumed, landing => this.tracker.recordMerge(id, { ...landing, branch: view.branch!, ...(override === undefined ? {} : { override }) }));
-          resumed(() => { state.landed = result; });
+          }
         });
       } catch (err) {
         if (state.landed) return this.#incomplete({ item: id, ...state.landed, cleanup: 'pending' }, step, err instanceof Error ? err.message : String(err), resumed);
@@ -114,6 +133,7 @@ export class TaskMerges {
       try {
         resumed(() => this.log({ event: recovered ? 'merge-resumed' : 'task-merged', id, session: actor.name, ...state.landed!, ...(reason === undefined ? {} : { override: reason }) }));
       } catch (err) { return this.#incomplete(result, 'record', err instanceof Error ? err.message : String(err), resumed); }
+      if (landingFailure) return this.#incomplete(result, landingFailure.step, landingFailure.error, resumed);
       const failure = resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`));
       return failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result;
     }).then(async result => {
@@ -128,8 +148,8 @@ export class TaskMerges {
 
   async #cleanup(id: string, resumed: Resumed): Promise<string> {
     if (this.#stopped) return 'pending';
-    const branch = resumed(() => this.tracker.mergeReceipt(id)?.branch);
-    const pruned = branch ? await this.worktrees.pruneMerged(id, branch, resumed) : await this.worktrees.prune([id], resumed);
+    const receipt = resumed(() => this.tracker.mergeReceipt(id));
+    const pruned = receipt ? await this.worktrees.pruneMerged(id, receipt, resumed) : await this.worktrees.prune([id], resumed);
     const failure = pruned.failed[0];
     if (!failure) return 'removed';
     if (/stands? inside|being launched/.test(failure.error)) {

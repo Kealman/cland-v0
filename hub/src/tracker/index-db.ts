@@ -76,7 +76,8 @@ create table if not exists tracker_merges (
   tip text not null,
   base text not null,
   commit_sha text not null,
-  override_reason text
+  override_reason text,
+  checkout_recovery text
 );
 `;
 
@@ -103,7 +104,8 @@ export type IndexedItem = {
 export type IndexedVerdict = Verdict & { author: string; at: string; source: 'hub' | 'file'; writer?: { sessionId: string; role: string | null }; current?: boolean };
 type VerdictRecord = Verdict & { author: string; at: string };
 type KeyedVerdict = { verdict: VerdictRecord; key: string };
-export type MergeReceipt = { branch: string; tip: string; base: string; commit: string; override?: string };
+export type CheckoutRecovery = { before: string; after: string };
+export type MergeReceipt = { branch: string; tip: string; base: string; commit: string; override?: string; checkout?: CheckoutRecovery };
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
@@ -134,6 +136,8 @@ export class TrackerIndex {
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
     const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
     for (const column of ['commit_sha', 'comment_key']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
+    const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
+    if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
   }
 
   close(): void {
@@ -310,13 +314,13 @@ export class TrackerIndex {
   }
 
   recordMerge(id: string, receipt: MergeReceipt): void {
-    this.#db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason) values (?, ?, ?, ?, ?, ?) on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base, commit_sha = excluded.commit_sha, override_reason = excluded.override_reason')
-      .run(id, receipt.branch, receipt.tip, receipt.base, receipt.commit, receipt.override ?? null);
+    this.#db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason, checkout_recovery) values (?, ?, ?, ?, ?, ?, ?) on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base, commit_sha = excluded.commit_sha, override_reason = excluded.override_reason, checkout_recovery = excluded.checkout_recovery')
+      .run(id, receipt.branch, receipt.tip, receipt.base, receipt.commit, receipt.override ?? null, receipt.checkout ? JSON.stringify(receipt.checkout) : null);
   }
 
   mergeReceipt(id: string): MergeReceipt | null {
     const row = this.#db.prepare('select * from tracker_merges where item_id = ?').get(id) as Row | undefined;
-    return row ? { branch: row.branch as string, tip: row.tip as string, base: row.base as string, commit: row.commit_sha as string, ...(row.override_reason === null ? {} : { override: row.override_reason as string }) } : null;
+    return row ? { branch: row.branch as string, tip: row.tip as string, base: row.base as string, commit: row.commit_sha as string, ...(row.override_reason === null ? {} : { override: row.override_reason as string }), ...(row.checkout_recovery === null ? {} : { checkout: JSON.parse(row.checkout_recovery as string) as CheckoutRecovery }) } : null;
   }
 
   // ---------------------------------------------------------------- claims

@@ -21,6 +21,6 @@ On refusal:
 
 Only the human's own shell may run `cland merge T-<n> --override "<reason>"`. When that decision is needed, ask the human through the Coordinator's `ask`; the reason goes on the item and into the journal. Override skips verdicts; conflicts and Git safety still apply.
 
-Report the returned commit and cleanup status in the item's topic. If cleanup keeps uncommitted work, preserve it and use the human's `cland worktree prune` after it is safe to remove.
+Report the returned commit and cleanup status in the item's topic. If cleanup keeps uncommitted work or a branch moved since merge, preserve its branch and worktree. Use the human's `cland worktree prune` only after the work is safe to remove.
 
-If the result says `merged, follow-up failed: <step>`, the returned commit has already landed. Repair the named close, release, topic or cleanup failure and retry `merge` for the same item. The hub verifies its durable prepared landing against Git and completes the remaining steps without creating another commit, including after a hub restart.
+If the result says `merged, follow-up failed: <step>`, the returned commit has already landed. Repair the named rollback, checkout, publish, close, release, topic or cleanup failure and retry `merge` for the same item. Checkout recovery preserves staged and untracked work; reconcile any changed index before retrying it. The hub verifies its durable prepared landing against Git and completes the remaining steps without creating another commit, including after a hub restart.

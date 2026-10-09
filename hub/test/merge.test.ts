@@ -667,3 +667,120 @@ test('deferred cleanup preserves a worktree switched onto an unrelated branch an
   assert.equal(existsSync(work.path), false);
   assert.notEqual(git(root, 'branch', '--list', 'keep-this-branch'), '');
 });
+
+
+test('deferred cleanup keeps the task branch and worktree if its tip moved after landing', async (t) => {
+  const fake = await fakeClaude(t);
+  const { root, rev } = await project(t, fake.env);
+  const work = await task(root);
+  ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
+  await review(rev, work.id);
+  const merged = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(merged.cleanup, 'waiting for sessions');
+  await writeFile(join(work.path, 'parser.txt'), 'additional unmerged work\n');
+  git(work.path, 'commit', '-qam', 'After landing');
+  const extra = git(work.path, 'rev-parse', 'HEAD');
+  ok(await cland(root, 'session', 'stop', 'impl-1'));
+  await eventually('moved tip reported as kept', async () => {
+    const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+    if (journal.includes(`branch moved since merge (${extra}), kept`)) return true;
+    assert.ok(existsSync(work.path), 'cleanup must keep the worktree holding new commits');
+    return undefined;
+  });
+  assert.ok(existsSync(work.path));
+  assert.equal(git(root, 'rev-parse', work.branch), extra);
+  assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
+  assert.equal(await readFile(join(work.path, 'parser.txt'), 'utf8'), 'additional unmerged work\n');
+});
+
+test('a rejected push with failed rollback remains landed and retry restores the root tree before publication completes', async (t) => {
+  const { root, rev, discovery } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  const hook = join(root, '.git', 'hooks', 'pre-push');
+  await writeFile(hook, '#!/bin/sh\nprintf \'locked\n\' > "$(git rev-parse --git-path refs/heads/dev.lock)"\nexit 1\n', { mode: 0o755 });
+  const result = json<{ commit: string; followUp?: { step: string; error: string } }>(await cland(root, 'merge', work.id, '--json'));
+  assert.ok(result.followUp);
+  assert.match(result.followUp.error, /rollback failed|publish pending/);
+  assert.equal(git(root, 'rev-parse', 'dev'), result.commit);
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
+  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', `${before}^{tree}`));
+  assert.equal(existsSync(join(root, 'parser.txt')), false);
+  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  assert.doesNotMatch(journal, /"event":"merge-refused"/);
+  await rm(hook);
+  await rm(join(root, '.git', 'refs', 'heads', 'dev.lock'));
+  await killDaemon(discovery.pid);
+  await startDaemon(t, root);
+  // The rollback receipt survives restart and refuses an index edited since that recorded rollback.
+  await writeFile(join(root, 'README.md'), 'staged work to preserve\n');
+  git(root, 'add', 'README.md');
+  const staged = git(root, 'write-tree');
+  const edited = json<{ commit: string; followUp?: { step: string } }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(edited.commit, result.commit);
+  assert.equal(edited.followUp?.step, 'checkout');
+  assert.equal(git(root, 'write-tree'), staged);
+  assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'staged work to preserve\n');
+  git(root, 'restore', '--source', before, '--staged', '--worktree', 'README.md');
+  // Recovery must preserve new root work rather than overwrite it just to finish the prior landing.
+  await writeFile(join(root, 'parser.txt'), 'local work to preserve\n');
+  const obstructed = json<{ commit: string; followUp?: { step: string } }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(obstructed.commit, result.commit);
+  assert.equal(obstructed.followUp?.step, 'checkout');
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'local work to preserve\n');
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
+  await rm(join(root, 'parser.txt'));
+  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.commit, result.commit);
+  assert.equal(retry.followUp, undefined);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), result.commit);
+  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', 'dev^{tree}'));
+  assert.equal(git(root, 'diff', '--name-only'), '');
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  assert.equal(existsSync(work.path), false);
+});
+
+
+test('a published receipt remains landed when local rollback succeeds, and retry repairs the root ref and tree', async (t) => {
+  const { root, rev } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  const hook = join(root, '.git', 'hooks', 'pre-push');
+  await writeFile(hook, '#!/bin/sh\ngit -c core.hooksPath=/dev/null push .cland/territory.git refs/heads/dev:refs/heads/dev || exit 2\nexit 1\n', { mode: 0o755 });
+  const result = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.ok(result.followUp);
+  assert.equal(git(root, 'rev-parse', 'dev'), before);
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), result.commit);
+  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', `${before}^{tree}`));
+  await rm(hook);
+  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(retry.commit, result.commit);
+  assert.equal(retry.followUp, undefined);
+  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', 'dev^{tree}'));
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+});
+
+test('retrying a completed merge preserves staged deletion and reversion of its touched files', async (t) => {
+  for (const file of ['parser.txt', 'README.md']) await t.test(file, async (t) => {
+    const { root, rev } = await project(t);
+    const work = await task(root, 'Ship changes', file);
+    await review(rev, work.id);
+    const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
+    if (file === 'parser.txt') git(root, 'rm', file);
+    else {
+      await writeFile(join(root, file), 'project\n');
+      git(root, 'add', file);
+    }
+    const staged = git(root, 'write-tree');
+    const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+    assert.equal(retry.commit, merged.commit);
+    assert.equal(retry.followUp, undefined);
+    assert.equal(git(root, 'write-tree'), staged, 'receipt recovery must keep staged edits');
+    if (file === 'parser.txt') assert.equal(existsSync(join(root, file)), false);
+    else assert.equal(await readFile(join(root, file), 'utf8'), 'project\n');
+  });
+});
