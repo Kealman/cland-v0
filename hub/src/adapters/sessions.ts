@@ -12,7 +12,7 @@
 //   launch: a signal or a bridge names the launch it comes from (the cland session id the hooks and the mod
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
-import { statSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
@@ -245,14 +245,23 @@ export class Sessions {
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
     if (this.#core.roles?.fresh) {
       await this.#core.roles.fresh(resumed);
-      return resumed(() => { authorize(); return this.#launch(request, resumed); });
+      return resumed(() => { authorize(); return this.#launch(request, resumed, authorize); });
     }
     authorize();
-    return this.#launch(request, resumed);
+    return this.#launch(request, resumed, authorize);
   }
 
-  async #launch(request: LaunchRequest, resumed: Resumed): Promise<HarnessProcessView> {
+  async #launch(request: LaunchRequest, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
     const cwd = resolve(this.#root, request.cwd ?? '.');
+    const info = await stat(cwd).catch(() => null);
+    return resumed(() => {
+      authorize();
+      if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
+      return this.#spawnLaunch(request, cwd, resumed);
+    });
+  }
+
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed): Promise<HarnessProcessView> {
     const refusal = nameRefusal(request.name, new Set(['human']));
     if (refusal) throw new Error(refusal);
     const role = request.role ?? null;
@@ -269,13 +278,6 @@ export class Sessions {
     if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     const adapter = this.adapter(harness);
-    let directory = false;
-    try {
-      directory = statSync(cwd).isDirectory();
-    } catch {
-      // A missing or inaccessible path is a typed launch refusal, independent of the harness.
-    }
-    if (!directory) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
     // the role is reserved before anything is spawned: a second launch for an exclusive role is refused right here,
     // and a launch that fails gives back what it reserved (its early hello's grant included)
     const reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;

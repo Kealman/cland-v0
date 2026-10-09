@@ -90,7 +90,7 @@ test('task.list and task.view start no git process; freshness arrives from the c
   const events: ItemChange[] = [];
   tracker.onChange((c) => events.push(c));
   for (let k = 0; k < N; k++) {
-    const { id } = tracker.create(REVIEWER, { title: `Item ${k}`, branch: `t/${k}` });
+    const { id } = await tracker.create(REVIEWER, { title: `Item ${k}`, branch: `t/${k}` });
     await tracker.comment(REVIEWER, id, 'checked', { verdict: 'review', result: 'clear', run: `r-${k}`, commit: feature });
   }
 
@@ -129,7 +129,7 @@ test('a verdict on the branch tip is current at once, and an unrelated tip read 
   const { tracker, read, refresh } = counted(t, root);
   tracker.start();
   await refresh();
-  const { id } = tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
+  const { id } = await tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
   const view = await tracker.comment(REVIEWER, id, 'checked', { verdict: 'qa', result: 'clear', run: 'q-1' });
   assert.equal(view.verdicts[0]?.commit, git(root, 'rev-parse', 't/0'));
   assert.equal(view.verdicts[0]?.current, true);
@@ -147,7 +147,7 @@ test('a read that finds a new question with the cache warm and the worker idle s
   const { tracker, counts, read, refresh } = counted(t, root);
   tracker.start();
   await refresh();
-  const { id, path } = tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
+  const { id, path } = await tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
   await tracker.comment(REVIEWER, id, 'checked', { verdict: 'review', result: 'clear', run: 'r-1', commit: feature });
   await settled(tracker, allKnown);
   // another commit with the same task diff, recorded by hand: a key the cache has never seen, found by view (it reads the file)
@@ -168,8 +168,8 @@ test('a branch the last tip read did not hold is unknown, not stale, until a lat
   tracker.start();
   await refresh();
   git(root, 'branch', 't/late', feature);
-  const late = tracker.create(REVIEWER, { title: 'Late branch', branch: 't/late' });
-  const none = tracker.create(REVIEWER, { title: 'No branch at all', branch: 't/none' });
+  const late = await tracker.create(REVIEWER, { title: 'Late branch', branch: 't/late' });
+  const none = await tracker.create(REVIEWER, { title: 'No branch at all', branch: 't/none' });
   await tracker.comment(REVIEWER, late.id, 'checked', { verdict: 'review', result: 'clear', run: 'r-1', commit: feature });
   await tracker.comment(REVIEWER, none.id, 'checked', { verdict: 'review', result: 'clear', run: 'r-2', commit: feature });
   assert.equal(read(() => tracker.view(late.id)).verdicts[0]?.current, undefined, 'a branch created after the last read is not reported stale');
@@ -187,7 +187,7 @@ test('Git not answering a verdict write is a typed refusal naming what it could 
   const down: Git = (args, input) => (args[0] === 'rev-parse' ? Promise.reject(new Error('spawn git EAGAIN')) : real(args, input));
   const { tracker } = counted(t, root, { git: down });
   tracker.start();
-  const { id } = tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
+  const { id } = await tracker.create(REVIEWER, { title: 'Reviewed', branch: 't/0' });
   await assert.rejects(tracker.comment(REVIEWER, id, 'checked', { verdict: 'review', result: 'clear', run: 'r-1' }), (err: unknown) => {
     assert.ok(err instanceof TrackerError);
     assert.equal(err.code, 'git-unavailable');

@@ -51,7 +51,7 @@ export type Resumed = <T>(work: () => T) => T;
 
 /** One per hub: the budget, the counters and the write generation every connection's replays check. */
 export class RequestGuard {
-  readonly #scope = new AsyncLocalStorage<{ tool: string; client: string }>();
+  readonly #scope = new AsyncLocalStorage<{ tool: string; client: string; active: boolean }>();
   readonly #log: LogFn;
   readonly #budgetMs: number;
   readonly #answerBudgetMs: number;
@@ -80,10 +80,14 @@ export class RequestGuard {
    * and that part blocks the loop as much as the first.
    */
   measure<T>(tool: string, client: string, handle: () => T, phase?: 'resumed' | 'answer'): T {
+    const parent = this.#scope.getStore();
+    if (parent?.active && parent.tool === tool && parent.client === client) return handle();
+    const scope = { tool, client, active: true };
     const started = this.now();
     try {
-      return this.#scope.run({ tool, client }, handle);
+      return this.#scope.run(scope, handle);
     } finally {
+      scope.active = false;
       const ms = Math.round(this.now() - started);
       if (ms > this.#budgetMs) {
         this.counters.slow++;

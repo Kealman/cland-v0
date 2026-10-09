@@ -1,17 +1,16 @@
 // The tracker: item files in `.cland/tasks/` are the source of truth, the hub writes them and keeps the
 // index (spec 4.6, ADR 0002).
 //
-// Writes are serialized by construction: every operation reads, changes, writes and indexes with
-// synchronous calls, so one runs to completion on the hub's single thread before the next starts.
-// Hand edits are picked up by a watcher on the folder (debounced) and re-indexed; last writer wins.
-// Nothing is ever committed. No git runs inside an operation either (T-67): verdict freshness comes from the
-// freshness cache, and the one fact a verdict write needs from Git (its commit) is resolved before the write. So a
-// verdict is written when Git has answered: a request that arrived after it (a plain comment, a close) may be
-// written first. The write itself is still one synchronous step.
+// One queue owns every read/change/commit cycle and serving-time watcher read. The atomic
+// rename completes before indexing, notification and the returned result. Hand edits are last-writer-wins.
+// Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
 import { taskBase, territoryPath } from '../territory.ts';
 import { createHash } from 'node:crypto';
-import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
+import files, { type FileHandle } from 'node:fs/promises';
+import type { Resumed } from '../hub/budget.ts';
+const untimed: Resumed = work => work();
 import { join } from 'node:path';
 import { commentKey, TrackerIndex, type Claim, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
@@ -132,19 +131,33 @@ const hashOf = (text: string): string => createHash('sha256').update(text).diges
 
 const TASKS_REL = join('.cland', 'tasks');
 
+/** Native file boundary: requests only read UTF-8 item text and ordinary stat results. */
+export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink'> & {
+  readFile: (path: string, encoding: 'utf8') => Promise<string>;
+  writeFile: (path: string, text: string) => Promise<void>;
+  readdir: (path: string) => Promise<string[]>;
+  stat: (path: string) => Promise<Stats>;
+};
+
 export class Tracker {
+  readonly #files: TrackerFiles;
+  #queue: Promise<unknown> = Promise.resolve();
   readonly #root: string;
   readonly #dir: string;
   readonly #index: TrackerIndex;
   readonly #log: LogFn;
   readonly #now: () => Date;
   #watcher: FolderWatch | null = null;
+  #stopping: Promise<void> | null = null;
+  #polling = false;
+  readonly #background = new Set<Promise<unknown>>();
+  readonly #watchResumed: Resumed;
   /** The folder as the last poll saw it (only used when it cannot be watched). */
   #polled = '';
   readonly #pending = new Map<string, NodeJS.Timeout>();
   #rescanTimer: NodeJS.Timeout | null = null;
 
-  /** Tests only: how long a write holds still between its temporary file and the rename (0: not at all). */
+  /** Tests only: async pause between the temporary write and rename. */
   readonly #writePauseMs: number;
   /** Told when an item closes (the hub's close, an edit to `closed`, a hand edit): its topic closes too (spec 4.5). */
   readonly #closedListeners = new Set<(id: string) => void>();
@@ -160,7 +173,9 @@ export class Tracker {
   /** Each item's freshness as last announced: an answer that arrives later is announced only when it differs. */
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.#files = options.files ?? files;
+    this.#watchResumed = options.watchResumed ?? untimed;
     this.#root = options.root;
     this.#writePauseMs = options.writePauseMs ?? 0;
     this.#dir = join(options.root, TASKS_REL);
@@ -171,7 +186,7 @@ export class Tracker {
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
       git: this.#git,
-      readBase: async (tips) => existsSync(territoryPath(this.#root)) ? await taskBase(this.#root) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
+      readBase: async (tips) => await this.#files.stat(territoryPath(this.#root)).then(() => true, () => false) ? await taskBase(this.#root) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null,
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
@@ -275,10 +290,18 @@ export class Tracker {
         },
         // every file is read only when the folder's listing or a file's time or size moved
         poll: () => {
-          const stamp = this.#folderStamp();
-          if (stamp === this.#polled) return;
-          this.#polled = stamp;
-          this.rescan();
+          if (this.#polling || this.#stopping) return;
+          this.#polling = true;
+          this.#runBackground(() => this.#serial(async () => {
+            try {
+              const stamp = await this.#folderStampAsync();
+              await this.#watchResumed(() => {
+                if (stamp === this.#polled) return;
+                this.#polled = stamp;
+                return this.#rescanAsync(this.#watchResumed);
+              });
+            } finally { this.#watchResumed(() => { this.#polling = false; }); }
+          }, this.#watchResumed));
         },
       },
       { log: this.#log, event: 'task-watch-error' },
@@ -305,14 +328,20 @@ export class Tracker {
     }
   }
 
-  stop(): void {
+  stop(): Promise<void> {
+    if (this.#stopping) return this.#stopping;
     this.#fresh.stop();
     this.#watcher?.close();
     this.#watcher = null;
     for (const t of this.#pending.values()) clearTimeout(t);
     this.#pending.clear();
     if (this.#rescanTimer) clearTimeout(this.#rescanTimer);
-    this.#index.close();
+    this.#stopping = (async () => {
+      await Promise.allSettled([...this.#background]);
+      await this.#queue.catch(() => {});
+      this.#index.close();
+    })();
+    return this.#stopping;
   }
 
   // ---------------------------------------------------------------- watching
@@ -324,7 +353,7 @@ export class Tracker {
       name,
       setTimeout(() => {
         this.#pending.delete(name);
-        this.#syncFile(name);
+        this.#runBackground(() => this.#syncFileAsync(name, this.#watchResumed));
       }, DEBOUNCE_MS),
     );
   }
@@ -333,7 +362,7 @@ export class Tracker {
     if (this.#rescanTimer) clearTimeout(this.#rescanTimer);
     this.#rescanTimer = setTimeout(() => {
       this.#rescanTimer = null;
-      this.rescan();
+      this.#runBackground(() => this.rescanAsync(this.#watchResumed));
     }, DEBOUNCE_MS);
   }
 
@@ -364,6 +393,12 @@ export class Tracker {
       this.#dropFile(name);
       return;
     }
+    const id = normalizeId(`T-${fileNumber(name)}`);
+    const previous = id ? this.#index.metaOf(id) : null;
+    this.#indexFile(name, text, !!(previous && previous.file !== name && existsSync(join(this.#dir, previous.file))));
+  }
+
+  #indexFile(name: string, text: string, duplicate: boolean): void {
     const hash = hashOf(text);
     const knownId = this.#index.idOfFile(name);
     const known = knownId ? this.#index.metaOf(knownId) : null;
@@ -382,7 +417,7 @@ export class Tracker {
       this.#changed(knownId);
     }
     const previous = this.#index.metaOf(id);
-    if (previous && previous.file !== name && existsSync(join(this.#dir, previous.file))) {
+    if (previous && duplicate) {
       this.#log({ event: 'task-duplicate-id', id, files: [previous.file, name], indexed: name });
     }
     const now = this.#now().getTime();
@@ -394,6 +429,76 @@ export class Tracker {
     this.#log({ event: 'task-reindexed', id, file: name, source: 'hand' });
     this.#changed(id);
     if (wasOpen && item.fm.state === 'closed') this.#closed(id);
+  }
+
+  #runBackground(work: () => Promise<unknown>): void {
+    if (this.#stopping) return;
+    const run = this.#watchResumed(work);
+    this.#background.add(run);
+    void run.then(() => this.#watchResumed(() => this.#background.delete(run)), err => this.#watchResumed(() => {
+      this.#background.delete(run);
+      this.#log({ event: 'task-watch-error', error: err instanceof Error ? err.message : String(err) });
+    }));
+  }
+
+  async #folderStampAsync(): Promise<string> {
+    const resumed = this.#watchResumed;
+    try {
+      const names = await this.#files.readdir(this.#dir);
+      const stamps = await resumed(() => Promise.all(names.filter(n => fileNumber(n) !== null).sort().map(async name => {
+        try {
+          const info = await this.#files.stat(join(this.#dir, name));
+          return resumed(() => `${name}:${info.mtimeMs}:${info.size}:${info.ino}`);
+        } catch { return resumed(() => name); }
+      })));
+      return resumed(() => stamps.join('|'));
+    } catch { return resumed(() => ''); }
+  }
+
+  /** One admitted scan owns its listing and reads; later mutations cannot interleave a renamed path. */
+  rescanAsync(resumed: Resumed = untimed): Promise<void> {
+    return this.#serial(() => this.#rescanAsync(resumed), resumed);
+  }
+
+  async #rescanAsync(resumed: Resumed): Promise<void> {
+    const names = await this.#files.readdir(this.#dir);
+    return resumed(() => {
+      const candidates = new Set([...names.filter(n => fileNumber(n) !== null), ...this.#index.ids().flatMap(id => {
+        const meta = this.#index.metaOf(id);
+        return meta ? [meta.file] : [];
+      })]);
+      const files = candidates.values();
+      const next = (): Promise<void> => {
+        const file = files.next();
+        if (file.done) return Promise.resolve();
+        return this.#readWatchedFile(file.value, resumed).then(() => resumed(next));
+      };
+      return next();
+    });
+  }
+
+  #syncFileAsync(name: string, resumed: Resumed): Promise<void> {
+    return this.#serial(() => this.#readWatchedFile(name, resumed), resumed);
+  }
+
+  async #readWatchedFile(name: string, resumed: Resumed): Promise<void> {
+    let text: string;
+    try { text = await this.#files.readFile(join(this.#dir, name), 'utf8'); }
+    catch (err) {
+      return resumed(() => {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') this.#dropFile(name);
+        else this.#log({ event: 'task-unreadable', file: name, error: String(err) });
+      });
+    }
+    return resumed(() => {
+      let id: string;
+      try { id = parseItem(text, name).fm.id; }
+      catch (err) { this.#log({ event: 'task-unreadable', file: name, error: String(err) }); return; }
+      const previous = this.#index.metaOf(id);
+      if (!previous || previous.file === name) { this.#indexFile(name, text, false); return; }
+      return this.#files.stat(join(this.#dir, previous.file)).then(() => true, () => false)
+        .then(duplicate => resumed(() => this.#indexFile(name, text, duplicate)));
+    });
   }
 
   #dropFile(name: string): void {
@@ -425,6 +530,24 @@ export class Tracker {
     } catch (err) {
       throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`);
     }
+    return this.#viewOf(id, file, item);
+  }
+
+  viewAsync(rawId: string, resumed: Resumed = untimed): Promise<ItemView> {
+    return this.#serial(async () => {
+      const { id, file } = this.#require(rawId);
+      try {
+        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        return resumed(() => this.#viewOf(id, file, parseItem(text, file)));
+      } catch (err) {
+        return resumed(() => { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); });
+      }
+    }, resumed);
+  }
+
+  #viewOf(id: string, file: string, item: Item): ItemView {
+    const indexed = this.#index.get(id);
+    if (!indexed) throw new TrackerError(`no item ${id}`);
     return {
       ...indexed,
       verdictBase: this.#fresh.base(),
@@ -460,24 +583,25 @@ export class Tracker {
   mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(normalizeId(rawId) ?? rawId); }
 
   /** Idempotent follow-ups, kept separate so a failure names the step after a successful landing. */
-  finishMerge(actor: Actor, rawId: string, comment: string): { step: string; error: string } | null {
-    let step = 'close';
-    try {
-      const id = this.#require(rawId).id;
-      checkText(comment, 'comment');
-      const view = this.view(id);
-      if (view.state !== 'closed' || !view.comments.some(c => c.text === comment)) this.#mutate(id, actor, 'close', item => {
-        item.fm.state = 'closed';
-        if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
-      });
-      step = 'release';
-      this.#releaseOnClose(id);
-      step = 'topic close';
-      for (const listener of [...this.#closedListeners]) listener(id);
-      return null;
-    } catch (err) {
-      return { step, error: err instanceof Error ? err.message : String(err) };
-    }
+  finishMerge(actor: Actor, rawId: string, comment: string, resumed: Resumed = untimed): Promise<{ step: string; error: string } | null> {
+    return this.#serial(async () => {
+      let step = 'close';
+      try {
+        const id = this.#require(rawId).id;
+        checkText(comment, 'comment');
+        await this.#mutate(id, actor, 'close', item => {
+          item.fm.state = 'closed';
+          if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
+        }, resumed);
+        return resumed(() => {
+          step = 'release';
+          this.#releaseOnClose(id);
+          step = 'topic close';
+          for (const listener of [...this.#closedListeners]) listener(id);
+          return null;
+        });
+      } catch (err) { return resumed(() => ({ step, error: err instanceof Error ? err.message : String(err) })); }
+    }, resumed);
   }
 
   list(filter: ListFilter = {}): ItemSummary[] {
@@ -489,78 +613,85 @@ export class Tracker {
 
   // ---------------------------------------------------------------- writing
 
+  /** Admit every operation on one tail: file names and frontmatter ids can change while work waits. */
+  #serial<T>(work: () => Promise<T> | T, resumed: Resumed): Promise<T> {
+    if (this.#stopping) return Promise.reject(new TrackerError('tracker is stopping'));
+    const run = this.#queue.then(() => resumed(work), () => resumed(work));
+    this.#queue = run.catch(() => {});
+    return run;
+  }
+
   /**
    * Write an item's file atomically and index it. `read` is what a change was made from: the hash of the
-   * text read and the descriptor it was read through. A hand edit can land between that read and the
+   * text read and the file handle it was read through. A hand edit can land between that read and the
    * rename — written to the path (an editor's save-by-rename, or in place before the rename) or into the
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  #write(name: string, item: Item, read?: { id: string; op: string; hash: string; fd: number }, verdictWriter?: Actor): void {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void): Promise<Item> {
     const text = serializeItem(item);
-    // what is indexed is what the file says — the text read back the way a reader (and a rescan) reads it,
-    // not the object it was written from: a comment whose text reads back as a verdict is one, everywhere
     const written = parseItem(text, name);
     const path = join(this.#dir, name);
     const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
-    writeFileSync(tmp, text);
-    // a hand edit landing in this window is what the checks around the rename are for; tests widen it
-    if (this.#writePauseMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, this.#writePauseMs);
-    const before = read ? hashOrNull(() => readFileSync(path, 'utf8')) : null;
-    renameSync(tmp, path);
-    this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter);
-    this.#changed(written.fm.id);
-    if (read) {
-      const replaced = hashOrNull(() => readWhole(read.fd));
-      if (before !== read.hash || replaced !== read.hash) {
-        this.#log({
-          event: 'task-conflict',
-          id: read.id,
-          file: name,
-          winner: 'hub',
-          op: read.op,
-          note: 'a hand edit landed while the hub was writing this item and was overwritten by the hub write; last writer wins',
-        });
-      }
+    try {
+      await this.#files.writeFile(tmp, text);
+      // No fsync was used by the synchronous implementation: completion promises atomic replacement,
+      // not survival of power loss. A process crash before rename leaves the previous item intact.
+      if (this.#writePauseMs > 0) await new Promise<void>(done => setTimeout(done, this.#writePauseMs));
+      const before = read ? await this.#files.readFile(path, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
+      await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
+      const replaced = read ? await readWhole(read.fd, resumed).then(text => resumed(() => hashOf(text)), () => null) : null;
+      return resumed(() => {
+        this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter);
+        this.#changed(written.fm.id);
+        if (read && (before !== read.hash || replaced !== read.hash)) {
+          this.#log({ event: 'task-conflict', id: read.id, file: name, winner: 'hub', op: read.op,
+            note: 'a hand edit landed while the hub was writing this item and was overwritten by the hub write; last writer wins' });
+        }
+        return written;
+      });
+    } catch (err) {
+      // A failed temporary write or rename must not masquerade as a committed item.
+      await resumed(() => this.#files.unlink(tmp)).catch(() => {});
+      return resumed(() => { throw err; });
     }
   }
 
-  /**
-   * Change one item: read its file as it is on disk now (a hand edit the watcher has not reached yet is
-   * not lost — it is read, reported, and the change applied on top), apply `change`, write, index.
-   */
-  #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, verdictWriter?: Actor): ItemView {
+  /** Called only with the tracker queue held: always read the latest committed file. */
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
-    let text: string;
-    // held open until the write is done: the file it reads is the one the rename replaces
-    let fd: number;
-    try {
-      fd = openSync(path, 'r');
-      text = readWhole(fd);
-    } catch {
-      this.#dropFile(file);
-      throw new TrackerError(`no item ${id} (its file ${join(TASKS_REL, file)} is gone)`);
+    let fd: FileHandle;
+    try { fd = await this.#files.open(path, 'r'); }
+    catch (err) {
+      return resumed(() => {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') this.#dropFile(file);
+        throw new TrackerError(`${id}: cannot open ${join(TASKS_REL, file)} (${err instanceof Error ? err.message : String(err)})`);
+      });
     }
+    let result: { written: Item } | { error: unknown };
     try {
-      const meta = this.#index.metaOf(id);
-      let item: Item;
+      const text = await resumed(() => readWhole(fd, resumed));
+      const written = await resumed(() => {
+        const meta = this.#index.metaOf(id);
+        let item: Item;
+        try { item = parseItem(text, file); }
+        catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
+        if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
+        change(item);
+        item.fm.updated = this.#now().toISOString();
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit);
+      });
+      result = { written };
+    } catch (error) { result = { error }; }
+    // Publication, result construction and the close's synchronous prefix are one continuation.
+    return resumed(async () => {
       try {
-        item = parseItem(text, file);
-      } catch (err) {
-        throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`);
-      }
-      if (meta && meta.hash !== hashOf(text)) {
-        this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
-      }
-      change(item);
-      item.fm.updated = this.#now().toISOString();
-      this.#write(file, item, { id, op, hash: hashOf(text), fd }, verdictWriter);
-    } finally {
-      closeSync(fd);
-    }
-    this.#log({ event: 'task-written', id, file, op, by: actor.name });
-    return this.view(id);
+        if ('error' in result) throw result.error;
+        this.#log({ event: 'task-written', id, file, op, by: actor.name });
+        return this.#viewOf(id, file, result.written);
+      } finally { await fd.close(); }
+    });
   }
 
   #ref(raw: string, self: string | null, what: string): string {
@@ -571,7 +702,11 @@ export class Tracker {
     return id;
   }
 
-  create(actor: Actor, input: CreateInput): ItemView {
+  create(actor: Actor, input: CreateInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(() => this.#create(actor, input, resumed, authorize), resumed);
+  }
+
+  async #create(actor: Actor, input: CreateInput, resumed: Resumed, authorize: () => void): Promise<ItemView> {
     const title = input.title?.trim();
     if (!title) throw new TrackerError('an item needs a title');
     const kind = input.kind ?? 'task';
@@ -581,45 +716,52 @@ export class Tracker {
     const blocked = [...new Set((input.blocked_by ?? []).map((b) => this.#ref(b, null, 'blocked_by')))];
     const topic = input.topic?.trim() || null;
     this.#checkTopic(null, topic);
-    const maxFile = Math.max(0, ...readdirSync(this.#dir).map((n) => fileNumber(n) ?? 0));
-    const id = this.#index.allocate(maxFile);
-    const name = fileNameOf(id, title);
-    const now = this.#now().toISOString();
-    const item: Item = {
-      fm: {
-        id,
-        kind,
-        title,
-        state: 'open',
-        labels: uniq(input.labels ?? []),
-        assignee: input.assignee ?? null,
-        parent,
-        blocked_by: blocked,
-        topic,
-        branch: input.branch ?? null,
-        created: now,
-        updated: now,
-      },
-      body: input.body?.trim() ?? '',
-      comments: [],
-    };
-    this.#write(name, item);
-    this.#log({ event: 'task-written', id, file: name, op: 'create', by: actor.name });
-    if (topic !== null) this.#topicBinding?.bound(id, topic);
-    return this.view(id);
+    const names = await this.#files.readdir(this.#dir);
+    return resumed(async () => {
+      const maxFile = Math.max(0, ...names.map((n) => fileNumber(n) ?? 0));
+      const id = this.#index.allocate(maxFile);
+      const name = fileNameOf(id, title);
+      const now = this.#now().toISOString();
+      const item: Item = {
+        fm: {
+          id,
+          kind,
+          title,
+          state: 'open',
+          labels: uniq(input.labels ?? []),
+          assignee: input.assignee ?? null,
+          parent,
+          blocked_by: blocked,
+          topic,
+          branch: input.branch ?? null,
+          created: now,
+          updated: now,
+        },
+        body: input.body?.trim() ?? '',
+        comments: [],
+      };
+      const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); });
+      return resumed(() => {
+        this.#log({ event: 'task-written', id, file: name, op: 'create', by: actor.name });
+        if (topic !== null) this.#topicBinding?.bound(id, topic);
+        return this.#viewOf(id, name, written);
+      });
+    });
   }
 
-/**
+  /**
    * A comment, or a verdict: its commit (given, or the branch tip) is resolved with Git before the write, never inside
-   * it. `resumed` wraps the synchronous write that runs after Git answered (the hub times it against its budget).
+   * it. `resumed` times each synchronous continuation after Git and file I/O.
    */
-  async comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<ItemView> {
+  comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed: Resumed = untimed, currentActor?: () => Actor): Promise<ItemView> {
+    return this.#serial(() => this.#comment(actor, rawId, text, verdict, resumed, currentActor), resumed);
+  }
+
+  #comment(actor: Actor, rawId: string, text: string, verdict: VerdictInput | undefined, resumed: Resumed, currentActor?: () => Actor): Promise<ItemView> {
     const body = (text ?? '').trim();
     if (!body && !verdict) throw new TrackerError('a comment needs text');
     checkText(body, 'comment');
     let v: Verdict | undefined;
-    /** Whether this call awaited Git: what follows then runs as a stretch of its own on the event loop. */
-    let awaited = false;
     if (verdict) {
       if (!VERDICT_KINDS.includes(verdict.verdict)) throw new TrackerError(`verdict must be ${VERDICT_KINDS.join(' or ')}`);
       if (!RESULTS.includes(verdict.result)) throw new TrackerError(`result must be ${RESULTS.map((r) => `"${r}"`).join(' or ')}`);
@@ -627,53 +769,60 @@ export class Tracker {
       v = { verdict: verdict.verdict, result: verdict.result, by: formatVerdictBy(actor.name, actor.role), run: verdict.run.trim() };
       if (verdict.commit !== undefined) {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
-        awaited = true;
-        const commit = await this.#resolve(verdict.commit, `the verdict's commit ${verdict.commit}`);
-        if (!commit) throw new TrackerError('commit does not resolve to a Git commit');
-        v.commit = commit;
       }
     }
-    // the branch tip a verdict without a commit records, read now: the write itself runs no git
     let tip: { branch: string; sha: string | null } | null = null;
-    if (v && verdict?.commit === undefined) {
-      const branch = this.#index.get(this.#require(rawId).id)?.branch ?? null;
-      if (branch) {
-        awaited = true;
-        tip = { branch, sha: await this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`) };
-      }
-    }
-    // without an await (a plain comment, a verdict with no branch) the write runs in the request's first stretch
+    // Git resolution belongs to this admitted operation; later writes and views wait behind it.
     const write = () => {
-      const writer = v && currentActor ? currentActor() : actor;
+      const writer = currentActor ? currentActor() : actor;
       if (v) v.by = formatVerdictBy(writer.name, writer.role);
       if (tip?.sha) this.#fresh.noteTip(tip.branch, tip.sha);
-      return this.#writeComment(writer, rawId, body, v, tip);
+      return this.#writeComment(writer, rawId, body, v, tip, resumed, currentActor ? () => {
+        const now = currentActor();
+        if (now.id !== writer.id || now.name !== writer.name || now.role !== writer.role) throw new TrackerError('comment writer changed while the item was being written; nothing was written, retry');
+      } : undefined);
     };
-    return awaited && resumed ? resumed(write) : write();
+    if (v && verdict?.commit !== undefined) {
+      return this.#resolve(verdict.commit, `the verdict's commit ${verdict.commit}`).then(commit => resumed(() => {
+        if (!commit) throw new TrackerError('commit does not resolve to a Git commit');
+        v!.commit = commit;
+        return write();
+      }));
+    }
+    if (v) {
+      const branch = this.#index.get(this.#require(rawId).id)?.branch ?? null;
+      if (branch) return this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`).then(sha => resumed(() => {
+        tip = { branch, sha };
+        return write();
+      }));
+    }
+    return write();
   }
 
-  #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null): ItemView {
-    const view = this.#mutate(rawId, actor, v ? 'verdict' : 'comment', (item) => {
+  async #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null, resumed: Resumed, beforeCommit?: () => void): Promise<ItemView> {
+    const view = await this.#mutate(rawId, actor, v ? 'verdict' : 'comment', (item) => {
       if (v && !v.commit) {
         // a hand edit moved the branch meanwhile: the tip the cache last read for it
         const sha = item.fm.branch === tip?.branch ? tip.sha : this.#fresh.tip(item.fm.branch);
         if (sha) v.commit = sha;
       }
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
-    }, actor);
-    // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
-    // as one (its header lines), so every verdict on record is a notification
-    const recorded = view.comments.at(-1)?.verdict;
-    if (recorded) {
-      for (const listener of [...this.#verdictListeners]) {
-        try {
-          listener(view.id, actor.name, recorded);
-        } catch (err) {
-          this.#log({ event: 'task-verdict-listener-failed', id: view.id, error: err instanceof Error ? err.message : String(err) });
+    }, resumed, actor, beforeCommit);
+    return resumed(() => {
+      // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
+      // as one (its header lines), so every verdict on record is a notification
+      const recorded = view.comments.at(-1)?.verdict;
+      if (recorded) {
+        for (const listener of [...this.#verdictListeners]) {
+          try {
+            listener(view.id, actor.name, recorded);
+          } catch (err) {
+            this.#log({ event: 'task-verdict-listener-failed', id: view.id, error: err instanceof Error ? err.message : String(err) });
+          }
         }
       }
-    }
-    return view;
+      return view;
+    });
   }
 
   /** A ref resolved for a write; Git not answering at all is a typed refusal naming what it could not resolve. */
@@ -685,39 +834,47 @@ export class Tracker {
     }
   }
 
-  edit(actor: Actor, rawId: string, input: EditInput): ItemView {
-    if (input.kind !== undefined && !KINDS.includes(input.kind)) throw new TrackerError(`unknown kind "${input.kind}" (one of ${KINDS.join(', ')})`);
-    if (input.state !== undefined && !STATES.includes(input.state)) throw new TrackerError(`unknown state "${input.state}" (open or closed)`);
-    if (input.title !== undefined && !input.title.trim()) throw new TrackerError('the title cannot be empty');
-    if (input.body !== undefined) checkText(input.body, 'body');
-    const view = this.#mutate(rawId, actor, 'edit', (item) => {
-      const fm = item.fm;
-      if (input.title !== undefined) fm.title = input.title.trim();
-      if (input.body !== undefined) item.body = input.body.trim();
-      if (input.kind !== undefined) fm.kind = input.kind;
-      if (input.state !== undefined) fm.state = input.state;
-      if (input.labels !== undefined) fm.labels = uniq(input.labels);
-      if (input.add_labels) fm.labels = uniq([...fm.labels, ...input.add_labels]);
-      if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
-      if (input.assignee !== undefined) fm.assignee = input.assignee || null;
-    });
-    if (input.state === 'closed') {
-      this.#releaseOnClose(view.id);
-      this.#closed(view.id);
-    }
-    return input.state === 'closed' ? this.view(view.id) : view;
+  edit(actor: Actor, rawId: string, input: EditInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(async () => {
+      if (input.kind !== undefined && !KINDS.includes(input.kind)) throw new TrackerError(`unknown kind "${input.kind}" (one of ${KINDS.join(', ')})`);
+      if (input.state !== undefined && !STATES.includes(input.state)) throw new TrackerError(`unknown state "${input.state}" (open or closed)`);
+      if (input.title !== undefined && !input.title.trim()) throw new TrackerError('the title cannot be empty');
+      if (input.body !== undefined) checkText(input.body, 'body');
+      const view = await this.#mutate(rawId, actor, 'edit', (item) => {
+        const fm = item.fm;
+        if (input.title !== undefined) fm.title = input.title.trim();
+        if (input.body !== undefined) item.body = input.body.trim();
+        if (input.kind !== undefined) fm.kind = input.kind;
+        if (input.state !== undefined) fm.state = input.state;
+        if (input.labels !== undefined) fm.labels = uniq(input.labels);
+        if (input.add_labels) fm.labels = uniq([...fm.labels, ...input.add_labels]);
+        if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
+        if (input.assignee !== undefined) fm.assignee = input.assignee || null;
+      }, resumed, undefined, authorize);
+      return resumed(() => {
+        if (input.state === 'closed') {
+          this.#releaseOnClose(view.id);
+          this.#closed(view.id);
+        }
+        return { ...view, claim: this.#index.claimOf(view.id) };
+      });
+    }, resumed);
   }
 
-  close(actor: Actor, rawId: string, comment?: string): ItemView {
-    const body = comment?.trim() ?? '';
-    checkText(body, 'comment');
-    const view = this.#mutate(rawId, actor, 'close', (item) => {
-      item.fm.state = 'closed';
-      if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
-    });
-    this.#releaseOnClose(view.id);
-    this.#closed(view.id);
-    return this.view(view.id);
+  close(actor: Actor, rawId: string, comment?: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(async () => {
+      const body = comment?.trim() ?? '';
+      checkText(body, 'comment');
+      const view = await this.#mutate(rawId, actor, 'close', (item) => {
+        item.fm.state = 'closed';
+        if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
+      }, resumed, undefined, authorize);
+      return resumed(() => {
+        this.#releaseOnClose(view.id);
+        this.#closed(view.id);
+        return { ...view, claim: this.#index.claimOf(view.id) };
+      });
+    }, resumed);
   }
 
   #releaseOnClose(id: string): void {
@@ -728,29 +885,37 @@ export class Tracker {
     this.#changed(id);
   }
 
-  link(actor: Actor, rawId: string, input: LinkInput): ItemView {
-    const { id } = this.#require(rawId);
-    const parent = input.parent === undefined ? undefined : input.parent === null ? null : this.#ref(input.parent, id, 'parent');
-    const add = (input.blocked_by ?? []).map((b) => this.#ref(b, id, 'blocked_by'));
-    const remove = (input.unblock ?? []).map((b) => normalizeId(b) ?? b);
-    const topic = input.topic === undefined ? undefined : input.topic?.trim() || null;
-    if (topic !== undefined) this.#checkTopic(id, topic);
-    const view = this.#mutate(id, actor, 'link', (item) => {
-      const fm = item.fm;
-      if (parent !== undefined) fm.parent = parent;
-      fm.blocked_by = uniq([...fm.blocked_by, ...add]).filter((b) => !remove.includes(b));
-      if (topic !== undefined) fm.topic = topic;
-      if (input.branch !== undefined) fm.branch = input.branch || null;
-    });
-    if (topic !== undefined) this.#topicBinding?.bound(id, topic);
-    return view;
+  link(actor: Actor, rawId: string, input: LinkInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(async () => {
+      const { id } = this.#require(rawId);
+      const parent = input.parent === undefined ? undefined : input.parent === null ? null : this.#ref(input.parent, id, 'parent');
+      const add = (input.blocked_by ?? []).map((b) => this.#ref(b, id, 'blocked_by'));
+      const remove = (input.unblock ?? []).map((b) => normalizeId(b) ?? b);
+      const topic = input.topic === undefined ? undefined : input.topic?.trim() || null;
+      if (topic !== undefined) this.#checkTopic(id, topic);
+      const view = await this.#mutate(id, actor, 'link', (item) => {
+        const fm = item.fm;
+        if (parent !== undefined) fm.parent = parent;
+        fm.blocked_by = uniq([...fm.blocked_by, ...add]).filter((b) => !remove.includes(b));
+        if (topic !== undefined) fm.topic = topic;
+        if (input.branch !== undefined) fm.branch = input.branch || null;
+      }, resumed, undefined, () => { authorize(); this.#checkTopic(id, topic ?? null); });
+      return resumed(() => {
+        if (topic !== undefined) this.#topicBinding?.bound(id, topic);
+        return view;
+      });
+    }, resumed);
   }
 
   /** The hub's own write of an item's `topic` field (a binding it already made: `topic.create` with an item). */
-  writeTopic(actor: Actor, rawId: string, topic: string | null): ItemView {
-    return this.#mutate(rawId, actor, 'link', (item) => {
-      item.fm.topic = topic;
-    });
+  writeTopic(actor: Actor, rawId: string, topic: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(async () => {
+      return this.#mutate(rawId, actor, 'link', (item) => {
+        if (item.fm.state === 'closed') throw new TrackerError(`${item.fm.id} is closed: a closed unit of work gets no new topic`);
+        if (item.fm.topic !== null && item.fm.topic !== topic) throw new TrackerError(`${item.fm.id} already has a topic`);
+        item.fm.topic = topic;
+      }, resumed, undefined, authorize);
+    }, resumed);
   }
 
   // ---------------------------------------------------------------- imports
@@ -769,6 +934,39 @@ export class Tracker {
     return out;
   }
 
+  filesAsync(resumed: Resumed = untimed): Promise<Array<{ file: string; text: string; item: Item }>> {
+    return this.#serial(() => this.#filesAsync(resumed), resumed);
+  }
+
+  async #filesAsync(resumed: Resumed): Promise<Array<{ file: string; text: string; item: Item }>> {
+    const names = await this.#files.readdir(this.#dir);
+    const found = await resumed(() => Promise.all(names.filter(n => fileNumber(n) !== null).map(async file => {
+      try {
+        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        return resumed(() => ({ file, text, item: parseItem(text, file) }));
+      } catch { return null; } // unreadable files are reported by the watcher
+    })));
+    return resumed(() => found.filter(item => item !== null));
+  }
+
+  /** Synchronous batch admission reserves the import lookup/ID space before its first await. */
+  serializeImports<T>(work: (batch: TrackerImportBatch) => Promise<T>, resumed: Resumed): Promise<T> {
+    return this.#serial(() => work({
+      filesAsync: (timing = resumed) => this.#filesAsync(timing),
+      reserveIdAsync: (timing = resumed) => this.#reserveIdAsync(timing),
+      writeItem: (actor, op, item, existing, timing = resumed, authorize = () => {}) => this.#writeItem(actor, op, item, existing, timing, authorize),
+    }), resumed);
+  }
+
+  reserveIdAsync(resumed: Resumed = untimed): Promise<string> {
+    return this.#serial(() => this.#reserveIdAsync(resumed), resumed);
+  }
+
+  async #reserveIdAsync(resumed: Resumed): Promise<string> {
+    const names = await this.#files.readdir(this.#dir);
+    return resumed(() => this.#index.allocate(Math.max(0, ...names.map(n => fileNumber(n) ?? 0))));
+  }
+
   /** Reserve the next item id before its file exists (an import numbers a whole batch before it links it). */
   reserveId(): string {
     const maxFile = Math.max(0, ...readdirSync(this.#dir).map((n) => fileNumber(n) ?? 0));
@@ -780,13 +978,27 @@ export class Tracker {
    * file it replaces, with that file's text, or null for a new item. Nothing is written when the text would
    * not change, so `updated` moves only with a real change.
    */
-  writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null): 'created' | 'updated' | 'unchanged' {
-    if (existing && serializeItem(item) === existing.text) return 'unchanged';
-    item.fm.updated = this.#now().toISOString();
+  writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<'created' | 'updated' | 'unchanged'> {
+    return this.#serial(() => this.#writeItem(actor, op, item, existing, resumed, authorize), resumed);
+  }
+
+  async #writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed, authorize: () => void): Promise<'created' | 'updated' | 'unchanged'> {
     const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
-    this.#write(file, item);
-    this.#log({ event: 'task-written', id: item.fm.id, file, op, by: actor.name });
-    return existing ? 'updated' : 'created';
+    const prepare = (): Promise<'created' | 'updated' | 'unchanged'> => {
+      authorize();
+      if (existing && serializeItem(item) === existing.text) return Promise.resolve('unchanged');
+      item.fm.updated = this.#now().toISOString();
+      return this.#write(file, item, resumed, undefined, undefined, authorize).then(() => resumed(() => {
+        this.#log({ event: 'task-written', id: item.fm.id, file, op, by: actor.name });
+        return existing ? 'updated' : 'created';
+      }));
+    };
+    if (!existing) return prepare();
+    const latest = await this.#files.readFile(join(this.#dir, existing.file), 'utf8');
+    return resumed(() => {
+      if (latest !== existing.text) throw new TrackerError(`${item.fm.id} changed while importing; retry the import`);
+      return prepare();
+    });
   }
 
   /**
@@ -807,6 +1019,9 @@ export class Tracker {
         }),
     };
   }
+
+  /** The live claim is an index fact, read without opening the item file. */
+  claimOf(rawId: string): Claim | null { return this.#index.claimOf(this.#require(rawId).id); }
 
   /** Take (or with `release`, let go of) the live hold on an item. Only the hub knows of it; the file is untouched. */
   claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}): { id: string; claim: Claim | null } {
@@ -842,25 +1057,22 @@ export class Tracker {
 }
 
 /** The whole file behind `fd`, from its start, as it is now. */
-function readWhole(fd: number): string {
-  const size = fstatSync(fd).size;
-  const buf = Buffer.alloc(size);
-  let off = 0;
-  while (off < size) {
-    const n = readSync(fd, buf, off, size - off, off);
-    if (n === 0) break;
-    off += n;
-  }
-  return buf.subarray(0, off).toString('utf8');
-}
-
-/** The hash of what `read` returns, or null when it cannot be read (gone). */
-function hashOrNull(read: () => string): string | null {
-  try {
-    return hashOf(read());
-  } catch {
-    return null;
-  }
+async function readWhole(fd: FileHandle, resumed: Resumed): Promise<string> {
+  const info = await fd.stat();
+  return resumed(() => {
+    const buf = Buffer.alloc(info.size);
+    let off = 0;
+    const next = (): Promise<string> => {
+      if (off >= info.size) return Promise.resolve(buf.subarray(0, off).toString('utf8'));
+      return fd.read(buf, off, info.size - off, off).then(result => resumed(() => {
+        const { bytesRead } = result;
+        off += bytesRead;
+        if (bytesRead === 0) return buf.subarray(0, off).toString('utf8');
+        return next();
+      }));
+    };
+    return next();
+  });
 }
 
 const uniq = (xs: string[]): string[] => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
@@ -872,3 +1084,6 @@ function checkText(text: string, what: string): void {
     if (/^### .+ · \S+\s*$/.test(line)) throw new TrackerError(`the ${what} cannot contain a line shaped like a comment header ("### <author> · <time>")`);
   }
 }
+
+/** Only the import callback can use these unqueued operations while it owns the global tail. */
+export type TrackerImportBatch = Pick<Tracker, 'filesAsync' | 'reserveIdAsync' | 'writeItem'>;

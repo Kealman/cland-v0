@@ -83,13 +83,19 @@ test('a handler over the budget is logged as slow-request with its tool, client 
   assert.ok(slow.some((r) => r.tool === 'topic.list' && r.client === 'slow-ui' && (r.ms as number) >= 1000), JSON.stringify(slow));
 });
 
-test('a verdict write that resumes after Git into a slow synchronous write is timed and logged as slow-request (phase resumed)', async (t) => {
+test('a verdict write with a slow post-commit logger is timed as resumed work after async Git and disk', async (t) => {
   const root = await tempProject(t);
   const records: Array<Record<string, unknown>> = [];
-  const log = (r: Record<string, unknown>) => records.push(r);
-  // Git answers after a real wait (the handler awaits), then the write holds the loop for 400 ms
+  const log = (r: Record<string, unknown>) => {
+    records.push(r);
+    if (r.event === 'task-written' && r.op === 'verdict') {
+      const until = performance.now() + 400;
+      while (performance.now() < until) { /* deliberately slow post-commit consumer */ }
+    }
+  };
+  // Git and disk are awaited; the logger blocks only after the commit completes.
   const git: Git = (args) => new Promise((resolve) => setTimeout(() => resolve(args[0] === 'rev-parse' ? 'a'.repeat(40) : ''), 20));
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, git, writePauseMs: 400 });
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, git });
   tracker.start();
   t.after(() => tracker.stop());
   const hub = await startHub({ log, tracker });

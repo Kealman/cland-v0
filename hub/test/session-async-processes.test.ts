@@ -13,7 +13,8 @@ import { projectSessions } from '../src/adapters/index.ts';
 import { serveProject } from '../src/hub/daemon.ts';
 import { connectSocket, connectUi, eventually, fakeCodex, startDaemon, tempProject } from './harness.ts';
 
-// T-75: shared gate + read/refusal dispatch + audit logging. Tracker item mutations remain T-77;
+// T-75: shared gate + read/refusal dispatch + audit logging. T-77 adds tracker/filesystem
+// coverage in tracker-native-boundary.test.ts (territory reads T-78; native adapter files T-79);
 // startup/shutdown are outside this guard. The session paths below retain T-70's process boundary coverage.
 test('shared permission gate, read/refusal dispatch and audit logging use no synchronous filesystem or process calls', async t => {
   const root = await tempProject(t);
@@ -167,7 +168,7 @@ test('claim-conflict cleanup counts harness-ended logging as one resumed slow re
   await eventually('startup cleanup settled', async () => records.some(entry => entry.event === 'orphan-sweep-completed') ? true : undefined);
   const tracker = new Tracker({ root, db: daemon.layout.db, log });
   t.after(() => tracker.stop());
-  tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
+  await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
   tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
   const project = projectSessions({ core: daemon.hub.core, root, db: daemon.layout.db, discoveryFile: daemon.layout.discovery, log, env: { ...process.env, ...fake.env } });
   t.after(() => project.close());

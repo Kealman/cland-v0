@@ -165,7 +165,7 @@ export class TaskMerges {
         resumed(() => this.log({ event: recovered ? 'merge-resumed' : 'task-merged', id, session: actor.name, ...state.landed!, ...(reason === undefined ? {} : { override: reason }) }));
       } catch (err) { return this.#incomplete(result, 'record', err instanceof Error ? err.message : String(err), resumed); }
       if (landingFailure) return this.#incomplete(result, landingFailure.step, landingFailure.error, resumed);
-      const failure = resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`));
+      const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed));
       return failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result;
     }).then(async result => {
       if (result.followUp) return result;

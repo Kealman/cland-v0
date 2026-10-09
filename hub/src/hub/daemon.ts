@@ -100,7 +100,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
-  const tracker = new Tracker({ root, db: l.db, log, ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  const tracker = new Tracker({ root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
@@ -143,7 +143,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     });
   } catch (err) {
     await roles.stop();
-    tracker.stop();
+    await tracker.stop();
     try { await closeLogs(); } finally { lock.release(); }
     throw err;
   }
@@ -165,8 +165,8 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       await ws?.close();
       await sweep;
       adapters?.close();
+      await tracker.stop();
       await hub.close();
-      tracker.stop();
       await roles.stop();
       // the discovery file and then the lock go last: a successor can only start once this hub is gone
       removeDiscovery(l.discovery, process.pid);
@@ -191,7 +191,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       ws = null;
       if (listen === 'required') {
         await hub.close();
-        tracker.stop();
+        await tracker.stop();
         await roles.stop();
         try { await closeLogs(); } finally { lock.release(); }
         throw err;

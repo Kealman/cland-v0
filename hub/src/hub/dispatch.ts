@@ -714,9 +714,17 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { outcomes, topic } });
             break;
           }
-          case 'topic.create':
-            peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.createTopic(frame.title, frame.item, me) } });
+          case 'topic.create': {
+            const resumed = this.#guard.resumer(frame.type, me);
+            const authorize = () => {
+              const current = connection && core.isCurrent(connection) ? connection : null;
+              if (!current || !this.#permitted(current, frame, peer, false)) throw new ToolForbidden(current?.role ?? null, frame.type, 'permission changed during topic binding');
+            };
+            later(frame.type, core.createTopic(frame.title, frame.item, me, resumed, authorize).then(
+              topic => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { topic } } as HubFrame)),
+              err => resumed(() => Dispatcher.#failure(frame.id, err))));
             break;
+          }
           case 'resolve':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.resolveTopic(frame.topic, me) } });
             break;
@@ -751,8 +759,19 @@ export class Dispatcher {
           case 'topic.delete':
             core.deleteTopic(frame.topic);
             return answer({ deleted: frame.topic });
-          case 'topic.create':
-            return answer({ topic: core.createTopic(frame.title, frame.item) });
+          case 'topic.create': {
+            const resumed = this.#guard.resumer(frame.type, client);
+            const original = this.#asSession(frame);
+            const authorize = () => {
+              if (!original) return;
+              const current = this.#asSession(frame);
+              if (!current || !this.#permitted(current, frame, peer, false)) throw new ToolForbidden(current?.role ?? null, frame.type, 'permission changed during topic binding');
+            };
+            later(frame.type, core.createTopic(frame.title, frame.item, HUMAN_SESSION, resumed, authorize).then(
+              topic => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { topic } } as HubFrame)),
+              err => resumed(() => Dispatcher.#failure(frame.id, err))));
+            return;
+          }
           case 'topic.close':
             return answer({ topic: core.closeTopic(frame.topic) });
           case 'topic.resolve':

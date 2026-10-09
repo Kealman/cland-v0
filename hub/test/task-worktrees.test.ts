@@ -299,7 +299,7 @@ test("cland worktree prune shows a closed item's unmerged commits and removes it
 // ------------------------------------------------------------------ the request budget (T-67) after the awaits
 
 /** A Git project on its territory, with a real tracker and an in-process hub whose sessions are a stand-in. */
-async function guardedHub(t: TestContext, options: { writePauseMs?: number; sessionsList?: () => HarnessProcessView[] } = {}) {
+async function guardedHub(t: TestContext, options: { clock?: { now: number }; sessionsList?: () => HarnessProcessView[] } = {}) {
   const root = await tempProject(t, 'cland-worktrees-guard-');
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.name', 'Test');
@@ -311,10 +311,10 @@ async function guardedHub(t: TestContext, options: { writePauseMs?: number; sess
   provisionTerritory(new Report(root), root);
   const records: Array<Record<string, unknown>> = [];
   const log = (r: Record<string, unknown>) => records.push(r);
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, ...(options.writePauseMs ? { writePauseMs: options.writePauseMs } : {}) });
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log });
   tracker.start();
   t.after(() => tracker.stop());
-  const hub = await startHub({ log, tracker });
+  const hub = await startHub({ log, tracker, ...(options.clock ? { guard: { now: () => options.clock!.now } } : {}) });
   t.after(() => hub.close());
   const process = { name: 'impl-1', harness: 'claude-code', role: 'implementer', sessionId: 'sess-impl-1', cwd: join(root, '.cland', 'worktrees', 'T-1'), item: 'T-1', status: 'running' } as HarnessProcessView;
   hub.dispatcher.useSessions({ launch: async () => process, list: options.sessionsList ?? (() => []) } as unknown as Sessions);
@@ -328,16 +328,25 @@ const hold = (ms: number) => {
   }
 };
 
-test("session.launch with an item: the item's write after Git is timed as phase resumed (a slow one is logged once)", async (t) => {
-  const { records, hub } = await guardedHub(t, { writePauseMs: 400 });
+test("session.launch with an item: a synchronous branch-link subscriber after Git is timed once as resumed", async (t) => {
+  const clock = { now: 0 };
+  const { records, tracker, hub } = await guardedHub(t, { clock });
   const ui = await connectWsUi(t, hub, 'launcher-ui');
   assert.equal((await ui.request({ type: 'task.create', title: 'Guarded', kind: 'task' })).ok, true);
+  let measured = false;
+  tracker.onChange(change => {
+    if (!measured && change.id === 'T-1' && change.item?.branch) {
+      measured = true;
+      clock.now += 400;
+    }
+  });
   records.length = 0;
   const r = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', item: 'T-1' }, 30_000);
   assert.equal(r.ok, true, r.error);
   const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'session.launch');
   assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'launcher-ui']], JSON.stringify(slow));
-  assert.ok((slow[0]?.ms as number) >= 400, `${String(slow[0]?.ms)} ms`);
+  assert.equal(measured, true, 'the real branch-link event reached its synchronous subscriber');
+  assert.equal(slow[0]?.ms, 400);
 });
 
 test('worktree.list: its work after the Git reads is timed as phase resumed (a slow one is logged once)', async (t) => {

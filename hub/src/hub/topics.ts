@@ -4,6 +4,7 @@
 import type { TopicStatus } from '../protocol.ts';
 import { parseTags } from '../address.ts';
 import { ROLE_NAMES } from '../names.ts';
+import type { Resumed } from './budget.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 
 /**
@@ -70,7 +71,8 @@ export type TopicItems = {
   /** The item's normalized id (`T-12`), with the topic its file names (or null); throws why it cannot be bound. */
   check: (item: string) => { id: string; topic: string | null; state: string };
   /** Record the binding in the item's file (`topic:`), through the tracker. */
-  bind: (item: string, topic: string) => void;
+  checkAsync: (item: string, resumed: Resumed) => Promise<{ id: string; topic: string | null; state: string }>;
+  bind: (item: string, topic: string, resumed: Resumed, authorize: () => void) => Promise<unknown>;
 };
 
 /** The tracker behind a topic's binding: an item is checked by its file, and the binding written into it by the hub. */
@@ -81,6 +83,10 @@ export function trackerItems(tracker: Tracker): TopicItems {
       const view = tracker.view(item);
       return { id: view.id, topic: view.topic ?? null, state: view.state };
     },
-    bind: (item, topic) => void tracker.writeTopic(hub, item, topic),
+    checkAsync: async (item, resumed) => {
+      const view = await tracker.viewAsync(item, resumed);
+      return resumed(() => ({ id: view.id, topic: view.topic ?? null, state: view.state }));
+    },
+    bind: (item, topic, resumed, authorize) => tracker.writeTopic(hub, item, topic, resumed, authorize),
   };
 }

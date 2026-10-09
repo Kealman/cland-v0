@@ -317,18 +317,23 @@ test('the configured task base is the merge target and a root on a different bra
   assert.equal(git(root, 'rev-parse', 'dev'), dev);
 });
 
-test('merge measures the item close after awaited Git as resumed synchronous work', async (t) => {
-  const { root, rev } = await project(t, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '400' });
-  const work = await task(root);
+test('merge measures a synchronous close subscriber after awaited Git as one resumed stretch', async (t) => {
+  const clock = { now: 0 };
+  const { tracker, ui, rev, records, work } = await observableProject(t, undefined, clock);
   await review(rev, work.id);
-  json(await cland(root, 'merge', work.id, '--json'));
-  const records = (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter(Boolean).flatMap((line) => {
-    try { return [JSON.parse(line) as { event?: string; tool?: string; phase?: string; ms?: number }]; }
-    catch { return []; }
+  let measured = false;
+  tracker.onChange(change => {
+    if (!measured && change.id === work.id && change.item?.state === 'closed') {
+      measured = true;
+      clock.now += 400;
+    }
   });
-  const close = records.filter((r) => r.event === 'slow-request' && r.tool === 'merge' && r.phase === 'resumed');
-  assert.equal(close.length, 1);
-  assert.ok((close[0]?.ms ?? 0) >= 400);
+  records.length = 0;
+  const response = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(response.ok, true, response.error);
+  assert.equal(measured, true, 'the real close event reached its synchronous subscriber');
+  const close = records.filter(r => r.event === 'slow-request' && r.tool === 'merge');
+  assert.deepEqual(close.map(r => [r.phase, r.ms]), [['resumed', 400]]);
 });
 
 test('freshness uses configured main after an unchanged task is rebased while dev lags', async (t) => {
@@ -581,10 +586,10 @@ async function observableProject(t: TestContext, run?: (real: Git) => Git, clock
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run?.(gitIn(root)) ?? gitIn(root) });
   const records: Array<Record<string, unknown>> = [];
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: r => { sink?.(r); records.push(r); }, ...(clock ? { guard: { now: () => clock.now } } : {}) });
-  t.after(async () => { await hub.close(); tracker.stop(); });
+  t.after(async () => { await hub.close(); await tracker.stop(); });
   const ui = await connectWsUi(t, hub);
   const human = { id: 'human', name: 'human', role: null };
-  const id = tracker.create(human, { title: 'Observed parser' }).id;
+  const id = (await tracker.create(human, { title: 'Observed parser' })).id;
   tracker.claim(human, id);
   // The claim frame uses the same real worktree path as the daemon seam.
   const claimed = await ui.request({ type: 'task.claim', item: id });

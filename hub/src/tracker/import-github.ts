@@ -2,6 +2,7 @@
 // fetched by the CLI, becomes items. An issue is found again by the `github` reference its item carries, so a
 // re-run updates in place; an item whose text would not change is not written at all.
 import { COMMENTS_HEADING, type Comment, type Item, type Kind } from './item.ts';
+import type { Resumed } from '../hub/budget.ts';
 import { TrackerError, type Actor, type Tracker } from './tracker.ts';
 
 export type IssueRef = { repo: string; number: number };
@@ -136,32 +137,38 @@ function checkIssue(i: unknown): asserts i is ImportedIssue {
 }
 
 /** Import one batch: number the new issues first, then build and write every item with its edges resolved. */
-export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest): { repo: string; results: ImportOutcome[] } {
-  if (!isStr(req.repo) || !/^[^/\s]+\/[^/\s]+$/.test(req.repo)) throw new TrackerError('task.import: `repo` must be <owner>/<name>');
-  if (!Array.isArray(req.issues)) throw new TrackerError('task.import: `issues` must be a list');
-  for (const i of req.issues) checkIssue(i);
-
-  const byKey = new Map<string, { id: string; file: string; text: string; item: Item }>();
-  for (const f of tracker.files()) {
-    const g = f.item.fm.github;
-    if (g && !byKey.has(key(g))) byKey.set(key(g), { id: f.item.fm.id, ...f });
-  }
-  const ids = new Map<string, string>();
-  for (const [k, v] of byKey) ids.set(k, v.id);
-  for (const issue of req.issues) {
-    const k = key({ repo: req.repo, number: issue.number });
-    if (!ids.has(k)) ids.set(k, tracker.reserveId());
-  }
-  const resolve = (r: IssueRef): string | null => ids.get(key(r)) ?? null;
-
-  const results: ImportOutcome[] = [];
-  for (const issue of req.issues) {
-    const k = key({ repo: req.repo, number: issue.number });
-    const existing = byKey.get(k) ?? null;
-    const id = ids.get(k) as string;
-    const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve });
-    const outcome = tracker.writeItem(actor, 'import', item, existing);
-    results.push({ number: issue.number, id, outcome, comments_added: commentsAdded, unresolved });
-  }
-  return { repo: req.repo, results };
+export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest, resumed: Resumed = work => work(), authorize: () => void = () => {}): Promise<{ repo: string; results: ImportOutcome[] }> {
+  return tracker.serializeImports(async batch => {
+    if (!isStr(req.repo) || !/^[^/\s]+\/[^/\s]+$/.test(req.repo)) throw new TrackerError('task.import: `repo` must be <owner>/<name>');
+    if (!Array.isArray(req.issues)) throw new TrackerError('task.import: `issues` must be a list');
+    for (const i of req.issues) checkIssue(i);
+    const snapshots = await batch.filesAsync(resumed);
+    return resumed(async () => {
+      const byKey = new Map<string, { id: string; file: string; text: string; item: Item }>();
+      for (const f of snapshots) {
+        const g = f.item.fm.github;
+        if (g && !byKey.has(key(g))) byKey.set(key(g), { id: f.item.fm.id, ...f });
+      }
+      const ids = new Map([...byKey].map(([k, v]) => [k, v.id]));
+      const missing = [...new Set(req.issues.map(issue => key({ repo: req.repo, number: issue.number })))].filter(k => !ids.has(k));
+      const reserved = await Promise.all(missing.map(() => batch.reserveIdAsync(resumed)));
+      return resumed(() => {
+        missing.forEach((k, i) => ids.set(k, reserved[i]!));
+        const resolve = (r: IssueRef): string | null => ids.get(key(r)) ?? null;
+        const results: ImportOutcome[] = [];
+        let offset = 0;
+        const next = (previous?: ImportOutcome): Promise<{ repo: string; results: ImportOutcome[] }> => {
+          if (previous) results.push(previous);
+          authorize();
+          const issue = req.issues[offset++];
+          if (!issue) return Promise.resolve({ repo: req.repo, results });
+          const existing = byKey.get(key({ repo: req.repo, number: issue.number })) ?? null;
+          const id = ids.get(key({ repo: req.repo, number: issue.number }))!;
+          const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve });
+          return batch.writeItem(actor, 'import', item, existing, resumed, authorize).then(outcome => resumed(() => next({ number: issue.number, id, outcome, comments_added: commentsAdded, unresolved })));
+        };
+        return next();
+      });
+    });
+  }, resumed);
 }

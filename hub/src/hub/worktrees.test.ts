@@ -4,7 +4,7 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,11 +19,11 @@ test('a claim another session takes during the launch refuses it: the claim stay
   const root = await mkdtemp(join(tmpdir(), 'cland-worktrees-unit-'));
   const tracker = new Tracker({ root, db: join(root, 'hub.db') });
   t.after(async () => {
-    tracker.stop();
+    await tracker.stop();
     await rm(root, { recursive: true, force: true });
   });
   // no territory here: the launch goes to the project root, which is all this race needs
-  tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
+  await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Contested', kind: 'task' });
   tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1');
   const process = { name: 'impl-1', role: 'implementer', sessionId: 'sess-impl-1', cwd: root, item: null } as HarnessProcessView;
   const stopped: string[] = [];
@@ -66,7 +66,7 @@ async function territoryProject(t: TestContext, sessions: () => SessionCwd[]) {
   provisionTerritory(new Report(root), root);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   t.after(async () => {
-    tracker.stop();
+    await tracker.stop();
     await rm(root, { recursive: true, force: true });
   });
   return { root, git, tracker, worktrees: new TaskWorktrees({ tracker, sessions }) };
@@ -76,7 +76,7 @@ const HUMAN = { id: 'human', name: 'human', role: null };
 
 test('merged cleanup restores the worktree when the branch moves between removal and CAS deletion', async (t) => {
   const { root, git, tracker, worktrees } = await territoryProject(t, () => []);
-  tracker.create(HUMAN, { title: 'Raced cleanup', kind: 'task' });
+  await tracker.create(HUMAN, { title: 'Raced cleanup', kind: 'task' });
   const { worktree } = await worktrees.afterClaim('T-1', 'human');
   assert.ok(worktree);
   const tip = git('rev-parse', worktree.branch);
@@ -94,9 +94,9 @@ test('prune checks again under the lock: an item reopened, or a session entering
   // the sessions as the hub sees them: whatever the test makes happen while the listing reads Git
   let during: () => SessionCwd[] = () => [];
   const { root, git, tracker, worktrees } = await territoryProject(t, () => during());
-  for (const title of ['Reopened', 'Entered', 'Gone']) tracker.create(HUMAN, { title, kind: 'task' });
+  for (const title of ['Reopened', 'Entered', 'Gone']) await tracker.create(HUMAN, { title, kind: 'task' });
   for (const id of ['T-1', 'T-2', 'T-3']) assert.ok((await worktrees.afterClaim(id, 'human')).worktree, id);
-  for (const id of ['T-1', 'T-2', 'T-3']) tracker.close(HUMAN, id);
+  for (const id of ['T-1', 'T-2', 'T-3']) await tracker.close(HUMAN, id);
   const path = (id: string) => join(root, '.cland', 'worktrees', id);
 
   // after the listing, while prune removes T-3 (Git under the lock): T-1 is reopened and impl-2 enters T-2's worktree.
@@ -106,7 +106,8 @@ test('prune checks again under the lock: an item reopened, or a session entering
     calls++;
     if (calls === 1) return [];
     if (calls === 2) {
-      tracker.edit(HUMAN, 'T-1', { state: 'open' });
+      const file = join(root, tracker.view('T-1').path);
+      writeFileSync(file, readFileSync(file, 'utf8').replace('state: closed', 'state: open'));
       return [];
     }
     return [{ name: 'impl-2', cwd: join(path('T-2'), 'src') }];
@@ -127,7 +128,7 @@ test('prune checks again under the lock: an item reopened, or a session entering
 
 test('while a launch for an item is under way, a prune leaves its worktree alone and a second launch for it is refused', async (t) => {
   const { root, tracker, worktrees } = await territoryProject(t, () => []);
-  tracker.create(HUMAN, { title: 'Launching', kind: 'task' });
+  await tracker.create(HUMAN, { title: 'Launching', kind: 'task' });
   const path = join(root, '.cland', 'worktrees', 'T-1');
   const process = { name: 'impl-1', role: 'implementer', sessionId: 'sess-impl-1', cwd: path, item: 'T-1' } as HarnessProcessView;
   let pruned: Awaited<ReturnType<TaskWorktrees['prune']>> | null = null;
@@ -135,9 +136,10 @@ test('while a launch for an item is under way, a prune leaves its worktree alone
     // while the harness starts, the item is closed and the human prunes it
     launch: async () => {
       await assert.rejects(worktrees.launch(sessions, { name: 'impl-3', role: 'implementer', item: 'T-1' }), /^Error: T-1: another session is being launched for it$/);
-      tracker.close(HUMAN, 'T-1');
+      await tracker.close(HUMAN, 'T-1');
       pruned = await worktrees.prune(['T-1']);
-      tracker.edit(HUMAN, 'T-1', { state: 'open' });
+      const file = join(root, tracker.view('T-1').path);
+      writeFileSync(file, readFileSync(file, 'utf8').replace('state: closed', 'state: open'));
       return process;
     },
   } as unknown as Sessions;
@@ -150,7 +152,7 @@ test('while a launch for an item is under way, a prune leaves its worktree alone
 
 test('two launches for one item at once: only one goes on; its failed spawn releases only its own reservation, and a prune during the next launch is still refused (rev-6 on T-58)', async (t) => {
   const { root, tracker, worktrees } = await territoryProject(t, () => []);
-  tracker.create(HUMAN, { title: 'Twice', kind: 'task' });
+  await tracker.create(HUMAN, { title: 'Twice', kind: 'task' });
   const path = join(root, '.cland', 'worktrees', 'T-1');
   const spawning = Promise.withResolvers<void>();
   const failSpawn = Promise.withResolvers<void>();
@@ -175,9 +177,9 @@ test('two launches for one item at once: only one goes on; its failed spawn rele
   const b = worktrees.launch(second, { name: 'impl-2', role: 'implementer', item: 'T-1' });
   await assert.rejects(b, /^Error: T-1: another session is being launched for it$/);
   await spawning.promise;
-  tracker.close(HUMAN, 'T-1');
+  await tracker.close(HUMAN, 'T-1');
   assert.deepEqual((await worktrees.prune(['T-1'])).failed, [{ item: 'T-1', error: 'T-1: a session is being launched in its worktree' }]);
-  tracker.edit(HUMAN, 'T-1', { state: 'open' });
+  await tracker.edit(HUMAN, 'T-1', { state: 'open' });
   // the first spawn fails: its cleanup releases its own reservation, nothing else
   failSpawn.resolve();
   await assert.rejects(a, /the harness did not start/);
@@ -187,9 +189,10 @@ test('two launches for one item at once: only one goes on; its failed spawn rele
   let prunedDuring: Awaited<ReturnType<TaskWorktrees['prune']>> | null = null;
   const third = {
     launch: async () => {
-      tracker.close(HUMAN, 'T-1');
+      await tracker.close(HUMAN, 'T-1');
       prunedDuring = await worktrees.prune(['T-1']);
-      tracker.edit(HUMAN, 'T-1', { state: 'open' });
+      const file = join(root, tracker.view('T-1').path);
+      writeFileSync(file, readFileSync(file, 'utf8').replace('state: closed', 'state: open'));
       return { name: 'impl-2', role: 'implementer', sessionId: 'sess-impl-2', cwd: path, item: 'T-1' } as HarnessProcessView;
     },
   } as unknown as Sessions;
@@ -198,6 +201,6 @@ test('two launches for one item at once: only one goes on; its failed spawn rele
   assert.equal(launched.claim?.session, 'impl-2');
   assert.ok(existsSync(path));
   // once that launch is done the item is no longer reserved: closed, it can be pruned
-  tracker.close(HUMAN, 'T-1');
+  await tracker.close(HUMAN, 'T-1');
   assert.deepEqual((await worktrees.prune(['T-1'])).removed.map((r) => r.item), ['T-1']);
 });

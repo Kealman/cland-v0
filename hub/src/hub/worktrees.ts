@@ -96,20 +96,21 @@ export class TaskWorktrees {
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed): Promise<TaskWorktree> {
     const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch });
     // the item as it is now: it may have changed while Git worked
+    const current = await this.#tracker.viewAsync(view.id, resumed);
+    if (current.branch !== worktree.branch) await resumed(() => this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch }, resumed));
     resumed(() => {
-      if (this.#tracker.view(view.id).branch !== worktree.branch) this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch });
+      if (worktree.createdWorktree) {
+        this.#log({
+          event: 'task-worktree',
+          id: view.id,
+          branch: worktree.branch,
+          path: relative(this.root, worktree.path),
+          base: worktree.base,
+          createdBranch: worktree.createdBranch,
+          ...(session ? { session } : {}),
+        });
+      }
     });
-    if (worktree.createdWorktree) {
-      this.#log({
-        event: 'task-worktree',
-        id: view.id,
-        branch: worktree.branch,
-        path: relative(this.root, worktree.path),
-        base: worktree.base,
-        createdBranch: worktree.createdBranch,
-        ...(session ? { session } : {}),
-      });
-    }
     return worktree;
   }
 
@@ -118,7 +119,7 @@ export class TaskWorktrees {
     return this.serial(async () => {
       let view: ItemView;
       try {
-        view = this.#tracker.view(id);
+        view = await this.#tracker.viewAsync(id, resumed);
       } catch (err) {
         return { worktree: null, reason: err instanceof Error ? err.message : String(err) };
       }
@@ -144,7 +145,7 @@ export class TaskWorktrees {
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     if (request.role !== 'implementer') throw new Error('`item` is for an Implementer (--role implementer); a Reviewer or QA session stands in a worktree with cwd');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
-    const view = this.#tracker.view(request.item);
+    const view = await this.#tracker.viewAsync(request.item, resumed);
     // a claim the launch may take over: none, the Coordinator's, the human's, or one under the new session's name
     const yields = (held: Claim | null): boolean => !held || held.session === request.name || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
@@ -160,7 +161,7 @@ export class TaskWorktrees {
       if (this.#launching.has(view.id)) throw new Error(`${view.id}: another session is being launched for it`);
       this.#launching.set(view.id, token);
       try {
-        const now = this.#tracker.view(view.id);
+        const now = await this.#tracker.viewAsync(view.id, resumed);
         const reason = await this.#ineligible(now);
         let worktree: TaskWorktree | null = null;
         if (reason === null) {
@@ -200,7 +201,7 @@ export class TaskWorktrees {
     // the claim as it is now: another session may have taken it while the harness started. The check and the claim
     // run in one stretch of the event loop (timed through `resumed`), so nothing comes between them.
     const taken = resumed(() => {
-      const held = this.#tracker.view(id).claim;
+      const held = this.#tracker.claimOf(id);
       if (!yields(held) && held?.sessionId !== process.sessionId) {
         this.#log({ event: 'launch-claim-lost', id, session: process.name, holder: held?.session ?? null });
         return { lost: held as Claim };

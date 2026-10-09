@@ -183,7 +183,7 @@ test('record and lock-release failures after publication report successful push 
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: entry => {
     if (entry.event === 'dev-pushed' && failRecord) throw new Error('record unavailable');
   } });
-  t.after(async () => { await hub.close(); tracker.stop(); });
+  t.after(async () => { await hub.close(); await tracker.stop(); });
   const ui = await connectWsUi(t, hub);
   git(root, 'commit', '--allow-empty', '-qm', 'Tracker commit');
   const dev = git(root, 'rev-parse', 'dev');
@@ -256,10 +256,10 @@ test('push refuses pending landed merge or checkout recovery but permits a fully
   const { root, territory } = await repository(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles() });
-  t.after(async () => { await hub.close(); tracker.stop(); });
+  t.after(async () => { await hub.close(); await tracker.stop(); });
   const ui = await connectWsUi(t, hub);
   const human = { id: 'human', name: 'human', role: null };
-  const item = tracker.create(human, { title: 'Prepared task' });
+  const item = await tracker.create(human, { title: 'Prepared task' });
   const tree = git(root, 'write-tree');
   const before = git(root, 'rev-parse', 'dev');
   const commit = git(root, 'commit-tree', tree, '-p', before, '-m', `Prepared task\n\nItem: ${item.id}`);

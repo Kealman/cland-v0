@@ -1,5 +1,6 @@
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
 // edge (`./server.ts`) is one thin layer over it.
+import type { Resumed } from './budget.ts';
 import { randomUUID } from 'node:crypto';
 import {
   PROTOCOL_VERSION,
@@ -1161,34 +1162,34 @@ export class HubCore {
    * and Agents. A title is required. `item` binds it to a unit of work, which has one topic at most: a second is
    * refused, and the item's `topic` field is written through the tracker.
    */
-  createTopic(title: string, item?: string, by = HUMAN): Topic {
+  async createTopic(title: string, item?: string, by = HUMAN, resumed: Resumed = work => work(), authorize: () => void = () => {}): Promise<Topic> {
     const clean = typeof title === 'string' ? title.trim() : '';
     if (!clean) throw new TopicRefusal('a topic needs a title');
     if (clean.length > 200) throw new TopicRefusal('a topic title is at most 200 characters');
-    let bound: string | null = null;
     if (item !== undefined && item !== null && (typeof item !== 'string' || item.trim() === '')) throw new TopicRefusal('`item` is blank: name the item to bind (T-<n>), or leave it out');
-    if (item !== undefined && item !== null) {
-      if (!this.#items) throw new TopicRefusal("this hub has no tracker: a topic is bound to an item only on a project's hub");
-      const found = this.#items.check(item.trim());
-      bound = found.id;
-      const existing = this.#store.topicOfItem(bound) ?? (found.topic !== null ? this.#store.topic(found.topic) : null);
-      if (existing) throw new TopicRefusal(`${bound} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
-      if (found.state === 'closed') throw new TopicRefusal(`${bound} is closed: a closed unit of work gets no new topic`);
-    }
-    const id = this.#store.nextTopicId();
-    const now = this.#now().toISOString();
-    this.#store.createTopic(id, clean, bound, now);
-    if (bound !== null) {
-      try {
-        this.#items?.bind(bound, id);
-      } catch (err) {
-        this.#store.deleteTopic(id);
-        throw err;
+    if (item !== undefined && item !== null && !this.#items) throw new TopicRefusal("this hub has no tracker: a topic is bound to an item only on a project's hub");
+    const found = item !== undefined && item !== null ? await this.#items!.checkAsync(item.trim(), resumed) : null;
+    return resumed(async () => {
+      authorize();
+      const bound = found?.id ?? null;
+      if (found) {
+        const existing = this.#store.topicOfItem(found.id) ?? (found.topic !== null ? this.#store.topic(found.topic) : null);
+        if (existing) throw new TopicRefusal(`${bound} already has a topic: "${existing.title}" (${existing.id}); one topic per unit of work: write there`);
+        if (found.state === 'closed') throw new TopicRefusal(`${bound} is closed: a closed unit of work gets no new topic`);
       }
-    }
-    this.#log({ event: 'topic-created', topic: id, title: clean, item: bound, by });
-    this.#publishTopics();
-    return this.#topicOrThrow(id);
+      const id = this.#store.nextTopicId();
+      const now = this.#now().toISOString();
+      this.#store.createTopic(id, clean, bound, now);
+      if (bound !== null) {
+        try { await this.#items!.bind(bound, id, resumed, authorize); }
+        catch (err) { return resumed(() => { this.#store.deleteTopic(id); throw err; }); }
+      }
+      return resumed(() => {
+        this.#log({ event: 'topic-created', topic: id, title: clean, item: bound, by });
+        this.#publishTopics();
+        return this.#topicOrThrow(id);
+      });
+    });
   }
 
   /** The human closes a topic (spec 4.5); a new message reopens it. Standing topics are never closed. */

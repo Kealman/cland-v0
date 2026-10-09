@@ -74,6 +74,7 @@ const needItem = (f: Record<string, unknown>): string => {
 
 /** Answer one task request; rejects with a TrackerError with a message meant for the asker. */
 export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: Actor, resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<unknown> {
+  const authorize = () => { currentActor?.(); };
   const f = frame as unknown as Record<string, unknown>;
   for (const k of ['title', 'body', 'text', 'comment']) optStr(f, k);
   for (const k of ['assignee', 'parent', 'topic', 'branch']) optNullableStr(f, k);
@@ -84,10 +85,10 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
     case 'task.create': {
       if (!isStr(f.title)) throw new TrackerError('`title` is required');
       const { type: _t, id: _i, as: _a, ...input } = frame;
-      return { item: tracker.create(actor, input) };
+      return { item: await tracker.create(actor, input, resumed, authorize) };
     }
     case 'task.view':
-      return { item: tracker.view(needItem(f)) };
+      return { item: await tracker.viewAsync(needItem(f), resumed) };
     case 'task.list': {
       let verdict;
       if (frame.verdict !== undefined) {
@@ -118,18 +119,18 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
     }
     case 'task.edit': {
       const { type: _t, id: _i, as: _a, item: _item, ...input } = frame;
-      return { item: tracker.edit(actor, needItem(f), input) };
+      return { item: await tracker.edit(actor, needItem(f), input, resumed, authorize) };
     }
     case 'task.close':
-      return { item: tracker.close(actor, needItem(f), frame.comment) };
+      return { item: await tracker.close(actor, needItem(f), frame.comment, resumed, authorize) };
     case 'task.link': {
       const { type: _t, id: _i, as: _a, item: _item, ...input } = frame;
-      return { item: tracker.link(actor, needItem(f), input) };
+      return { item: await tracker.link(actor, needItem(f), input, resumed, authorize) };
     }
     case 'task.claim':
       return tracker.claim(actor, needItem(f), { release: frame.release === true, force: frame.force === true });
     case 'task.import':
-      return importIssues(tracker, actor, frame);
+      return importIssues(tracker, actor, frame, resumed, authorize);
   }
 }
 
