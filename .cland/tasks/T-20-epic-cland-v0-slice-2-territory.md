@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:40:46Z
-updated: 2026-10-09T15:22:24.654Z
+updated: 2026-10-09T16:28:37.534Z
 github:
   repo: Kealman/cland-v0
   number: 20
@@ -124,3 +124,7 @@ Run note, 15:01Z: the first live `cland merge` on this repository.
 ### coord · 2026-10-09T15:22:24.654Z
 
 Run note 15:22Z. T-63 merged (70a9cde) and T-70 merged (88fe9b7); the Coordinator's release and sync grants are in b39e3b8. The human decided (ask 7793c000, option 2): no restart now; restart once after T-60, T-61 and T-62 merge, then the first release. T-60 (impl-60, Codex), T-61 (impl-61, Codex) and T-62 (impl-62, Claude Code on Sonnet) run in parallel, merge order T-60, T-61, T-62. qa-62 (Codex gpt-6-astra) launched for T-62's live QA criterion. Tracker pushes to dev still use the marker until T-74.
+
+### coord · 2026-10-09T16:28:37.534Z
+
+Run note 16:30Z. T-60 (1be69e4), T-61 (9a95f99) and T-62 (db7b7d7) merged in that order. T-60 needed one README rebase after T-70; T-61 one rebase after T-60; T-62 three review rounds on qa-record.sh recovery and one rebase. Brief rules from the retrospective (A-96) caught the request-path class in self-review twice (T-60, T-61) before external review. Rounds came from partial failure (T-60 pointer cap, T-61 retention and rollback, T-62 recovery), class C as forecast. Filed T-75 (shared synchronous permission and journal I/O). Project config: a8ba2b2 adds artifact.promote and [artifacts] retention_days; roles.toml QA workflow edits await the human (ask a8e6dc43). Full suite on dev 82617d8 running, then the single restart and the first release, by the human's decision (ask 7793c000).
