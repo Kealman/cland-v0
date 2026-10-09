@@ -38,6 +38,8 @@ import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adap
 import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
 import { NoteIncomplete } from '../roles/note.ts';
+import { ArtifactError, createArtifact } from './artifacts.ts';
+import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -79,7 +81,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['hub.status', 'inbox.list', 'role.list']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['artifact.list', 'hub.status', 'inbox.list', 'role.list']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -130,6 +132,7 @@ export class Dispatcher {
 
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
+    if (err instanceof ArtifactError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };
     if (err instanceof ToolForbidden) return { type: 'result', id, ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason };
     // hygiene's typed refusal rides along (#34)
@@ -247,7 +250,7 @@ export class Dispatcher {
   #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
     // listing the launched sessions goes with launching them
-    const tool = type === 'session.list' ? 'session.launch' : type;
+    const tool = type === 'session.list' ? 'session.launch' : type === 'artifact.list' ? 'history' : type;
     if (!KNOWN_TOOLS.includes(tool)) return null;
     const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
     const tracker = this.#options.tracker;
@@ -285,6 +288,31 @@ export class Dispatcher {
           }
         : {}),
     };
+  }
+
+  #artifact(frame: ArtifactCreate | ArtifactList, caller: Caller | null): unknown {
+    const core = this.#options.core;
+    if (frame.type === 'artifact.list') {
+      if (frame.topic !== undefined && (typeof frame.topic !== 'string' || !core.store.topic(frame.topic))) throw new ArtifactError('artifact-topic', 'no such artifact topic');
+      return { artifacts: core.store.artifacts(frame.topic) };
+    }
+    const topic = typeof frame.topic === 'string' ? core.store.topic(frame.topic) : null;
+    if (!topic) throw new ArtifactError('artifact-topic', 'no such artifact topic');
+    if (caller !== null && caller.role !== 'coordinator') {
+      const own = topic.item !== null && this.#toolCall(caller, { type: 'task.claim', item: topic.item })?.own?.() === true;
+      if (topic.id === GENERAL.id || topic.id === AGENTS.id || !(own || core.store.addressedInTopic(caller.sessionId, topic.id))) {
+        throw new ToolForbidden(caller.role, 'artifact.create', 'artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s');
+      }
+    }
+    const root = this.#options.control?.status().root;
+    const name = caller?.name ?? 'human';
+    const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
+    const artifact = createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.' }, (a) => {
+      const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
+      if (caller) core.sendFromSession(name, [], text, undefined, topic.id, a, caller);
+      else core.sendFromHuman(topic.id, text, undefined, undefined, undefined, a);
+    });
+    return { artifact, id: artifact.id, path: artifact.path };
   }
 
   open(wire: Peer, transport: { authenticated: boolean; edge: string }): Conversation {
@@ -406,6 +434,10 @@ export class Dispatcher {
       }
       try {
         switch (frame.type) {
+          case 'artifact.create':
+          case 'artifact.list':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: this.#artifact(frame, connection) });
+            break;
           case 'who':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { me, sessions: core.presence() } });
             break;
@@ -632,6 +664,11 @@ export class Dispatcher {
           return peer.send(result);
         }
         if (isSessionRequest(frame)) return session(frame);
+        if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
+          try { peer.send({ type: 'result', id: String(frame.id), ok: true, value: this.#artifact(frame as ArtifactCreate | ArtifactList, caller) }); }
+          catch (err) { peer.send(Dispatcher.#failure(String(frame.id), err)); }
+          return;
+        }
         clientRequest(frame);
       },
       closed: () => {

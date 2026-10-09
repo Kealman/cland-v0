@@ -1,6 +1,6 @@
 # nvim
 
-The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. The session launcher and the sessions panel are #28; the items panel, the item view and the board are #36. The Agents log is #34, the inbox and the ask cards #33. Later tickets fill what is a placeholder today: the picker's artifacts.
+The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. The session launcher and the sessions panel are #28; the items panel, the item view and the board are #36. The Agents log is #34, the inbox and the ask cards #33. Shared artifacts open from topic chips, per-topic lists and the picker.
 
 ## Starting it
 
@@ -61,7 +61,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣n` `␣s` `␣t` | anywhere | Inbox, sessions or topics in the right panel. Pressing the active key hides the panel. |
 | `␣T` | anywhere | Topics docked above the right panel, which shows the inbox (the Watch layout). Again: undock. |
 | `␣N` `␣b` `␣L` | anywhere | The inbox full width, the board, the Agents log in the centre. Again: back. |
-| `␣a` | anywhere | The picker on artifacts (spec 5), which slice 2 brings: for now the status line says `artifacts: slice 2`. |
+| `␣a` | anywhere | The picker on artifacts; Enter opens, Tab switches kind. |
 | `f` `F` | Agents log | Filter by an item id or session name (Tab completes both); clear the filter. |
 | `L` | item view / sessions panel | Open Agents filtered to this item / the row’s session. |
 | `r` | Agents log | Reply to the sender of the message under the cursor: a composer opens under the log (Enter sends, `q` in Normal mode cancels). |
@@ -158,3 +158,12 @@ Every test starts the real client headless as `nvim --clean -u nvim/init.lua --h
 - `test/nvim-path.test.ts`: the resolver from a path with a space, `#` and `%`; a linked worktree using the main worktree's cache; two resolvers on an empty cache (one download); an empty lock taken over after the grace; two resolvers breaking the same dead holder's lock (one download, no lock removed from under its holder).
 
 The binary comes from `CLAND_NVIM`, else the cache (a linked git worktree with none of its own uses the main worktree's, so a session working there with the network closed needs no download), else a download as above. When none of these works, for example offline with an empty cache, the client tests are skipped with the reason.
+
+
+## Shared artifacts
+
+Topic messages with artifacts show a chip such as `▣ A-3 diagram · Merge flow`. Put the cursor on it and press Enter to open it. Markdown opens as a read-only buffer; Mermaid opens as source with the `mermaid` filetype (decision D12). Press `R` in a Mermaid buffer to open a generated browser page using Mermaid 11.4.1 with strict security. That preview needs browser access to the pinned CDN module. Press `q` or `␣␣` to return to the previous centre view.
+
+HTML, SVG, PNG, PDF and other common images open through the system opener (`open` on macOS, `xdg-open` elsewhere). `CLAND_OPENER` can name a replacement executable; it receives the absolute file path as its single argument, including for Mermaid previews. Tests use this to record opening without launching a browser.
+
+The thread header counts the topic's artifacts. Press `ga` in the thread for its artifact list, with id, kind, title, creator, status and time; Enter opens the selected row and `q` returns. The Agents log also counts artifacts and supports Enter on a chip and `ga` for its list. `:Cland view artifacts <topic>` opens that list directly. `␣a` opens the floating picker on its artifacts kind; Tab cycles between items, topics, sessions and artifacts. Artifacts from the current topic appear first. Type an id, kind or title to filter, then Enter to open.

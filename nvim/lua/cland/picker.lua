@@ -1,5 +1,5 @@
--- The one floating picker (spec section 5, Pickers.dc.html): `␣p` over items, topics and sessions (artifacts
--- join with their ticket). Two floats: a one-line input titled with the kinds,
+-- The one floating picker (spec section 5, Pickers.dc.html): `␣p` over items, topics, sessions and artifacts;
+-- `␣a` opens on artifacts. Two floats: a one-line input titled with the kinds,
 -- and the list. Tab and Shift+Tab switch the kind, typing filters fuzzily (matchfuzzypos), Up/Down or
 -- C-n/C-p move, Enter opens, Esc closes. The sessions kind lists the sessions waiting for the human first and
 -- matches the label, the role and the harness, so a name, a role or a harness narrows it.
@@ -9,7 +9,7 @@ local state = require('cland.state')
 local M = { last = 'topics' }
 local ns = api.nvim_create_namespace('cland.picker')
 
-M.KINDS = { 'items', 'topics', 'sessions' }
+M.KINDS = { 'items', 'topics', 'sessions', 'artifacts' }
 
 --- The items by id; typing filters on the id, the title and the claiming session (#36).
 local function item_entries()
@@ -84,7 +84,20 @@ local function session_entries()
   return out
 end
 
-local BUILD = { items = item_entries, topics = topic_entries, sessions = session_entries }
+local function artifact_entries()
+  local out = {}
+  local current = require('cland.views').current_topic()
+  for _, a in ipairs(require('cland.artifacts').all()) do
+    out[#out + 1] = { glyph = '▣', ghl = 'ClandBlue', key = a.id .. ' ' .. a.kind .. ' · ' .. a.title,
+      right = a.creator .. ' · ' .. a.status, value = a.id, rank = a.topic == current and 0 or 1 }
+  end
+  table.sort(out, function(a, b)
+    if a.rank ~= b.rank then return a.rank < b.rank end
+    return tonumber(a.value:sub(3)) < tonumber(b.value:sub(3))
+  end)
+  return out
+end
+local BUILD = { items = item_entries, topics = topic_entries, sessions = session_entries, artifacts = artifact_entries }
 
 function M.close()
   local p = M.cur
@@ -114,6 +127,7 @@ local function title(p)
 end
 
 local FOOTER = {
+  artifacts = ' ↵ open artifact · this topic first · Tab kind · Esc close ',
   items = ' ↵ open the item view · id, title or claim · Tab kind · Esc close ',
   topics = ' ↵ open thread · needs you first · Tab kind · Esc close · :Cland topic new <title> ',
   sessions = ' ↵ attach in centre · Tab kind · Esc close ',
@@ -200,6 +214,8 @@ function M.act(kind, value)
     layout.show({ kind = 'item', id = value }, { insert = false })
   elseif kind == 'topics' then
     layout.show({ kind = 'thread', id = value })
+  elseif kind == 'artifacts' then
+    require('cland.artifacts').open(value)
   elseif kind == 'sessions' then
     layout.show({ kind = 'session', id = value }, { insert = true })
   end

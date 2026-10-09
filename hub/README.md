@@ -63,7 +63,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/hook.ts` | `cland hook <event>`, run from inside a launched session by its hooks and the mod; `cland hook bridge`, the mod's connection to the hub. |
 | `src/cli/task-import.ts` | `cland task import-github`: reads the issues through `gh` and sends them to the hub in `task.import` frames. |
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, never stops for good (closed with 4002 by a hub older than T-51, it reconnects like after any close). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, heartbeats while connected and reconnects after two unanswered heartbeats; before the welcome, a hub that does not answer the hello within the request deadline is left and reconnected to. |
-| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `ask`, `who`, `status`, `rename`, `history` (a session's traffic, or a topic's with `topic`; Agents accepts `item` and `session` filters), `session.launch`, `role.handover`, `role.state` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
+| `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `ask`, `who`, `status`, `rename`, `history` (a session's traffic, or a topic's with `topic`; Agents accepts `item` and `session` filters), `session.launch`, `role.handover`, `role.state`, `artifact.create` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
 | `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `doctor`, `hub …`, `task …`, `session …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
@@ -292,7 +292,7 @@ An unknown tool or scope makes the file unreadable (the last good version stays 
 | Reviewer, QA | `send:agents`, `task.comment:verdict`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
 
-`ask`, `merge` and `artifact.create` have no frame yet (`role.handover` has, see Handover; `role.state` is no table tool: a spoke reads only its own role's state): a spoke's frame for one is checked like any other, and an allowed one is then answered "unknown request type". `task.import` is the human's (the CLI). The heartbeat (`ping`) and acks are not tool calls. A hub with no project (no `roles.toml`) checks nothing. The UI and the CLI act as the human, whom the table does not restrict, with two limits. A client's hello comes over the Unix socket or stdio only: on a project's hub, one over the spokes' WebSocket is refused (`unauthorized`), so the bearer secret a spoke holds makes no human. A CLI `task.*` call acting as a session the hub knows (`as` carries its `sessionId`, which decides before any name: `cland task` in a launched session's shell always sends `$CLAND_SESSION_ID`, whatever `--as` says; or the human's `--as` names a session that holds or held that name) is that session's call: checked against the role the hub holds for it (never the frame's `role`), audited as it (`client: "cli"`), and its claims held by its session id.
+`merge` has no frame yet (`role.handover` has, see Handover; `role.state` is no table tool: a spoke reads only its own role's state): a spoke's frame for one is checked like any other, and an allowed one is then answered "unknown request type". `task.import` is the human's (the CLI). The heartbeat (`ping`) and acks are not tool calls. A hub with no project (no `roles.toml`) checks nothing. The UI and the CLI act as the human, whom the table does not restrict, with two limits. A client's hello comes over the Unix socket or stdio only: on a project's hub, one over the spokes' WebSocket is refused (`unauthorized`), so the bearer secret a spoke holds makes no human. A CLI `task.*` call acting as a session the hub knows (`as` carries its `sessionId`, which decides before any name: `cland task` in a launched session's shell always sends `$CLAND_SESSION_ID`, whatever `--as` says; or the human's `--as` names a session that holds or held that name) is that session's call: checked against the role the hub holds for it (never the frame's `role`), audited as it (`client: "cli"`), and its claims held by its session id.
 
 A refused call is answered with a typed result, which the spoke hands the model as the tool's result (`isError`), and the hub posts a notice into the Agents topic, which the UI shows there:
 
@@ -776,3 +776,27 @@ ln -s "$PWD/hub/bin/cland.ts" ~/.local/bin/cland      # or a symlink into any fo
 ```
 
 Both point at this checkout, so `git pull` updates the command; `npm unlink -g cland` or `rm ~/.local/bin/cland` removes it. Node resolves the CLI's imports from the link's target, so either works from any directory.
+
+
+## Artifacts
+
+Show a file with the spoke tool `artifact.create`:
+
+```json
+{"kind":"diagram","title":"Merge flow","content":"graph TD; A-->B","topic":"topic-3"}
+```
+
+Kinds are `prompt`, `note`, `page`, `diagram`, and `file`. Give exactly one of `content` or `path` (relative to the session's working directory). A path is copied, so deleting its source or worktree leaves the artifact readable. Text content defaults to `.md` for prompts/notes, `.html` for pages, `.mmd` for diagrams and `.txt` for files; copied files retain their extension. Files live under `.cland/artifacts/A-<n>-<slug>.<ext>`, with a durable hub index containing the id, title, kind, creator, time, topic, status and absolute path. Every create is a new id, initially `shared`.
+
+The result includes `artifact`, `id`, and `path`. The topic message carries a structured `artifact` field, and session deliveries name `artifact_id` and `artifact_path` in their envelope. Publication obeys the message size cap and the session's send rate limit; refusal leaves no file or index entry. The file content itself is not subject to the message text cap (wire frames retain their existing maximum size).
+
+The Coordinator may share in any topic. Other roles may share in their claimed or assigned item's topic or a topic where a request was delivered to them; General and Agents are Coordinator-only. Invalid kinds, missing files, unknown topics, invalid titles, and ambiguous sources return typed errors; forbidden topics return `forbidden`. The CLI enforces the same session identity and permissions as spoke calls.
+
+```sh
+cland artifact create --kind diagram --title "Merge flow" --content 'graph TD; A-->B' --topic topic-3 --json
+cland artifact create --kind page --title Preview --path preview.html --topic topic-3
+cland artifact create --kind note --title Findings --content-file - --topic topic-3 < findings.md
+cland artifact list --topic topic-3 --json
+```
+
+The UI can send `artifact.create` and `artifact.list` frames; list returns `{artifacts: [...]}` for the project or a supplied `topic`. Prompt drafting and artifact promotion, archival and cleanup belong to later slices.

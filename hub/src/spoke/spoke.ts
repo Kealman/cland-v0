@@ -27,6 +27,14 @@ const VERSION = '0.1.0';
 
 const TOOLS = [
   {
+    name: 'artifact.create',
+    description: 'Show work through a persistent artifact in a topic. Give exactly one of path (copied) or content. Returns the artifact id and absolute path; posts its chip into the topic.',
+    inputSchema: { type: 'object', properties: {
+      kind: { type: 'string', enum: ['prompt', 'note', 'page', 'diagram', 'file'] }, title: { type: 'string' },
+      path: { type: 'string' }, content: { type: 'string' }, topic: { type: 'string' },
+    }, required: ['kind', 'title', 'topic'] },
+  },
+  {
     name: 'send',
     description:
       'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); only the Coordinator writes to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events — and is recorded in the topic (Agents unless `topic` names another).',
@@ -167,6 +175,11 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
     msg_id: message.id,
     ts: message.ts,
   };
+  if (message.artifact) {
+    meta.artifact_id = message.artifact.id;
+    meta.artifact_path = message.artifact.path;
+    meta.artifact = JSON.stringify(message.artifact);
+  }
   if (message.fromRole !== undefined) meta.from_role = message.fromRole;
   if (message.replyTo !== undefined) meta.reply_to = message.replyTo;
   // a hub notice: its kind (`mute`, …) and its typed facts (a mute's refusal: code, rule, until, pair)
@@ -232,6 +245,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     if (!hub) return text({ ok: false, error: notConfigured }, true);
     try {
       switch (req.params.name) {
+        case 'artifact.create': {
+          const value = await hub.request({ ...args, type: 'artifact.create' } as Omit<import('../protocol.ts').ArtifactCreate, 'id'>) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         case 'send': {
           const to = Array.isArray(args.to) ? args.to.filter((t): t is string => typeof t === 'string') : [];
           if (typeof args.text !== 'string') return text({ ok: false, error: 'send needs `text`' }, true);
