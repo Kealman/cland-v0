@@ -40,15 +40,23 @@ function cwdPids(root: string): Set<number> {
 /** Kill complete owned process groups, including detached adapters and orphaned hook bridges. */
 export async function cleanupProcesses(root?: string, seedPids: number[] = [], report: (line: string) => void = () => {}): Promise<void> {
   const rows = processes();
-  const ownGroup = rows.find((row) => row.pid === process.pid)?.group;
+  const protectedPids = new Set<number>();
+  const protectedGroups = new Set<number>();
+  let ancestor = rows.find(row => row.pid === process.pid);
+  while (ancestor && !protectedPids.has(ancestor.pid)) {
+    protectedPids.add(ancestor.pid);
+    protectedGroups.add(ancestor.group);
+    const parent = ancestor.parent;
+    ancestor = rows.find(row => row.pid === parent);
+  }
   const selected = root ? cwdPids(root) : new Set<number>();
   for (const pid of seedPids) selected.add(pid);
   if (root) for (const row of rows) if (row.command.includes(root)) selected.add(row.pid);
-  selected.delete(process.pid);
+  for (const pid of protectedPids) selected.delete(pid);
   // Resolve descendants before killing parents, which would reparent hook bridges to init.
   for (let changed = true; changed;) {
     changed = false;
-    for (const row of rows) if (selected.has(row.parent) && !selected.has(row.pid) && row.pid !== process.pid) { selected.add(row.pid); changed = true; }
+    for (const row of rows) if (selected.has(row.parent) && !selected.has(row.pid) && !protectedPids.has(row.pid)) { selected.add(row.pid); changed = true; }
   }
   const targets = rows.filter((row) => selected.has(row.pid));
   const current = new Map(processes().map((row) => [row.pid, row]));
@@ -57,9 +65,9 @@ export async function cleanupProcesses(root?: string, seedPids: number[] = [], r
     if (current.get(row.pid)?.started !== row.started) continue;
     report(`cleanup pid ${row.pid}: ${row.command}`);
     try {
-      // Never signal the calling test/runner's process group.
-      if (row.group !== ownGroup && !groups.has(row.group)) { process.kill(-row.group, 'SIGKILL'); groups.add(row.group); }
-      else if (row.group === ownGroup) process.kill(row.pid, 'SIGKILL');
+      // Preserve the caller and its ancestors, even if their shell command quotes a fixture path.
+      if (!protectedGroups.has(row.group) && !groups.has(row.group)) { process.kill(-row.group, 'SIGKILL'); groups.add(row.group); }
+      else if (protectedGroups.has(row.group)) process.kill(row.pid, 'SIGKILL');
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
   }
   for (let n = 0; n < 100; n++) {
@@ -93,7 +101,7 @@ export function ownProcess(t: TestContext | undefined, pid: number | undefined):
   if (pid !== undefined && started) ownedPids.set(pid, started);
   const cleanup = async () => {
     if (pid !== undefined && started && processes().some(row => row.pid === pid && row.started === started)) await cleanupProcesses(undefined, [pid]);
-    if (pid !== undefined) ownedPids.delete(pid);
+    if (pid !== undefined && ownedPids.get(pid) === started) ownedPids.delete(pid);
   };
   t?.after(cleanup);
   return cleanup;

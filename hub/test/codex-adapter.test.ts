@@ -77,7 +77,7 @@ type FakeCodex = {
 
 async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number } = {}): Promise<FakeCodex> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
-  ownDirectory(t, home);
+  const cleanupHome = ownDirectory(undefined, home);
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,
@@ -92,7 +92,7 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
   };
   t.after(async () => {
     for (const s of await servers()) await killDaemon(s.pid);
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   return {
     env,

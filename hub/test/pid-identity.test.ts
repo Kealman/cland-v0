@@ -7,7 +7,7 @@ import { ownDirectory, ownProcess } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readdir, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, realpath } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -108,14 +108,14 @@ const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.
 test('OpenCode: stop never signals a pid that another process reuses', async (t) => {
   const root = await tempProject(t);
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-opencode-')));
-  ownDirectory(t, home);
+  const cleanupHome = ownDirectory(undefined, home);
   const env = { PATH: `${FAKE_OPENCODE_DIR}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '100', CLAND_ADAPTER_POLL_MS: '200' };
   t.after(async () => {
     for (const f of await readdir(join(home, 'servers')).catch(() => [] as string[])) {
       const s = JSON.parse(await readFile(join(home, 'servers', f), 'utf8').catch(() => 'null')) as { pid: number } | null;
       if (s) await killDaemon(s.pid);
     }
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);

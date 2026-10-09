@@ -1,23 +1,24 @@
 // Runner CLI seam: separate Node processes, real process table, no internal mocks.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
+import { ownDirectory } from './process-cleanup.ts';
 import { fileURLToPath } from 'node:url';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fixture(t: TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'cland-runner-test-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  ownDirectory(t, dir);
   return dir;
 }
 function run(t: TestContext, dir: string, file: string) {
   const code = `import { runSuite } from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(join(dir, 'lock'))} });`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
-  t.after(async () => { if (child.exitCode === null) child.kill('SIGTERM'); await done; });
+  t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
   child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString(); });
@@ -44,12 +45,30 @@ test('two suite invocations serialize and report the holder', async (t) => {
   assert.equal(await readFile(journal, 'utf8'), 'start\nend\nstart\nend\n');
 });
 
-test('a suite takes over a lock whose holder died', async (t) => {
+test('a suite takes over locks left by a killed runner and reaper', async (t) => {
   const dir = await fixture(t);
-  const dead = spawn(process.execPath, ['-e', '']);
-  await new Promise<void>((resolve) => dead.on('close', () => resolve()));
-  await mkdir(join(dir, 'lock'));
-  await writeFile(join(dir, 'lock', 'holder.json'), JSON.stringify({ pid: dead.pid, started: 'yesterday', token: 'dead' }));
+  const marker = join(dir, 'holder.json');
+  const holding = join(dir, 'held.mjs');
+  await writeFile(holding, `import test from 'node:test'; import { writeFile } from 'node:fs/promises'; test('holder', async () => { await writeFile(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root: process.env.TMPDIR })); await new Promise(r => setTimeout(r, 60000)); });`);
+  const holder = run(t, dir, holding);
+  await until(async () => (await readFile(marker, 'utf8').catch(() => '')).length > 0);
+  const worker = JSON.parse(await readFile(marker, 'utf8')) as { pid: number; root: string };
+  // A crashed runner cannot run its cleanup: clean the fixture child explicitly after the check.
+  t.after(async () => { const { cleanupProcesses } = await import('./process-cleanup.ts'); await cleanupProcesses(worker.root, [worker.pid]); await rm(worker.root, { recursive: true, force: true }); });
+  const exited = new Promise<void>(resolve => holder.child.once('exit', () => resolve()));
+  holder.child.kill('SIGKILL');
+  await exited;
+  // Recover a killed reaper through the existing hub-lock public interface too.
+  const lockModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
+  const reaperMarker = join(dir, 'reaper-started');
+  const reaperPath = join(dir, 'lock.reaper');
+  const reaper = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFileSync } from 'node:fs'; acquireLock(${JSON.stringify(reaperPath)}); writeFileSync(${JSON.stringify(reaperMarker)}, 'ready'); setInterval(() => {}, 1000);`], { stdio: 'ignore' });
+  const { ownProcess } = await import('./process-cleanup.ts');
+  ownProcess(t, reaper.pid);
+  await until(async () => (await readFile(reaperMarker, 'utf8').catch(() => '')).length > 0);
+  const reaped = new Promise<void>(resolve => reaper.once('exit', () => resolve()));
+  reaper.kill('SIGKILL');
+  await reaped;
   const file = join(dir, 'pass.mjs');
   await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
   const suite = run(t, dir, file);
@@ -114,14 +133,36 @@ test('leaks a detached child deliberately', async () => {
 
 test('a waiting runner exits on SIGTERM without releasing the live holder', async (t) => {
   const dir = await fixture(t);
+  const marker = join(dir, 'started');
+  const release = join(dir, 'release');
+  const held = join(dir, 'held.mjs');
+  await writeFile(held, `import test from 'node:test'; import { writeFile, access } from 'node:fs/promises'; test('holder', async () => { await writeFile(${JSON.stringify(marker)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); });`);
+  const holder = run(t, dir, held);
+  await until(async () => (await readFile(marker, 'utf8').catch(() => '')).length > 0);
   const file = join(dir, 'pass.mjs');
   await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
-  await mkdir(join(dir, 'lock'));
-  const holder = { pid: process.pid, started: 'now', token: 'live' };
-  await writeFile(join(dir, 'lock', 'holder.json'), JSON.stringify(holder));
-  const suite = run(t, dir, file);
-  await until(() => suite.output().includes('waiting for the suite lock'));
-  suite.child.kill('SIGTERM');
-  assert.equal(await suite.done, 143, suite.output());
-  assert.deepEqual(JSON.parse(await readFile(join(dir, 'lock', 'holder.json'), 'utf8')), holder);
+  const waiting = run(t, dir, file);
+  await until(() => waiting.output().includes('waiting for the suite lock'));
+  waiting.child.kill('SIGTERM');
+  assert.equal(await waiting.done, 143, waiting.output());
+  const secondWaiter = run(t, dir, file);
+  await until(() => secondWaiter.output().includes('waiting for the suite lock'));
+  assert.equal(holder.child.exitCode, null);
+  await writeFile(release, 'go');
+  assert.equal(await holder.done, 0, holder.output());
+  assert.equal(await secondWaiter.done, 0, secondWaiter.output());
+});
+
+test('a fixture path quoted by the invoking shell never kills that shell', async (t) => {
+  const dir = await fixture(t);
+  const cleanupModule = fileURLToPath(new URL('./process-cleanup.ts', import.meta.url));
+  const script = `import { cleanupProcesses } from ${JSON.stringify(cleanupModule)}; await cleanupProcesses(${JSON.stringify(dir)});`;
+  // The shell's command line names the temporary directory, just like a user's cleanup command.
+  const quoted = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+  const child = spawn('sh', ['-c', `${quoted(process.execPath)} --input-type=module -e ${quoted(script)}; echo parent-survived`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let output = '';
+  child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+  const result = await new Promise<number | null>(resolve => child.on('close', resolve));
+  assert.equal(result, 0);
+  assert.match(output, /parent-survived/);
 });

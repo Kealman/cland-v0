@@ -485,7 +485,7 @@ export async function fakeClaude(
   timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
 ): Promise<FakeClaude> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
-  ownDirectory(t, home);
+  const cleanupHome = ownDirectory(undefined, home);
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CLAUDE_HOME: home,
@@ -511,7 +511,7 @@ export async function fakeClaude(
   };
   t.after(async () => {
     for (const s of await sessions()) await killDaemon(s.pid);
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   return {
     env,
@@ -563,7 +563,7 @@ export type FakeCodex = {
 
 export async function fakeCodex(t: TestContext, options: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number; env?: Record<string, string> } = {}): Promise<FakeCodex> {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
-  ownDirectory(t, home);
+  const cleanupHome = ownDirectory(undefined, home);
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,
@@ -579,7 +579,7 @@ export async function fakeCodex(t: TestContext, options: { pollMs?: number; inje
   };
   t.after(async () => {
     for (const s of await servers()) await killDaemon(s.pid);
-    await rm(home, { recursive: true, force: true });
+    await cleanupHome();
   });
   return { env, home, servers, log: (pid) => readFile(join(home, 'log', `${pid}.log`), 'utf8').catch(() => '') };
 }

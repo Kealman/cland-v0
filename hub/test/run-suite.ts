@@ -6,6 +6,7 @@ import { loadavg } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanupProcesses, pause } from './process-cleanup.ts';
+import { acquireLock, HubLocked } from '../src/hub/lock.ts';
 
 type Holder = { pid: number; started: string; token: string };
 const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; } };
@@ -27,28 +28,28 @@ async function acquire(dir: string, interrupted: () => boolean): Promise<() => P
       return async () => { if ((await holderAt(dir))?.token === holder.token) await rm(dir, { recursive: true, force: true }); };
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
     const previous = await holderAt(dir);
+    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.started}` : 'waiting for the suite lock held by pid unknown since unknown (manual lock or holder starting)';
+    if (line !== last) { process.stderr.write(`${line}\n`); last = line; }
     if (previous && !alive(previous.pid)) {
-      // Only one waiter can reap a generation. Re-read after taking the reaper guard.
-      const reaper = join(dir, 'reaping');
-      let guarded = false;
-      let moved = false;
+      // Reuse the hub's PID/start-time guard: a reaper that dies is itself recoverable.
+      let guard: ReturnType<typeof acquireLock> | undefined;
       try {
-        await mkdir(reaper);
-        guarded = true;
+        guard = acquireLock(`${dir}.reaper`);
         const current = await holderAt(dir);
         if (current?.token === previous.token && !alive(current.pid)) {
           const stale = `${dir}.stale-${holder.token}`;
           await rename(dir, stale);
-          moved = true;
           await rm(stale, { recursive: true, force: true });
           process.stderr.write(`taking over stale suite lock held by pid ${previous.pid}\n`);
         }
-      } catch (error) { if (!['ENOENT', 'EEXIST'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error; }
-      finally { if (guarded && !moved) await rm(reaper, { recursive: true, force: true }); }
+      } catch (error) {
+        // The shared lock's short retry budget can expire before its dead breaker guard ages out.
+        const contended = error instanceof Error && error.message === `could not take ${dir}.reaper: it keeps changing under this process`;
+        if (!(error instanceof HubLocked) && !contended && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        await pause(250);
+      } finally { guard?.release(); }
       continue;
     }
-    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.started}` : 'waiting for the suite lock held by pid unknown since unknown (manual lock or holder starting)';
-    if (line !== last) { process.stderr.write(`${line}\n`); last = line; }
     await pause(250);
   }
   throw new Error('suite interrupted while waiting for the lock');
