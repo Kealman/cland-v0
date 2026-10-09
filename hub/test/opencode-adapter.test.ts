@@ -9,7 +9,8 @@ import { mkdtemp, readdir, readFile, realpath, rm, stat } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -205,6 +206,34 @@ test('a no-model OpenCode launch waits for big-pickle after a partial cold catal
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'impl');
   assert.equal(launched.model, 'opencode/big-pickle');
+});
+
+test('a changing OpenCode catalog falls back to the latest successful list at the deadline', { timeout: 8000 }, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  await startDaemon(t, root, fake.env);
+  // Instantiate at the adapter's public spawn seam so only this process's clock is accelerated.
+  const adapter = new OpenCodeAdapter({
+    root, discoveryFile: join(root, '.cland', 'hub.json'), node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY,
+    log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {},
+  }, { bin: join(FAKE_OPENCODE_DIR, 'opencode'), env: { ...process.env, ...fake.env, FAKE_OPENCODE_CHANGING_CATALOG: '1' } });
+  t.after(() => adapter.close());
+  const spawning = adapter.spawn({ name: 'impl', role: null, model: null, cwd: root });
+  await eventually('two changing catalogs served', async () => {
+    const [server] = await fake.servers();
+    if (!server) return undefined;
+    const log = await readFile(join(fake.home, `server-${server.pid}.log`), 'utf8').catch(() => '');
+    return log.includes('changing catalog 2') ? true : undefined;
+  }, 5000);
+  // Spend the real ten-second budget without ten seconds of wall-clock waiting. The fake keeps changing its
+  // catalog on every request, so neither stability nor a known-good model can end selection.
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 10_000 });
+  try {
+    const launched = await spawning;
+    assert.equal(launched.model, 'openrouter/latest-free');
+  } finally {
+    t.mock.timers.reset();
+  }
 });
 
 test('a failed OpenCode turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
