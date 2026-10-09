@@ -326,7 +326,7 @@ Every tool call the hub answers, a spoke's (allowed or refused) or the human's t
 
 | `kind` | When |
 | --- | --- |
-| `redelivered` | A Codex turn ended without a message it had accepted as a steer, and the adapter delivered it again as a new turn (`harness-redelivered`). |
+| `redelivered` | A Codex turn ended without a message it had accepted, and the adapter delivered it again as a new turn or into a newer running turn (`harness-redelivered`). The notice says which destination accepted the recovery. |
 | `session-start` | A session was launched (`session-launched`), or re-found after a hub restart (`session-resumed`). |
 | `session-stop`, `session-death` | It was stopped through cland; its harness process died (`harness-exited`). |
 | `role-assign`, `role-revoke` | The human assigned a role (`(was …)` when it replaced another), a launch granted one at the first hello; the human revoked it, or its session stopped or died. A handover (`role.handover`, #31) is its own `handover` notice (with the note) followed by a `role-assign` for the new holder. |
