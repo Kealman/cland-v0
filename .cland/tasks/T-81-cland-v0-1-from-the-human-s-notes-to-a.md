@@ -2,7 +2,7 @@
 id: T-81
 kind: map
 title: "cland v0.1: from the human's notes to a spec and epics"
-state: open
+state: closed
 labels:
   - wayfinder:map
 assignee: null
@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:14.191Z
-updated: 2026-10-09T21:48:40.637Z
+updated: 2026-10-09T21:53:02.074Z
 ---
 
 ## Destination
@@ -61,10 +61,11 @@ updated: 2026-10-09T21:48:40.637Z
 - Epic plan view on the canvas (T-100, .cland/tasks/T-100-epic-plan-view-on-the-canvas.md): the mockups PlanBefore and PlanMidway accepted; gp opens the plan from the epic, the graph and the palette; stages top to bottom with lanes as columns, the QA policy and the closing condition per stage; an approval card before the start; change marks at the watch colour mid-way; progress, gate, QA runs and cost in the right column.
 - Thread rendering in Neovim (T-97, .cland/tasks/T-97-thread-rendering-in-neovim.md): the mockup Thread and the prototype on prototype/thread accepted; role gutters, bands on the human's side, Markdown per message with conceal, date lines, verdicts with criteria marks, the ask as an amber band, manual folds for agent-to-agent runs, appends without a full rewrite.
 - Task graph view in Neovim (T-98, .cland/tasks/T-98-task-graph-view-in-neovim.md): the prototype on prototype/graph kept as an experimental extra view (␣G), layers top to bottom, the board stays on ␣b; crossing edges read badly at the v0 epic's density, revisited in the next version; with it, verifier holds for Reviewers and QA beside the Implementer's claim (spec §3.2).
+- The v0.1 cut: what lands, what defers (T-101, .cland/tasks/T-101-the-v0-1-cut-what-lands-what-defers.md): everything in the spec lands in v0.1 (about 49 sessions); eleven epics published with blocking edges in two lanes (hub: release and status, a quiet Coordinator, criteria, leads and crew, the epic plan, release from the item; Neovim: workbench basics, threads, the human's session, the graph, visibility and artifacts); the v0 tail is tech debt unless it blocks; dogfooding uses each epic as it lands; done when every demo ran, v0.1.0 is released from the release item and a retrospective exists.
 
 ## Not yet specified
 
-- Sprints and milestones: T-87 ruled them groupings across the tree, not levels. What a sprint would be in cland, and whether v0.1 needs one, waits on the status ticket and the cut.
+- Sprints and milestones: groupings across the tree, not levels (T-87); nothing in v0.1 needs one; a later effort decides.
 - Cost per item and per session: where usage is summed and shown; waits on the session hierarchy (cost rolls up the tree) and on visibility levels.
 - A journal and retrospective viewer: the A-96 retrospective was hand-made from the journal; what the workbench shows of the journal waits on visibility levels and subscriptions.
 - History search: searching messages and comments across topics and items; waits on the palette and visibility levels.
@@ -75,3 +76,9 @@ updated: 2026-10-09T21:48:40.637Z
 
 - A per-item change tour (the parked v0 intent: the current state with changed places marked, and a session in the item's context to explain it): not in the v0.1 notes; returns as its own effort.
 - Multi-user and remote access; GitHub sync of items (the mirror is retired); inline images in the terminal; the distribution format of cland. All beyond the destination of v0.1.
+
+## Comments
+
+### human · 2026-10-09T21:53:02.074Z
+
+The way is charted: spec v0.1 complete, eleven epics published (see Decisions so far)
