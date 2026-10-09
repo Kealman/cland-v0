@@ -3,8 +3,9 @@
 import { randomUUID } from 'node:crypto';
 import {
   PROTOCOL_VERSION,
-  REPLACED_CLOSE_CODE,
   UPDATE_HINT,
+  type Artifact,
+  type AgentsHistoryFilter,
   type HandoverNote,
   type Hello,
   type HubEvent,
@@ -65,14 +66,34 @@ export type Connection = {
   deliver: (message: Message) => boolean;
   /** Send a role clause (or revocation) carried by `message`; the spoke acks it like a delivery. */
   deliverRole: (message: Message, clause: RoleClause) => boolean;
-  /** Close this session's socket: a kick (4001 — the spoke reconnects) or a replacement (4002 — it does not). */
+  /** Close the session's sockets: a kick (4001 — the spokes reconnect). */
   close: (reason: string, code?: number) => void;
+  /**
+   * The session's spokes, oldest first. A session has one, until its harness starts another with the same identity
+   * while the first still stands (Codex starts one per thread of an app-server; an MCP reconnect leaves a socket
+   * half-open): every one of them is the session and is answered, and `deliver` and `deliverRole` are the newest's.
+   */
+  spokes: SpokeSocket[];
 };
+
+/** One spoke's socket, as the hub writes to it. */
+export type SpokeSocket = Pick<Connection, 'deliver' | 'deliverRole' | 'close'>;
+
+/** Point the connection's own `deliver`, `deliverRole` and `close` at its spokes as they are now. */
+function wire(connection: Connection): void {
+  const newest = connection.spokes[connection.spokes.length - 1];
+  if (!newest) return;
+  connection.deliver = newest.deliver;
+  connection.deliverRole = newest.deliverRole;
+  connection.close = (reason, code) => {
+    for (const spoke of [...connection.spokes]) spoke.close(reason, code);
+  };
+}
 
 /** What the adapters' side says of a hello's launch (`HubCore.launchedRole`). */
 export type LaunchedRole = { role: string | null; first: boolean; carried: boolean };
 
-export type HelloResult = { ok: true; name: string; connection: Connection } | { ok: false; code: RefusalCode; message: string };
+export type HelloResult = { ok: true; name: string; connection: Connection; spoke: SpokeSocket } | { ok: false; code: RefusalCode; message: string };
 
 export type CoreOptions = {
   /** Extra reserved names beyond the built-ins. */
@@ -244,6 +265,20 @@ export class HubCore {
     }
     // The session id is the stable identity; a hello with the unknown id identifies nobody.
     const identified = hello.sessionId !== UNKNOWN_SESSION;
+    const held = identified ? this.connectionOf(hello.sessionId) : undefined;
+    const live = held !== undefined && (hello.name === undefined || hello.name === held.name) ? held : undefined;
+    if (live) {
+      // Another spoke of a session that is connected, under the session's name or asking for none: it joins it.
+      // The session did not go away, so nothing of a hello happens again (no role is resolved, no clause
+      // re-sent); deliveries go to this newest spoke from now on, and the older ones are answered for as long as
+      // they stand. Closing them instead left a session whose harness still called its tools through the old
+      // spoke with no tools at all (T-51). A spoke that asks for another name is taken for another session, as before.
+      const spoke: SpokeSocket = { deliver, deliverRole, close };
+      live.spokes.push(spoke);
+      wire(live);
+      this.#log({ event: 'replaced', name: live.name, sessionId: hello.sessionId, spokes: live.spokes.length });
+      return { ok: true, name: live.name, connection: live, spoke };
+    }
     let requested = hello.name;
     if (requested === undefined && identified) {
       // No name asked for: a session the hub already knows gets its own name back (unless another session
@@ -253,17 +288,12 @@ export class HubCore {
       if (previous !== null && nameRefusal(previous, this.#reserved) === null && (!holder || holder.sessionId === hello.sessionId)) requested = previous;
     }
     let name: string;
-    let evict: Connection | null = null;
     if (requested !== undefined) {
       const refusal = nameRefusal(requested, this.#reserved);
       if (refusal) return { ok: false, code: 'bad-name', message: refusal };
       const holder = this.#live.get(requested);
-      // The same session's spoke restarted (an MCP reconnect, a resume) while its old socket still stood:
-      // the new one IS the session and takes the name; anyone else is refused. An unknown session id
-      // identifies nobody, so it never evicts.
-      const sameSession = holder !== undefined && holder.sessionId === hello.sessionId && identified;
-      if (holder && !sameSession) return { ok: false, code: 'name-in-use', message: `name "${requested}" is in use by a live session` };
-      if (holder) evict = holder;
+      // a live holder here is another session (this one's own spoke joined it above): refused
+      if (holder) return { ok: false, code: 'name-in-use', message: `name "${requested}" is in use by a live session` };
       name = requested;
     } else {
       // Never a name any session has held: a generated name carries no other session's queue or history.
@@ -284,6 +314,7 @@ export class HubCore {
       if (ROLE_NAMES.includes(hello.role)) role = hello.role;
       else this.#log({ event: 'role-ignored', name, role: hello.role, roles: ROLE_NAMES });
     }
+    const spoke: SpokeSocket = { deliver, deliverRole, close };
     const connection: Connection = {
       name,
       cwd: hello.cwd,
@@ -297,14 +328,9 @@ export class HubCore {
       deliver,
       deliverRole,
       close,
+      spokes: [spoke],
     };
-    if (evict) {
-      // Nothing fallible between here and the set: the name is never left with no holder. The old socket
-      // is closed with a code its spoke does not reconnect on; its later close event is a no-op here.
-      this.#log({ event: 'replaced', name, sessionId: hello.sessionId });
-      this.#live.delete(name);
-      evict.close('replaced: a newer spoke of this session took the name', REPLACED_CLOSE_CODE);
-    }
+    wire(connection);
     this.#live.set(name, connection);
     this.#store.rememberSession(name, this.#now().getTime());
     this.#store.rememberSessionId(name, hello.sessionId);
@@ -336,7 +362,7 @@ export class HubCore {
         this.#log({ event: 'hello-listener-failed', name, error: err instanceof Error ? err.message : String(err) });
       }
     }
-    return { ok: true, name, connection };
+    return { ok: true, name, connection, spoke };
   }
 
   /**
@@ -473,9 +499,20 @@ export class HubCore {
   }
 
   /** A socket closed. Only the connection that owns the name is removed: a stale close must never
-   *  evict the reconnect that already took the name over. */
-  disconnect(connection: Connection): void {
+   *  evict the reconnect that already took the name over. While another spoke of the session stands (`spoke` is
+   *  the one that closed), the session stays: its deliveries go to the newest that is left. */
+  disconnect(connection: Connection, spoke?: SpokeSocket): void {
     if (this.#live.get(connection.name) !== connection) return;
+    if (spoke) {
+      connection.spokes = connection.spokes.filter((s) => s !== spoke);
+      if (connection.spokes.length > 0) {
+        wire(connection);
+        this.#log({ event: 'spoke-left', name: connection.name, sessionId: connection.sessionId, spokes: connection.spokes.length });
+        // what the spoke that left had not acked goes to the one that is left
+        this.flushQueued(connection.name);
+        return;
+      }
+    }
     this.#live.delete(connection.name);
     this.#log({ event: 'bye', name: connection.name });
     this.#announceCoordinator();
@@ -1201,10 +1238,11 @@ export class HubCore {
     return t;
   }
 
-  topicHistory(id: string, limit?: number): { topic: Topic; messages: TopicMessage[] } {
+  topicHistory(id: string, limit?: number, filter: AgentsHistoryFilter = {}): { topic: Topic; messages: TopicMessage[] } {
     const topic = this.#topicOrThrow(id);
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
-    return { topic, messages: this.#store.topicMessages(id, n) };
+    if (id !== AGENTS.id && (filter.item !== undefined || filter.session !== undefined)) throw new Error('item and session history filters require the Agents topic');
+    return { topic, messages: this.#store.topicMessages(id, n, filter) };
   }
 
   renameTopic(id: string, title: string): Topic {
@@ -1232,7 +1270,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -1276,6 +1314,7 @@ export class HubCore {
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
       ...(answerTo !== undefined ? { answerTo } : {}),
+      ...(artifact ? { artifact } : {}),
     };
     this.#store.record(
       message,
@@ -1306,8 +1345,8 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
-    const sender = this.#live.get(from);
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+    const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
     const toHuman = to.length === 0;
     const topic = this.#topicOrThrow(topicId ?? (toHuman ? GENERAL.id : AGENTS.id));
@@ -1365,6 +1404,7 @@ export class HubCore {
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
+      ...(artifact ? { artifact } : {}),
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
     if (sessions.size > 0 || toHuman) {

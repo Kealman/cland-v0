@@ -6,15 +6,18 @@ import { provision } from '../init/provision.ts';
 import type { Change } from '../init/files.ts';
 import { CLAND_DIR, projectRoot } from '../project.ts';
 import { VERSION } from '../version.ts';
+import { territoryPath, undoTerritory } from '../territory.ts';
+import { provisionAgentsMd } from '../init/instructions.ts';
 
 export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the one around the current directory) for cland: .cland/,
-                  skills, docs/agents/, AGENTS.md's block, the Claude Code hooks; idempotent (--json for JSON)
+                  skills, docs/agents/, AGENTS.md's block, hooks and local git territory; idempotent (--json)
+                  --undo restores the territory's remotes/root branch; --force discards territory-only refs
   update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
 `;
 
 function describe(changes: Change[], root: string, command: string): string {
   const lines = [`cland ${command} ${VERSION} in ${root}`];
-  const shown = changes.filter((c) => c.action !== 'unchanged');
+  const shown = changes.filter((c) => c.action !== 'unchanged' || c.path.startsWith('.cland/territory.git'));
   // the skills on one line per action: `created .agents/skills/ (38 skills)`
   const skill = (c: Change) => /^\.agents\/skills\/[^/.][^/]*$/.test(c.path) && !c.note;
   const skills = new Map<string, number>();
@@ -34,19 +37,24 @@ function describe(changes: Change[], root: string, command: string): string {
     lines[i] = `  ${action.padEnd(9)} .agents/skills/  (${n} skill${n === 1 ? '' : 's'})`;
   }
   const unchanged = changes.length - shown.length;
-  if (!shown.some((c) => c.action !== 'kept')) lines.push('  nothing to change: every managed part is current');
+  if (!shown.some((c) => c.action !== 'kept' && c.action !== 'unchanged')) lines.push('  nothing to change: every managed part is current');
   else if (unchanged) lines.push(`  ${unchanged} managed part${unchanged === 1 ? '' : 's'} already current`);
   return lines.join('\n');
 }
 
 async function run(command: 'init' | 'update', args: string[], cwd: string): Promise<number> {
   const json = args.includes('--json');
+  const undo = args.includes('--undo');
+  const force = args.includes('--force');
+  if (args.some((a) => a.startsWith('--') && !['--json', '--undo', '--force'].includes(a)) || (command === 'update' && (undo || force)) || (force && !undo)) throw new Error(`usage: cland ${command} [dir] [--json]${command === 'init' ? ' [--undo [--force]]' : ''}`);
   const [dir, extra] = args.filter((a) => !a.startsWith('--'));
   if (extra !== undefined) throw new Error(`usage: cland ${command} [dir]`);
   const root = dir === undefined ? projectRoot(cwd) : resolve(cwd, dir);
   if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
   if (command === 'update' && !existsSync(resolve(root, CLAND_DIR))) throw new Error(`${root} has no ${CLAND_DIR}/: run \`cland init\` first`);
-  const changes = provision(root);
+  const report = undo ? undoTerritory(root, force) : null;
+  if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
+  const changes = report?.changes ?? provision(root, { territory: command === 'init' || existsSync(territoryPath(root)) });
   process.stdout.write(json ? `${JSON.stringify({ root, version: VERSION, changes })}\n` : `${describe(changes, root, command)}\n`);
   return 0;
 }

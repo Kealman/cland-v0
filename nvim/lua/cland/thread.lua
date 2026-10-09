@@ -151,7 +151,7 @@ function Thread:render()
     add(' No messages in ' .. self.topic.title .. ' yet.', { { col = 0, opts = { end_col = 0, line_hl_group = 'ClandDim' } } })
     add('')
   end
-  local card_rows = {}
+  local card_rows, artifact_rows = {}, {}
   -- an answer shows under its ask's card, not in its place in time
   local answers = {}
   for _, m in ipairs(self.messages) do
@@ -204,6 +204,14 @@ function Thread:render()
       end
       return
     end
+    if type(m.artifact) == 'table' then
+      local a = m.artifact
+      local chip = ' ▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title
+      add(chip, { { col = 1, opts = { end_col = #chip, hl_group = 'ClandBlue' } } })
+      artifact_rows[#lines] = a
+      add('')
+      return
+    end
     for _, l in ipairs(vim.split(tostring(m.text or ''), '\n', { plain = true })) do
       add(' ' .. l)
     end
@@ -215,6 +223,7 @@ function Thread:render()
     end
   end
   self.card_rows = card_rows
+  self.artifact_rows = artifact_rows
   if self.notice then
     add(' ▲ ' .. self.notice.text, { { col = 0, opts = { end_col = 0, line_hl_group = self.notice.group } } })
   end

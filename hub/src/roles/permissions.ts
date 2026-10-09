@@ -14,7 +14,7 @@
 // The session's own item is one it claims (the tracker's live claim, by session id) or is assigned (the hub binds an
 // assignee to its session id: `assignees` in hub.db; an assignee the hub never bound goes to the first session of that
 // name to act on it).
-// Tools that have no frame yet (`merge`, `artifact.create`) are in the table already: they are checked the
+// Tools that have no frame yet (`merge`) are in the table already: they are checked the
 // day their frame arrives, through the same `decide`; `ask` (#33) has its frame. `resolve` and `topic.create` (#32) have theirs; `role.handover`
 // (#31) is the Coordinator's; `role.state` is no table tool: a session reads the state of the role it holds (the
 // dispatcher checks).

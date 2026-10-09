@@ -126,3 +126,21 @@ for (const [what, text] of [
     assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
   });
 }
+
+
+test('a shared artifact injected into Codex names its id and durable path in the envelope', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await launch(ui, 'coord', { role: 'coordinator' });
+  await idle(ui, 'coord');
+  const result = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Review note', content: 'Findings', topic: 'general' });
+  assert.equal(result.ok, true, result.error);
+  const a = (result.value as { artifact: { id: string; path: string } }).artifact;
+  await eventually('artifact envelope in Codex', async () => {
+    const log = await fake.log(coord.pid as number);
+    return log.includes(`artifact_id="${a.id}"`) && log.includes(`artifact_path="${a.path}"`) ? true : undefined;
+  });
+});

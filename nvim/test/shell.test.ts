@@ -786,12 +786,12 @@ test('the thread header shows the status, the binding and the warning; a topic e
   await c.input('<Esc>:Cland view thread topic-2<CR>');
   let s = await c.waitScreen((x) => x.includes('Daemon hello · to @coordinator'), 'the thread of topic-2');
   const header = s.split('\n').find((l) => l.includes('Daemon hello · to @coordinator')) as string;
-  assert.match(header, /Daemon hello · to @coordinator +T-12 {2}▲ no coordinator {2}topic waiting for agent/);
+  assert.match(header, /Daemon hello · to @coordinator +0 artifacts · ga {2}T-12 {2}▲ no coordinator {2}topic waiting for agent/);
   assert.match(statusLine(s), /Daemon hello · T-12 · topic waiting for agent/);
 
   // the Coordinator took the message and answered: the hub's topic event
   await c.control({ emit: { type: 'topic', topic: topic('topic-2', 'Daemon hello', 'open', { item: 'T-12' }) } });
-  s = await c.waitScreen((x) => /Daemon hello · to @coordinator +T-12 {2}topic open/.test(x), 'the header after the event');
+  s = await c.waitScreen((x) => /Daemon hello · to @coordinator +0 artifacts · ga {2}T-12 {2}topic open/.test(x), 'the header after the event');
   assert.doesNotMatch(s, /no coordinator {2}topic/);
 
   // gi from the bound topic: its item; gt from the item: back to its topic
@@ -1206,9 +1206,10 @@ function withInbox(s: Scenario): void {
 
 test('the Agents log (␣L, :Cland view log) lists messages with sender [Role] → addressee and notices with kind glyphs, and follows message events', { skip }, async (t) => {
   const c = await startShell(t, withAgentsLog);
-  // ␣a is the picker on artifacts (spec 5), which slice 2 brings: it says so and changes nothing
+  // ␣a opens the artifacts kind of the picker; Escape returns to General.
   await c.input('<Esc><Space>a');
-  await c.waitScreen((x) => statusLine(x).includes('artifacts: slice 2'), 'the artifacts hint');
+  await c.waitScreen((x) => x.includes('pick ›') && x.includes('artifacts'), 'the artifacts picker');
+  await c.input('<Esc>');
   assert.match(topBar((await c.screen()).join('\n')), /│ General/);
   await c.input('<Space>L');
   let s = await c.waitScreen((x) => topBar(x).includes('│ Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents log');

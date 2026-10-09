@@ -249,6 +249,21 @@ local function body_lines(it, d, width)
     local ok = v.result == 'clear'
     local head = (ok and '✓ ' or '✗ ') .. v.verdict .. ' ' .. v.result
     add({ { ' ' .. head, old and 'ClandDim' or (ok and 'ClandGreen' or 'ClandRed') }, { ' · by ' .. M.by(v.by or v.author) .. ' · run ' .. (v.run or '') .. ' · ' .. hhmm(v.at), 'ClandDim' } })
+    -- Older hubs have no commit/provenance fields: retain their existing one-line verdict layout.
+    if v.commit ~= nil or v.current ~= nil or v.source ~= nil then
+      local marks = { { '   ' .. (type(v.commit) == 'string' and v.commit:sub(1, 8) or 'no commit'), 'ClandDim' } }
+      if v.current == false then
+        marks[#marks + 1] = { ' · stale', 'ClandRed' }
+      elseif v.current == true then
+        marks[#marks + 1] = { ' · current', 'ClandGreen' }
+      end
+      if v.source == 'file' then
+        marks[#marks + 1] = { ' · from the file', 'ClandAmber' }
+      elseif v.source == 'hub' then
+        marks[#marks + 1] = { ' · from the hub', 'ClandDim' }
+      end
+      add(marks)
+    end
   end
   for _, v in ipairs(latest) do
     verdict(v, false)
@@ -383,6 +398,9 @@ function M.buf(id)
   vim.keymap.set('n', 'e', function()
     M.edit(id)
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: edit the item file' })
+  vim.keymap.set('n', 'L', function()
+    require('cland.agents_log').open({ item = id })
+  end, { buffer = b, nowait = true, silent = true, desc = 'cland: Agents log for this item' })
   return b
 end
 

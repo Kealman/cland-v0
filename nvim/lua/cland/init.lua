@@ -186,7 +186,7 @@ M.HELP = {
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
   'Pick      ␣p items · topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
-  '          ␣a artifacts: slice 2',
+  '          ␣a artifacts picker · ga topic artifacts · ↵ open chip · R render Mermaid',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
@@ -247,10 +247,10 @@ local function keymaps()
   map('<leader>b', function()
     layout.toggle_view({ kind = 'board' })
   end, 'board')
-  -- ␣a is the picker on artifacts (spec 5), which slice 2 brings; the Agents log is ␣L
+  -- ␣a is the artifacts picker; the Agents log is ␣L
   map('<leader>a', function()
-    state.say('artifacts: slice 2 · ␣p picks items, topics and sessions · ␣L the Agents log')
-  end, 'artifacts (slice 2)')
+    require('cland.picker').open({ kind = 'artifacts' })
+  end, 'artifacts picker')
   map('<leader>L', function()
     layout.toggle_view({ kind = 'log' })
   end, 'the Agents log')
@@ -337,7 +337,7 @@ local function commands()
       if sub == 'preset' then
         return { 'charting', 'watch', 'steady' }
       elseif sub == 'view' then
-        return { 'thread', 'session', 'item', 'board', 'log', 'inbox' }
+        return { 'thread', 'session', 'item', 'board', 'log', 'inbox', 'artifacts', 'artifact' }
       elseif sub == 'panel' then
         return { 'items', 'inbox', 'sessions', 'topics', 'dock' }
       elseif sub == 'topic' then

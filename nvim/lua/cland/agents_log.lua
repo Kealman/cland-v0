@@ -7,7 +7,7 @@
 local api = vim.api
 local state = require('cland.state')
 
-local M = { messages = {}, by_id = {}, rows = {}, buf = nil, reply = nil }
+local M = { messages = {}, by_id = {}, rows = {}, buf = nil, reply = nil, filter = {}, generation = 0 }
 local ns = api.nvim_create_namespace('cland.agents_log')
 
 M.TOPIC = 'agents'
@@ -80,6 +80,17 @@ function M.buffer()
   vim.keymap.set('n', 'r', function()
     M.reply_at(api.nvim_win_get_cursor(0)[1])
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: reply to the sender of this message' })
+  vim.keymap.set('n', '<CR>', function()
+    local m = M.at(api.nvim_win_get_cursor(0)[1])
+    if m and m.artifact then require('cland.artifacts').open(m.artifact) end
+  end, { buffer = b, desc = 'cland: open artifact' })
+  vim.keymap.set('n', 'ga', function()
+    require('cland.layout').show({ kind = 'artifacts', id = M.TOPIC }, { insert = false })
+  end, { buffer = b, desc = 'cland: topic artifacts' })
+  vim.keymap.set('n', 'f', M.prompt_filter, { buffer = b, nowait = true, silent = true, desc = 'cland: filter Agents by item or session' })
+  vim.keymap.set('n', 'F', function()
+    M.set_filter({})
+  end, { buffer = b, nowait = true, silent = true, desc = 'cland: clear the Agents filter' })
   M.buf = b
   M.render()
   return b
@@ -103,7 +114,7 @@ function M.render()
       marks[#marks + 1] = { row = #lines - 1, s = h[1], e = h[2], group = h[3] }
     end
   end
-  line(' Agents · read-only log: lifecycle events and agent-to-agent messages · r on a message replies to its sender', nil, { { 0, -1, 'ClandDim' } })
+  line(' Agents' .. M.filter_label() .. ' · read-only log: lifecycle events and agent-to-agent messages · r on a message replies to its sender', nil, { { 0, -1, 'ClandDim' } })
   line('')
   if #M.messages == 0 then
     line(' Nothing recorded yet.', nil, { { 0, -1, 'ClandDim' } })
@@ -112,6 +123,10 @@ function M.render()
   for _, m in ipairs(M.messages) do
     local time = ' ' .. clock(m.ts) .. '  '
     local text_lines = vim.split(tostring(m.text or ''), '\n', { plain = true })
+    if m.artifact then
+      local a = m.artifact
+      text_lines = { '▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title }
+    end
     if m.fromKind == 'hub' then
       local g = M.GLYPHS[m.kind] or M.OTHER_GLYPH
       local head = time .. g[1] .. ' '
@@ -122,7 +137,7 @@ function M.render()
       for _, n in ipairs(m.to or {}) do
         to[#to + 1] = who(n)
       end
-      local dest = #to > 0 and table.concat(to, ', ') or 'nobody'
+      local dest = #to > 0 and table.concat(to, ', ') or (m.artifact and 'you' or 'nobody')
       local head = time .. from .. ' → ' .. dest .. '  '
       local s_from = #time
       local s_to = s_from + #from + #' → '
@@ -131,6 +146,7 @@ function M.render()
         { s_from, s_from + #from, m.fromKind == 'human' and 'ClandAmber' or 'ClandBold' },
         { s_from + #from, s_to, 'ClandDim' },
         { s_to, s_to + #dest, 'ClandTeal' },
+        { #head, -1, m.artifact and 'ClandBlue' or 'ClandText' },
       })
       local pad = string.rep(' ', #time)
       for i = 2, #text_lines do
@@ -181,18 +197,122 @@ function M.load()
   if not (M.client and M.client:connected()) then
     return
   end
-  M.client:request({ type = 'topic.history', topic = M.TOPIC, limit = M.HISTORY_LIMIT }, function(err, value)
-    if not err and value then
+  M.generation = M.generation + 1
+  local generation = M.generation
+  M.client:request({ type = 'topic.history', topic = M.TOPIC, limit = M.HISTORY_LIMIT, item = M.filter.item, session = M.filter.session }, function(err, value)
+    -- A filter may have changed while this request was in flight.
+    if generation ~= M.generation then
+      return
+    end
+    if err then
+      state.say('Agents history: ' .. err, 'ClandRedBar')
+    elseif value then
       M.merge(value.messages)
     end
   end)
+end
+
+--- Exact identifiers in notice facts, including arrays (addressees/pairs) and nested facts.
+local function names(value, target)
+  if type(value) == 'string' then
+    return value == target
+  end
+  if type(value) == 'table' then
+    for _, v in pairs(value) do
+      if names(v, target) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+--- Match live entries by the same facts as the hub's history query.
+function M.matches(message)
+  local f = M.filter
+  if f.item then
+    local bound = state.topic_of_item(f.item)
+    local topic = bound and bound.id
+    if not names(message.detail, f.item) and not (topic and names(message.detail, topic)) then
+      return false
+    end
+  end
+  if not f.session or message.from == f.session or names(message.to, f.session) then
+    return true
+  end
+  -- Only facts naming sessions: a harness or rule can have the same name as an unrelated session.
+  local detail = type(message.detail) == 'table' and message.detail or {}
+  for _, key in ipairs({ 'session', 'from', 'to', 'by', 'pair' }) do
+    if names(detail[key], f.session) then
+      return true
+    end
+  end
+  return false
+end
+
+function M.filter_label()
+  local labels = {}
+  for _, v in ipairs({ M.filter.item or '', M.filter.session or '' }) do
+    if v ~= '' then
+      labels[#labels + 1] = v
+    end
+  end
+  return #labels > 0 and (' · ' .. table.concat(labels, ' · ')) or ''
+end
+
+--- Changing the filter replaces its window and asks the hub for matches over the whole record.
+function M.set_filter(filter)
+  M.filter = vim.deepcopy(filter or {})
+  M.generation = M.generation + 1
+  M.messages, M.by_id, M.rows = {}, {}, {}
+  M.close_reply()
+  M.render()
+  state.changed()
+  M.load()
+end
+
+function _G.ClandAgentsFilterComplete(lead)
+  local candidates = {}
+  for _, it in ipairs(state.S.items) do
+    candidates[it.id] = true
+  end
+  for _, session in ipairs(state.sessions()) do
+    candidates[session.name] = true
+  end
+  local result = {}
+  for name in pairs(candidates) do
+    if name:sub(1, #lead) == lead then
+      result[#result + 1] = name
+    end
+  end
+  table.sort(result)
+  return result
+end
+
+function M.prompt_filter()
+  vim.ui.input({ prompt = 'Agents filter (item or session): ', completion = 'customlist,v:lua.ClandAgentsFilterComplete' }, function(value)
+    if not value then
+      return
+    end
+    value = vim.trim(value)
+    if value == '' then
+      return
+    end
+    M.set_filter(value:match('^T%-%d+$') and { item = value } or { session = value })
+  end)
+end
+
+--- L from an item view or session row.
+function M.open(filter)
+  M.set_filter(filter)
+  require('cland.layout').show({ kind = 'log' }, { insert = false })
 end
 
 function M.setup(client)
   M.client = client
   client:on('connected', M.load)
   client:on('message', function(event)
-    if event.topic and event.topic.id == M.TOPIC and event.message and add(event.message) then
+    if event.topic and event.topic.id == M.TOPIC and event.message and M.matches(event.message) and add(event.message) then
       sort()
       M.render()
     end

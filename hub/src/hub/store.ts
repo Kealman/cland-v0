@@ -1,7 +1,7 @@
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
-import type { AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import { vacancyWarning } from './topics.ts';
 
@@ -11,6 +11,10 @@ export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'u
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
 
 const SCHEMA = `
+create table if not exists artifacts (
+  number integer primary key autoincrement,
+  value text not null
+);
 create table if not exists sessions (
   name text primary key,
   last_seen integer not null,
@@ -113,6 +117,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'sessions', column: 'status', type: 'text' },
   { table: 'sessions', column: 'role', type: 'text' },
   { table: 'sessions', column: 'session_id', type: 'text' },
+  { table: 'messages', column: 'artifact', type: 'text' },
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
@@ -161,6 +166,7 @@ update counters set value = max(value, (select coalesce(max(seq), 0) from messag
 type Row = Record<string, string | number | null>;
 
 const toMessage = (row: Row): Message => ({
+  ...(typeof row.artifact === 'string' ? { artifact: JSON.parse(row.artifact) as Artifact } : {}),
   id: row.id as string,
   from: row.from_name as string,
   fromKind: row.from_kind as Message['fromKind'],
@@ -485,6 +491,7 @@ export class Store implements HygieneMemory {
           message.answerTo ?? null,
           seq,
         );
+      if (message.artifact) this.#db.prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
       if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?))');
@@ -573,6 +580,26 @@ export class Store implements HygieneMemory {
   /** The stage of a message over all its deliveries; undefined when it had no addressee. */
   stage(messageId: string): DeliveryStage | undefined {
     return stageOf((this.#db.prepare('select state from deliveries where message_id = ?').all(messageId) as Row[]).map((r) => r.state as string));
+  }
+
+  /** The index and its publication are one database transaction; the file is cleaned up by the caller on failure. */
+  registerArtifact(make: (id: string) => Artifact, publish: (a: Artifact) => void): Artifact {
+    return this.#transaction(() => {
+      const n = this.#db.prepare("insert into artifacts (value) values ('{}')").run().lastInsertRowid;
+      const a = make(`A-${n}`);
+      this.#db.prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), n);
+      publish(a);
+      return a;
+    });
+  }
+
+  addressedInTopic(sessionId: string, topic: string): boolean {
+    return this.#db.prepare("select 1 from deliveries d join messages m on m.id = d.message_id where d.session_id = ? and m.topic = ? and d.state in ('delivered', 'injected', 'uncertain') limit 1").get(sessionId, topic) !== undefined;
+  }
+
+  artifacts(topic?: string): Artifact[] {
+    const rows = this.#db.prepare('select value from artifacts order by number').all() as Row[];
+    return rows.map((r) => JSON.parse(r.value as string) as Artifact).filter((a) => topic === undefined || a.topic === topic);
   }
 
   // ---------------------------------------------------------------- topics
@@ -700,8 +727,24 @@ export class Store implements HygieneMemory {
   }
 
   /** A topic's latest messages, oldest first, each with its stage. */
-  topicMessages(topic: string, limit: number): TopicMessage[] {
-    const rows = this.#db.prepare('select * from messages where topic = ? order by created_at desc, rowid desc limit ?').all(topic, limit) as Row[];
+  topicMessages(topic: string, limit: number, filter: AgentsHistoryFilter = {}): TopicMessage[] {
+    const clauses = ['topic = ?'];
+    const args: Array<string | number | null> = [topic];
+    // Exact JSON values, including arrays/nested facts, avoid matching T-1 to T-12 or alpha to alpha-2.
+    // Filter before LIMIT: old matches remain reachable past the unfiltered window.
+    if (filter.item !== undefined) {
+      clauses.push("exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text' and value in (?, ?))");
+      args.push(filter.item, this.topicOfItem(filter.item)?.id ?? null);
+    }
+    if (filter.session !== undefined) {
+      // Only session-bearing facts: harness/role/rule metadata can equal a valid session name.
+      clauses.push(`(from_name = ? or exists (select 1 from json_each(to_json) where value = ?)
+        or exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text'
+          and (fullkey in ('$.session', '$.from', '$.to', '$.by') or path in ('$.to', '$.pair')) and value = ?))`);
+      args.push(filter.session, filter.session, filter.session);
+    }
+    args.push(limit);
+    const rows = this.#db.prepare(`select * from messages where ${clauses.join(' and ')} order by created_at desc, rowid desc limit ?`).all(...args) as Row[];
     return rows.reverse().map((row) => {
       const stage = this.stage(row.id as string);
       const ask = this.ask(row.id as string);

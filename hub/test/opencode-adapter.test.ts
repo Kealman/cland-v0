@@ -161,6 +161,8 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.match(prompts, /^prompt queue: <channel source="cland" from="hub" from_kind="hub"[^\n]*>\ncland hub: you hold the role Coordinator/);
   assert.match(prompts, /\nprompt queue: <channel source="cland" from="human" from_kind="human"[^\n]* msg_id="[^"]+"[^\n]* topic="general" topic_title="General">\nReply with the single word pong\n<\/channel>\nTo answer, call the cland `send` tool/);
 
+
+
   // busy during the turn, idle after, from the event stream
   await presentAs(ui, 'impl', 'idle');
   const turn = stateEvents(ui, 'impl').map((e) => `${e.state}/${e.source}`);
@@ -394,4 +396,23 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
   await replyTo(ui2, 'impl', 'pong: still there?');
   await presentAs(ui2, 'impl', 'idle');
   assert.ok(stateEvents(ui2, 'impl').some((e) => e.state === 'busy' && e.source === 'sse'), 'busy from the stream after the restart');
+});
+
+
+test('a shared artifact injected into OpenCode names its id and durable path in the envelope', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
+  await clauseAnswered(ui, 'impl');
+  await presentAs(ui, 'impl', 'idle');
+  const artifactResult = await ui.request({ type: 'artifact.create', kind: 'diagram', title: 'Merge flow', content: 'graph TD; A-->B', topic: 'general' });
+  assert.equal(artifactResult.ok, true, artifactResult.error);
+  const artifact = (artifactResult.value as { artifact: { id: string; path: string } }).artifact;
+  await eventually('artifact envelope in OpenCode', async () => {
+    const log = await fake.prompts(launched.harnessSessionId as string);
+    return log.includes(`artifact_id="${artifact.id}"`) && log.includes(`artifact_path="${artifact.path}"`) ? true : undefined;
+  });
 });

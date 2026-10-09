@@ -12,6 +12,7 @@ local ns = api.nvim_create_namespace('cland.views')
 function M.setup(client)
   M.client = client
   require('cland.agents_log').setup(client)
+  require('cland.artifacts').setup(client)
 end
 
 --- The topic view of `id`, made on first use.
@@ -38,7 +39,12 @@ function M.current_topic()
     end
   end
   local v = state.S.ui.view
-  return v.kind == 'thread' and v.id or nil
+  if v.kind == 'log' then return 'agents' end
+  if v.kind == 'artifact' then
+    local a = require('cland.artifacts').get(v.id)
+    return a and a.topic or nil
+  end
+  return (v.kind == 'thread' or v.kind == 'artifacts') and v.id or nil
 end
 
 local function request(frame, done)
@@ -133,7 +139,12 @@ M.TITLES = {
 
 --- The title of a view, as the top bar shows it.
 function M.title(v)
-  if v.kind == 'thread' then
+  if v.kind == 'artifact' then
+    local a = require('cland.artifacts').get(v.id)
+    return a and (a.id .. ' · ' .. a.title) or v.id
+  elseif v.kind == 'artifacts' then
+    return 'Artifacts · ' .. (v.id or '')
+  elseif v.kind == 'thread' then
     local t = state.topic(v.id)
     return t and t.title or (v.id == 'general' and 'General' or v.id)
   elseif v.kind == 'session' then
@@ -153,7 +164,11 @@ end
 --- The buffer of a centre view other than a thread or a session: the item view and the board (#36), the Agents
 --- log (#34), the inbox full width (#33), else a placeholder.
 function M.placeholder(v)
-  if v.kind == 'item' and v.id then
+  if v.kind == 'artifact' then
+    return require('cland.artifacts').buffer(v.id)
+  elseif v.kind == 'artifacts' then
+    return require('cland.artifacts').list_buffer(v.id)
+  elseif v.kind == 'item' and v.id then
     return require('cland.item_view').render(v.id)
   elseif v.kind == 'board' then
     return require('cland.board').render()
@@ -185,7 +200,11 @@ local function lines_for(v)
 end
 
 function M.render_placeholder(v)
-  if v.kind == 'item' and v.id then
+  if v.kind == 'artifact' then
+    return require('cland.artifacts').buffer(v.id)
+  elseif v.kind == 'artifacts' then
+    return require('cland.artifacts').list_buffer(v.id)
+  elseif v.kind == 'item' and v.id then
     return require('cland.item_view').render(v.id)
   elseif v.kind == 'board' then
     return require('cland.board').render()

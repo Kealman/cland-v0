@@ -27,6 +27,7 @@ export type Scenario = {
   adapters?: Record<string, unknown>;
   presence?: Array<Record<string, unknown>>;
   items?: Array<Record<string, unknown>>;
+  artifacts?: Array<Record<string, unknown>>;
   attach?: Record<string, string>;
   send?: 'ok' | 'refuse' | 'hold';
   /** `hub.status`'s `coordinator` (the live holder, or null); absent, the field is left out. */
@@ -157,6 +158,8 @@ function answer(f: Frame) {
       return write({ type: 'welcome', protocol: 2, client: 'nvim' });
     case 'subscribe':
       return ok(f.id, { subscribed: true });
+    case 'artifact.list':
+      return ok(f.id, { artifacts: (scenario.artifacts ?? []).filter((a) => f.topic === undefined || a.topic === f.topic) });
     case 'topic.list':
       return ok(f.id, { topics: scenario.topics });
     case 'topic.history': {

@@ -29,9 +29,7 @@ export type ConnectionState =
   | { kind: 'connecting' }
   | { kind: 'connected'; name: string; role?: string }
   | { kind: 'disconnected'; reason: string; retryInMs: number }
-  | { kind: 'refused'; code: RefusalCode; message: string }
-  /** The hub closed this socket because a newer spoke of the same session took the name (4002): no reconnect. */
-  | { kind: 'replaced'; message: string };
+  | { kind: 'refused'; code: RefusalCode; message: string };
 
 /** How many `name-in-use` refusals a requested name survives before a generated one is taken: a holder
  *  that is really gone frees the name within a few reconnect delays; a live one elsewhere does not. */
@@ -207,8 +205,6 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       case 'connected':
         // asked while the socket is closing under us — the close event has not run yet
         return 'the hub connection closed under us; reconnecting';
-      case 'replaced':
-        return `this spoke was ${this.#state.message} — it will not reconnect`;
       case 'connecting':
         return 'the hub is not connected yet (connecting)';
       case 'disconnected':
@@ -277,13 +273,10 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         this.#log(`refused by the hub: ${this.#lastRefusal ?? why}`);
         return;
       }
-      if (code === REPLACED_CLOSE_CODE) {
-        // A newer spoke of this very session took the name: reconnecting would only take it back and loop.
-        this.#stopped = true;
-        this.#setState({ kind: 'replaced', message: why });
-        this.#log(`${why} — not reconnecting`);
-        return;
-      }
+      // A hub older than T-51 closed a spoke with this code when a newer spoke of its session said hello, and the
+      // spoke then stopped for good — while its harness (Codex, which starts a spoke per thread) went on calling
+      // tools through it. A spoke never gives up: it reconnects, and today's hub lets every spoke of a session stand.
+      if (code === REPLACED_CLOSE_CODE) this.#log(`${why} — reconnecting`);
       if (this.#stopped) return;
       this.#scheduleReconnect(this.#lastRefusal ?? why);
     });
