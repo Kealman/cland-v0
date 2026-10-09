@@ -1,23 +1,30 @@
 // All package suite entry points share this machine lock and temporary process boundary.
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { link, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { link, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
 
-type Holder = { pid: number; started: string; since: string; token: string; root?: string; device?: number; inode?: number };
+type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; device?: number; inode?: number };
 type Lease = { publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
   try {
     const value: unknown = JSON.parse(await readFile(path, 'utf8'));
-    if (typeof value === 'object' && value !== null && 'pid' in value && 'started' in value && 'token' in value && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.started === 'string' && typeof value.token === 'string') return value as Holder;
+    if (typeof value === 'object' && value !== null && 'pid' in value && 'token' in value && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.token === 'string') {
+      const parsed = value as Partial<Holder>;
+      return { ...parsed, pid: Number(value.pid), started: typeof parsed.started === 'string' ? parsed.started : null, since: parsed.since ?? parsed.started ?? 'unknown', token: value.token };
+    }
   } catch { /* no complete ownership record */ }
   return null;
 }
+const readableStart = (started: string | null): boolean => started !== null && /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2} \d{2}:\d{2}:\d{2} \d{4}$/.test(started);
+// Old runners stored an invocation ISO timestamp, not ps identity. Keep live unknowns held.
+const liveHolder = (holder: Holder) => holderAlive({ pid: holder.pid, started: readableStart(holder.started) ? holder.started : null });
+
 async function publish(path: string, holder: Holder, exclusive = false): Promise<void> {
   const staging = `${path}.${holder.token}`;
   await writeFile(staging, JSON.stringify(holder), { mode: 0o600 });
@@ -28,7 +35,9 @@ async function sweep(holder: Holder): Promise<void> {
   const ownedRoot = async () => {
     if (!holder.root) return undefined;
     const info = await stat(holder.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-    if (info && (info.dev !== holder.device || info.ino !== holder.inode)) throw new Error('suite root identity changed; refusing cleanup');
+    const plannedRoot = join(await realpath('/tmp'), `cland-suite-${holder.token}`);
+    const identityMatches = holder.device === undefined && holder.inode === undefined ? holder.root === plannedRoot : info?.dev === holder.device && info?.ino === holder.inode;
+    if (info && !identityMatches) throw new Error('suite root identity changed; refusing cleanup');
     return info ? holder.root : undefined;
   };
   // The run marker is unique per invocation, including workers whose cwd is the repository.
@@ -54,7 +63,7 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
       guard = acquireLock(`${dir}.reaper`);
       info = await stat(dir).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
       previous = await holderAt(ownerPath) ?? await holderAt(metadataPath);
-      if (previous && !holderAlive(previous)) {
+      if (previous && !liveHolder(previous)) {
         const ownerInfo = await stat(ownerPath).catch(() => null);
         if (Date.now() - (ownerInfo?.mtimeMs ?? info?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
           // Keep the stale lock in place throughout cleanup: no replacement daemon can overlap it.
@@ -93,7 +102,7 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
       info = await stat(dir).catch(() => null);
     } finally { guard?.release(); }
     const age = Math.max(0, Date.now() - (info?.mtimeMs ?? Date.now()));
-    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.since ?? previous.started}` :
+    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.since ?? previous.started}${readableStart(previous.started) ? '' : ' (holder from an older version; process start time unavailable)'}` :
       `waiting for the suite lock; age ${Math.floor(age / 1000)}s; no owner recorded (a manual lock); if no suite is running, remove it with \`rmdir /tmp/cland-suite.lock\``;
     if ((line !== last && previous !== null) || Date.now() - lastPrinted >= 60_000 || !lastPrinted) {
       process.stderr.write(`${line}\n`); last = line; lastPrinted = Date.now();
@@ -107,7 +116,7 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
 export async function runSuite(suites: string[][], options: { lockDir?: string; cwd?: string } = {}): Promise<number> {
   let interrupted: NodeJS.Signals | null = null;
   let active: ReturnType<typeof spawn> | undefined;
-  const runId = randomUUID();
+  const runId = randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
@@ -119,7 +128,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   });
   const startedIdentity = processStarted(process.pid);
   if (!startedIdentity) throw new Error('cannot establish suite holder process identity');
-  const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId };
+  const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId, root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
   let lease: Lease | undefined;
   let root: string | undefined;
   const invoked = Date.now();
@@ -131,7 +140,9 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
     started = Date.now();
     peak = loadavg()[0]!;
-    root = await realpath(await mkdtemp('/tmp/cland-suite-'));
+    // The unique planned path was durably published with the initial lock, before mkdir.
+    root = holder.root!;
+    await mkdir(root, { mode: 0o700 });
     const rootInfo = await stat(root);
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
     await lease?.publishRoot(root);

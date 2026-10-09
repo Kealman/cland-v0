@@ -787,7 +787,10 @@ Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
 pid and start time and waits. Automatic runs publish a PID/start-time sidecar
 before creating the directory. After a one-second grace period, a dead holder
 (including a reused PID) is reclaimed: its verified processes exit and its run
-directory is removed before the replacement suite starts.
+directory is removed before the replacement suite starts. The short, unique
+run-root path is recorded before directory creation, so interrupted setup is
+recoverable too. A live older-version holder with an unreadable start time is
+preserved until its PID exits; the waiter identifies it as an older version.
 
 An empty lock from the manual `mkdir` convention has no recorded owner and is
 never reclaimed by age. Once a minute the waiter prints its age and recovery

@@ -12,7 +12,7 @@ export const pause = (ms: number): Promise<void> => new Promise(resolve => setTi
 const recorded = new Map<number, ProcessIdentity>();
 
 function processes(): ProcessRow[] {
-  return execFileSync('ps', ['-axo', 'pid=,ppid=,pgid=,lstart=,stat=,command='], { encoding: 'utf8' }).split('\n').flatMap(line => {
+  return execFileSync('ps', ['ww', '-axo', 'pid=,ppid=,pgid=,lstart=,stat=,command='], { encoding: 'utf8' }).split('\n').flatMap(line => {
     const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+\s+\S+\s+\d+\s+\S+\s+\d+)\s+(\S+)\s+(.*)$/.exec(line);
     return match && !match[5]!.startsWith('Z') ? [{ pid: Number(match[1]), parent: Number(match[2]), group: Number(match[3]), started: match[4]!.replace(/\s+/g, ' '), command: match[6]! }] : [];
   });
@@ -71,9 +71,14 @@ function runMarkers(rows: ProcessRow[]): Map<number, string> {
     // Never log this output: OS environments may contain secrets.
     const output = execFileSync('ps', ['eww', '-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
     for (const line of output.split('\n')) {
-      const pid = /^\s*(\d+)\s/.exec(line)?.[1];
-      const marker = /(?:^|\s)TEST_SUITE_RUN_ID=([^\s]+)/.exec(line)?.[1];
-      if (pid && marker) result.set(Number(pid), marker);
+      const match = /^\s*(\d+)\s+(.*)$/.exec(line);
+      const row = rows.find(row => row.pid === Number(match?.[1]));
+      // ps eww appends environments to argv. Strip the exact independently observed argv first;
+      // a command quoting a marker never establishes environment ownership.
+      if (!row || !match?.[2]?.startsWith(`${row.command} `)) continue;
+      const environment = match[2].slice(row.command.length);
+      const markers = new Set([...environment.matchAll(/(?:^|\s)TEST_SUITE_RUN_ID=([^\s]+)/g)].map(marker => marker[1]!));
+      if (markers.size === 1) result.set(row.pid, [...markers][0]!);
     }
   }
   return result;

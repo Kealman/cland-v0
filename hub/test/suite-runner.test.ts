@@ -80,6 +80,30 @@ test('a suite takes over locks left by a killed runner and reaper', async (t) =>
   assert.equal(await import('node:fs/promises').then(({ stat }) => stat(worker.root)).catch(() => null), null);
 });
 
+test('takeover removes a root when the holder dies during its creation', async t => {
+  const dir = await fixture(t);
+  const marker = join(dir, 'created-root');
+  const code = `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
+const mkdir = fs.mkdir; const mkdtemp = fs.mkdtemp;
+async function crash(root) { await fs.writeFile(${JSON.stringify(marker)}, root); process.kill(process.pid, 'SIGKILL'); }
+fs.mkdir = async (...args) => { const result = await mkdir(...args); if (String(args[0]).includes('/cland-suite-')) await crash(String(args[0])); return result; };
+fs.mkdtemp = async (...args) => { const result = await mkdtemp(...args); if (String(args[0]).includes('/cland-suite-')) await crash(result); return result; };
+syncBuiltinESMExports();
+const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([], { lockDir: ${JSON.stringify(join(dir, 'lock'))} });`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+  const { ownProcess } = await import('./process-cleanup.ts');
+  ownProcess(t, child.pid);
+  await exited;
+  assert.equal(child.signalCode, 'SIGKILL');
+  const root = await readFile(marker, 'utf8');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const file = join(dir, 'pass.mjs');
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; test('crashed root gone before startup', () => assert.equal(existsSync(${JSON.stringify(root)}), false));`);
+  const successor = run(t, dir, file);
+  assert.equal(await successor.done, 0, successor.output());
+});
+
 for (const kind of ['reused holder PID', 'dead automatic empty lock', 'unknown manual empty lock'] as const) {
   test(`suite lock handles ${kind}`, async t => {
     const dir = await fixture(t);
@@ -112,6 +136,30 @@ for (const kind of ['reused holder PID', 'dead automatic empty lock', 'unknown m
       assert.equal(await suite.done, 0, suite.output());
       assert.match(suite.output(), /taking over stale suite lock/);
     }
+  });
+}
+
+for (const started of [new Date().toISOString(), null, 'unreadable-start-time']) {
+  test(`a live older-version holder with start ${String(started)} keeps its lock`, async t => {
+    const dir = await fixture(t);
+    const lock = join(dir, 'lock');
+    await mkdir(lock);
+    const metadata = { pid: process.pid, token: 'legacy-fixture', ...(started === null ? {} : { started }) };
+    await writeFile(`${lock}.owner`, JSON.stringify(metadata));
+    const old = new Date(Date.now() - 60_000);
+    await utimes(`${lock}.owner`, old, old);
+    const file = join(dir, 'pass.mjs');
+    await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
+    const suite = run(t, dir, file);
+    await until(() => suite.output().includes('waiting for the suite lock') || suite.output().includes('taking over stale suite lock'));
+    assert.match(suite.output(), /holder from an older version/);
+    await delay(1200);
+    assert.equal(suite.child.exitCode, null);
+    assert.deepEqual(JSON.parse(await readFile(`${lock}.owner`, 'utf8')), metadata);
+    suite.child.kill('SIGTERM');
+    assert.equal(await suite.done, 143, suite.output());
+    await rm(lock, { recursive: true });
+    await rm(`${lock}.owner`);
   });
 }
 

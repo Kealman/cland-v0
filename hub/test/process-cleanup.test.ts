@@ -13,7 +13,7 @@ process.env.TEST_SUITE_RUN_ID = 'owned-run';
 let rows = []; let cwd = ''; const signals = [];
 cp.execFileSync = (command, args) => {
   if (command === 'lsof') return cwd;
-  if (args.includes('eww')) return rows.map(r => r.pid + ' node TEST_SUITE_RUN_ID=' + r.runId).join('\\n');
+  if (args.includes('eww')) return rows.map(r => r.pid + ' ' + r.command + ' TEST_SUITE_RUN_ID=' + r.runId).join('\\n');
   return rows.map(r => r.pid + ' ' + r.parent + ' ' + r.group + ' ' + r.started + ' R ' + r.command).join('\\n');
 };
 syncBuiltinESMExports();
@@ -51,4 +51,11 @@ rows = [
 ];
 cwd = 'p420003\\nn' + root + '\\n';
 await cleanupProcesses(root);`), [{ pid: 420003, signal: 'SIGKILL' }]);
+});
+
+
+test('an argv assignment is not proof of run environment ownership', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420005, parent: 1, group: 420005, started: start, command: 'node TEST_SUITE_RUN_ID=owned-run ' + root + '/config', runId: 'other-run' }];
+await cleanupProcesses(root);`), []);
 });
