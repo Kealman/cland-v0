@@ -93,6 +93,7 @@ export type IndexedItem = {
 /** A verdict as the index holds it: the verdict comment's header, its author and time. */
 export type IndexedVerdict = Verdict & { author: string; at: string; source: 'hub' | 'file'; writer?: { sessionId: string; role: string | null }; current?: boolean };
 type VerdictRecord = Verdict & { author: string; at: string };
+type KeyedVerdict = { verdict: VerdictRecord; key: string };
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
@@ -260,20 +261,29 @@ export class TrackerIndex {
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
   verdicts(): Map<string, IndexedVerdict[]> {
     const rows = this.#db.prepare('select item_id, verdict, result, by, run, author, at, commit_sha, comment_key from tracker_verdicts order by item_id, seq').all() as Row[];
-    const out = new Map<string, IndexedVerdict[]>();
+    const out = new Map<string, KeyedVerdict[]>();
     for (const r of rows) {
       const id = r.item_id as string;
       const list = out.get(id) ?? [];
-      list.push(this.markVerdict(id, { verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string, ...(r.commit_sha ? { commit: r.commit_sha as string } : {}) }, r.comment_key as string));
+      list.push({ verdict: { verdict: r.verdict as VerdictKind, result: r.result as VerdictResult, by: r.by as string, run: r.run as string, author: r.author as string, at: r.at as string, ...(r.commit_sha ? { commit: r.commit_sha as string } : {}) }, key: r.comment_key as string });
       out.set(id, list);
     }
-    return out;
+    return new Map([...out].map(([id, list]) => [id, this.markVerdicts(id, list)]));
   }
 
-  /** Match this exact comment, rather than trusting its by line or the whole item's last writer. */
-  markVerdict(id: string, verdict: VerdictRecord, key: string): IndexedVerdict {
-    const r = this.#db.prepare('select session_id, role from tracker_written_verdicts where item_id = ? and comment_key = ?').get(id, key) as Row | undefined;
-    return { ...verdict, source: r ? 'hub' : 'file', ...(r ? { writer: { sessionId: r.session_id as string, role: r.role as string | null } } : {}) };
+  /** Each durable record can match only once, in write order, across the item's file-ordered comments.
+   *  A copied comment cannot replay earlier evidence after a later verdict, even if its original is removed. */
+  markVerdicts(id: string, verdicts: KeyedVerdict[]): IndexedVerdict[] {
+    // rowid is the durable table's insertion order, independent of file sequence numbers and edited times.
+    const rows = this.#db.prepare('select rowid as written_order, comment_key, session_id, role from tracker_written_verdicts where item_id = ? order by rowid').all(id) as Row[];
+    const records = new Map(rows.map(r => [r.comment_key as string, r]));
+    let lastMatched = 0;
+    return verdicts.map(({ verdict, key }) => {
+      const r = records.get(key);
+      if (!r || (r.written_order as number) <= lastMatched) return { ...verdict, source: 'file' };
+      lastMatched = r.written_order as number;
+      return { ...verdict, source: 'hub', writer: { sessionId: r.session_id as string, role: r.role as string | null } };
+    });
   }
 
   // ---------------------------------------------------------------- claims

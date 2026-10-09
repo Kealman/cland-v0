@@ -180,3 +180,37 @@ test('text verdicts retain their commit and invalid explicit SHAs leave the item
   assert.equal(view.verdictBase, 'main');
   assert.equal(view.verdicts[0]?.current, true);
 });
+
+test('a hand-copied clear verdict cannot replay hub provenance after a later not-clear verdict', async (t) => {
+  const root = await tempProject(t);
+  await repository(root);
+  await startDaemon(t, root);
+  const { item } = await task(root, 'create', 'Reviewed', '--branch', 't/test');
+  const reviewer = await spawnSpoke({ discover: true, cwd: root, name: 'rev-1', sessionId: 'reviewer-id', role: 'reviewer' });
+  t.after(() => reviewer.close());
+  await reviewer.waitForPresence(['rev-1']);
+  assert.equal((await reviewer.call<{ ok: boolean }>('task.comment', { id: item.id, text: 'checked', verdict: 'review', result: 'clear', run: 'r-1' })).ok, true);
+  const file = join(root, item.path);
+  const first = await readFile(file, 'utf8');
+  const clearComment = first.slice(first.indexOf('### rev-1'));
+  assert.equal((await reviewer.call<{ ok: boolean }>('task.comment', { id: item.id, text: 'regression found', verdict: 'review', result: 'not clear', run: 'r-2' })).ok, true);
+  await reviewer.close();
+  await writeFile(file, (await readFile(file, 'utf8')) + '\n' + clearComment);
+  const check = async (sources: string[]) => {
+    const viewed = (await task(root, 'view', item.id)).item.verdicts;
+    const listed = (await task(root, 'list')).items[0]?.verdicts ?? [];
+    for (const verdicts of [viewed, listed]) {
+      assert.deepEqual(verdicts.map(v => v.source), sources);
+      assert.equal(verdicts.at(-1)?.result, 'clear');
+      assert.equal(verdicts.at(-1)?.writer, undefined, 'the latest hand copy carries no hub writer identity');
+      assert.deepEqual(verdicts.find(v => v.result === 'not clear')?.writer, { sessionId: 'reviewer-id', role: 'reviewer' });
+    }
+  };
+  await check(['hub', 'hub', 'file']);
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await startDaemon(t, root);
+  await check(['hub', 'hub', 'file']);
+  // Removing the original does not turn the out-of-order replay into new hub evidence.
+  await writeFile(file, (await readFile(file, 'utf8')).replace(clearComment, ''));
+  await check(['hub', 'file']);
+});

@@ -379,7 +379,7 @@ export class Tracker {
       path: join(TASKS_REL, file),
       body: item.body,
       comments: item.comments,
-      verdicts: this.#freshness(item.fm.branch, item.comments.flatMap((c) => (c.verdict ? [this.#index.markVerdict(id, { ...c.verdict, author: c.author, at: c.at }, commentKey(c))] : [])), base),
+      verdicts: this.#freshness(item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : []))), base),
       claim: this.#index.claimOf(id),
     };
   }
