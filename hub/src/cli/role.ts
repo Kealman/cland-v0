@@ -18,7 +18,10 @@ const holderLine = (h: RoleHolder): string => `${h.label}${h.role === null ? ' (
 function describe(v: RoleList): string {
   const lines: string[] = [];
   for (const r of v.roles) {
-    const launch = [r.launch.harness, r.launch.model, r.launch.effort && `effort ${r.launch.effort}`].filter(Boolean).join(', ');
+    const box = r.launch.sandbox;
+    const details = box && box.mode !== 'danger-full-access' ? [box.writableRoots.length ? `writable: ${box.writableRoots.join(' ')}` : '', `network: ${box.network}`].filter(Boolean).join('; ') : '';
+    const sandbox = box && `sandbox ${box.mode}${details ? ` (${details})` : ''}`;
+    const launch = [r.launch.harness, r.launch.model, r.launch.effort && `effort ${r.launch.effort}`, r.launch.approval && `approval ${r.launch.approval}`, sandbox].filter(Boolean).join(', ');
     lines.push(`${r.label}${r.exclusive ? ' (one holder)' : ''}  launch: ${launch || 'harness default'}`);
     lines.push(r.holders.length ? r.holders.map((h) => `  ${holderLine(h)}`).join('\n') : '  no holder');
   }

@@ -6,11 +6,12 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { parse as parseToml } from 'smol-toml';
+import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
@@ -61,7 +62,7 @@ for (const accepted of [false, true]) test(`Codex failure before a pending steer
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 type StateEvent = { type: 'session.state'; session: string; state: string; source: string };
-type FakeServer = { pid: number; socket: string; argv: string[]; cwd: string };
+type FakeServer = { pid: number; socket: string; argv: string[]; cwd: string; env: Record<string, string>; path: string };
 
 type FakeCodex = {
   env: Record<string, string>;
@@ -152,6 +153,7 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   assert.equal(server.pid, launched.pid);
   assert.deepEqual(server.argv.slice(0, 2), ['--listen', `unix://${launched.harnessId}`]);
   const overrides = server.argv.filter((_, i) => server.argv[i - 1] === '-c');
+  // (a Coordinator has no sandbox in roles.toml, so nothing else is overridden)
   assert.ok(overrides.every((o) => o.startsWith('mcp_servers.cland.')), JSON.stringify(overrides));
   assert.ok(overrides.includes(`mcp_servers.cland.env.CLAND_SESSION_NAME="coord"`));
   assert.ok(overrides.includes(`mcp_servers.cland.env.CLAND_SESSION_ID="${launched.sessionId}"`));
@@ -282,7 +284,7 @@ test('a Codex app-server that dies: the state turns unknown and the hub logs it 
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: are you back?', 15_000);
 });
 
-test('after a hub restart, resume re-finds the app-server and its thread through the process table; state and inject continue', async (t) => {
+test('after a hub restart, resume re-finds the app-server and its thread through the process table; state and inject continue', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
   const first = await startDaemon(t, root, fake.env);
@@ -316,4 +318,104 @@ test('after a hub restart, resume re-finds the app-server and its thread through
   assert.equal((stopped.value as { process: Harness }).process.status, 'stopped');
   assert.equal(pidAlive(launched.pid as number), false);
   assert.deepEqual(await fake.servers(), []);
+});
+
+/** The params of every `thread/start` and `thread/resume` the fake app-server got, as it logged them. */
+const threadCalls = (log: string, method: 'thread/start' | 'thread/resume'): Array<Record<string, unknown>> =>
+  log
+    .split('\n')
+    .map((line) => new RegExp(`^\\S+ ${method} (\\{.*\\})$`).exec(line)?.[1])
+    .filter((json) => json !== undefined)
+    .map((json) => JSON.parse(json) as Record<string, unknown>);
+
+test('each role\'s launch defaults reach Codex: thread/start never asks for approvals and names the sandbox, whose writable roots and network the app-server is given as roles.toml has them (T-48)', async (t) => {
+  const root = await tempProject(t);
+  // a repository with a worktree under .cland/worktrees, as an Implementer's item gets
+  const worktree = join(root, '.cland', 'worktrees', 'T-1');
+  const gitDir = join(root, '.git', 'worktrees', 'T-1');
+  await mkdir(worktree, { recursive: true });
+  await mkdir(gitDir, { recursive: true });
+  await writeFile(join(worktree, '.git'), `gitdir: ${gitDir}\n`);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const tmp = await realpath(tmpdir());
+  // approval and sandbox belong to the role, not to its default harness: the built-in Implementer runs on OpenCode,
+  // and launched on Codex it still gets them
+  const file = join(root, '.cland', 'roles.toml');
+  // what the app-server was given beside the spoke: `-c key=<TOML>` overrides, parsed
+  const overridesOf = async (pid: number): Promise<Record<string, unknown>> => {
+    const server = (await fake.servers()).find((s) => s.pid === pid);
+    assert.ok(server, 'the app-server runs');
+    const own = server.argv.filter((a, i) => server.argv[i - 1] === '-c' && !a.startsWith('mcp_servers.cland.'));
+    const value = (o: string): unknown => JSON.parse(JSON.stringify(parseToml(`v=${o.slice(o.indexOf('=') + 1)}`).v));
+    return Object.fromEntries(own.map((o) => [o.slice(0, o.indexOf('=')), value(o)]));
+  };
+  const started = async (name: string, extra: Record<string, unknown>) => {
+    const launched = await launch(ui, name, extra);
+    const [params] = threadCalls(await fake.log(launched.pid as number), 'thread/start');
+    assert.ok(params, `${name}: a thread/start was logged`);
+    const { cwd, model, ...thread } = params;
+    return { launched, cwd, model, thread, overrides: await overridesOf(launched.pid as number) };
+  };
+  const sockets = (cwd: string) => ({ [join(root, '.cland')]: 'allow', [cwd]: 'allow', [tmp]: 'allow', [join(root, '.cland', 'run')]: 'deny', [join(tmp, 'cland-run')]: 'deny' });
+  const localNetwork = (cwd: string) => ({ enabled: true, allow_local_binding: true, unix_sockets: sockets(cwd) });
+
+  // the Implementer: its worktree, the main worktree and both git directories writable; Unix sockets and loopback only.
+  // The thread names the profile; the app-server's command line defines it
+  const impl = await started('impl-1', { role: 'implementer', cwd: worktree });
+  assert.equal(impl.cwd, worktree);
+  assert.deepEqual(impl.thread, { approvalPolicy: 'never', permissions: 'cland' });
+  assert.deepEqual(impl.overrides, {
+    default_permissions: 'cland',
+    'permissions.cland': { extends: ':workspace', filesystem: { [root]: 'write', [join(root, '.git')]: 'write', [gitDir]: 'write' }, network: localNetwork(worktree) },
+    'features.network_proxy': true,
+  });
+
+  // the Reviewer: read-only, no network, so a built-in profile is enough
+  const rev = await started('rev-1', { role: 'reviewer' });
+  assert.deepEqual([rev.thread, rev.overrides], [{ approvalPolicy: 'never', permissions: ':read-only' }, {}]);
+
+  // QA: writes in its own directory only (git directories stay read-only); Unix sockets and loopback
+  const qa = await started('qa-1', { role: 'qa' });
+  assert.deepEqual(qa.thread, { approvalPolicy: 'never', permissions: 'cland' });
+  assert.deepEqual(qa.overrides, { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', network: localNetwork(root) }, 'features.network_proxy': true });
+
+  // no role, so no launch defaults: approvals are still never asked, the sandbox is Codex's own
+  const plain = await started('plain-1', {});
+  assert.deepEqual([plain.thread, plain.overrides], [{ approvalPolicy: 'never' }, {}]);
+
+  // the session's shell is the session's: `cland task` run there acts as it, not as the human
+  const [server] = (await fake.servers()).filter((s) => s.pid === impl.launched.pid);
+  assert.deepEqual(server?.env, { CLAND_SESSION_ID: impl.launched.sessionId, CLAND_SESSION_NAME: 'impl-1', CLAND_ROLE: 'implementer' });
+  // ... and `node` there is the hub's own, ahead of any other on the PATH
+  assert.equal(server?.path.split(delimiter)[0], dirname(process.execPath));
+
+  // roles.toml is read as it is at each launch: an edit changes the next one, and a relaunch takes it too
+  const text = await readFile(file, 'utf8');
+  const qaLaunch = text.slice(text.indexOf('[qa.launch]'));
+  await writeFile(file, text.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"').replace('sandbox = "workspace-write"', 'sandbox = "danger-full-access"').replace('network = "local"', '')));
+  const qa2 = await started('qa-2', { role: 'qa' });
+  assert.deepEqual([qa2.thread, qa2.overrides], [{ approvalPolicy: 'on-request', permissions: ':danger-full-access' }, {}]);
+
+  await presentAs(ui, 'qa-1', 'idle');
+  await killDaemon(qa.launched.pid as number);
+  await eventually('qa-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'qa-1')?.state === 'unknown' ? true : undefined));
+  const relaunched = await ui.request({ type: 'session.resume', session: 'qa-1', relaunch: true }, 30_000);
+  assert.equal(relaunched.ok, true, relaunched.error);
+  const again = (relaunched.value as { process: Harness }).process;
+  const [resumed] = threadCalls(await fake.log(again.pid as number), 'thread/resume');
+  assert.deepEqual(resumed, { threadId: qa.launched.harnessSessionId, cwd: root, model: again.model, approvalPolicy: 'on-request', permissions: ':danger-full-access' });
+  assert.deepEqual(await overridesOf(again.pid as number), {}, 'the relaunched app-server no longer defines the profile');
+
+  // and the other way: a relaunch under the Implementer's defaults defines the profile again
+  await presentAs(ui, 'impl-1', 'idle');
+  await killDaemon(impl.launched.pid as number);
+  await eventually('impl-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'impl-1')?.state === 'unknown' ? true : undefined));
+  const implAgain = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
+  assert.equal(implAgain.ok, true, implAgain.error);
+  const implPid = (implAgain.value as { process: Harness }).process.pid as number;
+  assert.deepEqual(await overridesOf(implPid), impl.overrides);
+  const [implResumed] = threadCalls(await fake.log(implPid), 'thread/resume');
+  assert.deepEqual([implResumed?.approvalPolicy, implResumed?.permissions], ['never', 'cland']);
 });

@@ -18,7 +18,7 @@ import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type StateSignal } from './contract.ts';
+import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type StateSignal } from './contract.ts';
 import { ProcessTable, processStarted } from './processes.ts';
 import { clauseText } from '../roles/clause.ts';
 
@@ -197,6 +197,15 @@ export class Sessions {
 
   // ---------------------------------------------------------------- launch, attach, stop, resume
 
+  /** The role's approval and sandbox (roles.toml as it is now), the writable roots resolved against the project
+   *  root. They belong to the role, whatever harness the launch chose: an adapter whose harness takes none ignores them. */
+  #launchPolicy(role: string | null): LaunchPolicy {
+    const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
+    if (defaults === null) return {};
+    const sandbox = defaults.sandbox && { ...defaults.sandbox, writableRoots: defaults.sandbox.writableRoots.map((r) => resolve(this.#root, r)) };
+    return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}) };
+  }
+
   async launch(request: LaunchRequest): Promise<HarnessProcessView> {
     const cwd = resolve(this.#root, request.cwd ?? '.');
     const refusal = nameRefusal(request.name, new Set(['human']));
@@ -209,6 +218,7 @@ export class Sessions {
     const forHarness = defaults !== null && defaults.harness === harness;
     const model = request.model ?? (forHarness ? defaults.model : null);
     const effort = request.effort ?? (forHarness ? defaults.effort : null);
+    const policy = this.#launchPolicy(role);
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
@@ -232,7 +242,7 @@ export class Sessions {
     let early: SignalFrame[] = [];
     let p: HarnessProcess;
     try {
-      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}) });
+      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...policy });
       p = { ...p, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
       this.#table.put(p);
       if (reservation) this.#core.launchSettled(request.name);
@@ -276,7 +286,7 @@ export class Sessions {
   async resume(name: string, relaunch = false): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
     const p = this.#process(name);
     const adapter = this.adapter(p.harness);
-    const r = await adapter.resume(p, { relaunch });
+    const r = await adapter.resume(p, { relaunch, policy: this.#launchPolicy(p.role) });
     if (!r.found) {
       if (p.status === 'running') this.#exited(p.sessionId, r.reason);
       return { found: false, reason: r.reason, process: this.view(this.#process(name)) };

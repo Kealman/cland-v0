@@ -4,7 +4,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, realpath, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -108,4 +108,40 @@ test("two resolvers that both find a dead holder's lock: one breaks it, neither 
   assert.equal(b.stdout, `${r.expected}\n`);
   assert.equal(`${a.stderr}${b.stderr}`.match(/downloading /g)?.length, 1, `one download:\n${a.stderr}\n${b.stderr}`);
   assert.deepEqual((await readdir(r.dir)).sort(), [r.unpacked]);
+});
+
+// T-48: a session in a worktree runs the suite with the network closed, so it cannot download a Neovim of its own.
+test('a linked worktree with no Neovim of its own uses the one cached in the main worktree, and downloads nothing', async (t) => {
+  const asset = assetName();
+  if (!asset) return t.skip('no pinned build for this platform');
+  const base = await realpath(await mkdtemp(join(tmpdir(), 'cland-path-wt-')));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const main = join(base, 'main');
+  const worktree = join(main, '.cland', 'worktrees', 'T-1');
+  for (const root of [main, worktree]) {
+    await mkdir(join(root, 'nvim', 'bin'), { recursive: true });
+    for (const f of ['NVIM_VERSION', 'NVIM_SHA256SUMS']) await copyFile(join(NVIM_DIR, f), join(root, 'nvim', f));
+    await copyFile(join(NVIM_DIR, 'bin', 'nvim-path.ts'), join(root, 'nvim', 'bin', 'nvim-path.ts'));
+  }
+  await mkdir(join(main, '.git', 'worktrees', 'T-1'), { recursive: true });
+  await writeFile(join(worktree, '.git'), `gitdir: ${join(main, '.git', 'worktrees', 'T-1')}\n`);
+  const cached = join(main, '.cache', 'nvim', NVIM_VERSION, asset.replace(/\.tar\.gz$/, ''), 'bin', 'nvim');
+  await mkdir(join(cached, '..'), { recursive: true });
+  await writeFile(cached, '#!/bin/sh\necho fake\n', { mode: 0o755 });
+  // a download would fail at once: the release is nowhere
+  const env = { ...process.env, CLAND_NVIM: '', CLAND_NVIM_CACHE_DIR: '', CLAND_NVIM_DOWNLOAD_URL: pathToFileURL(join(base, 'no-such-release.tar.gz')).href, CLAND_NVIM_DOWNLOAD_SHA256: '0'.repeat(64) };
+  const run = (root: string) => spawnSync(process.execPath, [join(root, 'nvim', 'bin', 'nvim-path.ts')], { env, encoding: 'utf8' });
+
+  const out = run(worktree);
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(out.stdout, `${cached}\n`);
+  assert.deepEqual(await readdir(worktree), ['.git', 'nvim'], 'nothing was cached in the worktree');
+
+  // its own cache wins once it has one; the main worktree looks nowhere else
+  const own = join(worktree, '.cache', 'nvim', NVIM_VERSION, asset.replace(/\.tar\.gz$/, ''), 'bin', 'nvim');
+  await mkdir(join(own, '..'), { recursive: true });
+  await writeFile(own, '#!/bin/sh\necho own\n', { mode: 0o755 });
+  assert.equal(run(worktree).stdout, `${own}\n`);
+  await rm(join(main, '.cache'), { recursive: true });
+  assert.notEqual(run(main).status, 0, 'the main worktree has nothing to fall back on');
 });

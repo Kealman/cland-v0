@@ -16,18 +16,24 @@
 //   resume   the pid is alive and the socket answers `thread/resume` for the recorded thread; else, with `relaunch`,
 //            a new app-server on the same socket resumes the thread from its rollout.
 //
-// Approvals stay in the attached TUI: the hub never answers a server request; it only shows `waiting for approval`.
+//   policy   `thread/start` (and the `thread/resume` of a relaunch) carries `approvalPolicy` — `never` unless
+//            roles.toml says otherwise, so a launched session does not stop to ask — and `permissions`, the role's
+//            sandbox: a built-in profile, or the profile `cland` that further `-c` overrides on the app-server's
+//            command line define (`threadPolicy` below).
+//
+// An approval a session does ask for stays in the attached TUI: the hub never answers a server request; it only
+// shows `waiting for approval`.
 // The process table keeps the socket as `harnessId` and the thread id as `harnessSessionId`.
 import { execFile, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { turnError } from './turn-error.ts';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { codexCounts } from './usage.ts';
 import { VERSION } from '../version.ts';
-import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive, sameProcess, signalProcess } from './processes.ts';
 
@@ -85,7 +91,8 @@ export function stateOfStatus(status: unknown): SessionState {
   }
 }
 
-/** `-c` overrides for the app-server (never the TUI): the spoke as the `cland` MCP server, with the session's identity. */
+/** `-c` overrides for the app-server (never the TUI): the spoke as the `cland` MCP server, with the session's identity.
+ *  The launch's sandbox adds its own (`threadPolicy`). */
 export function mcpOverrides(host: Pick<AdapterHost, 'node' | 'spoke' | 'discoveryFile'>, name: string, role: string | null, sessionId: string): string[] {
   const env: Record<string, string> = {
     CLAND_HUB_FILE: host.discoveryFile,
@@ -107,6 +114,101 @@ export function mcpOverrides(host: Pick<AdapterHost, 'node' | 'spoke' | 'discove
     // the session's own way to the hub: its calls are checked by the hub, not prompted in the TUI
     ...set('default_tools_approval_mode', 'approve'),
   ];
+}
+
+/** The name of the permissions profile a launch defines for its thread. */
+export const CLAND_PROFILE = 'cland';
+
+const real = (path: string): string => {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+};
+const isDir = (path: string): boolean => {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+const under = (path: string, dir: string): boolean => path === dir || path.startsWith(dir + sep);
+
+/** The git directory a worktree's `.git` file points at, or null (a main worktree, or no repository). */
+function worktreeGitDir(cwd: string): string | null {
+  try {
+    const m = /^gitdir: (.+)$/m.exec(readFileSync(join(cwd, '.git'), 'utf8'));
+    return m ? real(isAbsolute(m[1] as string) ? (m[1] as string) : resolve(cwd, m[1] as string)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where the app-servers' sockets live when the project's `.cland/run/` is too deep for a Unix socket path. */
+const tmpRunDir = (): string => join(real(tmpdir()), 'cland-run');
+
+/** A value as TOML, for a `-c key=value` override: JSON's strings, numbers, booleans and arrays are TOML's; an object is an inline table. */
+const toml = (v: unknown): string => {
+  if (Array.isArray(v)) return `[${v.map(toml).join(',')}]`;
+  if (v !== null && typeof v === 'object') return `{${Object.entries(v).map(([k, x]) => `${JSON.stringify(k)}=${toml(x)}`).join(',')}}`;
+  return JSON.stringify(v);
+};
+
+/** How a launch's approval and sandbox reach Codex: `thread` in `thread/start` (and the `thread/resume` of a
+ *  relaunch), `overrides` as `-c` values on the app-server's command line. */
+export type ThreadPolicy = { thread: { approvalPolicy: string; permissions?: string }; overrides: string[] };
+
+/**
+ * A launch's approval and sandbox for Codex 0.160.0 (measured: `docs/review-and-qa.md`, "The Codex sandbox").
+ * Approvals are never asked unless the launch says otherwise. A sandbox that is a built-in permissions profile is
+ * named in `thread/start`; any other is the profile `cland`, which only the app-server's own configuration can
+ * define (a profile defined in `thread/start`'s `config` is accepted there, and then every turn fails with "failed
+ * to load workspace requirements"):
+ *
+ *   filesystem  each writable root, and — since Codex keeps git directories read-only inside a writable root —
+ *               the root's `.git` and the cwd's own git directory when it lies there (a worktree's), so the
+ *               session commits on its branch. (A root that is itself a linked worktree has no `.git` directory
+ *               of its own: nothing is added for it.)
+ *   network     `local`: Unix sockets under the project's `.cland/` (the hub's socket), the cwd and the temp dir
+ *               (where tests start their hubs), and loopback. `features.network_proxy` is what closes the rest:
+ *               without it `network.enabled` opens the whole network. The app-servers' own sockets are denied:
+ *               one of them takes `command/exec` under any profile, which would be a way out of the sandbox.
+ *               `full`: the whole network, the proxy off.
+ */
+export function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: string, policy: LaunchPolicy): ThreadPolicy {
+  const approvalPolicy = policy.approval ?? 'never';
+  const box = policy.sandbox;
+  if (!box) return { thread: { approvalPolicy }, overrides: [] };
+  if (box.mode === 'danger-full-access') return { thread: { approvalPolicy, permissions: ':danger-full-access' }, overrides: [] };
+  const base = box.mode === 'read-only' ? ':read-only' : ':workspace';
+  if (box.writableRoots.length === 0 && box.network === 'none') return { thread: { approvalPolicy, permissions: base }, overrides: [] };
+  const filesystem: Record<string, string> = {};
+  const gitDirs: string[] = [];
+  for (const root of box.writableRoots.map(real)) {
+    filesystem[root] = 'write';
+    const git = join(root, '.git');
+    if (isDir(git)) gitDirs.push(git);
+  }
+  const own = worktreeGitDir(cwd);
+  for (const git of gitDirs) filesystem[git] = 'write';
+  if (own !== null && gitDirs.some((git) => under(own, git))) filesystem[own] = 'write';
+  let network: Record<string, unknown> | null = null;
+  if (box.network === 'local') {
+    const cland = real(dirname(host.discoveryFile));
+    const unix_sockets: Record<string, string> = { [cland]: 'allow', [real(cwd)]: 'allow', [real(tmpdir())]: 'allow', [join(cland, 'run')]: 'deny', [tmpRunDir()]: 'deny' };
+    network = { enabled: true, allow_local_binding: true, unix_sockets };
+  } else if (box.network === 'full') network = { enabled: true };
+  const profile = { extends: base, ...(Object.keys(filesystem).length ? { filesystem } : {}), ...(network ? { network } : {}) };
+  return {
+    thread: { approvalPolicy, permissions: CLAND_PROFILE },
+    overrides: [
+      // Codex wants a default beside any profile it is given; the thread names the same one
+      `default_permissions=${toml(CLAND_PROFILE)}`,
+      `permissions.${CLAND_PROFILE}=${toml(profile)}`,
+      ...(network ? [`features.network_proxy=${toml(box.network === 'local')}`] : []),
+    ],
+  };
 }
 
 export type CodexOptions = {
@@ -199,28 +301,38 @@ export class CodexAdapter implements HarnessAdapter {
     this.#versionChecked = true;
   }
 
-  /** The session's socket: in `.cland/run/`, or in the temp directory when that path is too long for a Unix socket. */
+  /** The session's socket: in `.cland/run/`, or in the temp directory's `cland-run/` when that path is too long for
+   *  a Unix socket. Both directories are closed to a sandboxed session (`threadPolicy`). */
   #socketPath(sessionId: string): string {
     const file = `cx-${sessionId.replace(/-/g, '').slice(0, 12)}.sock`;
     const inProject = join(dirname(this.#host.discoveryFile), 'run', file);
     // sun_path is 104 bytes on macOS, 108 on Linux
-    return Buffer.byteLength(inProject) <= 100 ? inProject : join(tmpdir(), `cland-${file}`);
+    return Buffer.byteLength(inProject) <= 100 ? inProject : join(tmpRunDir(), file);
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string): Promise<{ pid: number; client: AppServerClient }> {
+  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[]): Promise<{ pid: number; client: AppServerClient }> {
     mkdirSync(dirname(socket), { recursive: true, mode: 0o700 });
     rmSync(socket, { force: true });
     const logDir = join(dirname(this.#host.discoveryFile), 'log');
     mkdirSync(logDir, { recursive: true });
     const logFile = join(logDir, `codex-${p.name}.log`);
     const out = openSync(logFile, 'a');
-    const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(this.#host, p.name, p.role, p.sessionId)];
+    const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(this.#host, p.name, p.role, p.sessionId), ...overrides.flatMap((o) => ['-c', o])];
     let exited: string | null = null;
     let pid: number | undefined;
     try {
       // detached, in its own process group: it outlives the hub, and its MCP children (the spoke) go with it
-      const child = spawn(this.#bin, args, { cwd: p.cwd, env: this.#env, detached: true, stdio: ['ignore', out, out] });
+      // the session's shell inherits the app-server's environment: `cland` run there acts as the session, not as the
+      // human, and `node` is the hub's own, whatever else the PATH holds (a Node outside the engines range fails the suite)
+      const env = {
+        ...this.#env,
+        PATH: [dirname(this.#host.node), this.#env.PATH].filter(Boolean).join(delimiter),
+        CLAND_SESSION_ID: p.sessionId,
+        CLAND_SESSION_NAME: p.name,
+        ...(p.role ? { CLAND_ROLE: p.role } : {}),
+      };
+      const child = spawn(this.#bin, args, { cwd: p.cwd, env, detached: true, stdio: ['ignore', out, out] });
       child.once('exit', (code, signal) => (exited = `exited (${code ?? signal})`));
       child.once('error', (err) => (exited = err.message));
       child.unref();
@@ -350,9 +462,10 @@ export class CodexAdapter implements HarnessAdapter {
     const sessionId = randomUUID();
     const socket = this.#socketPath(sessionId);
     const base = { name: request.name, role: request.role, sessionId, cwd: request.cwd };
-    const { pid, client } = await this.#startServer(base, socket);
+    const policy = this.#threadPolicy(request.cwd, request);
+    const { pid, client } = await this.#startServer(base, socket, policy.overrides);
     try {
-      const started = await client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}) });
+      const started = await client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread });
       const threadId = started.thread.id;
       const p: HarnessProcess = {
         ...base,
@@ -384,6 +497,13 @@ export class CodexAdapter implements HarnessAdapter {
       rmSync(socket, { force: true });
       throw err;
     }
+  }
+
+  /** The launch's settings for Codex; the directories the sandbox denies sockets in exist first (Codex ignores a
+   *  socket path it cannot normalize, and a deny that is ignored is a hole). */
+  #threadPolicy(cwd: string, policy: LaunchPolicy): ThreadPolicy {
+    if (policy.sandbox?.network === 'local') for (const dir of [join(dirname(this.#host.discoveryFile), 'run'), tmpRunDir()]) mkdirSync(dir, { recursive: true, mode: 0o700 });
+    return threadPolicy(this.#host, cwd, policy);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -564,7 +684,7 @@ export class CodexAdapter implements HarnessAdapter {
     if (p.harnessId) rmSync(p.harnessId, { force: true });
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy } = {}): Promise<ResumeResult> {
     const socket = p.harnessId ?? this.#socketPath(p.sessionId);
     if (!p.harnessSessionId) return { found: false, reason: 'no thread id recorded' };
     const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
@@ -589,10 +709,11 @@ export class CodexAdapter implements HarnessAdapter {
       return { found: false, reason: processAlive(p) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
     }
     // a new app-server on the same socket, resuming the thread from its rollout
-    const { pid, client } = await this.#startServer(p, socket);
+    const policy = this.#threadPolicy(p.cwd, options.policy ?? {});
+    const { pid, client } = await this.#startServer(p, socket, policy.overrides);
     try {
       this.#attach(live, client);
-      const r = await this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}) });
+      const r = await this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread });
       live.state = r.state;
       const relaunched: HarnessProcess = { ...p, pid, harnessId: socket, model: r.model ?? p.model, startedAt: new Date().toISOString(), status: 'running' };
       live.p = relaunched;

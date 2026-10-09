@@ -33,9 +33,13 @@
 //   connection" starts its turn and drops the client's connection instead of answering (the first time only); SIGUSR2 drops every
 //   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
 //   app-server lives). A body `rename to <name>` calls the spoke's `rename` tool before the pong. Each `turn/start`
-//   logs its `effort` when given.
+//   logs its `effort` when given. Each `thread/start` and `thread/resume` logs its params as one line of JSON, and is
+//   refused when it names `permissions` together with `sandbox`, or a `permissions` id that is neither built-in
+//   (`:read-only`, `:workspace`, `:danger-full-access`) nor defined by a `-c permissions.<id>=…` override on the
+//   command line. (The real one also accepts a profile defined in the request's `config`, and then fails every turn
+//   with "failed to load workspace requirements": the fake refuses that at once.)
 //
-// State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv), threads/<id>.json (the "rollout"),
+// State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300).
 import { randomUUID } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -155,7 +159,7 @@ async function appServer(args: string[]): Promise<number> {
   const socket = listen.slice('unix://'.length);
   const logFile = join(HOME, 'log', `${process.pid}.log`);
   const log = (line: string) => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
-  writeFileSync(join(HOME, 'servers', `${process.pid}.json`), JSON.stringify({ pid: process.pid, socket, argv: args, cwd: process.cwd() }));
+  writeFileSync(join(HOME, 'servers', `${process.pid}.json`), JSON.stringify({ pid: process.pid, socket, argv: args, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith('CLAND_'))), path: process.env.PATH ?? '' }));
   log(`app-server ${JSON.stringify(args)}`);
 
   // `-c key=value`: the value is TOML; the overrides cland passes are JSON-compatible
@@ -326,12 +330,23 @@ async function appServer(args: string[]): Promise<number> {
     log(`the answer is ${mode}`);
     return mode === 'garbled' ? { garbled: true } : { dropped: true };
   };
+  /** Why the real app-server would refuse a thread's permissions, or null. */
+  const permissionsRefusal = (params: Record<string, unknown>): string | null => {
+    const id = params.permissions;
+    if (id === undefined || id === null) return null;
+    if (params.sandbox !== undefined && params.sandbox !== null) return '`permissions` cannot be combined with `sandbox`';
+    const defined = args.some((a, i) => args[i - 1] === '-c' && a.startsWith(`permissions.${String(id)}=`));
+    return [':read-only', ':workspace', ':danger-full-access'].includes(id as string) || defined ? null : `unknown permissions profile \`${String(id)}\``;
+  };
   const handle = async (c: Conn, method: string, params: Record<string, unknown>): Promise<Answer> => {
     switch (method) {
       case 'initialize':
         c.initialized = true;
         return { result: { userAgent: `fake-codex/${VERSION}`, platformFamily: 'unix' } };
       case 'thread/start': {
+        log(`thread/start ${JSON.stringify(params)}`);
+        const refusal = permissionsRefusal(params);
+        if (refusal) return { error: { code: -32600, message: refusal } };
         await mcpReady;
         const t: Thread = { id: randomUUID(), cwd: (params.cwd as string) ?? process.cwd(), model: (params.model as string) ?? 'gpt-fake-1', turns: 0, status: { type: 'idle' }, turnId: null, queue: [], tokens: 0 };
         threads.set(t.id, t);
@@ -341,6 +356,9 @@ async function appServer(args: string[]): Promise<number> {
         return { result: { thread: view(t), model: t.model } };
       }
       case 'thread/resume': {
+        log(`thread/resume ${JSON.stringify(params)}`);
+        const refusal = permissionsRefusal(params);
+        if (refusal) return { error: { code: -32600, message: refusal } };
         const t = load(params.threadId as string);
         if (!t || t.turns === 0) return { error: { code: -32600, message: `no rollout found for thread id ${String(params.threadId)}` } };
         if (typeof params.model === 'string') t.model = params.model;

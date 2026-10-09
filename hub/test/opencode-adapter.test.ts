@@ -9,7 +9,7 @@ import { mkdtemp, readdir, readFile, realpath, rm, stat } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -93,7 +93,7 @@ async function api(h: Harness, root: string, method: string, path: string, body?
   return res.json();
 }
 
-test('a launched OpenCode session: its own server, the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, the state follows the event stream', async (t) => {
+test('a launched OpenCode session: its own server, the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, the state follows the event stream', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);

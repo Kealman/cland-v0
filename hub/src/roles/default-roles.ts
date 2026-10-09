@@ -11,6 +11,22 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #   exclusive    one holder at most (the Coordinator)
 #   [<role>.launch]       what \`cland session launch --role <role>\` uses when no harness or model is given:
 #                         harness (claude-code | codex | opencode), model ("" = the harness's default), effort
+#                         How a launched session may act, read at each launch (and relaunch). Codex takes these;
+#                         Claude Code and OpenCode keep their own permission settings and ignore them:
+#                           approval        never (the default: the session never stops to ask the human; a command
+#                                           its sandbox refuses just fails) | on-request | untrusted
+#                           sandbox         read-only | workspace-write (the session's directory and the temp dir)
+#                                           | danger-full-access (no sandbox) | "" (the harness's own)
+#                           writable_roots  with workspace-write: more writable directories, relative to the
+#                                           project root. One that holds .git is writable with it, and with the
+#                                           session's own worktree git directory, so the session can commit.
+#                           network         none (the default) | local (Unix sockets under .cland/, the session's
+#                                           directory and the temp dir, and loopback: the hub's socket, \`cland\`,
+#                                           tests that start hubs; every other host refused) | full
+#                         A key left out takes the role's built-in value (the ones written below), so a
+#                         launch table without these keys is still sandboxed; write "" for none.
+#                         A session that reaches the hub's socket can act as the human there (\`cland topic
+#                         answer\`): \`network = "local"\` trusts the role with that. See docs/review-and-qa.md.
 #   [<role>.permissions]  tools: the spoke tools the role may use, enforced by the hub on every call. A grant is
 #                         "tool" (all of it) or "tool:scope" (only that part):
 #                           send:agents           to sessions only;  send:human  to the human (send with no \`to\`)
@@ -66,6 +82,11 @@ harness = "opencode"
 # Edit to pin one, e.g. "opencode/big-pickle".
 model = ""
 effort = ""
+# Its own worktree and the main one, git directories included (it commits on its branch); the hub and local test servers, no outside network.
+approval = "never"
+sandbox = "workspace-write"
+writable_roots = ["."]
+network = "local"
 
 [implementer.permissions]
 tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "artifact.create", "who", "history", "status", "task.view", "task.list"]
@@ -86,6 +107,9 @@ You are a Reviewer: you review changes when the Coordinator asks and return a ve
 harness = "codex"
 model = "gpt-6.1-sol"
 effort = "high"
+# It reads and edits nothing: the item comes through \`task.view\`, the changes through git.
+approval = "never"
+sandbox = "read-only"
 
 [reviewer.permissions]
 tools = ["send:agents", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]
@@ -106,6 +130,10 @@ You are QA: you exercise the running product when the Coordinator asks and retur
 harness = "codex"
 model = "gpt-6-astra"
 effort = "high"
+# It runs the checks where it stands and writes nothing else (git directories stay read-only); the hub and local test servers, no outside network.
+approval = "never"
+sandbox = "workspace-write"
+network = "local"
 
 [qa.permissions]
 tools = ["send:agents", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]

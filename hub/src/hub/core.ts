@@ -885,7 +885,7 @@ export class HubCore {
           label: ROLE_LABELS[role] ?? role,
           exclusive: d?.exclusive ?? false,
           skills: d?.skills ?? [],
-          launch: d?.launch ?? { harness: '', model: null, effort: null },
+          launch: d?.launch ?? { harness: '', model: null, effort: null, approval: null, sandbox: null },
           holders: [...names].sort().map((n) => this.#holder(n)),
         };
       }),

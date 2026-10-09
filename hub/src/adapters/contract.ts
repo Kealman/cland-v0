@@ -44,7 +44,37 @@ export type HarnessProcess = {
   pidStarted?: string | null;
 };
 
-export type SpawnRequest = {
+/** Whether a launched session stops to ask before a command its sandbox refuses (roles.toml's `approval`). */
+export const APPROVALS = ['never', 'on-request', 'untrusted'] as const;
+export type Approval = (typeof APPROVALS)[number];
+
+export const SANDBOX_MODES = ['read-only', 'workspace-write', 'danger-full-access'] as const;
+export const SANDBOX_NETWORKS = ['none', 'local', 'full'] as const;
+
+/**
+ * What a launched session's commands may touch (roles.toml's `sandbox`, `writable_roots` and `network`), in
+ * harness-neutral terms; the adapter turns it into its harness's own settings.
+ */
+export type Sandbox = {
+  /** `read-only`: nothing is written; `workspace-write`: the session's cwd and the temp dir; `danger-full-access`: no sandbox. */
+  mode: (typeof SANDBOX_MODES)[number];
+  /** With `workspace-write`: directories writable beside the cwd, absolute. A root that holds a `.git` directory is
+   *  writable with it, and so is the cwd's own git directory when it lies there (a worktree's). */
+  writableRoots: string[];
+  /** `none`: no network; `local`: Unix sockets under the project's `.cland/`, the cwd and the temp dir, and
+   *  loopback, with every other host refused; `full`: the whole network. */
+  network: (typeof SANDBOX_NETWORKS)[number];
+};
+
+/** How a launch is allowed to act: read from roles.toml as it is at the launch, and again at a relaunch. */
+export type LaunchPolicy = {
+  /** Absent: the adapter's default (Codex: `never`, so a launched session never waits on an approval). */
+  approval?: Approval | null;
+  /** Absent: the harness's own sandbox. */
+  sandbox?: Sandbox | null;
+};
+
+export type SpawnRequest = LaunchPolicy & {
   name: string;
   role: string | null;
   /** The model to run; the harness's default when null. */
@@ -131,9 +161,9 @@ export interface HarnessAdapter {
   /**
    * Re-find a process from the table after a hub restart: alive and still the same session → `found`, with
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own
-   * conversation id.
+   * conversation id, under `policy` (its role's launch defaults as they are now).
    */
-  resume(process: HarnessProcess, options?: { relaunch?: boolean }): Promise<ResumeResult>;
+  resume(process: HarnessProcess, options?: { relaunch?: boolean; policy?: LaunchPolicy }): Promise<ResumeResult>;
   /** The hub stops: timers end; the harness processes keep running (they outlive the hub). */
   close(): void;
 }
