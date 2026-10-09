@@ -11,10 +11,10 @@ parent: T-20
 blocked_by:
   - T-54
   - T-57
-topic: null
+topic: topic-28
 branch: t/T-62-qa-briefs-and-the-qa-skill-a-qa-session
 created: 2026-10-09T08:34:54.777Z
-updated: 2026-10-09T15:14:29.302Z
+updated: 2026-10-09T15:51:17.492Z
 ---
 
 ## Parent
@@ -42,3 +42,88 @@ Test seam: a real Codex QA session through the hub on a fixture item, and one re
 ### coord · 2026-10-09T08:39:13.470Z
 
 GitHub mirror: https://github.com/Kealman/cland-v0/issues/57 (a sub-issue of #20; the item is the source of truth).
+
+### qa-62 · 2026-10-09T15:23:08.104Z
+
+verdict: qa
+result: clear
+by: qa-62 [qa]
+run: qa-2026-10-09-62-1
+commit: 8506808c0cd568d912b8d5c2798e834ba0f4c34b
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| SHELL-001 | headless-grid | PASS | .cland/qa/T-62/qa-2026-10-09-62-1/SHELL-001.screen.txt; SHELL-001.state.json |
+| ITEMS-001 | headless-grid | PASS | .cland/qa/T-62/qa-2026-10-09-62-1/ITEMS-001.screen.txt; ITEMS-001.state.json |
+
+Ran from T-62's worktree, in order:
+- CLAND="node hub/bin/cland.ts" .agents/skills/qa/qa-record.sh run T-62 qa-2026-10-09-62-1 SHELL-001
+- CLAND="node hub/bin/cland.ts" .agents/skills/qa/qa-record.sh run T-62 qa-2026-10-09-62-1 ITEMS-001
+
+Both commands exited 0. SHELL-001 showed a connected General thread with "hello from qa" queued. ITEMS-001 showed T-2 beneath T-1 (0/1), then opened T-2 with its body, comment, parent and ui label. Inspected the screen captures and verified exactly two JSON lines for this run, all required fields present, session qa-62, build 8506808, PASS and exit_code 0, in /Users/evgeniyivanov/Projects/cland/v0/.cland/qa/runs.jsonl.
+
+Read task.view and checked CLI task list/view successfully. HEAD before and after matched the requested full SHA. The worktree already contained uncommitted changes to .agents/skills/qa/{BRIEF.md,SKILL.md,qa-record.sh}, qa/briefs/T-62.md and .cland/roles.toml; the run used those on-disk workflow files. No source files changed by QA. No manual checks in the brief; full suite excluded as requested.
+
+Findings (high/medium/low): none in the two-case brief. Clear for this live acceptance run; this verdict does not assert the full suite or rescue acceptance criterion.
+
+### impl-62 · 2026-10-09T15:43:33.882Z
+
+Head fd8d581e94a8ff578760245122fc8ae4988de445. `npm run typecheck && npm test` pass: hub 443/443, nvim 91/91, 0 skipped.
+
+Live runs (cases SHELL-001, ITEMS-001):
+1. A real Codex QA session (gpt-6-astra) launched by the Coordinator in this project, qa-62, run qa-2026-10-09-62-1, pinned to 8506808: verdict clear, written through the hub, and two lines in .cland/qa/runs.jsonl:
+{"ts":"2026-10-09T15:22:36Z","item":"T-62","run":"qa-2026-10-09-62-1","case":"SHELL-001","build":"8506808","surface":"headless-grid","method":"cland --headless --qa qa/cases/SHELL-001.lua","result":"PASS","exit_code":0,"evidence":[".cland/qa/T-62/qa-2026-10-09-62-1/SHELL-001.screen.txt",".cland/qa/T-62/qa-2026-10-09-62-1/SHELL-001.state.json"],"session":"qa-62"}
+{"ts":"2026-10-09T15:22:41Z","item":"T-62","run":"qa-2026-10-09-62-1","case":"ITEMS-001","build":"8506808","surface":"headless-grid","method":"cland --headless --qa qa/cases/ITEMS-001.lua","result":"PASS","exit_code":0,"evidence":[".cland/qa/T-62/qa-2026-10-09-62-1/ITEMS-001.screen.txt",".cland/qa/T-62/qa-2026-10-09-62-1/ITEMS-001.state.json"],"session":"qa-62"}
+2. Scratch project (cland init with this branch, own hub, removed afterwards), Codex qa-1 on gpt-6-astra, run qa-2026-10-09-1524 at 46bfed2: verdict clear, by qa-1 [qa], commit 46bfed2b, case table in the text, two runs.jsonl lines (session qa-1). It found one defect, fixed in 83dd2f2: `cland init` copies qa-record.sh without the executable bit, so the skill and briefs now say `sh .agents/skills/qa/qa-record.sh …`.
+3. Rescue (/codex:rescue gpt-6-astra, --write) of the same brief in the scratch project, run qa-rescue-1 at b5bccf3, after the fix: returned both case lines (session rescue-job; it could not write .cland/qa, so evidence went to the temp dir and the lines were printed) and `verdict: qa / result: clear / commit / run`. Recorded by the Coordinator in the scratch project: the item view shows `[verdict qa: clear, by coord [coordinator], run qa-rescue-1]`, distinct from qa-1's verdict. The merge gate does not count it (D5).
+4. Not clear: hub/test/skills-qa.test.ts runs the skill's sequence for real: a nonexistent case is BLOCKED (exit 2, still a line), the verdict `not clear` names it and the item view and `task list --verdict "qa=not clear"` show it. Partial failures tested: the append fails (line printed, "NOT recorded"), and the verdict is refused after the append (lines stay untouched, the QA session writes only the verdict again with the same run, no case reruns).
+Not in this item's tests but changed with it: codex-adapter.test.ts expects QA's workspace-write profile to grant .cland/qa.
+
+### qa-62 · 2026-10-09T15:45:51.965Z
+
+verdict: qa
+result: clear
+by: qa-62 [qa]
+run: qa-2026-10-09-62-2
+commit: fd8d581e94a8ff578760245122fc8ae4988de445
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| SHELL-001 | headless-grid | PASS | .cland/qa/T-62/qa-2026-10-09-62-2/SHELL-001.screen.txt; SHELL-001.state.json |
+| ITEMS-001 | headless-grid | PASS | .cland/qa/T-62/qa-2026-10-09-62-2/ITEMS-001.screen.txt; ITEMS-001.state.json |
+
+Ran each case in brief order from the requested worktree with CLAND="node hub/bin/cland.ts" sh .agents/skills/qa/qa-record.sh run T-62 qa-2026-10-09-62-2 <CASE>. Both exited 0. SHELL-001 showed General connected and the typed message queued; ITEMS-001 showed the parent/child tree and opened T-2 with its body, comment, parent and label. Inspected screen/state evidence. Exactly two lines appended to /Users/evgeniyivanov/Projects/cland/v0/.cland/qa/runs.jsonl for this brief run, with PASS/0, build fd8d581 and session qa-62. CLI task list/view succeeded. HEAD matched the requested SHA and git status was clean before and after. No source changes, manual checks, or full suite run.
+
+Findings (high/medium/low): none in the requested brief.
+
+Additional negative check, kept separate as requested: a throwaway Lua case NEGATIVE-001 deliberately failed qa.expect after hub connection. The real recorder/CLI/Neovim returned FAIL and exit 1, with QA_SESSION=qa-62-negative retained, under run qa-2026-10-09-62-negative-1. The temporary CLAND wrapper only redirected the catalogue path to the temporary case. Under the skill this negative case would require a not clear verdict naming NEGATIVE-001; no negative verdict was submitted to T-62. This clear verdict covers the two acceptance cases above.
+
+Evidence artifact A-107: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-107-t-62-final-head-qa-and-intentional-fail-fd8d581.md, including the case table, three JSON lines, all six captures, negative source and method. Read-only fallback was not exercised by this delta request.
+
+### rev-6 · 2026-10-09T15:51:17.492Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-62-1
+commit: fd8d581e94a8ff578760245122fc8ae4988de445
+
+High: none.
+
+medium (Standards) — .agents/skills/qa/qa-record.sh:25: item pattern T-[0-9]* accepts /../../../ suffixes, and line 26 accepts empty/dot run IDs; these escape the required evidence tree. Validate numeric item IDs and each nonempty safe path component.
+
+medium (Standards/Spec) — .agents/skills/qa/qa-record.sh:52: unquoted $out splits a valid project/TMPDIR path containing spaces or globs into multiple arguments, blocking the case or misplacing evidence. Pass --out and its quoted directory separately.
+
+medium (Spec) — .agents/skills/qa/qa-record.sh:68: final JSON-generation failure is unchecked; an empty line is appended, “recorded” is reported and a passing case exits 0. Check serialization and refuse invalid/empty appends while preserving outcome/captures for recovery.
+
+medium (Spec) — .agents/skills/qa/SKILL.md:15: rescue recovery appends returned lines without copying temporary captures into .cland/qa/T-<n>/<run>/ or normalizing their references, leaving disposable evidence outside the required durable record. Also document/recover both evidence-directory failures rather than silently dropping inline captures.
+
+medium (Spec) — qa/briefs/T-62.md:12: “the commit the request names” makes the committed brief depend on external context; the documented fresh rescue command supplies only its path. Pin the build or supply a self-contained resolution rule.
+
+medium (Spec, requested rollout scope) — docs/review-and-qa.md:40 / hub/src/roles/default-roles.ts:48: existing role clauses/skill lists do not inherit these defaults, cland update preserves roles.toml, and no migration instructions/report explain how to activate the QA workflow. Preserve customized roles and provide the migration; automatic overwrite would violate repository ownership.
+
+Low: none additional. Verdict rule is correct: clear only for every scoped case/check PASS; FAIL/BLOCKED/INCONCLUSIVE produce not clear and name the case. Managed .gitignore refresh and omitted restricted QA roots work; explicit roots/custom files remain preserved.
+
+Read-only /bin/sh probes with mocked filesystem/evidence/append boundaries reproduce accepted traversal/dot/empty IDs, split --out arguments and blank “recorded” output on encoding failure; no actual writes. Actual parseRoles of the existing worktree instance confirms neither role inherits qa skills/brief clauses. Read A-101/A-107 live QA evidence and item suite report; no suite rerun. Exact head verified, TypeScript noEmit and diff check pass.
+
+Separate axes and runnable probes: A-110, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-110-t-62-review-rev-6-62-1-at-fd8d581.md.

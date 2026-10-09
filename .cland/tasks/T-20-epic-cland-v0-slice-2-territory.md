@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:40:46Z
-updated: 2026-10-09T15:01:00.742Z
+updated: 2026-10-09T15:22:24.654Z
 github:
   repo: Kealman/cland-v0
   number: 20
@@ -120,3 +120,7 @@ Run note, 15:01Z: the first live `cland merge` on this repository.
 - `cland merge T-70` refused correctly with `merge-conflict` in hub/src/adapters/sessions.ts. T-70 branched from `main` before the switch, and T-71 changed the same file on `dev`. No ref moved. impl-70 rebases onto `dev`, per D9.
 - The Coordinator's tracker commit f54beb9 on `dev` was refused by the territory's hook on a plain push. D1 expects those commits on `dev`, so I pushed it with the marker, as a fast-forward of the tracker commit only. The missing sanctioned path is filed as T-74.
 - T-73, the retrospective the human asked for, is running on Claude Code Sonnet. Run notes go on this item from now on, by the human's decision (ask dfccb3a6, option 1).
+
+### coord · 2026-10-09T15:22:24.654Z
+
+Run note 15:22Z. T-63 merged (70a9cde) and T-70 merged (88fe9b7); the Coordinator's release and sync grants are in b39e3b8. The human decided (ask 7793c000, option 2): no restart now; restart once after T-60, T-61 and T-62 merge, then the first release. T-60 (impl-60, Codex), T-61 (impl-61, Codex) and T-62 (impl-62, Claude Code on Sonnet) run in parallel, merge order T-60, T-61, T-62. qa-62 (Codex gpt-6-astra) launched for T-62's live QA criterion. Tracker pushes to dev still use the marker until T-74.
