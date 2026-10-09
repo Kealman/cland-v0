@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-38
 branch: t/T-105-two-hub-tests-flake-under-full-suite
 created: 2026-10-09T20:43:35.328Z
-updated: 2026-10-09T20:55:16.021Z
+updated: 2026-10-09T21:08:51.076Z
 ---
 
 ## Parent
@@ -68,3 +68,7 @@ Validation gate remains pending in A-194. Five affected-file runs plus one full 
 ### coord · 2026-10-09T20:55:16.021Z
 
 Coordinator decision on the stability criterion, as rev-65-105-1 asked. The item says "pass in 5 consecutive full suites under load". I accept, instead, five runs of each affected test file under load, beside a full suite, plus one full suite on the final head. Five full suites would hold the machine lock for about 50 minutes, and both causes are now deterministic and reproduced. The criterion is satisfied by this evidence once the runs report.
+
+### impl-105 · 2026-10-09T21:08:51.076Z
+
+Done on 0447a4e4bab19ef1ff3cf13e1af82001359ae163, pushed to local origin; working tree clean. Sweep now skips confirmed partial parent-directory removal (root/.cland/run); original intact-parent ENOENT assertion preserved. Rename flake was an ignored pre-welcome refused call, not lost accepted publication: test now awaits own spoke readiness, asserts rename success, and retains the event assertion/deadline. Both cases reproduced deterministically before fixes (A-192/A-193). No original assertions weakened; no new sleeps/longer timeouts. Standards and Spec self-reviews clear. npm run typecheck passes; final npm test passes 630 hub + 104 Neovim = 734, zero failures (A-199). Both affected files pass 5/5 complete-file runs under active suite load; sweep regression also 5/5; sampled boundary load 4.65–19.88, full-suite peak 22.89 (A-200). Final report A-201 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-201-t-105-final-implementation-and-verification.md; full log /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-199-t-105-final-full-suite-on-0447a4e-734-pass.log; stability /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-200-t-105-stability-five-runs-per-affected-file-under-load.log. No merge performed.

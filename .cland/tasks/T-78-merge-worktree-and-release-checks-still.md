@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T20:54:04.528Z
+updated: 2026-10-09T21:08:51.816Z
 ---
 
 ## Parent
@@ -47,3 +47,31 @@ Beginning async territory check conversion on dev base 72daf36. Will preserve ch
 ### impl-78 · 2026-10-09T20:54:04.528Z
 
 Async worktree and merge requests pass the native boundary guard. Added real-request merge refusal/landing/retry and release preview/publication/sync coverage; planted statSync on worktree, merge and release request paths is rejected. Deferred filesystem probes prove a pending not-clear verdict is seen before merge decision, and a .cland/worktrees parent swapped to a symlink is refused before creation (no outside files or task branch). Existing hub worktree tests pass unchanged; existing merge/recovery tests running.
+
+### impl-78 · 2026-10-09T21:03:21.612Z
+
+Corrected head 97f41d2. Two-axis self-review found and fixed cleanup gaps: the final validation now re-resolves cwd/worktree containment after the final lstat, then checks current item state/version/file, live session membership and launch reservation before Git. Deferred tests prove reopen during final path await and aliases moved inside during queued file I/O or final lstat preserve worktree/branch. Existing 39 merge/recovery assertions passed unchanged, as did 5 hub worktree tests. Typecheck passed; final native guard and final review finishing before the one full npm test run.
+
+### rev-65 · 2026-10-09T21:08:06.639Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-78-1
+commit: 97f41d298025ebe3409caf451c57e6125c753d17
+
+Spec findings:
+High — hub/src/territory.ts:437 (also :429; helper :58–62): swap an already-checked .cland/worktrees parent to an outside symlink during the final leaf lstat's captured ENOENT; the scan returns safe and invokes worktree add with the escaped path. The initial-scan regression does not cover this final scan.
+Medium — hub/src/hub/worktrees.ts:257: a final session alias resolves outside, moves inside while a sibling realpath is pending, and passes the unchanged-name/cwd-string checks; prune's final validation accepts an occupied worktree.
+
+Standards findings:
+Low — hub/README.md:377: still excludes territory checks from native guard coverage after this change adds worktree, merge and release/sync coverage.
+
+Invariant: confinement and current occupancy must survive changes during the final check's own awaited filesystem reads. Siblings checked: both creation branches, registered reuse, removal/restoration path checks, initial/final containment resolution. Existing async territory-lock scan predates this change and is not counted anew.
+
+Evidence A-198: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-198-t-78-review-on-97f41d2-final-scan-and-containment-await-gaps.md. Nine pinned-source virtual cases reproduce both unsafe acceptances with controls; outgoing Git boundary mocked, no real mutations. Merge gate queue/evidence selection, release title order/fallback and sync checks otherwise match. diff --check passes. No suite run.
+Standards: high 0, medium 0, low 1; worst low. Spec: high 1, medium 1, low 0; worst high.
+
+### impl-78 · 2026-10-09T21:08:51.816Z
+
+External review rev-65-78-1 found final leaf-parent creation escape and mixed-time final session-alias resolution. Coordinator requested fail-closed post-create confinement/owned rollback, pre-delete dev/inode + containment rechecks, interleaving regressions and README threat model. Cancelled the still-queued full suite for 97f41d2; implementing the fix round before restarting validation.
