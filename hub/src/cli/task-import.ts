@@ -4,7 +4,7 @@
 // the hub numbers, links and writes the items.
 import { execFile } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { layout, pidAlive, projectRoot, readDiscovery } from '../project.ts';
+import { hubDiscovery, pidAlive, projectRoot, readDiscovery } from '../project.ts';
 import type { ImportedIssue, ImportOutcome, IssueRef } from '../tracker/import-github.ts';
 import { actorOf } from './actor.ts';
 import { askHubFrame } from './socket-client.ts';
@@ -151,7 +151,7 @@ export async function runImportGithub(args: string[], cwd: string, io: Io, env: 
     return 2;
   }
   const root = projectRoot(cwd);
-  const d = readDiscovery(layout(root).discovery);
+  const d = readDiscovery(hubDiscovery(cwd, env));
   if (!d || !pidAlive(d.pid)) {
     io.err(`cland: no hub running for ${root} — start it with \`cland hub start\`\n`);
     return 1;

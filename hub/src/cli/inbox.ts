@@ -1,7 +1,7 @@
 // `cland inbox` and `cland topic answer`: the human answers asks and reads the inbox from a terminal — no workbench
 // needed (the open point of #33). Both go over the hub's existing UI frames (`inbox.list`, `topic.answer`, "Asks and
 // the inbox"), like `cland role`: readDiscovery, askHubFrame, `--json`.
-import { layout, projectRoot, readDiscovery } from '../project.ts';
+import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { Inbox, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
@@ -35,7 +35,7 @@ function describe(v: Inbox): string {
 }
 
 export async function runInbox(args: string[], cwd: string = process.cwd()): Promise<number> {
-  const d = readDiscovery(layout(projectRoot(cwd)).discovery);
+  const d = readDiscovery(hubDiscovery(cwd));
   if (!d) {
     process.stderr.write(NO_HUB);
     return 1;
@@ -58,7 +58,7 @@ export async function runTopic(args: string[], cwd: string = process.cwd()): Pro
 }
 
 async function runTopicAnswer(args: string[], cwd: string): Promise<number> {
-  const d = readDiscovery(layout(projectRoot(cwd)).discovery);
+  const d = readDiscovery(hubDiscovery(cwd));
   if (!d) {
     process.stderr.write(NO_HUB);
     return 1;

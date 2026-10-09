@@ -14,7 +14,8 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
   const { result, discovery } = await startDaemon(t, root);
   assert.match(result.stdout, new RegExp(`hub started for ${root}`));
 
-  assert.deepEqual(Object.keys(discovery).sort(), ['pid', 'port', 'secret', 'socket', 'version']);
+  assert.deepEqual(Object.keys(discovery).sort(), ['pid', 'port', 'root', 'secret', 'socket', 'version']);
+  assert.equal(discovery.root, root);
   assert.equal(typeof discovery.port, 'number');
   assert.match(discovery.secret, /^[0-9a-f]{64}$/);
   assert.equal(discovery.socket, join(root, '.cland', 'hub.sock'));

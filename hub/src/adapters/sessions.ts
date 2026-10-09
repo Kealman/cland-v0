@@ -12,6 +12,7 @@
 //   launch: a signal or a bridge names the launch it comes from (the cland session id the hooks and the mod
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
+import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import type { HubCore } from '../hub/core.ts';
@@ -25,6 +26,9 @@ import { clauseText } from '../roles/clause.ts';
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
 export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null };
+
+/** A launch directory refused before the role is reserved or the harness is spawned. */
+export class InvalidLaunchCwd extends Error {}
 
 export type SessionsOptions = {
   core: HubCore;
@@ -201,6 +205,7 @@ export class Sessions {
   }
 
   async launch(request: LaunchRequest): Promise<HarnessProcessView> {
+    const cwd = resolve(this.#root, request.cwd ?? '.');
     const refusal = nameRefusal(request.name, new Set(['human']));
     if (refusal) throw new Error(refusal);
     const role = request.role ?? null;
@@ -217,6 +222,13 @@ export class Sessions {
     if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     const adapter = this.adapter(harness);
+    let directory = false;
+    try {
+      directory = statSync(cwd).isDirectory();
+    } catch {
+      // A missing or inaccessible path is a typed launch refusal, independent of the harness.
+    }
+    if (!directory) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
     // the role is reserved before anything is spawned: a second launch for an exclusive role is refused right here,
     // and a launch that fails gives back what it reserved (its early hello's grant included)
     const reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
@@ -228,7 +240,7 @@ export class Sessions {
     let early: SignalFrame[] = [];
     let p: HarnessProcess;
     try {
-      p = await adapter.spawn({ name: request.name, role, model, cwd: request.cwd ?? this.#root, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...policy });
+      p = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...policy });
       p = { ...p, pidStarted: p.pidStarted ?? (p.pid !== null ? processStarted(p.pid) : null) };
       this.#table.put(p);
       if (reservation) this.#core.launchSettled(request.name);

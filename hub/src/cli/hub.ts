@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { serveProject } from '../hub/daemon.ts';
 import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
-import { layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
+import { hubDiscovery, layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
 import { withRole } from '../names.ts';
 import { askHub, askHubFrame, probe } from './socket-client.ts';
@@ -134,12 +134,12 @@ async function start(root: string, io: Io): Promise<number> {
   return 1;
 }
 
-async function status(root: string, json: boolean, io: Io): Promise<number> {
-  const l = layout(root);
+async function status(l: Layout, json: boolean, io: Io): Promise<number> {
+  const root = l.root;
   const found = await inspect(l);
   switch (found.kind) {
     case 'live':
-      io.out(json ? `${JSON.stringify(found.status)}\n` : `hub running for ${root}\n${describe(found.status)}`);
+      io.out(json ? `${JSON.stringify(found.status)}\n` : `hub running for ${found.status.root}\n${describe(found.status)}`);
       return 0;
     case 'none':
       io.out(json ? `${JSON.stringify({ running: false, root })}\n` : `no hub running for ${root}\n`);
@@ -153,8 +153,8 @@ async function status(root: string, json: boolean, io: Io): Promise<number> {
   }
 }
 
-async function stop(root: string, io: Io): Promise<number> {
-  const l = layout(root);
+async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
+  const root = l.root;
   const d = readDiscovery(l.discovery);
   if (!d) {
     io.out(`no hub running for ${root}\n`);
@@ -168,6 +168,10 @@ async function stop(root: string, io: Io): Promise<number> {
       asked = false;
     }
     if (!(asked && (await waitForExit(d.pid, STOP_DEADLINE_MS)))) {
+      if (!rootKnown) {
+        io.err(`cland: cannot verify the project root for ${l.discovery}; pid ${d.pid} is left running\n`);
+        return 1;
+      }
       // The socket did not take the request, or the hub did not leave in time: the signal's turn — but only
       // for the process that holds the project's lock. Any other is a stranger behind a reused pid.
       if (!ownsProject(l.lock, d.pid)) {
@@ -190,7 +194,11 @@ async function stop(root: string, io: Io): Promise<number> {
   // may already stand at that path). A newer hub's hub.json is never touched.
   if (readDiscovery(l.discovery)?.pid === d.pid) {
     removeDiscovery(l.discovery, d.pid);
-    if (liveHolder(l.lock) === null) rmSync(d.socket, { force: true });
+    // A copied discovery may still name the old hub after the canonical file names a replacement.
+    const canonical = layout(root).discovery;
+    const current = rootKnown ? readDiscovery(canonical) : null;
+    const ownsSocket = l.discovery === canonical || current?.pid === d.pid;
+    if (rootKnown && ownsSocket && liveHolder(l.lock) === null) rmSync(d.socket, { force: true });
   }
   return 0;
 }
@@ -260,15 +268,15 @@ const usageError = (io: Io, why: string): number => {
   io.err(`cland: hub audit: ${why}\n\nusage: cland hub <command>\n\n${HUB_USAGE}`);
   return 2;
 };
-async function unmute(root: string, names: string[], io: Io): Promise<number> {
+async function unmute(l: Layout, names: string[], io: Io): Promise<number> {
   const [a, b] = names;
   if (!a || !b || names.length !== 2) {
     io.err('usage: cland hub unmute <session> <session>\n');
     return 2;
   }
-  const d = readDiscovery(layout(root).discovery);
+  const d = readDiscovery(l.discovery);
   if (!d) {
-    io.err(`cland: no hub running for ${root}: a mute is lifted on the running hub (it is kept in hub.db until then)\n`);
+    io.err(`cland: no hub running for ${l.root}: a mute is lifted on the running hub (it is kept in hub.db until then)\n`);
     return 1;
   }
   try {
@@ -312,17 +320,27 @@ function journal(root: string, args: string[], io: Io): number {
 export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio): Promise<number> {
   const [sub, ...rest] = args;
   const root = projectRoot(cwd);
+  // Start/serve own the cwd's project. Discovery records an existing hub's actual root, independent
+  // of where the file lives. Older copies need a successful probe before lock checks or cleanup.
+  const discovery = hubDiscovery(cwd);
+  const overridden = process.env.CLAND_HUB_FILE?.trim() && ['status', 'stop', 'unmute'].includes(sub ?? '');
+  const d = overridden ? readDiscovery(discovery) : null;
+  let target = overridden ? d?.root ?? null : root;
+  if (overridden && sub === 'stop' && target === null) {
+    target = (d && await probe(d))?.root ?? null;
+  }
+  const l = { ...layout(target ?? root), discovery };
   switch (sub) {
     case 'start':
       return start(root, io);
     case 'status':
-      return status(root, rest.includes('--json'), io);
+      return status(l, rest.includes('--json'), io);
     case 'stop':
-      return stop(root, io);
+      return stop(l, target !== null, io);
     case 'audit':
       return audit(root, rest, io);
     case 'unmute':
-      return unmute(root, rest, io);
+      return unmute(l, rest, io);
     case 'journal':
       return journal(root, rest, io);
     case 'serve':

@@ -10,7 +10,7 @@
 // launch under the same name still sends.
 import { createConnection, type Socket } from 'node:net';
 import { PROTOCOL_VERSION, parseFrame, type ClientHello } from '../protocol.ts';
-import { findDiscovery, readDiscovery } from '../project.ts';
+import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export const HOOK_USAGE = `  hook <event>    from inside a launched session (its hooks, the cland mod): post a signal to the hub
@@ -53,7 +53,7 @@ export function signalPayload(raw: Record<string, unknown>): Record<string, unkn
 }
 
 function discovery(args: string[]) {
-  const file = flag(args, '--hub-file') ?? process.env.CLAND_HUB_FILE ?? findDiscovery(process.cwd());
+  const file = flag(args, '--hub-file') ?? hubDiscovery(process.cwd());
   return file ? { file, d: readDiscovery(file) } : { file: null, d: null };
 }
 

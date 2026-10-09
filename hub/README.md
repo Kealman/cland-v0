@@ -71,6 +71,8 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_HEARTBEAT_MS` and `CLAND_HUB_REQUEST_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_PAUSE_MS`, read by `cland hub serve`, holds every tracker write still between its temporary file and the rename, so a test can land a hand edit in that window; nothing else sets it. Also for tests only: `CLAND_QUEUE_TTL_MS` shortens the queue TTL (how long a queued message and a remembered name last), and `CLAND_TEST_CRASH_AT=handover-committed` kills the hub right after a handover's transaction committed (`launch-reserved`: right after a launch reserved its role, before the spawn).
 
+The spoke's `session.launch` tool takes `name` and optional `role`, `model`, `harness`, `effort` and `cwd`. `cwd` is an absolute path or a path relative to the project root; omitting it runs the session at the project root. For example, `session.launch {"name":"impl-45","role":"implementer","cwd":".cland/worktrees/T-45"}` launches the Implementer in that worktree. A missing, inaccessible or non-directory path is refused before launch with `{"ok":false,"code":"invalid-cwd","error":"…"}`.
+
 ## Identity and delivery
 
 A session's identity is the session id in its hello (`CLAND_SESSION_ID`; a spoke started without one makes up a random id). A name is what others address it by.
@@ -173,7 +175,7 @@ The hub watches the file (where the folder cannot be watched it polls, and logs 
 ### Assignment
 
 - **The human** assigns with `role.set` (UI) or `cland role set <session> <role>`, and revokes with `role.clear` or `cland role clear <session>`. With a note or `move` the role moves from its holder (see Handover). A live session gets its clause at once (and what was queued for the role); a name not connected yet gets the role when a session takes the name. A role follows the name: a session that reconnects under it has it back.
-- **A launch for a role** (`session.launch` with `role`) fills what it does not give from the role's launch defaults: the harness, and the model and effort when the harness is the role's. The launched session's hello is granted that role.
+- **A launch for a role** (`session.launch` with `role`) fills what it does not give from the role's launch defaults: the harness, and the model and effort when the harness is the role's. The launched session's hello is granted that role. Optional `cwd` selects its working directory (absolute or relative to the project root); without it, the project root is used. The directory must exist; otherwise the hub refuses the launch with code `invalid-cwd`.
 - **`CLAND_ROLE`** is only a request: a hello whose name holds no role and that the hub did not launch for one is refused with `{"type":"error","code":"no-role","message":"no role: \"rev-1\" holds none … — assign one with `cland role set rev-1 <coordinator|implementer|reviewer|qa>`; the session connects on its next retry"}`. The spoke keeps retrying with its backoff and logs the refusal; once the human assigns the role it connects.
 - **Coordinator is exclusive.** Assigning it, or launching for it, while another session holds it (live, or remembered within the queue's TTL) is refused, naming the holder: `role "coordinator" is held by coord [Coordinator] (live): one session holds it at a time — clear it first with `cland role clear coord``. It is checked on every hello too: a holder remembered past the TTL that comes back after another session took the role is refused it (`no-role`), its remembered role is cleared, the log says `role-superseded` and subscribers get its `session.role` (`role` null, `reason` `superseded: …`).
 - **A launch reserves its role** in the store before anything is spawned (`role-reserved`), so a second launch for an exclusive role, or the human's assignment of it, is refused while the first is under way. A launch that fails gives back what it reserved, the grant of a spoke that said hello early included (`role-reservation-released`, `reason` `launch-failed`). The reservation is recorded in `hub.db` (`launch_reservations`) with the role and cleared once the launch's process row is written: a hub that dies in between gives the role back at its next start, before it reads any frame, when the name has no running process row and no live session (`reason` `interrupted`). The launch's first hello is granted the launch's role whatever the name held before.
@@ -389,7 +391,9 @@ The fakes answer the same surfaces in the tests (`test/doctor.test.ts`): `claude
 
 ## The project's hub
 
-Run from a project's root, or anywhere inside it. The project root is the nearest ancestor holding `.git` or `.cland/`, else the current directory.
+Run from a project's root, or anywhere inside it. A linked Git worktree resolves to the main worktree's root through its `.git` file and Git's common directory, including worktrees outside the project folder. Its copied `.cland/` without `hub.json` does not hide the main project's hub. Otherwise the CLI uses the nearest ancestor holding `.git` or `.cland/`, else the current directory.
+
+Commands contacting an existing hub (`hub status`, `hub stop`, `hub unmute`, `task`, `session`, `role`, `inbox`, `topic answer`, `hook`) read `CLAND_HUB_FILE` when set, from any current directory; otherwise they read the resolved project's `.cland/hub.json`. `hub start` and `hub serve` start the resolved project's own hub. `init`, `update` and `doctor` resolve the project from the cwd too, unless an explicit directory is given. Tracker writes go through the selected hub into its root's `.cland/tasks`, which is the main worktree's `.cland/tasks` for a linked worktree; the worktree's copy is never written by these commands.
 
 | Command | What it does |
 | --- | --- |
@@ -425,10 +429,11 @@ The project's `.cland/`:
 | `journal.jsonl` | no | The journal (above): the domain events and the audit records, JSON lines, append-only across restarts. |
 | `artifacts/`, `worktrees/`, `territory.git/` | no | Ignored ahead of the tickets that write them. |
 
-`hub.json`:
+`hub.json` records the hub's root so a copied discovery file still identifies the correct lock and cleanup paths. Older files without `root` remain readable; `hub stop` through an override needs a successful probe to learn their root before signaling or removing a socket. If that root cannot be verified, it leaves the socket alone.
 
 ```json
 {
+  "root": "/path/to/project",
   "socket": "/path/to/project/.cland/hub.sock",
   "port": 53124,
   "secret": "<64 hex chars>",

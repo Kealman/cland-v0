@@ -241,7 +241,7 @@ export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promi
   return root;
 }
 
-export type Discovery = { socket: string; port: number; secret: string; pid: number; version: string };
+export type Discovery = { root?: string; socket: string; port: number; secret: string; pid: number; version: string };
 
 export const readDiscovery = async (root: string): Promise<Discovery> => JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
 
@@ -470,7 +470,7 @@ export type FakeClaude = {
   env: Record<string, string>;
   home: string;
   /** The fake's live sessions, as `claude agents --json` lists them. */
-  sessions: () => Promise<Array<{ pid: number; id: string; sessionId: string; status: string; waitingFor?: string; name: string | null }>>;
+  sessions: () => Promise<Array<{ pid: number; id: string; sessionId: string; cwd: string; status: string; waitingFor?: string; name: string | null }>>;
   /** What one fake session logged (hooks that failed, tool calls, the mod's bridge). */
   log: (id: string) => Promise<string>;
   /** How a background session was started: the flags `claude --bg` was given. */

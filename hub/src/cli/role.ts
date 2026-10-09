@@ -1,6 +1,6 @@
 // `cland role …`: the human assigns and revokes roles (spec 4.4, ADR 0001) through the project's hub.
 import { readFileSync } from 'node:fs';
-import { layout, projectRoot, readDiscovery } from '../project.ts';
+import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { RoleHolder, RoleList } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
@@ -31,7 +31,7 @@ function describe(v: RoleList): string {
 
 export async function runRole(args: string[], cwd: string = process.cwd()): Promise<number> {
   const [sub, ...rest] = args;
-  const d = readDiscovery(layout(projectRoot(cwd)).discovery);
+  const d = readDiscovery(hubDiscovery(cwd));
   if (!d) {
     process.stderr.write('cland: no hub runs for this project — run `cland hub start`\n');
     return 1;

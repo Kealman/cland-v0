@@ -2,6 +2,8 @@
 
 Issues, specs and tickets for this repo live as **items** in cland's own tracker: one Markdown file per item in `.cland/tasks/` (`T-<n>-<slug>.md`), committed with the work. Use the `cland task` CLI for every operation; in this repo run it as `node hub/bin/cland.ts task …` from the repo root (or put `hub/bin/cland.ts` on PATH as `cland`). It talks to the project's hub, so a hub must be running: if a command says `no hub running`, run `node hub/bin/cland.ts hub start`. Don't write item files by hand when a command can do it.
 
+From a linked Git worktree, the CLI follows its `.git` file to Git's common directory and finds the main worktree's `.cland/hub.json`, even when the worktree is outside the project folder. A copied `.cland/` without `hub.json` does not become a separate project. `CLAND_HUB_FILE`, when set by a launched session or explicitly, overrides discovery from any directory. All tracker writes go through that hub into its root's `.cland/tasks` — the main worktree's item files, never the working session's worktree copy. `cland hub start` starts the cwd's resolved project hub and does not use this override.
+
 - An item's id is `T-<n>`. Refer to an item as `T-<n>`: there is no `#<n>` auto-linking. Its file is `.item.path` in `cland task view T-<n> --json`, relative to the repo root.
 - An item's `kind` is `epic`, `spec`, `task`, `question` or `map` (default `task`).
 - Every `cland task` command takes `--json`. Read results with `--json` and `jq`; the plain output is for humans.
