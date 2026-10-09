@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-20
 branch: t/T-69-suite-lock-and-daemon-cleanup
 created: 2026-10-09T10:44:01.109Z
-updated: 2026-10-09T12:15:26.914Z
+updated: 2026-10-09T12:43:47.655Z
 ---
 
 ## Parent
@@ -98,3 +98,76 @@ Medium — hub/test/run-suite.ts:25: death after mkdir but before holder.json le
 Standards: 1 medium interface finding (bare PID ownership), overlapping the first Spec finding; no documented hard standard breach. Spec: 5 distinct findings, worst high. Safe in-memory probes against the actual cleanup module confirmed all three unsafe signal selections with ps/lsof/process.kill stubbed; no real signals or files were changed and no suite was run. Recorded A-22 suite/load evidence supports normal execution but does not cover these cases.
 
 Full review: A-27, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-27-t-69-review-cleanup-ownership-and-lock-recovery-gaps.md
+
+### qa-12 · 2026-10-09T12:20:29.450Z
+
+verdict: qa
+result: not clear
+by: qa-12 [qa]
+run: qa-12-69-1
+commit: 4583f994e36fe0d55c4fa3d3f4a10bd6a898a528
+
+Verified isolated git archive 4583f994e36fe0d55c4fa3d3f4a10bd6a898a528, dependencies linked from T-69. Read item and A-22. Node v24.21.0, pinned Neovim v0.12.5. No product source changes by QA.
+
+Ran:
+- npm run typecheck: pass.
+- node --test hub/test/suite-runner.test.ts: 8/8 pass, zero skips, including deliberate failure cleanup, normal serialization and signal cases.
+- cland task list --json and cland task view T-69 --json: pass.
+- Independent actual npm entry-point driver. Waited until another session's manual /tmp/cland-suite.lock cleared. Created an empty manual lock for the compatibility check; first npm test printed the unknown/manual-holder waiting line, spawned no test worker and created no run directory while it was held. Released only QA's lock; thereafter used T-69's lock, without an extra wrapper.
+- First npm test acquired holder PID1485; second npm test printed that holder's PID/start and waited. After first-run hook bridge activity appeared, SIGKILLed holder1485. Second runner2805 printed stale takeover and started. Two seconds later 11 first-run processes and its directory still remained. Captured before/after tables; QA then swept only the positively identified first-run directory and child2626 to prevent continued overlap. Verified zero first-run processes after that QA cleanup.
+- Surviving second full npm test: exit0, hub336/336 and Neovim90/90, zero skips. Runner reported294.80s plus7.09s lock wait and peak one-minute load29.97; independent 1-second sampling agreed.
+- Separate actual npm test runs: SIGINT and SIGTERM sent to holders during live hook-bridge activity. Exits130 and143; zero owned processes afterward, run directories and locks absent.
+- Fourteen protected identities survived every sweep: QA driver, invoking shell, unrelated sleep canary, main project hub and other sessions' app-servers (PID/start-time comparisons). Canary intentionally stopped only after checks. Final scan: no QA-export Node processes. Artifact copy hash verified, QA staging/export removed, working tree clean.
+
+Findings by severity:
+- High: none.
+- Medium — hub/test/run-suite.ts:39-43: stale takeover only removes the dead holder's lock; it does not reap the holder's detached suite before starting its replacement. Holder metadata at line11 contains no run-root/worker ownership. Observed old detached node --test PID2626 reparented to PID1, test workers2739/2740/2754/9597, hub serve9149, spoke9148 and other CLI/fake processes after runner2805 took over. This breaks mutual exclusion after SIGKILL and fails the requested no-leftover check. The existing killed-holder regression in hub/test/suite-runner.test.ts manually cleans its old worker in t.after rather than asserting cleanup by the successor. Cleanup in this QA run was manual and must not be attributed to the product.
+- Low: none additional.
+
+Load limitation: baseline measured just before takeover at12:13:03 UTC was28.15 with impl-72's four yes CPU hogs active. Coordinator stopped that stress run after this run had started; later machine load fell to13.61. Peak29.97 is a shared-machine observation, not evidence that T-69 alone exceeds the budget. This pass does not establish the quiet-machine ~20 load criterion.
+
+Durable evidence: A-29, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-29-t-69-qa-4583f99-live-takeover-signals-process-tables-and-load.zip (driver, all command logs, process tables, identity checks, baseline/load samples and cleanup). Interim finding: A-26, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-26-t-69-qa-sigkill-takeover-leaves-first-suite-running.md.
+
+### impl-69 · 2026-10-09T12:25:32.479Z
+
+Fix round: ownership regression probes reproduced the reused-PID and sibling-path hazards. Cleanup now captures PID/start identities, verifies run marker or exact directory containment, and refuses mixed process groups. Implementing the agreed automatic sidecar and takeover sweep; unknown manual empty locks will remain held and print recovery guidance.
+
+### impl-69 · 2026-10-09T12:30:41.035Z
+
+Focused regression milestone: 12/12 runner checks pass, including SIGKILL takeover with a real hub and fake harness; the successor asserts old PIDs and the old run root are absent before its fixture starts. All 3 OS-stub ownership safety checks pass. Reused live PID and dead automatic empty sidecar recover; an aged unknown manual empty remains held and prints the 15-minute warning. Typecheck passes. Checking shared-helper behavior before the single final full run.
+
+### rev-65 · 2026-10-09T12:36:35.091Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-69-2
+commit: daa1803dba1a370eaa64442f41079ad146671f1c
+
+Medium — hub/test/run-suite.ts:17,57: a live legacy automatic holder from 4583f99 is accepted but misclassified stale, because its ISO acquisition timestamp is compared with ps lstart. Its old metadata has no root and its workers lack the new run marker, so sweep finds none of them before the lock is removed at :62; the replacement suite can overlap the still-running legacy suite. Respect a legacy holder's live PID or conservatively retain unsupported live records; cover mixed versions in a regression.
+
+All five rev-65-69-1 findings and qa-12-69-1's takeover ordering gap are otherwise fixed for the new format. The manual empty-lock policy is implemented as decided: no age reclamation, recovery guidance and 15-minute warning. Standards: clear, zero findings. Spec: one medium, no high.
+
+Reran safe OS-stub probes against the actual delta: reused seed and sibling prefix receive no signals; mixed group signals only the owned individual; all-owned group is signaled; caller ancestry is preserved. A stub of actual holderAlive confirms live legacy holder=false while new-format holder=true. No real signals, writes or suite run. git diff --check passes.
+
+Full review and evidence: A-32, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-32-t-69-delta-review-prior-fixes-verified-legacy-holder-compatibility-gap.md
+
+### impl-69 · 2026-10-09T12:41:08.312Z
+
+Fix commits daa1803 and 1a20e65. Internal review caught two more gaps, now covered by red→green regressions: argv text cannot impersonate an environment run marker, and SIGKILL immediately after run-root creation is recoverable because the planned short root is in the first sidecar. External review's mixed-version finding is fixed conservatively: ISO, missing and unreadable holder start values preserve a live PID, with an older-version waiting annotation. Typecheck, 4 ownership stubs, 13 runner checks, 3 added legacy checks and focused crash/orphan reruns pass. The targeted worktree test under T-72 stress hit its known verdictBase null/main race (3/4 passed); Coordinator identifies it as T-72's fix. Final full run waits for review and the live T-72 manual lock.
+
+### rev-65 · 2026-10-09T12:43:47.655Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-69-3
+commit: 1a20e65dc69c544bce9c9bc7c0934795ff9ee2dd
+
+Medium — hub/test/process-cleanup.ts:80: the macOS whitespace regex still accepts marker text inside another environment variable's value as an actual TEST_SUITE_RUN_ID entry. An unrelated process with OTHER_VAR="archived TEST_SUITE_RUN_ID=<run token>", no real marker variable and no contained cwd can pass ownership verification and receive group SIGKILL. Use environment data preserving entry boundaries, or refuse marker-only signaling from ambiguous evidence; add this regression.
+
+All three requested fixes are verified: live ISO/missing/unreadable legacy holders remain held and are identified in waiting output; argv-only marker text is rejected; the planned short root is persisted before creation and recoverable after a setup SIGKILL. Earlier process identity, path and group protections remain. Standards: clear, 0. Spec: 1 medium, 0 high/low.
+
+Safe probes against the actual module pass the earlier ownership cases and both argv-only cases. The new OTHER_VAR-value case records -420009 SIGKILL with ps/lsof/process.kill stubbed; no real signal or environment access occurred. An in-memory probe of the exact legacy-holder adapter confirms live unknown starts are held and dead PID cases recoverable. No suite run or repository edits; git diff --check passes.
+
+Full review: A-40, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-40-t-69-widened-delta-review-fixes-verified-environment-value-ownership-ambiguity.md

@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-21
 branch: t/T-59-cland-merge
 created: 2026-10-09T08:34:54.729Z
-updated: 2026-10-09T12:17:38.894Z
+updated: 2026-10-09T12:38:50.502Z
 ---
 
 ## Parent
@@ -57,3 +57,31 @@ Milestone: the first real-hub test passes through the CLI: two task commits beco
 ### impl-59 · 2026-10-09T12:17:38.894Z
 
 Milestone: implementation committed as 46f9ff9 on t/T-59-cland-merge (no push/merge). Ten real-hub/real-Git scenarios cover successful squash, gate refusals/provenance, QA trailers, spoke/CLI permissions, override/conflicts, serialization, session-delayed cleanup, patch-preserving rebases and taskBase; a further request-budget test proves the close after awaited Git is measured as resumed. Standards and Spec review are running separately under the implement skill. Final locked full suite remains.
+
+### impl-59 · 2026-10-09T12:25:50.811Z
+
+Review milestone: Standards found unmeasured post-await Git-output/path processing and missing rollback after failed update-ref; Spec found a root-checkout race and configured-main freshness after a rebase. All reproduced through real Git (CLI/hub lock-file, configured-base rebase, and a real merge driver paused while the root switches). Three regressions now pass; processing is guarded, ref failures restore index/worktree, checkout/refs are rechecked before landing, and freshness follows taskBase. Both independent reviewers confirmed their findings resolved.
+
+### rev-6 · 2026-10-09T12:35:18.929Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-59-1
+commit: 7f784343a75c5069b5a0180edf35fdac1a3db0df
+
+medium (Spec) — hub/src/hub/merge.ts:40: deleting the latest hub-written not-clear comment revives an older clear verdict even though the newer durable write remains; select the durable latest verdict per kind and refuse missing/altered matching evidence (D5).
+
+medium (Spec) — hub/src/hub/merge.ts:75: tracker.close can fail after local and territory refs advance, but the catch reports merge-refused with the item still open and no lifecycle reconciliation; retry can land a second squash. Persist/reconcile the landed commit idempotently and distinguish post-landing incompletion from refusal.
+
+medium (Standards) — hub/src/hub/merge.ts:63: foreground refreshFreshness performs its post-Git cache processing and tipsMoved item/event fanout outside resumed timing; a slow stretch is absent from slow-request and status counters. Time foreground refresh processing or defer its fanout off the request path.
+
+medium (Spec, inherited dependency) — hub/src/hub/merge.ts:43: writer.role can be the role captured before Tracker.comment awaited Git, rather than the role at its durable write; revocation/handover during that await can leave reviewer provenance the gate accepts. Revalidate authoritative writer role/permissions in the synchronous verdict-writing stretch (T-54/D5).
+
+Read-only probes using actual TrackerIndex in :memory:, Freshness, RequestGuard and TaskMerges reproduced revived clear evidence, an unmeasured 400 ms freshness callback, and two landing attempts after close failures while the item stayed open. Territory operations were in-memory collaborators; no real refs or files changed. Role timing verified from the call chain and T-54 spec. TypeScript noEmit and diff checks pass; no suite run. New merge paths use async Git/locking; existing session identity ps probes remain the accepted T-70 follow-up.
+
+Standards and Spec evidence: A-31, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-31-t-59-review-rev-6-59-1-at-7f78434.md.
+
+### impl-59 · 2026-10-09T12:38:50.502Z
+
+External review fix round started; queued full suite cancelled before acquiring the lock. Reproducing A-31 findings at real Git/hub/spoke seams: deleted durable evidence, close write obstruction after landing, a timed foreground freshness fan-out, and a role change while verdict Git resolution awaits. Applying TDD and diagnosing-bugs to the reported regressions; reviewer evidence identifies the causes directly.
