@@ -29,7 +29,8 @@ import { randomUUID } from 'node:crypto';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
-import type { Message, SessionState, TopicRef } from '../protocol.ts';
+import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import { codexCounts } from './usage.ts';
 import { VERSION } from '../version.ts';
 import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
@@ -537,10 +538,18 @@ export class CodexAdapter implements HarnessAdapter {
     return {};
   }
 
-  usage(p: HarnessProcess): Record<string, unknown> | null {
+  usage(p: HarnessProcess): SessionUsage | null {
     const live = this.#live.get(p.sessionId);
     if (!live || (!live.tokens && !live.rateLimits)) return null;
-    return { ...(p.model ? { model: p.model } : {}), ...(live.tokens ? { tokens: live.tokens } : {}), ...(live.rateLimits ? { rateLimits: live.rateLimits } : {}) };
+    const total = codexCounts(live.tokens?.total);
+    const last = codexCounts(live.tokens?.last);
+    return {
+      ...(p.model ? { model: p.model } : {}),
+      ...(total ? { total } : {}),
+      ...(last ? { last } : {}),
+      ...(live.tokens ? { tokens: live.tokens } : {}),
+      ...(live.rateLimits ? { rateLimits: live.rateLimits } : {}),
+    };
   }
 
   // ---------------------------------------------------------------- watch: liveness and the connection

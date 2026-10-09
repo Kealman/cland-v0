@@ -156,6 +156,8 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   assert.equal(usage.model, 'gpt-fake-mini');
   assert.equal(usage.tokens.last.totalTokens, 12);
   assert.equal(usage.rateLimits.primary.usedPercent, 6);
+  assert.deepEqual(h.usage?.total, { totalTokens: 24, inputTokens: 8, outputTokens: 4, cacheReadTokens: 12, cacheWriteTokens: 0, reasoningTokens: 2 });
+  assert.deepEqual(h.usage?.last, { totalTokens: 12, inputTokens: 4, outputTokens: 2, cacheReadTokens: 6, cacheWriteTokens: 0, reasoningTokens: 1 });
 
   // a command approval: waiting for approval from thread/status/changed, whatever the model says of itself
   const approvalId = await sendGeneral(ui, 'this one needs approval');
