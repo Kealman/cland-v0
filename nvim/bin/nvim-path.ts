@@ -2,7 +2,7 @@
 // The pinned Neovim release cland runs in (spec 4.1, ADR 0005): the tag in `nvim/NVIM_VERSION`, the
 // official release tarball for this platform, checked against the digest pinned in `nvim/NVIM_SHA256SUMS`
 // and unpacked under `.cache/nvim/<tag>/` at the repository root (ignored by git). `CLAND_NVIM` names a
-// binary to use instead. Run as a script it prints the binary's path, downloading it first if missing.
+// binary to use instead, and a linked worktree with no cache of its own uses the main worktree's. Run as a script it prints the binary's path, downloading it first if missing.
 //
 // Two resolvers may start on an empty cache at once (two test files, two `cland open`): the download is held under
 // a lock file in the cache (`.download.lock`, created whole and exclusively, naming its pid); the other waits for the
@@ -18,7 +18,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, linkSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const NVIM_DIR = fileURLToPath(new URL('..', import.meta.url));
@@ -50,11 +50,34 @@ export function cachedBinary(env: NodeJS.ProcessEnv = process.env): string | nul
   return join(cacheDir(env), asset.replace(/\.tar\.gz$/, ''), 'bin', 'nvim');
 }
 
-/** `CLAND_NVIM` if set, else the cached release; null when neither exists (nothing is downloaded here). */
+/** The main worktree's root when this checkout is a linked worktree of it (its `.git` is a file naming
+ *  `<main>/.git/worktrees/<name>`), else null. */
+function mainWorktree(): string | null {
+  try {
+    const gitDir = /^gitdir: (.+)$/m.exec(readFileSync(join(REPO_ROOT, '.git'), 'utf8'))?.[1];
+    if (!gitDir) return null;
+    const worktrees = dirname(resolve(REPO_ROOT, gitDir));
+    return basename(worktrees) === 'worktrees' && basename(dirname(worktrees)) === '.git' ? dirname(dirname(worktrees)) : null;
+  } catch {
+    // `.git` is a directory (this is the main worktree), or there is none
+    return null;
+  }
+}
+
+/**
+ * `CLAND_NVIM` if set, else the cached release; null when neither exists (nothing is downloaded here). A linked
+ * worktree with no cache of its own uses the main worktree's: the same pinned release, and a session working there
+ * with the network closed (a sandboxed session) could not download another.
+ */
 export function findNvim(env: NodeJS.ProcessEnv = process.env): string | null {
   if (env.CLAND_NVIM) return existsSync(env.CLAND_NVIM) ? env.CLAND_NVIM : null;
   const bin = cachedBinary(env);
-  return bin && existsSync(bin) ? bin : null;
+  if (!bin) return null;
+  if (existsSync(bin)) return bin;
+  if (env.CLAND_NVIM_CACHE_DIR) return null;
+  const main = mainWorktree();
+  const shared = main && join(main, relative(REPO_ROOT, bin));
+  return shared && existsSync(shared) ? shared : null;
 }
 
 const pidAlive = (pid: number): boolean => {

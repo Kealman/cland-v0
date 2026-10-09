@@ -16,6 +16,7 @@ import { WebSocket } from 'ws';
 import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
+import { processStarted } from '../src/hub/lock.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -225,6 +226,13 @@ export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args
     });
   });
 }
+
+/**
+ * A test option for the tests that need a process's start time, which is how the hub knows a pid is still the
+ * process it started before it signals it: `{ skip: NO_PS }`. `ps` is setuid, and a sandbox that refuses setuid
+ * binaries (Codex's seatbelt, where a sandboxed session runs this suite) leaves the hub unable to stop anything.
+ */
+export const NO_PS: string | false = processStarted(process.pid) === null ? 'needs `ps` for pid identity, and this sandbox refuses it' : false;
 
 /** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
 export async function tempProject(t: TestContext, prefix = 'cland-proj-'): Promise<string> {

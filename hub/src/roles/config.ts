@@ -2,13 +2,15 @@
 // defaults and the permission list (enforced by the hub on every spoke tool call: `permissions.ts`). Written with the defaults when missing, never rewritten;
 // watched, and read again before each use when it changed on disk, so the next launch or assignment uses
 // what the human last saved. A file that does not parse is logged and the last good version stays in force.
-import { existsSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { parse } from 'smol-toml';
 import { ROLE_NAMES } from '../names.ts';
 import type { LogFn } from '../log.ts';
+import { watchFolder, type FolderWatch } from '../watch.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
+import { APPROVALS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Sandbox } from '../adapters/contract.ts';
 
 export type LaunchDefaults = {
   harness: string;
@@ -16,6 +18,11 @@ export type LaunchDefaults = {
   model: string | null;
   /** null: the harness's own default. */
   effort: string | null;
+  /** Whether the session asks before a command its sandbox refuses; null: the adapter's default (Codex: never). */
+  approval: Approval | null;
+  /** What the session's commands may touch, `writableRoots` as the file gives them (relative to the project
+   *  root); null: the harness's own sandbox. Adapters whose harness takes neither ignore both. */
+  sandbox: Sandbox | null;
 };
 
 export type RoleDefinition = {
@@ -47,6 +54,36 @@ const optString = (v: unknown, where: string): string | null => {
   return v.trim() || null;
 };
 
+const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string): T | null => {
+  const s = optString(v, where);
+  if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${values.join(', ')}`);
+  return s as T | null;
+};
+
+/**
+ * `sandbox`, `writable_roots` and `network`. A key the table leaves out takes the role's built-in value (`base`), so
+ * a `[<role>.launch]` written before these keys existed still gets its role's sandbox; `sandbox = ""` is the
+ * harness's own. Inherited roots and network follow the mode that was written: roots only with `workspace-write`,
+ * nothing closed with `danger-full-access`.
+ */
+const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox | null): Sandbox | null => {
+  const written = oneOf(launch.sandbox, SANDBOX_MODES, `${where}.sandbox`);
+  const roots = launch.writable_roots === undefined ? null : strings(launch.writable_roots, `${where}.writable_roots`);
+  const network = oneOf(launch.network, SANDBOX_NETWORKS, `${where}.network`);
+  const mode = launch.sandbox === undefined ? (base?.mode ?? null) : written;
+  if (mode === null) {
+    if (roots?.length || network !== null) throw new Error(`${where}.writable_roots and ${where}.network need ${where}.sandbox`);
+    return null;
+  }
+  if (roots?.length && mode !== 'workspace-write') throw new Error(`${where}.writable_roots needs sandbox = "workspace-write"`);
+  if (mode === 'danger-full-access' && network !== null && network !== 'full') throw new Error(`${where}.network cannot be ${network} with sandbox = "danger-full-access": nothing is closed there`);
+  return {
+    mode,
+    writableRoots: mode === 'workspace-write' ? (roots ?? base?.writableRoots ?? []) : [],
+    network: mode === 'danger-full-access' ? 'full' : (network ?? base?.network ?? 'none'),
+  };
+};
+
 /** A role's grants: each one checked against the table's tools and scopes; absent → the built-in list. */
 const grants = (v: unknown, role: string): string[] => {
   if (v === undefined) return [...(DEFAULT_PERMISSIONS[role] ?? [])];
@@ -57,6 +94,9 @@ const grants = (v: unknown, role: string): string[] => {
   }
   return [...new Set(list)];
 };
+
+/** The built-in definitions once they are parsed (null while they are): what a launch table's missing keys take. */
+let BUILT_IN: RolesConfig | null = null;
 
 /** Parse the file's text. Throws with the place that is wrong; a role the file leaves out takes its default. */
 export function parseRoles(text: string, fallback: RolesConfig | null = null): RolesConfig {
@@ -74,6 +114,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
     if (!isRecord(t)) throw new Error(`[${role}] must be a table`);
     const launch = t.launch ?? {};
     const permissions = t.permissions ?? {};
+    const builtin = BUILT_IN?.get(role)?.launch ?? null;
     if (!isRecord(launch)) throw new Error(`[${role}.launch] must be a table`);
     if (!isRecord(permissions)) throw new Error(`[${role}.permissions] must be a table`);
     if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${role}.exclusive must be true or false`);
@@ -84,7 +125,14 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
       exclusive: t.exclusive === true,
       clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
       skills: strings(t.skills, `${role}.skills`),
-      launch: { harness, model: optString(launch.model, `${role}.launch.model`), effort: optString(launch.effort, `${role}.launch.effort`) },
+      launch: {
+        harness,
+        model: optString(launch.model, `${role}.launch.model`),
+        effort: optString(launch.effort, `${role}.launch.effort`),
+        // a key left out is the role's built-in value; `""` is the adapter's or the harness's own
+        approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
+        sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null),
+      },
       permissions: { tools: grants(permissions.tools, role) },
     });
   }
@@ -93,6 +141,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
 
 /** The built-in defaults: the file cland writes. */
 export const DEFAULTS: RolesConfig = parseRoles(DEFAULT_ROLES_TOML, new Map());
+BUILT_IN = DEFAULTS;
 
 /** A fixed set of definitions, for a hub with no project file. */
 export const fixedRoles = (config: RolesConfig = DEFAULTS): RolesSource => ({ get: () => config });
@@ -104,7 +153,7 @@ export class RolesFile implements RolesSource {
   #config: RolesConfig = DEFAULTS;
   /** What the loaded version looked like on disk: a different stamp means read again. */
   #stamp = '';
-  #watcher: FSWatcher | null = null;
+  #watcher: FolderWatch | null = null;
   #debounce: NodeJS.Timeout | null = null;
 
   constructor(path: string, log: LogFn = () => {}) {
@@ -119,18 +168,21 @@ export class RolesFile implements RolesSource {
       this.#log({ event: 'roles-written', path: this.path });
     }
     this.#reload();
-    try {
-      // the folder, not the file: an editor that saves by rename replaces the file the watch was on
-      this.#watcher = watch(dirname(this.path), (_kind, name) => {
-        if (name !== null && name !== basename(this.path)) return;
-        if (this.#debounce) clearTimeout(this.#debounce);
-        this.#debounce = setTimeout(() => this.#reload(), 50);
-        this.#debounce.unref();
-      });
-      this.#watcher.unref();
-    } catch (err) {
-      this.#log({ event: 'roles-unwatched', error: err instanceof Error ? err.message : String(err) });
-    }
+    // the folder, not the file: an editor that saves by rename replaces the file the watch was on
+    this.#watcher = watchFolder(
+      dirname(this.path),
+      {
+        changed: (name) => {
+          if (name !== null && name !== basename(this.path)) return;
+          if (this.#debounce) clearTimeout(this.#debounce);
+          this.#debounce = setTimeout(() => this.#reload(), 50);
+          this.#debounce.unref();
+        },
+        // `#reload` reads the file only when its stamp changed
+        poll: () => this.#reload(),
+      },
+      { log: this.#log, event: 'roles-unwatched', unref: true },
+    );
   }
 
   stop(): void {

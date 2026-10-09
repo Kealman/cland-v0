@@ -6,6 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { parseRoles } from '../src/roles/config.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
@@ -146,9 +148,9 @@ test('Coordinator is exclusive: a second assignment is refused with the reason; 
   const list = await cland(root, 'role', 'list');
   assert.equal(list.code, 0, list.stderr);
   assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, claude-fable-5-1, effort max\n {2}coord \[Coordinator\]\n/);
-  assert.match(list.stdout, /\nImplementer  launch: opencode\n {2}impl-1 \[Implementer\]\n/);
-  assert.match(list.stdout, /\nReviewer  launch: codex, gpt-6\.1-sol, effort high\n {2}no holder\n/);
-  assert.match(list.stdout, /\nQA  launch: codex, gpt-6-astra, effort high\n {2}no holder\n/);
+  assert.match(list.stdout, /\nImplementer  launch: opencode, approval never, sandbox workspace-write \(writable: \.; network: local\)\n {2}impl-1 \[Implementer\]\n/);
+  assert.match(list.stdout, /\nReviewer  launch: codex, gpt-6\.1-sol, effort high, approval never, sandbox read-only \(network: none\)\n {2}no holder\n/);
+  assert.match(list.stdout, /\nQA  launch: codex, gpt-6-astra, effort high, approval never, sandbox workspace-write \(network: local\)\n {2}no holder\n/);
   assert.match(list.stdout, /\ncoordinator: coord\n$/);
 
   // the human clears the only Coordinator: the vacancy is the very next role event, and status shows it
@@ -204,4 +206,45 @@ test('the holder leaving raises the vacancy; a launched Coordinator gets its cla
   assert.deepEqual(roles.roles.find((r) => r.role === 'coordinator')?.holders, []);
   // so another session may take it
   await assignRole(root, 'coord-b', 'coordinator');
+});
+
+test('roles.toml: approval, sandbox, writable_roots and network of a launch are parsed, defaulted and checked (T-48)', () => {
+  const launch = (lines: string) => parseRoles(`[qa.launch]\nharness = "codex"\n${lines}\n`).get('qa')?.launch;
+  // nothing given (a roles.toml written before these keys existed): the role's built-in approval and sandbox, not none
+  const qaSandbox = { mode: 'workspace-write', writableRoots: [], network: 'local' };
+  assert.deepEqual(launch(''), { harness: 'codex', model: null, effort: null, approval: 'never', sandbox: qaSandbox });
+  const implementer = parseRoles('[implementer.launch]\nharness = "codex"\nmodel = "gpt-6.1-sol"\n').get('implementer')?.launch;
+  assert.deepEqual([implementer?.approval, implementer?.sandbox], ['never', { mode: 'workspace-write', writableRoots: ['.'], network: 'local' }]);
+  // the Coordinator has none built in
+  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
+  // only what is written overrides, key by key
+  assert.deepEqual(launch('approval = "on-request"'), { harness: 'codex', model: null, effort: null, approval: 'on-request', sandbox: qaSandbox });
+  assert.deepEqual(launch('network = "full"')?.sandbox, { ...qaSandbox, network: 'full' });
+  assert.deepEqual(launch('writable_roots = [".", "../shared"]')?.sandbox, { ...qaSandbox, writableRoots: ['.', '../shared'] });
+  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nwritable_roots = []\n').get('implementer')?.launch.sandbox, { mode: 'workspace-write', writableRoots: [], network: 'local' });
+  // "" is the adapter's default approval and the harness's own sandbox
+  assert.deepEqual(launch('approval = ""\nsandbox = ""'), { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
+  // a written mode keeps what still fits it: no roots outside workspace-write, nothing closed without a sandbox
+  assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "read-only"\n').get('implementer')?.launch.sandbox, { mode: 'read-only', writableRoots: [], network: 'local' });
+  assert.deepEqual(launch('sandbox = "read-only"\nnetwork = "none"')?.sandbox, { mode: 'read-only', writableRoots: [], network: 'none' });
+  assert.deepEqual(launch('sandbox = "danger-full-access"')?.sandbox, { mode: 'danger-full-access', writableRoots: [], network: 'full' });
+
+  assert.throws(() => launch('approval = "always"'), /qa\.launch\.approval must be one of never, on-request, untrusted/);
+  assert.throws(() => launch('sandbox = "open"'), /qa\.launch\.sandbox must be one of read-only, workspace-write, danger-full-access/);
+  assert.throws(() => launch('sandbox = "read-only"\nnetwork = "lan"'), /qa\.launch\.network must be one of none, local, full/);
+  assert.throws(() => launch('sandbox = ""\nnetwork = "local"'), /qa\.launch\.writable_roots and qa\.launch\.network need qa\.launch\.sandbox/);
+  assert.throws(() => launch('sandbox = "read-only"\nwritable_roots = ["."]'), /qa\.launch\.writable_roots needs sandbox = "workspace-write"/);
+  assert.throws(() => launch('sandbox = "danger-full-access"\nnetwork = "none"'), /nothing is closed there/);
+
+  // the defaults cland writes: no Codex role waits on an approval; only the Implementer writes outside its directory
+  const defaults = parseRoles(DEFAULT_ROLES_TOML);
+  assert.deepEqual(
+    ['coordinator', 'implementer', 'reviewer', 'qa'].map((r) => [defaults.get(r)?.launch.approval, defaults.get(r)?.launch.sandbox]),
+    [
+      [null, null],
+      ['never', { mode: 'workspace-write', writableRoots: ['.'], network: 'local' }],
+      ['never', { mode: 'read-only', writableRoots: [], network: 'none' }],
+      ['never', { mode: 'workspace-write', writableRoots: [], network: 'local' }],
+    ],
+  );
 });

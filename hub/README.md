@@ -12,6 +12,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/address.ts` | The address grammar: `@name`, `@all`, `@glob*`, `@role`. |
 | `src/names.ts` | Session names, reserved names, the role names, generated `session-<n>` names. |
 | `src/log.ts` | The JSON-lines log closure every hub event goes through. |
+| `src/watch.ts` | A folder watch that falls back to polling every 500 ms where watching is refused (a macOS sandbox denies FSEvents): used for `.cland/tasks/` and `roles.toml`. |
 | `src/hub/topics.ts` | The topic model (spec 4.5): the status moves, the mentions of a human message, the "no coordinator" warning, the port to the tracker a binding goes through. |
 | `src/hub/asks.ts` | Asks (spec 4.5, #33): the Coordinator's question with numbered options; the human's answer with `answer_to`; withdrawn by `resolve`, cancelled by a close. |
 | `src/hub/inbox.ts` | The inbox (spec 5, #33): asks, approvals, waiting topics and notifications, the "needs you" count, the `inbox` event; the idle threshold from `.cland/config.toml`. |
@@ -38,7 +39,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/project.ts` | The `.cland/` layout, the managed `.gitignore`, the secret, the discovery file, finding the project root. |
 | `src/tracker/item.ts` | The item file format: frontmatter, body, comments, verdicts; parse (lenient for hand edits) and serialize. |
 | `src/tracker/index-db.ts` | The tracker's index (items, labels, blockers, verdicts), its id high-water mark and the claims: tables of their own in `hub.db`, through a connection of their own. |
-| `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` and re-indexes hand edits, holds claims. |
+| `src/tracker/tracker.ts` | The tracker: writes the item files (serialized, atomic), watches `.cland/tasks/` (or polls it, `src/watch.ts`) and re-indexes hand edits, holds claims. |
 | `src/tracker/import-github.ts` | The hub's side of the GitHub import (`task.import`): issues to items, found again by their `github` reference, written only when their text changes. |
 | `src/tracker/requests.ts` | The `task.*` request frames and their handler, called from the dispatcher for spokes and clients alike. |
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve [--stdio]`, `audit`. |
@@ -149,16 +150,27 @@ A session holds at most one role: Coordinator, Implementer, Reviewer or QA (spec
 
 ### `.cland/roles.toml`
 
-One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default), and `[<role>.permissions]` `tools`, the permission list the hub enforces (see Permissions below; a role table without `tools` gets the built-in list). A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:
+One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default) and how the launched session may act (`approval`, `sandbox`, `writable_roots`, `network`: below), and `[<role>.permissions]` `tools`, the permission list the hub enforces (see Permissions below; a role table without `tools` gets the built-in list). A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:
 
-| Role | Launch defaults | Skills |
+| Role | Launch defaults | Approval and sandbox | Skills |
+| --- | --- | --- | --- |
+| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | none given | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
+| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | `never`; `workspace-write`, `writable_roots = ["."]`, `network = "local"` (applied when it is launched on Codex) | implement, tdd, diagnosing-bugs |
+| Reviewer | codex, `gpt-6.1-sol`, effort `high` | `never`; `read-only` | code-review |
+| QA | codex, `gpt-6-astra`, effort `high` | `never`; `workspace-write`, `network = "local"` | diagnosing-bugs |
+
+How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). They belong to the role, whatever harness a launch names (the model and effort are the role's harness's only). The Codex adapter applies it (The Codex adapter, below); Claude Code and OpenCode keep their own permission settings and ignore these keys.
+
+| Key | Values | Meaning |
 | --- | --- | --- |
-| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
-| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | implement, tdd, diagnosing-bugs |
-| Reviewer | codex, `gpt-6.1-sol`, effort `high` | code-review |
-| QA | codex, `gpt-6-astra`, effort `high` | diagnosing-bugs |
+| `approval` | `never`, `on-request`, `untrusted`; `""`: the adapter's default, which is `never` too (as with no role) | Whether the session stops to ask the human before a command its sandbox refuses. With `never` nothing waits on the human: the command fails and the session goes on. |
+| `sandbox` | `read-only`, `workspace-write`, `danger-full-access`; `""`: the harness's own | What the session's commands may write: nothing; the session's cwd and the temp dir; or anything (no sandbox). |
+| `writable_roots` | a list of directories, relative to the project root; needs `workspace-write` | More writable directories. One that holds a `.git` directory is writable with it, and with the session's own git directory when that lies there (a worktree's `.git/worktrees/<name>`): this is what lets a session in a worktree commit. |
+| `network` | `none`, `local`, `full`; needs a sandbox | `local`: Unix sockets under the project's `.cland/`, the session's cwd and the temp dir, and loopback, so `cland` reaches the hub and tests start their own hubs; every other host is refused. `full`: the whole network. |
 
-The hub watches the file and reads it again before each launch and assignment when it changed on disk, so the next one uses what the human last saved (`roles-loaded` in the log). A file that does not parse is logged (`roles-unreadable`) and the last good version stays in force.
+A key the table leaves out takes the role's built-in value from the table above, key by key, so a `[<role>.launch]` written before these keys existed still launches its role approval-free and sandboxed; only a written value overrides, and `""` asks for none. Inherited roots apply only to `workspace-write`, and `danger-full-access` closes no network. The Coordinator has no built-in values. A wrong value, `writable_roots` with a sandbox that is not `workspace-write`, or `network` or `writable_roots` with `sandbox = ""` makes the file unreadable, as any other mistake in it. `cland role list` shows each role's values. `docs/review-and-qa.md` ("The Codex sandbox") says what each role's sandbox allows, what it cannot, and why.
+
+The hub watches the file (where the folder cannot be watched it polls, and logs `roles-unwatched` once) and reads it again before each launch and assignment when it changed on disk, so the next one uses what the human last saved (`roles-loaded` in the log). A file that does not parse is logged (`roles-unreadable`) and the last good version stays in force.
 
 ### Assignment
 
@@ -550,7 +562,8 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 
 | | Surface (Codex 0.160.0) |
 | --- | --- |
-| spawn | `codex app-server --listen unix://<socket>` in the session's cwd, detached in its own process group (it outlives the hub; its output goes to `.cland/log/codex-<name>.log`). The socket is `.cland/run/cx-<id>.sock`, or `$TMPDIR/cland-cx-<id>.sock` when that path is too long for a Unix socket. The spoke is passed to the app-server only, as `-c mcp_servers.cland.*` overrides (`command`, `args`, `env.CLAND_HUB_FILE`, `env.CLAND_SESSION_ID`, `env.CLAND_SESSION_NAME`, `env.CLAND_ROLE`, `env.CLAND_DELIVERY=adapter`, `enabled`, `required`, `default_tools_approval_mode="approve"`); nothing is written to `~/.codex/config.toml`. Then `thread/start {cwd, model}` and a first turn (`turn/start`, with the launch's `effort` when there is one: the app-server's schema takes it there, for this turn and the next ones) carrying the role's clause from `roles.toml` (with a line on how hub events arrive; a launch with no role carries that line alone): a thread without a turn has no rollout, and `thread/resume` (attach, a restarted hub) refuses it. Codex 0.153.4 or newer is required. |
+| spawn | `codex app-server --listen unix://<socket>` in the session's cwd, detached in its own process group (it outlives the hub; its output goes to `.cland/log/codex-<name>.log`). The socket is `.cland/run/cx-<id>.sock`, or `$TMPDIR/cland-run/cx-<id>.sock` when that path is too long for a Unix socket. Its environment is the hub's without its `CLAND_*` variables (`CLAND_CODEX_BIN` stays), plus `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE`, with the directory of the hub's own `node` first on `PATH`: the session's shell inherits them, so `cland task` run there acts as the session and `node` and `npm` are the hub's (Codex runs commands in a login shell, `zsh -lc`; a profile that puts another Node ahead of the inherited `PATH` would still win). The spoke is passed to the app-server only, as `-c mcp_servers.cland.*` overrides (`command`, `args`, `env.CLAND_HUB_FILE`, `env.CLAND_SESSION_ID`, `env.CLAND_SESSION_NAME`, `env.CLAND_ROLE`, `env.CLAND_DELIVERY=adapter`, `enabled`, `required`, `default_tools_approval_mode="approve"`); nothing is written to `~/.codex/config.toml`. Then `thread/start {cwd, model, approvalPolicy, permissions?}` (policy, below) and a first turn (`turn/start`, with the launch's `effort` when there is one: the app-server's schema takes it there, for this turn and the next ones) carrying the role's clause from `roles.toml` (with a line on how hub events arrive; a launch with no role carries that line alone): a thread without a turn has no rollout, and `thread/resume` (attach, a restarted hub) refuses it. Codex 0.153.4 or newer is required. |
+| policy | From the role's `[<role>.launch]` (`roles.toml` above), in `thread/start` and in the `thread/resume` of a relaunch. `approvalPolicy` is the launch's `approval`, `never` when it gives none. `permissions` names the sandbox: `:read-only`, `:workspace` or `:danger-full-access` when that is all it is; otherwise the profile `cland`, which three more `-c` overrides on the app-server's command line define: `default_permissions="cland"`, `permissions.cland={extends, filesystem, network}` and `features.network_proxy`. `filesystem` marks each writable root `write`, and the git directories named above; `network` for `local` is `{enabled, allow_local_binding, unix_sockets}`, the sockets allowed under `.cland/`, the cwd and the temp dir and denied under `.cland/run/` and `$TMPDIR/cland-run/` (the app-servers' own). With no `sandbox` in the launch, `permissions` is left out and Codex's configuration decides. |
 | attach | `codex resume --remote unix://<socket> --cd <cwd> <thread id>`. Never a `-c` or a `--profile`: either one puts the TUI in embedded mode, which has no external surface (spec 9). The first attach in a new folder asks to trust it. |
 | inject | Idle: `turn/start {threadId, input: [], toolOutput: {name: "hub_event", namespace: "cland", output: <envelope>}}`. During a turn: `turn/steer {threadId, expectedTurnId, input}` with the envelope as text. The JSON-RPC result confirms `injected`; an error answer, or a connection that was not there to send on (or whose write of the request failed), leaves the message `delivered` for the next `idle` or the next reconnect. A request that went out and got no answer within `CLAND_INJECT_TIMEOUT_MS`, or whose connection closed, failed or brought a frame that is not JSON before its answer, is ambiguous (the turn may have started): the delivery is `uncertain`, never replayed on its own. A steer the app-server refuses because the turn just ended falls back to `turn/start`. A lost connection to a live app-server is reopened at the next poll and what waits for an inject is retried then. |
 | state | `thread/status/changed` for the session's thread id (the app-server sends it to every connection; other threads, such as ephemeral helpers, are ignored): `idle` → `idle`, `active` → `busy`, `active [waitingOnApproval]` → `waiting for approval`, `active [waitingOnUserInput]` → `waiting for human`, `systemError` → `idle`, `notLoaded` → `unknown`. Source `app-server`. The pid is checked every `CLAND_ADAPTER_POLL_MS` (5 s), and a lost connection is reopened and resubscribed. |
@@ -562,7 +575,7 @@ Signals or a bridge that arrive while a launch is still running belong to the ne
 | history | none: `Thread.path` is unstable and the rollout format is not a stable interface |
 | usage | reliable: token counts and the account's rate limits |
 | setModel | none |
-| approvalRelay | none: server requests (approvals, questions) are left to the attached TUI; the hub only logs `harness-request` |
+| approvalRelay | none: server requests (approvals, questions) are left to the attached TUI; the hub only logs `harness-request`. With `approval = "never"`, the default, a launched session sends none for its commands |
 | busy, idle, waiting for approval, waiting for human | reliable (`thread/status/changed`) |
 
 What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/start`'s result arrives before the turn's `thread/status/changed`, so the adapter counts an accepted turn as `busy`. The TUI does not render the `hub_event` tool output, only the model's `cland.send` call and its answer. With `default_tools_approval_mode="approve"`, the cland tools ran without a prompt.
