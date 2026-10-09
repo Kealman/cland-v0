@@ -22,8 +22,10 @@ const maybeGit = (cwd: string, args: string[]): string | null => {
   try { return territoryGit(cwd, args); } catch { return null; }
 };
 
-/** Serialize synchronous Git operations across init and the hub. A live holder refuses; stale locks recover. */
-export function withTerritoryLock<T>(root: string, operation: () => T): T {
+/** Hold synchronous or asynchronous operations exclusively until they finish. A live holder refuses. */
+export function withTerritoryLock<T>(root: string, operation: () => Promise<T>): Promise<T>;
+export function withTerritoryLock<T>(root: string, operation: () => T): T;
+export function withTerritoryLock<T>(root: string, operation: () => T | Promise<T>): T | Promise<T> {
   const path = lockPath(root);
   const link = symlinkOnPath(root, path);
   if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`);
@@ -34,7 +36,15 @@ export function withTerritoryLock<T>(root: string, operation: () => T): T {
     if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
     throw err;
   }
-  try { return operation(); } finally { lock.release(); }
+  let result;
+  try { result = operation(); }
+  catch (err) {
+    lock.release();
+    throw err;
+  }
+  if (result instanceof Promise) return result.finally(lock.release);
+  lock.release();
+  return result;
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
@@ -158,7 +168,8 @@ export function undoTerritory(root: string, force = false): Report {
     if (renamed && remote(root, 'github') === null) throw new Error('territory undo: github is missing; restore it before undo');
     const unique = territoryGit(path, ['for-each-ref', '--format=%(refname) %(objectname)']).split('\n').filter(Boolean).filter((line) => {
       const [name, oid] = line.split(' ');
-      return name === undefined || ref(root, name) !== oid;
+      // Removing origin deletes its tracking refs; their matching tips will not survive undo.
+      return name === undefined || name.startsWith('refs/remotes/origin/') || ref(root, name) !== oid;
     });
     if (unique.length && !force) throw new Error(`territory holds refs the project lacks (or at different commits): ${unique.join(', ')}; preserve them locally or use cland init --undo --force`);
     const original = maybeGit(path, ['config', '--get', 'cland.originalBranch']);

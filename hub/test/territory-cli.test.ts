@@ -102,6 +102,27 @@ test('undo names territory-only refs and differing tips, mutates nothing on refu
   await assert.rejects(readFile(join(territory, 'HEAD')));
 });
 
+test('undo refuses refs preserved only by origin tracking refs, then permits their loss with --force', async (t) => {
+  const { root, github, territory } = await fixture(t);
+  await init(root);
+  const oid = git(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Only the territory and tracking ref hold this');
+  const name = 'refs/remotes/origin/review-copy';
+  git(root, 'update-ref', name, oid);
+  git(root, 'push', '-q', 'origin', `${name}:${name}`);
+  const before = git(root, 'for-each-ref', '--format=%(refname) %(objectname)');
+  const denied = await clandWithEnv(root, {}, 'init', '--undo');
+  assert.equal(denied.code, 1, 'undo must refuse before deleting both copies');
+  assert.match(denied.stderr, /refs\/remotes\/origin\/review-copy.*--force/);
+  assert.equal(git(root, 'for-each-ref', '--format=%(refname) %(objectname)'), before);
+  assert.equal(git(root, 'remote', 'get-url', 'origin'), territory);
+  assert.equal(git(root, 'remote', 'get-url', 'github'), github);
+  assert.equal(git(root, 'branch', '--show-current'), 'dev');
+  assert.equal(git(territory, 'rev-parse', name), oid);
+  await init(root, '--undo', '--force');
+  assert.ok(!git(root, 'for-each-ref', '--format=%(objectname)').split('\n').includes(oid));
+  await assert.rejects(readFile(join(territory, 'HEAD')));
+});
+
 test('dirty roots and other branches stay in place, with a reason in the init report', async (t) => {
   for (const mode of ['tracked', 'untracked', 'branch', 'detached']) {
     const { root } = await fixture(t);
