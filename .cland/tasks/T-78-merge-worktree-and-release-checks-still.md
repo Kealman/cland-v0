@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T21:52:44.142Z
+updated: 2026-10-09T22:03:25.896Z
 ---
 
 ## Parent
@@ -135,3 +135,7 @@ hub/test/task-worktrees.test.ts:354 charges one 400 ms continuation through the 
 
 Read A-215 diagnosis and pinned guard/helper wiring; parallel Standards/Spec reviews clear; diff --check passes. No Reviewer tests/suite. The reported 8/8 file run and typecheck are separate evidence; full suite rerun remains pending.
 Evidence A-216: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-216-t-78-test-only-timing-review-on-aa84c7f-coverage-preserved.md. Standards total 0, worst none; Spec total 0, worst none.
+
+### impl-78 · 2026-10-09T22:03:25.896Z
+
+Completed implementation at aa84c7fd90004ab52e57f0a5d54243f00488e3ef, committed and locally pushed. Final npm test exit 0: hub 656/656, Neovim 104/104; total 760 passed, zero failures/canceled/skipped. Typecheck passed; native-boundary 29/29, existing worktrees 5/5, task-worktrees 8/8 passed. Tree clean and diff check passed. A-221 final evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-221-t-78-final-validation-aa84c7f.md. A-210 contains the await checklist; A-215 explains the authorized test-only timing probe correction. No merge performed; ready for Coordinator gate.

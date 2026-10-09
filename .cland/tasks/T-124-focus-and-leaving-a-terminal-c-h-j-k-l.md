@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-109
 blocked_by: []
-topic: null
-branch: null
+topic: topic-42
+branch: t/T-124-focus-and-leaving-a-terminal-c-h-j-k-l
 created: 2026-10-09T21:57:02.030Z
-updated: 2026-10-09T21:57:02.030Z
+updated: 2026-10-09T22:00:09.956Z
 ---
 
 ## Parent
@@ -40,3 +40,9 @@ T-109 (Workbench basics), slice 1 of 5. Spec §3.12 (Focus and keys); research `
 ## Notes
 
 Size M. Implementer: Codex. ADR 0005: Lua inside the standalone build, no plugins. Do not undo the terminal workarounds of `research/neovim-engine`. First in the Neovim lane, with no blockers. Defaults against instances: if a new `config.toml` default is added, list this project's line in the report.
+
+## Comments
+
+### impl-124 · 2026-10-09T22:00:09.956Z
+
+Kitty probe A on the pinned 0.12.5 TUI decodes CSI 1088::104;5u as <C-р>, not <C-h>; Coordinator chose the English-only fallback, with Normal-mode Russian langmap. Evidence A-219 in topic-42. Implementing single-chord focus mappings and removing launcher Ctrl+H shadowing; terminal mitigations are preserved.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.419Z
-updated: 2026-10-09T21:51:33.419Z
+updated: 2026-10-09T21:58:31.917Z
 ---
 
 ## Goal
@@ -81,3 +81,9 @@ From this epic on, the human follows the build on the vertical board of v0.1 and
 - ADRs: `docs/adr/0005-neovim-is-the-host.md`, `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - Branches: `prototype/panels`, `research/free-keys`, `research/neovim-engine`.
 - Mockups: `docs/design/main-screen/ItemsBoard.dc.html`, `SessionsPanel.dc.html`, `Palette.dc.html`; `docs/design/main-screen/README.md`.
+
+## Comments
+
+### coord · 2026-10-09T21:58:31.917Z
+
+Tickets cut with /to-tickets on 2026-10-09 at 21:57Z, following the epic's tracer-bullet order: T-124 (focus and keys; no blockers), T-125 (ui.json; T-124), T-126 (registry and palette; T-125), T-127 (sessions by state; T-126), T-128 (vertical board; T-126, and across lanes T-123). The human's stand-in approved them as filed at 21:59Z. T-124 started with impl-124. Delegated decision: the kitty base-layout check (§3.12), probed in T-124, reported to the stand-in when taken.

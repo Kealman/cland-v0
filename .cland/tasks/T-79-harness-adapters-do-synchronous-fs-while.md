@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-40
 branch: t/T-79-harness-adapters-do-synchronous-fs-while
 created: 2026-10-09T18:47:17.580Z
-updated: 2026-10-09T21:54:18.161Z
+updated: 2026-10-09T22:02:05.958Z
 ---
 
 ## Parent
@@ -55,3 +55,22 @@ Implementation and targeted checks are complete: async Codex policy/socket/log h
 ### impl-79 · 2026-10-09T21:54:18.161Z
 
 Committed implementation head 110943870a2b1236bd5291d504b39e5f284a3ef1 and pushed to local territory origin. Evidence A-217: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-217-t-79-native-guards-timing-and-failure-stage-table.md. Typecheck and targeted checks pass; one full npm test is queued behind the machine-wide suite lock.
+
+### rev-6 · 2026-10-09T21:59:45.334Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-79-1
+commit: 110943870a2b1236bd5291d504b39e5f284a3ef1
+
+Medium — hub/src/adapters/launch-files.ts:40: path-based rm/truncate/restore undo is unfenced; concurrent same-session relaunches are admitted by Sessions.resume, so A failing after B commits can remove B's socket/config or truncate B's new log. Serialize by stable session identity or fence resource ownership.
+Medium — hub/src/adapters/launch-files.ts:71: failed/unverified child termination does not stop file undo, and :78 clears recovery state; a still-running failed spawn loses its resources and supervision. Preserve resources/recovery ownership until child exit is verified, without weakening the unchanged termination helper.
+Medium — hub/src/adapters/opencode/server.ts:30: a partial wx .gitignore write leaves incomplete shared metadata; rollback preserves it and retries accept EEXIST, leaving generated config/password without the wildcard exclusion. Safely repair/remove an owned partial write; add partial-ignore coverage.
+Low — hub/src/adapters/sessions.ts:272: post-fresh authorization and cwd/stat initiation remain adjacent separate resumed scopes; a 150+150 ms probe gives zero slow records for a 300 ms uninterrupted stretch. Combine them.
+
+All findings reproduced with production helpers/Sessions and in-memory fixtures (no files/sockets). Native real-adapter guard coverage is meaningful; ticket-before-await admission and the termination helper are unchanged. Hub typecheck and diff check pass; no reviewer tests/full suite run. Separate Standards/Spec reports and exact probes: A-218, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-218-t-79-review-rev-6-79-1-at-1109438.md.
+
+### impl-79 · 2026-10-09T22:02:05.958Z
+
+Fix round rev-6-79-1: cancelled the queued 1109438 suite before it acquired the lock. Addressing stable-session lifecycle serialization, termination-before-file-undo with retained supervision/recovery, atomic shared .gitignore publication with partial-write coverage, and merged post-fresh authorization/stat initiation timing.

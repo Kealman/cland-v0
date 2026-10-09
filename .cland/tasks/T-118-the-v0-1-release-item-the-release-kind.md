@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-107
 blocked_by: []
-topic: null
-branch: null
+topic: topic-41
+branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T21:56:01.700Z
+updated: 2026-10-09T22:01:43.020Z
 ---
 
 ## Parent
@@ -39,3 +39,13 @@ In this slice the levels are the built-in default. Reading them from `[tracker] 
 ## Notes
 
 Size M. Implementer: Codex. Tests through the hub's frame protocol and the CLI against a temporary project (`hub/test/harness.ts`); no new seams inside the hub. ADR 0002: the fields live in the item files and the hub indexes them. The migration on this repository runs through `cland task` once the code is merged and the hub restarted; the Coordinator runs it, or the Implementer documents the exact commands in its report.
+
+## Comments
+
+### impl-118 · 2026-10-09T21:58:04.745Z
+
+Implementation started on the claimed task branch. I will cover release/version persistence, default parenting enforcement, subtree/path CLI and MCP behavior, docs, and exact post-merge migration commands for the Coordinator.
+
+### impl-118 · 2026-10-09T22:01:43.020Z
+
+Release/version persistence, shared default parenting checks (including kind-edit bypass guards), descendant filtering, and CLI/MCP ancestry headers are implemented. Focused red→green tests passed for the first three slices. Map children follow the approved question/task exception. Migration remains post-merge/restart, with commands to follow in the report.

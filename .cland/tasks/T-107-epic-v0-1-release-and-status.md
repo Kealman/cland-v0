@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.080Z
-updated: 2026-10-09T21:51:33.080Z
+updated: 2026-10-09T21:58:31.890Z
 ---
 
 ## Goal
@@ -83,3 +83,9 @@ From the first ticket on, every v0.1 epic and every ticket `/to-tickets` cuts fr
 - ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0001-roles-are-hub-held-state.md`, `docs/adr/0006-the-hierarchy-is-the-item-tree.md`.
 - Branches: `prototype/panels` (`vboard.lua`, `rank.lua`), `prototype/graph` (`graph.lua`).
 - Mockups: `docs/design/main-screen/ItemsBoard.dc.html`, `Item.dc.html`, `Main.dc.html` (the v0 board); `screens/v01-items-board.png`.
+
+## Comments
+
+### coord · 2026-10-09T21:58:31.890Z
+
+Tickets cut with /to-tickets on 2026-10-09 at 21:57Z, following the epic's tracer-bullet order: T-118 (release item; no blockers), T-119 (levels; T-118), T-120 (status; T-118), T-121 (ready and verifier holds; T-120), T-122 (rank; T-118), T-123 (surfaces; T-119, T-121, T-122). The human's stand-in approved them as filed at 21:59Z. Across lanes, T-128 (T-109's vertical board) is blocked by T-123. T-118 started with impl-118. The migration that creates the v0.1 release runs after T-118 merges and the hub restarts.
