@@ -5,6 +5,7 @@ import {
   PROTOCOL_VERSION,
   REPLACED_CLOSE_CODE,
   UPDATE_HINT,
+  type AgentsHistoryFilter,
   type HandoverNote,
   type Hello,
   type HubEvent,
@@ -1201,10 +1202,11 @@ export class HubCore {
     return t;
   }
 
-  topicHistory(id: string, limit?: number): { topic: Topic; messages: TopicMessage[] } {
+  topicHistory(id: string, limit?: number, filter: AgentsHistoryFilter = {}): { topic: Topic; messages: TopicMessage[] } {
     const topic = this.#topicOrThrow(id);
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
-    return { topic, messages: this.#store.topicMessages(id, n) };
+    if (id !== AGENTS.id && (filter.item !== undefined || filter.session !== undefined)) throw new Error('item and session history filters require the Agents topic');
+    return { topic, messages: this.#store.topicMessages(id, n, filter) };
   }
 
   renameTopic(id: string, title: string): Topic {
