@@ -178,8 +178,8 @@ async function serve(args: string[]): Promise<number> {
     const topic = /\btopic="([^"]+)"/.exec(text)?.[1];
     const msgId = /\bmsg_id="([^"]+)"/.exec(text)?.[1];
     await callTool('send', { text: `pong: ${body}`, ...(topic ? { topic } : {}), ...(msgId ? { reply_to: msgId } : {}) }).catch((err: unknown) => log(`send failed: ${String(err)}`));
-    emit('session.step.ended', { sessionID: session.id, finish: 'stop', cost: 0, tokens: { input: 10, output: 2, reasoning: 0, cache: { read: 4, write: 0 } } });
-    emit('session.usage.updated', { sessionID: session.id, cost: 0, tokens: { input: 10, output: 2, reasoning: 0, cache: { read: 4, write: 0 } } });
+    emit('session.step.ended', { sessionID: session.id, finish: 'stop', cost: 0.25, tokens: { input: 10, output: 2, reasoning: 1, cache: { read: 4, write: 3 } } });
+    emit('session.usage.updated', { sessionID: session.id, cost: 0.25, tokens: { input: 10, output: 2, reasoning: 1, cache: { read: 4, write: 3 } } });
   };
 
   const execute = async (session: SessionInfo, run: Run) => {

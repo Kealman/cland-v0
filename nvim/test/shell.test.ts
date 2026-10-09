@@ -942,6 +942,24 @@ test('the items panel: a tree of epics and maps with status glyphs, the claim ri
   assert.match(topBar(s), /│ T-3 Board view/);
 });
 
+test('sessions show running token and cost totals; the claiming session total supplies the item cost', { skip }, async (t) => {
+  const c = await startShell(t, (s) => {
+    s.processes = (s.processes ?? []).map((p) => ({
+      ...p,
+      usage: p.name === 'coord-1'
+        ? { total: { totalTokens: 12300, inputTokens: 9000, outputTokens: 1000, cacheReadTokens: 2300, cacheWriteTokens: 0, reasoningTokens: 0 }, last: { totalTokens: 12 } }
+        : { total: { totalTokens: 5000, cost: 1.8 }, last: { totalTokens: 12, cost: 0.25 } },
+    }));
+  });
+  const panel = await c.waitScreen((s) => s.includes('12.3k tok') && s.includes('$1.80'), 'session totals in the panel');
+  assert.doesNotMatch(panel, /12 tok|\$0\.25/);
+  await c.input('<Esc><Space>s');
+  await c.waitScreen((s) => !s.includes('SESSIONS'), 'sessions panel closed');
+  await c.input(':Cland view item T-12<CR>');
+  const item = await c.waitScreen((s) => /│ cost +\$1\.80/.test(s), 'the claiming session total cost in the item view');
+  assert.doesNotMatch(item, /\$0\.25/);
+});
+
 test('an item body with a list indented past the window width renders, and Neovim keeps answering', { skip, timeout: 30_000 }, async (t) => {
   const deep = `${' '.repeat(150)}- deep item with a few words to wrap`;
   const c = await startShell(t, (s) => {

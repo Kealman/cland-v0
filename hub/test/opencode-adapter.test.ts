@@ -169,7 +169,11 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
 
   // the message's usage, from session.step.ended
   const h = await eventually('usage', async () => (await status(ui)).harnesses.find((x) => x.name === 'impl' && x.usage));
-  assert.deepEqual(h.usage, { model: 'opencode/fake-free', inputTokens: 10, outputTokens: 2, reasoningTokens: 0, cacheReadTokens: 4, cacheWriteTokens: 0, cost: 0 });
+  assert.deepEqual(h.usage, {
+    model: 'opencode/fake-free',
+    total: { totalTokens: 38, inputTokens: 20, outputTokens: 4, reasoningTokens: 2, cacheReadTokens: 8, cacheWriteTokens: 6, cost: 0.5 },
+    last: { totalTokens: 19, inputTokens: 10, outputTokens: 2, reasoningTokens: 1, cacheReadTokens: 4, cacheWriteTokens: 3, cost: 0.25 },
+  });
 
   // stop: the server ends, the row says stopped, the state is unknown
   const stopped = (await ui.request({ type: 'session.stop', session: 'impl' }, 15_000)).value as { process: Harness };
