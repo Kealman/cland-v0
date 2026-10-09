@@ -50,6 +50,10 @@ const inside = (cwd: string, dir: string): boolean => {
   return c === d || c.startsWith(d + sep);
 };
 
+/** Runs the synchronous write a handler resumes into after awaiting Git: the hub times it against its budget (T-67). */
+export type Resumed = <T>(write: () => T) => T;
+const untimed: Resumed = (write) => write();
+
 /** The slug of an item's file name: `T-12-fix-the-thing.md` → `fix-the-thing`. */
 const slugOf = (view: Pick<ItemView, 'id' | 'file'>): string => view.file.replace(/\.md$/, '').replace(new RegExp(`^${view.id}-?`), '');
 
@@ -88,10 +92,12 @@ export class TaskWorktrees {
   }
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
-  async #make(view: ItemView, session: string | null): Promise<TaskWorktree> {
+  async #make(view: ItemView, session: string | null, resumed: Resumed = untimed): Promise<TaskWorktree> {
     const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch });
     // the item as it is now: it may have changed while Git worked
-    if (this.#tracker.view(view.id).branch !== worktree.branch) this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch });
+    resumed(() => {
+      if (this.#tracker.view(view.id).branch !== worktree.branch) this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch });
+    });
     if (worktree.createdWorktree) {
       this.#log({
         event: 'task-worktree',
@@ -107,7 +113,7 @@ export class TaskWorktrees {
   }
 
   /** After a claim (decision D7): the worktree made or reused, or why there is none. A failure never undoes the claim. */
-  afterClaim(id: string, session: string | null): Promise<WorktreeOutcome> {
+  afterClaim(id: string, session: string | null, resumed: Resumed = untimed): Promise<WorktreeOutcome> {
     return this.#serial(async () => {
       let view: ItemView;
       try {
@@ -118,7 +124,7 @@ export class TaskWorktrees {
       const reason = await this.#ineligible(view);
       if (reason !== null) return { worktree: null, reason };
       try {
-        return { worktree: await this.#make(view, session) };
+        return { worktree: await this.#make(view, session, resumed) };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         this.#log({ event: 'task-worktree-failed', id, error: message });

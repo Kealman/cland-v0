@@ -12,7 +12,6 @@ local hub = require('cland.hub')
 local state = require('cland.state')
 
 M.REFRESH_MS = tonumber(vim.env.CLAND_REFRESH_MS or '') or 5000
-M.ITEMS_REFRESH_MS = math.min(1000, M.REFRESH_MS)
 
 --- nvim/ (this file is nvim/lua/cland/init.lua) and the repository around it.
 local function dirs()
@@ -44,8 +43,42 @@ local function refresh_topics()
   end)
 end
 
-local function refresh_sessions()
+--- `fn(done)` with at most one run in flight: a call while one is out runs it once more after, never stacks
+--- requests behind a slow hub (T-67: a burst of events or a timer kept re-asking while the hub was blocked).
+local function single_flight(fn)
+  local busy, again = false, false
+  local run
+  run = function()
+    if busy then
+      again = true
+      return
+    end
+    busy = true
+    fn(function()
+      busy = false
+      if again then
+        again = false
+        run()
+      end
+    end)
+  end
+  return run
+end
+
+--- A `done` to call once per answer: the last of `n` ends the run.
+local function after(n, done)
+  return function()
+    n = n - 1
+    if n == 0 then
+      done()
+    end
+  end
+end
+
+local refresh_sessions = single_flight(function(done)
+  local answered = after(4, done)
   M.client:request({ type = 'session.list' }, function(err, value)
+    answered()
     if not err and value then
       state.S.processes = value.processes or {}
       state.S.adapters = value.adapters or {}
@@ -55,6 +88,7 @@ local function refresh_sessions()
   -- `coordinator: null` is the hub saying nobody holds the role (a role.vacant missed while away, #29): it
   -- arrives as vim.NIL; a hub.status without the field leaves the chip to the session rows
   M.client:request({ type = 'hub.status' }, function(err, value)
+    answered()
     if not err and value then
       state.S.presence = value.sessions or {}
       if value.coordinator == vim.NIL then
@@ -70,22 +104,27 @@ local function refresh_sessions()
   end, { nulls = true })
   -- the roles and their launch defaults: the launcher's prefill and the labels
   M.client:request({ type = 'role.list' }, function(err, value)
+    answered()
     if not err and value and value.roles then
       state.S.roles = value.roles
       state.changed()
     end
   end)
   M.client:request({ type = 'inbox.list' }, function(err, value)
+    answered()
     if not err then
       state.set_inbox(value)
     end
   end)
-end
+end)
 
 M.refresh_sessions = refresh_sessions
 
-local function refresh_items()
+--- The whole list, on connecting: after that the `task` events keep it (an item as `task.list` shows it), so
+--- nothing polls `task.list` (T-67).
+local refresh_items = single_flight(function(done)
   M.client:request({ type = 'task.list' }, function(err, value)
+    done()
     if err then
       state.S.items, state.S.items_note = {}, 'no items: ' .. tostring(err)
     else
@@ -93,7 +132,7 @@ local function refresh_items()
     end
     state.changed()
   end)
-end
+end)
 
 function M.refresh()
   if not M.client:connected() then
@@ -318,17 +357,20 @@ local function commands()
       M.refresh()
     elseif sub == 'launch' then
       require('cland.launcher').open({ name = a })
+    elseif sub == 'qa' and a == 'dump' and o.fargs[3] then
+      local ok, files = pcall(require('cland.qa').dump, o.fargs[3])
+      state.say(ok and ('qa dump: ' .. table.concat(files, ' · ')) or ('qa dump failed: ' .. tostring(files)), ok and 'ClandDimBar' or 'ClandRedBar')
     elseif sub == 'help' or not sub then
       M.help()
     else
-      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | refresh | help', 'ClandRedBar')
+      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | qa dump <path> | refresh | help', 'ClandRedBar')
     end
   end, {
     nargs = '*',
     complete = function(_, line)
       local words = vim.split(line, '%s+', { trimempty = true })
       if #words <= 1 or (#words == 2 and not line:match('%s$')) then
-        return { 'preset', 'view', 'panel', 'launch', 'topic', 'refresh', 'help' }
+        return { 'preset', 'view', 'panel', 'launch', 'topic', 'qa', 'refresh', 'help' }
       end
       local sub = words[2]
       if sub == 'preset' then
@@ -339,6 +381,8 @@ local function commands()
         return { 'items', 'inbox', 'sessions', 'topics', 'dock' }
       elseif sub == 'topic' then
         return { 'new', 'close', 'resolve' }
+      elseif sub == 'qa' then
+        return { 'dump' }
       end
       return {}
     end,
@@ -439,7 +483,8 @@ local function reattach(snap)
 end
 
 --- opts: root (a directory inside the project; default the cwd), transport ('socket' | 'stdio'),
---- restore (read a restart snapshot even without v:startreason "restart").
+--- restore (read a restart snapshot even without v:startreason "restart"). A QA run also gives cli (the
+--- `cland` command as a list, instead of CLAND_COMMAND or this repository's) and serve_args (for the stdio hub).
 function M.start(opts)
   opts = opts or {}
   local start = opts.root and opts.root ~= '' and opts.root or vim.fn.getcwd()
@@ -458,7 +503,7 @@ function M.start(opts)
     state.say(msg, level and level >= vim.log.levels.WARN and 'ClandAmberBar' or 'ClandDimBar')
   end
 
-  M.client = hub.new({ root = root, transport = transport, cli = cli_command(repo) })
+  M.client = hub.new({ root = root, transport = transport, cli = opts.cli or cli_command(repo), serve_args = opts.serve_args })
   wire_client(M.client)
   require('cland.views').setup(M.client)
   require('cland.sessions').setup(M.client)
@@ -502,19 +547,12 @@ function M.start(opts)
       end
     end)
   end
+  -- the sessions still refresh on a timer: presence, a process that ended and the token totals have no event yet;
+  -- the items do not, the `task` events carry every change
   M.timer = vim.uv.new_timer()
   M.timer:start(M.REFRESH_MS, M.REFRESH_MS, guarded(function()
     if M.client:connected() then
       refresh_sessions()
-      refresh_items()
-    end
-  end))
-  -- while the items are on screen (the panel, the board, an item view) they refresh at least each second,
-  -- besides the `task` events
-  M.items_timer = vim.uv.new_timer()
-  M.items_timer:start(M.ITEMS_REFRESH_MS, M.ITEMS_REFRESH_MS, guarded(function()
-    if M.client:connected() and require('cland.items').visible() then
-      refresh_items()
     end
   end))
   M.client:start()

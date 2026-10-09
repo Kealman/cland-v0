@@ -2,7 +2,7 @@
 import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { acquireLock, HubLocked } from './hub/lock.ts';
+import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
 export const territoryPath = (root: string): string => join(root, '.cland', 'territory.git');
@@ -46,6 +46,29 @@ export function withTerritoryLock<T>(root: string, operation: () => T | Promise<
   if (result instanceof Promise) return result.finally(lock.release);
   lock.release();
   return result;
+}
+
+/**
+ * `withTerritoryLock` for the hub's request path: the lock is taken without blocking the event loop (its `ps` probes
+ * awaited, `acquireLockAsync`), held until `operation` settles. A live holder refuses, as there.
+ */
+export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>): Promise<T> {
+  const path = lockPath(root);
+  const link = symlinkOnPath(root, path);
+  if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`);
+  mkdirSync(join(root, '.cland'), { recursive: true });
+  let lock;
+  try {
+    lock = await acquireLockAsync(path);
+  } catch (err) {
+    if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
+    throw err;
+  }
+  try {
+    return await operation();
+  } finally {
+    lock.release();
+  }
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
@@ -256,7 +279,7 @@ export function territoryProblems(root: string): string[] | null {
 // ---------------------------------------------------------------- task worktrees (T-58, decisions D3, D7)
 // Called from the hub's request path, so every Git command here is awaited (`execFile`), never `spawnSync`: a claim
 // or a listing never holds the hub's event loop. The hub runs them one at a time (`src/hub/worktrees.ts`); the
-// writes also hold the territory lock against other processes.
+// writes also hold the territory lock against other processes, taken without blocking (`withTerritoryLockAsync`).
 
 /** `territoryGit`, awaited: trimmed stdout, or a rejection naming the command and Git's message. */
 export function territoryGitAsync(cwd: string, args: string[]): Promise<string> {
@@ -346,7 +369,7 @@ export type TaskWorktree = { item: string; branch: string; path: string; base: s
 export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }): Promise<TaskWorktree> {
   if (!(await hasTerritory(root))) throw new Error('the project has no territory (run cland init)');
   if (!/^T-\d+$/.test(item.id)) throw new Error(`not an item id: ${item.id}`);
-  return withTerritoryLock(root, async () => {
+  return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item.id);
     const link = symlinkOnPath(root, path);
     if (link !== null) throw new Error(`worktree: refusing symlink ${link}`);
@@ -382,7 +405,7 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
  * may have changed while Git was read).
  */
 export async function removeTaskWorktree(root: string, item: string, check: () => void = () => {}): Promise<{ path: string; branch: string | null }> {
-  return withTerritoryLock(root, async () => {
+  return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item);
     const found = (await worktrees(root)).find((w) => samePath(w.path, path));
     if (!found) throw new Error(`${item} has no worktree`);

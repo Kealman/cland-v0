@@ -33,7 +33,7 @@ import type { LogFn } from '../log.ts';
 import { HygieneError } from './hygiene.ts';
 import { answerTask, isTaskRequest, sessionActor, type TaskRequest } from '../tracker/requests.ts';
 import { readsAsVerdict, verdictOfText } from '../tracker/item.ts';
-import type { Tracker } from '../tracker/tracker.ts';
+import type { Actor, Tracker } from '../tracker/tracker.ts';
 import { answerSession, isSessionRequest, SPOKE_SESSION_REQUESTS } from '../adapters/requests.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
@@ -41,7 +41,7 @@ import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList } from '../protocol.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
-import type { Actor } from '../tracker/tracker.ts';
+import { RequestGuard, type GuardOptions } from './budget.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
@@ -74,6 +74,8 @@ export type DispatcherOptions = {
   log?: LogFn;
   /** The project's tracker, answering the `task.*` requests; absent on a hub with no project. */
   tracker?: Tracker;
+  /** The request budget and the repeat guard's timings (tests). */
+  guard?: Omit<GuardOptions, 'log'>;
 };
 
 /** Who the UI's and the CLI's calls are audited as. */
@@ -101,11 +103,17 @@ export class Dispatcher {
   #sessions: Sessions | undefined;
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
   readonly #worktrees: TaskWorktrees | null;
+  /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
+  readonly #guard: RequestGuard;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
     this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
+    this.#guard = new RequestGuard({ ...options.guard, log: this.#log });
+    // what a read shows changed: no earlier answer is replayed
+    options.core.subscribe(() => this.#guard.changed());
+    options.tracker?.onChange(() => this.#guard.changed());
     // a role moved to a name with no session yet: its claims follow at that session's hello; and what a hub that
     // died between a move's commit and its claims left pending is finished now
     options.core.onSessionHello((name, sessionId) => this.#settleClaims({ name, sessionId }));
@@ -134,15 +142,13 @@ export class Dispatcher {
   }
 
   /**
-   * One task request's result. A claim of an open task also makes or reuses its branch and worktree (decision D7):
-   * the result carries the worktree, or the reason there is none; the claim stands either way.
+   * A task request's result, with what a claim of an open task made of its branch and worktree (decision D7): the
+   * worktree, or the reason there is none; the claim stands either way. Its write after Git runs through `resumed`.
    */
-  async #answerTask(frame: TaskRequest, actor: Actor | 'client'): Promise<HubFrame> {
-    const result = answerTask(this.#options.tracker, frame, actor);
-    this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
+  async #withWorktree(frame: TaskRequest, result: HubFrame, resumed: <T>(write: () => T) => T): Promise<HubFrame> {
     if (frame.type !== 'task.claim' || frame.release === true || result.type !== 'result' || !result.ok || !this.#worktrees) return result;
     const value = result.value as { id: string; claim: { session: string } | null };
-    return { ...result, value: { ...value, ...(await this.#worktrees.afterClaim(value.id, value.claim?.session ?? null)) } };
+    return { ...result, value: { ...value, ...(await this.#worktrees.afterClaim(value.id, value.claim?.session ?? null, resumed)) } };
   }
 
   /** What a handover and `role.state` read beyond the core (#31): the tracker's claims, the launched sessions. */
@@ -371,10 +377,12 @@ export class Dispatcher {
       queue.push(base);
       audits.set(id, queue);
     };
-    // every result passes the audit on its way out
+    const guard = this.#guard.conversation();
+    // every result passes the audit on its way out, and a read's answer is kept for a repeat
     const peer: Peer = {
       send: (frame) => {
         settle(frame);
+        guard.answered(frame);
         wire.send(frame);
       },
       close: (code, reason) => wire.close(code, reason),
@@ -390,12 +398,35 @@ export class Dispatcher {
     let unsubscribe: (() => void) | null = null;
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
-    /** A result that comes later (Git work, a launch): sent if the peer is still there, audited either way. */
-    const later = (result: Promise<HubFrame>): void =>
-      void result.then((frame) => {
-        if (peer.isOpen()) peer.send(frame);
-        else settle(frame);
-      });
+    /** A result that comes later (Git work): its answer going out is timed against the budget as `answer`. */
+    const later = (tool: string, result: Promise<HubFrame>): void =>
+      void result.then((frame) =>
+        this.#guard.measure(tool, kind === 'spoke' ? (name ?? '?') : client, () => {
+          if (peer.isOpen()) peer.send(frame);
+          else settle(frame);
+        }, 'answer'),
+      );
+    // a task request's answer may wait for Git (a verdict's commit, a claim's worktree), never on the event loop; every
+    // stretch it runs on the loop is timed against the budget: the first in `receive`, the writes after Git answered,
+    // the answer going out
+    const task = (frame: TaskRequest, actor: Actor | 'client') => {
+      const tool = String(frame.type);
+      const who = kind === 'spoke' ? (name ?? '?') : client;
+      const resumed = <T,>(write: () => T): T => this.#guard.measure(tool, who, write, 'resumed');
+      void answerTask(this.#options.tracker, frame, actor, resumed)
+        .then((result) => {
+          this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
+          return this.#withWorktree(frame, result, resumed);
+        })
+        // what fails after the answer is known (the assignee's binding) is that request's failure, never the hub's
+        .catch((err: unknown) => Dispatcher.#failure(frame.id, err))
+        .then((result) =>
+          this.#guard.measure(tool, who, () => {
+            if (peer.isOpen()) peer.send(result);
+            else settle(result);
+          }, 'answer'),
+        );
+    };
     const session = (frame: Parameters<typeof answerSession>[1]) =>
       void answerSession(this.#sessions, frame, { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) }, this.#worktrees ?? undefined).then((result) => {
         if (peer.isOpen()) peer.send(result);
@@ -437,6 +468,8 @@ export class Dispatcher {
           return refuse(result.code, result.message);
         }
         kind = 'spoke';
+        // presence moved: `who` and `hub.status` answer anew
+        this.#guard.changed();
         name = result.name;
         connection = result.connection;
         spoke = result.spoke;
@@ -606,7 +639,7 @@ export class Dispatcher {
                 : frame.dryRun === true || !frame.items?.length
                   ? worktrees.prunable().then((candidates) => ({ candidates }))
                   : worktrees.prune(frame.items);
-            return later(value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
+            return later(frame.type, value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
           }
           case 'subscribe':
             if (!unsubscribe) {
@@ -636,7 +669,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'hub.status':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou() } satisfies HubStatus });
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
           break;
         case 'hub.stop':
           log({ event: 'stop-requested', edge: transport.edge });
@@ -646,12 +679,14 @@ export class Dispatcher {
       }
     };
 
-    return {
-      receive: (raw) => {
-        if (done) return;
-        const frame = parseFrame(raw);
-        if (!frame) return refuse('bad-hello', 'not a frame');
-        if (kind === null) return hello(frame);
+    /** A read repeated too fast: its last answer goes out again (unaudited: `too-fast` is logged once); true when it did. */
+    const replayed = (frame: Record<string, unknown>): boolean => {
+      const again = guard.replay(frame, kind === 'spoke' ? (name ?? '?') : client);
+      if (again) wire.send(again);
+      return again !== null;
+    };
+
+    const handle = (frame: Record<string, unknown>): void => {
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
           if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
@@ -661,17 +696,21 @@ export class Dispatcher {
           if (isAck(frame)) return core.ack(connection, frame.id);
           // the heartbeat is not a tool call
           if (frame.type !== 'ping') {
+            if (replayed(frame)) return;
             audit(frame.id, { session: connection.name, sessionId: connection.sessionId, role: connection.role, tool: String(frame.type), args: summarize(frame) });
             const bad = Dispatcher.#verdictFromText(frame);
             if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
             if (!this.#permitted(connection, frame, peer)) return;
           }
           // a spoke always acts as its own session
-          if (isTaskRequest(frame)) return later(this.#answerTask(frame, sessionActor(connection, UNKNOWN_SESSION)));
+          if (isTaskRequest(frame)) {
+            return task(frame, sessionActor(connection, UNKNOWN_SESSION));
+          }
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
           return spokeRequest(frame, connection.name);
         }
+        if (replayed(frame)) return;
         // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
         // exactly as the session's own tool call would be
         const as = isTaskRequest(frame) ? this.#asSession(frame) : null;
@@ -680,7 +719,7 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           if (!this.#permitted(as, frame, peer)) return;
-          return later(this.#answerTask(frame, sessionActor(as, UNKNOWN_SESSION)));
+          return task(frame, sessionActor(as, UNKNOWN_SESSION));
         }
         const plumbing = frame.type === 'session.signal' || frame.type === 'session.bridge';
         // any other CLI call from a session's shell (`as` with the session's id, or a name the hub knows): the session's,
@@ -703,7 +742,7 @@ export class Dispatcher {
         if (isTaskRequest(frame)) {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
-          return later(this.#answerTask(frame, 'client'));
+          return task(frame, 'client');
         }
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
@@ -712,9 +751,20 @@ export class Dispatcher {
           return;
         }
         clientRequest(frame);
+    };
+
+    return {
+      receive: (raw) => {
+        if (done) return;
+        const frame = parseFrame(raw);
+        if (!frame) return refuse('bad-hello', 'not a frame');
+        if (kind === null) return hello(frame);
+        // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
+        this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame));
       },
       closed: () => {
         done = true;
+        if (kind === 'spoke') this.#guard.changed();
         for (const queue of audits.values()) for (const base of queue) log({ event: 'audit', ...base, outcome: 'error', error: 'the connection closed before the answer' });
         audits.clear();
         clearTimeout(helloTimer);

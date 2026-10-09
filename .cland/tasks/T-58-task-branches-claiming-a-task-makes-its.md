@@ -6,14 +6,14 @@ state: open
 labels:
   - ready-for-agent
   - slice-2
-assignee: null
+assignee: impl-58
 parent: T-20
 blocked_by:
   - T-53
-topic: null
-branch: null
+topic: topic-16
+branch: t/T-58-task-branches-and-launch-with-item
 created: 2026-10-09T08:34:54.694Z
-updated: 2026-10-09T08:39:13.264Z
+updated: 2026-10-09T10:13:18.337Z
 ---
 
 ## Parent

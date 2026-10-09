@@ -9,10 +9,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-17
+branch: t/T-52-opencode-cold-catalog
 created: 2026-10-09T08:04:42.494Z
-updated: 2026-10-09T08:35:16.619Z
+updated: 2026-10-09T10:17:40.638Z
 ---
 
 ## Parent

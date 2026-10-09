@@ -7,7 +7,7 @@
 // whose pid now belongs to a process started at another time (the pid was reused), is stale and broken.
 // Breaking is itself guarded (`hub.lock.break`, created the same way), so two starters that both found the
 // same stale lock cannot each remove what the other just created.
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { linkSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { pidAlive } from '../project.ts';
 
@@ -32,6 +32,16 @@ export function processStarted(pid: number): string | null {
   if (r.status !== 0 || r.error) return null;
   return parseStarted(r.stdout);
 }
+
+/** `processStarted` without blocking: `ps` awaited, killed at the same deadline. */
+export function processStartedAsync(pid: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: PS_TIMEOUT_MS, killSignal: 'SIGKILL' }, (err, stdout) => resolve(err ? null : parseStarted(stdout)));
+  });
+}
+
+/** This process's own start time, asked once: it never changes. */
+let ownStarted: Promise<string | null> | null = null;
 
 export function readLock(path: string): LockHolder | null {
   try {
@@ -122,8 +132,38 @@ export function acquireLock(path: string): HubLock {
   throw new Error(`could not take ${path}: it keeps changing under this process`);
 }
 
+/**
+ * `acquireLock` without blocking the event loop, for a lock taken on the hub's request path (the territory's, T-58):
+ * the start-time probes are awaited, this process's own asked once, and a breaker's wait is a timer.
+ */
+export async function acquireLockAsync(path: string): Promise<HubLock> {
+  ownStarted ??= processStartedAsync(process.pid);
+  const me: LockHolder = { pid: process.pid, started: await ownStarted };
+  const text = `${JSON.stringify(me)}\n`;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (createExclusive(path, text)) {
+      return {
+        holder: me,
+        release: () => {
+          if (readLock(path)?.pid === me.pid) rmSync(path, { force: true });
+        },
+      };
+    }
+    const holder = readLock(path);
+    if (holder !== null && pidAlive(holder.pid) && (holder.started === null || sameProcess(holder, await processStartedAsync(holder.pid)))) throw new HubLocked(holder);
+    if (!tryBreakStale(path, holder)) await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`could not take ${path}: it keeps changing under this process`);
+}
+
 /** Remove the lock at `path` if it is still `stale` (null: still unreadable), under the break guard. */
 function breakStale(path: string, stale: LockHolder | null): void {
+  // another starter is breaking it: let it, then look again
+  if (!tryBreakStale(path, stale)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+}
+
+/** `breakStale`'s work, without the wait: false when another breaker holds the guard. */
+function tryBreakStale(path: string, stale: LockHolder | null): boolean {
   const guard = `${path}.break`;
   if (!createExclusive(guard, `${process.pid}\n`)) {
     try {
@@ -131,9 +171,7 @@ function breakStale(path: string, stale: LockHolder | null): void {
     } catch {
       /* the other breaker finished */
     }
-    // another starter is breaking it: let it, then look again
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
-    return;
+    return false;
   }
   try {
     const now = readLock(path);
@@ -142,4 +180,5 @@ function breakStale(path: string, stale: LockHolder | null): void {
   } finally {
     rmSync(guard, { force: true });
   }
+  return true;
 }

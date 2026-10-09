@@ -347,6 +347,22 @@ test('a session.state event updates the chip while the human types in the compos
   assert.deepEqual(lines, ['› half a thought and more']);
 });
 
+test('the workbench reads task.list once on connecting and never polls it; a burst of events asks session.list at most twice (T-67)', { skip }, async (t) => {
+  const c = await startShell(t);
+  await c.input('<Esc><Space>i');
+  await c.waitScreen((x) => x.includes('ITEMS'), 'the items panel');
+  // several sessions refreshes (every 300 ms here) later: the items were read once, at the connection
+  await sleep(1500);
+  const asked = async (type: string) => ((await c.control({ requests: true })).requests as Array<{ type: string }>).filter((r) => r.type === type).length;
+  assert.equal(await asked('task.list'), 1, 'task.list on connecting only: the task events keep the items');
+  // fifty events for sessions the shell does not know, in one write: one refresh, and one more after it at most
+  const before = await asked('session.list');
+  await c.control({ emits: Array.from({ length: 50 }, (_, i) => ({ type: 'session.state', session: `ghost-${i}`, sessionId: `g${i}`, state: 'busy', source: 'hook', ts: ts(5) })) });
+  await sleep(150);
+  const burst = (await asked('session.list')) - before;
+  assert.ok(burst >= 1 && burst <= 3, `${burst} session.list for a burst of 50 events (one refresh in flight at a time, plus the timer's)`);
+});
+
 test('a burst of hub events never raises a hit-enter prompt', { skip }, async (t) => {
   const c = await startShell(t);
   const long = Array.from({ length: 60 }, (_, i) => `line ${i} ${'x'.repeat(150)}`).join('\n');

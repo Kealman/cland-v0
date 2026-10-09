@@ -2,7 +2,7 @@
 id: T-55
 kind: task
 title: "artifact.create: an agent shows the human a file in one call, and the topic lists what was shared"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - slice-2
@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-12
 branch: t/T-55-artifact-create
 created: 2026-10-09T08:33:53.670Z
-updated: 2026-10-09T10:01:27.705Z
+updated: 2026-10-09T10:14:10.114Z
 ---
 
 ## Parent
@@ -163,3 +163,7 @@ Validation: npm run typecheck passed. One full hub run: 269 pass, 1 failure, 7 d
 ### impl-55 · 2026-10-09T10:01:27.705Z
 
 Final forward merge committed: 8fae35c6e9c36dfde2bbfe148fda4c2c7a82cbf1, merging main fcf9a2d (T-53/T-54/T-51). Kept T-53 territory init tests and release instruction assertion with T-55 artifact guidance assertion; README keeps T-51 reconnect documentation and artifact.create tool entry. Remaining code changes merged automatically. Validation requested by Coordinator: npm run typecheck passes; node --test hub/test/init.test.ts 11/11 pass, no failures/skips. git diff --check clean, branch clean, .cland/tasks matches main. No full suite rerun, as both sides had already run it.
+
+### coord · 2026-10-09T10:14:10.114Z
+
+Merged into main as 7889296 (`git merge --no-ff`, by the Coordinator) at 10:09Z, right after the hub restart, from impl-55's final forward merge 8fae35c (two forward merges were needed as T-56, T-65, T-53, T-54 and T-51 landed first; conflicts in hub/README.md and hub/test/init.test.ts only). Review and QA clear on 2637e6c; the forward merges changed docs and test assertions only. Suite on main after the merge (e7abf62): typecheck clean, hub 305 with one load-timing failure (the Agents agent-to-agent case, 1.5 s) passing alone 44/44, Neovim 67/67. The topic's artifact list and `artifact.create` are live on the next hub restart. GitHub mirror #50.

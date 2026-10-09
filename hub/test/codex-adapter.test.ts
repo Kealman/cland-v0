@@ -553,3 +553,292 @@ test('session resume --relaunch on a live session that renames itself while it i
   const present = await presentAs(ui, 'coord-2', 'idle');
   assert.equal(present.role, 'coordinator');
 });
+
+// T-50. Measured with Codex 0.160.0 (11 steers in the last 5 to 120 ms of a turn): an accepted `turn/steer` is taken up
+// by the turn, which goes on and answers it, and one that comes too late is refused (`no active turn to steer`). The
+// adapter does not rest on that: a turn that ends without an accepted steer among its inputs gets it again.
+test('a steer the app-server accepted and the turn never took up is delivered again as a new turn, and the journal and Agents say so', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const first = await sendGeneral(ui, '@impl-1 start a turn');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === first && f.stage === 'injected', 15_000);
+  // steered into the running turn, twice: one the turn takes up, one it accepts and drops
+  const taken = await sendGeneral(ui, '@impl-1 a steer the turn takes up');
+  const dropped = await sendGeneral(ui, '@impl-1 drop this steer');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === dropped && f.stage === 'injected', 15_000);
+  const log = await fake.log(launched.pid as number);
+  assert.match(log, /turn\/steer [0-9a-f-]+: <channel [^\n]*>\n@impl-1 a steer the turn takes up/);
+  assert.match(log, /turn\/steer [0-9a-f-]+ accepted and dropped: <channel [^\n]*>\n@impl-1 drop this steer/);
+
+  // every message is answered: the dropped one in a turn of its own, after the first turn ended without it
+  for (const text of ['start a turn', 'a steer the turn takes up', 'drop this steer']) {
+    await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: @impl-1 ${text}`, 15_000);
+  }
+  await presentAs(ui, 'impl-1', 'idle');
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string; session?: string });
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered').map((e) => [e.session, e.id]), [['impl-1', dropped]], 'only the dropped steer, once');
+  assert.equal((await hubLog(root)).split('\n').filter((line) => line.includes('"event":"harness-steered"') && line.includes(taken)).length, 1);
+  const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
+  assert.deepEqual(pongs.sort(), ['pong: @impl-1 a steer the turn takes up', 'pong: @impl-1 drop this steer', 'pong: @impl-1 start a turn'], 'each answered once');
+
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), ['impl-1 [Implementer]: its turn ended without a message it had accepted; the message was delivered again as a new turn']);
+});
+
+// T-68. Codex 0.160.0 records a delivery into an idle thread (`turn/start` with a `hub_event` toolOutput) as a
+// `functionCallOutput` item, not a `userMessage`: the turn that carries it took it up, and nothing is owed.
+test('a delivery to an idle Codex session runs one turn and is never redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  await sendGeneral(ui, '@impl-1 an idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 an idle delivery', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+  // a second idle delivery, answered after the first turn's check has run: a redelivery would have come before it
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const log = await fake.log(launched.pid as number);
+  assert.equal(log.split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string });
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
+  assert.equal((await hubLog(root)).split('\n').filter((line) => line.includes('"event":"harness-redelivered"') || line.includes('"event":"harness-redelivery-failed"')).length, 0);
+  const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
+  assert.deepEqual(pongs, ['pong: @impl-1 an idle delivery', 'pong: @impl-1 a later idle delivery'], 'each answered once');
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered' || m.kind === 'turn-failed'), []);
+});
+
+test('an idle delivery whose item the turn never announced is found in the turn record and not redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  await sendGeneral(ui, '@impl-1 leave unannounced');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 leave unannounced', 15_000);
+  await presentAs(ui, 'impl-1', 'idle');
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string });
+  assert.deepEqual(events.filter((e) => /^harness-(redelivered|redelivery-failed|turn-unread)$/.test(e.event)), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+});
+
+for (const [body, error] of [
+  ['leave unannounced, lose its envelope', "the turn's record shows no input item of the shape it was admitted in"],
+  ['leave unannounced, fail the readback', 'readback refused'],
+] as const) test(`an idle delivery the turn record cannot vouch for (${body}) is reported as unread and not redelivered`, async (t) => {
+  // a tool output owed in a turn that shows only a userMessage is not judged; nor is anything when the read fails
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const id = await sendGeneral(ui, `@impl-1 ${body}`);
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: @impl-1 ${body}`, 15_000);
+  await eventually('the unread turn is journaled', async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).includes('"event":"harness-turn-unread"') || undefined);
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; ids?: string[]; error?: string });
+  assert.deepEqual(events.filter((e) => e.event === 'harness-turn-unread').map((e) => [e.ids, e.error]), [[[id], error]]);
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 1, 'one turn');
+});
+
+test('a turn whose input items the hub cannot classify is reported once as unread and not redelivered', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await launch(ui, 'impl-1', { role: 'implementer' });
+  await presentAs(ui, 'impl-1', 'idle');
+
+  const id = await sendGeneral(ui, '@impl-1 record an unknown item');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 record an unknown item', 15_000);
+  await eventually('the unread turn is journaled', async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).includes('"event":"harness-turn-unread"') || undefined);
+  await presentAs(ui, 'impl-1', 'idle');
+  await sendGeneral(ui, '@impl-1 a later idle delivery');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: @impl-1 a later idle delivery', 15_000);
+
+  const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; ids?: string[]; error?: string });
+  const unread = events.filter((e) => e.event === 'harness-turn-unread');
+  assert.equal(unread.length, 1, 'reported once');
+  assert.deepEqual(unread[0]?.ids, [id]);
+  assert.equal(unread[0]?.error, "the turn's record shows no input item of the shape it was admitted in");
+  assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
+  assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
+  const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
+  assert.deepEqual(pongs, ['pong: @impl-1 record an unknown item', 'pong: @impl-1 a later idle delivery'], 'each answered once');
+});
+
+for (const mode of ['rejected', 'unanswered']) test(`a successful completion before a late ${mode} steer response never replays a pending admission`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { injectTimeoutMs: 1500, turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = `@impl late ${mode} steer`;
+  const id = await sendGeneral(ui, body);
+  await eventually('steer pending', async () => (await fake.log(launched.pid as number)).includes('pending late steer:') || undefined);
+  await fake.approve();
+  await eventually('completion before reply', async () => (await fake.log(launched.pid as number)).includes('late steer completed before response') || undefined);
+  // Keep the reply blocked through the inject deadline: admission is ambiguous, never owed.
+  await eventually('uncertain admission', async () => (await hubLog(root)).includes(`"event":"inject-uncertain","id":"${id}"`) || undefined);
+  const events = (await hubLog(root)).split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line) as { event: string; id?: string });
+  assert.equal(events.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 0);
+  assert.equal(ui.frames.filter((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`).length, 0);
+  await writeFile(join(fake.home, 'release-steer-response'), '');
+});
+
+test('a recovery accepted and dropped in a newer turn retains its obligation', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = '@impl drop this steer; drop recovery in newer turn';
+  const id = await sendGeneral(ui, body);
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await writeFile(join(fake.home, 'new-turn-during-read'), '');
+  await fake.approve();
+  await eventually('recovery accepted by newer turn', async () => (await fake.log(launched.pid as number)).includes('recovery accepted and dropped in newer turn:') || undefined);
+  await writeFile(join(fake.home, 'release-newer-turn'), '');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`, 5000);
+  await presentAs(ui, 'impl', 'idle');
+  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
+  const recoveries = journal.split('\n').filter((line) => line.includes('"event":"harness-redelivered"') && line.includes(id));
+  assert.equal(recoveries.length, 2, 'the recovery in the newer turn is recovered again, then consumed');
+  const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
+  assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), [
+    'impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again into a running turn',
+    'impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again as a new turn',
+  ]);
+});
+
+test('a recovered turn failing before its admission response notifies the original sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(() => sender.close());
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = 'drop this steer; fail recovered turn before response';
+  const sent = await sender.call<{ ok: boolean }>('send', { to: ['impl'], text: body });
+  assert.equal(sent.ok, true);
+  const frame = await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === body);
+  const id = (frame.message as { id: string }).id;
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await fake.approve();
+  const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === expected);
+  await eventually('failure preceded response', async () => (await fake.log(launched.pid as number)).includes('recovered turn failed before response') || undefined);
+  await sender.waitForEvent((e) => e.params.content.includes(expected), 5000);
+  assert.equal(sender.events.filter((e) => e.params.content.includes(expected)).length, 1);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.equal(inbox.notifications.filter((n) => n.kind === 'turn-failed' && n.text === expected).length, 1);
+});
+
+test('a refused recovery request records journal, Agents and inbox failure and tells the sender', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'sender', role: 'reviewer' });
+  t.after(() => sender.close());
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = 'drop this steer; refuse recovered request';
+  assert.equal((await sender.call<{ ok: boolean }>('send', { to: ['impl'], text: body })).ok, true);
+  const frame = await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === body);
+  const id = (frame.message as { id: string }).id;
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await fake.approve();
+  const expected = 'impl [Implementer]: its turn ended without a message it had accepted, and delivering it again failed: recovery request refused';
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string; error?: string });
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id && e.error === 'recovery request refused').length, 1);
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 0);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
+  assert.equal(inbox.notifications.filter((n) => n.kind === 'turn-failed' && n.text === expected).length, 1);
+  await sender.waitForEvent((e) => e.params.content.includes('redelivery failed: recovery request refused'));
+});
+
+for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful completion reconciles a late ${mode} pending steer response`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const body = `@impl ${mode} pending steer response`;
+  const id = await sendGeneral(ui, body);
+  await eventually('pending steer received', async () => (await fake.log(launched.pid as number)).includes(`pending response: ${body}`) || undefined);
+  // The fake holds this result until the turn has completed, with uptake only in accept mode.
+  await fake.approve();
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`);
+  await presentAs(ui, 'impl', 'idle');
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string });
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, mode === 'accept dropped' ? 1 : 0);
+  assert.equal(ui.frames.filter((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`).length, 1);
+});
+
+test('repeated dropped recoveries stop with a visible failure after two attempts', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t, { turnMs: 100 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  await launch(ui, 'impl', { role: 'implementer' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, '@impl needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const id = await sendGeneral(ui, '@impl drop this steer; drop every recovery');
+  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  await fake.approve();
+  await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text.includes('still missing after two redeliveries'));
+  await presentAs(ui, 'impl', 'idle');
+  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string });
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 2);
+  assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id).length, 1);
+});
