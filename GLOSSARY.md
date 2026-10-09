@@ -40,6 +40,14 @@ _Avoid_: assistant, helper, personal session, scratch session, human session
 The session that owns a node of the item tree and receives its reports: the Coordinator for the root, a session of the role Lead for an epic or a release, the Implementer for the item it claims. One lead per node, or none.
 _Avoid_: manager, supervisor, commander, owner, parent
 
+**Crew**:
+The project's staffing policy: which roles run as one session per item, as a pool or as a singleton, how long they keep context, and which levels of the item tree get dedicated Leads. A file the Coordinator edits after talking to the human.
+_Avoid_: team (the harnesses use it for in-harness agents), staff, fleet, org chart
+
+**Pool**:
+A set of reusable sessions of one role, capped in size, from which a lead takes an idle member instead of launching a new session.
+_Avoid_: queue, farm, cluster
+
 **Role clause**:
 The instruction text a role carries; the hub delivers it to the session that holds the role.
 _Avoid_: system prompt, role prompt, persona text

@@ -2,7 +2,7 @@
 id: T-90
 kind: question
 title: Crew configuration and session reuse
-state: open
+state: closed
 labels:
   - wayfinder:grilling
 assignee: human
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T19:09:43.529Z
-updated: 2026-10-09T20:04:06.716Z
+updated: 2026-10-09T20:19:02.215Z
 ---
 
 ## Question
@@ -33,3 +33,22 @@ Roles are hard-coded (coordinator, implementer, reviewer, qa) with launch defaul
 - GLOSSARY: Crew, Pool, Group.
 
 Record the resolution as a comment, the spec section and the GLOSSARY entries; a stub crew file on the canvas or in the comment if it reads better than prose.
+
+## Comments
+
+### human · 2026-10-09T20:18:51.013Z
+
+Resolution (2026-10-09, the human accepted every point).
+
+- Home: a committed `.cland/crew.toml` holding the staffing policy only; `roles.toml` keeps what a role is and its launch defaults.
+- Shape: `leads = [...]` for the levels with dedicated Leads (empty = flat); per role `policy` per-item | per-group | pool | singleton, `size`, `keep_context`, `stop_after` (merge | never), `subagents` (in-harness delegation allowed, enforced by the clause, cost counted to the session). Harness and model stay in roles.toml.
+- Enforcement by the hub at launch: refuses beyond size or a second singleton; a pool role with keep_context hands out an idle member instead of a new session; per-item sessions stop as stop_after says; within those bounds the Coordinator or a Lead decides.
+- Editing: the Coordinator, Leads and Aides edit the file directly; the hub reloads on change and refuses a broken file with a notice (last good version stays); CLI `cland crew show | set`; the sessions panel header shows a one-line summary; no editing UI.
+- Defaults from cland init: flat; implementer per-item stopping after merge; reviewer pool of 1 with context kept; qa singleton; aide unlimited; subagents for the Coordinator and Leads only.
+- GLOSSARY: Crew, Pool. No ADR.
+
+Recorded in docs/spec/v0.1.md §3.8 and GLOSSARY.md.
+
+### human · 2026-10-09T20:19:02.215Z
+
+Resolved: see the resolution comment; spec v0.1 §3.8
