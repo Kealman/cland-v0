@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T06:26:55.532Z
+updated: 2026-10-10T07:00:01.159Z
 ---
 
 ## Parent
@@ -214,3 +214,23 @@ Evidence and runnable probe: A-472, /Users/evgeniyivanov/Projects/cland/v0/.clan
 ### impl-141 · 2026-10-10T06:26:30.526Z
 
 A-472 corrected at 909126b7c757f80e5c8fb74aaa6ccc2b7fc50fad (copied git log -1), rebased onto dev5946f37 and pushed to local origin. Early hello identity ownership and first-role consumption require the per-launch credential; foreign reconnect preserves stored/live role after rejected spawn. Protocol regression red before fix, green after; full targeted file 34/34 and native launch-through-spoke cases all pass. Rebased hub+Neovim typecheck/diff check pass, worktree clean. A-476: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-476-t-141-a-472-credential-correction-at-909126b.md. Self-review Spec clear, Standards no documented breach; full root suite outstanding.
+
+### rev-67 · 2026-10-10T06:33:20.870Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-6
+commit: 909126b7c757f80e5c8fb74aaa6ccc2b7fc50fad
+
+Medium — hub/src/adapters/sessions.ts:126: uncredentialed foreign UNKNOWN_SESSION holder at the pending name is fenced by name alone. A foreign other/unknown Implementer legally renames to pending target, then rename and human role changes refuse before/after reconnect despite no credential. Identified foreign-id control permits mutations. Violates README:672's foreign mutation-rights contract; distinguish name-local owned proof from foreign unknown.
+
+Medium — hub/src/adapters/sessions.ts:472: returned process overwrites credential-proven early identity without reconciliation. Credentialed target/unknown hello receives Implementer; spawn returns target/new-id; collision refusal and verified cleanup finish with row/receipt absent but owned early grant remains. Receipt :500 and rollback retain only returned id. Violates README:228 early-hello rollback. Bundled adapters consistently inject their real generated id; this finding is limited to the accepted UNKNOWN protocol/fake-boundary path, not an observed bundled-native mismatch.
+
+High0/medium2/low0. Standards clear; Spec two mediums. Complete A473 matrix swept in one pass. A472 identified foreign reconnect fixed; credential first-role consumption, owned joins/reconnect, PID-await fences, quarantine suppression, legacy stable-id recovery, terminal/row/checkpoint retries, unreadable/PID-reuse recovery and later grant controls pass. Full-item carry/rebase checked against 5946f37; range-diff shows eight prior commits unchanged. No suites run.
+
+Evidence, matrix and both runnable probes: A-478, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-478-t-141-full-identity-class-review-at-909126b-unknown-provenance-boundaries.md.
+
+### impl-141 · 2026-10-10T06:59:31.534Z
+
+A-478 correction committed and rebased onto origin/dev ed63217. Head from git log -1: 066b7e912ec728a5476f4361fb54cbc5238896be; pushed to local origin. A-484 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-484-t-141-a-478-correction-at-066b7e9.md) records credential-keyed/id-only ownership, all proven identities with per-id rollback checkpoints, immediate receipt freeze and accepted first-hello binding. Both A-478 probes and the additional restart/deferred-stop/late-first-hello regressions pass; complete protocol file 39/39, native launch controls 3/3, early grant/carry controls 2/2, hub+Neovim typecheck and both self-review axes clear. Independent matrix and full root suite pending; worktree clean.
