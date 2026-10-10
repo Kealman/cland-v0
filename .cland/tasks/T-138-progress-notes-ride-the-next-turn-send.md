@@ -3,17 +3,17 @@ id: T-138
 kind: task
 title: "Progress notes ride the next turn: send gains kind; progress is held and digested with the next turn on all three adapters, across a hub restart"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
 parent: T-108
 blocked_by: []
-topic: null
-branch: null
+topic: topic-52
+branch: t/T-138-progress-notes-ride-the-next-turn-send
 created: 2026-10-10T01:52:18.096Z
-updated: 2026-10-10T01:52:18.096Z
+updated: 2026-10-10T01:53:07.969Z
 ---
 
 ## Parent
