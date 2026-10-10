@@ -3,7 +3,7 @@ id: T-152
 kind: task
 title: "An Aide takes an item: its claim gives it the worktree and branch, moves status, makes it the lead, and its work passes the same gate"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T05:33:01.124Z
-updated: 2026-10-10T05:33:01.124Z
+updated: 2026-10-10T09:25:26.152Z
 ---
 
 ## Parent

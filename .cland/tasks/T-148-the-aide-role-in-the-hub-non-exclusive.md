@@ -3,7 +3,7 @@ id: T-148
 kind: task
 title: "The Aide role in the hub: non-exclusive role, its exact tools and refusals, routing that keeps Aides out of broadcasts, all, Agents notices, asks and @lead"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T09:17:29.347Z
+updated: 2026-10-10T09:23:44.498Z
 ---
 
 ## Parent
@@ -67,3 +67,7 @@ commit: c3847a092f10e2a5ebb07ccf25bee16517205eb3
 Medium — hub/src/hub/store.ts:415: queued broadcasts survive a session's transition to Aide because dropCrewNotices only drops hub-authored messages; a Reviewer disconnected before an `all` send receives that broadcast after assignment/reconnect as Aide, violating §3.3's named-delivery-only boundary. Confirmed with target HubCore and in-memory SQLite; preserve named deliveries while suppressing pending broadcast deliveries and their digest members.
 
 Standards: no actionable findings. Spec: one medium finding. Exact 15-tool allowlist, rule-naming crew refusals, non-exclusive/model-free Claude Code defaults, MCP promotion and A-513's instance block otherwise match this slice. Full npm test remains pending. Review evidence: A-518, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-518-t-148-review-of-c3847a0-queued-broadcasts-cross-the-aide-boundary.md.
+
+### impl-148 · 2026-10-10T09:21:05.813Z
+
+Addressing rev-9's medium finding (A-518): reproduced pending agent/human all/role/glob broadcasts reaching a Reviewer after its Aide transition. Added protocol regression coverage for ordinary broadcasts, broadcast progress attached to a named trigger, named progress attached to a broadcast trigger, named messages and mixed explicit-name/broadcast addressing. Cleanup now uses durable per-delivery addressing provenance, preserves direct deliveries and role clauses, and reholds direct progress when its broadcast trigger is dropped. Typecheck and Store's 17 existing cases pass; remaining targeted cases running. Full suite remains withdrawn pending Coordinator signal.

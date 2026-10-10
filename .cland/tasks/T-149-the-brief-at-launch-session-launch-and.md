@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-68
 branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
-updated: 2026-10-10T08:54:10.601Z
+updated: 2026-10-10T09:24:51.636Z
 ---
 
 ## Parent
@@ -47,3 +47,17 @@ Beginning implementation: launch brief text/artifact resolution, one-time role-t
 ### impl-149 · 2026-10-10T08:54:10.601Z
 
 Implemented text/artifact briefs and --brief. Coordinator clarified that the first native input must bundle clause then brief on all three harnesses; Claude Code/OpenCode now bind the initial clause to the ordinary brief delivery digest, with independent records/stages. Targeted native cases, artifact/CLI cases and early-hello/reconnect/restart checks pass; typecheck passes. Running code-review skill and full suite next.
+
+### rev-67 · 2026-10-10T09:24:51.636Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-149-1
+commit: 5d8a3cf628b344b98f40bf50a6054b40a6e3d14a
+
+Medium — hub/src/adapters/sessions.ts:147: brief stays only in #firstHello RAM until first hello; successful running-row acceptance followed by hub restart before hello loses the brief entirely instead of retaining the ordinary queued delivery.
+Medium — hub/src/adapters/sessions.ts:535: with an already-assigned Implementer role omitted from optional launch role, Codex spawn receives neither clause nor brief; first hello queues them in a second input, violating the first-native-input decision.
+
+Standards: clear, 0 findings. Spec: not clear, 2 medium findings. Root and independent Spec reviewer reproduced both using Node24 memory probes against pinned git modules. Ordinary carried/noncarried ordering, stages, post-delivery reconnect/restart, pre-spawn validation and stale-clause retry probes passed. T-141 ownership checks remain unchanged. No edits or full suite repeat.
+Evidence: A-526, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-526-t-149-review-at-5d8a3cf-first-launch-persistence-and-input-gaps.md.

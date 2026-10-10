@@ -3,7 +3,7 @@ id: T-150
 kind: task
 title: "Launching an Aide from the workbench: the palette action, a and ␣A with the role's defaults and a brief field; the yours group at the top of the sessions panel"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T05:33:00.581Z
-updated: 2026-10-10T05:33:00.581Z
+updated: 2026-10-10T09:25:25.469Z
 ---
 
 ## Parent

@@ -3,7 +3,7 @@ id: T-143
 kind: task
 title: "The item runs its own loop: the Implementer requests its own review and QA, the Coordinator merges on ready; one v0.1 ticket measured from the journal"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T04:58:49.893Z
+updated: 2026-10-10T09:25:27.626Z
 ---
 
 ## Parent

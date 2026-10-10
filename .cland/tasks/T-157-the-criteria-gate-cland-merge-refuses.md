@@ -3,7 +3,7 @@ id: T-157
 kind: task
 title: "The criteria gate: cland merge refuses until every criterion is done and verified and names them; ready waits for the same; in-flight items are not stranded"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T07:49:36.269Z
-updated: 2026-10-10T07:49:36.269Z
+updated: 2026-10-10T09:25:26.733Z
 ---
 
 ## Parent

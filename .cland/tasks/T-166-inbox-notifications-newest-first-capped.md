@@ -3,7 +3,7 @@ id: T-166
 kind: task
 title: Inbox notifications newest first, capped at the last N with a count of earlier ones
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T09:19:59.990Z
-updated: 2026-10-10T09:19:59.990Z
+updated: 2026-10-10T09:25:27.932Z
 ---
 
 ## Parent

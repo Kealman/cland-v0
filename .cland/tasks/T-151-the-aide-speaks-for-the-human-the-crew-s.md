@@ -3,7 +3,7 @@ id: T-151
 kind: task
 title: "The Aide speaks for the human: the crew's clauses say so; the thread's speaks-for-you mark and dashed blue bar; Aide messages never fold"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T05:33:00.860Z
-updated: 2026-10-10T05:33:00.860Z
+updated: 2026-10-10T09:25:25.755Z
 ---
 
 ## Parent

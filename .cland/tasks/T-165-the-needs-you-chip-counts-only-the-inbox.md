@@ -3,7 +3,7 @@ id: T-165
 kind: task
 title: "The needs-you chip counts only the inbox's now-layer sections: no unread messages or notifications; one shared count with the inbox header"
 state: open
-status: backlog
+status: in progress
 rank: 1310
 labels:
   - v0.1
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: T-110
 blocked_by: []
-topic: null
-branch: null
+topic: topic-74
+branch: t/T-165-the-needs-you-chip-counts-only-the-inbox
 created: 2026-10-10T09:19:59.837Z
-updated: 2026-10-10T09:20:04.682Z
+updated: 2026-10-10T09:21:23.656Z
 ---
 
 ## Parent
@@ -40,3 +40,9 @@ T-136 added "unread now-layer messages" to the count; remove that part. The chip
 ## Notes
 
 High priority: a trust issue for the human. Size S.
+
+## Comments
+
+### impl-165 · 2026-10-10T09:21:23.656Z
+
+Confirmed separate count paths: topbar reads attention.count(), inbox header reads state.needs_you(). The regression seam is the real headless Neovim shell driven by stub-hub message/inbox frames, as requested. Shared UI count will include asks, approvals, waiting topics, death and not-clear verdict rows; ordinary notifications/messages stay quiet.

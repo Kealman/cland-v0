@@ -3,7 +3,7 @@ id: T-164
 kind: task
 title: "Launch role notice: 'took <Role> at launch' goes missing when spawn acceptance and the first hello race (T-141 regression)"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-73
 branch: t/T-164-launch-role-notice-took-role-at-launch
 created: 2026-10-10T08:59:53.666Z
-updated: 2026-10-10T09:18:41.918Z
+updated: 2026-10-10T09:20:38.492Z
 ---
 
 ## Parent
@@ -52,3 +52,19 @@ Fix is in core.ts, sessions.ts and agents-topic.ts: the role grant now logs its 
 ### impl-164 · 2026-10-10T09:18:23.934Z
 
 Committed and pushed 86835a4a31aecb5c03c1cc67ba14d4a65fa5eaeb to origin. Final typecheck passed; all 69 name-reservation/item-lead tests passed; agents-journal passed 20 consecutive isolated whole-file runs (8 tests per run), with exactly-one notice and matching journal-id assertions. Evidence: A-519 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-519-t-164-20-isolated-agents-journal-runs.log. Full npm test is not queued: Coordinator ordered T-164 to wait for its turn after T-149, T-142 and T-160; handing over for concurrent review with that check pending.
+
+### rev-9 · 2026-10-10T09:20:38.397Z
+
+verdict: review
+result: clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-164-1
+commit: 86835a4a31aecb5c03c1cc67ba14d4a65fa5eaeb
+
+Clear: no high, medium or low findings. Standards and Spec independently clear.
+
+Both hello/acceptance orderings publish the dedicated launch event once; ordinary/carried clauses suppress inferred duplicates, and joins/reconnects keep the first grant retired. Journal replay uses the persisted notice id/checkpoint; a reviewer in-memory check recovered one lost event then added none on repeat, and legacy clause replay remains supported. No T-141 role/ownership semantics changed.
+
+A-519 shows 20 isolated agents-journal runs with 8/8 passes each; A-520 reports final typecheck and 69 role-integrity tests passing. Full npm test is pending Coordinator's suite-order signal, a separate acceptance/merge requirement. Reviewer made no edits or full-suite run.
+
+Evidence and two-axis review: A-524, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-524-t-164-review-exactly-one-launch-assignment-notice.md.

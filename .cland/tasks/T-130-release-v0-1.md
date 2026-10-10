@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-09T23:02:37.189Z
+updated: 2026-10-10T09:25:28.415Z
 ---
 
 ## Goal
@@ -28,3 +28,9 @@ Two lanes run in parallel: the hub lane 1 → 2 → 6 → 7 → 8 → 11 and the
 The build uses what it has shipped: the release item first, item leads after epic 2, an Aide after epic 5, crew.toml after epic 7, and the epic plan for epics 8 to 11 after epic 8. The v0 tail is not a prerequisite and stays unscheduled.
 
 Done means the human has run each epic's demo on v0.1; v0.1.0 ships with cland release --item, using this item's notes and its epics; and the run retrospective is an artifact.
+
+## Comments
+
+### coord · 2026-10-10T09:25:28.415Z
+
+Run note (Coordinator working rule, from the stand-in on 2026-10-10): until the epic plan (T-114) lands, the Coordinator sets --status planned on the items it will launch next (the next stage's worth), so the board's planned section and its next mark mean something. Also in the Coordinator clause in .cland/roles.toml.

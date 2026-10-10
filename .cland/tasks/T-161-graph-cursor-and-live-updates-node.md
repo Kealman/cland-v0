@@ -3,7 +3,7 @@ id: T-161
 kind: task
 title: "Graph cursor and live updates: node motions with edges highlighted, the winbar, Enter, gi, gt and gs, sideways scroll, redraw only on a visible change"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T07:49:36.665Z
-updated: 2026-10-10T07:49:36.665Z
+updated: 2026-10-10T09:25:27.292Z
 ---
 
 ## Parent

@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: review
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T09:12:28.493Z
+updated: 2026-10-10T09:22:36.836Z
 ---
 
 ## Parent
@@ -51,3 +51,21 @@ Implemented and committed 0355a59: dynamic default subscriptions follow claims (
 ### impl-142 · 2026-10-10T09:01:34.938Z
 
 Local Spec review found and reproduced two gaps: removed items lost final default events, and terminal recovery could send an older pooled Reviewer death to its already-dead lead. Both are fixed with regression coverage. Coordinator authorized an isolated Sessions.releaseInterruptedLaunches() startup seed plus HubCore.seedProcess(), and the existing subscription-hygiene crash-fixture arrangement (durable status setup, frame-history-only assertions). Existing item-lead tests now accept report digests; all ten pass.
+
+### rev-67 · 2026-10-10T09:20:10.141Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-142-1
+commit: 2ad3b1eb9d32f6a2ec92640c75e9bba50c32e530
+
+Medium — hub/src/adapters/sessions.ts:673: pending-stop rows are excluded before seeding even after verified stop; an older Reviewer death is queued to the stopped Implementer instead of Coordinator while row removal remains pending.
+Medium — hub/src/hub/core.ts:404: defaults consider only direct claims; an unclaimed child of a claimed container goes to Coordinator instead of its nearest ancestor lead, contrary to spec §3.9 subtree defaults.
+Medium — hub/src/hub/core.ts:409: an anonymous claimant's name identity becomes shared UNKNOWN_SESSION; with Reviewer then Implementer anonymous hellos, the default and item status delivery belong to Reviewer instead of the claimant.
+
+Standards: clear, 0 findings. Spec: not clear, 3 medium findings. Independently reproduced all three with Node24 pinned-source memory probes; ordinary defaults/recovery probes also passed. No file changes or suite repeat. Full evidence: A-523, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-523-t-142-completed-review-at-2ad3b1e-three-routing-gaps.md (supersedes preliminary A-522).
+
+### impl-142 · 2026-10-10T09:22:36.836Z
+
+Hub review A-523 found three medium ownership gaps: inherited claims on ancestors, verified-stopped leads with pending receipts during recovery, and anonymous hellos sharing an unknown recipient identity. Adding the three regressions at the established daemon/frame-history seam and fixing ownership as nearest live stable lead. The Coordinator requested withdrawal of the superseded queued suite; its runner has been terminated, and a fresh suite will be queued on the fix head.

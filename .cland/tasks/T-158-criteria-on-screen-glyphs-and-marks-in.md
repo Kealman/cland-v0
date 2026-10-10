@@ -3,7 +3,7 @@ id: T-158
 kind: task
 title: "Criteria on screen: glyphs and marks in the item view, verified/total on panel rows and board cards, the human edits criteria, a verdict's criteria in the thread"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T07:49:36.367Z
-updated: 2026-10-10T07:49:36.367Z
+updated: 2026-10-10T09:25:27.005Z
 ---
 
 ## Parent
