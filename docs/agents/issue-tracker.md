@@ -36,6 +36,27 @@ The GitHub Issues served as the human-facing mirror until v0 was done. At the hu
 - **Assign**: `cland task edit T-<n> --assignee <name>`; `--assignee none` clears it.
 - **Close**: `cland task close T-<n> --comment "<text>"`. Reopen with `cland task edit T-<n> --state open`.
 
+## Acceptance criteria
+
+Criteria live under `## Acceptance criteria` in the task body. `task view --json` returns `item.criteria` with each criterion's stable id, text, checkbox and marks. Old checkboxes have no ids until the first criterion operation assigns them in list order. `criterion_seq` in frontmatter retains the highest allocated number, including removed criteria; keep it when editing by hand. Ids are never reused.
+
+Use MCP `task.criterion` with `{id, op, criterion?, text?, note?, run?}`, or these CLI commands:
+
+```sh
+cland task criterion T-n done C1
+cland task criterion T-n verify C1 --run rev-0117
+cland task criterion T-n fail C1 --note "Reconnect loses the clause"
+cland task criterion T-n add "The clause arrives again on reconnect"
+cland task criterion T-n edit C1 --text "The clause survives every reconnect"
+cland task criterion T-n remove C1
+```
+
+`done` is for the live claimant Implementer, the Coordinator, an Aide or the human; assignment alone is insufficient. A human CLI caller may use an unknown `--as` name, such as alice, and retains human done/manage rights; known session names keep their session permissions. `verify` and `fail` are for Reviewer or QA. `add`, `edit` and `remove` are for the Coordinator, an Aide or the human. Verify needs a run id without whitespace; fail needs a nonempty, single-line note. An Aide needs no claim for done or criterion management and cannot verify or fail.
+
+Marks are sub-items, such as `  - done: impl-57 · 2026-10-09T10:00Z` or `  - verified: qa-12 [qa] · run q-0117 · 2026-10-09T11:00Z`. Done checks the checkbox. Fail unchecks it, replaces the current done and verification marks with the failure note, and reopens the task at `in progress`. Marking it done again clears the failure; it needs fresh verification. Text edits preserve the existing marks. Malformed mark sub-items or duplicate ids refuse a write until the source is fixed. Add is refused if the insertion point is inside an unclosed Markdown code fence.
+
+Each successful criterion operation emits a subscribed `task` event with `criterion marked`, the task id, criterion id and operation/mark. Writes use the tracker queue and recheck permission before publication. A concurrent hand save refuses a stale write with a retry reason. A save racing publication retains the captured source at the `.conflict` path named in the error; recover that source before retrying. A newer save at the task path always wins. Successful writes also retain the captured `.conflict` source, recording its path as `task-criterion-source` in the hub log: an already open editor handle may complete a late save there. Keep these recovery files until editors have closed them; they are not tracker items and are ignored by Git in provisioned projects. An atomic capture-intent file lets startup restore a missing live item from its captured source before indexing after a process crash. Existing live files win over recovery sources.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** cland's tracker has no pull requests; `/triage` works on items only.

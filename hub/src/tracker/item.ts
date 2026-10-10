@@ -26,6 +26,8 @@ export type Frontmatter = {
   status?: Status;
   /** Explicit sibling rank; absent means the numeric id times ten. */
   rank?: number;
+  /** Highest criterion id allocated, including removed criteria. */
+  criterion_seq?: number;
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -198,6 +200,10 @@ export function parseItem(text: string, fileName?: string, levels: readonly stri
     if (!Number.isSafeInteger(r.rank)) throw new ItemParseError('rank must be a safe integer');
     fm.rank = r.rank as number;
   }
+  if (r.criterion_seq !== undefined) {
+    if (!Number.isSafeInteger(r.criterion_seq) || Number(r.criterion_seq) < 0) throw new ItemParseError('criterion_seq must be a nonnegative safe integer');
+    fm.criterion_seq = r.criterion_seq as number;
+  }
   const github = githubOf(r.github);
   if (github) fm.github = github;
 
@@ -279,6 +285,7 @@ export function serializeItem(item: Item): string {
     state: fm.state,
     ...(fm.status !== undefined ? { status: fm.status } : {}),
     ...(fm.rank !== undefined ? { rank: fm.rank } : {}),
+    ...(fm.criterion_seq !== undefined ? { criterion_seq: fm.criterion_seq } : {}),
     labels: fm.labels,
     assignee: fm.assignee,
     parent: fm.parent,

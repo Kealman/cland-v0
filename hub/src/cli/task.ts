@@ -19,6 +19,8 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
+  task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
+  task criterion <id> add <text>
   task rank <id> <--top | --before T-n | --after T-n>
   task claim <id> [--release] [--force]
                   claiming an open task in a project with a territory makes (or reuses) its branch
@@ -47,6 +49,7 @@ const OPTIONS = {
   close: { ...COMMON, comment: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   hold: { ...COMMON, release: { type: 'boolean' } },
+  criterion: { ...COMMON, run: { type: 'string' }, note: { type: 'string' }, text: { type: 'string' } },
   rank: { ...COMMON, top: { type: 'boolean' }, before: { type: 'string' }, after: { type: 'string' } },
   claim: { ...COMMON, release: { type: 'boolean' }, force: { type: 'boolean' } },
 } as const satisfies Record<string, ParseArgsConfig['options']>;
@@ -134,6 +137,11 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       }) as { type: string };
     case 'hold':
       return { type: 'task.hold', item: needId(), release: v.release === true };
+    case 'criterion': {
+      const op = positionals[1];
+      if (!op) throw new UsageError('task criterion needs an operation');
+      return defined({ type: 'task.criterion', item: needId(), op, criterion: op === 'add' ? undefined : positionals[2], text: v.text ?? (op === 'add' ? positionals.slice(2).join(' ') : op === 'edit' ? positionals.slice(3).join(' ') : undefined), note: v.note, run: v.run }) as { type: string };
+    }
     case 'rank':
       return defined({ type: 'task.rank', item: needId(), top: v.top, before: v.before, after: v.after }) as { type: string };
     case 'claim':

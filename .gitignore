@@ -12,6 +12,8 @@ node_modules/
 .cland/worktrees/
 .cland/territory.git/
 .cland/*.tmp
+.cland/tasks/*.conflict
+.cland/tasks/.criterion-capture-*.json
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

@@ -7,9 +7,9 @@ import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_PERMISSIONS, decide, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 
-const aideTools = ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];
+const aideTools = ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];
 
-test('Aide defaults are non-exclusive, use the human model, and grant exactly §3.3 tools', () => {
+test('Aide defaults are non-exclusive, use the human model, and grant exactly §3.3/3.4 tools', () => {
   const aide = DEFAULTS.get('aide')!;
   assert.equal(aide.exclusive, false);
   assert.equal(aide.launch.harness, 'claude-code');
@@ -19,7 +19,7 @@ test('Aide defaults are non-exclusive, use the human model, and grant exactly §
   assert.deepEqual(parseRoles('').get('aide'), aide);
   assert.equal(parseRoles('[aide.launch]\nharness = "claude-code"\nmodel = "chosen-by-human"').get('aide')?.launch.model, 'chosen-by-human');
   for (const tool of KNOWN_TOOLS) {
-    const decision = decide('aide', KNOWN_TOOLS, { tool });
+    const decision = decide('aide', KNOWN_TOOLS, { tool, ...(tool === 'task.criterion' ? { criterionOp: 'done' } : {}) });
     assert.equal(decision.ok, aideTools.includes(tool), tool);
     if (!decision.ok) assert.match(decision.reason, /Aide rule \(v0.1 §3.3\)/);
   }

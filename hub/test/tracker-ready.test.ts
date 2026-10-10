@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import nativeFiles from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import files, { readFile, writeFile } from 'node:fs/promises';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, pidAlive, spawnSpoke, startDaemon } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, fakeClaude, pidAlive, sleep, spawnSpoke, startDaemon } from './harness.ts';
 import type { Presence } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
@@ -117,6 +117,15 @@ for (const qaRequired of [false, true]) {
       await status('ready');
       assert.equal((await read()).verdicts.every(v => v.current === true), true);
     }
+    // A failed criterion must remain in progress even while the old clear verdict is fresh.
+    await ui.request({ type: 'task.edit', item: item.id, body: '## Acceptance criteria\n- [ ] C1. The patch works' });
+    const failed = await rev.call<{ item: ItemView }>('task.criterion', { id: item.id, op: 'fail', criterion: 'C1', note: 'Still broken' });
+    assert.equal(failed.item.status, 'in progress');
+    await ui.request({ type: 'task.edit', item: item.id, title: 'Failure remains in progress' });
+    await sleep(600); // allow background readiness/freshness work to settle
+    assert.equal((await read()).status, 'in progress');
+    await ui.request({ type: 'task.edit', item: item.id, body: '' });
+    await status('ready');
     await writeFile(join(work.path, 'feature'), 'changed\n');
     git(work.path, 'commit', '-qam', 'Changed patch');
     await status('in progress');

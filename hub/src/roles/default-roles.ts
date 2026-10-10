@@ -70,7 +70,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
@@ -100,7 +100,7 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [implementer.permissions]
-tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [reviewer]
 skills = ["code-review"]
@@ -126,7 +126,7 @@ approval = "never"
 sandbox = "read-only"
 
 [reviewer.permissions]
-tools = ["send:agents", "task.hold", "task.comment:verdict", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [qa]
 skills = ["qa", "diagnosing-bugs"]
@@ -155,7 +155,7 @@ sandbox = "danger-full-access"
 # With sandbox = "workspace-write" and no writable_roots, QA's are [".cland/qa"]: its runs and their evidence (T-62).
 
 [qa.permissions]
-tools = ["send:agents", "task.hold", "task.comment:verdict", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 [aide]
 exclusive = false
 skills = []
@@ -175,5 +175,5 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [aide.permissions]
-tools = ["task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.view", "task.list", "artifact.create", "artifact.promote", "send", "topic.create", "history", "who", "status"]
+tools = ["task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.criterion", "task.view", "task.list", "artifact.create", "artifact.promote", "send", "topic.create", "history", "who", "status"]
 `;

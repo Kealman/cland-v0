@@ -8,6 +8,9 @@
 //                        in a topic while the human's latest message there addressed it or its role (spec 4.5:
 //                        `@role` and `@name` pull it in), as long as the role has some `send` grant
 //   task.claim:own       claim or release only the session's own item
+//   task.criterion:done   done (claimant Implementer, Coordinator or Aide)
+//   task.criterion:verify verify or fail (Reviewer or QA)
+//   task.criterion:manage add, edit or remove (Coordinator or Aide)
 //   task.edit:review     set only review on the Implementer's claimed item, with no other edits
 //   task.comment:own     plain comments (not verdicts) only on the session's own item
 //   task.comment:verdict verdict comments (the verdict header: verdict, result, run) on any item
@@ -20,6 +23,7 @@
 // (#31) is the Coordinator's; `role.state` is no table tool: a session reads the state of the role it holds (the
 // dispatcher checks).
 import { NAME_RE, BUILTIN_RESERVED, ROLE_LABELS } from '../names.ts';
+import { criterionRefusal } from '../tracker/criteria.ts';
 
 /** Every tool the table knows: today's spoke frames and the ones still to come. */
 export const KNOWN_TOOLS: readonly string[] = [
@@ -42,6 +46,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'task.close',
   'task.link',
   'task.rank',
+  'task.criterion',
   'task.claim',
   'task.hold',
   'task.import',
@@ -64,6 +69,7 @@ export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   send: ['agents', 'human'],
   'task.claim': ['own'],
   'task.edit': ['review'],
+  'task.criterion': ['done', 'verify', 'manage'],
   'task.comment': ['own', 'verdict'],
   'topic.create': ['own'],
 };
@@ -72,7 +78,7 @@ const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 's
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
+  aide: ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
   coordinator: [
     'send',
     'ask',
@@ -84,6 +90,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
     'task.claim',
     'task.link',
     'task.rank',
+    'task.criterion',
     'task.comment',
     'session.launch',
     'session.stop',
@@ -101,9 +108,9 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'artifact.create', ...READS],
-  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'artifact.create', ...READS],
-  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'artifact.create', ...READS],
+  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', ...READS],
+  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS],
+  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS],
 };
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */
@@ -126,6 +133,7 @@ export type ToolCall = {
   tool: string;
   /** Manual status edit: Coordinator or Aide, or the claiming Implementer handing over. */
   status?: unknown;
+  criterionOp?: unknown;
   statusOnly?: boolean;
   claimed?: () => boolean;
   /** `send`: no addressee, so the message is for the human. */
@@ -175,6 +183,10 @@ export function decide(role: string | null, grants: readonly string[] | undefine
       return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator or an Aide sets any status; an Implementer may set only review on its claimed item, without other edits' };
     }
   }
+  if (tool === 'task.criterion') {
+    const reason = criterionRefusal(call.criterionOp, { role, human: false, claimed: call.claimed?.() === true });
+    if (reason) return { ok: false, permission: tool, reason };
+  }
   if (tool === 'task.hold' && role !== 'reviewer' && role !== 'qa') return { ok: false, permission: tool, reason: 'only Reviewer and QA take verifier holds' };
   const list = grants ?? [];
   const has = (g: string) => list.includes(g);
@@ -193,6 +205,10 @@ export function decide(role: string | null, grants: readonly string[] | undefine
         return { ok: false, permission: 'send:human', reason: `only the Coordinator writes to the human, and a session the human's latest message in the topic mentioned: ${who} sends to the coordinator instead` };
       }
       return has('send:agents') ? { ok: true } : { ok: false, permission: 'send:agents', reason: `${who} may write only to the human` };
+    case 'task.criterion': {
+      const scope = call.criterionOp === 'done' ? 'done' : call.criterionOp === 'verify' || call.criterionOp === 'fail' ? 'verify' : 'manage';
+      return has(`task.criterion:${scope}`) ? { ok: true } : { ok: false, permission: `task.criterion:${scope}`, reason: `${who} is not granted criterion ${scope}` };
+    }
     case 'task.edit':
       if (has('task.edit:review') && call.status === 'review' && call.statusOnly && call.claimed?.() === true) return { ok: true };
       return { ok: false, permission: 'task.edit:review', reason: `${who} may set only review on its claimed item, without other edits` };

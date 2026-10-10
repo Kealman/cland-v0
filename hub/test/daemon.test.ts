@@ -31,8 +31,9 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
   const gitignore = await readFile(join(root, '.cland', '.gitignore'), 'utf8');
   assert.match(gitignore.split('\n')[0] ?? '', /^# managed by cland/);
   const patterns = gitignore.split('\n').filter((l) => l && !l.startsWith('#'));
-  for (const p of ['hub.db*', 'hub.json', 'hub.sock', 'secret', 'journal.jsonl', 'log/', 'artifacts/', 'worktrees/', 'territory.git/', 'scratch/', 'qa/']) assert.ok(patterns.includes(p), `ignores ${p}`);
-  for (const kept of ['tasks', 'roles.toml', 'config.toml', '.gitignore']) assert.ok(!patterns.some((p) => p.startsWith(kept)), `does not ignore ${kept}`);
+  const recoveryPatterns = ['tasks/*.conflict', 'tasks/.criterion-capture-*.json'];
+  for (const p of ['hub.db*', 'hub.json', 'hub.sock', 'secret', 'journal.jsonl', 'log/', 'artifacts/', 'worktrees/', 'territory.git/', 'scratch/', 'qa/', ...recoveryPatterns]) assert.ok(patterns.includes(p), `ignores ${p}`);
+  for (const kept of ['tasks', 'roles.toml', 'config.toml', '.gitignore']) assert.ok(!patterns.some((p) => p.startsWith(kept) && !recoveryPatterns.includes(p)), `does not ignore ${kept}`);
   assert.ok(pidAlive(discovery.pid), 'the daemon outlives the `cland hub start` that spawned it');
 });
 

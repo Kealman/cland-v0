@@ -361,7 +361,8 @@ export class Dispatcher {
       tool,
       item,
       own,
-      ...(tool === 'task.edit' ? {
+      ...(tool === 'task.edit' || tool === 'task.criterion' ? {
+        criterionOp: frame.op,
         status: frame.status,
         statusOnly: Object.keys(frame).every(key => ['type', 'id', 'item', 'as', 'status'].includes(key)),
         claimed: () => {

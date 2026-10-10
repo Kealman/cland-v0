@@ -12,6 +12,8 @@ const KIND = { type: 'string', description: 'Configured container kind, task, qu
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [
+  { name: 'task.criterion', description: 'Mark a criterion done (claimant Implementer, Coordinator, Aide or human), verify or fail with a note (Reviewer or QA), or add, edit or remove criteria (Coordinator, Aide or human). Verify requires a run id.',
+    inputSchema: { type: 'object', properties: { id: itemId, op: { type: 'string', enum: ['done', 'verify', 'fail', 'add', 'edit', 'remove'] }, criterion: { ...str, description: 'Stable criterion id, C1, C2, …; omitted for add' }, text: str, note: str, run: str }, required: ['id', 'op'] } },
   { name: 'task.hold', description: 'Take a Reviewer or QA verifier hold beside the Implementer claim, setting review or qa, or release your hold. Verdicts and session stop release it.',
     inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' } }, required: ['id'] } },
   {
@@ -78,6 +80,8 @@ export function taskFrame(tool: string, args: Record<string, unknown>): Distribu
   switch (tool) {
     case 'task.list':
       return { type: 'task.list', ...rest, ...(label !== undefined ? { labels: typeof label === 'string' ? [label] : label } : {}), ...(verdict !== undefined ? { verdict } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
+    case 'task.criterion':
+      return { type: 'task.criterion', ...rest, ...item, ...(run !== undefined ? { run } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
     case 'task.comment':
       return { type: 'task.comment', ...rest, ...item, ...(verdict !== undefined || result !== undefined || run !== undefined || commit !== undefined ? { verdict: { verdict, result, run, ...(commit !== undefined ? { commit } : {}) } } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
     default:

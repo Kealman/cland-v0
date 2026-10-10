@@ -26,6 +26,7 @@ export type TaskRequest =
     }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
   | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
       type: 'task.edit';
@@ -56,7 +57,7 @@ export type TaskRequest =
  *  (`$CLAND_SESSION_*`), not a name the human gave with `--as`: one the hub does not know is then a roleless session. */
 export type ActorField = { name: string; role?: string | null; sessionId?: string; shell?: boolean };
 
-export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.rank', 'task.claim', 'task.hold', 'task.import'] as const;
+export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.rank', 'task.criterion', 'task.claim', 'task.hold', 'task.import'] as const;
 
 export function isTaskRequest(f: Record<string, unknown>): f is TaskRequest {
   return typeof f.id === 'string' && (TASK_REQUEST_TYPES as readonly unknown[]).includes(f.type);
@@ -123,6 +124,12 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       const note = source === 'explicit' ? `verdict commit: ${sha}` : source === 'branch' ? `verdict records branch tip ${item.branch}: ${sha}` : 'verdict has no commit: the item has no resolving branch';
       return { item, commit: { sha, source, note } };
     }
+    case 'task.criterion':
+      for (const key of ['op', 'criterion', 'text', 'note', 'run']) optStr(f, key);
+      return { item: await tracker.criterion(actor, needItem(f), frame, resumed, () => {
+        const now = currentActor?.();
+        if (now && (now.id !== actor.id || now.name !== actor.name || now.role !== actor.role || now.human !== actor.human)) throw new TrackerError('criterion writer changed; nothing was marked, retry');
+      }) };
     case 'task.edit': {
       const { type: _t, id: _i, as: _a, item: _item, ...input } = frame;
       return { item: await tracker.edit(actor, needItem(f), input, resumed, authorize) };
@@ -162,7 +169,7 @@ export const HUMAN = 'human';
  */
 export function actorOf(frame: TaskRequest): Actor {
   const a = frame.as as unknown;
-  if (a === undefined || a === null) return { id: HUMAN, name: HUMAN, role: null };
+  if (a === undefined || a === null) return { id: HUMAN, name: HUMAN, role: null, human: true };
   if (typeof a !== 'object' || !isStr((a as ActorField).name)) throw new TrackerError('`as` must be { name, role? }');
   const name = (a as ActorField).name;
   const role = (a as ActorField).role ?? null;
@@ -172,7 +179,7 @@ export function actorOf(frame: TaskRequest): Actor {
     if (refusal) throw new TrackerError(`cannot act as ${JSON.stringify(name)}: ${refusal.replace(`name "${name}"`, 'the name')}`);
   }
   if (role !== null && !(isStr(role) && ROLE_NAMES.includes(role))) throw new TrackerError(`role ${JSON.stringify(role)} is not one of ${ROLE_NAMES.join(', ')}`);
-  return { id: name === HUMAN ? HUMAN : `cli:${name}`, name, role };
+  return { id: name === HUMAN ? HUMAN : `cli:${name}`, name, role, human: true };
 }
 
 /** The actor a spoke's frame acts as: always its own session, held by its session id (by its name when it gave none). */
@@ -180,6 +187,7 @@ export const sessionActor = (c: Pick<Connection, 'name' | 'sessionId' | 'role'>,
   id: c.sessionId === unknownId ? `name:${c.name}` : c.sessionId,
   name: c.name,
   role: c.role,
+  human: false,
 });
 
 /** A request's error for the wire: a TrackerError's own message, anything else prefixed. */

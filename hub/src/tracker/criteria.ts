@@ -1,4 +1,4 @@
-// Acceptance criteria are read from the body, never inferred from checkbox state or written here.
+// Acceptance criteria and their source spans; checkbox state never implies a mark.
 export type CriterionMark =
   | { kind: 'done'; by: string; at: string }
   | { kind: 'verified'; by: string; at: string; run: string }
@@ -44,7 +44,10 @@ function markOf(kind: string, value: string): CriterionMark | null {
 }
 
 /** §3.4's list and mark sub-items. The checkbox is preserved independently of marks. */
-export function parseCriteria(body: string): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
+export function criteriaSource(body: string) {
+  const sources: { start: number; lines: number[]; indent: number }[] = [];
+  let sectionEnd: number | undefined;
+  let hasSection = false;
   const criteria: Criterion[] = [];
   const criteriaWarnings: CriterionWarning[] = [];
   let inSection = false;
@@ -59,9 +62,9 @@ export function parseCriteria(body: string): { criteria: Criterion[]; criteriaWa
       continue;
     }
     if (fenced) { fence = { character: fenced[1]![0]!, length: fenced[1]!.length }; textOpen = false; continue; }
-    if (/^##[ \t]+Acceptance criteria(?:[ \t]+#+)?[ \t]*$/.test(line)) { inSection = true; current = undefined; indent = undefined; continue; }
+    if (/^##[ \t]+Acceptance criteria(?:[ \t]+#+)?[ \t]*$/.test(line)) { inSection = true; hasSection = true; sectionEnd = undefined; current = undefined; indent = undefined; continue; }
     if (!inSection) continue;
-    if (/^#{1,2}\s/.test(line)) { inSection = false; current = undefined; continue; }
+    if (/^#{1,2}\s/.test(line)) { sectionEnd = index; inSection = false; current = undefined; continue; }
     const checkbox = /^( {0,3})[-*+] \[([ xX])\](?:[ \t]+(.*))?$/.exec(line);
     if (checkbox && (indent === undefined || checkbox[1]!.length <= indent)) {
       indent = checkbox[1]!.length;
@@ -69,6 +72,7 @@ export function parseCriteria(body: string): { criteria: Criterion[]; criteriaWa
       const identified = /^(C[1-9]\d*)\.(?:\s+(.*))?$/.exec(text);
       current = { id: identified?.[1] ?? null, text: identified ? identified[2] ?? '' : text, checked: checkbox[2]!.toLowerCase() === 'x', marks: [], malformedMarks: [] };
       criteria.push(current);
+      sources.push({ start: index, lines: [index], indent });
       textOpen = true;
       continue;
     }
@@ -86,16 +90,33 @@ export function parseCriteria(body: string): { criteria: Criterion[]; criteriaWa
           const warning = { line: index + 1, text: line, reason };
           criteriaWarnings.push(warning);
           current?.malformedMarks.push(warning);
-        } else if (current && mark) current.marks.push(mark);
+        } else if (current && mark) { current.marks.push(mark); sources.at(-1)!.lines.push(index); }
       } else current = undefined;
       textOpen = false;
     } else if (!line.trim()) {
       textOpen = false;
     } else if (current && textOpen && line.startsWith(' '.repeat((indent ?? 0) + 2))) {
+      sources.at(-1)!.lines.push(index);
       current.text += `\n${line.slice((indent ?? 0) + 2)}`;
     } else if (/^\S/.test(line)) {
       current = undefined;
     }
   }
+  return { criteria, criteriaWarnings, sources, sectionEnd: sectionEnd ?? body.split(/\r?\n/).length, hasSection, insertionInFence: sectionEnd === undefined && fence !== undefined };
+}
+
+export function parseCriteria(body: string): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
+  const { criteria, criteriaWarnings } = criteriaSource(body);
   return { criteria, criteriaWarnings };
+}
+
+/** Parties named by §3.4, enforced at both the dispatcher and the tracker write boundary. */
+export function criterionRefusal(op: unknown, actor: { role: string | null; human: boolean; claimed: boolean }): string | null {
+  if (op === 'done') return actor.human || actor.role === 'coordinator' || actor.role === 'aide' || actor.role === 'implementer' && actor.claimed
+    ? null : 'done requires the live claimant Implementer, Coordinator, Aide or human';
+  if (op === 'verify' || op === 'fail') return !actor.human && (actor.role === 'reviewer' || actor.role === 'qa')
+    ? null : 'verify and fail require Reviewer or QA';
+  if (op === 'add' || op === 'edit' || op === 'remove') return actor.human || actor.role === 'coordinator' || actor.role === 'aide'
+    ? null : 'add, edit and remove require Coordinator, Aide or human';
+  return 'criterion operation must be done, verify, fail, add, edit or remove';
 }

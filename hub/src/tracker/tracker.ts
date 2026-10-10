@@ -2,19 +2,20 @@
 // index (spec 4.6, ADR 0002).
 //
 // One queue owns every read/change/commit cycle and serving-time watcher read. The atomic
-// rename completes before indexing, notification and the returned result. Hand edits are last-writer-wins.
+// replacement completes before indexing, notification and the returned result. Criterion writes refuse
+// concurrent hand saves; other writes keep their last-writer-wins policy.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
-import { parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
+import { criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, linkSync, unlinkSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
 import files, { type FileHandle } from 'node:fs/promises';
 import type { Resumed } from '../hub/budget.ts';
 const untimed: Resumed = work => work();
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { commentKey, TrackerIndex, type Claim, type VerifierHold, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
   COMMENTS_HEADING,
@@ -60,8 +61,9 @@ export const CONCURRENT_MS = 2000;
 /**
  * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
  * stable across renames, or `human` / `cli:<name>` for the CLI; `name` and `role` are what files show.
+ * Wire actors carry explicit `human` provenance because session ids may also begin with `cli:`.
  */
-export type Actor = { id: string; name: string; role: string | null };
+export type Actor = { id: string; name: string; role: string | null; human?: boolean };
 
 type Child = Pick<IndexedItem, 'id' | 'kind' | 'title' | 'state' | 'file'>;
 
@@ -154,7 +156,7 @@ const hashOf = (text: string): string => createHash('sha256').update(text).diges
 const TASKS_REL = join('.cland', 'tasks');
 
 /** Native file boundary: requests only read UTF-8 item text and ordinary stat results. */
-export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink'> & {
+export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'link'> & {
   readFile: (path: string, encoding: 'utf8') => Promise<string>;
   writeFile: (path: string, text: string) => Promise<void>;
   readdir: (path: string) => Promise<string[]>;
@@ -320,6 +322,8 @@ export class Tracker {
 
   #readyStatus(view: ItemView): Status | null {
     if (view.kind !== 'task' || view.state !== 'open') return null;
+    // Failure must survive background checks of an earlier clear verdict. The full criteria gate follows later.
+    if (view.criteria.some(c => c.marks.some(m => m.kind === 'failed'))) return view.status === 'ready' ? 'in progress' : null;
     try {
       if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
       gateVerdicts(this.#mergeViewOf(view));
@@ -424,8 +428,30 @@ export class Tracker {
     }
   }
 
+  /** Startup-only recovery: an interrupted capture must not make its item disappear from the index. */
+  #recoverCriterionCaptures(): void {
+    for (const marker of readdirSync(this.#dir).filter(name => /^\.criterion-capture-[a-f0-9-]+\.json$/.test(name))) {
+      const intent = join(this.#dir, marker);
+      try {
+        const value = JSON.parse(readFileSync(intent, 'utf8')) as { file?: unknown; captured?: unknown };
+        if (typeof value.file !== 'string' || typeof value.captured !== 'string' || basename(value.file) !== value.file || basename(value.captured) !== value.captured || fileNumber(value.file) === null || !value.captured.startsWith(`${value.file}.`) || !value.captured.endsWith('.conflict')) throw new Error('invalid criterion capture intent');
+        const path = join(this.#dir, value.file);
+        try {
+          linkSync(join(this.#dir, value.captured), path);
+          this.#log({ event: 'task-criterion-recovered', file: value.file, source: value.captured });
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== 'EEXIST' && !((err as NodeJS.ErrnoException).code === 'ENOENT' && existsSync(path))) throw err;
+        }
+        unlinkSync(intent);
+      } catch (err) {
+        this.#log({ event: 'task-criterion-recovery-failed', file: marker, error: String(err) });
+      }
+    }
+  }
+
   /** Bring the index level with the folder, then watch it. */
   start(): void {
+    this.#recoverCriterionCaptures();
     this.rescan();
     // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
     for (const item of this.list()) this.#announced.set(item.id, item);
@@ -861,7 +887,7 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>): Promise<Item> {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>): Promise<Item> {
     this.#normalizeStatus(item);
     const text = serializeItem(item);
     const written = parseItem(text, name, this.levels);
@@ -874,9 +900,14 @@ export class Tracker {
       if (this.#writeGate) await this.#writeGate();
       const before = read ? await this.#files.readFile(path, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
       if (beforeRename) await resumed(beforeRename);
-      await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
-      const replaced = read ? await readWhole(read.fd, resumed).then(text => resumed(() => hashOf(text)), () => null) : null;
+      if (read?.op === 'criterion' && before !== read.hash) throw new TrackerError(`${read.id}: concurrent hand edit; criterion write refused, retry`);
+      if (read?.op === 'criterion') await this.#replaceCriterion(path, tmp, read.hash, resumed, beforeCommit, path => { read.captured = path; });
+      else await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
+      const replacedText = read ? await readWhole(read.fd, resumed).catch(() => null) : null;
+      const replaced = replacedText === null ? null : resumed(() => hashOf(replacedText));
+      if (read?.op === 'criterion' && replaced !== read.hash) throw new TrackerError(`${read.id}: concurrent in-place hand edit; criterion write refused, recover ${read.captured} and retry`);
       return resumed(() => {
+        if (read?.captured) this.#log({ event: 'task-criterion-source', id: read.id, path: read.captured, note: 'retained source protects late saves through an already open editor handle' });
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
         committed?.();
         this.#changed(written.fm.id);
@@ -890,6 +921,37 @@ export class Tracker {
       // A failed temporary write or rename must not masquerade as a committed item.
       await resumed(() => this.#files.unlink(tmp)).catch(() => {});
       return resumed(() => { throw err; });
+    }
+  }
+
+  /** Capture the source before publishing without replacement: an editor's save can never be overwritten.
+   * Tracker readers stay queued during the brief gap. A conflict retains the captured source for recovery. */
+  async #replaceCriterion(path: string, tmp: string, expected: string, resumed: Resumed, authorize?: () => void, capturedSource?: (path: string) => void): Promise<void> {
+    const captureId = randomUUID();
+    const captured = `${path}.${captureId}.conflict`;
+    const intent = join(this.#dir, `.criterion-capture-${captureId}.json`);
+    await this.#files.writeFile(`${intent}.tmp`, JSON.stringify({ file: basename(path), captured: basename(captured) }));
+    await this.#files.rename(`${intent}.tmp`, intent);
+    await resumed(() => { authorize?.(); return this.#files.rename(path, captured); });
+    resumed(() => capturedSource?.(captured));
+    try {
+      const before = await this.#files.readFile(captured, 'utf8');
+      if (resumed(() => hashOf(before)) !== expected) throw new TrackerError('concurrent hand edit; criterion write refused, retry');
+      // link fails with EEXIST if an editor saved at the original path after we captured it.
+      await resumed(() => { authorize?.(); return this.#files.link(tmp, path); });
+      const after = await this.#files.readFile(captured, 'utf8');
+      if (resumed(() => hashOf(after)) !== expected) throw new TrackerError('concurrent in-place hand edit; criterion write refused');
+      // Keep the inode: an editor may still hold it open and complete an in-place save later.
+      await this.#files.unlink(tmp);
+      await this.#files.unlink(intent);
+    } catch (err) {
+      // Restore only an absent path. A newer save at the path always wins; retain the captured source too.
+      try { await this.#files.link(captured, path); }
+      catch (restore) { if ((restore as NodeJS.ErrnoException).code !== 'EEXIST') throw new TrackerError(`criterion write failed; recover ${captured}: ${String(restore)}`); }
+      await this.#files.unlink(intent).catch(() => {});
+      if (err instanceof TrackerError) throw new TrackerError(`${err.message}; captured source: ${captured}; recover and retry`);
+      if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw new TrackerError(`concurrent hand save; criterion write refused, retry; captured source: ${captured}`);
+      throw err;
     }
   }
 
@@ -1207,6 +1269,91 @@ export class Tracker {
           this.#closed(view.id);
         }
         return { ...view, claim: this.#index.claimOf(view.id) };
+      });
+    }, resumed);
+  }
+
+  /** Criteria share the tracker queue and reauthorize after every file await. */
+  criterion(actor: Actor, rawId: string, input: { op: string; criterion?: string; text?: string; note?: string; run?: string }, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(async () => {
+      const id = this.#require(rawId).id;
+      const check = () => {
+        authorize();
+        const human = actor.human ?? (actor.role === null && (actor.id === 'human' || actor.id.startsWith('cli:')));
+        const claimant = this.#index.claimOf(id);
+        const reason = criterionRefusal(input.op, { role: actor.role, human, claimed: !!claimant && this.sameSession(claimant.sessionId, actor.id) });
+        if (reason) throw new TrackerError(reason);
+      };
+      check();
+      if (input.op !== 'add' && !/^C[1-9]\d*$/.test(input.criterion ?? '')) throw new TrackerError('criterion must be an id such as C1');
+      if (input.op === 'verify' && !/^\S+$/.test(input.run ?? '')) throw new TrackerError('verify needs a run id (no whitespace)');
+      if (input.op === 'fail' && (!input.note?.trim() || /[\r\n]/.test(input.note))) throw new TrackerError('fail needs a note (one line)');
+      if (input.op === 'add' || input.op === 'edit') {
+        if (!input.text?.trim()) throw new TrackerError(`${input.op} needs criterion text`);
+        checkText(input.text, 'criterion text');
+      }
+      let criterion = input.criterion!;
+      const view = await this.#mutate(id, actor, 'criterion', item => {
+        if (item.fm.kind !== 'task') throw new TrackerError('criteria operations require a task');
+        const parsed = criteriaSource(item.body);
+        if (input.op === 'add' && parsed.insertionInFence) throw new TrackerError('cannot add a criterion inside an unclosed Markdown code fence; close the fence first');
+        if (parsed.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
+        const ids = parsed.criteria.flatMap(c => c.id ? [c.id] : []);
+        if (new Set(ids).size !== ids.length) throw new TrackerError('duplicate criterion ids; fix the section first');
+        let sequence = Math.max(item.fm.criterion_seq ?? 0, ...ids.map(id => Number(id.slice(1))));
+        const allocate = () => {
+          sequence++;
+          if (!Number.isSafeInteger(sequence)) throw new TrackerError('criterion ids exhausted');
+          return `C${sequence}`;
+        };
+        const lines = item.body.split(/\r?\n/);
+        for (const [index, c] of parsed.criteria.entries()) {
+          if (c.id) continue;
+          c.id = allocate();
+          const source = parsed.sources[index]!;
+          lines[source.start] = lines[source.start]!.replace(/^( *[-*+] \[[ xX]\])(?:[ \t]+)?/, `$1 ${c.id}. `);
+        }
+        if (input.op === 'add') {
+          criterion = allocate();
+          const block = [`- [ ] ${criterion}. ${input.text!.trim().replace(/\r?\n/g, '\n  ')}`];
+          if (parsed.hasSection) lines.splice(parsed.sectionEnd, 0, ...block);
+          else lines.push('', '## Acceptance criteria', '', ...block);
+        } else {
+          const at = parsed.criteria.findIndex(c => c.id === criterion);
+          if (at < 0) throw new TrackerError(`no criterion ${criterion} on ${id}`);
+          const c = parsed.criteria[at]!, source = parsed.sources[at]!;
+          let marks = c.marks;
+          let text = c.text;
+          let checked = c.marks.some(m => m.kind === 'done');
+          const timestamp = this.#now().toISOString();
+          if (input.op === 'done') {
+            marks = [...marks.filter(m => m.kind !== 'done' && m.kind !== 'failed'), { kind: 'done', by: actor.name, at: timestamp }];
+            checked = true;
+          } else if (input.op === 'verify') {
+            marks = [...marks.filter(m => m.kind !== 'failed'), { kind: 'verified', by: formatVerdictBy(actor.name, actor.role), at: timestamp, run: input.run! }];
+          } else if (input.op === 'fail') {
+            marks = [{ kind: 'failed', by: formatVerdictBy(actor.name, actor.role), at: timestamp, note: input.note!.trim() }];
+            checked = false;
+            this.#setStatus(item, 'in progress');
+          } else if (input.op === 'edit') text = input.text!.trim();
+          const indent = ' '.repeat(source.indent);
+          const block = input.op === 'remove' ? [] : [
+            `${indent}- [${checked ? 'x' : ' '}] ${criterion}. ${text.replace(/\r?\n/g, `\n${indent}  `)}`,
+            ...marks.map(m => `${indent}  - ${m.kind}: ${m.by} · ${m.kind === 'verified' ? `run ${m.run} · ` : ''}${m.at}${m.kind === 'failed' ? ` · note ${m.note}` : ''}`),
+          ];
+          for (const line of [...source.lines].reverse()) lines.splice(line, 1);
+          lines.splice(source.start, 0, ...block);
+        }
+        item.fm.criterion_seq = sequence;
+        item.body = lines.join('\n');
+      }, resumed, undefined, check);
+      return resumed(() => {
+        const event = `criterion marked ${criterion} ${input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op}`;
+        for (const listener of [...this.#changeListeners]) {
+          try { listener({ id, item: this.list().find(i => i.id === id)!, events: [event] }); }
+          catch (err) { this.#log({ event: 'task-listener-error', id, error: String(err) }); }
+        }
+        return view;
       });
     }, resumed);
   }

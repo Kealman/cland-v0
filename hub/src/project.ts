@@ -48,6 +48,8 @@ territory.git/
 territory.lock*
 scratch/
 qa/
+tasks/*.conflict
+tasks/.criterion-capture-*.json
 *.tmp
 `;
 
