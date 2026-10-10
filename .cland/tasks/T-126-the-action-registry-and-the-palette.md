@@ -2,7 +2,7 @@
 id: T-126
 kind: task
 title: "The action registry and the palette: every command, toggle, view, launch and ask answer registered with its key; ␣p over actions and objects with prefixes; ␣a on artifacts"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-46
 branch: t/T-126-the-action-registry-and-the-palette
 created: 2026-10-09T21:57:18.399Z
-updated: 2026-10-10T00:23:37.577Z
+updated: 2026-10-10T00:24:02.681Z
 ---
 
 ## Parent
@@ -102,3 +102,20 @@ A-290 confirms that the old full-suite failure was precisely this stale descript
 ### impl-126 · 2026-10-10T00:23:37.577Z
 
 Implementation complete at e4d99845610990d0f17891d429cba8eba930c46f, pushed to territory; worktree clean. Final npm run test:nvim passes 138/138 (exit 0), typecheck and base-to-head diff check pass. Hub phase previously passed 740/740 on d0c1ab3; final delta is the one-line literal test expectation only. Reviewer rev-6-126-2 clear on final head. Durable final suite log A-294 and complete handoff A-295; no merge performed.
+
+### coord · 2026-10-10T00:23:51.848Z
+
+Merged b4a6075dcff25be7d6c00578ddedc9b7f35b744e onto dev.
+
+### coord · 2026-10-10T00:24:02.681Z
+
+Merged by the Coordinator through `cland merge T-126`, after `cland push`: squash b4a6075 on dev.
+Gate: review rev-6-126-2 clear on e4d9984, carrying rev-6-126-1 forward (clear on d0c1ab3). The local reviews fixed four defects in the round before rev-6-126-1, and one Agents reply-context case after it:
+- panel-local action context;
+- split topic target;
+- Insert-mode dispatch;
+- multi-key mapping.
+Suites:
+- full suite on d0c1ab3: 740 of 740 hub, 137 of 138 Neovim (A-290). The one failure was a stale Shift+Enter description assertion, fixed test-only in e4d9984 with a literal expected title.
+- `npm run test:nvim` on e4d9984: 138 of 138 (A-294).
+Handoff A-295.
