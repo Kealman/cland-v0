@@ -2,8 +2,8 @@
 id: T-127
 kind: task
 title: "Sessions grouped by state: waiting, busy and idle groups, a folded stopped line, the expanding selected row with the approval's command, and the sessions chip"
-state: open
-status: review
+state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-48
 branch: t/T-127-sessions-grouped-by-state-waiting-busy
 created: 2026-10-09T21:57:34.743Z
-updated: 2026-10-10T01:25:38.223Z
+updated: 2026-10-10T01:26:30.646Z
 ---
 
 ## Parent
@@ -169,3 +169,24 @@ Pinned scratch-buffer helper/render probes pass required cases and 121 wrapped-n
 ### impl-127 · 2026-10-10T01:25:38.212Z
 
 Implementation complete at head2b1b24012fbab9daf8af87a7d2ed5d16923a9a64 from git log -1; clean and pushed local origin. npm run typecheck passes. Hub755/755 from production-identical7fc3c2c carries forward per Coordinator; final npm run test:nvim passes145/145 with pinned Node/shared lock, log A-330. Current review rev-6-127-1 is clear on exact final head. Groups/chip/selection, registry, command/tool-name projections, bounded wrapping, sequence fencing and episode clearing verified. OpenCode metadata gap remains the accepted follow-up. Completion evidence A-331; no merge.
+
+### coord · 2026-10-10T01:25:46.258Z
+
+Merged e980bf11ef12b12c2199eff207d76f48331f24cb onto dev.
+
+### coord · 2026-10-10T01:26:30.646Z
+
+Merged by the Coordinator through `cland merge T-127`, after `cland push`: squash e980bf1 on dev.
+Gate: review rev-6-127-1 clear on 2b1b240, carrying forward rev-65-127-3, which cleared the production code on 7fc3c2c (A-315). Earlier rounds:
+- rev-65-127-1 (A-309): a zero-width wrap loop, and a reconnect snapshot race;
+- rev-65-127-2 (A-313): a stale approval command after a current idle snapshot;
+- rev-65-127-4 (A-322): the test helper's text search was too broad.
+Decisions:
+- `approvalCommand` is optional on session.state and on session.list rows;
+- for a shell approval, Claude Code and Codex forward only the command line, and any other approval sends only the tool name;
+- the command belongs to one waiting episode;
+- snapshots are fenced by sequence.
+Suites:
+- full suite on 7fc3c2c: 755 of 755 hub, 142 of 143 Neovim (A-319). The one failure was the stale test helper, fixed test-only in 2b1b240.
+- `test:nvim` on 2b1b240: 145 of 145 (A-330).
+Completion A-331. Follow-up T-137: OpenCode approvals carry no command. A full suite on the combined dev e980bf1 is running.

@@ -3,7 +3,7 @@ id: T-132
 kind: task
 title: "Message blocks: header, role gutter, the human's band, day rules, delivery stage; appends touch only their own lines"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-110
 blocked_by:
   - T-127
-topic: null
-branch: null
+topic: topic-50
+branch: t/T-132-message-blocks-header-role-gutter-the
 created: 2026-10-10T01:20:46.278Z
-updated: 2026-10-10T01:20:46.278Z
+updated: 2026-10-10T01:26:30.433Z
 ---
 
 ## Parent
@@ -38,3 +38,9 @@ A topic thread renders each message as one block. The header reads `sender [Role
 ## Notes
 
 Implementer: Codex. References in order of authority: spec §3.14 and §3.5 (the Messages row), then `prototype/thread` (commit `faec351`: `nvim/lua/cland/thread.lua`, `thread_md.lua`, `hl.lua`; checks in `nvim/proto/thread/`), then the mockup `docs/design/main-screen/Thread.dc.html` and `screens/v01-thread.png`. Research `docs/research/nvim-rendering.md` (T-86). ADR 0005: bundled tree-sitter, extmarks, `'statuscolumn'`, folds, no plugins. Keys go through the action registry (T-126); text fitting through the cell-budget fitter (T-125). Tests: headless Neovim on the stub hub; QA cases in `qa/cases/` at 120 and 80 columns.
+
+## Comments
+
+### impl-132 · 2026-10-10T01:26:30.433Z
+
+Claim is live; T-127 is merged. Reading the thread/spec/prototype and headless harness before implementing incremental message blocks, role gutters, local day rules and delivery updates.
