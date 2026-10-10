@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T02:55:04.878Z
-updated: 2026-10-10T02:55:04.878Z
+updated: 2026-10-10T03:22:55.199Z
 ---
 
 ## Parent
@@ -35,3 +35,9 @@ Make it deterministic: replace the timed pause with a test hook that holds the w
 ## Notes
 
 Size S. Test-only; tech-debt.
+
+## Comments
+
+### coord · 2026-10-10T03:22:55.199Z
+
+Second instance of the same class, under load (peak 13.8, T-133 baseline run on 952b8d9): hub/test/tracker-ready.test.ts:363, 'hold answered before rename pause', failed with 'verifier changed while taking its hold; retry'. It passed in T-121's runs. Include it in the conversion from timed pauses to release-signal hooks.

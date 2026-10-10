@@ -3,7 +3,7 @@ id: T-133
 kind: task
 title: "Markdown per message: per-body tree-sitter parse with cached conceal spans, plain fallback, verdict colours, blue item ids, 80-column safe"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
-updated: 2026-10-10T03:13:04.378Z
+updated: 2026-10-10T03:31:39.287Z
 ---
 
 ## Parent
@@ -100,3 +100,45 @@ Medium — nvim/lua/cland/thread_md.lua:190: link capture excludes URL/email aut
 Actual pinned-source/bundled-Neovim probes reproduce all three. Original header-only, stacked styled-header, and hidden-URL fit probes now pass. Width sweep confirms explicit empty-leading/middle cells and normal Unicode/styled/link cells preserve positions and targets. Expanded differential covers new regular examples but lacks short-row trailing-header case. No suite or edits.
 
 Full-item unaffected parser/cache/fallback, fences, verdict/gi, incremental extmarks, resize/local options and accepted cost/fold scope carry forward from A-373. Standards:0; Spec:3medium. Evidence A-383: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-383-t-133-952b8d9-review-original-fixes-pass-remaining-link-table-findings.md.
+
+### impl-133 · 2026-10-10T03:23:19.436Z
+
+Metadata/table follow-up committed at ce49922cdb73bdb781bc19197e1b4d9a878e202a (git log -1): first duplicate reference definition wins; URI/email autolinks retain destination and label byte ranges; stacked short rows render all header columns with empty missing cells. Regression covers short/long rows at 80 and full table at 120; generated differential includes all three edges. 15 focused tests and typecheck pass. Baseline npm test: 814/815 hub tests passed; sole verifier-hold rename timing failure assigned to T-145 by Coordinator (A-385). Per Coordinator evidence plan, running locked npm run test:nvim on fix head instead of repeating unchanged hub suite.
+
+### rev-66 · 2026-10-10T03:25:07.687Z
+
+verdict: review
+result: not clear
+by: rev-66 [reviewer]
+run: rev-66-133-3
+commit: ce49922cdb73bdb781bc19197e1b4d9a878e202a
+
+High: 0. Medium: 1. Low: 0. All A-383 findings resolved.
+
+Medium — nvim/lua/cland/thread_md.lua:442: header-only stacked iteration drops surplus data cells and their link metadata; a two-header/three-cell row keeps its linked third cell at width 200 but loses it at 78/118. Iterate max(headers,cells), with missing-cell and fallback-label handling. Coordinator accepted in 5a3b9530 and requested an independent generated ragged-table preservation invariant.
+
+Pinned-source/bundled-Neovim probes verify first-definition precedence, full/collapsed/shortcut refs, URL/email autolink target ranges, short-row trailing headers, explicit empty-leading/middle cells, escaped pipes and Cyrillic styled cells. No suite or edits. Tests add corrected short-row cases but no surplus-column preservation check yet.
+
+Full-item unaffected checks in A-373/A-383 carry forward: parser/cache/fallback/fences, extmark differential, verdicts/gi, resize/local options, earlier table fit/header fixes and accepted cost/fold scope. Standards: 0. Spec: 1 medium. Evidence A-387: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-387-t-133-ce49922-review-prior-fixes-pass-surplus-cell-regression.md.
+
+### impl-133 · 2026-10-10T03:29:55.214Z
+
+Ragged-table invariant committed at 7f011884fcb12c41c32a4c4e83ed57c61179616a (git log -1). Stacked projection iterates max(header count, data-cell count), preserving missing cells as empty and surplus cells with positional labels. Generated property checks 12 table shapes with short/equal/long rows at 40,78,118,512: complete ordered label text and link destinations, buffer retention, both full and stacked forms. It fails ce49922 on surplus loss and passes the fix. Differential now includes surplus rows. 16 focused tests, typecheck and both local review axes pass; warm17.102ms/0 parses, append+eviction0.496ms, cold91.270ms/200 parses. Evidence A-388. Previous Neovim run canceled per Coordinator; final locked test:nvim running on this clean head.
+
+### rev-66 · 2026-10-10T03:31:39.269Z
+
+verdict: review
+result: clear
+by: rev-66 [reviewer]
+run: rev-66-133-4
+commit: 7f011884fcb12c41c32a4c4e83ed57c61179616a
+
+High: 0. Medium: 0. Low: 0. All A-373/A-383/A-387 findings resolved.
+
+Pinned bundled-Neovim probes confirm source text/targets preserved for missing and surplus cells at 78/118/200, first-wins reference variants and URL/email autolink ranges. Five additional shapes outside the generator (single header/mixed four cells, empty headers/rows, no outer pipes, multiple rich/Unicode links per cell, linked header-only table) retain content/order/targets at 0/1/10/40/78/118/512. Every target range stays within its row and slices its intended label.
+
+Generated property independently derives ordered text/targets from source cells for 12 ragged shapes at four widths, verifies buffer retention, and exercises both layouts. Surplus bodies also enter the full-extmark live differential. Reviewed, not suite-rerun.
+
+Full-item parser/cache/fallback/fences, verdict/gi, fitting/header fixes, incremental extmarks, stale/coalesced resize, local options and accepted cost/fold scope carry forward from earlier reviews. No suite or edits; suite validation remains Implementer/Coordinator work. Standards: 0 findings. Spec: 0 findings.
+
+Evidence A-391: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-391-t-133-7f01188-full-item-review-clear.md.
