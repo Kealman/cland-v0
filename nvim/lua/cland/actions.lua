@@ -60,7 +60,11 @@ for i, title in ipairs({'All items','Items in work','Items needing you','Done it
   add('items', tostring(i), title)
 end
 group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
-  {'za','Toggle item tree fold'}, {'zo','Open item tree fold'}, {'zc','Close item tree fold'}})
+  {'za','Toggle board fold'}, {'zo','Open board fold'}, {'zc','Close board fold'},
+  {'zR','Open all board folds'}, {'zM','Close all board folds'},
+  {'K','Rank item before its previous sibling'}, {'J','Rank item after its next sibling'}, {'T','Rank item to the top'},
+  {'e','Next open container scope'}, {'E','Previous open container scope'},
+  {'p','Next epic tab'}, {'P','Previous epic tab'}, {'<Tab>','Next epic tab'}, {'<S-Tab>','Previous epic tab'}})
 group('inbox', {{'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end

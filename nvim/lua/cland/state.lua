@@ -36,7 +36,7 @@ function M.reset(opts)
       items_filter = 'all',
       items_folds = {}, -- per-item tree folds; absent uses the level/state default
       board_parent = nil, -- optional open container within the current release
-      current_release = nil, -- reserved for the human's pick (T-128)
+      current_release = nil, -- the human's selected open container; nil uses the semver current release
       sessions_sel = nil, -- the cursor-selected session, expanded in the panel
       sessions_stopped_folded = true,
       confirm = nil, -- { session = name }: the sessions panel asks before stopping it

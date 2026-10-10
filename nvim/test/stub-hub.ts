@@ -45,6 +45,9 @@ export type Scenario = {
   stopError?: string;
   /** `task.view` never answers (a disconnect while the client waits for it). */
   holdView?: boolean;
+  /** Rank results can be delivered without events to test that UI movement waits for the hub. */
+  rankEvents?: 'manual';
+  rankError?: string;
   /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
   holdSnapshots?: string[];
   /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event. */
@@ -256,6 +259,26 @@ function answer(f: Frame) {
     }
     case 'task.list':
       return ok(f.id, { items: scenario.items ?? [] });
+    case 'task.rank': {
+      if (scenario.rankError) return fail(f.id, scenario.rankError);
+      const item = scenario.items?.find(i => i.id === f.item);
+      if (!item) return fail(f.id, `no item ${String(f.item)}`);
+      const rank = (i: Record<string, unknown>) => typeof i.rank === 'number' ? i.rank : Number(String(i.id).slice(2)) * 10;
+      const siblings = (scenario.items ?? []).filter(i => (i.parent ?? '') === (item.parent ?? '')).sort((a,b) => rank(a)-rank(b));
+      const other = f.before ?? f.after;
+      if (!f.top && !siblings.some(i => i.id === other)) return fail(f.id, 'reference is not a sibling');
+      const ordered = siblings.filter(i => i.id !== item.id);
+      const at = f.top ? 0 : ordered.findIndex(i => i.id === other) + (f.after ? 1 : 0);
+      ordered.splice(at, 0, item);
+      const ids = ordered.map(i => i.id);
+      if (scenario.rankEvents !== 'manual') {
+        for (const [i, sibling] of ordered.entries()) {
+          sibling.rank = (i+1)*10;
+          write({type:'task',id:sibling.id,item:sibling,siblings:ids});
+        }
+      }
+      return ok(f.id, {item, changed:ids, siblings:ids});
+    }
     case 'task.view': {
       // the whole item: a scenario item may carry `body` and `comments` beside its summary fields
       if (scenario.holdView) return;

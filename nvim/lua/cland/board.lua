@@ -11,63 +11,12 @@ local function sw(s)
   return api.nvim_strwidth(s or '')
 end
 
---- Every ancestor must remain open; a closed intermediate container removes its cards too.
-local function open_parents(it)
-  local seen = {}
-  local parent = items.present(it.parent) and state.item(it.parent) or nil
-  while parent and not seen[parent.id] do
-    seen[parent.id] = true
-    if parent.state ~= 'open' then return false end
-    parent = items.present(parent.parent) and state.item(parent.parent) or nil
-  end
-  return true
-end
-
-function M.parents()
-  local out = {}
-  local current = items.current_release()
-  for _, it in ipairs(items.all()) do
-    if current and it.id ~= current.id and items.is_container(it) and items.in_release(it)
-      and it.state == 'open' and open_parents(it) then out[#out + 1] = it end
-  end
-  return out
-end
-
-local function parent_filter()
-  local id = state.S.ui.board_parent
-  for _, it in ipairs(M.parents()) do if it.id == id then return id end end
-  state.S.ui.board_parent = nil
-end
-
-local function under(it, id)
-  if not id then return true end
-  local seen = {}
-  while it and not seen[it.id] do
-    if it.id == id then return true end
-    seen[it.id] = true
-    it = items.present(it.parent) and state.item(it.parent) or nil
-  end
-  return false
-end
-
-function M.cycle_parent(step)
-  local parents, current = M.parents(), parent_filter()
-  local index = 0
-  for i, it in ipairs(parents) do if it.id == current then index = i end end
-  index = (index + step) % (#parents + 1)
-  state.S.ui.board_parent = index > 0 and parents[index].id or nil
-  state.changed()
-end
-
+local composition = require('cland.vboard')
+M.parents = composition.parents
+M.cycle_parent = composition.cycle_parent
+local parent_filter = composition.parent_filter
 function M.columns()
-  local cols, parent = {}, parent_filter()
-  for _, c in ipairs(items.COLUMNS) do cols[c[1]] = {} end
-  for _, it in ipairs(items.all()) do
-    if it.kind == 'task' and cols[it.status] and items.in_release(it) and open_parents(it) and under(it, parent) then
-      table.insert(cols[it.status], it)
-    end
-  end
-  return cols
+  return composition.compose().columns
 end
 
 local function header(width)

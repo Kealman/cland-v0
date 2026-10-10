@@ -276,8 +276,69 @@ function M.open_releases()
   return out
 end
 
-function M.current_release()
+function M.default_release()
   return M.open_releases()[1]
+end
+
+function M.is_level(it)
+  return vim.tbl_contains(state.S.tracker.levels, it.kind)
+end
+
+function M.scopes()
+  local out = {}
+  for _, it in ipairs(M.ordered()) do
+    if M.is_level(it) and it.state == 'open' then out[#out + 1] = it end
+  end
+  return out
+end
+
+function M.scope()
+  local pick = state.S.ui.current_release
+  local it = pick and state.item(pick)
+  if it and it.state == 'open' and M.is_level(it) then return it end
+  return M.default_release()
+end
+
+-- Existing surfaces (including the top-bar chip) read the human's selected container.
+M.current_release = M.scope
+
+function M.cycle_scope(step)
+  local list, current, at = M.scopes(), M.scope(), 1
+  if #list == 0 then return end
+  for i, it in ipairs(list) do if current and it.id == current.id then at = i end end
+  local pick = list[(at - 1 + step) % #list + 1]
+  state.S.ui.current_release, state.S.ui.board_parent = pick.id, nil
+  state.changed()
+end
+
+--- The first open configured container in the parent chain establishes scheduling.
+function M.open_container_of(it)
+  local seen = {}
+  while it and not seen[it.id] do
+    seen[it.id] = true
+    if M.is_level(it) and it.state == 'open' then return it end
+    it = present(it.parent) and state.item(it.parent) or nil
+  end
+end
+
+--- Preorder the hub tree: each level uses the shared rank comparator and final sibling events.
+-- This orders task rows by epic rank first, then task rank, including custom levels.
+function M.ordered()
+  local known, seen, out = {}, {}, {}
+  for _, it in ipairs(state.S.items) do known[it.id] = true end
+  local function walk(it)
+    if seen[it.id] then return end
+    seen[it.id] = true
+    out[#out + 1] = it
+    for _, child in ipairs(M.children(it.id)) do walk(child) end
+  end
+  local roots = {}
+  for _, it in ipairs(state.S.items) do
+    if not (present(it.parent) and known[it.parent]) then roots[#roots + 1] = it end
+  end
+  for _, it in ipairs(sort_siblings(roots)) do walk(it) end
+  for _, it in ipairs(M.all()) do walk(it) end -- legacy cycles remain visible once
+  return out
 end
 
 --- Walk the hub's parent tree; cycles and missing parents cannot establish release membership.
@@ -291,8 +352,8 @@ function M.release_of(it)
 end
 
 function M.in_release(it)
-  local release, current = M.release_of(it), M.current_release()
-  return release ~= nil and current ~= nil and release.id == current.id
+  local current = M.scope()
+  return current ~= nil and require('cland.vboard').under(it, current.id)
 end
 
 function M.done(it)
@@ -321,22 +382,12 @@ function M.cycle(step)
   M.set_filter(M.FILTERS[(cur - 1 + step) % #M.FILTERS + 1])
 end
 
---- The panel header's summary for the current filter.
+--- The panel header uses the shared board composition; map retains its v0 summary.
 function M.summary()
-  local f, n = M.filter(), 0
-  for _, it in ipairs(state.S.items) do
-    if f == 'all' or (f == 'work' and M.in_work(it) and (M.in_release(it) or not M.release_of(it))) or (f == 'you' and M.needs_you(it)) or (f == 'done' and M.done(it)) then
-      n = n + 1
-    end
-  end
-  if f == 'map' then
-    local maps = 0
-    for _, it in ipairs(state.S.items) do
-      maps = maps + (it.kind == 'map' and 1 or 0)
-    end
-    return 'map · ' .. maps .. (maps == 1 and ' map' or ' maps')
-  end
-  return M.LABEL[f] .. ' · ' .. n
+  if M.filter() ~= 'map' then return require('cland.vboard').summary() end
+  local n = 0
+  for _, it in ipairs(state.S.items) do if it.kind == 'map' then n = n + 1 end end
+  return 'map · ' .. n .. (n == 1 and ' map' or ' maps')
 end
 
 --- The right side of a row: the claiming session (or the assignee), the verdict marks on closed items, the ask badge.
@@ -381,16 +432,6 @@ function M.folded(it)
   return it.kind == state.S.tracker.levels[1] and (not current or current.id ~= it.id)
 end
 
-local function set_fold(folded)
-  local info = require('cland.panels').row_at(vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0)[1])
-  local it = info and state.item(info.item)
-  if it and M.is_container(it) then
-    if folded == nil then folded = not M.folded(it) end
-    state.S.ui.items_folds[it.id] = folded
-    state.changed()
-  end
-end
-
 local function row(c, it, depth)
   local g, ghl = M.glyph(it)
   local kids = #M.children(it.id) > 0
@@ -404,24 +445,13 @@ local function row(c, it, depth)
   )
 end
 
-local function tree(c, it, depth, seen, hidden)
-  if seen[it.id] then
-    return
-  end
-  seen[it.id] = true
-  if not hidden then row(c, it, depth) end
-  hidden = hidden or (M.is_container(it) and M.folded(it))
-  for _, k in ipairs(M.children(it.id)) do
-    tree(c, k, depth + 1, seen, hidden)
-  end
-end
-
 local function section(c, text, n, group)
   c:add({ { ' ' .. text:upper() .. (n and (' · ' .. n) or ''), group or 'ClandSection' } })
 end
 
 --- Draw the panel's rows into canvas `c` (panels.lua); returns the footer lines.
 function M.render(c)
+  if M.filter() ~= 'map' then return require('cland.vboard').render(c) end
   local f = M.filter()
   local tabs = { { ' ' } }
   local short = c.width < 44
@@ -434,22 +464,7 @@ function M.render(c)
   local list = M.all()
   if #list == 0 then
     c:add({ { ' ' .. (state.S.items_note or 'No items in .cland/tasks yet.'), 'ClandDim' } })
-  elseif f == 'all' then
-    local known, seen, roots, unscheduled = {}, {}, {}, {}
-    for _, it in ipairs(list) do known[it.id] = true end
-    for _, it in ipairs(list) do
-      if not (present(it.parent) and known[it.parent]) then
-        if M.release_of(it) then roots[#roots + 1] = it else unscheduled[#unscheduled + 1] = it end
-      end
-    end
-    for _, it in ipairs(sort_siblings(roots)) do tree(c, it, 0, seen) end
-    section(c, 'unscheduled', #unscheduled)
-    for _, it in ipairs(sort_siblings(unscheduled)) do tree(c, it, 0, seen) end
-    -- Cyclic legacy parents have no root: put their nodes in unscheduled, once each.
-    for _, it in ipairs(list) do
-      if not seen[it.id] then tree(c, it, 0, seen) end
-    end
-  elseif f == 'map' then
+  else
     local any = false
     for _, m in ipairs(list) do
       if m.kind == 'map' then
@@ -470,27 +485,6 @@ function M.render(c)
     if not any then
       c:add({ { ' No map item (kind: map) yet.', 'ClandDim' } })
     end
-  else
-    local test = f == 'work' and M.in_work or (f == 'you' and M.needs_you or M.done)
-    local n, unscheduled = 0, {}
-    for _, it in ipairs(list) do
-      if test(it) then
-        if f == 'work' and not M.in_release(it) then
-          if not M.release_of(it) then unscheduled[#unscheduled + 1] = it end
-        else
-          n = n + 1
-          row(c, it, 0)
-        end
-      end
-    end
-    if #unscheduled > 0 then
-      section(c, 'unscheduled', #unscheduled)
-      for _, it in ipairs(unscheduled) do row(c, it, 0) end
-      n = n + #unscheduled
-    end
-    if n == 0 then
-      c:add({ { f == 'you' and ' ✓ nothing needs you' or (' nothing ' .. M.LABEL[f]), f == 'you' and 'ClandGreen' or 'ClandDim' } })
-    end
   end
   return { ' ↵ open · gt topic · gs session', ' 1-5 or f filter · za fold · ␣b board' }
 end
@@ -505,9 +499,7 @@ function M.keys(buf)
       M.set_filter(f)
     end, 'items filter: ' .. M.LABEL[f])
   end
-  map('za', function() set_fold(nil) end, 'toggle item tree fold')
-  map('zo', function() set_fold(false) end, 'open item tree fold')
-  map('zc', function() set_fold(true) end, 'close item tree fold')
+  require('cland.vboard').keys(buf)
   map('f', function()
     M.cycle(1)
   end, 'next items filter')

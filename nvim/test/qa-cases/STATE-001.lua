@@ -12,12 +12,14 @@ return {
   hub = 'stub',
   fixture = {
     project = 'qa-state',
+    config = '[tracker]\nlevels = ["epic"]\n',
     items = {
       { id = 'T-1', kind = 'epic', title = 'Workbench shell' },
-      { id = 'T-2', title = 'Items panel', parent = 'T-1', claim = { session = 'impl-1', sessionId = 'impl-1-id', role = 'implementer', claimedAt = at } },
+      { id = 'T-2', title = 'Items panel', status = 'in progress', parent = 'T-1', claim = { session = 'impl-1', sessionId = 'impl-1-id', role = 'implementer', claimedAt = at } },
     },
   },
   scenario = {
+    tracker = {levels={'epic'}},
     processes = { session('coord-1', 'coordinator', 'busy', 'opus'), session('impl-1', 'implementer', 'waiting for human', 'sonnet') },
     coordinator = 'coord-1',
     topics = {
@@ -37,10 +39,11 @@ return {
     end, 10000, 'the sessions panel')
     qa.dump('sessions')
     qa.keys('<Esc><Space>i')
+    vim.api.nvim_win_set_width(require('cland.layout').win.left,60)
     qa.keys('<Space>n')
     qa.wait_for(function()
       local s = qa.screen()
-      return s:find('T-2 Items panel', 1, true) and s:find('Which should win?', 1, true)
+      return s:find('T-2 T-1 › Items panel', 1, true) and s:find('Which should win?', 1, true)
     end, 5000, 'the items panel and the inbox')
     qa.expect(#qa.state().sessions == 2, 'the state holds the two sessions')
   end,

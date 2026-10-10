@@ -8,10 +8,12 @@ return {
   title = 'A fixture item shows in the items panel and in its view',
   fixture = {
     project = 'qa-items',
+    config = '[tracker]\nlevels = ["epic"]\n',
     items = {
       { id = 'T-1', kind = 'epic', title = 'Workbench shell' },
       {
         id = 'T-2',
+        status = 'backlog',
         title = 'Items panel',
         parent = 'T-1',
         labels = { 'ui' },
@@ -20,14 +22,17 @@ return {
       },
     },
   },
+  scenario = { tracker = {levels={'epic'}} },
   run = function(qa)
     qa.wait_for(function()
       return qa.state().hub.state == 'connected' and #qa.state().items == 2
     end, 10000, 'the hub connected and the two fixture items known')
 
-    qa.keys('<Esc><Space>i')
+    qa.keys('<Esc><Space>i/backlog (<CR>za')
+    vim.api.nvim_win_set_width(require('cland.layout').win.left,60)
+    qa.keys('<Esc>')
     qa.wait_for(function()
-      return qa.screen():find('T-2 Items panel', 1, true)
+      return qa.screen():find('T-2 T-1 › Items panel', 1, true)
     end, 5000, 'T-2 in the items panel')
     local screen = qa.screen()
     qa.expect(screen:find('T-1 Workbench shell', 1, true), 'the parent T-1 is in the panel')

@@ -90,7 +90,7 @@ function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: 
   });
 }
 
-for (const name of ['PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008', 'PANELS-009', 'PANELS-010', 'PANELS-011', 'PANELS-012', 'THREAD-001', 'THREAD-002']) {
+for (const name of ['PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008', 'PANELS-009', 'PANELS-010', 'PANELS-011', 'PANELS-012', 'PANELS-013', 'PANELS-014', 'THREAD-001', 'THREAD-002']) {
   test(`${name} passes through the headless stub-hub QA runner`, { skip }, async (t) => {
     const run = await qa(t, [`${SHIPPED}${name}.lua`]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
@@ -200,9 +200,9 @@ test('qa.state() holds the stub scenario: the sessions with their states, the ro
   assert.equal(state.needs_you, 1);
   assert.deepEqual(state.items.map((i) => [i.id, i.title, i.claim?.session ?? null]), [['T-1', 'Workbench shell', null], ['T-2', 'Items panel', 'impl-1']]);
   // what the state says is what the screen shows
-  assert.match(screen, /cland qa-state │ General/);
+  assert.match(screen, /cland qa-state +Workbench shell │ General/);
   assert.match(screen, /T-1 Workbench shell/);
-  assert.match(screen, /T-2 Items panel +impl-1/);
+  assert.match(screen, /T-2 T-1 › Items panel +impl-1/);
   assert.match(screen, /Which should win\?/);
   assert.match(screen, /needs you +1/);
   // a dump the case asked for along the way, inline as no --out was given
@@ -393,7 +393,7 @@ test('with every file write denied, as in a read-only rescue run, a stub-hub cas
   assert.equal(run.code, 0);
   assert.equal(run.line.hub, 'stub');
   const evidence = run.line.evidence as { screen: string; state: { sessions: unknown[] } };
-  assert.match(evidence.screen, /cland qa-state │ General/);
+  assert.match(evidence.screen, /cland qa-state +Workbench shell │ General/);
   assert.equal(evidence.state.sessions.length, 2);
 
   const shipped = await qa(t, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: readOnly });

@@ -24,14 +24,16 @@ return {
   scenario={items=items,tracker={levels={'initiative','feature'}}},
   run=function(qa)
     qa.wait_for(function() return #qa.state().items==#items end,10000,'items loaded')
-    qa.keys('<Esc><Space>i2')
+    qa.keys('<Esc><Space>i2/unscheduled (<CR>za')
     qa.wait_for(function() return qa.screen():find('in work · 6',1,true) end,5000,'in work filter')
+    vim.api.nvim_win_set_width(require('cland.layout').win.left,60)
+    qa.wait_for(function() return qa.screen():find('Work in progress',1,true) end,5000,'parent-prefixed work titles')
     local screen=qa.screen()
     for _, title in ipairs({'Work planned','Work in progress','Work review','Work qa','Work ready'}) do
       qa.expect(screen:find(title,1,true)~=nil,'in work contains '..title)
     end
     qa.expect(not screen:find('Work done',1,true) and not screen:find('Work backlog',1,true),'done and backlog stay out')
-    qa.expect(screen:find('Loose review',1,true)>screen:find('UNSCHEDULED',1,true),'unscheduled group is last')
+    qa.expect(screen:find('Loose review',1,true)>screen:find('unscheduled (',1,true),'unscheduled group is last')
     qa.dump('in-work')
     qa.keys('4')
     qa.wait_for(function() return qa.screen():find('done · 1',1,true) end,5000,'done filter')

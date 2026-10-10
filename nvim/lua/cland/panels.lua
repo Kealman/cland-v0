@@ -445,6 +445,10 @@ local function open_row(buf)
   end
   local layout = require('cland.layout')
   if info.fold then
+    if vim.b[buf].cland_role == 'items' then
+      require('cland.vboard').fold('toggle')
+      return
+    end
     state.set_fold(info.fold, not state.folded(info.fold))
     state.changed()
   elseif info.session then
@@ -552,7 +556,7 @@ function M.render(kind, win)
   end
   c:footer_at(vim.fn.winheight(win), #(footer or {}))
   local cur = api.nvim_win_get_cursor(win)
-  local follow = kind == 'sessions' and M.row_key((M.rows[b] or {})[cur[1]]) or nil
+  local follow = (kind == 'sessions' or kind == 'items') and M.row_key((M.rows[b] or {})[cur[1]]) or nil
   M.rows[b] = c:apply(b)
   local target = c.cursor_to
   if not target and follow then
