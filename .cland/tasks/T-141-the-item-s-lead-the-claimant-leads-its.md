@@ -3,7 +3,7 @@ id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T05:58:22.881Z
+updated: 2026-10-10T06:26:55.532Z
 ---
 
 ## Parent
@@ -190,3 +190,27 @@ Evidence: A-452, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-452-t
 ### impl-141 · 2026-10-10T05:58:22.881Z
 
 A-452 correction and same-class listener probe: common identity mutation fence refuses rename and role assign/clear/handover while the launch is unfinalized, including early hello and restarted pending receipt. Ordinary publication skips quarantined identities; verified terminal transition uses the current owned row. Role rollback resolves the expected stable identity's current name, preserving reservation/foreign/checkpoint guards. Frame regressions reproduce refusal gaps red, now cover pending Coordinator rename, quarantined role mutations, early hello spawn rejection, restart fencing and later grant after complete settlement. bafdae1 queued suite cancelled before machine lock; no full suite queued during fixes.
+
+### impl-141 · 2026-10-10T06:14:05.020Z
+
+A-452 corrected and rebased onto dev 503f266. Head copied from git log -1: 7a20b54b5017de57c40aa1d70a10aceb1e58b8fc, pushed to local origin. Unfinalized launches fence rename and role mutations by stable prior/current identity, including restart receipts; settlement/rollback use stable session id. Rebased targeted protocol suite 33/33, root typecheck and diff checks pass. Self-review Spec clear, Standards no documented breach. A-471: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-471-t-141-a-452-correction-at-7a20b54.md. Full root suite outstanding.
+
+### rev-67 · 2026-10-10T06:17:46.285Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-5
+commit: 7a20b54b5017de57c40aa1d70a10aceb1e58b8fc
+
+Medium — hub/src/adapters/sessions.ts:112: every hello at a pending launch name becomes launch.current, including a pre-existing foreign owner reconnecting after it legally renamed into that name. Spawn rejection passes that identity into rollback at :509 and revokes the unrelated owner's role; its role mutations are also incorrectly fenced after reconnect. Preserve early-hello identity provenance without adopting the foreign owner.
+
+Pinned native root and Spec probes: other/foreign-id Implementer → deferred target launch → foreign rename to target/human grant → disconnect/reconnect → spawn rejection leaves foreign stored/live roles null. Same probe on a6a12bd preserves Implementer and its mutation rights. No process returned. A-428 owner-preservation regression; A-471 explicitly promises those rights.
+
+High0/medium1/low0. Standards clear; Spec one medium. A-452 original finding is resolved: rename and all tested role paths refuse during failed stop, terminal waits for verification, owned grant is released, later grant survives resume. Terminal/checkpoint recovery and alias controls pass; full-item carry and rebase inspected against dev 503f266. No suites run.
+
+Evidence and runnable probe: A-472, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-472-t-141-review-at-7a20b54-foreign-reconnect-misclassified-as-owned-early-hello.md.
+
+### impl-141 · 2026-10-10T06:26:30.526Z
+
+A-472 corrected at 909126b7c757f80e5c8fb74aaa6ccc2b7fc50fad (copied git log -1), rebased onto dev5946f37 and pushed to local origin. Early hello identity ownership and first-role consumption require the per-launch credential; foreign reconnect preserves stored/live role after rejected spawn. Protocol regression red before fix, green after; full targeted file 34/34 and native launch-through-spoke cases all pass. Rebased hub+Neovim typecheck/diff check pass, worktree clean. A-476: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-476-t-141-a-472-credential-correction-at-909126b.md. Self-review Spec clear, Standards no documented breach; full root suite outstanding.

@@ -2,8 +2,8 @@
 id: T-131
 kind: task
 title: CLI commands that need no database still import node:sqlite; its ExperimentalWarning pollutes exact stderr
-state: open
-status: in progress
+state: closed
+status: done
 labels:
   - tech-debt
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-63
 branch: t/T-131-cli-commands-that-need-no-database-still
 created: 2026-10-10T00:25:36.040Z
-updated: 2026-10-10T06:09:46.671Z
+updated: 2026-10-10T06:28:14.265Z
 ---
 
 ## Parent
@@ -46,3 +46,21 @@ Implementation started. Agreed regression seam: the CLI entry point’s import g
 ### impl-131 · 2026-10-10T06:09:46.671Z
 
 Red/green evidence: node --test hub/test/cli-imports.test.ts initially reported SQLite reached through orphans.ts, hub/store.ts, tracker/index-db.ts and adapters/processes.ts. After deferring daemon/orphans/provision, the guard still caught doctor/project.ts → adapters/claude-code.ts → adapters/processes.ts. Deferring checkProject too makes all 28 database-free invocations pass. The runtime resolver guard includes a SQLite positive control and sees static/dynamic imports without relying on warnings.
+
+### impl-131 · 2026-10-10T06:25:02.434Z
+
+Implementation complete at bfa25220b0a2214b0ca66c68a71de9d8a857bcf5, committed and pushed to local origin; clean worktree. Node v24.21.0, NODE_OPTIONS/NODE_NO_WARNINGS unset (matches A-293/A-297). Typecheck passed; targeted guard 1/1, asks CLI 4/4, general CLI 2/2, init 12/12 and doctor 18/18 passed. Full npm test exited 0: hub 871/871, Neovim 200/200, no failures/skips/cancellations. Log A-474: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-474-t-131-full-test-suite-1071-passed.log. Implementation/self-review A-469 (Standards clear, Spec clear). Four lazy storage edges fixed, including additional doctor→project→adapter process table; original stderr checks unchanged, no warning suppression, sessions.ts untouched.
+
+### rev-8 · 2026-10-10T06:28:07.369Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-131-1
+commit: bfa25220b0a2214b0ca66c68a71de9d8a857bcf5
+
+No high, medium or low findings. Four awaited storage-owning imports are confined to command execution, with validation, undo short-circuit and existing command catches preserved. Guard observes actual node:sqlite resolution, verifies its positive control and requires an empty import log plus expected exit codes for28 database-free invocations; not a tautology. No warning suppression or changed exact-stderr comparisons. Independent in-memory Node resolver probe: CLI --version0 edges; real SQLite import1 edge causes empty-edge assertion failure and still emits ExperimentalWarning. Standards and Spec clear; git diff --check passed. No suite or edits; Node24 guard/asks/full-suite evidence is A-475/A-474. Review A-477: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-477-t-131-review-rev-8-131-1-deferred-sqlite-imports-clear.md.
+
+### coord · 2026-10-10T06:28:14.265Z
+
+Merged 453341fba41e482ad4e55f24ef2df655cb4113d0 onto dev.
