@@ -32,6 +32,12 @@ A verdict and its marks publish in one tracker write. An unknown id names that i
 
 The hub posts a report in the item's bound topic, or Agents when it has none. It lists the marked ids in text and carries structured `criteria: [{ id, mark: "verified" | "failed", note? }]` for the thread. Use `all` only after checking every criterion; unchecked criteria remain unverified. Separate verification and failure marks still use `task.criterion` with the id and run or note.
 
+`cland merge` and automatic `ready` require every criterion to have both done and verified marks, alongside the existing current clear review and any required QA verdict. A checkbox alone does not count. The `criteria-incomplete` refusal names every incomplete criterion and its missing marks. Adding an unmarked criterion or failing one returns a ready task to in progress. An item with no criteria passes the criteria check. A separate Reviewer/QA verification mark also satisfies it.
+
+The human's `cland merge T-12 --override "reason"` bypasses verdicts and criteria together; sessions cannot override. When it skips incomplete criteria, the merge gate records `merge-criteria-overridden` in the journal with the item, override reason, and each criterion's id, text and missing marks. This audit records the bypass during merge validation; Git conflicts and touched local edits still refuse.
+
+For an item already in flight with legacy checkboxes, the claiming Implementer marks the first criterion done with `cland task criterion T-12 done C1`; this assigns stable ids in list order. Read `task view` again for the ids and mark the remaining criteria done. The Coordinator, human or Aide can also mark done. Then Reviewer or QA checks the criteria and records a clear verdict with `--verified all` or the checked ids. An existing clear verdict without these marks leaves the gate closed. The refusal describes this path, so the item can finish on its existing branch.
+
 ## The messages
 
 The request's first line is conventional, so the UI can style it later; the rest is free text:

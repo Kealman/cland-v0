@@ -4,7 +4,7 @@ import type { LogFn } from '../log.ts';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MergeError } from '../merge.ts';
-import { gateVerdicts } from '../tracker/gate-verdicts.ts';
+import { gateVerdicts, incompleteCriteria } from '../tracker/gate-verdicts.ts';
 import { normalizeId } from '../tracker/item.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
@@ -43,6 +43,10 @@ export class TaskMerges {
   }
 
   #message(view: ItemView, override?: string): string {
+    if (override !== undefined) {
+      const criteria = incompleteCriteria(view);
+      if (criteria.length) this.log({ event: 'merge-criteria-overridden', id: view.id, override, criteria });
+    }
     const { review, qa } = override === undefined ? gateVerdicts(view) : { review: null, qa: null };
     return `${view.title} (${view.id})\n\nItem: ${view.id}${review ? `\nReviewed-by: ${review.author} (${review.run})` : ''}${qa ? `\nQA-by: ${qa.author} (${qa.run})` : ''}`;
   }

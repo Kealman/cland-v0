@@ -325,8 +325,6 @@ export class Tracker {
 
   #readyStatus(view: ItemView): Status | null {
     if (view.kind !== 'task' || view.state !== 'open') return null;
-    // Failure must survive background checks of an earlier clear verdict. The full criteria gate follows later.
-    if (view.criteria.some(c => c.marks.some(m => m.kind === 'failed'))) return view.status === 'ready' ? 'in progress' : null;
     try {
       if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
       gateVerdicts(this.#mergeViewOf(view));

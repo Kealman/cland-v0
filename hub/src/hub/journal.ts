@@ -96,6 +96,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'merge-follow-up-failed',
   'merge-recovery-pending',
   'merge-refused',
+  'merge-criteria-overridden',
   'merge-cleanup-failed',
   'task-worktree',
   'task-worktree-failed',

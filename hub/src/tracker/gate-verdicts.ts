@@ -1,4 +1,4 @@
-// One evaluation for the merge gate and the hub's ready status. Input must carry merge evidence,
+// One criteria and verdict evaluation for the merge gate and the hub's ready status. Input must carry merge evidence,
 // annotated with the freshness cache; file headers do not substitute for hub-written verdicts.
 import { MergeError } from '../merge.ts';
 import type { IndexedVerdict } from './index-db.ts';
@@ -18,7 +18,22 @@ function verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
   return v;
 }
 
+export function incompleteCriteria(view: ItemView): string[] {
+  return view.criteria.flatMap(c => {
+    const missing: string[] = [];
+    const failed = c.marks.some(m => m.kind === 'failed');
+    if (failed || !c.marks.some(m => m.kind === 'done')) missing.push('not done');
+    if (failed || !c.marks.some(m => m.kind === 'verified')) missing.push('not verified');
+    return missing.length ? [`${c.id ?? 'legacy criterion'}: ${c.text} (${missing.join(', ')})`] : [];
+  });
+}
+
 export function gateVerdicts(view: ItemView): { review: IndexedVerdict; qa: IndexedVerdict | null } {
+  const incomplete = incompleteCriteria(view);
+  if (incomplete.length) {
+    const legacy = view.criteria.some(c => c.id === null) ? ' Legacy criterion ids are assigned on the first criterion operation; read task view again for the assigned ids.' : '';
+    throw new MergeError('criteria-incomplete', `${view.id}: incomplete acceptance criteria:\n${incomplete.join('\n')}\nThe claiming Implementer marks each criterion done with cland task criterion ${view.id} done C<n>, then Reviewer or QA records a clear verdict with --verified C<n> or --verified all.${legacy}`);
+  }
   const review = verdict(view, 'review');
   const qa = view.labels.includes('qa-required') ? verdict(view, 'qa') : null;
   return { review, qa };

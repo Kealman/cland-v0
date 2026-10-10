@@ -3,7 +3,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export const MERGE_USAGE = `  merge <T-id> [--json]   land one task as a squash commit on its task base (dev); Coordinator or human
-    --override <reason>   the human's shell only: skip verdicts, record why; conflicts still refuse
+    --override <reason>   the human's shell only: skip verdicts and criteria, record why and unmet criteria; conflicts still refuse
 `;
 export async function runMerge(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' }, override: { type: 'string' } } });

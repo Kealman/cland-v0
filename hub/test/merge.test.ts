@@ -52,9 +52,10 @@ test('a current hub review lands one squash commit in the root and territory, cl
   assert.equal(topic.ok, true, topic.error);
   const before = git(root, 'rev-parse', 'dev');
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'rev-1' })).ok, true);
-  await eventually('current review', async () => {
-    const v = json<{ item: { verdicts: Array<{ current?: boolean }> } }>(await cland(root, 'task', 'view', work.id, '--json'));
-    return v.item.verdicts[0]?.current;
+  await eventually('ready without criteria', async () => {
+    const v = json<{ item: { status: string; criteria: unknown[] } }>(await cland(root, 'task', 'view', work.id, '--json'));
+    assert.deepEqual(v.item.criteria, []);
+    return v.item.status === 'ready' ? true : undefined;
   });
   const merged = json<{ commit: string; base: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(merged.base, 'dev');
@@ -90,6 +91,81 @@ async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: string, 
   assert.equal(git(root, 'show-ref'), refs, 'a gate refusal moves no ref');
   return r;
 }
+
+test('an in-flight legacy item reaches ready and merge only after every criterion is done and verified', async (t) => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
+  t.after(() => impl.close());
+  ok(await cland(root, 'task', 'claim', work.id, '--release'));
+  ok(await cland(root, 'task', 'edit', work.id, '--assignee', 'impl'));
+  const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: work.id });
+  assert.equal(claimed.ok, true, claimed.error);
+  const read = async () => json<{ item: { path: string; status: string; criteria: Array<{ id: string | null }>; verdicts: Array<{ current?: boolean }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const file = join(root, (await read()).path);
+  await writeFile(file, await readFile(file, 'utf8') + '\n## Acceptance criteria\n\n- [x] Parses input\n- [ ] Reports errors\n');
+  await review(rev, work.id);
+  await eventually('current legacy review', async () => (await read()).verdicts[0]?.current);
+  const legacy = await refused(ui, root, work.id, 'criteria-incomplete');
+  assert.match(legacy.error!, /Parses input.*not done.*not verified/s);
+  assert.match(legacy.error!, /Reports errors.*not done.*not verified/s);
+  assert.match(legacy.error!, /Implementer.*done.*--verified/s);
+  assert.match(legacy.error!, /ids.*first/i);
+  assert.notEqual((await read()).status, 'ready');
+
+  const done = async (criterion: string) => {
+    const result = await impl.call<{ ok: boolean; error?: string }>('task.criterion', { id: work.id, op: 'done', criterion });
+    assert.equal(result.ok, true, result.error);
+  };
+  const verify = async (verified: string, run: string) => {
+    ok(await clandWithEnv(root, { CLAND_SESSION_NAME: 'rev', CLAND_SESSION_ID: 'reviewer-id' }, 'task', 'comment', work.id, 'Checked', '--verdict', 'review', '--result', 'clear', '--run', run, '--verified', verified));
+  };
+  await done('C1');
+  assert.deepEqual((await read()).criteria.map(c => c.id), ['C1', 'C2']);
+  await verify('C2', 'rev-partial');
+  const partial = await refused(ui, root, work.id, 'criteria-incomplete');
+  assert.match(partial.error!, /C1.*Parses input.*not verified/);
+  assert.match(partial.error!, /C2.*Reports errors.*not done/);
+  assert.notEqual((await read()).status, 'ready');
+  await done('C2');
+  const unverified = await refused(ui, root, work.id, 'criteria-incomplete');
+  assert.match(unverified.error!, /C1.*not verified/);
+  assert.doesNotMatch(unverified.error!, /C2/);
+  await verify('all', 'rev-all');
+  await eventually('criteria ready', async () => (await read()).status === 'ready' ? true : undefined);
+  const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
+  assert.equal((await read()).status, 'done');
+});
+
+test('adding or failing a criterion revokes ready; done and separate verification restore it', async (t) => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  const read = async () => json<{ item: { status: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const status = async (expected: string) => eventually(expected, async () => (await read()).status === expected ? true : undefined);
+  await review(rev, work.id);
+  await status('ready');
+  ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Handles empty input'));
+  await status('in progress');
+  const open = await refused(ui, root, work.id, 'criteria-incomplete');
+  assert.match(open.error!, /C1.*Handles empty input.*not done.*not verified/);
+  ok(await cland(root, 'task', 'criterion', work.id, 'done', 'C1'));
+  await refused(ui, root, work.id, 'criteria-incomplete');
+  const verified = await rev.call<{ ok: boolean; error?: string }>('task.criterion', { id: work.id, op: 'verify', criterion: 'C1', run: 'separate-verification' });
+  assert.equal(verified.ok, true, verified.error);
+  await status('ready');
+  const failed = await rev.call<{ ok: boolean; error?: string }>('task.criterion', { id: work.id, op: 'fail', criterion: 'C1', note: 'Empty input throws' });
+  assert.equal(failed.ok, true, failed.error);
+  await status('in progress');
+  const failure = await refused(ui, root, work.id, 'criteria-incomplete');
+  assert.match(failure.error!, /C1.*not done.*not verified/);
+  ok(await cland(root, 'task', 'criterion', work.id, 'done', 'C1'));
+  await refused(ui, root, work.id, 'criteria-incomplete');
+  const fixed = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run: 'fixed', verified: 'all' });
+  assert.equal(fixed.ok, true, fixed.error);
+  await status('ready');
+  ok(await cland(root, 'merge', work.id));
+});
 
 test('the gate refuses in order: item/branch, missing or file-only review, wrong writer role, claimant, not clear, stale, and missing QA', async (t) => {
   const { root, ui, rev } = await project(t);
@@ -212,6 +288,8 @@ test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI
   const invalid = await cland(root, 'merge', work.id, '--override', '  ');
   assert.equal(invalid.code, 1);
   assert.match(invalid.stderr, /override needs a reason/);
+  ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Works offline'));
+  await refused(ui, root, work.id, 'criteria-incomplete');
   const overridden = json<{ commit: string }>(await cland(root, 'merge', work.id, '--override', 'Human checked rescue output', '--json'));
   const item = json<{ item: { comments: Array<{ text: string }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
   assert.match(item.comments.at(-1)?.text ?? '', /Human override: Human checked rescue output/);
@@ -220,6 +298,10 @@ test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI
   assert.equal((agents.value as { messages: Array<{ kind: string; text: string }> }).messages.filter((m) => m.kind === 'refusal' && /tried merge/.test(m.text)).length, 7);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.match(journal, /"override":"Human checked rescue output"/);
+  const skipped = journal.split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; criteria?: string[]; override?: string }).filter(event => event.event === 'merge-criteria-overridden');
+  assert.ok(skipped.length > 0);
+  assert.ok(skipped.every(event => event.id === work.id && event.override === 'Human checked rescue output'));
+  assert.deepEqual(skipped[0]!.criteria, ['C1: Works offline (not done, not verified)']);
 });
 
 test('simultaneous Coordinator spoke merges serialize and the second commit includes the first task', async (t) => {
