@@ -3,7 +3,7 @@ id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-108
 blocked_by:
   - T-139
-topic: null
-branch: null
+topic: topic-58
+branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T01:52:18.890Z
+updated: 2026-10-10T04:00:05.489Z
 ---
 
 ## Parent
