@@ -3,7 +3,7 @@ id: T-128
 kind: task
 title: "The vertical board: the items panel as a board of the current release on the hub's status and rank, with sections, folds, the next mark, the epic tab row, K, J and T, and e and E with the pick kept in ui.json"
 state: open
-status: backlog
+status: in progress
 labels:
   - ready-for-agent
   - v0.1
@@ -13,9 +13,9 @@ blocked_by:
   - T-126
   - T-123
 topic: null
-branch: null
+branch: t/T-128-the-vertical-board-the-items-panel-as-a
 created: 2026-10-09T21:57:34.784Z
-updated: 2026-10-10T00:58:18.031Z
+updated: 2026-10-10T03:09:56.060Z
 ---
 
 ## Parent
