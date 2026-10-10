@@ -1,15 +1,15 @@
-// Every package phase takes the machine lock; Neovim also takes its phase lock first.
+// One machine queue admits each phase; Neovim acquires both locks together when free.
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { link, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, realpath, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
 
-type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; device?: number; inode?: number; runner?: ProcessIdentity };
+type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; device?: number; inode?: number; runner?: ProcessIdentity };
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 type Lease = { publishRunner: (identity: ProcessIdentity) => Promise<void>; publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
 const RECOVERY_GRACE_MS = 1000;
@@ -53,73 +53,147 @@ async function sweep(holder: Holder): Promise<void> {
   if (root) await rm(root, { recursive: true, force: true });
 }
 
-async function acquire(dir: string, interrupted: () => boolean, holder: Holder): Promise<Lease> {
-  const ownerPath = `${dir}.owner`;
-  const metadataPath = join(dir, 'holder.json');
-  let last = ''; let lastPrinted = 0;
-  while (!interrupted()) {
-    let guard: ReturnType<typeof acquireLock> | undefined;
-    let previous: Holder | null = null;
-    let info: Awaited<ReturnType<typeof stat>> | null = null;
-    try {
-      // Serializes publication/recovery. Its own PID/start-time guard can recover a killed reaper.
-      guard = acquireLock(`${dir}.reaper`);
-      info = await stat(dir).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-      previous = await holderAt(ownerPath) ?? await holderAt(metadataPath);
-      if (previous && !liveHolder(previous)) {
-        const ownerInfo = await stat(ownerPath).catch(() => null);
-        if (Date.now() - (ownerInfo?.mtimeMs ?? info?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
-          // Keep the stale lock in place throughout cleanup: no replacement daemon can overlap it.
-          await sweep(previous);
-          await rm(dir, { recursive: true, force: true });
-          await rm(ownerPath, { force: true });
-          await rm(`${ownerPath}.${previous.token}`, { force: true });
-          process.stderr.write(`taking over stale suite lock held by pid ${previous.pid}\n`);
-          continue;
-        }
-      }
-      if (!info && !previous) {
-        // Publish whole PID/start identity BEFORE mkdir, covering death in the metadata gap.
-        await publish(ownerPath, holder, true);
-        try { await mkdir(dir); }
-        catch (error) { await rm(ownerPath, { force: true }); if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; continue; }
-        await publish(metadataPath, holder);
-        return {
-          publishRunner: async identity => {
-            holder.runner = identity;
-            await publish(ownerPath, holder);
-            await publish(metadataPath, holder);
-          },
-          publishRoot: async root => {
-            const rootInfo = await stat(root);
-            holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
-            // Sidecar first: a crash between updates still retains full recovery ownership.
-            await publish(ownerPath, holder);
-            await publish(metadataPath, holder);
-          },
-          release: async () => {
-            if ((await holderAt(ownerPath))?.token !== holder.token) return;
-            await rm(dir, { recursive: true, force: true });
-            await rm(ownerPath, { force: true });
-          },
-        };
-      }
-    } catch (error) {
-      const contended = error instanceof Error && error.message === `could not take ${dir}.reaper: it keeps changing under this process`;
-      if (!(error instanceof HubLocked) && !contended && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      previous = await holderAt(ownerPath) ?? await holderAt(metadataPath);
-      info = await stat(dir).catch(() => null);
-    } finally { guard?.release(); }
-    const age = Math.max(0, Date.now() - (info?.mtimeMs ?? Date.now()));
-    const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.since ?? previous.started}${readableStart(previous.started) ? '' : ' (holder from an older version; process start time unavailable)'}` :
-      `waiting for the suite lock; age ${Math.floor(age / 1000)}s; no owner recorded (a manual lock); if no suite is running, remove it with \`rmdir ${dir}\``;
-    if ((line !== last && previous !== null) || Date.now() - lastPrinted >= 60_000 || !lastPrinted) {
-      process.stderr.write(`${line}\n`); last = line; lastPrinted = Date.now();
-      if (!previous && age >= 15 * 60_000) process.stderr.write('WARNING: ownerless manual suite lock is over 15 minutes old and cannot recover automatically; verify no suite is running before removing it.\n');
-    }
-    await pause(250);
+async function liveTickets(queueDir: string): Promise<Array<Holder & { queued: string }>> {
+  const tickets: Array<Holder & { queued: string }> = [];
+  for (const name of await readdir(queueDir)) {
+    if (!name.endsWith('.json')) continue;
+    const path = join(queueDir, name);
+    const waiting = await holderAt(path);
+    if (!waiting && !await stat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) continue;
+    if (!waiting || typeof waiting.queued !== 'string' || !/^\d+$/.test(waiting.queued)) throw new Error(`invalid suite ticket ${path}`);
+    if (!liveHolder(waiting)) await rm(path, { force: true });
+    else tickets.push({ ...waiting, queued: waiting.queued });
   }
-  throw new Error('suite interrupted while waiting for the lock');
+  return tickets.sort((a, b) => BigInt(a.queued) < BigInt(b.queued) ? -1 : BigInt(a.queued) > BigInt(b.queued) ? 1 : a.token.localeCompare(b.token));
+}
+
+async function acquire(dirs: string[], interrupted: () => boolean, holder: Holder): Promise<Lease[]> {
+  const primary = dirs[0];
+  if (!primary) return [];
+  // Registration never waits for a polled guard. Publish a whole ticket before
+  // the first admission attempt, retaining its order through guard contention.
+  // The persistent queue survives release/recovery of the ownership directories.
+  const queueDir = `${primary}.queue`;
+  const ticketPath = join(queueDir, `${holder.token}.json`);
+  const ticket = { ...holder, queued: process.hrtime.bigint().toString() };
+  mkdirSync(queueDir, { recursive: true, mode: 0o700 });
+  const staging = `${ticketPath}.${holder.token}`;
+  try {
+    writeFileSync(staging, JSON.stringify(ticket), { mode: 0o600 });
+    renameSync(staging, ticketPath);
+  } finally { rmSync(staging, { force: true }); }
+  let position = 1; let total = 1;
+  let last = ''; let lastQueue = ''; let lastPrinted = 0;
+  try {
+    while (!interrupted()) {
+      const guards: ReturnType<typeof acquireLock>[] = [];
+      let previous: Holder | null = null;
+      let info: Awaited<ReturnType<typeof stat>> | null = null;
+      let blockedDir = primary;
+      try {
+        // Hold every recovery guard while inspecting/admitting the phase. Legacy
+        // runners release these guards before waiting on the next lock, so this
+        // cannot form a cycle with their Neovim-first acquisition order.
+        for (const dir of dirs) guards.push(acquireLock(`${dir}.reaper`));
+        const tickets = await liveTickets(queueDir);
+        position = tickets.findIndex(waiting => waiting.token === holder.token) + 1;
+        total = tickets.length;
+        if (!position) throw new Error('suite ticket disappeared while waiting');
+        let blocked = false;
+        for (const dir of dirs) {
+          const ownerPath = `${dir}.owner`;
+          const currentInfo = await stat(dir).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+          const current = await holderAt(ownerPath) ?? await holderAt(join(dir, 'holder.json'));
+          if (current && !liveHolder(current)) {
+            const ownerInfo = await stat(ownerPath).catch(() => null);
+            if (Date.now() - (ownerInfo?.mtimeMs ?? currentInfo?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
+              // Keep stale ownership in place throughout verified process cleanup.
+              await sweep(current);
+              await rm(dir, { recursive: true, force: true });
+              await rm(ownerPath, { force: true });
+              await rm(`${ownerPath}.${current.token}`, { force: true });
+              process.stderr.write(`taking over stale suite lock held by pid ${current.pid}\n`);
+              continue;
+            }
+          }
+          if (!blocked && (currentInfo || current)) {
+            blocked = true; previous = current; info = currentInfo; blockedDir = dir;
+          }
+        }
+        if (!blocked && position === 1 && !interrupted()) {
+          const leases: Lease[] = [];
+          const installed: Array<{ dir: string; created: boolean }> = [];
+          try {
+            for (const dir of dirs) {
+              const ownerPath = `${dir}.owner`;
+              const metadataPath = join(dir, 'holder.json');
+              // Publish identity before mkdir, covering death in the metadata gap.
+              await publish(ownerPath, holder, true);
+              const pending = { dir, created: false };
+              installed.push(pending);
+              await mkdir(dir);
+              pending.created = true;
+              await publish(metadataPath, holder);
+              leases.push({
+                publishRunner: async identity => {
+                  holder.runner = identity;
+                  await publish(ownerPath, holder);
+                  await publish(metadataPath, holder);
+                },
+                publishRoot: async root => {
+                  const rootInfo = await stat(root);
+                  holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
+                  await publish(ownerPath, holder);
+                  await publish(metadataPath, holder);
+                },
+                release: async () => {
+                  if ((await holderAt(ownerPath))?.token !== holder.token) return;
+                  await rm(dir, { recursive: true, force: true });
+                  await rm(ownerPath, { force: true });
+                },
+              });
+            }
+            await rm(ticketPath, { force: true });
+            return leases;
+          } catch (error) {
+            // Roll back only what this attempt installed; preserve a manual mkdir
+            // that raced publication, and leave all waiter tickets intact.
+            for (const { dir, created } of installed.reverse()) {
+              if ((await holderAt(`${dir}.owner`))?.token !== holder.token) continue;
+              if (created) await rm(dir, { recursive: true, force: true });
+              await rm(`${dir}.owner`, { force: true });
+            }
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            continue;
+          }
+        }
+      } catch (error) {
+        const contended = error instanceof Error && dirs.some(dir => error.message === `could not take ${dir}.reaper: it keeps changing under this process`);
+        if (!(error instanceof HubLocked) && !contended && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        const tickets = await liveTickets(queueDir);
+        position = tickets.findIndex(waiting => waiting.token === holder.token) + 1;
+        total = tickets.length;
+        for (const dir of dirs) {
+          previous = await holderAt(`${dir}.owner`) ?? await holderAt(join(dir, 'holder.json'));
+          info = await stat(dir).catch(() => null);
+          blockedDir = dir;
+          if (previous || info) break;
+        }
+      } finally { for (const guard of guards.reverse()) guard.release(); }
+      const age = Math.max(0, Date.now() - (info?.mtimeMs ?? Date.now()));
+      const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.since ?? previous.started}${readableStart(previous.started) ? '' : ' (holder from an older version; process start time unavailable)'}` :
+        !info ? 'waiting for the suite lock; an earlier live ticket has admission priority' :
+        `waiting for the suite lock; age ${Math.floor(age / 1000)}s; no owner recorded (a manual lock); if no suite is running, remove it with \`rmdir ${blockedDir}\``;
+      const queue = `${position}/${total}`;
+      const message = `${line}; queue position ${queue}; holder worktree ${previous?.worktree ?? 'unavailable'}`;
+      if ((message !== last && previous !== null) || queue !== lastQueue || Date.now() - lastPrinted >= 60_000 || !lastPrinted) {
+        process.stderr.write(`${message}\n`); last = message; lastQueue = queue; lastPrinted = Date.now();
+        if (!previous && info && age >= 15 * 60_000) process.stderr.write('WARNING: ownerless manual suite lock is over 15 minutes old and cannot recover automatically; verify no suite is running before removing it.\n');
+      }
+      await pause(250);
+    }
+    throw new Error('suite interrupted while waiting for the lock');
+  } finally { await rm(ticketPath, { force: true }); }
 }
 
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption } = {}): Promise<number> {
@@ -137,7 +211,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   });
   const startedIdentity = processStarted(process.pid);
   if (!startedIdentity) throw new Error('cannot establish suite holder process identity');
-  const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId, root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
+  const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId, worktree: await realpath(options.cwd ?? process.cwd()), root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
   const leases: Lease[] = [];
   let root: string | undefined;
   const invoked = Date.now();
@@ -147,9 +221,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   try {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     if (process.env.CLAND_TEST_SKIP_LOCK !== '1') {
-      for (const dir of options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock']) {
-        leases.push(await acquire(dir, () => interruption.signal !== null, holder));
-      }
+      leases.push(...await acquire(options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'], () => interruption.signal !== null, holder));
     }
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     started = Date.now();
@@ -231,8 +303,8 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const targets = phase === 'hub' ? ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'] : ['nvim/test/**/*.test.ts'];
       // Release and sweep the previous phase before waiting for the next phase's lock.
-      // Take Neovim first so waiting for that phase never reserves the machine lock.
-      const lockDirs = phase === 'nvim' ? [locks.nvim, locks.hub] : [locks.hub];
+      // One machine ticket covers all required locks; neither is held while waiting.
+      const lockDirs = phase === 'nvim' ? [locks.hub, locks.nvim] : [locks.hub];
       const code = await runSuite([['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)]], { cwd, lockDirs, interruption });
       // A signal during runSuite's finally must override its already evaluated return.
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
