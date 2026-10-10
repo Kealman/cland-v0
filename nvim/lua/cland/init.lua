@@ -60,7 +60,6 @@ local function refresh_topics()
         end
       end
       state.changed()
-      require('cland.attention').refresh(M.client, state.S.topics)
       -- Equal timestamps cannot identify inclusion. Read an authoritative count instead of guessing.
       if ambiguous then refresh_topics() end
     end
@@ -513,7 +512,6 @@ function M.start(opts)
   end
 
   M.client = hub.new({ root = root, transport = transport, cli = opts.cli or cli_command(repo), serve_args = opts.serve_args })
-  require('cland.attention').setup(M.client)
   wire_client(M.client)
   require('cland.views').setup(M.client)
   require('cland.sessions').setup(M.client)

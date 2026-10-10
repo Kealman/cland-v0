@@ -74,7 +74,6 @@ end
 
 --- The human read topic `id` (its thread is in view): the hub clears its unread count.
 function M.mark_read(id, up_to)
-  require('cland.attention').read(id)
   local t = state.topic(id)
   if not t or (tonumber(t.unread) or 0) == 0 and not up_to then
     return

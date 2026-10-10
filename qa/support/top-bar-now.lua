@@ -1,4 +1,4 @@
--- Message frames from the stub hub drive the production top bar at both supported widths.
+-- Inbox and message frames drive the shared now count at both supported widths.
 return function(columns)
   local control = vim.fn.tempname() .. '.sock'
   vim.env.CLAND_STUB_CONTROL = control
@@ -44,37 +44,50 @@ return function(columns)
       local function top() return qa.screen():match('^[^\n]*') end
       local function count(n)
         qa.wait_for(function() return top():match('needs you +(' .. n .. ')%s') end, 5000, 'count ' .. n)
+        -- Render the production inbox panel header even when the 80-column layout has it hidden.
+        local buf = vim.api.nvim_create_buf(false, true)
+        vim.b[buf].cland_role = 'inbox'
+        local win = vim.api.nvim_open_win(buf, false, { relative = 'editor', row = 1, col = 0, width = columns, height = 1, style = 'minimal' })
+        local header = require('cland.bars').winbar(win)
+        vim.api.nvim_win_close(win, true)
+        vim.api.nvim_buf_delete(buf, { force = true })
+        qa.expect(header:find(n > 0 and (n .. ' need you') or 'nothing needs you', 1, true) ~= nil, 'inbox header agrees with chip')
         qa.expect(top():find('sessions', 1, true) ~= nil, 'count fitting preserves the sessions chip')
         local rendered = vim.api.nvim_eval_statusline(require('cland.bars').topbar(), { use_tabline = true, maxwidth = columns }).str
         qa.expect(vim.api.nvim_strwidth(rendered) <= columns, 'top bar fits display cells')
       end
       local burst = {}
-      for i = 1, 20 do burst[#burst + 1] = event('background-' .. i, { 'coordinator' }) end
+      for i = 1, 98 do burst[#burst + 1] = event('ordinary-' .. i, i % 2 == 0 and { 'human' } or { 'coordinator' }) end
       command({ emits = burst })
-      qa.wait_for(function() return require('cland.state').topic(bound.id).unread == 20 end, 5000, 'background burst received')
+      qa.wait_for(function() return require('cland.state').topic(bound.id).unread == 98 end, 5000, 'ordinary message flood received')
       count(0)
-      local before = command({ requests = true }).requests
-      command({ emit = event('addressed', { 'human' }) })
-      count(1)
-      qa.expect(vim.deep_equal(before, command({ requests = true }).requests), 'message alone updates the count without polling')
       command({ emit = event('watch', { 'coordinator' }, { fromRole = 'reviewer', text = 'review clear T-12' }) })
-      qa.wait_for(function() return require('cland.state').topic(bound.id).unread == 22 end, 5000, 'watch verdict received')
-      count(1)
+      qa.wait_for(function() return require('cland.state').topic(bound.id).unread == 99 end, 5000, 'watch verdict received')
+      count(0)
       local ask = event('ask-new', { 'human' }, { ask = { state = 'open', options = { 'yes' }, free = true } })
-      command({ emit = ask })
-      count(2)
-      command({ emits = {
-        { type = 'inbox', inbox = { asks = { { id = 'ask-new', topic = { id = bound.id }, question = 'ask-new',
-          options = { 'yes' }, from = 'coordinator', ts = at } }, approvals = {}, waiting = {}, notifications = {}, needsYou = 1 } }, ask,
-      } })
+      local ib = { asks = { { id = 'ask-new', topic = { id = bound.id }, question = 'ask-new',
+        options = { 'yes' }, from = 'coordinator', ts = at } }, approvals = {}, waiting = {}, notifications = {}, needsYou = 1 }
+      command({ emits = { { type = 'inbox', inbox = ib }, ask, ask } })
       qa.wait_for(function() return #qa.state().asks == 1 end, 5000, 'ask in inbox')
-      count(2)
+      count(1)
+      ib.approvals = { { session = 'impl-1', label = 'impl-1 [Implementer]' } }
+      ib.waiting = { { id = 'waiting', title = 'Decision', status = 'waiting for human', updatedAt = at } }
+      ib.notifications = { { id = 'failed', kind = 'verdict', result = 'not clear', text = 'Review not clear', ts = at },
+        { id = 'died', kind = 'death', text = 'Session died', ts = at },
+        { id = 'role', kind = 'role', text = 'Role assigned', ts = at },
+        { id = 'clear', kind = 'verdict', result = 'clear', text = 'Review clear', ts = at },
+        { id = 'idle', kind = 'idle', text = 'Long idle', ts = at } }
+      ib.needsYou = 3
+      command({ emit = { type = 'inbox', inbox = ib } })
+      count(5)
       qa.dump('now-count-' .. columns)
       qa.keys('<Esc>:Cland view thread topic-count<CR>')
-      count(1)
+      qa.wait_for(function() return require('cland.state').S.ui.view.id == bound.id end, 5000, 'reading the topic')
+      count(5)
       command({ emits = {
         { type = 'ask', topic = bound.id, ask = 'ask-new', card = { state = 'answered' } },
-        { type = 'inbox', inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {}, needsYou = 0 } },
+        { type = 'inbox', inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {
+          { id = 'role', kind = 'role', text = 'Role assigned', ts = at } }, needsYou = 0 } },
       } })
       count(0)
     end,

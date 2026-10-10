@@ -24,6 +24,7 @@ function M.reset(opts)
     sibling_orders = {}, -- final task rank events, keyed by parent (empty string for roots)
     items_note = nil, -- why the items panel is empty
     inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {} }, -- inbox.list and `inbox` events (#33)
+    inbox_loaded = false, -- once inbox rows arrived, derive their count locally
     needs_you = nil, -- the hub's "needs you" count (hub.status, `inbox` events); nil until it said
     ui = {
       view = { kind = 'thread', id = 'general' },
@@ -277,7 +278,7 @@ function M.counts()
   return c
 end
 
---- The inbox as the hub sent it (`inbox.list`, an `inbox` event); its count is the hub's "needs you".
+--- The inbox as the hub sent it (`inbox.list`, an `inbox` event).
 function M.set_inbox(inbox)
   if type(inbox) ~= 'table' then
     return
@@ -286,6 +287,7 @@ function M.set_inbox(inbox)
     return type(x) == 'table' and x or {}
   end
   M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), waiting = list(inbox.waiting), notifications = list(inbox.notifications) }
+  M.S.inbox_loaded = true
   if type(inbox.needsYou) == 'number' then
     M.S.needs_you = inbox.needsYou
   end
@@ -294,7 +296,6 @@ end
 
 --- The human answered ask `id`: its row goes at once (the hub's `inbox` event confirms it).
 function M.answered(id)
-  require('cland.attention').answered(id)
   local asks = M.S.inbox.asks
   for i, a in ipairs(asks) do
     if a.id == id then
@@ -308,15 +309,23 @@ function M.answered(id)
   M.changed()
 end
 
---- The "needs you" count: the hub's (asks + approvals + topics waiting without an ask, #33); before the hub said,
---- the topics waiting for the human.
+--- The inbox's now rows, shared by the chip, header and empty-state message. Ordinary
+--- notifications and unread messages never count. Before the inbox arrives, use the hub's
+--- base count (or waiting topics); it excludes the now notifications added below.
 function M.needs_you()
-  if type(M.S.needs_you) == 'number' then
-    return M.S.needs_you
+  local ib = M.S.inbox
+  local n = #ib.asks + #ib.approvals + #ib.waiting
+  if not M.S.inbox_loaded then
+    n = M.S.needs_you
+    if type(n) ~= 'number' then
+      n = 0
+      for _, t in ipairs(M.S.topics) do
+        if t.status == 'waiting for human' then n = n + 1 end
+      end
+    end
   end
-  local n = 0
-  for _, t in ipairs(M.S.topics) do
-    if t.status == 'waiting for human' then
+  for _, note in ipairs(ib.notifications) do
+    if note.kind == 'death' or note.kind == 'verdict' and note.result == 'not clear' then
       n = n + 1
     end
   end
