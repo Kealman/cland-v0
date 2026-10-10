@@ -154,6 +154,7 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
   text('session-start', /^coord-1 \[Coordinator\] started \(claude-code/);
   text('session-stop', /^coord-1( \[Coordinator\])? stopped$/);
   text('role-assign', /^coord-1 took Coordinator at launch/);
+  assert.equal(notices.filter(m => m.kind === 'role-assign' && /^coord-1 took Coordinator at launch/.test(m.text)).length, 1);
   // every hub message in Agents is a lifecycle notice; the session's states, its hooks, the acks and the injections
   // that happened all along (the clause turn, the stop) are not
   for (const m of notices) assert.ok(m.kind !== undefined && LIFECYCLE.has(m.kind), `not a lifecycle kind: ${JSON.stringify(m)}`);
@@ -166,6 +167,12 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
     return a.some((l) => l.session === 'alpha' && l.tool === 'task.claim') && a.some((l) => l.session === 'human' && l.tool === 'role.set') ? a : undefined;
   });
   assert.ok(audits.every((l) => l.outcome === 'ok' || l.outcome === 'forbidden' || l.outcome === 'error'), JSON.stringify(audits));
+  const launchGrants = await eventually('the launch grant in the journal', async () => {
+    const grants = (await journalLines(root)).filter(l => l.event === 'role-taken-at-launch' && l.session === 'coord-1');
+    return grants.length ? grants : undefined;
+  });
+  assert.equal(launchGrants.length, 1);
+  assert.equal(launchGrants[0]?.agentsNotice, notices.find(m => m.kind === 'role-assign' && /^coord-1 took Coordinator at launch/.test(m.text))?.id);
 });
 
 test('a looping pair trips the breaker at the configured threshold: both get the typed refusal, Agents shows the mute, it survives a restart until `cland hub unmute`; a changed threshold applies at the next start; the journal only grows', async (t) => {

@@ -529,7 +529,14 @@ export class Sessions {
         for (const frame of early) this.signal(frame);
         const view = this.view(this.#table.get(p.name) ?? p);
         const first = this.#firstHello.get(launchToken);
-        if (first) first.acceptedId = p.sessionId;
+        if (first) {
+          // An early credentialed hello consumed the grant (and announced it). Otherwise acceptance
+          // retires it here: announce only the unchanged launch role, before a late hello uses the row.
+          if (this.#core.roles && first.acceptedId === null && first.role !== null && first.role === p.role) {
+            this.#log({ event: 'role-taken-at-launch', session: p.name, sessionId: p.sessionId, role: p.role });
+          }
+          first.acceptedId = p.sessionId;
+        }
         accepted = true;
         return view;
       });

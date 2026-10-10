@@ -592,7 +592,10 @@ export class HubCore {
       const id = this.#recordClause(connection, carried ? 'assigned at launch (first turn)' : fresh ? 'assigned at launch' : 'hello', undefined, carried);
       if (carried && id) this.#carriedNotice.set(name, id);
     }
-    if (fresh) this.#emitRole(name, role, null, 'launch');
+    if (fresh) {
+      this.#log({ event: 'role-taken-at-launch', session: name, sessionId: hello.sessionId, role });
+      this.#emitRole(name, role, null, 'launch');
+    }
     this.#announceCoordinator();
     for (const fn of [...this.#hellos]) {
       try {
@@ -1383,7 +1386,8 @@ export class HubCore {
     this.#record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);
     this.#roleNotices.set(message.id, clause);
     // journalled with every delivery (`journal.ts`)
-    this.#log({ event: c.role !== null ? 'role-clause' : 'role-revoked', session: c.name, sessionId: c.sessionId, role: c.role, previous: previous ?? null, reason, id: message.id, superseded: superseded.length });
+    // Launch assignment has its own lifecycle event: a carried clause may arrive after acceptance.
+    this.#log({ event: c.role !== null ? 'role-clause' : 'role-revoked', session: c.name, sessionId: c.sessionId, role: c.role, previous: previous ?? null, reason, id: message.id, superseded: superseded.length, launchNotice: false });
     return message.id;
   }
 

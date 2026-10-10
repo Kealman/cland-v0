@@ -8,6 +8,7 @@ import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Store } from '../src/hub/store.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
+import { agentsRecord } from '../src/hub/agents-topic.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import type { LogFn } from '../src/log.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -46,7 +47,7 @@ async function pendingAlias(t: TestContext, log?: LogFn) {
   assert.equal(hub.core.store.sessionNames().includes('session-1'), false);
 
   const table = new ProcessTable(join(root, '.cland', 'hub.db'));
-  const sessions = new Sessions({ root, core: hub.core, table });
+  const sessions = new Sessions({ root, core: hub.core, table, ...(log ? { log } : {}) });
   let sessionsClosed = false;
   const closeSessions = () => { if (sessionsClosed) return; sessionsClosed = true; sessions.close(); table.close(); };
   t.after(closeSessions);
@@ -514,6 +515,48 @@ test('a credentialed anonymous first hello after acceptance binds to the publish
   assert.equal(f.hub.core.presence().find(s => s.name === 'target')?.sessionId, 'launched:target');
   assert.equal(f.hub.core.presence().find(s => s.name === 'other')?.sessionId, 'unknown');
   assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' })).ok, true, 'accepted ownership binding is outside the pending fence');
+});
+
+for (const carried of [false, true]) for (const first of ['hello', 'acceptance'] as const) test(`a launch records exactly one role notice when ${first} comes first${carried ? ' with the clause carried at spawn' : ''}`, async t => {
+  const events: Array<Record<string, unknown>> = [];
+  const record = agentsRecord();
+  const f = await pendingAlias(t, record.tap(event => { events.push(event); }));
+  record.attach(f.hub.core);
+  f.sessions.register({ ...f.sessions.adapter('test'), clauseAtSpawn: carried });
+  const { started, release, credential } = deferSpawn(t, f.sessions);
+  const launching = f.launch('target');
+  await started;
+  const notices = async () => {
+    const history = await f.ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
+    assert.equal(history.ok, true, history.error);
+    return (history.value as { messages: Array<{ kind?: string; text: string }> }).messages
+      .filter(m => m.kind === 'role-assign' && m.text.startsWith('target took Implementer at launch'));
+  };
+  let connection: Awaited<ReturnType<typeof f.openHello>>;
+  if (first === 'hello') {
+    connection = await f.openHello('launched:target', 'target', credential());
+    assert.equal(connection.welcome.type, 'welcome');
+    const earlyNotices = await notices();
+    release();
+    assert.equal((await launching).ok, true);
+    assert.equal(earlyNotices.length, 1, 'the first grant publishes its notice before acceptance');
+  } else {
+    release();
+    assert.equal((await launching).ok, true);
+    assert.equal((await notices()).length, 1, 'acceptance publishes its grant without waiting for hello');
+    connection = await f.openHello('launched:target', 'target', credential());
+    assert.equal(connection.welcome.type, 'welcome');
+  }
+  // A live join and an offline reconnect cannot repeat the first-role grant or notice.
+  const joined = await f.openHello('launched:target', 'target', credential());
+  assert.equal(joined.welcome.type, 'welcome');
+  connection.client.close();
+  joined.client.close();
+  await Promise.all([connection.client.closed, joined.client.closed]);
+  await eventually('launched target disconnected', () => !f.hub.core.presence().some(s => s.name === 'target') || undefined);
+  assert.equal((await f.hello('launched:target', 'target', credential())).type, 'welcome');
+  assert.equal((await notices()).length, 1);
+  assert.equal(events.filter(e => e.event === 'role-taken-at-launch' && e.session === 'target').length, 1);
 });
 
 for (const joined of [false, true]) test(`an accepted first-role credential cannot overwrite a later human grant${joined ? ' after a credentialed join' : ''}`, async t => {

@@ -63,9 +63,11 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       const moved = previous && previous !== role ? ` (was ${roleName(previous)})` : '';
       return { kind: 'role-assign', text: `${session} assigned ${roleName(role)}${moved}`, detail: { session, role, previous } };
     }
+    case 'role-taken-at-launch':
+      return session ? { kind: 'role-assign', text: `${session} took ${roleName(str(entry.role))} at launch`, detail: { session, role: entry.role ?? null } } : null;
     case 'role-clause':
-      // a launch hands the role over at the session's first hello; a plain hello only re-sends the clause
-      return session && /^assigned at launch/.test(String(entry.reason ?? '')) ? { kind: 'role-assign', text: `${session} took ${roleName(str(entry.role))} at launch`, detail: { session, role: entry.role ?? null } } : null;
+      // Replay legacy journal notices; new clauses leave launch assignment to its own lifecycle event.
+      return entry.launchNotice !== false && session && /^assigned at launch/.test(String(entry.reason ?? '')) ? { kind: 'role-assign', text: `${session} took ${roleName(str(entry.role))} at launch`, detail: { session, role: entry.role ?? null } } : null;
     case 'role-cleared': {
       if (!session) return null;
       const previous = str(entry.previous);
