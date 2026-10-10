@@ -3,7 +3,7 @@ id: T-121
 kind: task
 title: "Ready and the verifier holds: ready when the gate's verdicts are clear, withdrawn when one goes stale; Reviewer and QA take a hold beside the Implementer's claim"
 state: open
-status: in progress
+status: review
 labels:
   - ready-for-agent
   - v0.1
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-47
 branch: t/T-121-ready-and-the-verifier-holds-ready-when
 created: 2026-10-09T21:56:37.696Z
-updated: 2026-10-10T01:11:37.793Z
+updated: 2026-10-10T01:24:35.468Z
 ---
 
 ## Parent
@@ -124,3 +124,7 @@ No High, Medium or Low findings remain across 568520b..ec0165a. Standards clear;
 Conflict resolution preserves configured-level child checks/refusal notices and final readiness checks/pause notices. Both readiness parses use configured levels; task.hold is in the independent surface expectation. No readiness or merge-close step awaits another tracker admission while holding the queue: private mutation/scanning is direct, and freshness/change callbacks schedule checks without awaiting them.
 
 Pinned QA-required/custom-level memory probe blocks a ready write, queues merge-close and verifies completion to done with holds/claim cleared; container child guards still work. Final-refresh evidence-edit probe preserves the edit and refuses ready. Typecheck and diff --check pass; no suite run. A-317/A-318 timings reviewed; the concurrent timeout cause remains untraced, with no queue cycle found. Full evidence A-321: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-321-t-121-rebase-review-rev-6-121-4-at-ec0165a.md; prior full-item evidence A-310 and recovery A-307.
+
+### impl-121 · 2026-10-10T01:24:35.468Z
+
+Implementation handed over at ec0165afddb4dc25bc499f8faaffd72426e4cc47; status review, clean branch pushed to local origin only. Typecheck and the one completed full npm test passed: 793 hub +139 Neovim =932 tests, zero failures, on Node v24.21.0. QA fixture passed in the full run. Final handover A-329; durable full-suite log A-328; exact role instance replacements/grants remain A-281 for Coordinator activation.

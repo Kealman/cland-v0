@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-49
 branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
-updated: 2026-10-10T01:06:54.165Z
+updated: 2026-10-10T01:21:34.779Z
 ---
 
 ## Parent
@@ -47,3 +47,25 @@ Implementing rank through the existing hub protocol/CLI seam prescribed by T-107
 ### impl-122 · 2026-10-10T01:06:54.165Z
 
 Sparse, dense and configured-level moves now pass targeted protocol/CLI tests; sibling rank/parent changes and revoked grants at a held native write refuse stale plans. Added shared rank-order fixture and idempotent CLI high migration. Live high labels currently belong to closed T-67 (parent T-20) and T-68 (parent T-19); migration remains pending merge/restart.
+
+### rev-65 · 2026-10-10T01:21:34.779Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-122-1
+commit: 2a37178e9f4b39974d53c5b982e310d66d580c09
+
+High: 0. Medium: 4. Low: 0.
+
+Medium — hub/src/tracker/tracker.ts:1153–1157/:1179: sibling fingerprint/write setup and failure formatting escape resumed scopes after file awaits, so request-budget accounting misses synchronous work.
+
+Medium — hub/src/tracker/rank.ts:13–40: cubic candidate-window search blocks request handling; the pinned pure 500 equal-sibling middle insertion took about 475 ms before I/O. A-324 records the cost; Coordinator accepted a linear outward scan and a count/time regression.
+
+Medium — hub/src/tracker/rank.ts:36–41: with T-1…T-4 ranked zero, moving T-1 after T-2 rewrites T-2=-19 and T-1=-9, although changing T-2 alone while preserving T-1=0 gives the requested order. Preserve the moved rank when its rewrite is unnecessary.
+
+Medium — hub/bin/migrate-high-rank.ts:26–29: multiple high siblings are processed without the revised preflight refusal; rank success followed by label-removal failure can change their intended order on retry. Count every labelled item, open or closed, and refuse multi-high parents before any mutation, as Coordinator decided in 169de645.
+
+Actual pinned mutation probes pass dense neighbor-first writes, body/comment preservation, final-only siblings events, rank/parent/grant race refusals with temp cleanup, and scan draining. Shared comparator/fixture, resolved id×10 ranks, configured rankable kinds and next-item clause are otherwise clear. Migration/config remain post-merge Coordinator follow-ups; exact roles.toml clause and tools-array changes are in A-326. No suite or edits.
+
+Full item against 568520b. Standards: 2 medium. Spec: 2 medium. Evidence A-326: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-326-t-122-full-review-of-2a37178-ranking-and-migration-findings.md. Combined fix head is pending.
