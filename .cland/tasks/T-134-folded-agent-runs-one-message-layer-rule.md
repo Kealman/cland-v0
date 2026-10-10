@@ -11,10 +11,10 @@ assignee: null
 parent: T-110
 blocked_by:
   - T-133
-topic: null
+topic: topic-56
 branch: t/T-134-folded-agent-runs-one-message-layer-rule
 created: 2026-10-10T01:20:46.817Z
-updated: 2026-10-10T03:56:42.818Z
+updated: 2026-10-10T03:57:40.947Z
 ---
 
 ## Parent
@@ -46,3 +46,7 @@ Implementer: Codex. References in order of authority: spec §3.14 and §3.5 (the
 ### coord · 2026-10-10T02:43:21.637Z
 
 Coordinator note for the Implementer: T-86's narrow-width breakage 'foldtext clipping' was deferred from T-133 to this ticket, because the folds are built here. Fit the fold summary line through the cell-budget fitter, and add an 80-column QA case for it.
+
+### impl-134 · 2026-10-10T03:57:40.947Z
+
+Implementation started from a818642. Read the item, epic, spec, accepted prototype and predecessor notes; fold state will follow surviving run members per window, with fitted summaries and headless key coverage at both widths.

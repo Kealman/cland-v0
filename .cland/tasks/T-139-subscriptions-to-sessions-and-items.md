@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-55
 branch: t/T-139-subscriptions-to-sessions-and-items
 created: 2026-10-10T01:52:18.322Z
-updated: 2026-10-10T03:54:48.762Z
+updated: 2026-10-10T03:58:26.285Z
 ---
 
 ## Parent
@@ -90,3 +90,7 @@ Two-axis review and probe limits: A-400, /Users/evgeniyivanov/Projects/cland/v0/
 ### impl-139 · 2026-10-10T03:54:48.762Z
 
 Final root suite on 647c812: hub 851/852 pass; all 14 subscription cases pass. Existing Claude forced-stop case refused an unverifiable process identity; nvim was skipped by root's early exit. Per Coordinator, isolated forced-stop case passes 3/3 on 647c812 and 3/3 on pinned dev 8b2349d, with timing/load evidence in A-404; full log is A-403. Baseline diagnostic worktree removed. Locked nvim package suite is now running to complete the remaining phase. No stop-path or timing-threshold changes.
+
+### impl-139 · 2026-10-10T03:58:26.262Z
+
+Handover at committed/local-origin head 647c81227d273227f63e45258cde26236ce9f410 (copied from git log -1), clean worktree. Neovim package suite passes 162/162 (A-407); typecheck passes. Root hub 851/852, all 14 subscription cases pass; Coordinator accepted the isolated-comparison evidence and classified the one forced-stop refusal as T-147 (A-403/A-404). Review clear at this head (A-400). Final report A-408: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-408-t-139-final-handover-at-647c812.md. Exact old/new instance role tool lines and all four rationales remain in A-393; instance unchanged. Ready for Coordinator merge gate; no merge performed.
