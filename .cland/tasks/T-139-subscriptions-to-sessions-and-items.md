@@ -3,7 +3,7 @@ id: T-139
 kind: task
 title: "Subscriptions to sessions and items: subscribe, unsubscribe and subscriptions with session.state and task events, delivered as one-line hub deliveries at the next turn"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-55
 branch: t/T-139-subscriptions-to-sessions-and-items
 created: 2026-10-10T01:52:18.322Z
-updated: 2026-10-10T03:39:35.993Z
+updated: 2026-10-10T03:42:50.988Z
 ---
 
 ## Parent
@@ -66,3 +66,7 @@ Medium — hub/src/hub/core.ts:281: stopped/exited → running with the same ses
 Low — hub/src/tracker/tracker.ts:377: adopting name:impl into its stable ID produces another claimed-by notification without a new claim because the comparison uses raw IDs.
 
 Standards clear. Read-only pinned production/in-memory probes confirmed both losses and identity-adoption noise; no suite run. Queue fan-out, held ordering, synchronous unsubscribe and batch TTL passed focused Core/Store probes. Full two-axis review and limitations: A-395, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-395-t-139-review-9c43f71-restart-and-relaunch-notifications.md.
+
+### impl-139 · 2026-10-10T03:42:22.837Z
+
+Addressed all three rev-66 findings from A-395: startup baseline for every indexed item, canonical claim ownership, and launched on every transition into running. Four regressions reproduced failures before the fix and pass afterward; typecheck and diff checks pass. New head copied from git log -1: 647c81227d273227f63e45258cde26236ce9f410, committed and pushed to local origin. The earlier queued root invocation was cancelled before acquiring the lock; awaiting delta review before the final suite.
