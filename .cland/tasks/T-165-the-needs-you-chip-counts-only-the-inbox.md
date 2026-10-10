@@ -2,8 +2,8 @@
 id: T-165
 kind: task
 title: "The needs-you chip counts only the inbox's now-layer sections: no unread messages or notifications; one shared count with the inbox header"
-state: open
-status: planned
+state: closed
+status: done
 rank: 1310
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-74
 branch: t/T-165-the-needs-you-chip-counts-only-the-inbox
 created: 2026-10-10T09:19:59.837Z
-updated: 2026-10-10T10:11:50.023Z
+updated: 2026-10-10T10:12:23.278Z
 ---
 
 ## Parent

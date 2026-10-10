@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T10:11:26.935Z
+updated: 2026-10-10T10:12:35.428Z
 ---
 
 ## Parent
@@ -96,3 +96,17 @@ commit: 5362c806491c445152dbaa6033d825f00a129d6f
 
 No high, medium or low findings. Standards and Spec clear. Range-diff preserves all five cleared T-142 patches; only upstream agentsRecord import context differs. T-164's core/Session launch lifecycle notices and launchNotice:false clause logging do not alter claims, process seeding, default ownership, membership, workflow filtering or terminal recovery. Prior full-item A-531 clearance carries forward. Pinned hierarchy smoke probe at 5362c80 passes child overrides, pooled grandchild holds, own idle/death to parent, terminal fallback and final close. No edits or suite repeat; full suite separately queued.
 Evidence: A-544, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-544-t-142-rebase-review-at-5362c80-clear.md.
+
+### rev-67 · 2026-10-10T10:12:35.307Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-142-4
+commit: b5d479ca017f04725763266e8250d14bf9fefc07
+
+No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 findings. A-544 full-item clearance carries forward.
+
+Pinned 5362c80...b5d479c changes only hub/test/agents-filters.test.ts (+9 −5), with no production changes. The added default task-status event belongs in Agents history under spec §3.9’s status-change subscriptions and ordinary deliveries plus v0’s Agents lifecycle record. Exact event text/alpha recipient are asserted. Latest-window, limit, item/session intersection, exact nonrecipient exclusions and MCP/history ID checks remain intact; indexes follow the added row. Whitespace check passes.
+A-553 reports 2/2 affected tests and typecheck passing. No suite repeat or edits; fresh full-suite result separately pending.
+Evidence: A-554, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-554-t-142-test-only-review-at-b5d479c-clear.md.
