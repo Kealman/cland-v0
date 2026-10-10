@@ -600,7 +600,7 @@ export class CodexAdapter implements HarnessAdapter {
           turn?: {
             id?: string;
           };
-        }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause), text_elements: [] }], ...(request.effort ? { effort: request.effort } : {}) }));
+        }>('turn/start', { threadId, input: [{ type: 'text', text: firstTurn(request.name, request.clause) + (request.brief ? `\n\n${envelope(request.brief, null)}` : ''), text_elements: [] }], ...(request.effort ? { effort: request.effort } : {}) }));
         // the turn is accepted: the thread is active, though its `thread/status/changed` may come after this result
         // (seen with 0.160.0); a launch never reports the idle that preceded the clause turn
         if (typeof turn.turn?.id === 'string')

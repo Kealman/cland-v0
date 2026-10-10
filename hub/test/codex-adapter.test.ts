@@ -17,6 +17,55 @@ import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, 
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
+for (const preassigned of [false, true]) test(`an Implementer begins on its launch brief after the clause in the first Codex turn (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const brief = 'Build from this Codex launch brief.';
+  if (preassigned) assert.equal((await ui.request({ type: 'role.set', session: 'impl-brief', role: 'implementer' })).ok, true);
+  const launched = await launch(ui, 'impl-brief', { ...(preassigned ? {} : { role: 'implementer' }), brief });
+  const input = await eventually('brief taken up in the native first turn', async () => {
+    const log = await fake.log(launched.pid!);
+    return log.includes(brief) ? log : undefined;
+  });
+  assert.match(input, /turn [^\n]+ item: cland hub: you hold the role Implementer/);
+  assert.ok(input.indexOf('you hold the role Implementer') < input.indexOf(brief));
+  await presentAs(ui, 'impl-brief', 'idle');
+  const log = await fake.log(launched.pid!);
+  assert.equal(log.split('\n').filter(line => line.includes('turn/start input')).length, 1);
+  assert.equal(log.split('\n').filter(line => line.includes('turn/start toolOutput')).length, 0, 'no second brief injection');
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
+  const recorded = history.messages.find(m => m.text === brief);
+  assert.equal(recorded?.stage, 'injected');
+  await eventually('carried brief stages journalled', async () => {
+    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
+    return ['send', 'acked', 'injected'].every(event => journal.some(entry => entry.id === recorded!.id && entry.event === event)) || undefined;
+  });
+});
+
+test('an early Codex hello does not inject its brief when the native first turn is refused', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, { ...fake.env, FAKE_CODEX_FAIL_FIRST_TURN: '1' });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const brief = 'Only an accepted native input injects this brief.';
+  const refused = await ui.request({ type: 'session.launch', name: 'impl-refused', role: 'implementer', harness: 'codex', brief }, 30_000);
+  assert.equal(refused.ok, false);
+  assert.match(refused.error!, /model refused the first turn/);
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; text: string; stage?: string }> };
+  const recorded = history.messages.find(message => message.text === brief);
+  assert.equal(recorded?.stage, 'dropped');
+  assert.ok(!ui.frames.some(frame => frame.type === 'delivery' && frame.message === recorded!.id && frame.stage === 'injected'));
+  await eventually('refused brief journalled as dropped', async () => {
+    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
+    assert.ok(!journal.some(entry => entry.id === recorded!.id && entry.event === 'injected'));
+    return journal.some(entry => entry.id === recorded!.id && entry.event === 'dropped') || undefined;
+  });
+});
+
 test('a failed Codex turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);

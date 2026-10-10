@@ -140,6 +140,7 @@ const TOOLS = [
         effort: { type: 'string', description: "The reasoning effort (Claude Code: low … max); the role's default when absent" },
         cwd: { type: 'string', description: 'The working directory: absolute or relative to the project root; the project root when absent' },
         item: { type: 'string', description: "An Implementer's item (T-12): the session starts in the item's task worktree, made first when missing, and the item's claim becomes the session's. Not with cwd" },
+        brief: { type: 'string', description: 'The first task: text, or an artifact id A-<n> whose content is read at launch. Delivered once after the role clause; never repeated on reconnect' },
       },
       required: ['name'],
     },
@@ -383,6 +384,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
               ...(typeof args.effort === 'string' ? { effort: args.effort } : {}),
               ...(typeof args.cwd === 'string' ? { cwd: args.cwd } : {}),
               ...(typeof args.item === 'string' ? { item: args.item } : {}),
+              ...(typeof args.brief === 'string' ? { brief: args.brief } : {}),
             },
             60_000,
           )) as Record<string, unknown>;

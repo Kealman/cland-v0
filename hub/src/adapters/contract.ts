@@ -93,6 +93,8 @@ export type SpawnRequest = LaunchPolicy & {
    *  a thread has no rollout before one). An adapter that uses it declares `clauseAtSpawn`, and the hub does not
    *  inject the clause again at the session's first hello. */
   clause?: string | null;
+  /** A one-time launch brief, carried after the clause by an adapter with `clauseAtSpawn`. */
+  brief?: Message;
   /** The item the session was launched for: its cwd is the item's task worktree. A harness that makes worktrees of
    *  its own is told to refuse them there (decision D8). */
   item?: string | null;

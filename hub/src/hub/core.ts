@@ -175,8 +175,8 @@ export class HubCore {
   #launchedRole: ((name: string, sessionId: string, launchToken?: string) => LaunchedRole | null) | null = null;
   #pendingLaunch: ((sessionId: string) => string | null) | null = null;
   #launchIdentity: ((credential: string, sessionId: string) => LaunchIdentityBinding | null) | null = null;
-  /** A clause the session already has (its launch's first turn), recorded as injected: sent once with the next flush. */
-  readonly #carriedNotice = new Map<string, string>();
+  /** Clause and brief already carried by the launch's first turn, recorded as injected: notified once at flush. */
+  readonly #carriedNotice = new Map<string, string[]>();
   /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
   readonly #roleNotices = new Map<string, RoleClause>();
   /** Told of every accepted hello (a pending claim move waits for its receiver's session id). */
@@ -590,7 +590,13 @@ export class HubCore {
     if (this.#roles && role !== null) {
       // a launch whose first turn already carried the clause: recorded (the journal), not injected again
       const id = this.#recordClause(connection, carried ? 'assigned at launch (first turn)' : fresh ? 'assigned at launch' : 'hello', undefined, carried);
-      if (carried && id) this.#carriedNotice.set(name, id);
+      if (carried && id) this.#carriedNotice.set(name, [id]);
+    }
+    // The launch queued its brief before spawn. Its first hello may arrive after a hub restart.
+    for (const brief of hello.launchToken ? this.#store.activateLaunchBriefs(name, hello.launchToken, !carried) : []) {
+      if (this.#store.stage(brief.id) === 'injected') {
+        this.#carriedNotice.set(name, [...(this.#carriedNotice.get(name) ?? []), brief.id]);
+      } else this.#store.bindLaunchClause(brief.id, name);
     }
     if (fresh) {
       this.#log({ event: 'role-taken-at-launch', session: name, sessionId: hello.sessionId, role });
@@ -656,15 +662,13 @@ export class HubCore {
       this.#afterCommit(() => this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name }));
       this.#afterCommit(() => this.#emitStage(message.id));
     }
-    // a clause the launch already handed over: the spoke learns it (it acks; nothing is injected again)
+    // The current clause always precedes a carried brief's notice, including a first hello after restart.
     const carried = this.#carriedNotice.get(name);
-    if (carried !== undefined) {
-      this.#carriedNotice.delete(name);
-      const message = this.#store.message(carried);
-      if (message) this.#sendTo(connection, message);
-    }
+    this.#carriedNotice.delete(name);
+    const notices = (carried ?? []).flatMap(id => this.#store.message(id) ?? []);
     // a role clause first: what else waited is read under the role
-    const ordered = [...deliver.filter((m) => this.#roleNotices.has(m.id)), ...deliver.filter((m) => !this.#roleNotices.has(m.id))];
+    const hasClause = (m: Message) => this.#roleNotices.has(m.id) || m.digest?.some(note => this.#roleNotices.has(note.id));
+    const ordered = [...notices.filter(hasClause), ...deliver.filter(hasClause), ...notices.filter(m => !hasClause(m)), ...deliver.filter(m => !hasClause(m))];
     for (const message of ordered) this.#sendTo(connection, message);
     if (deliver.length) this.#log({ event: 'flushed', session: name, count: deliver.length });
   }
@@ -902,6 +906,45 @@ export class HubCore {
   onSessionHello(listener: (name: string, sessionId: string, launchToken?: string) => void): () => void {
     this.#hellos.add(listener);
     return () => this.#hellos.delete(listener);
+  }
+
+  /** Persist the one-time first input before spawning; hello binds its clause before the post-welcome flush. */
+  recordLaunchBrief(message: Message, launchId: string, carried: boolean): void {
+    const name = message.to[0]!;
+    this.#store.transaction(() => {
+      // A carried input contains only clause and brief; leave held notes for the next ordinary delivery.
+      this.#record(message, [{ session: name, state: 'queued' }], this.#now().getTime(), null, !carried);
+      this.#store.rememberLaunchBrief(message.id, name, launchId);
+    });
+    this.#store.touchTopic(AGENTS.id, message.ts);
+    this.#emitMessage(message);
+    this.#emitStage(message.id);
+    this.#log({ event: 'send', id: message.id, from: message.from, kind: message.kind, to: message.to, topic: message.topic, bytes: Buffer.byteLength(message.text), outcomes: [`${name}:queued`] });
+  }
+
+  /** A successful native first turn already carried this queued message; never inject it a second time. */
+  completeCarriedBrief(launchId: string, sessionId: string): void {
+    for (const message of this.#store.launchBriefs(launchId)) {
+      const name = message.to[0]!;
+      if (this.#store.markDelivered(message.id, name, this.#now().getTime())) {
+        this.#log({ event: 'acked', id: message.id, session: name, source: 'launch first turn' });
+        this.#emitStage(message.id);
+      }
+      this.markInjected(message.id, name);
+    }
+    // An early hello already got welcome and clause; now the spoke learns the accepted brief without injecting it.
+    const connection = this.connectionOf(sessionId);
+    if (connection) for (const message of this.#store.activateLaunchBriefs(connection.name, launchId, false)) this.#sendTo(connection, message);
+  }
+
+  cancelLaunchBrief(launchId: string): void {
+    for (const { message, dropped, released } of this.#store.cancelLaunchBriefs(launchId)) {
+      if (released.notes.length) this.#log({ event: 'digest-released', ...released });
+      if (dropped) {
+        this.#log({ event: 'dropped', reason: 'launch failed', id: message.id, session: message.to[0]! });
+        this.#emitStage(message.id);
+      }
+    }
   }
 
   /** A session as it is shown everywhere: `name [Role]` with the role it holds (live, else as remembered). */

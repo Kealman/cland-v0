@@ -4,10 +4,11 @@ import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { withRole } from '../names.ts';
 
-export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--effort e] [--cwd dir | --item T-<n>]
+export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--effort e] [--cwd dir | --item T-<n>] [--brief text|A-<n>]
                   launch a harness session through the hub; a role's launch defaults
                   (.cland/roles.toml) fill the harness, model and effort not given; --item (an
-                  Implementer's) starts it in the item's task worktree and gives it the item's claim
+                  Implementer's) starts it in the item's task worktree and gives it the item's claim;
+                  --brief delivers text or an artifact's content once after the role clause
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
@@ -33,7 +34,7 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     return 1;
   }
   const json = rest.includes('--json');
-  const valueFlags = new Set(['--role', '--model', '--harness', '--cwd', '--effort', '--item']);
+  const valueFlags = new Set(['--role', '--model', '--harness', '--cwd', '--effort', '--item', '--brief']);
   const name = rest.find((a, i) => !a.startsWith('--') && !valueFlags.has(rest[i - 1] ?? ''));
   const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
@@ -45,9 +46,11 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       const dir = flag(rest, '--cwd');
       const effort = flag(rest, '--effort');
       const item = flag(rest, '--item');
+      const brief = flag(rest, '--brief');
+      if (rest.includes('--brief') && brief === undefined) throw new Error('--brief needs text or an artifact id A-<n>');
       const v = (await askHubFrame(
         d,
-        { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(dir ? { cwd: dir } : {}), ...(effort ? { effort } : {}), ...(item ? { item } : {}) },
+        { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(dir ? { cwd: dir } : {}), ...(effort ? { effort } : {}), ...(item ? { item } : {}), ...(brief !== undefined ? { brief } : {}) },
         60_000,
       )) as { process: HarnessProcessView; claim?: { session: string } | null; worktree?: { path: string; branch: string } | null; reason?: string };
       const where = item ? `\n    ${item}: ${v.worktree ? `worktree ${v.worktree.path} on ${v.worktree.branch}` : (v.reason ?? 'no worktree')}; claimed by ${v.claim?.session ?? '-'}` : '';

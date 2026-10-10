@@ -15,6 +15,23 @@ import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, event
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
+for (const preassigned of [false, true]) test(`an Implementer begins on its launch brief after the OpenCode role clause without another send (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const brief = 'Build from this OpenCode launch brief.';
+  if (preassigned) assert.equal((await ui.request({ type: 'role.set', session: 'impl-brief', role: 'implementer' })).ok, true);
+  const launched = await launch(ui, 'impl-brief', { ...(preassigned ? {} : { role: 'implementer' }), brief });
+  const prompts = await eventually('brief reaches the native harness', async () => {
+    const log = await fake.prompts(launched.harnessSessionId!);
+    return log.includes(brief) ? log : undefined;
+  });
+  assert.ok(prompts.indexOf('you hold the role Implementer') < prompts.indexOf(brief));
+  assert.equal(prompts.split('\n').filter(line => line.startsWith('prompt ')).length, 1, 'the first harness input includes clause and brief');
+  assert.equal(prompts.split(brief).length - 1, 1);
+});
+
 type Presence = { name: string; sessionId: string; state: string; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };

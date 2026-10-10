@@ -12,12 +12,12 @@
 //   launch: a signal or a bridge names the launch it comes from (the cland session id the hooks and the mod
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
-import type { HarnessProcessView, SessionState } from '../protocol.ts';
+import type { HarnessProcessView, Message, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal } from './contract.ts';
 import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
@@ -29,7 +29,7 @@ import { systemProcesses } from '../system-processes.ts';
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
 /** `item`: the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
-export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null; item?: string | null };
+export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
 /** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
 export class InvalidLaunchCwd extends Error {}
@@ -334,6 +334,9 @@ export class Sessions {
       entry.stages.roleRolledBack = true;
       this.#table.pendingStop(entry);
     }
+    // Brief settlement belongs to this receipt's launch credential. A failure here keeps the stopped
+    // process's receipt for retry; it never bypasses the owned-process stop above.
+    if (entry.ownership) this.#core.cancelLaunchBrief(entry.ownership.credential);
     this.#table.clearPendingStop(process.sessionId);
     for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
     this.#pendingStops.delete(process.sessionId);
@@ -411,7 +414,8 @@ export class Sessions {
     authorize();
     const refusal = nameRefusal(request.name, new Set(['human']));
     if (refusal) throw new Error(refusal);
-    const role = request.role ?? null;
+    const role = request.role ?? this.#core.store.roleOf(request.name);
+    const effectiveRequest = { ...request, role };
     if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
@@ -463,17 +467,19 @@ export class Sessions {
       const cwd = checking.cwd;
       let info;
       try { info = await checking.info; } catch { info = null; }
+      const brief = request.brief === undefined ? undefined : await this.#resolveBrief(request.name, request.brief, resumed, authorize);
       return await resumed(() => {
         // Re-read the grant and exclusivity after stat, with refusal and rollback in this same timed stretch.
         try {
           authorize();
           admission?.validate();
+          if (request.role == null && this.#core.store.roleOf(request.name) !== role) throw new Error(`session "${request.name}" changed role while launching; retry the launch`);
           const reserved = this.#core.nameReservation(request.name);
           if (reserved) throw new Error(reserved);
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(request, cwd, resumed, reservation, () => admission?.release(), launchToken, identity);
+          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => admission?.release(), launchToken, identity, brief);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -483,7 +489,34 @@ export class Sessions {
     } finally { resumed(() => slot.release()); }
   }
 
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership): Promise<HarnessProcessView> {
+  async #resolveBrief(name: string, source: string, resumed: Resumed, authorize: () => void): Promise<Message> {
+    let text = source;
+    if (/^A-\d+$/.test(source)) {
+      const artifact = resumed(() => {
+        authorize();
+        const artifact = this.#core.store.artifact(source);
+        if (!artifact || artifact.fileDeleted) throw new Error(`unknown or unavailable brief artifact "${source}"`);
+        return artifact;
+      });
+      let content: string;
+      try { content = await readFile(artifact.path, 'utf8'); }
+      catch { return resumed(() => { throw new Error(`cannot read brief artifact "${source}"`); }); }
+      text = resumed(() => {
+        authorize();
+        const current = this.#core.store.artifact(source);
+        if (!current || current.fileDeleted || current.path !== artifact.path) throw new Error(`brief artifact "${source}" changed while reading`);
+        return content;
+      });
+    }
+    return resumed(() => {
+      authorize();
+      if (!text.trim()) throw new Error('a launch brief must not be empty');
+      if (!this.#core.textFits(text)) throw new Error('a launch brief exceeds the message size limit');
+      return { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [name], text, ts: new Date().toISOString(), topic: 'agents', kind: 'report' };
+    });
+  }
+
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message): Promise<HarnessProcessView> {
     const role = request.role ?? null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
@@ -500,10 +533,14 @@ export class Sessions {
     let conflict = false;
     let accepted = false;
     try {
-      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed);
+      if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
+      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed);
       resumed(() => {
-        if (!launchIdentityRefusal(identity, owned!.sessionId)) identity.sessionIds.add(owned!.sessionId);
+        const proven = !launchIdentityRefusal(identity, owned!.sessionId);
+        if (proven) identity.sessionIds.add(owned!.sessionId);
         identity.returnedId = owned!.sessionId;
+        // Returning from a carried spawn confirms the native first turn, independently of the hello timing.
+        if (proven && brief && clause !== null && adapter.clauseAtSpawn === true) this.#core.completeCarriedBrief(launchToken, owned!.sessionId);
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
       const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed) : null);
@@ -554,6 +591,10 @@ export class Sessions {
       }
       return resumed(() => {
         // Returned processes own their rollback through the durable stage receipt, including failures.
+        if (!owned && brief) {
+          try { this.#core.cancelLaunchBrief(launchToken); }
+          catch (error) { detail += `; brief cleanup failed: ${error instanceof Error ? error.message : String(error)}`; }
+        }
         if (role !== null && reservation && !owned) {
           const proven = [...identity.sessionIds];
           for (const id of proven.length ? proven : [null]) this.#core.releaseLaunchRole(request.name, role, reservation.previous, 'launch-failed', id, reservation.previousSessionId);

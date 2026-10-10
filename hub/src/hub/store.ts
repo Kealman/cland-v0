@@ -158,6 +158,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'deliveries', column: 'session_id', type: 'text' },
   /** A progress note's turn-starting delivery, fixed before transport and reused on every retry. */
   { table: 'deliveries', column: 'digest_id', type: 'text' },
+  { table: 'deliveries', column: 'launch_brief', type: 'text' },
+  { table: 'deliveries', column: 'launch_brief_ready', type: 'integer not null default 0' },
   { table: 'deliveries', column: 'event_count', type: 'integer not null default 1' },
   { table: 'subscriptions', column: 'digest', type: "text not null default 'turn'" },
   { table: 'subscriptions', column: 'threshold_json', type: 'text' },
@@ -396,12 +398,13 @@ export class Store implements HygieneMemory {
   }
 
   /** The notices of one kind still waiting for a session (queued, or accepted and not injected) are superseded:
-   *  marked dropped. Returns their ids. */
+   *  marked dropped and detached from any initial launch batch, so a retry cannot carry stale authority.
+   *  Returns their ids. */
   dropNotices(session: string, notice: string): string[] {
     return (
       this.#db
         .prepare(
-          `update deliveries set state = 'dropped' where session = ? and state in ('queued', 'delivered', 'uncertain')
+          `update deliveries set state = 'dropped', digest_id = null where session = ? and state in ('queued', 'delivered', 'uncertain')
            and message_id in (select id from messages where notice = ?) returning message_id`,
         )
         .all(session, notice) as Row[]
@@ -534,7 +537,7 @@ export class Store implements HygieneMemory {
 
   /** Record a message and the state of each addressee's delivery, together: a message is never stored with
    *  only some of its deliveries. */
-  record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null): void {
+  record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null, bindHeld = true): void {
     this.#transaction(() => {
       const seq = Number((this.#db.prepare("update counters set value = value + 1 where name = 'message_seq' returning value").get() as Row).value);
       this.#db
@@ -569,8 +572,8 @@ export class Store implements HygieneMemory {
       // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
       // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
       const kind = notice ?? message.kind;
-      if (!isHeldDelivery({ kind, ...(message.detail ? { detail: message.detail } : {}) }) && kind !== 'role') {
-        for (const d of deliveries) this.#bindProgress(message.id, d.session, seq);
+      if (bindHeld && !isHeldDelivery({ kind, ...(message.detail ? { detail: message.detail } : {}) }) && kind !== 'role') {
+        for (const d of deliveries) if (d.state === 'queued') this.#bindProgress(message.id, d.session, seq);
       }
     });
   }
@@ -650,7 +653,8 @@ export class Store implements HygieneMemory {
     const dropped = this.expireQueued(session, now, ttlMs);
     const rows = this.#db
       .prepare(`select m.*, d.queued_at as queued_at from deliveries d join messages m on m.id = d.message_id
-        where d.session = ? and d.state = ? and d.digest_id is null order by m.seq`)
+        where d.session = ? and d.state = ? and d.digest_id is null
+        and (d.launch_brief is null or d.launch_brief_ready = 1) order by m.seq`)
       .all(session, 'queued') as Row[];
     const deliver: Message[] = [];
     for (const row of rows) {
@@ -751,10 +755,58 @@ export class Store implements HygieneMemory {
     const eventNotes = members.filter(note => note.kind === 'event');
     const visible = new Set(eventNotes.filter(note => note.detail?.final === true).slice(0, cap).map(note => note.id));
     for (const note of eventNotes) if (visible.size < cap) visible.add(note.id);
-    const digest = members.filter(note => note.kind !== 'event' || visible.has(note.id));
+    // A first launch input carries its authority before the brief and any held notes.
+    const digest = members.filter(note => note.kind !== 'event' || visible.has(note.id)).sort((a, b) => Number(b.kind === 'role') - Number(a.kind === 'role'));
     const hidden = eventNotes.length - visible.size;
     if (hidden) digest.push({ id: `${root}:event-summary`, from: 'hub', fromKind: 'hub', via: 'hub', to: [session], ts: message.ts, kind: 'event', text: `event · and ${hidden} more`, detail: { count: hidden, summary: true } });
     return digest.length ? { ...message, digest } : message;
+  }
+
+  /** Bundle the initial queued clause into its launch brief. The records and stages stay separate;
+   * a single acknowledgement/injection settles both, just like an ordinary delivery digest. */
+  bindLaunchClause(briefId: string, session: string): void {
+    this.#db.prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
+      and digest_id is null and message_id in (select id from messages where notice = 'role')`).run(briefId, session);
+  }
+
+  /** A pending first input survives restart and follows any rename with its ordinary delivery row. */
+  rememberLaunchBrief(id: string, session: string, launchId: string): void {
+    this.#db.prepare('update deliveries set launch_brief = ? where message_id = ? and session = ?').run(launchId, id, session);
+  }
+
+  /** Only this launch's accepted hello can make its brief an ordinary first input. Carried input waits for
+   * native acceptance; an already injected carried brief becomes a spoke notice without another injection. */
+  activateLaunchBriefs(session: string, launchId: string, allowQueued: boolean): Message[] {
+    return this.#transaction(() => {
+      const rows = this.#db.prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
+        where d.session = ? and d.launch_brief = ? and d.launch_brief_ready = 0
+        and (d.state = 'injected' or (? and d.state = 'queued')) order by m.seq`).all(session, launchId, Number(allowQueued)) as Row[];
+      for (const row of rows) this.#db.prepare('update deliveries set launch_brief_ready = 1 where message_id = ? and session = ?').run(row.id as string, session);
+      return rows.map(toMessage);
+    });
+  }
+
+  /** Delivery ownership remains attached to the launch through acceptance, cancellation and recovery. */
+  launchBriefs(launchId: string): Message[] {
+    return (this.#db.prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
+      where d.launch_brief = ? order by m.seq`).all(launchId) as Row[]).map(toMessage);
+  }
+
+  /** A failed launch cannot leave an undelivered first input for a later launch under its name. */
+  cancelLaunchBriefs(launchId: string): Array<{ message: Message; dropped: boolean; released: ReleasedDigest }> {
+    return this.#transaction(() => this.launchBriefs(launchId).map(message => {
+      const id = message.id, session = message.to[0]!;
+      const members = this.#db.prepare('select message_id, state from deliveries where digest_id = ? and session = ?').all(id, session) as Row[];
+      const released: ReleasedDigest = { trigger: id, session, notes: members.map(row => row.message_id as string), reheld: members.filter(row => ['queued', 'delivered', 'uncertain'].includes(row.state as string)).map(row => row.message_id as string) };
+      // Like deleting an ordinary trigger: pending notes return at their original TTL; settled notes stay settled.
+      this.#db.prepare(`update deliveries set digest_id = null,
+        state = case when state in ('queued', 'delivered', 'uncertain') then 'queued' else state end,
+        delivered_at = case when state in ('queued', 'delivered', 'uncertain') then null else delivered_at end
+        where digest_id = ? and session = ?`).run(id, session);
+      const dropped = this.#db.prepare(`update deliveries set state = 'dropped' where message_id = ? and session = ?
+        and state in ('queued', 'delivered', 'uncertain')`).run(id, session).changes > 0;
+      return { message, dropped, released };
+    }));
   }
 
   #bindProgress(messageId: string, session: string, seq: number): void {

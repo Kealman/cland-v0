@@ -1,10 +1,93 @@
 // Coordinator launches through the spoke's MCP interface, with the fake harness at the process boundary.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+
+for (const preassigned of [false, true]) test(`a Coordinator launches an Implementer with a launch brief after its role clause, without another send (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const tool = (await coord.client.listTools()).tools.find(tool => tool.name === 'session.launch');
+  const briefSchema = tool?.inputSchema.properties?.brief;
+  assert.ok(briefSchema && 'type' in briefSchema);
+  assert.equal(briefSchema.type, 'string');
+  assert.ok(!tool?.inputSchema.required?.includes('brief'));
+  const brief = 'Implement the launch brief without another message.';
+  if (preassigned) {
+    const ui = await connectUi(t, discovery);
+    assert.equal((await ui.request({ type: 'role.set', session: 'impl-brief', role: 'implementer' })).ok, true);
+  }
+  const launched = await coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', {
+    name: 'impl-brief', ...(preassigned ? {} : { role: 'implementer' }), harness: 'claude-code', brief,
+  });
+  assert.equal(launched.ok, true, launched.error);
+  const input = await eventually('brief reaches the native harness', async () => {
+    const log = await fake.log(launched.process.harnessId!);
+    return log.includes(brief) ? log : undefined;
+  });
+  assert.ok(input.indexOf('you hold the role Implementer') < input.indexOf(brief));
+  assert.equal(input.split('\n').filter(line => line.includes('submitted:')).length, 1, 'the first harness input includes clause and brief');
+  const journal = await eventually('brief journalled as a message', async () => {
+    const lines = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean);
+    const events = lines.map(line => JSON.parse(line) as { event: string; from?: string; to?: string[]; id?: string });
+    return events.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief')) ? events : undefined;
+  });
+  const sent = journal.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief'))!;
+  assert.ok(journal.some(event => event.event === 'acked' && event.id === sent.id));
+});
+
+test('launch resolves an artifact brief at launch and refuses an unknown artifact before starting a harness', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  await startDaemon(t, root, fake.env);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const refused = await coord.call<{ ok: boolean; error?: string }>('session.launch', {
+    name: 'impl-artifact', role: 'implementer', harness: 'claude-code', brief: 'A-999999',
+  });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error!, /brief artifact/);
+  assert.deepEqual(await fake.sessions(), []);
+  const content = 'Implement the artifact brief.\nThen report the result.';
+  const created = await coord.call<{ ok: boolean; artifact: { id: string; path: string } }>('artifact.create', {
+    kind: 'prompt', title: 'Launch brief', topic: 'general', content: 'Old brief',
+  });
+  assert.equal(created.ok, true);
+  await writeFile(created.artifact.path, content);
+  const launched = await coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', {
+    name: 'impl-artifact', role: 'implementer', harness: 'claude-code', brief: created.artifact.id,
+  });
+  assert.equal(launched.ok, true, launched.error);
+  const log = await eventually('artifact content delivered', async () => {
+    const log = await fake.log(launched.process.harnessId!);
+    return log.includes(content) ? log : undefined;
+  });
+  assert.ok(!log.includes('Old brief'));
+});
+
+test('cland session launch forwards text and artifact briefs', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const content = 'Start on the CLI artifact brief.';
+  const made = await ui.request({ type: 'artifact.create', kind: 'note', title: 'CLI brief', topic: 'general', content });
+  assert.equal(made.ok, true, made.error);
+  const artifact = (made.value as { artifact: { id: string } }).artifact;
+  for (const [name, brief, expected] of [['cli-text', 'Start on the CLI text brief.', 'Start on the CLI text brief.'], ['cli-artifact', artifact.id, content]]) {
+    const launched = await clandWithEnv(root, fake.env, 'session', 'launch', name!, '--role', 'implementer', '--harness', 'claude-code', '--brief', brief!, '--json');
+    assert.equal(launched.code, 0, launched.stderr);
+    const process = (JSON.parse(launched.stdout) as { process: HarnessProcessView }).process;
+    await eventually('CLI brief reaches the native harness', async () => (await fake.log(process.harnessId!)).includes(expected!) || undefined);
+  }
+});
 
 test('a Coordinator spoke launches a session in the requested absolute cwd', async (t) => {
   const root = await tempProject(t);
