@@ -233,9 +233,12 @@ local function wire_client(client)
   end)
   -- the tracker's index changed (#36): the items panel, the board and an item view follow at once
   client:on('task', function(event)
+    -- Membership changes must invalidate the former epic before replacing/removing the child.
+    if event.id then require('cland.plan').invalidate(event.id) end
     require('cland.items').apply_event(event)
     if event.id then
       require('cland.item_view').invalidate(event.id)
+      require('cland.plan').invalidate(event.id)
     end
   end)
   -- the Coordinator's vacancy (#29): the top bar's chip follows the hub's events at once
@@ -286,6 +289,7 @@ M.HELP = {
   'Panels    ␣i items (left) · ␣n inbox · ␣s sessions · ␣t topics (right; the active key hides it)',
   'Items     1 board · 2 in work · 3 needs you · 4 done · 5 map · 6 all (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
+  'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣␣ the previous centre view',
   'Graph     h/j/k/l nodes · ^/$ ends · ↵ item · gi/gt/gs · p/P parent · d done · o turn · r edges · :Cland graph [T-n]',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
@@ -302,7 +306,7 @@ M.HELP = {
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
-  'Views     :Cland view thread <topic> | session <name> | item <id> | board | log | inbox',
+  'Views     :Cland view thread <topic> | session <name> | item <id> | plan <epic> | board | log | inbox',
   '',
   'q or Esc closes this',
 }
@@ -387,6 +391,7 @@ local function keymaps()
     require('cland.views').resolve_topic()
   end, 'resolve the topic')
   map('<leader>?', M.help, 'keys')
+  map('gp', function() require('cland.plan').open() end, 'its epic plan')
   map('gi', function()
     motions.go('item')
   end, 'its item')
@@ -528,6 +533,7 @@ function M.start(opts)
   require('cland.views').setup(M.client)
   require('cland.sessions').setup(M.client)
   require('cland.item_view').setup(M.client)
+  require('cland.plan').setup(M.client)
   -- General's history and events are wired before the client starts
   require('cland.views').topic('general')
 

@@ -187,6 +187,8 @@ function M.context()
       return v.id .. ' · session · ' .. how
     end
     return v.id .. ' · session · ' .. how .. ' · ' .. (s.live and s.state or 'down') .. (s.item and (' · ' .. s.item) or '')
+  elseif v.kind == 'plan' then
+    return v.id .. ' · epic plan'
   elseif v.kind == 'item' then
     local it = state.item(v.id)
     return v.id .. ' · item' .. (it and (' · ' .. it.state .. (it.claim and (' · claim ' .. it.claim.session) or '')) or '')
@@ -357,6 +359,8 @@ function M.winbar(win)
     return head(win, s.label, { { g .. ' ' .. require('cland.panels').session_meta(s), ghl .. 'Bar' }, { s.item and (' · ' .. s.item) or '', 'ClandDimBar' } })
   elseif role == 'log' then
     return head(win, 'AGENTS' .. require('cland.agents_log').filter_label(), { { #require('cland.artifacts').all('agents') .. ' artifacts · ga  ', 'ClandBlueBar' }, { 'f filter · F clear · r reply', 'ClandDimBar' } })
+  elseif role == 'plan' then
+    return head(win, views().title({kind='plan', id=vim.b[buf].cland_item}):upper(), { { 'a approve · d discuss · e edit', 'ClandDimBar' } })
   elseif role == 'item' then
     return head(win, views().title({kind='item', id=vim.b[buf].cland_item}):upper(), { { '␣␣ back', 'ClandDimBar' } })
   elseif role == 'board' or role == 'inbox_full' then

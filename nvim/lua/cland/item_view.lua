@@ -405,7 +405,7 @@ function M.compose(id, width)
       vim.list_extend(rows, body_lines(it, d, width))
     end
     rows[#rows + 1] = {}
-    for _, line in ipairs(wrap('e edit file · ca add criterion · ce edit · cd remove · gt topic · gs session · gi open id · ␣␣ back', width - 1)) do
+    for _, line in ipairs(wrap('gp plan · e edit file · ca add criterion · ce edit · cd remove · gt topic · gs session · gi open id · ␣␣ back', width - 1)) do
       rows[#rows + 1] = { { ' ' .. line, 'ClandFaint' } }
     end
   end

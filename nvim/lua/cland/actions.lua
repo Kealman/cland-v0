@@ -39,7 +39,7 @@ group('global', {
   {'<leader>c', 'Focus composer'}, {'<leader>P', 'Draft a prompt'},
   {'<leader>p', 'Open palette'}, {'<leader>l', 'Launch a session'}, {'<leader>A', 'Launch an Aide'},
   {'<leader><leader>', 'Previous centre view'}, {'<leader>r', 'Resolve this topic'},
-  {'<leader>?', 'Keys'}, {'gi', 'Go to its item'}, {'gt', 'Go to its topic'}, {'gs', 'Go to its session'},
+  {'<leader>?', 'Keys'}, {'gp', 'Open its epic plan'}, {'gi', 'Go to its item'}, {'gt', 'Go to its topic'}, {'gs', 'Go to its session'},
 })
 for _, direction in ipairs({'h', 'j', 'k', 'l'}) do
   add('global', '<C-' .. direction .. '>', 'Focus ' .. ({h='left',j='down',k='up',l='right'})[direction], {'n','i','s','t','x','o','c'})
@@ -78,6 +78,7 @@ group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'
   {'f','Filter Agents by item or session'}, {'F','Clear Agents filter'}})
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
+group('plan', {{'a','Approve epic plan'}, {'d','Discuss plan with the Lead'}, {'e','Edit epic plan file'}})
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})
 group('board', {{'p','Next board parent'}, {'P','Previous board parent'}, {'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
@@ -277,6 +278,7 @@ for _, kind in ipairs({'thread','session','item','board','log','inbox','artifact
     layout().show({kind=kind, id=id or ((kind == 'thread' or kind == 'artifacts') and 'general' or nil)}, {insert=kind == 'session'})
   end)
 end
+command('view plan', 'Open epic plan view', function(args) require('cland.plan').open(args[1]) end, 'global:gp')
 command('topic new', 'New topic', function(args)
   if #args == 0 then views().prompt_topic() else views().create_topic(table.concat(args,' ')) end
 end, 'topics:n')

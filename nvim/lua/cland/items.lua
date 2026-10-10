@@ -394,6 +394,8 @@ end
 
 --- The panel header uses the shared board composition; map retains its v0 summary.
 function M.summary()
+  local id = require('cland.plan').panel_id()
+  if id then return id .. ' · plan' end
   if M.filter() == 'all' then return 'all · ' .. #state.S.items .. ' items' end
   if M.filter() ~= 'map' then return require('cland.vboard').summary() end
   local n = 0
@@ -466,6 +468,8 @@ end
 
 --- Draw the panel's rows into canvas `c` (panels.lua); returns the footer lines.
 function M.render(c)
+  local plan = require('cland.plan')
+  if plan.panel_id() then return plan.render_panel(c, plan.panel_id()) end
   if M.filter() == 'all' then
     -- Walk every tree once, including legacy missing parents and cycles. Hidden children
     -- are visited too, so they cannot reappear as roots below a folded ancestor.
