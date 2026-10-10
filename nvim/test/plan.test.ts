@@ -50,6 +50,12 @@ async function waitPlan(client: Client, id: string, text: string) {
   assert.ok((await planText(client, id)).includes(text), text);
 }
 
+test('graph nodes show stages from a plan accepted by the real hub', { skip }, async t => {
+  const { client, epic, a, b, c } = await setup(t);
+  await client.input(`<Esc>:Cland graph ${epic.id}<CR>`);
+  await client.waitScreen(s => s.includes(`${a.id} S1`) && s.includes(`${b.id} S1`) && s.includes(`${c.id} S2`), 'real plan stage tags');
+});
+
 test('gp shows stages, lanes, overrides, gates and scoped stage tags; a keeps the real hub refusal visible', { skip }, async t => {
   const { root, client, epic, a, b, c, outside } = await setup(t);
   await client.input('gp');

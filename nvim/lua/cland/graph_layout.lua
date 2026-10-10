@@ -1055,6 +1055,7 @@ end
 --- Only sibling edges affect the graph; outside edges are named separately. Tray
 --- membership is decided before cycle removal, so a cyclic item stays visible.
 --- opts.reduce=false reveals the original edges; hidden retains the reduced ones.
+--- opts.include is an id set of unlinked items to keep in the layers (planned stages).
 function M.from_items(items, opts)
   local known, linked, edges, outside = {}, {}, {}, {}
   for _, item in ipairs(items) do
@@ -1072,7 +1073,7 @@ function M.from_items(items, opts)
   end
   local nodes, tray = {}, {}
   for _, item in ipairs(items) do
-    local list = linked[item.id] and nodes or tray
+    local list = (linked[item.id] or (opts and opts.include and opts.include[item.id])) and nodes or tray
     list[#list + 1] = item.id
   end
   local L = M.layout(nodes, edges, opts)
@@ -1137,6 +1138,7 @@ function M.fit_window(L, room, minimum, maximum)
     end
     lay.nodes, lay.tray, lay.outside = L.nodes, L.tray, L.outside
     lay.hidden, lay.cycles, lay.edges = L.hidden, L.cycles, L.edges
+    lay.inside, lay.against = L.inside, L.against
     return lay, original_layer
   end
   local best, from = wrap(minimum)

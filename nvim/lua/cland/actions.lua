@@ -83,6 +83,8 @@ group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})
 group('board', {{'p','Next board parent'}, {'P','Previous board parent'}, {'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
 group('graph', {{'p','Next graph parent'}, {'P','Previous graph parent'}, {'d','Toggle done tray nodes'},
+  {'s','Group graph by plan stage'},
+  {'gp','Open graph stage epic plan'},
   {'o','Turn graph sideways or vertical'}, {'r','Toggle implied blocking edges'},
   {'+','Widen graph labels'}, {'-','Narrow graph labels'},
   {'h','Previous node to the left'}, {'l','Next node to the right'}, {'j','Next node below'}, {'k','Previous node above'},

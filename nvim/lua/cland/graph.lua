@@ -5,7 +5,7 @@ local bit = require('bit')
 local state = require('cland.state')
 local items = require('cland.items')
 local G = require('cland.graph_layout')
-local M = { tray_done = false, orient = 'vertical', reduce = true, sel = {}, vmin = 20, width = 30 }
+local M = { tray_done = false, orient = 'vertical', reduce = true, stages = false, sel = {}, vmin = 20, width = 30 }
 local ns = api.nvim_create_namespace('cland.graph')
 local focus_ns = api.nvim_create_namespace('cland.graph.focus')
 
@@ -77,11 +77,12 @@ local function latest_verdict(it)
 end
 
 --- Badge rows stay separate so the claim cannot clip the verdict or fraction.
-function M.label(it, width)
+function M.label(it, width, stage)
   local done = it.status == 'done' or it.state == 'closed'
   local function chunk(text, group) return { text, done and 'ClandDim' or group } end
   local glyph = items.GLYPH[items.status(it)] or items.GLYPH.open
   local head = { chunk(glyph[1], glyph[2]), chunk(' ' .. it.id .. ' ', 'ClandDim') }
+  if stage then head[#head + 1] = chunk(stage .. ' ', 'ClandDim') end
   if not done and #items.open_blockers(it) > 0 then head[#head + 1] = chunk('◌ ', 'ClandDim') end
   local title = vim.split(vim.trim(it.title or ''), '\n', { plain = true })[1] or ''
   head[#head + 1] = chunk(title, 'ClandText')
@@ -115,9 +116,30 @@ end
 
 function M.compose(id, width)
   local kids = id and items.children(id) or {}
+  local parent = id and state.item(id)
+  local plan = require('cland.plan')
+  local owner = plan.owner(id)
+  local detail = owner and plan.get(owner)
+  local stages = detail and type(detail.plan) == 'table' and detail.plan.stages or {}
+  local tags, ranks, order, sequence = {}, {}, {}, 0
+  local grouped = M.stages and #stages > 0
+  for n, stage in ipairs(stages) do
+    for _, lane in ipairs(stage.lanes) do for _, node in ipairs(lane) do
+      sequence = sequence + 1
+      tags[node], ranks[node], order[node] = 'S' .. n, n, sequence
+    end end
+  end
+  if grouped then
+    table.sort(kids, function(a, b)
+      if order[a.id] or order[b.id] then return (order[a.id] or math.huge) < (order[b.id] or math.huge) end
+      return items.compare_rank(a, b)
+    end)
+    for _, it in ipairs(kids) do ranks[it.id] = ranks[it.id] or (#stages + 1) end
+  end
   local byid = {}
   for _, it in ipairs(kids) do byid[it.id] = it end
-  local L = G.from_items(kids, { reduce = M.reduce })
+  local L = G.from_items(kids, { reduce = M.reduce, rank = grouped and ranks or nil,
+    include = grouped and tags or nil, keep_order = grouped })
   local tray, folded = {}, 0
   for _, node in ipairs(L.tray) do
     if (byid[node].status == 'done' or byid[node].state == 'closed') and not M.tray_done then
@@ -130,12 +152,33 @@ function M.compose(id, width)
     L, W, origin = G.fit_window(L, math.max(3, width - 6), M.vmin, 40)
   end
   local left = M.orient == 'vertical' and 4 or 1
-  local cv, geometry = G.render(L, { width = W, top = 2, left = left, orient = M.orient,
-    pack = M.orient == 'vertical',
+  local cv, geometry = G.render(L, { width = W, top = grouped and 3 or 2, left = left, orient = M.orient,
+    pack = grouped or M.orient == 'vertical',
     measure = api.nvim_strwidth, tray_columns = math.max(1, math.floor((width - 2) / (W + 3))),
-    tray_hl = 'ClandSection', label = function(node, w) return M.label(byid[node], w) end })
-  local parent = id and state.item(id)
+    tray_hl = 'ClandSection', label = function(node, w) return M.label(byid[node], w, tags[node]) end })
   cv:put(0, 1, { { 'Graph · ' .. (parent and (id .. ' ' .. parent.title) or 'No current release'), 'ClandBold' } }, width - 2)
+  local headings = {}
+  if grouped then
+    for band, nodes in ipairs(L.layers) do
+      local n = M.orient == 'vertical' and origin[band] or band
+      local stage = stages[n]
+      local row = M.orient == 'vertical' and geometry.bounds.y[band] - 1 or 2
+      local col = M.orient == 'vertical' and left or geometry.bounds.col[band]
+      if M.orient == 'vertical' then
+        -- The incoming stub row contains vertical edge ports. Start beside the
+        -- first real node's port, or past the dummies in an otherwise empty band.
+        for _, node in ipairs(nodes) do
+          col = left + geometry.pos[node]
+          if not G.is_dummy(node) then break end
+        end
+        col = col + 2
+      end
+      local text = stage and ('S' .. n .. ' · ' .. stage.name) or 'Unplanned'
+      local room = M.orient == 'vertical' and math.min(W - 2, width - col) or W
+      local used = cv:put(row, col, { { text, 'ClandSection' } }, room)
+      if stage then headings[#headings + 1] = { row = row, col = col, width = used, stage = n, epic = owner } end
+    end
+  end
   local wrapped = 0
   for band, layer in ipairs(origin) do
     local continuation = origin[band - 1] == layer
@@ -170,12 +213,15 @@ function M.compose(id, width)
     note(label .. table.concat(names, ', '), group)
   end
   edges_line('Left out to break a cycle: ', L.cycles, 'ClandRed')
+  edges_line('Against the plan: ', L.against, 'ClandRed')
+  edges_line('Within a stage: ', L.inside, 'ClandAmber')
   edges_line('Implied by longer paths: ', L.hidden, 'ClandFaint')
   edges_line('Blockers outside ' .. (id or 'the graph') .. ': ', L.outside, 'ClandAmber')
-  note('h/j/k/l nodes · ^/$ ends · ↵ open · gi/gt/gs · p/P parent · d done · o turn · r edges · +/- width · ␣␣ back', 'ClandFaint', 2)
+  note('h/j/k/l nodes · ^/$ ends · ↵ open · gi/gt/gs · gp plan · s stages · p/P parent · d done · o turn · r edges · +/- width · ␣␣ back', 'ClandFaint', 2)
   local lines, marks, bytecol, crossings = cv:render('ClandFaint')
   geometry.bytecol, geometry.layout, geometry.orient = bytecol, L, M.orient
   geometry.width, geometry.wrapped, geometry.origin = W, wrapped, origin
+  geometry.stages = headings
   geometry.edge_cells, geometry.crossings = cv:cells_of_edges(), crossings
   geometry.bands, geometry.tray, geometry.by_row, geometry.incident = {}, {}, {}, {}
   for layer, ids in ipairs(L.layers) do
@@ -209,6 +255,19 @@ function M.compose(id, width)
     end
   end
   return lines, marks, geometry
+end
+
+--- Stage headings are selectable even when they have no node under the cursor.
+function M.stage_at()
+  if not M.model then return end
+  local win = vim.fn.bufwinid(M.b or -1)
+  if win == -1 then return end
+  local cur = api.nvim_win_get_cursor(win)
+  for _, heading in ipairs(M.model.stages) do
+    local bc = M.model.bytecol[heading.row]
+    if cur[1] == heading.row + 1 and cur[2] >= bc[heading.col]
+      and cur[2] < bc[heading.col + heading.width] then return heading end
+  end
 end
 
 --- The node under a buffer cursor, using byte spans for every label row.
@@ -443,6 +502,11 @@ function M.buf()
     end)
   end
   map('r', function() M.reduce = not M.reduce; state.changed() end)
+  map('s', function() M.stages = not M.stages; state.changed() end)
+  map('gp', function()
+    local heading = M.stage_at()
+    require('cland.plan').open(heading and heading.epic or M.item_at() or M.parent())
+  end)
   api.nvim_create_autocmd('CursorMoved', { buffer = M.b, callback = function()
     local id, parent = M.node_at(), M.parent()
     if id and parent and id ~= M.sel[parent] then

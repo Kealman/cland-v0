@@ -38,6 +38,111 @@ async function start(t: TestContext, scenario = fixture) {
     }),
   });
 }
+
+const staged: Scenario = { ...fixture, items: fixture.items!.map(it => it.id === 'T-3' ? { ...it, plan: { stages: [
+  { name: 'Foundation', qa: { scope: 'none', when: 'per-item' }, lanes: [['T-11'], ['T-10']] },
+  { name: 'Panels', qa: { scope: 'none', when: 'per-item' }, lanes: [['T-12'], ['T-13']] },
+] } } : it).concat([
+  { id: 'T-11', kind: 'task', title: 'Same stage', status: 'planned', state: 'open', parent: 'T-3', blocked_by: ['T-10'] },
+  { id: 'T-12', kind: 'task', title: 'Later stage', status: 'planned', state: 'open', parent: 'T-3', blocked_by: ['T-11'] },
+  { id: 'T-13', kind: 'task', title: 'Unlinked planned', status: 'planned', state: 'open', parent: 'T-3', blocked_by: [] },
+  { id: 'T-14', kind: 'task', title: 'Unplanned', status: 'planned', state: 'open', parent: 'T-3', blocked_by: [] },
+]) };
+const graphLines = (c: Awaited<ReturnType<typeof start>>) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.graph').b,0,-1,false)");
+
+test('s groups stages in plan order, includes unlinked planned nodes, and names same-stage and backward dependencies', { skip }, async t => {
+  const scenario = structuredClone(staged);
+  scenario.items = scenario.items!.map(it => it.id === 'T-10' ? { ...it, blocked_by: ['T-12'] } : it);
+  const c = await start(t, scenario);
+  await c.input('<Esc><Space>G');
+  await c.waitScreen(s => s.includes('T-10 S1'), 'tags before grouping');
+  await c.input('s');
+  await c.waitScreen(s => s.includes('S1 · Foundation') && s.includes('S2 · Panels'), 'stage headings');
+  const lines = await graphLines(c);
+  assert.match(lines.find(l => l.includes('S2 · Panels'))!, /│/, 'forward edge remains visible beside the stage heading');
+  assert.ok(lines.some(l => l.includes('T-11 S1') && l.includes('T-10 S1')), 'first-stage lanes share a band');
+  assert.ok(lines.some(l => l.includes('T-12 S2') && l.includes('T-13 S2')), 'unlinked node joins its stage');
+  assert.match(lines.join('\n'), /Against the plan: T-12 → T-10/);
+  assert.match(lines.join('\n'), /Within a stage: T-10 → T-11/);
+  assert.ok(lines.findIndex(l => l.includes('S1 · Foundation')) < lines.findIndex(l => l.includes('S2 · Panels')));
+  assert.ok(lines.some(l => l.includes('Unplanned')), 'unplanned nodes remain visible');
+  await c.input('o');
+  await c.waitScreen(s => s.split('\n').some(l => l.includes('S1 · Foundation') && l.includes('S2 · Panels')), 'stages become columns');
+  await c.input('so');
+  await c.waitScreen(s => !s.includes('S1 · Foundation') && s.includes('T-10 S1'), 'toggle restores dependency layers and keeps tags');
+});
+
+test('gp on a stage heading opens its epic plan even when the stage name contains another item id', { skip }, async t => {
+  const scenario = structuredClone(staged);
+  const epic = scenario.items!.find(it => it.id === 'T-3')!;
+  (epic.plan as { stages: { name: string }[] }).stages[1]!.name = 'Panels T-99';
+  const c = await start(t, scenario);
+  await c.input('<Esc><Space>Gs');
+  await c.waitScreen(s => s.includes('S2 · Panels T-99'), 'second stage heading');
+  await c.lua("vim.fn.search('S2 · Panels T-99','w'); local line=vim.api.nvim_get_current_line(); vim.api.nvim_win_set_cursor(0,{vim.fn.line('.'),line:find('T-99',1,true)-1})");
+  await c.input('gp');
+  await c.waitScreen(s => s.includes('Plan of T-3 First epic') && s.includes('S2 · Panels T-99'), 'plan from heading');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});
+
+test('a deeper configured container uses its owning epic plan for tags, grouping and stage navigation', { skip }, async t => {
+  const scenario: Scenario = { ...structuredClone(staged), tracker: { levels: ['release', 'epic', 'phase'] } };
+  scenario.items = scenario.items!.map(it => it.parent === 'T-3' ? { ...it, parent: 'T-7' } : it);
+  scenario.items.push({ id: 'T-7', kind: 'phase', title: 'Nested phase', state: 'open', parent: 'T-3' });
+  const c = await start(t, scenario);
+  await c.input('<Esc>:Cland graph T-7<CR>');
+  await c.waitScreen(s => s.includes('Graph · T-7 Nested phase') && s.includes('T-10 S1') && s.includes('T-12 S2'), 'nested tags from epic plan');
+  await c.input('s');
+  await c.waitScreen(s => s.includes('S1 · Foundation') && s.includes('S2 · Panels'), 'nested stage grouping');
+  const lines = await graphLines(c);
+  assert.ok(lines.some(l => l.includes('T-11 S1') && l.includes('T-10 S1')));
+  await c.lua("vim.fn.search('S2 · Panels','w')");
+  await c.input('gp');
+  await c.waitScreen(s => s.includes('Plan of T-3 First epic'), 'owning epic plan from nested heading');
+});
+
+test('live plan changes regroup the graph and preserve the selected node; removing the plan restores dependency layers', { skip }, async t => {
+  const scenario = structuredClone(staged);
+  const c = await start(t, scenario);
+  await c.input('<Esc><Space>Gs');
+  await c.waitScreen(s => s.includes('S1 · Foundation'), 'grouped graph');
+  await c.lua("vim.fn.search('T-11 S1','w'); local line=vim.api.nvim_get_current_line(); vim.api.nvim_win_set_cursor(0,{vim.fn.line('.'),line:find('T-11',1,true)-1})");
+  const epic = scenario.items!.find(it => it.id === 'T-3')!;
+  epic.plan = { stages: [
+    { name: 'Foundation', qa: { scope: 'none', when: 'per-item' }, lanes: [['T-10']] },
+    { name: 'Changed panels', qa: { scope: 'none', when: 'per-item' }, lanes: [['T-12', 'T-11'], ['T-13']] },
+  ] };
+  await c.control({ set: { items: scenario.items }, emit: { type: 'task', id: epic.id, item: epic } });
+  await c.waitScreen(s => s.includes('T-11 S2') && s.includes('Changed panels'), 'changed stage');
+  assert.match(await c.lua<string>('return vim.api.nvim_get_current_line()'), /T-11 S2/, 'cursor follows its moved node');
+  epic.plan = null;
+  await c.control({ set: { items: scenario.items }, emit: { type: 'task', id: epic.id, item: epic } });
+  await c.waitScreen(s => !s.includes('S1 · Foundation') && !s.includes('T-11 S2'), 'plan removed');
+  assert.match(await c.lua<string>('return vim.api.nvim_get_current_line()'), /T-11/, 'node retained after removal');
+  await c.input('s');
+  await c.waitScreen(s => s.includes('T-11') && !s.includes('S1 ·'), 'no-plan toggle is safe');
+});
+
+test('narrow stage bands continue with stage headings and retain dependency diagnostics', { skip }, async t => {
+  const scenario = structuredClone(staged);
+  const epic = scenario.items!.find(it => it.id === 'T-3')!;
+  const plan = epic.plan as { stages: { lanes: string[][] }[] };
+  for (let id = 20; id < 26; id++) {
+    plan.stages[0]!.lanes.push([`T-${id}`]);
+    scenario.items!.push({ id: `T-${id}`, kind: 'task', title: 'Parallel', status: 'planned', state: 'open', parent: 'T-3', blocked_by: [] });
+  }
+  scenario.items = scenario.items!.map(it => it.id === 'T-10' ? { ...it, blocked_by: ['T-12'] } : it);
+  const c = await start(t, scenario);
+  await c.input('<Esc><Space>s<Space>Gs');
+  await c.waitScreen(s => s.includes('S1 · Foundation'), 'stage bands');
+  await c.rpc.request('nvim_ui_try_resize', 80, 45);
+  await c.waitScreen(s => s.includes('continuations ↳'), 'narrow stage wraps');
+  const lines = await graphLines(c);
+  assert.ok(lines.filter(l => l.includes('S1 · Foundation')).length > 1, 'continuations name the same stage');
+  assert.match(lines.join('\n'), /Against the plan: T-12 → T-10/);
+  assert.match(lines.join('\n'), /Within a stage: T-10 → T-11/);
+  assert.ok(await c.lua<boolean>("local b=require('cland.graph').b; local w=vim.api.nvim_win_get_width(vim.fn.bufwinid(b)); for _,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if vim.api.nvim_strwidth(line)>w then return false end end; return true"), 'vertical stage bands fit the window');
+});
 test('Space G opens the first ranked epic; p/P include the release and command opens an empty container', { skip }, async t => {
   const c = await start(t);
   await c.input('<Esc><Space>G');
