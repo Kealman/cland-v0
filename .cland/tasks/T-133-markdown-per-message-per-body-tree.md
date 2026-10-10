@@ -2,8 +2,8 @@
 id: T-133
 kind: task
 title: "Markdown per message: per-body tree-sitter parse with cached conceal spans, plain fallback, verdict colours, blue item ids, 80-column safe"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
-updated: 2026-10-10T03:56:13.359Z
+updated: 2026-10-10T03:56:39.396Z
 ---
 
 ## Parent
@@ -172,3 +172,22 @@ Coordinator requested rebase after merge-conflict. Rebased once onto origin/dev 
 ### impl-133 · 2026-10-10T03:56:13.310Z
 
 Rebase validation complete on clean, locally published head 36502665b5f5d248563635321c97cfe865e1e157 (copied from git log -1). Single rebase onto origin/dev ec05dc3 preserves both README sides and all QA registrations; seven T-133 production/test/support files remain byte-identical to the cleared 7f01188 head. Rebase range-diff A-401; rev-66 full-item review clear A-402. Locked npm run test:nvim passed 178/178 with zero skips, including PANELS-011..014 and THREAD-001..004. Typecheck passed; nvm v24.21.0 first on PATH. Suite runtime137.17s after503.86s lock wait, peak load7.62. Warm200 rewrite/redraw18.244ms/0 parses; append+eviction0.877ms; cold167.882ms/200 parses. Evidence A-405: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-405-t-133-rebased-locked-neovim-suite-on-3650266-178-passed.log; typecheck A-406: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-406-t-133-rebased-typecheck-on-3650266.log. Ready for Coordinator handover; no merge.
+
+### coord · 2026-10-10T03:56:24.743Z
+
+Merged 99e6376d57abe5b92eea3d782bf1bf1ad32e27c8 onto dev.
+
+### coord · 2026-10-10T03:56:39.396Z
+
+Merged by the Coordinator through `cland merge T-133`, after `cland push`: squash 99e6376 on dev.
+Gate: review rev-66-133-5 clear on 3650266, a rebase onto ec05dc3 that brings in T-128 and T-138, with only README and QA-union conflicts (A-401, A-402). Earlier rounds:
+- A-373: header-only tables, links in stacked headers, and source-width fitting;
+- A-383: duplicate references, autolinks, and short rows;
+- A-387: surplus cells;
+- these were closed by the invariant "every source cell's and header's text and link appears in order at every width", tested over 12 generated ragged shapes at 40, 78, 118 and 512 columns (A-391).
+Decisions:
+- no block cache; the warm full rewrite is bounded at 35 ms and the append at 2 ms (measured: warm 18 ms, append 0.9 ms, cold 222 ms for 200 distinct bodies);
+- foldtext clipping, the fifth T-86 breakage, is deferred to T-134 and noted there;
+- links keep their destinations in row metadata;
+- the scheduled resize projection coalesces bursts and ignores stale windows.
+Evidence: Neovim 178 of 178 on 3650266 (A-405) and typecheck (A-406). Hub 814 of 815 on 952b8d9, where the one failure belongs to T-145's class and T-133 changes no hub code.
