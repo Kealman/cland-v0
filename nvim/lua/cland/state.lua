@@ -24,7 +24,6 @@ function M.reset(opts)
     sibling_orders = {}, -- final task rank events, keyed by parent (empty string for roots)
     items_note = nil, -- why the items panel is empty
     inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {} }, -- inbox.list and `inbox` events (#33)
-    inbox_loaded = false, -- once inbox rows arrived, derive their count locally
     needs_you = nil, -- the hub's "needs you" count (hub.status, `inbox` events); nil until it said
     ui = {
       view = { kind = 'thread', id = 'general' },
@@ -287,7 +286,6 @@ function M.set_inbox(inbox)
     return type(x) == 'table' and x or {}
   end
   M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), waiting = list(inbox.waiting), notifications = list(inbox.notifications) }
-  M.S.inbox_loaded = true
   if type(inbox.needsYou) == 'number' then
     M.S.needs_you = inbox.needsYou
   end
@@ -300,36 +298,16 @@ function M.answered(id)
   for i, a in ipairs(asks) do
     if a.id == id then
       table.remove(asks, i)
-      if M.S.needs_you then
-        M.S.needs_you = math.max(0, M.S.needs_you - 1)
-      end
       break
     end
   end
   M.changed()
 end
 
---- The inbox's now rows, shared by the chip, header and empty-state message. Ordinary
---- notifications and unread messages never count. Before the inbox arrives, use the hub's
---- base count (or waiting topics); it excludes the now notifications added below.
+--- The hub owns the count (hub.status, inbox.list and `inbox` events). Unknown until
+--- it supplies a number; rows, messages and local actions never change it.
 function M.needs_you()
-  local ib = M.S.inbox
-  local n = #ib.asks + #ib.approvals + #ib.waiting
-  if not M.S.inbox_loaded then
-    n = M.S.needs_you
-    if type(n) ~= 'number' then
-      n = 0
-      for _, t in ipairs(M.S.topics) do
-        if t.status == 'waiting for human' then n = n + 1 end
-      end
-    end
-  end
-  for _, note in ipairs(ib.notifications) do
-    if note.kind == 'death' or note.kind == 'verdict' and note.result == 'not clear' then
-      n = n + 1
-    end
-  end
-  return n
+  return M.S.needs_you
 end
 
 function M.item(id)

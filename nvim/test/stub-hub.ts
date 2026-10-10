@@ -50,8 +50,9 @@ export type Scenario = {
   rankError?: string;
   /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
   holdSnapshots?: string[];
-  /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event. */
-  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>> };
+  /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event.
+   * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
+  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null };
 };
 
 type Frame = Record<string, unknown> & { type?: string; id?: string };
@@ -142,7 +143,8 @@ function inboxValue(): Record<string, unknown> {
   const asks = ib.asks ?? [];
   const approvals = ib.approvals ?? [];
   const waiting = ib.waiting ?? [];
-  return { asks, approvals, waiting, notifications: ib.notifications ?? [], needsYou: asks.length + approvals.length + waiting.length };
+  return { asks, approvals, waiting, notifications: ib.notifications ?? [],
+    ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? asks.length + approvals.length + waiting.length }) };
 }
 
 /** The human answers an ask: the answer message (with answerTo, to the asker), the card answered, the row gone. */

@@ -48,6 +48,7 @@ const proc = (name: string, role: string, state: string, model = 'opus') => ({
 
 function baseScenario(keylog: string): Scenario {
   return {
+    inbox: {},
     messages: {
       general: [
         { id: 'm1', from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', via: 'spoke', to: ['human'], text: 'Starting T-12 with impl-1; the log is in Agents.', ts: ts(1), topic: 'general' },
@@ -157,7 +158,7 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
 const topBar = (s: string) => s.split('\n')[0] ?? '';
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
 
-test('the chip and inbox header count only actionable inbox rows through messages and resolutions', { skip }, async t => {
+test('the chip and inbox header show only the hub count through notification floods, messages and resolutions', { skip }, async t => {
   const bound = topic('topic-count', 'Count item', 'open', { item: 'T-12' });
   const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), bound]; });
   await c.input('<Esc><Space>n');
@@ -176,14 +177,26 @@ test('the chip and inbox header count only actionable inbox rows through message
     message: { id, from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', to: ['human'], text: id, ts: ts(10), topic: bound.id, ...extra } });
   const ib = { asks: [] as Record<string, unknown>[], approvals: [] as Record<string, unknown>[],
     waiting: [] as Record<string, unknown>[], notifications: [] as Record<string, unknown>[] };
-  const inbox = async (needsYou: number) => c.control({ set: { inbox: ib }, emit: { type: 'inbox', inbox: { ...ib, needsYou } } });
+  const inbox = async (needsYou: number) => c.control({ set: { inbox: { ...ib, needsYou } }, emit: { type: 'inbox', inbox: { ...ib, needsYou } } });
   await count(0);
-  // The original live-build symptom: 98 unread addressed messages with an empty inbox.
+  // The live-build symptom: hundreds of unresolved notifications while the hub says zero.
+  ib.notifications = Array.from({ length: 427 }, (_, i) => {
+    const kind = ['death', 'verdict', 'verdict', 'release', 'role', 'idle'][i % 6];
+    return { id: `notification-${i}`, kind, result: i % 6 === 1 ? 'not clear' : 'clear', text: `notification ${i}`, ts: ts(10) };
+  });
+  await inbox(0);
+  await count(0);
+  // The hub owns the number even when the rows are unchanged and contain no asks.
+  await inbox(7);
+  await count(7);
+  await inbox(0);
+  await count(0);
+  // The T-165 symptom: 98 unread addressed messages with no actionable rows.
   await c.control({ emits: Array.from({ length: 98 }, (_, i) => message(`ordinary-${i}`)) });
   await count(0);
   const ask = message('ask-new', { ask: { state: 'open', options: ['yes'], free: true } });
   await c.control({ emit: ask });
-  await count(0); // An ask is counted when its inbox row arrives, once across both frames.
+  await count(0); // The ask message cannot change the count before the hub supplies it.
   ib.asks = [{ id: 'ask-new', topic: bound, question: 'ask-new', options: ['yes'], from: 'coord-1', ts: ts(10) }];
   await inbox(1);
   await count(1);
@@ -196,33 +209,65 @@ test('the chip and inbox header count only actionable inbox rows through message
   await inbox(3);
   await count(3);
   ib.notifications = [{ id: 'failed', kind: 'verdict', result: 'not clear', text: 'T-12 review not clear', ts: ts(10) }];
-  await inbox(3); // The hub aggregate covers asks/approvals/waiting; UI also counts now verdicts/deaths.
-  await count(4);
+  await inbox(3); // Notifications never alter the hub’s count.
+  await count(3);
   ib.notifications.push({ id: 'died', kind: 'death', text: 'impl-2 died', ts: ts(10) });
   await inbox(3);
-  await count(5);
+  await count(3);
   ib.notifications.push(...['role', 'idle', 'verdict'].map(kind => ({ id: kind, kind, result: 'clear', text: `ordinary ${kind}`, ts: ts(10) })));
   await inbox(3);
   await c.control({ emits: Array.from({ length: 100 }, (_, i) => message(`flood-${i}`, { to: i % 2 ? ['human'] : ['coord-1'] })) });
-  await count(5);
+  await count(3);
   await c.input('<Esc>:Cland view thread topic-count<CR>');
   await c.waitScreen(s => topBar(s).includes('│ Count item'), 'reading the topic');
-  await count(5); // Reading messages never resolves an ask or any other action.
+  await count(3); // Reading messages never changes the hub’s count.
   await c.control({ emit: { type: 'ask', topic: bound.id, ask: 'ask-new', card: { state: 'answered' } } });
   ib.asks = [];
   await inbox(2);
-  await count(4);
+  await count(2);
   ib.approvals = [];
   await inbox(1);
-  await count(3);
+  await count(1);
   ib.waiting = [];
   await inbox(0);
-  await count(2);
+  await count(0);
   await c.input('<Esc><C-w>l');
   await c.input('gg/T-12 review not clear<CR>d');
-  await count(1);
+  await count(0);
   await c.input('D');
   await count(0);
+});
+
+test('the count stays unknown until the hub says, follows hub.status, and stays unchanged by local answers', { skip }, async t => {
+  const c = await startShell(t, s => { withInbox(s); s.inbox!.needsYou = null; });
+  const initial = await openInbox(c);
+  assert.doesNotMatch(topBar(initial), /needs you\s+\d/);
+  assert.doesNotMatch(rightOf(initial), /\d+ need you|nothing needs you/);
+  await c.input('<Esc>:Cland view inbox<CR>');
+  const full = await c.waitScreen(s => topBar(s).includes('│ Inbox'), 'full inbox without a count');
+  assert.doesNotMatch(statusLine(full), /\d+ need you/);
+  await c.input('<Esc>:Cland view thread general<CR>');
+  await c.waitScreen(s => topBar(s).includes('│ General'), 'back to General');
+  await c.control({ set: { holdSnapshots: ['inbox.list'], inbox: { needsYou: 9 } } });
+  await c.lua("require('cland').refresh()");
+  const status = await c.waitScreen(s => topBar(s).includes('needs you  9 ') && rightOf(s).includes('9 need you'), 'hub.status supplies the count before inbox.list');
+  assert.match(rightOf(status), /Which should win\?/); // The held rows have not changed.
+  await c.control({ set: { holdSnapshots: [] }, releaseSnapshots: ['inbox.list'] });
+  const scenario: Scenario = {};
+  withInbox(scenario);
+  const ib = { ...scenario.inbox, needsYou: 17 };
+  await c.control({ set: { inbox: ib }, emit: { type: 'inbox', inbox: ib } });
+  await c.waitScreen(s => topBar(s).includes('needs you  17 ') && rightOf(s).includes('17 need you') && rightOf(s).includes('Which should win?'), 'inbox event supplies a new count');
+  await c.input('<Esc><C-w>l');
+  await c.input('gg/Which should<CR>2');
+  const answered = await c.waitScreen(s => !rightOf(s).includes('Which should win?') && statusLine(s).includes('answered with 2'), 'answer removes the row');
+  assert.match(topBar(answered), /needs you {2}17 /, 'local answer never decrements the hub value');
+  assert.match(rightOf(answered), /17 need you/);
+  // A payload without a number keeps the last known value rather than deriving one from its rows.
+  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [] } } });
+  const retained = await c.waitScreen(s => !rightOf(s).includes('NOTIFICATIONS'), 'rows replaced without a count');
+  assert.match(topBar(retained), /needs you {2}17 /);
+  assert.match(rightOf(retained), /17 need you/);
 });
 
 test('unread history and live messages never change the chip on startup, refresh or reconnect', { skip }, async t => {
@@ -997,6 +1042,7 @@ function withTopics(s: Scenario): void {
     topic('topic-2', 'Daemon hello', 'waiting for agent', { item: 'T-12', warning: 'no coordinator' }),
     topic('topic-3', 'cland task CLI', 'closed'),
   ];
+  s.inbox = { waiting: [s.topics[2]!] };
   s.items = (s.items ?? []).map((it) => (it.id === 'T-12' ? { ...it, topic: 'topic-2' } : it));
 }
 
@@ -1940,8 +1986,8 @@ test('the inbox lists asks, approvals, waiting topics and notifications in that 
   ].map((w) => panel.indexOf(w));
   assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order, `in the design's order:\n${panel}`);
-  assert.match(s, /INBOX +5 need you/);
-  assert.match(topBar(s), /▲ needs you {2}5 /, 'asks + approvals + waiting topics + failed verdict + death');
+  assert.match(s, /INBOX +3 need you/);
+  assert.match(topBar(s), /▲ needs you {2}3 /, 'the hub count excludes notifications');
   assert.match(statusLine(s), /1-9 answer · i free answer/);
 });
 
@@ -1954,7 +2000,7 @@ test('2 on an ask row answers with option 2: topic.answer goes out, the row leav
   assert.match(rightOf(s), /Which should win\?/);
   assert.deepEqual(await requestsOf(c, 'inbox.dismiss'), []);
   await c.input('2');
-  s = await c.waitScreen((x) => !rightOf(x).includes('Which should win?') && topBar(x).includes('needs you  4 '), 'the ask answered');
+  s = await c.waitScreen((x) => !rightOf(x).includes('Which should win?') && topBar(x).includes('needs you  2 '), 'the ask answered');
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option, f.text]), [['a1', 2, undefined]]);
   assert.doesNotMatch(rightOf(s), /ASKS · ANSWER HERE/);
   assert.match(rightOf(s), /APPROVALS/);
@@ -1996,7 +2042,7 @@ test('d dismisses the notification under the cursor, D all of them; asks and app
   assert.equal((await requestsOf(c, 'inbox.dismiss_all')).length, 1);
   assert.match(rightOf(s), /Which should win\?/);
   assert.match(rightOf(s), /▲ impl-1 \[Implementer\]/);
-  assert.match(topBar(s), /needs you {2}3 /, 'dismissing failed verdicts and deaths leaves asks, approvals and waiting topics');
+  assert.match(topBar(s), /needs you {2}3 /, 'dismissing notifications never changes the hub count');
 });
 
 test('the ask card in the thread: the question, numbered options and the free-answer hint; 2 on it answers, and the answer shows beneath', { skip }, async (t) => {
@@ -2016,7 +2062,7 @@ test('the ask card in the thread: the question, numbered options and the free-an
   const at = s.indexOf('┃ answered with 2');
   const you = s.indexOf(' you → coord-1  ', at);
   assert.ok(at >= 0 && you > at && s.indexOf('the harness session id', you) > you, `the answer beneath the card:\n${s}`);
-  assert.match(topBar(s), /needs you {2}4 /);
+  assert.match(topBar(s), /needs you {2}2 /);
 });
 
 test('a question and options over several lines render as lines in the card and the inbox; a digit on any line of an option answers it', { skip }, async (t) => {

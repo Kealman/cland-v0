@@ -1,11 +1,11 @@
--- Inbox and message frames drive the shared now count at both supported widths.
+-- Only hub counts drive both displays at the supported widths.
 return function(columns)
   local control = vim.fn.tempname() .. '.sock'
   vim.env.CLAND_STUB_CONTROL = control
   local at = '2026-10-10T10:00:00Z'
   local bound = { id = 'topic-count', title = 'Count item', status = 'open', unread = 0, item = 'T-12' }
   return {
-    title = 'The top bar counts now at ' .. columns .. ' columns',
+    title = 'The top bar shows the hub count at ' .. columns .. ' columns',
     hub = 'stub', fixture = { project = 'qa-top-bar-now' },
     scenario = {
       topics = { { id = 'general', title = ('General 界 '):rep(20), status = 'open', unread = 0 },
@@ -56,6 +56,24 @@ return function(columns)
         local rendered = vim.api.nvim_eval_statusline(require('cland.bars').topbar(), { use_tabline = true, maxwidth = columns }).str
         qa.expect(vim.api.nvim_strwidth(rendered) <= columns, 'top bar fits display cells')
       end
+      local notifications = {}
+      for i = 1, 427 do
+        local kinds = { 'death', 'verdict', 'verdict', 'release', 'role', 'idle' }
+        notifications[#notifications + 1] = { id = 'note-' .. i, kind = kinds[(i - 1) % 6 + 1],
+          result = i % 6 == 2 and 'not clear' or 'clear', text = 'notification ' .. i, ts = at }
+      end
+      local ib = { asks = {}, approvals = {}, waiting = {}, notifications = notifications, needsYou = 0 }
+      local function inbox()
+        command({ set = { inbox = ib }, emit = { type = 'inbox', inbox = ib } })
+        qa.wait_for(function() return #require('cland.state').S.inbox.notifications == #ib.notifications end,
+          5000, 'notification flood received')
+        count(ib.needsYou)
+      end
+      inbox()
+      ib.needsYou = 7
+      inbox()
+      ib.needsYou = 0
+      inbox()
       local burst = {}
       for i = 1, 98 do burst[#burst + 1] = event('ordinary-' .. i, i % 2 == 0 and { 'human' } or { 'coordinator' }) end
       command({ emits = burst })
@@ -65,31 +83,26 @@ return function(columns)
       qa.wait_for(function() return require('cland.state').topic(bound.id).unread == 99 end, 5000, 'watch verdict received')
       count(0)
       local ask = event('ask-new', { 'human' }, { ask = { state = 'open', options = { 'yes' }, free = true } })
-      local ib = { asks = { { id = 'ask-new', topic = { id = bound.id }, question = 'ask-new',
-        options = { 'yes' }, from = 'coordinator', ts = at } }, approvals = {}, waiting = {}, notifications = {}, needsYou = 1 }
-      command({ emits = { { type = 'inbox', inbox = ib }, ask, ask } })
+      ib.asks = { { id = 'ask-new', topic = { id = bound.id }, question = 'ask-new',
+        options = { 'yes' }, from = 'coordinator', ts = at } }
+      ib.needsYou = 1
+      command({ set = { inbox = ib }, emits = { { type = 'inbox', inbox = ib }, ask, ask } })
       qa.wait_for(function() return #qa.state().asks == 1 end, 5000, 'ask in inbox')
       count(1)
       ib.approvals = { { session = 'impl-1', label = 'impl-1 [Implementer]' } }
       ib.waiting = { { id = 'waiting', title = 'Decision', status = 'waiting for human', updatedAt = at } }
-      ib.notifications = { { id = 'failed', kind = 'verdict', result = 'not clear', text = 'Review not clear', ts = at },
-        { id = 'died', kind = 'death', text = 'Session died', ts = at },
-        { id = 'role', kind = 'role', text = 'Role assigned', ts = at },
-        { id = 'clear', kind = 'verdict', result = 'clear', text = 'Review clear', ts = at },
-        { id = 'idle', kind = 'idle', text = 'Long idle', ts = at } }
       ib.needsYou = 3
-      command({ emit = { type = 'inbox', inbox = ib } })
-      count(5)
+      inbox()
       qa.dump('now-count-' .. columns)
       qa.keys('<Esc>:Cland view thread topic-count<CR>')
       qa.wait_for(function() return require('cland.state').S.ui.view.id == bound.id end, 5000, 'reading the topic')
-      count(5)
-      command({ emits = {
-        { type = 'ask', topic = bound.id, ask = 'ask-new', card = { state = 'answered' } },
-        { type = 'inbox', inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {
-          { id = 'role', kind = 'role', text = 'Role assigned', ts = at } }, needsYou = 0 } },
-      } })
-      count(0)
+      count(3)
+      command({ emit = { type = 'ask', topic = bound.id, ask = 'ask-new', card = { state = 'answered' } } })
+      ib.asks = {}
+      ib.approvals = {}
+      ib.waiting = {}
+      ib.needsYou = 0
+      inbox() -- All 427 notifications remain; the hub's zero still wins.
     end,
   }
 end

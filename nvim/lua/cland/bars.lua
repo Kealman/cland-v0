@@ -106,7 +106,9 @@ function M.topbar()
   local coordinator = right
   right = {}
   local n = state.needs_you()
-  if n > 0 then
+  if n == nil then
+    right[#right + 1] = { ' needs you ', 'ClandDimChip', 2 }
+  elseif n > 0 then
     right[#right + 1] = { ' ▲', 'ClandAmberChip', 2 }
     right[#right + 1] = { ' needs you ', 'ClandTextChip', 2 }
     right[#right + 1] = { ' ' .. n .. ' ', 'ClandChipBadge', 2 }
@@ -193,7 +195,8 @@ function M.context()
   elseif v.kind == 'log' then
     return 'Agents log'
   elseif v.kind == 'inbox' then
-    return 'Inbox · full width · ' .. state.needs_you() .. ' need you'
+    local n = state.needs_you()
+    return 'Inbox · full width' .. (n ~= nil and (' · ' .. n .. ' need you') or '')
   end
   return title
 end
@@ -313,7 +316,7 @@ function M.winbar(win)
     return head(win, 'TOPICS', { { #state.S.topics .. ' topics' .. (unread > 0 and (' · ' .. unread .. ' unread') or ''), 'ClandDimBar' } })
   elseif role == 'inbox' then
     local n = state.needs_you()
-    return head(win, 'INBOX', { n > 0 and { n .. ' need you', 'ClandAmberBar' } or { 'nothing needs you', 'ClandGreenBar' } })
+    return head(win, 'INBOX', n == nil and {} or { n > 0 and { n .. ' need you', 'ClandAmberBar' } or { 'nothing needs you', 'ClandGreenBar' } })
   elseif role == 'artifacts' then
     return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open · q back', 'ClandDimBar' } })
   elseif role == 'artifact' then
