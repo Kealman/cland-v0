@@ -4,8 +4,8 @@ local state = require('cland.state')
 
 local M = {}
 
-M.FILTERS = { 'all', 'work', 'you', 'done', 'map' }
-M.LABEL = { all = 'all', work = 'in work', you = 'needs you', done = 'done', map = 'map' }
+M.FILTERS = { 'board', 'work', 'you', 'done', 'map', 'all' }
+M.LABEL = { board = 'board', all = 'all', work = 'in work', you = 'needs you', done = 'done', map = 'map' }
 
 --- An item's status as a glyph and its colour.
 M.GLYPH = {
@@ -311,14 +311,19 @@ function M.cycle_scope(step)
   state.changed()
 end
 
---- The first open configured container in the parent chain establishes scheduling.
-function M.open_container_of(it)
+--- Container membership survives closure; archived trees never become unscheduled.
+function M.container_of(it)
   local seen = {}
   while it and not seen[it.id] do
     seen[it.id] = true
-    if M.is_level(it) and it.state == 'open' then return it end
+    if M.is_level(it) then return it end
     it = present(it.parent) and state.item(it.parent) or nil
   end
+end
+
+--- Only open items outside configured container trees belong in the board's orphan fold.
+function M.unscheduled(it)
+  return it.state == 'open' and it.status ~= 'done' and not M.container_of(it)
 end
 
 --- Preorder the hub tree: each level uses the shared rank comparator and final sibling events.
@@ -346,7 +351,7 @@ function M.release_of(it)
   local seen = {}
   while it and not seen[it.id] do
     seen[it.id] = true
-    if it.kind == state.S.tracker.levels[1] then return it.state == 'open' and it or nil end
+    if it.kind == state.S.tracker.levels[1] then return it end
     it = present(it.parent) and state.item(it.parent) or nil
   end
 end
@@ -363,7 +368,7 @@ end
 -- The panel ---------------------------------------------------------------------------------------------
 
 function M.filter()
-  return state.S.ui.items_filter or 'all'
+  return state.S.ui.items_filter or 'board'
 end
 
 function M.set_filter(f)
@@ -384,6 +389,7 @@ end
 
 --- The panel header uses the shared board composition; map retains its v0 summary.
 function M.summary()
+  if M.filter() == 'all' then return 'all · ' .. #state.S.items .. ' items' end
   if M.filter() ~= 'map' then return require('cland.vboard').summary() end
   local n = 0
   for _, it in ipairs(state.S.items) do if it.kind == 'map' then n = n + 1 end end
@@ -441,7 +447,7 @@ local function row(c, it, depth)
   c:add(
     { { ' ' .. ('  '):rep(depth) .. fold }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { ' ' .. (it.title or ''), title_hl } },
     right_of(it, container),
-    { item = it.id }
+    { item = it.id, fold = container and it.id or nil }
   )
 end
 
@@ -451,12 +457,26 @@ end
 
 --- Draw the panel's rows into canvas `c` (panels.lua); returns the footer lines.
 function M.render(c)
+  if M.filter() == 'all' then
+    -- Walk every tree once, including legacy missing parents and cycles. Hidden children
+    -- are visited too, so they cannot reappear as roots below a folded ancestor.
+    local seen = {}
+    local function walk(it, depth, hidden)
+      if seen[it.id] then return end
+      seen[it.id] = true
+      if not hidden then row(c, it, depth) end
+      for _, child in ipairs(M.children(it.id)) do walk(child, depth + 1, hidden or M.folded(it)) end
+    end
+    for _, it in ipairs(M.ordered()) do walk(it, 0, false) end
+    if #state.S.items == 0 then c:add({ { ' No items in .cland/tasks yet.', 'ClandDim' } }) end
+    return { ' ↵ open · gt topic · gs session', ' 1-6 or f filter · za fold · ␣b board' }
+  end
   if M.filter() ~= 'map' then return require('cland.vboard').render(c) end
   local f = M.filter()
   local tabs = { { ' ' } }
   local short = c.width < 44
   for i, k in ipairs(M.FILTERS) do
-    local label = short and ({ all = 'all', work = 'work', you = 'you', done = 'done', map = 'map' })[k] or M.LABEL[k]
+    local label = short and ({ board = 'board', all = 'all', work = 'work', you = 'you', done = 'done', map = 'map' })[k] or M.LABEL[k]
     tabs[#tabs + 1] = { i .. ' ' .. label, k == f and 'ClandTabOn' or 'ClandTab' }
     tabs[#tabs + 1] = { ' ' }
   end
@@ -486,7 +506,7 @@ function M.render(c)
       c:add({ { ' No map item (kind: map) yet.', 'ClandDim' } })
     end
   end
-  return { ' ↵ open · gt topic · gs session', ' 1-5 or f filter · za fold · ␣b board' }
+  return { ' ↵ open · gt topic · gs session', ' 1-6 or f filter · za fold · ␣b board' }
 end
 
 --- The panel's keys (its buffer): the filters.

@@ -7,7 +7,7 @@ local path, timer, pending, saved, warned
 local function snapshot()
   local ui = state.S.ui
   return {
-    version = 1,
+    version = 2,
     preset = ui.preset or vim.NIL,
     panels = { left = ui.left, right = ui.right or vim.NIL, dock = ui.dock },
     sizes = vim.deepcopy(ui.sizes),
@@ -17,7 +17,9 @@ local function snapshot()
 end
 
 local function validate(data)
-  assert(type(data) == 'table' and data.version == 1, 'unsupported UI state')
+  assert(type(data) == 'table' and (data.version == 1 or data.version == 2), 'unsupported UI state')
+  -- Version 1's default 'all' was the board. Version 2 gives all its own tree view.
+  if data.version == 1 and data.items_filter == 'all' then data.items_filter = 'board' end
   assert(data.preset == nil or (type(data.preset) == 'string' and require('cland.layout').PRESETS[data.preset]), 'invalid preset')
   local p = data.panels
   assert(type(p) == 'table' and type(p.left) == 'boolean' and type(p.dock) == 'boolean', 'invalid panels')
@@ -38,7 +40,7 @@ function M.load(root)
   path, pending, warned = root .. '/.cland/ui.json', nil, false
   local ui = state.S.ui
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
-  ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'all', nil
+  ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
   local _, _, stat_code = uv.fs_stat(path)
   local ok, data = pcall(function()
     return validate(vim.json.decode(table.concat(vim.fn.readfile(path), '\n'), { luanil = { object = true, array = true } }))

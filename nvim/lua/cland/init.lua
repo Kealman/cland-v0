@@ -278,7 +278,7 @@ M.HELP = {
   'cland workbench · Space is the leader (␣)',
   '',
   'Panels    ␣i items (left) · ␣n inbox · ␣s sessions · ␣t topics (right; the active key hides it)',
-  'Items     1 all · 2 in work · 3 needs you · 4 done · 5 map (f / F cycle) · ↵ the item view · e edits its file',
+  'Items     1 board · 2 in work · 3 needs you · 4 done · 5 map · 6 all (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',

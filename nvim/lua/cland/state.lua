@@ -33,7 +33,7 @@ function M.reset(opts)
       dock = false,
       preset = nil,
       sizes = vim.empty_dict(), -- manual left/right widths and dock height; absent means use the formula
-      items_filter = 'all',
+      items_filter = 'board',
       items_folds = {}, -- per-item tree folds; absent uses the level/state default
       board_parent = nil, -- optional open container within the current release
       current_release = nil, -- the human's selected open container; nil uses the semver current release

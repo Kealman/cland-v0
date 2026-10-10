@@ -17,7 +17,7 @@ return {
     local ok, err = pcall(function()
       store.load(qa.root)
       qa.expect(notices == 1, 'one notice for the corrupt file')
-      qa.expect(not state.S.ui.left and state.S.ui.right == 'sessions' and state.S.ui.items_filter == 'all', 'defaults remain usable')
+      qa.expect(not state.S.ui.left and state.S.ui.right == 'sessions' and state.S.ui.items_filter == 'board', 'defaults remain usable')
       qa.keys('<Esc>:Cland preset charting<CR>')
       store.changed()
       qa.expect(store.flush(), 'a complete initial file is written')

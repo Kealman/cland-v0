@@ -56,7 +56,7 @@ group('sessions', {{'l','Launch a session'}, {'<C-v>','Attach session in split'}
   {'zR','Open all stopped sessions'}, {'zM','Fold all stopped sessions'}, {'<Tab>','Toggle stopped sessions fold'},
   {'n','Keep session running'}, {'<Esc>','Cancel stopping session'}})
 group('topics', {{'n','New topic'}, {'c','Close selected topic'}, {'r','Resolve selected topic'}})
-for i, title in ipairs({'All items','Items in work','Items needing you','Done items','Map items'}) do
+for i, title in ipairs({'Release board','Items in work','Items needing you','Done items','Map items','All items'}) do
   add('items', tostring(i), title)
 end
 group('items', {{'f','Next items filter'}, {'F','Previous items filter'},

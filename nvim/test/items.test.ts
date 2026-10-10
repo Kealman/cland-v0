@@ -63,7 +63,7 @@ test('configured containers with no children show container counts in the panel 
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  await c.input('/unscheduled (<CR>za');
+  await c.input('6zR');
   const panel = await c.waitScreen(s => /T-2 feature.*0\/0/.test(s), 'the configured empty container');
   assert.match(panel, /T-1 initiative +0\/3/);
   assert.match(panel, /T-6 map +0\/0/);

@@ -1273,7 +1273,7 @@ test('the client agrees with the shared rank fixture and applies the final sibli
   await c.waitScreen(s => JSON.stringify(idsOf(itemRows(s))) === JSON.stringify(order), 'final sibling order');
 });
 
-test('configured levels choose the lowest semver release; the board folds closed levels and keeps unscheduled last', { skip }, async t => {
+test('configured levels choose the lowest semver release; all folds closed trees and board keeps unscheduled last', { skip }, async t => {
   const c = await startShell(t, s => {
     s.tracker = { levels: ['initiative', 'feature', 'component'] };
     s.items = [
@@ -1297,14 +1297,17 @@ test('configured levels choose the lowest semver release; the board folds closed
   let screen = await c.waitScreen(s => s.includes('Current beta two') && s.includes('T-10 T-7 › Current work'), 'current configured release');
   assert.match(topBar(screen), /Current beta two/);
   assert.match(leftOf(screen), /T-3 Current beta two/);
-  assert.match(leftOf(screen), /▸ T-8 Closed component /);
+  assert.doesNotMatch(leftOf(screen), /Closed component|T-5 Unversioned/);
   assert.doesNotMatch(leftOf(screen), /Folded done task|Future work|Archived task/);
-  assert.ok(leftOf(screen).indexOf('unscheduled (') > leftOf(screen).indexOf('T-5 Unversioned'));
+  await c.input('6');
+  await c.waitScreen(s => s.includes('▸ ● T-8 Closed component'), 'all contains closed component');
   await c.input('/T-8 Closed<CR>za');
-  await c.waitScreen(s => s.includes('T-9 T-8 › Folded done task'), 'closed component unfolds');
+  await c.waitScreen(s => s.includes('T-9 Folded done task'), 'closed component unfolds in all');
   await c.input('za');
-  await c.waitScreen(s => !s.includes('T-9 T-8 › Folded done task'), 'closed component folds');
-  await c.input('2/unscheduled (<CR>za');
+  await c.waitScreen(s => !s.includes('T-9 Folded done task'), 'closed component folds');
+  await c.input('2');
+  await c.waitScreen(s => s.includes('in work · 2'), 'work filter redrawn');
+  await c.input('/unscheduled (<CR>za');
   screen = await c.waitScreen(s => idsOf(itemRows(s)).includes('T-13'), 'current work plus unscheduled');
   assert.deepEqual(idsOf(itemRows(screen)), ['T-10', 'T-13']);
   await c.input('4');
@@ -1350,7 +1353,7 @@ test('the board reads all seven statuses, scopes open parents, and filters its h
   assert.equal(await c.lua('return #require("cland.actions").audit()'), 0);
 });
 
-test('the items panel: vertical sections, hub glyphs, right-aligned claims and counted asks; filters 1–5 and f; map grouping', { skip }, async (t) => {
+test('the items panel: vertical sections, hub glyphs, right-aligned claims and counted asks; filters 1–6 and f; map grouping', { skip }, async (t) => {
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
@@ -1371,7 +1374,7 @@ test('the items panel: vertical sections, hub glyphs, right-aligned claims and c
   assert.match(panel, /^ ○ T-5 Slice 2 map +1\/4$/m, 'map progress stays visible');
   assert.match(panel, /^ ◌ T-8 T-5 › Auth scheme +$/m, 'open blocker remains visible');
   assert.match(panel, /^ ◑ T-9 T-5 › CRDT spike +sub-1$/m, 'assignee stays a badge on an open question');
-  assert.deepEqual(idsOf(itemRows(s)), ['T-2','T-12','T-3','T-10','T-11','T-13','T-5','T-6','T-7','T-8','T-9']);
+  assert.deepEqual(idsOf(itemRows(s)), ['T-2','T-12','T-3','T-10','T-11','T-13','T-5','T-7','T-8','T-9']);
 
   const rowsOf = async (key: string, header: string) => {
     await c.input(key);
@@ -1389,14 +1392,18 @@ test('the items panel: vertical sections, hub glyphs, right-aligned claims and c
     (await rowsOf('5', 'map · 1 map')).map((r) => r.replace(/\s+/g, ' ')),
     ['○ T-5 Slice 2 map 1/4', 'DECIDED · 1', '● T-6 Which store', 'FRONTIER · 1', '○ T-7 Transport', 'IN WORK BY SUB-AGENTS · 1', '◑ T-9 CRDT spike sub-1', 'BLOCKED · 1', '◌ T-8 Auth scheme'],
   );
-  // f cycles back to all, F goes back
+  // f reaches explicit all, then board; F returns through all to map.
   await c.input('f');
-  await c.waitScreen((y) => / ITEMS +board · 5 in work · 1 done │/.test(y), 'f: all again');
+  await c.waitScreen((y) => / ITEMS +all · 13 items │/.test(y), 'f: explicit all');
+  await c.input('f');
+  await c.waitScreen((y) => / ITEMS +board · 5 in work · 1 done │/.test(y), 'f: board again');
+  await c.input('F');
+  await c.waitScreen((y) => / ITEMS +all · 13 items │/.test(y), 'F: all');
   await c.input('F');
   await c.waitScreen((y) => / ITEMS +map · 1 map │/.test(y), 'F: map');
   // Enter on a row opens the item view
   await c.input('1');
-  await c.waitScreen((y) => / ITEMS +board · 5 in work · 1 done │/.test(y), 'all');
+  await c.waitScreen((y) => / ITEMS +board · 5 in work · 1 done │/.test(y), 'board');
   await c.input('gg/T-3 T-1 › Board<CR><CR>');
   s = await c.waitScreen((y) => statusLine(y).includes('T-3 · item'), 'the item view of T-3');
   assert.match(topBar(s), /│ T-3 Board view/);

@@ -39,6 +39,30 @@ return { preset = ui.preset, left = ui.left, right = ui.right, dock = ui.dock,
   right_width = l.win.right and vim.api.nvim_win_get_width(l.win.right),
   dock_height = l.win.dock and vim.api.nvim_win_get_height(l.win.dock) }`;
 
+test('legacy all migrates to board; explicit all cycles and persists separately across a cold start', { skip }, async t => {
+  const { root, path } = await fixture(t);
+  await writeFile(path, JSON.stringify({ version: 1, panels: { left: true, right: 'sessions', dock: false }, sizes: { left: 48 }, items_filter: 'all', current_release: 'T-109' }));
+  const c = await client(t, root);
+  assert.equal(await c.lua("return require('cland.items').filter()"), 'board');
+  assert.equal(await c.lua("return require('cland.state').S.ui.current_release"), 'T-109');
+  assert.deepEqual(await c.lua("return require('cland.state').S.ui.sizes"), { left: 48 });
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.left)");
+  await c.input('<Esc>6');
+  await c.waitScreen(s => s.includes('all ·'), 'explicit all');
+  await c.input('f');
+  await c.waitScreen(s => s.includes('board ·'), 'filter cycle wraps to board');
+  await c.input('F');
+  await c.waitScreen(s => s.includes('all ·'), 'reverse cycle returns to all');
+  await quit(c);
+  const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.equal(saved.version, 2);
+  assert.equal(saved.items_filter, 'all');
+  const fresh = await client(t, root);
+  assert.equal(await fresh.lua("return require('cland.items').filter()"), 'all');
+  assert.equal(await fresh.lua("return require('cland.state').S.ui.current_release"), 'T-109');
+  assert.deepEqual(await fresh.lua("return require('cland.state').S.ui.sizes"), { left: 48 });
+});
+
 async function resize(c: Client, slot: string, size: number, key: string) {
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win[...])", slot);
   await c.input(`<Esc><C-w>${size}${key}`);
@@ -184,7 +208,7 @@ test('absent ui.json silently defaults; unreadable or corrupt files notify witho
     const info = await c.lua<{ right: string; left: boolean; filter: string; sizes: object }>(preferences);
     assert.equal(info.right, 'sessions');
     assert.equal(info.left, false);
-    assert.equal(info.filter, 'all');
+    assert.equal(info.filter, 'board');
     assert.deepEqual(info.sizes, {});
     const notice = await c.lua<string | null>("return require('cland.state').S.flash and require('cland.state').S.flash.text or vim.NIL");
     if (content === null) assert.equal(notice, null, 'a fresh project is silent');

@@ -52,37 +52,24 @@ end
 
 function M.compose()
   local scope, parent = items.scope(), M.parent_filter()
-  local out = { scope = scope, columns = {}, unscheduled = {}, other = {}, closed = {}, groups = {}, done = 0, work = 0, leaves = {} }
+  local out = { scope = scope, columns = {}, unscheduled = {}, done = 0, work = 0, leaves = {} }
   for _, s in ipairs(items.COLUMNS) do out.columns[s[1]] = {} end
   for _, it in ipairs(items.ordered()) do
     if scope and it.id == scope.id then
       -- The scope has its own header, never a duplicate background fold.
-    elseif scope and M.under(it, scope.id) and (not parent or M.under(it, parent)) then
-      if it.kind == 'task' and it.status == 'done' then out.done = out.done + 1 end
-      if items.is_level(it) and it.state == 'closed' and open_parents(it) then out.closed[#out.closed + 1] = it end
-      if open_parents(it) then
-        if it.kind == 'task' and out.columns[it.status] then
-          table.insert(out.columns[it.status], it)
-          if items.in_work(it) then out.work = out.work + 1 end
-        elseif not items.is_container(it) then out.leaves[#out.leaves + 1] = it end
+    elseif scope and M.under(it, scope.id) then
+      if not parent or M.under(it, parent) then
+        if it.kind == 'task' and it.status == 'done' then out.done = out.done + 1 end
+        if open_parents(it) then
+          if it.kind == 'task' and out.columns[it.status] then
+            table.insert(out.columns[it.status], it)
+            if items.in_work(it) then out.work = out.work + 1 end
+          elseif not items.is_container(it) then out.leaves[#out.leaves + 1] = it end
+        end
       end
-    elseif items.is_level(it) and (not items.present(it.parent) or not state.item(it.parent)) then
-      out.other[#out.other + 1] = it
-    elseif not items.open_container_of(it) then
-      -- A map stays outside the ladder; its rows belong in the unscheduled fold too.
+    elseif items.unscheduled(it) then
       out.unscheduled[#out.unscheduled + 1] = it
     end
-  end
-  for _, container in ipairs(vim.list_extend(vim.list_extend({}, out.closed), out.other)) do
-    local list = {}
-    for _, it in ipairs(items.ordered()) do
-      -- The scope has its header; descendants with no open container use unscheduled.
-      if (not scope or it.id ~= scope.id) and M.under(it, container.id)
-        and (it.id == container.id or items.open_container_of(it)) then
-        list[#list + 1] = it
-      end
-    end
-    out.groups[container.id] = list
   end
   -- Mark the next task before presentation filters, so narrowing never invents another priority.
   for _, it in ipairs(out.columns.planned) do
@@ -176,22 +163,14 @@ end
 local function fold(c, key, label, list, filter, next_id)
   local shown = vim.tbl_filter(function(it) return selected(it, filter) end, list)
   local closed = state.S.ui.items_folds[key] ~= false
-  local container = state.item(key)
-  local right
-  if container then
-    local kids, done = items.children(key), 0
-    for _, it in ipairs(kids) do if it.state == 'closed' then done = done + 1 end end
-    right = { { done .. '/' .. #kids, 'ClandDim' } }
-    label = container.id .. ' ' .. label
-  end
-  c:add({ { ' ' .. (closed and '▸ ' or '▾ ') .. label .. ' (' .. #shown .. ')', 'ClandSection' } }, right, { fold = key })
+  c:add({ { ' ' .. (closed and '▸ ' or '▾ ') .. label .. ' (' .. #shown .. ')', 'ClandSection' } }, nil, { fold = key })
   if M.follow_fold == key then c.cursor_to = #c.lines; M.follow_fold = nil end
   if not closed then for _, it in ipairs(shown) do row(c, it, key, next_id) end end
 end
 
 function M.summary()
   local b, f = M.compose(), items.filter()
-  if f == 'all' then return 'board · ' .. b.work .. ' in work · ' .. b.done .. ' done' end
+  if f == 'board' then return 'board · ' .. b.work .. ' in work · ' .. b.done .. ' done' end
   if f == 'map' then return nil end
   local n = 0
   if f == 'you' then
@@ -230,16 +209,13 @@ function M.render(c)
       c:add({ { ' ' .. status:upper() .. ' · ' .. #list, #list > 0 and 'ClandSection' or 'ClandFaint' } }, nil, { section = status })
       for _, it in ipairs(list) do row(c, it, status, b.next) end
     end
-    if f == 'all' then
+    if f == 'board' then
       fold(c, 'backlog', 'backlog', b.columns.backlog, f)
       if #b.leaves > 0 then fold(c, 'leaves', 'questions and specs', b.leaves, f) end
-      for _, container in ipairs(vim.list_extend(vim.list_extend({}, b.closed), b.other)) do
-        fold(c, container.id, container.title, b.groups[container.id], f)
-      end
     end
     fold(c, 'unscheduled', 'unscheduled', b.unscheduled, f)
   end
-  return { ' K J rank · T top · ↵ open · za fold', ' e E scope · p P epic · 1-5 or f · gi gt gs' }
+  return { ' K J rank · T top · ↵ open · za fold', ' e E scope · p P epic · 1-6 or f · gi gt gs' }
 end
 
 local function info_at()
@@ -249,12 +225,13 @@ end
 function M.fold(how)
   if how == 'all open' or how == 'all closed' then
     for _, key in ipairs({ 'backlog', 'unscheduled', 'leaves' }) do state.S.ui.items_folds[key] = how == 'all closed' end
-    local b = M.compose()
-    for _, it in ipairs(vim.list_extend(b.closed, b.other)) do state.S.ui.items_folds[it.id] = how == 'all closed' end
+    for _, it in ipairs(items.ordered()) do
+      if items.is_container(it) or #items.children(it.id) > 0 then state.S.ui.items_folds[it.id] = how == 'all closed' end
+    end
   else
     local info = info_at()
     local key = info and (info.fold or (info.list and not vim.tbl_contains(M.SECTIONS, info.list) and info.list))
-    if not key then return state.say('za folds backlog, unscheduled and other containers') end
+    if not key then return state.say('za folds backlog, unscheduled and tree containers') end
     state.S.ui.items_folds[key] = how == 'toggle' and state.S.ui.items_folds[key] == false or how == 'close'
     M.follow_fold = key
   end
