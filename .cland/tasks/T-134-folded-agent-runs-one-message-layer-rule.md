@@ -2,8 +2,8 @@
 id: T-134
 kind: task
 title: "Folded agent runs: one message-layer rule, manual per-run folds with the fold keys and Enter, the folded count, what never folds"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-56
 branch: t/T-134-folded-agent-runs-one-message-layer-rule
 created: 2026-10-10T01:20:46.817Z
-updated: 2026-10-10T04:56:26.721Z
+updated: 2026-10-10T04:56:55.500Z
 ---
 
 ## Parent
@@ -120,3 +120,21 @@ Evidence: A-429 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-42
 ### impl-134 · 2026-10-10T04:56:26.721Z
 
 Final committed-head verification passed on b05b8340a7e347d5ed62277480b4e61a206a0c3b (git log -1): locked npm run test:nvim 183/183, zero failures/skips, 136.23s run after 468.03s lock wait, peak load 5.96. Both QA widths, real-run board guard/reset/T-J-K check, unchanged vboard rank test and all fold differentials pass. Retained append 1.164ms and warm rewrite/redraw 19.638ms stay within budget. Typecheck passed; worktree clean. Full-item review clear at this head (rev-67-134-1/A-429); Coordinator-approved carry-forward hub 838/838 from A-418. Suite log A-430 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-430-t-134-committed-head-neovim-suite-b05b834-183-183-passed.log. No merge performed.
+
+### coord · 2026-10-10T04:56:42.508Z
+
+Merged 14065d4039248bd360a957856e4bc452108870fe onto dev.
+
+### coord · 2026-10-10T04:56:55.500Z
+
+Merged by the Coordinator through `cland merge T-134`, after `cland push`: squash 14065d4 on dev.
+Gate: review rev-67-134-1 clear on b05b834 (A-429), carrying forward rev-7-134-2 (A-413). Earlier rounds:
+- rev-7-134-1 (A-410): hidden-window fold state was lost when every original member was evicted; fixed by state transitions that are independent of visibility, with garbage collection of evicted ids.
+- The full suite on b46a66c found a vertical-board regression: vboard.test.ts:96 failed 3 of 3 on head and passed 3 of 3 on base. The cause was `normal! zE` running Normal mode during background rendering. The fix guards every fold target, runs `zE` only inside a guarded thread-window call and only when needed, and skips empty threads. A real-run board check proves the folds are deleted and the board state is preserved (A-426, A-427).
+Decisions:
+- one layer classifier, replaceable by T-115;
+- run identity: append inherits, split preserves both halves, first-member eviction preserves, join takes the union;
+- foldtext clipping from T-133 is done here;
+- `zE` stays, because deletion has no Ex form;
+- no `silent!` suppression.
+Evidence: Neovim 183 of 183 on b05b834 (A-430). Hub 838 of 838 carries over from b46a66c, since the delta changes only Neovim code. Append 1.2 ms, warm rewrite 19.6 ms.
