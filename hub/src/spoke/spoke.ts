@@ -46,7 +46,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles, `all` or `lead T-<n>` (the open item claimant, else Coordinator); omit to write to the human' },
+        to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles, `all` or `lead T-<n>` (the nearest lead up the open item chain, skipping the sender’s own claims, then Coordinator); omit to write to the human' },
         text: { type: 'string', description: 'The message' },
         kind: { type: 'string', enum: SEND_KINDS, description: 'progress waits for the next turn in a digest; report (default), question and decision start a turn' },
         artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact ids in this topic to attach; deliveries carry their durable paths' },

@@ -247,7 +247,9 @@ export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args
   if (args[0] === 'doctor') env.CLAND_TEST_ORPHAN_ROOT = cwd;
   Object.assign(env, extra);
   return new Promise((resolve, reject) => {
-    execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 }, (err, stdout, stderr) => {
+    // Merge waits up to 60 s for the hub; the outer process budget must also allow CLI startup.
+    const timeout = args[0] === 'merge' ? 65_000 : 30_000;
+    execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout }, (err, stdout, stderr) => {
       if (err && typeof err.code !== 'number') reject(err);
       else {
         const daemonPid = /\bpid +(\d+)/.exec(stdout)?.[1];

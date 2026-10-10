@@ -407,7 +407,7 @@ export class HubCore {
       }) ?? null;
   }
 
-  #defaultOwner(item: string, items: Map<string, DefaultItem>, excluded?: string): string | null {
+  #nodeOwner(item: string, items: Map<string, DefaultItem>, excluded?: string): string | null {
     const seen = new Set<string>();
     for (let node = items.get(item); node && !seen.has(node.id); node = node.parent ? items.get(node.parent) : undefined) {
       seen.add(node.id);
@@ -417,6 +417,12 @@ export class HubCore {
       const status = this.#processStatus.get(id);
       if (status !== 'stopped' && status !== 'exited') return id;
     }
+    return null;
+  }
+
+  #defaultOwner(item: string, items: Map<string, DefaultItem>, excluded?: string): string | null {
+    const owner = this.#nodeOwner(item, items, excluded);
+    if (owner) return owner;
     const coordinator = this.#defaultCoordinator();
     return coordinator ? this.sessionIdentity(`name:${coordinator}`) : null;
   }
@@ -473,13 +479,17 @@ export class HubCore {
       const mode = s.digest === 'now' && this.#canSteerEvents(s.subscriberId) ? 'now' : 'turn';
       if (recipients.get(name) !== 'now') recipients.set(name, mode);
     }
-    // Ready is the lead's handover: one action delivery to the Coordinator through the ordinary queue.
-    // It must start a turn even on adapters without steering; other defaults remain digested.
-    if (event === 'task' && facts.ready) {
-      const coordinator = this.#defaultCoordinator();
-      if (coordinator) {
-        defaultRecipients.add(coordinator);
-        recipients.set(coordinator, 'now');
+    // Ready is the item's handover to its supervising lead. It starts a turn
+    // even on adapters without steering; other defaults remain digested.
+    if (event === 'task' && facts.ready && 'item' in subject) {
+      const items = this.#defaultItemSet(subject.item);
+      const claim = items.get(subject.item)?.claim;
+      const excluded = claim && isNodeLeadRole(claim.role) ? this.sessionIdentity(claim.sessionId) : undefined;
+      const owner = this.#defaultOwner(subject.item, items, excluded);
+      const name = owner ? this.#leadName(owner) : null;
+      if (name) {
+        defaultRecipients.add(name);
+        recipients.set(name, 'now');
       }
     }
     if (session && (facts.lifecycle === 'long idle' || facts.lifecycle === 'died' || facts.lifecycle === 'stopped')) {
@@ -574,17 +584,15 @@ export class HubCore {
     return null;
   }
 
-  #itemLead(item: string): string | null {
+  #itemLead(item: string, except: string): string | null {
     const found = this.#items?.lead(item);
     if (!found) throw new Error(`no item ${item}: address coordinator instead`);
     if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
-    const claim = found.claim;
-    if (claim && isNodeLeadRole(claim.role)) {
-      // A real identity follows renames; a provisional identity can name only its unadopted session.
-      const name = this.#leadName(claim.sessionId);
-      if (name && name !== HUMAN) return name;
-    }
-    return null;
+    // Reports from a node's own lead climb to the next lead. Other senders address
+    // the nearest owner, including inherited ownership for unclaimed descendants.
+    const owner = this.#nodeOwner(item, this.#defaultItemSet(), this.sessionIdentity(`name:${except}`));
+    const name = owner ? this.#leadName(owner) : null;
+    return name && name !== HUMAN ? name : null;
   }
 
   // ---------------------------------------------------------------- presence
@@ -1657,7 +1665,7 @@ export class HubCore {
     for (const tag of HubCore.#normalized(tags)) {
       const lead = /^lead\s+(T-[1-9]\d*)$/.exec(tag);
       if (/^lead\s/.test(tag) && !lead) throw new Error(`invalid item lead address "${tag}": use @lead T-<n>, or address coordinator instead`);
-      const claimant = lead ? this.#itemLead(lead[1]!) : null;
+      const claimant = lead ? this.#itemLead(lead[1]!, except) : null;
       const target = lead ? this.coordinator() ?? COORDINATOR : tag;
       const r = claimant ? { kind: 'session' as const, name: claimant } : resolveTag(target, ctx);
       switch (r.kind) {
