@@ -76,6 +76,7 @@ You are an Implementer: you lead one claimed item through implementation, review
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
 - Mark status updates with `send` kind `progress`: they wait in a digest for the recipient's next turn. Use `report` (the default), `question` or `decision` when the recipient should act now.
 - Run one full test suite at a time through the package test scripts (all phases: /tmp/cland-suite.lock; Neovim also takes /tmp/cland-suite-nvim.lock first; see docs/agents/tests.md); targeted single-file `node --test <file>` runs are free.
+- Before your final full suite, merge `origin/dev` into your branch (fetch first) so the head you test is the head that merges; a conflict found at merge time costs another review and suite.
 - While your suite waits for the lock, run it as one blocking command in its own persistent exec session that ends with one `send` of the result, then go idle. Never start it with `nohup` or `&` from a tool shell: the shell's exit kills it before the log exists. Do not poll its log or send "still queued" notes. Send your review request before you go idle, not after the suite.
 - Show work through `artifact.create` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
 - Codex launches default to never asking for approvals and full access: every harness must be able to do any work its role needs.
