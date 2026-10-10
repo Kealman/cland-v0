@@ -26,6 +26,7 @@ import {
   type RoleList,
   type SendOutcome,
   type SessionState,
+  type SessionHold,
   type Topic,
   type TopicMessage,
   type TopicRef,
@@ -41,6 +42,7 @@ import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
 import type { ItemChange, TopicBinding } from '../tracker/tracker.ts';
+import { sessionActor } from '../tracker/requests.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
@@ -135,6 +137,8 @@ export type CoreOptions = {
   roles?: RolesSource;
   /** The tracker as a topic's binding sees it (`topic.create` with an item); absent, a binding is refused. */
   items?: TopicItems;
+  /** Indexed session work, without file I/O; absent on a hub without a tracker. */
+  sessionHolds?: (sessionId: string) => SessionHold[];
   /** How long a session stays idle before the inbox notes it, ms (default 30 min; 0: never). */
   idleNotifyMs?: number;
 };
@@ -191,6 +195,7 @@ export class HubCore {
   readonly #processStatus = new Map<string, HarnessProcessView['status']>();
   #publishedPresence = '[]';
   #items: TopicItems | null;
+  readonly #sessionHolds: (sessionId: string) => SessionHold[];
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
   readonly #publishedTopics = new Map<string, string>();
   readonly #topicStatuses = new Map<string, TopicStatus>();
@@ -206,6 +211,7 @@ export class HubCore {
     this.#store = options.store ?? new Store();
     this.#roles = options.roles ?? null;
     this.#items = options.items ?? null;
+    this.#sessionHolds = options.sessionHolds ?? (() => []);
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -849,8 +855,16 @@ export class HubCore {
       status: c.status,
       connectedAt: c.connectedAt,
       state: this.sessionState(c.sessionId),
+      holds: this.sessionHolds(c),
     }));
   }
+
+  sessionHolds(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): SessionHold[] {
+    return this.#sessionHolds(sessionActor(session, UNKNOWN_SESSION).id);
+  }
+
+  /** Tracker changes may alter work even when a session's role and state stay the same. */
+  refreshPresence(): void { this.#publishPresence(); }
 
   /** A hub-kind message to one session: delivered now or queued, and recorded. */
   notify(name: string, text: string): void {

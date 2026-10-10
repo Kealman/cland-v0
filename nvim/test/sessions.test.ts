@@ -9,7 +9,7 @@ import { mkdtemp, readdir, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fakeClaude, killDaemon, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 
 const nvim = await nvimOrSkip();
@@ -51,6 +51,39 @@ async function focusPanel(c: Client) {
   const until = Date.now() + 5000;
   while ((await c.mode()) !== 'n' && Date.now() < until) await new Promise((r) => setTimeout(r, 30));
 }
+
+test('the sessions item column shows verifier holds and returns to free on release', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'task.create', title: 'Panel holds' })).ok, true);
+  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
+  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', sessionId: 'qa-id', role: 'qa' });
+  t.after(async () => { await rev.close(); await qa.close(); });
+  await rev.waitForPresence(['rev', 'qa-one']);
+  const c = await startClient(t, bin, root);
+  const row = (screen: string, name: string) => screen.split('\n').find(line => line.includes(`${name} [`)) ?? '';
+  await c.waitScreen(s => row(s, 'rev').includes('free') && row(s, 'qa-one').includes('free'), 'free verifiers');
+  for (const [session, name, tag] of [[rev, 'rev', 'review'], [qa, 'qa-one', 'qa']] as const) {
+    assert.equal((await session.call<{ ok: boolean }>('task.hold', { id: 'T-1' })).ok, true);
+    await c.waitScreen(s => row(s, name).includes(`T-1 ${tag}`), `${tag} hold in the item column`);
+    assert.equal((await session.call<{ ok: boolean }>('task.hold', { id: 'T-1', release: true })).ok, true);
+    await c.waitScreen(s => row(s, name).includes('free'), `${name} free after release`);
+  }
+  // A retained claim beside verifier work: the claim is displayed first.
+  assert.equal((await ui.request({ type: 'task.create', title: 'Claim beside review', assignee: 'rev' })).ok, true);
+  assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'implementer' })).ok, true);
+  const claim = await rev.call<{ ok: boolean }>('task.claim', { id: 'T-2' });
+  assert.equal(claim.ok, true, JSON.stringify(claim));
+  assert.equal((await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' })).ok, true);
+  assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: 'T-1' })).ok, true);
+  // Widen the panel so both held items are visible on the grid.
+  await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.right, 65)");
+  await c.waitScreen(s => row(s, 'rev').includes('T-2 item, T-1 review'), 'claim before verifier hold');
+  assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: 'T-1', release: true })).ok, true);
+  const claimed = await c.waitScreen(s => row(s, 'rev').includes('T-2 item') && !row(s, 'rev').includes('T-1 review'), 'claim survives verifier release');
+  assert.ok(!row(claimed, 'rev').includes('free'));
+});
 
 test('Claude Code, Codex and OpenCode sessions launched from the UI show in the panel with live state, attach on Enter, and a killed one turns unknown with the death in the hub log', { skip, timeout: 180_000 }, async (t) => {
   const root = await tempProject(t);

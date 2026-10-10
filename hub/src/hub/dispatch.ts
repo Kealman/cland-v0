@@ -124,6 +124,7 @@ export class Dispatcher {
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
   #rolesSnapshot: RolesConfig | undefined;
+  readonly #processHolds = new Map<string, string>();
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
 
@@ -142,7 +143,16 @@ export class Dispatcher {
       if (event.type === 'session.process' && event.process.status !== 'running') options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
       if (event.type === 'session.cleanup' && event.state === 'settled') options.tracker?.releaseHolds(event.sessionId);
     });
-    options.tracker?.onChange(() => this.#guard.changed());
+    options.tracker?.onChange(() => {
+      this.#guard.changed();
+      options.core.refreshPresence();
+      for (const process of this.#sessions?.list() ?? []) {
+        const holds = JSON.stringify(process.holds ?? []);
+        const previous = this.#processHolds.get(process.sessionId) ?? '[]';
+        this.#processHolds.set(process.sessionId, holds);
+        if (holds !== previous) options.core.publishProcess(process);
+      }
+    });
     // A crash after the tracker commit but before alias cleanup must not reserve the old name forever.
     if (options.tracker) for (const { name, id } of options.core.store.sessionAliases()) {
       if (!options.tracker.hasProvisionalSession(name)) options.core.store.settleSessionAlias(name, id);
@@ -169,6 +179,8 @@ export class Dispatcher {
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+    this.#processHolds.clear();
+    for (const process of sessions?.list() ?? []) this.#processHolds.set(process.sessionId, JSON.stringify(process.holds ?? []));
     this.#options.tracker?.reconcileSessionIdentities();
     // A crash can follow the durable process-row update but precede queued hold cleanup.
     // Reconcile only known process identities; direct and unknown sessions retain their work.

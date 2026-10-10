@@ -14,6 +14,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, linkSync, unlinkSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
 import files, { type FileHandle } from 'node:fs/promises';
 import type { Resumed } from '../hub/budget.ts';
+import type { SessionHold } from '../protocol.ts';
 const untimed: Resumed = work => work();
 import { basename, join } from 'node:path';
 import { commentKey, TrackerIndex, type Claim, type VerifierHold, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
@@ -860,6 +861,22 @@ export class Tracker {
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
     return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#fresh.annotate(i.id, i.branch, verdicts.get(i.id) ?? []) }));
+  }
+
+  /** Session work reads indexed ownership; item bodies and verdict provenance are irrelevant. */
+  sessionHolds(sessionId: string): SessionHold[] {
+    // Session disconnects can still publish presence after the tracker has begun shutdown.
+    if (this.#stopping) return [];
+    const claims: SessionHold[] = [], holds: SessionHold[] = [];
+    for (const [item, claim] of this.#index.indexedClaims()) {
+      if (this.sameSession(claim.sessionId, sessionId)) claims.push({ item, role: 'item' });
+    }
+    for (const [item, verifiers] of this.#index.indexedHolds()) {
+      for (const hold of verifiers) if (this.sameSession(hold.sessionId, sessionId)) {
+        holds.push({ item, role: hold.role === 'reviewer' ? 'review' : 'qa' });
+      }
+    }
+    return [...claims, ...holds];
   }
 
   /** Routing reads only committed index facts, without reading item files or yielding. */

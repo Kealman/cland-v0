@@ -45,6 +45,9 @@ export function isHeldDelivery(message: { kind?: string | undefined; detail?: Re
   return message.kind === 'progress' || (message.kind === 'event' && message.detail?.digest !== 'now');
 }
 
+/** Current work held by a session, with an Implementer's claim first. */
+export type SessionHold = { item: string; role: 'item' | 'review' | 'qa' };
+
 export type Presence = {
   name: string;
   sessionId: string;
@@ -57,6 +60,7 @@ export type Presence = {
   connectedAt: string;
   /** What the session's harness is doing, from its adapter's signals only (spec 4.2); `unknown` when no adapter can tell. */
   state: SessionState;
+  holds?: SessionHold[];
 };
 
 /** A session's state (spec 4.2): fed by its harness adapter, never by the model's own `status`. */
@@ -565,6 +569,8 @@ export type HarnessProcessView = {
   cwd: string;
   /** The item whose task worktree the session was launched in (`session.launch` with an item), else null. */
   item: string | null;
+  /** Live claims and verifier holds, independent of the launch directory's item. */
+  holds?: SessionHold[];
   pid: number | null;
   /** The harness's own handle for the session (Claude Code: the background session id). */
   harnessId: string | null;

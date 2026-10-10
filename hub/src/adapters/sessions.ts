@@ -269,6 +269,7 @@ export class Sessions {
       model: p.model,
       cwd: p.cwd,
       item: p.item ?? null,
+      holds: this.#core.sessionHolds(p),
       pid: p.pid,
       harnessId: p.harnessId,
       sessionId: p.sessionId,

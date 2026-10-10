@@ -365,6 +365,20 @@ export class TrackerIndex {
       role: r.role as VerifierHold['role'], heldAt: r.held_at as string }));
   }
 
+  /** Verifier work on indexed items; orphan ownership rows stay durable for recovery. */
+  indexedHolds(): Map<string, VerifierHold[]> {
+    const rows = this.#db.prepare('select h.* from tracker_holds h join tracker_items i on i.id = h.item_id order by h.item_id, h.held_at, h.session_id').all() as Row[];
+    const holds = new Map<string, VerifierHold[]>();
+    for (const row of rows) {
+      const item = row.item_id as string;
+      const list = holds.get(item) ?? [];
+      list.push({ session: row.session as string, sessionId: row.session_id as string,
+        role: row.role as VerifierHold['role'], heldAt: row.held_at as string });
+      holds.set(item, list);
+    }
+    return holds;
+  }
+
   setHold(id: string, sessionId: string, hold: VerifierHold | null): void {
     if (!hold) this.#db.prepare('delete from tracker_holds where item_id = ? and session_id = ?').run(id, sessionId);
     else this.#db.prepare('insert into tracker_holds (item_id, session_id, session, role, held_at) values (?, ?, ?, ?, ?) on conflict (item_id, session_id) do update set session = excluded.session, role = excluded.role')
@@ -420,6 +434,12 @@ export class TrackerIndex {
   claims(): Map<string, Claim> {
     const rows = this.#db.prepare('select item_id, session, session_id, role, claimed_at from tracker_claims').all() as Row[];
     return new Map(rows.map((r) => [r.item_id as string, claimOfRow(r)]));
+  }
+
+  /** Current session work excludes claims whose item has left the rebuildable index. */
+  indexedClaims(): Map<string, Claim> {
+    const rows = this.#db.prepare('select c.* from tracker_claims c join tracker_items i on i.id = c.item_id').all() as Row[];
+    return new Map(rows.map(r => [r.item_id as string, claimOfRow(r)]));
   }
 
   /** Every claim held by one session (by id) is held by another, in one statement (a role's handover, #31).

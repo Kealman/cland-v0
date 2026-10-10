@@ -229,9 +229,21 @@ local function session_row(c, s, group)
   local down = not s.live
   local label = s.label or s.name
   local role = label:sub(#s.name + 1)
+  local items = {}
+  if type(s.holds) == 'table' then
+    -- Claims come first even if an older hub sent its holds in another order.
+    for _, role_tag in ipairs({ 'item', 'review', 'qa' }) do
+      for _, hold in ipairs(s.holds) do
+        if hold.role == role_tag then items[#items + 1] = hold.item .. ' ' .. hold.role end
+      end
+    end
+  elseif s.item then
+    items[1] = s.item
+  end
+  local item_text = #items > 0 and table.concat(items, ', ') or 'free'
   c:add(
     { { sel and '▎' or ' ', 'ClandBlue' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' } },
-    { s.item and { s.item .. ' ', 'ClandTeal' } or { 'free ', 'ClandFaint' } },
+    { { item_text .. ' ', #items > 0 and 'ClandTeal' or 'ClandFaint' } },
     { session = s.name, group = group }
   )
   if not sel then

@@ -63,7 +63,11 @@ const bearerMatches = (header: string | undefined, secret: string): boolean => {
 
 /** The hub with no listener yet: a stdio-only hub is this and nothing more. */
 export function createHubBase(options: HubBaseOptions): HubBase {
-  const core = new HubCore({ ...options, ...(options.tracker ? { items: trackerItems(options.tracker) } : {}) });
+  const tracker = options.tracker;
+  const core = new HubCore({ ...options, ...(tracker ? {
+    items: trackerItems(tracker),
+    sessionHolds: sessionId => tracker.sessionHolds(sessionId),
+  } : {}) });
   // closing a unit of work closes its topic (spec 4.5)
   const unwatchEvents = options.tracker?.onChange(change => core.publishTask(change));
   const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));

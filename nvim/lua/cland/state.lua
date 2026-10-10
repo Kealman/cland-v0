@@ -153,10 +153,13 @@ function M.sessions()
       attach = p.attach,
       usage = p.usage,
       approvalCommand = p.approvalCommand,
+      holds = p.holds,
     }
     seen[p.name] = true
   end
+  local holds = {}
   for _, p in ipairs(M.S.presence) do
+    if type(p.holds) == 'table' then holds[p.name] = p.holds end
     if not seen[p.name] then
       out[#out + 1] = { name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true, approvalCommand = p.approvalCommand }
       seen[p.name] = true
@@ -169,6 +172,7 @@ function M.sessions()
     end
   end
   for _, s in ipairs(out) do
+    s.holds = holds[s.name] or s.holds
     s.item = M.item_of_session(s.name) or launched_for[s.name]
   end
   return out
