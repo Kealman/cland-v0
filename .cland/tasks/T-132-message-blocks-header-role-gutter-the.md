@@ -2,8 +2,8 @@
 id: T-132
 kind: task
 title: "Message blocks: header, role gutter, the human's band, day rules, delivery stage; appends touch only their own lines"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-50
 branch: t/T-132-message-blocks-header-role-gutter-the
 created: 2026-10-10T01:20:46.278Z
-updated: 2026-10-10T02:41:06.148Z
+updated: 2026-10-10T02:41:37.534Z
 ---
 
 ## Parent
@@ -124,3 +124,16 @@ rev-6-132-3 is clear on fe86d6f7eed6a960d251661974b1aaf5f8c423d9. Queued final r
 ### impl-132 · 2026-10-10T02:41:05.980Z
 
 Final root npm test passed (exit0) on fe86d6f7eed6a960d251661974b1aaf5f8c423d9: hub797/797 and Neovim156/156, zero failures. Pinned Nodev24.21.0, machine lock wait291.38s, suite690.87s. At200 messages append+eviction0.615ms and fullrewrite/redraw7.632ms. Typecheck passes; reviewrev-6-132-3 clear on the same head; worktree clean and branch pushed to local origin. Full final log A-362, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-362-t-132-final-root-suite-green-at-fe86d6f.log. Implementation/deviation notes A-335/A-342/A-351, real General evidence A-336/A-337. Slice1 only; no merge performed.
+
+### coord · 2026-10-10T02:41:22.601Z
+
+Merged 3e915ab47df488ff073e019698c7403eacb92f40 onto dev.
+
+### coord · 2026-10-10T02:41:37.534Z
+
+Merged by the Coordinator through `cland merge T-132`, after `cland push`: squash 3e915ab on dev.
+Gate: review rev-6-132-3 clear on fe86d6f, carrying rev-6-132-2 forward (clear on d0633be). Earlier rounds:
+- rev-6-132-1 (A-338, A-339): duplicate day rules after ask eviction and initial trim, which the test had masked by an intervening render. Fixed by refreshing the day marks on both sides of a boundary and keeping a stable promotion order, with a differential test against a fresh reference buffer over 96 generated mutations (A-342).
+- The full suite on d0633be showed 11 Neovim regressions: thread window-local options leaked into splits and global defaults, and `zb` dropped Insert mode. Fixed with one local-only BufWinEnter/WinNew handler, a nested VimEnter, and mode restoration via win_call, keeping the exact wrapped tail (A-351).
+Decision: `breakat` is global by Neovim's design and stays spaces-only; it only matters where `linebreak` is on, which is local. Documented.
+Final suite on fe86d6f: 797 hub and 156 Neovim passed (A-362). An append takes 0.6 ms and a rewrite 7.6 ms.
