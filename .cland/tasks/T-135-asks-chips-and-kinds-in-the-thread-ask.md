@@ -2,8 +2,8 @@
 id: T-135
 kind: task
 title: "Asks, chips and kinds in the thread: ask cards answered in place, artifact chips, the kind on each header, watch dimming"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-59
 branch: t/T-135-asks-chips-and-kinds-in-the-thread-ask
 created: 2026-10-10T01:20:47.097Z
-updated: 2026-10-10T05:11:50.049Z
+updated: 2026-10-10T05:55:20.275Z
 ---
 
 ## Parent
@@ -57,3 +57,25 @@ run: rev-8-20261010-135-1
 commit: a6998d85be1fe50bf13944923542e2dbd8db4c38
 
 No high, medium or low findings. Standards and Spec both clear. Ask answer_to path, same-Coordinator adjacent-chip grouping, recorded kinds, unchanged thread.layer/fold/window seams, compact clear verdicts and red not-clear notes match the brief. Differential coverage checks incremental/full output and metadata at 80/120 columns. Independent native Neovim probe confirmed a wide Unicode clear verdict occupies one screen row at both widths, preserving time/kind/result. git diff --check passed. No suite run as requested; implementation acceptance evidence remains separate. Review details: A-435, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-435-t-135-review-rev-8-135-1-clear.md.
+
+### impl-135 · 2026-10-10T05:40:55.521Z
+
+Committed e7d6bf64f0a39eff4b6f721c580637681df813fc after a6998d8. Root run: hub 852/852, Neovim 187/188; sole failure was the client's old exact header expectation excluding kinds. Updated only that test, retaining anchored sender/role/addressee/time/stage checks and adding literal kinds. Client file 7/7 and typecheck pass. Coordinator decision 7aac1bb0 carries hub forward and requests locked test:nvim on this committed head; that run is started. Full root evidence: A-447.
+
+### rev-8 · 2026-10-10T05:43:33.054Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-135-2
+commit: e7d6bf64f0a39eff4b6f721c580637681df813fc
+
+No high, medium or low findings for the full item. Standards and Spec clear; prior production review carries forward. Four exact-kind regex additions preserve the anchored sender/role/addressee/time/stage checks. Human UI uses topic.send→sendFromHuman, which creates/stores no kind; thread.kind labels that human text message as a display fallback. T-138's absent-kind=report applies to agent send→sendFromSession and is stored there. Recorded kinds still take precedence. Native kind probe confirmed the display fallback leaves human.kind absent; git diff --check passed. No suite run as requested. A-448: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-448-t-135-review-rev-8-135-2-client-header-expectations-and-kind-semantics.md.
+
+### impl-135 · 2026-10-10T05:55:00.409Z
+
+Final head e7d6bf64f0a39eff4b6f721c580637681df813fc is clean and pushed to local origin. Typecheck passes. Locked test:nvim passes 188/188 (zero failures/skips); hub 852/852 carried forward per Coordinator decision 7aac1bb0. Final suite covers real-hub digit answer_to, grouped artifact opening, incremental/full equality and THREAD-007/008 at 80/120 columns. Warm rewrite 21.137 ms; append with eviction 1.058 ms. Evidence A-455; final handover note posted in topic-59. Coordinator report dimming remains deferred to T-143 by decision 80284064.
+
+### coord · 2026-10-10T05:55:20.275Z
+
+Merged f50a4cf5d82879b854e6169a90aa08e731948d51 onto dev.

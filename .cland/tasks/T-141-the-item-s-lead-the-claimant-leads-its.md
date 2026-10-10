@@ -3,7 +3,7 @@ id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: open
-status: review
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T05:31:56.999Z
+updated: 2026-10-10T05:51:26.182Z
 ---
 
 ## Parent
@@ -144,3 +144,45 @@ Evidence and runnable pinned probes A-441: /Users/evgeniyivanov/Projects/cland/v
 ### impl-141 · 2026-10-10T05:31:05.425Z
 
 Rebased once onto origin/dev ceab295 after T-140 squash d9931e4; retained ancestry, expanded subscription instructions, eventSteering and delayed terminal recovery. A-436 follow-up boundaries: durable stop intent before adapter stop; recovery verifies native original pid/start identity (gone/reused settles without signalling, matching live stops through verified path, unreadable keeps receipt and retries). Row deletion+checkpoint atomic in ProcessTable; guarded role rollback+checkpoint atomic in Store, protecting later human assignment even when process receipt save fails. Native adapters expose identity-only unwatch; recovery defers new watching until identity verified, disposes before settlement, and Codex cannot resurrect an in-flight reconnect. Final typecheck, allocation/recovery24, native disposal4, lead10, launch-admission15, session-events3, subscription-hygiene14 and diff check pass; delta self-review clear. Full root suite including Neovim will run after combined-head independent review.
+
+### rev-67 · 2026-10-10T05:36:33.094Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-3
+commit: ca4adcd751fb48ec923bed7f7e3a3e4e12c84833
+
+Medium — hub/src/adapters/sessions.ts:282: a post-publication launch failure stops/removes the process but emits only session.cleanup, leaving exact-subject and subscriber-owned subscriptions and no final terminal fact. table.put (:441) already emitted launched; quarantine bypasses process listeners and pending identities are excluded from ordinary startup terminal recovery. Integrate durable terminal fan-out/cleanup for the published failed identity while preserving a conflicting owner.
+
+Low — hub/src/hub/core.ts:1070: a throwing rollback logger skips revocation delivery and role announcements bundled later in the same post-commit callback; isolate these committed publications. Native probe: role null/checkpoint done but revocations0/roleEvents0.
+
+Native terminal probe: watch throws after put; stop new-id succeeds, unwatch runs, row null/pending0, subscriptions [exact,role,owned] remain, history only target launched. No suite/files/signals.
+
+A-436 and both A-441 findings are resolved: row-removal/PID-reuse and failed stop-marker probes settle with one stop; unreadable OS identity retains receipt without stop and later retries safely; failed process receipt after role rollback preserves later human assignment through atomic Store checkpoint. All native probes loaded pinned ca4adcd git objects. T-140 steering/callback/factory/daemon order remains; repeated cold recovery gives one now final event and pending1. Ancestry and subscription instructions retained. Native identity unwatch and Codex reconnect guards reviewed.
+
+Full-item review against ceab295, including the rebase; earlier unchanged routing/identity/clauses/snapshot checks carried forward. High0/medium1/low1. Standards: low1, no blockers; Spec: medium1. Committed diff check passes. Restart modeled with retained memory SQLite, not an on-disk killed-hub run. Full suite remains Implementer-owned.
+
+Evidence/probe A-446: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-446-t-141-combined-review-at-ca4adcd-failed-launch-terminal-subscription-gap.md
+
+### impl-141 · 2026-10-10T05:43:07.025Z
+
+A-446 correction underway: published failed launches now use the existing terminal publication path before accepted-row removal; publication ownership commits with the cleanup receipt. Protocol regressions cover launched/stopped delivery, exact and owned subscription closure, terminal-checkpoint failure and on-disk restart recovery, and preserving an unpublished conflicting owner's subscription. Rollback publications are independent post-commit callbacks; a throwing rollback logger no longer suppresses committed revocation or role events. The queued ca4adcd root suite was cancelled before acquiring the machine lock.
+
+### impl-141 · 2026-10-10T05:44:41.427Z
+
+A-446 correction committed/pushed at bafdae1fa6b063cc08ddf64ca17092e97aed7c7f (copied from git log -1). Published cleanup uses the shared terminal transition before row removal and keeps publication ownership durable across restart; rollback observers are independently guarded. Name-reservation protocol regressions pass 27/27, root typecheck (hub+Neovim) and diff check pass; independent self-review Standards/Spec clear. Corrected durable evidence artifact accompanies handover. Root suite remains unqueued pending the delta review.
+
+### rev-67 · 2026-10-10T05:51:26.182Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-4
+commit: bafdae1fa6b063cc08ddf64ca17092e97aed7c7f
+
+Medium — hub/src/adapters/sessions.ts:278: failed-launch rollback uses the receipt's original name after an owned early hello renames during the awaited stop; cleanup settles with no row/receipt while the renamed identity retains its live/stored Implementer grant, violating README:228's early-hello rollback contract. Resolve the current name by stable identity with foreign-owner/later-assignment guards preserved.
+
+High 0; medium 1; low 0. Standards clear; Spec one medium. A446's terminal subscription gap and logger suppression are resolved; pinned native probes verify exactly-once final/closure retry, fresh-subscription preservation and foreign-owner protection. Full-item verdict against ceab295. No suites run.
+
+Evidence: A-452, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-452-t-141-full-item-review-at-bafdae1-renamed-failed-launch-grant-survives.md.

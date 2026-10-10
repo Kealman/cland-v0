@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-60
 branch: t/T-136-the-top-bar-counts-now-now-layer
 created: 2026-10-10T01:20:47.341Z
-updated: 2026-10-10T05:31:59.809Z
+updated: 2026-10-10T05:55:20.822Z
 ---
 
 ## Parent
@@ -73,3 +73,17 @@ run: rev-8-20261010-136-2
 commit: 10748b625dc5bfc52fc4022c5e8179b501e2d30b
 
 No high, medium or low findings for the full item. A-442 is resolved: native actual Client/default2048-cap probe now preserves2049→2049 through the latest200 retry reply, replay stays deduplicated, partial read leaves1 and replay remains1, full read clears0; no errors. Current live-set reconciliation preserves ids absent from bounded replies and suffix order. History-proven reads are allowed per Coordinator clarification d6729b73; the shared classifier/single chip/no-polling/fitter behavior remains intact. Standards and Spec clear. git diff --check passed; no suite run as requested. A-445: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-445-t-136-review-rev-8-136-2-retry-fix-clear.md.
+
+### impl-136 · 2026-10-10T05:54:11.732Z
+
+Root npm test at 10748b6: hub 852/852 passed; Neovim 192/193, only the existing configured-level board wait race failed (T-13 row not yet present). Durable root log A-453. Coordinator authorized test-only row wait plus Neovim-only rerun. New head from git log -1 is 5eede6b7004f7746c66d92fa17a0b952f6f5e33e: waits for T-13's actual item row before asserting both cards. Targeted board case and typecheck pass; locked test:nvim queued.
+
+### rev-8 · 2026-10-10T05:55:20.720Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-136-3
+commit: 5eede6b7004f7746c66d92fa17a0b952f6f5e33e
+
+No high, medium or low findings. Test-only one-line delta waits for T-13 in the actual rendered item rows; the exact following ['T-10','T-13'] assertion is unchanged, preserving membership/count/order. A-453's missing-T-13 failure matches the synchronization race. Full-item production review A-445 carries forward; Standards and Spec clear. git diff --check passed; no suite run. A-457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-457-t-136-review-rev-8-136-3-board-row-wait-clear.md.
