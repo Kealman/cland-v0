@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T10:45:43.912Z
-updated: 2026-10-10T11:58:38.028Z
+updated: 2026-10-10T15:56:11.630Z
 ---
 
 ## Parent
@@ -46,3 +46,7 @@ Add a third case: nvim/test/thread.test.ts:637, the append performance budget (2
 ### coord · 2026-10-10T11:58:38.028Z
 
 Add a fourth case: hub/test/progress.test.ts:43 expected 'delivered' but saw 'queued' in T-168's full run on 2026-10-10. The file passes 11/11 alone, twice on af1403f and once on dev 53a3187. Wait on the delivery stage event, not on a snapshot taken right after the send.
+
+### coord · 2026-10-10T15:56:11.630Z
+
+Add a fifth case: hub/test/request-guard.test.ts:43 asserts the other client waited under BUDGET_MS*2 behind a 500-request flood. It failed under full-suite load in T-143's run on 2026-10-10 and passes alone (14/14 on dev). Measure relative to an unloaded baseline, or assert ordering, not wall-clock.

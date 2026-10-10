@@ -4,6 +4,7 @@ kind: task
 title: "The item runs its own loop: the Implementer requests its own review and QA, the Coordinator merges on ready; one v0.1 ticket measured from the journal"
 state: open
 status: in progress
+criterion_seq: 4
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-88
 branch: t/T-143-the-item-runs-its-own-loop-the
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T15:36:44.482Z
+updated: 2026-10-10T15:56:05.629Z
 ---
 
 ## Parent
@@ -27,10 +28,9 @@ The item runs its own loop. The Implementer clause requests review and QA itself
 
 ## Acceptance criteria
 
-- [ ] A real v0.1 ticket goes from claim to `ready` with the Implementer requesting its own review, the not-clear verdict and re-review passing between Implementer and Reviewer, and one delivery about the item at the Coordinator; the journal measurement is attached as an artifact.
-- [ ] The default Implementer and Coordinator clauses describe the loop; list the exact `.cland/roles.toml` lines in your report.
-- [ ] The `merge`, `qa` and `code-review` skills and `docs/review-and-qa.md` describe kinds, subscriptions and item leads.
-- [ ] `npm run typecheck && npm test` pass.
+- [ ] C2. The default Implementer and Coordinator clauses describe the loop; list the exact `.cland/roles.toml` lines in your report.
+- [ ] C3. The `merge`, `qa` and `code-review` skills and `docs/review-and-qa.md` describe kinds, subscriptions and item leads.
+- [ ] C4. `npm run typecheck && npm test` pass.
 
 ## Notes
 
@@ -77,3 +77,7 @@ commit: 1c2c7c577d6b8fe88783f394d364171e4bae231d
 Implementation/test-only delta clear, no high or medium findings. Exactly three test files change (+10/-6); production clearance in A-641 carries forward. Role waits now require role metadata and literal lead address, while real routing/exclusion/fallback assertions remain intact. Clause tests explicitly pin Implementer review/QA, unclaimed Coordinator fallback, blocked escalation and report kind. Two actual extracted pure clause checks pass; seven in-memory contract mutations are rejected; diff --check passes. Evidence A-643 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-643-t-143-test-only-follow-up-at-1c2c7c5-clear-criteria-pending.md).
 
 UNVERIFIED: real v0.1 journal demonstration and completed npm run typecheck && npm test. A-642’s prior run is typecheck pass, hub 1018/1022 with four stale clause assertions, Neovim not run. Current targeted passes address them but do not establish the full-suite criterion. task.view still has null criterion ids; no marks claimed. As Coordinator directed, restart and stable-id follow-up verification are required before merge.
+
+### impl-143 · 2026-10-10T15:56:05.629Z
+
+Corrected-head full run at 1c2c7c577d6b8fe88783f394d364171e4bae231d finished: typecheck exit 0; hub 1022 tests / 1021 pass / 1 fail / 0 skipped, exit 1; Neovim not run. Durable log A-650 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-650-t-143-corrected-head-full-typecheck-and-suite-result.txt). Sole failure: request-guard.test.ts:59, task.list flood, other client waited 757 ms. Suite 886.65s, lock wait 457.09s, peak 1m load 17.75. Callback report arrived at 15:55:02 after the Coordinator's inspection request. Re-review of the test-only follow-up is clear in A-643, but full-suite and real-demo criteria remain incomplete. Clean worktree; Coordinator will relaunch a fresh session for criterion marking and demo.
