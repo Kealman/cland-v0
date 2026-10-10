@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
+topic: topic-84
 branch: t/T-175-fix-forward-t-173-the-neovim-suite-must
 created: 2026-10-10T12:28:36.106Z
-updated: 2026-10-10T12:28:38.974Z
+updated: 2026-10-10T12:29:44.517Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ Restore safe serialization while keeping T-173's improvements: the shared stale 
 ## Notes
 
 Size XS. High priority: until it lands, Neovim runs on branches based on dev after 0820d97 can overlap hub runs.
+
+## Comments
+
+### impl-175 · 2026-10-10T12:29:44.517Z
+
+Reproducing the overlap at the existing runner CLI seam by reversing the Neovim/hub overlap assertion before changing implementation. Planned lock order: Neovim phase lock then machine lock; hub takes machine lock only. Existing stale recovery and interruption latch remain shared, with per-phase cleanup before releasing both leases.

@@ -2,8 +2,8 @@
 id: T-155
 kind: task
 title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T12:09:40.335Z
+updated: 2026-10-10T12:29:52.739Z
 ---
 
 ## Parent
@@ -110,3 +110,7 @@ run: rev-8-20261010-155-4
 commit: fe61b8b235ff6ae63958daf00993bd3157c3b04f
 
 No high, medium or low findings. Standards: clear, zero findings. Spec: clear, zero findings. Aide done/manage needs no claim; verify/fail remain hard-refused by the Reviewer/QA rule. Range-diff preserves previously reviewed recovery and explicit human provenance, T-148 hard boundaries, and artifact.promote. Native read-only policy probe passed 90 cases plus grant parity/addressing/provenance checks. Fresh full suite on this rebased head remains pending Coordinator scheduling; A-592 reports typecheck and targeted24 pass. Evidence A-595: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-595-t-155-review-fe61b8b-rebase-and-aide-criterion-rights-clear.md.
+
+### coord · 2026-10-10T12:29:52.739Z
+
+Merged 9eabb8ac76d2de55721e68d6f45f66a8a6cbee02 onto dev.
