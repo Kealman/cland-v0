@@ -3,7 +3,7 @@ id: T-168
 kind: task
 title: "Sessions panel shows a verifier's held item, tagged with its role, instead of free: holds in the hub's session data"
 state: open
-status: planned
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: T-107
 blocked_by: []
-topic: null
-branch: null
+topic: topic-75
+branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T09:29:12.193Z
+updated: 2026-10-10T09:41:56.958Z
 ---
 
 ## Parent
@@ -40,3 +40,27 @@ Add the session's held items to the session data the hub sends, and show them in
 ## Notes
 
 Size S. Spans the hub (session data) and Neovim (the panel).
+
+## Comments
+
+### impl-168 · 2026-10-10T09:33:36.007Z
+
+Opened topic-75. Building frame and headless panel regressions before the fix; hub scope limited to session-data projection and refreshes. Full suite awaits Coordinator signal.
+
+### impl-168 · 2026-10-10T09:38:19.156Z
+
+Committed and pushed session-hold projection/refresh plus role-tagged claim-first panel display. Frame coverage passes for launched Reviewer/QA session.list, presence and session.process take/release; headless panel covers review/QA free→hold→free and claim-first ordering/claim survival. Typecheck and diff check pass. Evidence A-535: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-535-t-168-implementation-and-validation.md. Full npm test awaits Coordinator signal; live post-restart reviewers check remains pending.
+
+### rev-9 · 2026-10-10T09:41:56.958Z
+
+verdict: review
+result: not clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-168-1
+commit: 86c1c3c29dc8d08e75636b25eb7b32435de9574c
+
+Medium — hub/src/hub/core.ts:837: presence passes raw sessionId='unknown' to hold projection, while supported unknown-id Reviewer/QA tracker operations store work under name:<session>; normalized identities do not match, so holds=[] and the panel still shows free. Use the same name-based identity as sessionActor while keeping different unknown sessions isolated. Target in-memory probe confirms accepted Reviewer hello, holdIdentity=name:rev, projectionIdentity=unknown, matches=false; projection/display consequence traced in source.
+
+Low — possible Feature Envy / repeated full projection, hub/src/hub/server.ts:71: each session lookup calls tracker.list(), including all verdict/hold queries; every tracker change repeats it for connected and process sessions. Prefer a narrow Tracker claims/holds query, read once per refresh. Heuristic only; no measured regression claimed.
+
+Stable-ID take/release/stop/reconnect paths, additive payload shape and claim-first tagged column otherwise look correct. Full suite and live post-restart check remain pending as instructed. Read-only review; no edits or suite run. Two-axis evidence: A-536, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-536-t-168-review-provisional-session-identities-still-show-free.md.

@@ -3,7 +3,7 @@ id: T-165
 kind: task
 title: "The needs-you chip counts only the inbox's now-layer sections: no unread messages or notifications; one shared count with the inbox header"
 state: open
-status: in progress
+status: ready
 rank: 1310
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-74
 branch: t/T-165-the-needs-you-chip-counts-only-the-inbox
 created: 2026-10-10T09:19:59.837Z
-updated: 2026-10-10T09:26:25.113Z
+updated: 2026-10-10T09:34:40.144Z
 ---
 
 ## Parent
@@ -50,3 +50,15 @@ Confirmed separate count paths: topbar reads attention.count(), inbox header rea
 ### impl-165 · 2026-10-10T09:26:25.113Z
 
 Candidate fd5f4c4 removes the independent unread attention projection. The regression first reproduced the exact 98-vs-empty mismatch, then passed through asks, approvals, waiting topics, not-clear verdict/death, ordinary notifications/messages and resolutions. Startup/refresh/reconnect with unread history also remains zero. THREAD-009/010 and typecheck pass. Standards self-review: no findings. Spec self-review: stale README count paragraph fixed; no remaining findings. Locked full Neovim suite is queued behind another suite.
+
+### rev-67 · 2026-10-10T09:34:40.117Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-165-1
+commit: fd5f4c452ea827f51307c76414978da22eb78683
+
+No high, medium or low findings. Standards: clear; Spec: clear. Chip, inbox headers and empty state share state.needs_you(); all five requested inbox action kinds count, ordinary notes/messages and unread totals do not. Optimistic answer/dismiss updates and inbox snapshots use those same rows. Complete ten-file diff and unchanged inbox paths reviewed. Pinned native Neovim probe passed actual rendered agreement at unread98/198, all five actions, ordinary-note exclusion, resolutions/dismissals and stale aggregate exclusion after inbox load. New shell regressions cover actual 98-message frames and startup/refresh/reconnect; THREAD-009/010 match the corrected rule. No edits or suite repeat; full test:nvim remains separately queued.
+
+Evidence: A-533, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-533-t-165-review-at-fd5f4c4-shared-now-count-clear.md.

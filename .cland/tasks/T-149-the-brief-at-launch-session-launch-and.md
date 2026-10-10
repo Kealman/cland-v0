@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-68
 branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
-updated: 2026-10-10T09:24:51.636Z
+updated: 2026-10-10T09:42:23.895Z
 ---
 
 ## Parent
@@ -61,3 +61,22 @@ Medium — hub/src/adapters/sessions.ts:535: with an already-assigned Implemente
 
 Standards: clear, 0 findings. Spec: not clear, 2 medium findings. Root and independent Spec reviewer reproduced both using Node24 memory probes against pinned git modules. Ordinary carried/noncarried ordering, stages, post-delivery reconnect/restart, pre-spawn validation and stale-clause retry probes passed. T-141 ownership checks remain unchanged. No edits or full suite repeat.
 Evidence: A-526, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-526-t-149-review-at-5d8a3cf-first-launch-persistence-and-input-gaps.md.
+
+### impl-149 · 2026-10-10T09:36:27.934Z
+
+Pushed f5f8e7357094f544b4e60174d3eab075bf87672e fixing both rev-67 medium findings: durable first-input queue before hello/restart, and effective preassigned role for all native adapters. Failed-spawn notes restored; stage transitions journalled. Frame 5/5, native 6/6, admission 15/15, typecheck clear; self-reviews clear. Full suite cancelled for T-164 per Coordinator; rebase/rerun pending.
+
+### rev-67 · 2026-10-10T09:42:23.895Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-149-2
+commit: f5f8e7357094f544b4e60174d3eab075bf87672e
+
+Medium — hub/src/adapters/sessions.ts:569: brief cancellation failure escapes before owned-process cleanup; after watch refusal a Store cancellation fault yields zero stops, zero pending receipts, a running row and retained Implementer role, breaching the existing T-141 supervision contract.
+Medium — hub/src/adapters/sessions.ts:528: pre-spawn brief recording is outside the cancellation handler; post-commit send logger failure refuses launch but leaves its brief queued, so a successful same-name retry starts on the refused brief before the requested one.
+Medium — hub/src/hub/core.ts:597: early carried Codex hello marks the brief injected before native turn acceptance; first-turn refusal leaves false injected and send/acked/injected journal records instead of cancelling unaccepted work.
+
+Both original A-526 findings are fixed. Standards: 1 grouped medium finding; Spec: 2 medium findings, one overlaps Standards; three distinct correction points above. Root independently reproduced all failures against pinned f5f8e73; prior ordinary and original-fix probes pass. Existing native Codex fake supports the early-hello/refused-first-turn timing. The stage issue concerns brief completion, not T-141 launch-grant trust policy. No edits or suite repeat; full-suite rebase/rerun remains separately pending.
+Evidence: A-538, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-538-t-149-review-at-f5f8e73-launch-failure-settlement-gaps.md.

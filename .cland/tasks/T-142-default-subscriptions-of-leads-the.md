@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T09:27:19.575Z
+updated: 2026-10-10T09:30:07.185Z
 ---
 
 ## Parent
@@ -69,3 +69,15 @@ Standards: clear, 0 findings. Spec: not clear, 3 medium findings. Independently 
 ### impl-142 · 2026-10-10T09:22:36.836Z
 
 Hub review A-523 found three medium ownership gaps: inherited claims on ancestors, verified-stopped leads with pending receipts during recovery, and anonymous hellos sharing an unknown recipient identity. Adding the three regressions at the established daemon/frame-history seam and fixing ownership as nearest live stable lead. The Coordinator requested withdrawal of the superseded queued suite; its runner has been terminated, and a fresh suite will be queued on the fix head.
+
+### rev-67 · 2026-10-10T09:30:06.986Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-142-2
+commit: 3bf53ca046a2c41ea66b379cfef38fd908f1d7d5
+
+No high, medium or low findings remain. Standards: clear; Spec: clear. All three A-523 findings are fixed: ancestor/default ownership, published verified-stop receipt seeding, and distinct anonymous claimant identity. Root independently reran the original probes and ordinary full-item recovery/ownership probes against pinned 3bf53ca; all passed. Extended probes cover child subtree overrides, pooled grandchild holds, own idle/death to parent, terminal fallback and inherited final close; independent Spec pass checks unverified quarantine control. Prior full-item review carries forward with the complete revision diff checked. No edits or full suite repeat; full suite remains queued separately.
+
+Evidence: A-531, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-531-t-142-full-item-review-at-3bf53ca-clear.md.

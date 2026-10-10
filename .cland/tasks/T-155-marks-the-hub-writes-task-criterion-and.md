@@ -3,7 +3,7 @@ id: T-155
 kind: task
 title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T09:26:15.624Z
+updated: 2026-10-10T09:31:44.203Z
 ---
 
 ## Parent
@@ -70,3 +70,13 @@ Standards: 2 medium; Spec: 1 medium. Task-only scope accepted per Coordinator. N
 ### impl-155 · 2026-10-10T09:25:54.584Z
 
 Pushed 0258ec70b075f1c739aabf491763741d2e1303fe addressing A-517's three mediums: durable startup capture recovery, free-name human CLI rights, and refused insertion into an unclosed fence. All three regressions red->green; typecheck and 31 targeted tests pass. Full suite queued behind machine lock; final review/handover pending.
+
+### rev-8 · 2026-10-10T09:31:43.912Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-155-2
+commit: 330f45e93b553d6505062c1cf67d17dae5a63fee
+
+No high, medium, or low findings. Standards and Spec clear for the full item. All three A-517 findings are resolved: startup capture recovery precedes indexing and preserves existing live files, named human CLI callers retain done/manage rights, and add refuses open-fence insertion. The intermediate cli: session-id regression is also resolved by explicit Actor.human provenance and reauthorization comparison; actual helper/policy probes confirmed named-human, Reviewer/QA and roleless-session outcomes. Read-only review, no reviewer suites or edits; full suite remains queued. Artifact A-532: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-532-t-155-re-review-capture-recovery-and-actor-provenance-clear.md.

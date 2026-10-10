@@ -2,8 +2,8 @@
 id: T-164
 kind: task
 title: "Launch role notice: 'took <Role> at launch' goes missing when spawn acceptance and the first hello race (T-141 regression)"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-73
 branch: t/T-164-launch-role-notice-took-role-at-launch
 created: 2026-10-10T08:59:53.666Z
-updated: 2026-10-10T09:20:38.492Z
+updated: 2026-10-10T09:42:26.982Z
 ---
 
 ## Parent
@@ -68,3 +68,11 @@ Both hello/acceptance orderings publish the dedicated launch event once; ordinar
 A-519 shows 20 isolated agents-journal runs with 8/8 passes each; A-520 reports final typecheck and 69 role-integrity tests passing. Full npm test is pending Coordinator's suite-order signal, a separate acceptance/merge requirement. Reviewer made no edits or full-suite run.
 
 Evidence and two-axis review: A-524, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-524-t-164-review-exactly-one-launch-assignment-notice.md.
+
+### impl-164 · 2026-10-10T09:42:12.783Z
+
+Final full npm test passed on reviewed/pushed head 86835a4a31aecb5c03c1cc67ba14d4a65fa5eaeb: exit 0, 951/951 hub tests and 214/214 Neovim tests, zero failures/cancellations/skips. Node v24.21.0; worktree remains clean. Full-suite evidence A-537: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-537-t-164-full-npm-test-passed-951-hub-214-neovim.log. Together with final typecheck, 69 name-reservation/item-lead passes, 20/20 isolated agents-journal runs and clear review A-524, all requested validation is complete.
+
+### coord · 2026-10-10T09:42:26.982Z
+
+Merged 7990755777ab953fb5f13198f75300a9ad3e8325 onto dev.
