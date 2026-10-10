@@ -34,6 +34,9 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'acked',
   'injected',
   'dropped',
+  'digest-released',
+  'inject-uncertain',
+  'inject-retry',
   'role-queue-claimed',
   // sessions
   'hello',

@@ -521,7 +521,7 @@ export class Dispatcher {
             if (typeof text !== 'string') throw new ArtifactError('artifact-source', 'send needs text');
             const reply = typeof frame.replyTo === 'string' ? frame.replyTo : undefined;
             const to = Array.isArray(frame.to) ? frame.to as string[] : undefined;
-            const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts)
+            const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts, frame.kind)
               : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts);
             return { type: 'result', id: String(frame.id), ok: true, value };
           });
@@ -735,7 +735,7 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { pong: true } });
             break;
           case 'send': {
-            const { outcomes, topic } = core.sendFromSession(me, frame.to ?? [], frame.text, frame.replyTo, frame.topic);
+            const { outcomes, topic } = core.sendFromSession(me, frame.to ?? [], frame.text, frame.replyTo, frame.topic, undefined, undefined, undefined, frame.kind);
             peer.send({ type: 'result', id: frame.id, ok: true, value: { outcomes, topic } });
             break;
           }

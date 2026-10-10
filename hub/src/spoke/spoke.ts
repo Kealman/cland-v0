@@ -21,7 +21,8 @@ import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from
 import { INSTRUCTIONS } from './instructions.ts';
 import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS, WELCOME_TIMEOUT_MS } from './hub-client.ts';
 import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
-import { HEARTBEAT_MS, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
+import { HEARTBEAT_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
+import { envelope } from '../adapters/contract.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 
 const VERSION = '0.1.0';
@@ -45,6 +46,7 @@ const TOOLS = [
       properties: {
         to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles or `all`; omit to write to the human' },
         text: { type: 'string', description: 'The message' },
+        kind: { type: 'string', enum: SEND_KINDS, description: 'progress waits for the next turn in a digest; report (default), question and decision start a turn' },
         artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact ids in this topic to attach; deliveries carry their durable paths' },
         topic: { type: 'string', description: 'The topic id (the `topic` of the event being answered); default General for the human, Agents between sessions' },
         reply_to: { type: 'string', description: 'msg_id of the event being answered' },
@@ -211,7 +213,7 @@ type ChannelNotification = Notification & {
 export type SpokeServer = Server<never, ChannelNotification>;
 const CHANNEL_CAPABILITY = { 'claude/channel': {} };
 const deliverToSession = (server: SpokeServer, message: Message, topic?: TopicRef): Promise<void> =>
-  server.notification({ method: 'notifications/claude/channel', params: { content: message.text, meta: metaOf(message, topic) } });
+  server.notification({ method: 'notifications/claude/channel', params: { content: message.digest?.length ? envelope(message, topic ?? null) : message.text, meta: metaOf(message, topic) } });
 
 export type SpokeRuntime = { server: SpokeServer; hub: HubClient | null };
 
@@ -260,12 +262,14 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: true, ...value });
         }
         case 'send': {
+          if (args.kind !== undefined && !isSendKind(args.kind)) return text({ ok: false, error: 'send kind must be progress, report, question or decision' }, true);
           const to = Array.isArray(args.to) ? args.to.filter((t): t is string => typeof t === 'string') : [];
           if (typeof args.text !== 'string') return text({ ok: false, error: 'send needs `text`' }, true);
           const value = (await hub.request({
             type: 'send',
             to,
             text: args.text,
+            ...(isSendKind(args.kind) ? { kind: args.kind } : {}),
             ...(args.artifacts !== undefined ? { artifacts: args.artifacts as string[] } : {}),
             ...(typeof args.reply_to === 'string' ? { replyTo: args.reply_to } : {}),
             ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),

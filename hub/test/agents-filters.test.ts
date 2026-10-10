@@ -72,7 +72,8 @@ test('session filters match sender, addressees and notice facts exactly; spoke i
   await alpha.call('send', { topic: topic.id, to: ['beta'], text: 'in bound topic' });
 
   const session = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', session: 'alpha', limit: 200 });
-  assert.deepEqual(session.messages.map((m) => m.kind ?? m.text), ['role-assign', 'claim', 'sent by alpha', 'addressed to alpha', 'agent-message']);
+  assert.deepEqual(session.messages.map((m) => m.kind), ['role-assign', 'claim', 'report', 'report', 'agent-message']);
+  assert.deepEqual(session.messages.filter(m => m.kind === 'report').map(m => m.text), ['sent by alpha', 'addressed to alpha']);
   const both = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', session: 'alpha' });
   assert.deepEqual(both.messages.map((m) => m.kind), ['claim', 'agent-message']);
   const recipient = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', session: 'beta' });

@@ -5,9 +5,46 @@ import { open, readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import { join } from 'node:path';
 import { Journal, readJournal } from '../src/hub/journal.ts';
+import { HubCore } from '../src/hub/core.ts';
 import { serveProject } from '../src/hub/daemon.ts';
 import { BUDGET_MS, RequestGuard } from '../src/hub/budget.ts';
 import { eventually, tempProject } from './harness.ts';
+
+test('Core journals released digest membership, message kinds and batch control transitions', async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'journal.jsonl');
+  const journal = new Journal(path);
+  t.after(() => journal.close());
+  const core = new HubCore({ log: journal.tap(() => {}) });
+  t.after(() => core.store.close());
+  core.store.ensureTopic('reports', 'Reports', false, new Date().toISOString());
+  const receiver = core.hello({ type: 'hello', protocol: 2, sessionId: 'receiver', name: 'receiver', role: 'coordinator', cwd: '/' }, () => true);
+  assert.ok(receiver.ok);
+  const note = core.sendFromSession('sender', ['receiver'], 'private note text', undefined, undefined, undefined, { role: 'implementer' }, undefined, 'progress').message;
+  const trigger = core.sendFromSession('sender', ['receiver'], 'private report text', undefined, 'reports', undefined, { role: 'implementer' }).message;
+  core.ack(receiver.connection, trigger.id);
+  core.markUncertain(trigger.id, 'receiver', 'no answer');
+  core.retryUncertain(trigger.id, 'receiver');
+  core.deleteTopic('reports');
+  const next = core.sendFromSession('sender', ['receiver'], 'next report', undefined, undefined, undefined, { role: 'implementer' }).message;
+  core.ack(receiver.connection, next.id);
+  core.markInjected(next.id, 'receiver');
+  await journal.flush();
+  const records = readJournal(path);
+  const released = records.find(r => r.event === 'digest-released');
+  assert.equal(released?.trigger, trigger.id);
+  assert.deepEqual(released?.notes, [note.id]);
+  assert.deepEqual(released?.reheld, [note.id]);
+  assert.equal(records.find(r => r.event === 'send' && r.id === note.id)?.kind, 'progress');
+  assert.equal(records.find(r => r.event === 'send' && r.id === trigger.id)?.kind, 'report');
+  for (const id of [note.id, trigger.id]) {
+    assert.ok(records.some(r => r.event === 'acked' && r.id === id));
+    assert.ok(records.some(r => r.event === 'inject-uncertain' && r.id === id));
+  }
+  assert.ok(records.some(r => r.event === 'inject-retry' && r.id === trigger.id));
+  for (const id of [note.id, next.id]) assert.ok(records.some(r => r.event === 'injected' && r.id === id));
+  assert.equal(JSON.stringify(records).includes('private note text'), false);
+});
 
 test('concurrent producers preserve call order and timestamps through short async appends and close', async t => {
   const root = await tempProject(t);

@@ -23,6 +23,11 @@ export const UPDATE_HINT = 'update cland and restart the session';
 
 export type FromKind = 'human' | 'agent' | 'hub';
 export type Via = 'session' | 'hub';
+export type SendKind = 'progress' | 'report' | 'question' | 'decision';
+export const SEND_KINDS: readonly SendKind[] = ['progress', 'report', 'question', 'decision'];
+export function isSendKind(value: unknown): value is SendKind {
+  return typeof value === 'string' && SEND_KINDS.includes(value as SendKind);
+}
 export type Outcome = 'delivered' | 'queued' | 'unknown' | 'refused' | 'empty';
 
 export type Presence = {
@@ -70,9 +75,10 @@ export type Message = {
   ts: string;
   /** The topic the message belongs to (its id); absent on the hub's own notices. */
   topic?: string;
-  /** What kind of hub notice this is (`fromKind` `hub`): `role` (a clause), or an Agents record's lifecycle kind
-   *  (`session-start`, `role-assign`, `claim`, `mute`, …; `src/hub/agents-topic.ts`). Absent on every other message. */
+  /** An agent's send kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
   kind?: string;
+  /** Held progress attached to this addressee's turn-starting delivery, oldest first. */
+  digest?: Message[];
   /** The notice's facts, typed by its kind: a mute carries its `HygieneRefusal` and the pair. */
   detail?: Record<string, unknown>;
   /** The human's answer to an ask (#33): the ask's message id. */
@@ -253,7 +259,7 @@ export type SpokeRequest =
   | ArtifactList
   | ArtifactPromote
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
-  | { type: 'send'; id: string; to?: string[]; text: string; replyTo?: string; topic?: string; artifacts?: string[] }
+  | { type: 'send'; id: string; to?: string[]; text: string; kind?: SendKind; replyTo?: string; topic?: string; artifacts?: string[] }
   | { type: 'who'; id: string }
   /** `topic`: that topic's latest messages instead of the session's own traffic; Agents accepts item/session filters. */
   | ({ type: 'history'; id: string; limit?: number; with?: string; topic?: string } & AgentsHistoryFilter)
@@ -361,6 +367,7 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       );
     case 'send':
       return (
+        (f.kind === undefined || isSendKind(f.kind)) &&
         (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
         typeof f.text === 'string' &&
         (f.replyTo === undefined || typeof f.replyTo === 'string') &&

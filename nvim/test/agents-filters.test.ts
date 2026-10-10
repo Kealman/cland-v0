@@ -95,7 +95,8 @@ test('a session named loop excludes another pair’s loop metadata in live entri
   const screen = await c.waitScreen((s) => centreOf(s).includes('loop sentinel'), 'matching live entry after unrelated mute');
   assert.ok(!centreOf(screen).includes('muted:'), 'the rule named loop does not name the session loop');
   const history = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', session: 'loop' });
-  assert.deepEqual(history.messages.map((m) => m.kind ?? m.text), ['role-assign', 'loop sentinel']);
+  assert.deepEqual(history.messages.map((m) => m.kind), ['role-assign', 'report']);
+  assert.deepEqual(history.messages.filter(m => m.kind === 'report').map(m => m.text), ['loop sentinel']);
   const spoke = await beta.call<{ messages: Array<{ msg_id: string }> }>('history', { topic: 'agents', session: 'loop' });
   assert.deepEqual(spoke.messages.map((m) => m.msg_id), history.messages.map((m) => m.id));
 });

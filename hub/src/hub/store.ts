@@ -9,6 +9,7 @@ import { vacancyWarning } from './topics.ts';
  *  the turn, or dropped past the TTL. */
 export type DeliveryState = 'delivered' | 'queued' | 'dropped' | 'injected' | 'uncertain';
 export type KnownSession = { name: string; lastSeen: string; status: string | null; role: string | null };
+export type ReleasedDigest = { trigger: string; session: string; notes: string[]; reheld: string[] };
 
 const SCHEMA = `
 create table if not exists artifacts (
@@ -122,7 +123,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
-  /** What kind of hub notice a message is (`role`: a role clause or revocation), null for every other message. */
+  /** The agent's send kind, or the hub notice's kind (`role`: a clause or revocation). */
   { table: 'messages', column: 'notice', type: 'text' },
   /** A notice's facts as JSON (`Message.detail`): a mute's refusal and pair; null for every other message. */
   { table: 'messages', column: 'notice_detail', type: 'text' },
@@ -140,6 +141,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   /** The session id behind a delivery's addressee name when it was recorded (or when a role's queue was claimed):
    *  what a grant tied to a delivery (the mention rule) is checked against, never the name. */
   { table: 'deliveries', column: 'session_id', type: 'text' },
+  /** A progress note's turn-starting delivery, fixed before transport and reused on every retry. */
+  { table: 'deliveries', column: 'digest_id', type: 'text' },
   /** The sender's session id, for an agent's message: a reply finds the sender after a rename. */
   { table: 'messages', column: 'from_session_id', type: 'text' },
 ];
@@ -149,6 +152,7 @@ const LATE_INDEXES = `
 create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
 create index if not exists messages_seq on messages (topic, seq);
+create index if not exists deliveries_digest on deliveries (session, digest_id);
 `;
 
 /**
@@ -503,6 +507,12 @@ export class Store implements HygieneMemory {
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
       const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?))');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session);
+      // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
+      // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
+      const kind = notice ?? message.kind;
+      if (kind !== 'progress' && kind !== 'role') {
+        for (const d of deliveries) this.#bindProgress(message.id, d.session, seq);
+      }
     });
   }
 
@@ -515,49 +525,105 @@ export class Store implements HygieneMemory {
   /** The messages waiting for a session, oldest first; those past the TTL are marked dropped and returned
    *  separately. The rest stay queued: only the spoke's ack marks one delivered (`markDelivered`). */
   pendingFor(session: string, now: number, ttlMs: number): { deliver: Message[]; dropped: Message[] } {
+    const dropped = this.expireQueued(session, now, ttlMs);
     const rows = this.#db
-      .prepare('select m.*, d.queued_at as queued_at from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = ? order by d.queued_at, m.created_at')
+      .prepare(`select m.*, d.queued_at as queued_at from deliveries d join messages m on m.id = d.message_id
+        where d.session = ? and d.state = ? and d.digest_id is null order by m.seq`)
       .all(session, 'queued') as Row[];
     const deliver: Message[] = [];
-    const dropped: Message[] = [];
-    const mark = this.#db.prepare('update deliveries set state = ?, delivered_at = ? where message_id = ? and session = ?');
     for (const row of rows) {
       const message = toMessage(row);
-      if (now - (row.queued_at as number) > ttlMs) {
-        mark.run('dropped', null, message.id, session);
-        dropped.push(message);
-      } else deliver.push(message);
+      if (message.kind !== 'progress') deliver.push(this.deliveryMessage(message.id, session)!);
     }
     return { deliver, dropped };
   }
 
+  /** Unbound notes keep their own TTL; a bound batch expires together at its trigger's TTL. */
+  expireQueued(session: string, now: number, ttlMs: number): Message[] {
+    return this.#transaction(() => {
+      const roots = this.#db.prepare(`select distinct coalesce(digest_id, message_id) as root from deliveries
+        where session = ? and state = 'queued' and digest_id is null and queued_at < ?`).all(session, now - ttlMs) as Row[];
+      const dropped: Message[] = [];
+      const expire = this.#db.prepare("update deliveries set state = 'dropped', delivered_at = null where session = ? and (message_id = ? or digest_id = ?) and state = 'queued'");
+      for (const row of roots) {
+        const root = row.root as string;
+        dropped.push(...this.deliveryIds(root, session).map(id => this.message(id)!));
+        expire.run(session, root, root);
+      }
+      return dropped;
+    });
+  }
+
+  queuedSessions(): string[] {
+    return (this.#db.prepare("select distinct session from deliveries where state = 'queued'").all() as Row[]).map(row => row.session as string);
+  }
+
+  unacknowledgedCount(session: string): number {
+    return Number((this.#db.prepare("select count(*) as count from deliveries where session = ? and state in ('queued', 'delivered', 'uncertain', 'injected')").get(session) as Row).count);
+  }
+
+  deliveryCollisionCount(from: string, to: string): number {
+    return Number((this.#db.prepare(`select count(*) as count from deliveries source join deliveries target
+      on source.message_id = target.message_id where source.session = ? and target.session = ?`).get(from, to) as Row).count);
+  }
+
   /** The session's spoke accepted the message; false when there was no queued delivery of it (a repeat ack). */
   markDelivered(messageId: string, session: string, now: number): boolean {
-    return this.#db.prepare("update deliveries set state = 'delivered', delivered_at = ? where message_id = ? and session = ? and state = 'queued'").run(now, messageId, session).changes > 0;
+    const root = this.deliveryRoot(messageId, session);
+    return this.#db.prepare("update deliveries set state = 'delivered', delivered_at = ? where (message_id = ? or digest_id = ?) and session = ? and state = 'queued'").run(now, root, root, session).changes > 0;
   }
 
   /** The session's adapter confirmed the turn; false when the delivery was not `delivered` (a repeat, or never acked). */
   markInjected(messageId: string, session: string): boolean {
-    return this.#db.prepare("update deliveries set state = 'injected' where message_id = ? and session = ? and state in ('delivered', 'uncertain')").run(messageId, session).changes > 0;
+    const root = this.deliveryRoot(messageId, session);
+    return this.#db.prepare("update deliveries set state = 'injected' where (message_id = ? or digest_id = ?) and session = ? and state in ('delivered', 'uncertain')").run(root, root, session).changes > 0;
   }
 
   /** The adapter's inject reached the harness and got no answer: the turn may have started. `uncertain` is never
    *  retried on its own (`uninjected` leaves it out). False when the delivery was not `delivered`. */
   markUncertain(messageId: string, session: string): boolean {
-    return this.#db.prepare("update deliveries set state = 'uncertain' where message_id = ? and session = ? and state = 'delivered'").run(messageId, session).changes > 0;
+    const root = this.deliveryRoot(messageId, session);
+    return this.#db.prepare("update deliveries set state = 'uncertain' where (message_id = ? or digest_id = ?) and session = ? and state = 'delivered'").run(root, root, session).changes > 0;
   }
 
   /** The human asked for an uncertain delivery to be sent again: it is `delivered` (waiting for its inject) once more. */
   retryUncertain(messageId: string, session: string): boolean {
-    return this.#db.prepare("update deliveries set state = 'delivered' where message_id = ? and session = ? and state = 'uncertain'").run(messageId, session).changes > 0;
+    const root = this.deliveryRoot(messageId, session);
+    return this.#db.prepare("update deliveries set state = 'delivered' where (message_id = ? or digest_id = ?) and session = ? and state = 'uncertain'").run(root, root, session).changes > 0;
   }
 
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
   uninjected(session: string): Message[] {
     const rows = this.#db
-      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' order by d.delivered_at, m.created_at")
+      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') != 'progress' order by m.seq")
       .all(session) as Row[];
-    return rows.map(toMessage);
+    return rows.map(row => this.deliveryMessage(row.id as string, session)!);
+  }
+
+  deliveryRoot(messageId: string, session: string): string {
+    const row = this.#db.prepare('select digest_id from deliveries where message_id = ? and session = ?').get(messageId, session) as Row | undefined;
+    return typeof row?.digest_id === 'string' ? row.digest_id : messageId;
+  }
+
+  deliveryIds(messageId: string, session: string): string[] {
+    const root = this.deliveryRoot(messageId, session);
+    return (this.#db.prepare(`select m.id from deliveries d join messages m on m.id = d.message_id
+      where d.session = ? and (d.message_id = ? or d.digest_id = ?) order by m.seq`).all(session, root, root) as Row[]).map(row => row.id as string);
+  }
+
+  /** Reconstruct the exact addressee-specific batch; history keeps the original messages individually. */
+  deliveryMessage(messageId: string, session: string): Message | null {
+    const root = this.deliveryRoot(messageId, session);
+    const message = this.message(root);
+    if (!message) return null;
+    const digest = this.deliveryIds(root, session).filter(id => id !== root).map(id => this.message(id)!);
+    return digest.length ? { ...message, digest } : message;
+  }
+
+  #bindProgress(messageId: string, session: string, seq: number): void {
+    this.#db.prepare(`update deliveries set digest_id = ?
+      where session = ? and state = 'queued' and digest_id is null and message_id in
+      (select id from messages where notice = 'progress' and seq < ?)`).run(messageId, session, seq);
   }
 
   /**
@@ -565,10 +631,19 @@ export class Store implements HygieneMemory {
    * placeholder `@<role>`) now waits for that session. Returns how many moved.
    */
   claimRoleQueue(role: string, session: string): { moved: number; merged: string[] } {
-    const r = this.#moveQueuedTo(`@${role}`, session);
-    // the deliveries it took are this session's: by its id, as every other delivery
-    if (r.moved) this.#db.prepare("update deliveries set session_id = (select session_id from sessions where name = ?) where session = ? and session_id is null and state = 'queued'").run(session, session);
-    return r;
+    return this.#transaction(() => {
+      // Only newly acquired ordinary deliveries: a duplicate already held by this recipient keeps its fixed batch.
+      const acquired = this.#db.prepare(`select m.id, m.seq from deliveries d join messages m on m.id = d.message_id
+        where d.session = ? and d.state = 'queued' and d.digest_id is null and coalesce(m.notice, '') not in ('progress', 'role')
+        and not exists (select 1 from deliveries existing where existing.session = ? and existing.message_id = d.message_id)
+        order by m.seq`).all(`@${role}`, session) as Row[];
+      const r = this.#moveQueuedTo(`@${role}`, session);
+      // The placeholder has acquired its real recipient: bind that recipient's held notes before transport can start.
+      for (const message of acquired) this.#bindProgress(message.id as string, session, message.seq as number);
+      // the deliveries it took are this session's: by its id, as every other delivery
+      if (r.moved) this.#db.prepare("update deliveries set session_id = (select session_id from sessions where name = ?) where session = ? and session_id is null and state = 'queued'").run(session, session);
+      return r;
+    });
   }
 
   /**
@@ -766,11 +841,39 @@ export class Store implements HygieneMemory {
     this.#db.prepare('update topics set title = ?, updated_at = ? where id = ?').run(title, now, id);
   }
 
-  /** The topic and its messages go; their deliveries go by the foreign key. */
-  deleteTopic(id: string): void {
-    this.#db.prepare('delete from messages where topic = ?').run(id);
-    this.#db.prepare('delete from asks where topic = ?').run(id);
-    this.#db.prepare('delete from topics where id = ?').run(id);
+  /** The topic and its messages go; surviving notes are released before trigger deliveries cascade. */
+  deleteTopic(id: string): ReleasedDigest[] {
+    return this.#transaction(() => {
+      const { released } = this.#deleteMessages('select id from messages where topic = ?', [id]);
+      this.#db.prepare('delete from asks where topic = ?').run(id);
+      this.#db.prepare('delete from topics where id = ?').run(id);
+      return released;
+    });
+  }
+
+  /** All physical message deletion goes here, so a surviving note cannot retain a missing trigger.
+   * Pending notes return to the same queue at their original queued_at; settled notes never replay. */
+  #deleteMessages(selectIds: string, args: Array<string | number>): { gone: number; released: ReleasedDigest[] } {
+    return this.#transaction(() => {
+      const rows = this.#db.prepare(`select d.message_id, d.digest_id, d.session, d.state from deliveries d
+        join messages m on m.id = d.message_id where d.digest_id in (${selectIds})
+        and d.message_id not in (${selectIds}) order by m.seq`).all(...args, ...args) as Row[];
+      const released: ReleasedDigest[] = [];
+      const clear = this.#db.prepare(`update deliveries set digest_id = null,
+        state = case when state in ('queued', 'delivered', 'uncertain') then 'queued' else state end,
+        delivered_at = case when state in ('queued', 'delivered', 'uncertain') then null else delivered_at end
+        where message_id = ? and session = ?`);
+      for (const row of rows) {
+        const trigger = row.digest_id as string, session = row.session as string, note = row.message_id as string;
+        let batch = released.find(r => r.trigger === trigger && r.session === session);
+        if (!batch) { batch = { trigger, session, notes: [], reheld: [] }; released.push(batch); }
+        batch.notes.push(note);
+        if (['queued', 'delivered', 'uncertain'].includes(row.state as string)) batch.reheld.push(note);
+        clear.run(note, session);
+      }
+      const gone = Number(this.#db.prepare(`delete from messages where id in (${selectIds})`).run(...args).changes);
+      return { gone, released };
+    });
   }
 
   /** A topic's latest messages, oldest first, each with its stage. */
@@ -869,14 +972,22 @@ export class Store implements HygieneMemory {
   }
 
   /**
-   * Delete messages older than the retention window (their deliveries go by the foreign key); returns how many went.
+   * Delete messages older than the retention window, reporting removals and any surviving notes released.
    * An ask still open is kept, and its message with it: the human has not answered yet, whatever its age.
    */
-  prune(now: number, retentionMs: number): number {
-    const gone = Number(this.#db.prepare("delete from messages where created_at < ? and id not in (select id from asks where state = 'open')").run(now - retentionMs).changes);
-    // an answered, withdrawn or cancelled ask goes with its message
-    if (gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
-    return gone;
+  prune(now: number, retentionMs: number): { gone: number; released: ReleasedDigest[] } {
+    return this.#transaction(() => {
+      const result = this.#deleteMessages(`with pending_digests as (
+      select distinct coalesce(d.digest_id, d.message_id) as root from deliveries d
+      where d.state in ('queued', 'delivered', 'uncertain') and (d.digest_id is not null or exists
+        (select 1 from deliveries member where member.session = d.session and member.digest_id = d.message_id))
+    ) select id from messages where created_at < ? and id not in (select id from asks where state = 'open')
+      and id not in (select message_id from deliveries where message_id in (select root from pending_digests)
+        or digest_id in (select root from pending_digests))`, [now - retentionMs]);
+      // an answered, withdrawn or cancelled ask goes with its message
+      if (result.gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
+      return result;
+    });
   }
 
   /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only.

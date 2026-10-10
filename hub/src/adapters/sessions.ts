@@ -656,8 +656,8 @@ export class Sessions {
   }
 
   #confirm(p: HarnessProcess, messageId: string): void {
-    this.adapter(p.harness).confirm(p, messageId);
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
+    this.adapter(p.harness).confirm(p, this.#core.store.deliveryRoot(messageId, name));
     this.#core.markInjected(messageId, name);
   }
 
@@ -679,7 +679,7 @@ export class Sessions {
       if (at === undefined || at > inflight.sentAt) inflight.again = true;
       return;
     }
-    const message = this.#core.store.message(messageId);
+    const message = this.#core.store.deliveryMessage(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
     if (!message) return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
@@ -713,7 +713,7 @@ export class Sessions {
     if (p.status !== 'running') throw new Error(`session "${session}" is not running (${p.status})`);
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
     if (!this.#core.retryUncertain(messageId, name)) throw new Error(`no uncertain delivery of message "${messageId}" to "${name}": only a message whose inject got no answer is retried by hand`);
-    this.#inject(p.sessionId, messageId);
+    this.#inject(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
     return { retried: true };
   }
 

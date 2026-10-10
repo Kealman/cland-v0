@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
+  isSendKind,
   type Artifact,
   type AgentsHistoryFilter,
   type HandoverNote,
@@ -373,7 +374,7 @@ export class HubCore {
     this.#store.rememberRole(name, connection.role);
     // what waited for the role while nobody held it now waits for this session (flushed after the welcome)
     if (role !== null) {
-      const { moved, merged } = this.#store.claimRoleQueue(role, name);
+      const { moved, merged } = this.#claimRoleQueue(role, name);
       if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name, role, count: moved + merged.length });
       // a message that already waited for this session by name keeps one delivery: its stage may move now
       for (const id of merged) this.#emitStage(id);
@@ -465,8 +466,10 @@ export class HubCore {
   ack(connection: Connection, messageId: string): void {
     if (!this.isCurrent(connection)) return;
     if (!this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) return;
-    this.#log({ event: 'acked', id: messageId, session: connection.name });
-    this.#emitStage(messageId);
+    for (const id of this.#store.deliveryIds(messageId, connection.name)) {
+      this.#log({ event: 'acked', id, session: connection.name });
+      this.#emitStage(id);
+    }
     this.#onDelivered?.(messageId, connection.name, connection.sessionId);
   }
 
@@ -479,6 +482,25 @@ export class HubCore {
     const topic = this.#store.message(messageId)?.topic;
     const stage = this.#store.stage(messageId);
     if (topic !== undefined && stage !== undefined && stage !== 'queued') this.#emit({ type: 'delivery', topic, message: messageId, stage });
+  }
+
+  #dropExpired(name: string): void {
+    for (const message of this.#store.expireQueued(name, this.#now().getTime(), this.#queueTtlMs)) {
+      this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
+      this.#emitStage(message.id);
+    }
+  }
+
+  #record(...args: Parameters<Store['record']>): void {
+    // Expired progress is settled before a new delivery can bind it. No transport await separates these writes.
+    for (const delivery of args[1]) this.#dropExpired(delivery.session);
+    this.#store.record(...args);
+  }
+
+  #claimRoleQueue(role: string, name: string): { moved: number; merged: string[] } {
+    this.#dropExpired(name);
+    this.#dropExpired(`@${role}`);
+    return this.#store.claimRoleQueue(role, name);
   }
 
   /** Listen to renames (`from`, `to`, the session id); returns the unsubscribe. */
@@ -495,8 +517,10 @@ export class HubCore {
   /** A session's adapter confirmed the turn (spec 4.2, `injected`); false when the delivery was not `delivered`. */
   markInjected(messageId: string, session: string): boolean {
     if (!this.#store.markInjected(messageId, session)) return false;
-    this.#log({ event: 'injected', id: messageId, session });
-    this.#emitStage(messageId);
+    for (const id of this.#store.deliveryIds(messageId, session)) {
+      this.#log({ event: 'injected', id, session });
+      this.#emitStage(id);
+    }
     return true;
   }
 
@@ -507,7 +531,7 @@ export class HubCore {
    */
   markUncertain(messageId: string, session: string, why: string): boolean {
     if (!this.#store.markUncertain(messageId, session)) return false;
-    this.#log({ event: 'inject-uncertain', id: messageId, session, why });
+    for (const id of this.#store.deliveryIds(messageId, session)) this.#log({ event: 'inject-uncertain', id, session, why });
     this.inbox.uncertain(session, this.label(session), messageId, why);
     return true;
   }
@@ -589,7 +613,7 @@ export class HubCore {
   /** A hub-kind message to one session: delivered now or queued, and recorded. */
   notify(name: string, text: string): void {
     const notice: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [name], text, ts: this.#now().toISOString() };
-    this.#store.record(notice, [{ session: name, state: 'queued' }], this.#now().getTime());
+    this.#record(notice, [{ session: name, state: 'queued' }], this.#now().getTime());
     this.#send(notice, name);
   }
 
@@ -630,7 +654,7 @@ export class HubCore {
       kind: notice.kind,
       ...(notice.detail ? { detail: notice.detail } : {}),
     };
-    this.#store.record(
+    this.#record(
       message,
       to.map((session) => ({ session, state: 'queued' as const })),
       this.#now().getTime(),
@@ -685,6 +709,10 @@ export class HubCore {
     const refusal = nameRefusal(to, this.#reserved);
     if (refusal) return { ok: false, error: refusal };
     if (this.#live.has(to)) return { ok: false, error: `name "${to}" is in use by a live session` };
+    const pending = this.#store.unacknowledgedCount(to);
+    if (pending) return { ok: false, error: `name "${to}" has ${pending} unacknowledged deliveries: rename refused` };
+    const collisions = this.#store.deliveryCollisionCount(from, to);
+    if (collisions) return { ok: false, error: `name "${to}" has ${collisions} colliding delivery rows: rename refused` };
     this.#live.delete(from);
     c.name = to;
     this.#live.set(to, c);
@@ -716,7 +744,9 @@ export class HubCore {
 
   /** Delete what is older than the retention window. */
   prune(): number {
-    const gone = this.#store.prune(this.#now().getTime(), this.#retentionMs);
+    for (const session of this.#store.queuedSessions()) this.#dropExpired(session);
+    const { gone, released } = this.#store.prune(this.#now().getTime(), this.#retentionMs);
+    this.#logReleased(released);
     if (gone) {
       this.#log({ event: 'pruned', messages: gone });
       this.inbox.refresh();
@@ -860,7 +890,7 @@ export class HubCore {
     this.#store.rememberRole(name, role);
     this.#log({ event: 'role-assigned', session: name, role, previous, live: c !== undefined });
     if (c) {
-      const { moved, merged } = this.#store.claimRoleQueue(role, name);
+      const { moved, merged } = this.#claimRoleQueue(role, name);
       if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name, role, count: moved + merged.length });
       for (const id of merged) this.#emitStage(id);
       if (moved || merged.length) this.#publishTopics();
@@ -970,7 +1000,7 @@ export class HubCore {
     if (cTo) cTo.role = role;
     this.#log({ event: 'role-handover', role, from, to, by, note: note !== null, then, live: cTo !== undefined });
     if (cTo) {
-      const { moved, merged } = this.#store.claimRoleQueue(role, to);
+      const { moved, merged } = this.#claimRoleQueue(role, to);
       if (moved || merged.length) this.#log({ event: 'role-queue-claimed', name: to, role, count: moved + merged.length });
       for (const id of merged) this.#emitStage(id);
       this.#recordClause(cTo, 'handover', previous);
@@ -1039,7 +1069,7 @@ export class HubCore {
     if (c.role !== null && extra.reason === 'handover' && previous) text = `cland hub: you handed the role ${ROLE_LABELS[previous] ?? previous} over to ${extra.to ?? 'another session'}: stop acting as ${ROLE_LABELS[previous] ?? previous}.\n\n${text}`;
     const superseded = this.#store.dropNotices(c.name, ROLE_NOTICE);
     const message: Message = { id: randomUUID(), from: 'hub', fromKind: 'hub', via: 'hub', to: [c.name], text, ts: this.#now().toISOString() };
-    this.#store.record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);
+    this.#record(message, [{ session: c.name, state: injected ? 'injected' : 'queued' }], this.#now().getTime(), ROLE_NOTICE);
     this.#roleNotices.set(message.id, clause);
     // journalled with every delivery (`journal.ts`)
     this.#log({ event: c.role !== null ? 'role-clause' : 'role-revoked', session: c.name, sessionId: c.sessionId, role: c.role, previous: previous ?? null, reason, id: message.id, superseded: superseded.length });
@@ -1087,8 +1117,9 @@ export class HubCore {
 
   /** A role notice goes out as a `role` frame, everything else as a `deliver`. */
   #sendTo(c: Connection, message: Message): boolean {
+    if (message.kind === 'progress') return false;
     const clause = this.#roleNotices.get(message.id);
-    return clause ? c.deliverRole(message, clause) : c.deliver(message);
+    return clause ? c.deliverRole(message, clause) : c.deliver(this.#store.deliveryMessage(message.id, c.name) ?? message);
   }
 
   /** A session the hub has seen within the queue's own TTL — beyond it a name is history, not an addressee. */
@@ -1228,7 +1259,7 @@ export class HubCore {
       this.#store.createTopic(id, clean, bound, now);
       if (bound !== null) {
         try { await this.#items!.bind(bound, id, resumed, authorize); }
-        catch (err) { return resumed(() => { this.#store.deleteTopic(id); throw err; }); }
+        catch (err) { return resumed(() => { this.#logReleased(this.#store.deleteTopic(id)); throw err; }); }
       }
       return resumed(() => {
         this.#log({ event: 'topic-created', topic: id, title: clean, item: bound, by });
@@ -1344,10 +1375,14 @@ export class HubCore {
   deleteTopic(id: string): void {
     const topic = this.#topicOrThrow(id);
     if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be deleted`);
-    this.#store.deleteTopic(id);
+    this.#logReleased(this.#store.deleteTopic(id));
     this.#publishedTopics.delete(id);
     // its asks went with it: the inbox lists them no more
     this.inbox.refresh();
+  }
+
+  #logReleased(released: ReturnType<Store['deleteTopic']>): void {
+    for (const batch of released) this.#log({ event: 'digest-released', ...batch });
   }
 
   /**
@@ -1404,7 +1439,7 @@ export class HubCore {
       ...(artifact ? { artifact } : {}),
       ...messageArtifacts(artifacts),
     };
-    this.#store.record(
+    this.#record(
       message,
       [...[...sessions].map((session) => ({ session, state: 'queued' as const })), ...placeholders.map((role) => ({ session: `@${role}`, state: 'queued' as const }))],
       nowMs,
@@ -1434,7 +1469,8 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[]): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report'): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+    if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question or decision');
     const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
     const toHuman = to.length === 0;
@@ -1486,6 +1522,7 @@ export class HubCore {
       id: randomUUID(),
       from,
       fromKind: 'agent',
+      kind,
       via: 'session',
       to: [...sessions],
       text,
@@ -1500,7 +1537,7 @@ export class HubCore {
     if (sessions.size > 0 || toHuman) {
       // who the human's latest message here waited for, read before this one is recorded
       const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
-      this.#store.record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
+      this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
       this.#store.touchTopic(topic.id, message.ts);
       for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);
@@ -1527,7 +1564,7 @@ export class HubCore {
         continue;
       }
       const queued = names.filter((n) => states.get(n) === 'queued');
-      if (queued.length === names.length - blocked.length) outcomes.push({ to: tag, outcome: 'queued', reason: `${queued.join(', ')} offline — queued for up to ${Math.round(this.#queueTtlMs / 3_600_000)} h` });
+      if (queued.length === names.length - blocked.length) outcomes.push({ to: tag, outcome: 'queued', reason: kind === 'progress' ? 'progress held for the next turn' : `${queued.join(', ')} offline — queued for up to ${Math.round(this.#queueTtlMs / 3_600_000)} h` });
       else if (queued.length) outcomes.push({ to: tag, outcome: 'delivered', reason: `queued for ${queued.join(', ')} (offline)` });
       else outcomes.push({ to: tag, outcome: 'delivered' });
     }
@@ -1535,7 +1572,7 @@ export class HubCore {
       this.#log({ event: 'send-refused', from, to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
       return { message, outcomes, topic: topicRef };
     }
-    this.#log({ event: 'send', id: message.id, from, to: message.to, topic: topic.id, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+    this.#log({ event: 'send', id: message.id, from, kind, to: message.to, topic: topic.id, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     return { message, outcomes, topic: topicRef };
   }
 

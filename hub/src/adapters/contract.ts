@@ -192,10 +192,14 @@ export class InjectUncertain extends Error {
 /** The message as the harness reads it: the same envelope the spoke's channel event used, so the spoke's
  *  instructions describe it (from, from_kind, msg_id, topic …). Attribute values are escaped. */
 export function envelope(message: Message, topic: TopicRef | null): string {
+  const digest = message.digest?.length
+    ? `Progress digest (${message.digest.length} notes, oldest first):\n${message.digest.map(note => envelope(note, null)).join('\n')}\nNext delivery:\n`
+    : '';
   const attrs: Array<[string, string]> = [
     ['source', 'cland'],
     ['from', message.from],
     ['from_kind', message.fromKind],
+    ...(message.kind !== undefined ? ([['kind', message.kind]] as Array<[string, string]>) : []),
     ...(message.fromRole !== undefined ? ([['from_role', message.fromRole]] as Array<[string, string]>) : []),
     ['via', message.via],
     ['to', message.to.join(',')],
@@ -207,7 +211,7 @@ export function envelope(message: Message, topic: TopicRef | null): string {
     ...(topic ? ([['topic', topic.id], ['topic_title', topic.title]] as Array<[string, string]>) : message.topic !== undefined ? ([['topic', message.topic]] as Array<[string, string]>) : []),
   ];
   const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  return `<channel ${attrs.map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}>\n${message.text}\n</channel>\n${replyHint(message, topic)}`;
+  return `${digest}<channel ${attrs.map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}>\n${message.text}\n</channel>\n${replyHint(message, topic)}`;
 }
 
 /**

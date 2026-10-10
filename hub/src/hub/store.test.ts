@@ -70,7 +70,7 @@ test('prune deletes messages older than the retention window with their deliveri
   const store = new Store();
   store.record(message('old', 'alpha', ['beta'], 'old news'), [{ session: 'beta', state: 'queued' }], 1_000);
   store.record(message('new', 'alpha', ['beta'], 'fresh'), [{ session: 'beta', state: 'queued' }], 9_000);
-  assert.equal(store.prune(10_000, 5_000), 1);
+  assert.equal(store.prune(10_000, 5_000).gone, 1);
   assert.deepEqual(store.pendingFor('beta', 10_000, 60_000).deliver.map((m) => m.text), ['fresh'], 'the pruned message took its queued delivery with it');
   store.close();
 });
@@ -109,5 +109,157 @@ test("a human message held for a vacant role goes to the session that takes the 
   core.ack(r.connection, message.id);
   assert.deepEqual(events, [{ type: 'delivery', topic: 'general', message: message.id, stage: 'delivered' }]);
   assert.equal(core.topicHistory('general').messages[0]?.stage, 'delivered');
+  core.store.close();
+});
+
+for (const state of ['delivered', 'uncertain', 'injected'] as const) {
+  test(`rename refuses a target with ${state} deliveries without changing either digest`, () => {
+    const core = new HubCore();
+    const hello = (name: string, got: Message[]) => {
+      const result = core.hello({ type: 'hello', protocol: 2, sessionId: name, name, role: 'coordinator', cwd: '/' }, m => { got.push(m); return true; });
+      assert.ok(result.ok);
+      return result.connection;
+    };
+    const aGot: Message[] = [], bGot: Message[] = [];
+    const a = hello('a', aGot), b = hello('b', bGot);
+    const p = core.sendFromSession('a', ['a', 'b'], 'P', undefined, undefined, undefined, undefined, undefined, 'progress').message;
+    const r1 = core.sendFromSession('a', ['a'], 'R1').message;
+    const r2 = core.sendFromSession('a', ['b'], 'R2').message;
+    core.ack(b, r2.id);
+    if (state === 'uncertain') core.markUncertain(r2.id, 'b', 'no admission answer');
+    if (state === 'injected') core.markInjected(r2.id, 'b');
+    core.disconnect(b);
+    const before = core.store.deliveryMessage(r2.id, 'b');
+    const refused = core.rename('a', 'b');
+    assert.equal(refused.ok, false);
+    if (!refused.ok) assert.match(refused.error, /"b".*2 unacknowledged/);
+    assert.equal(a.name, 'a');
+    assert.deepEqual(core.store.deliveryMessage(r2.id, 'b'), before);
+    assert.deepEqual(core.store.deliveryMessage(r1.id, 'a')?.digest?.map(m => m.id), [p.id]);
+    core.ack(a, r1.id);
+    assert.equal(aGot.filter(m => m.id === r1.id).length, 1);
+    assert.equal(bGot.filter(m => m.id === r2.id).length, 1);
+    core.store.close();
+  });
+}
+
+for (const state of ['queued', 'delivered', 'uncertain', 'injected', 'dropped'] as const) {
+  test(`deleting a trigger releases ${state} notes without replaying settled notes`, () => {
+    let now = 1000;
+    const journal: Array<Record<string, unknown>> = [];
+    const core = new HubCore({ now: () => new Date(now), queueTtlMs: 1000, retentionMs: 100, log: e => { journal.push(e); } });
+    core.store.ensureTopic('notes', 'Notes', false, new Date(now).toISOString());
+    core.store.ensureTopic('reports', 'Reports', false, new Date(now).toISOString());
+    const got: Message[] = [];
+    const receiver = core.hello({ type: 'hello', protocol: 2, sessionId: 'receiver', name: 'receiver', role: 'coordinator', cwd: '/' }, m => { got.push(m); return true; });
+    assert.ok(receiver.ok);
+    const note = core.sendFromSession('sender', ['receiver'], 'surviving note', undefined, 'notes', undefined, { role: 'implementer' }, undefined, 'progress').message;
+    now = 1200;
+    const trigger = core.sendFromSession('sender', ['receiver'], 'deleted trigger', undefined, 'reports', undefined, { role: 'implementer' }).message;
+    if (state === 'delivered' || state === 'uncertain' || state === 'injected') core.ack(receiver.connection, trigger.id);
+    if (state === 'uncertain') core.markUncertain(trigger.id, 'receiver', 'no admission answer');
+    if (state === 'injected') core.markInjected(trigger.id, 'receiver');
+    if (state === 'dropped') core.store.expireQueued('receiver', 2201, 1000);
+    now = 1500;
+    const pending = state === 'queued' || state === 'delivered' || state === 'uncertain';
+    if (pending) {
+      core.prune();
+      assert.ok(core.store.message(note.id), 'retention preserves pending notes');
+      assert.ok(core.store.message(trigger.id), 'retention preserves pending triggers');
+    }
+    core.deleteTopic('reports');
+    assert.equal(core.store.message(trigger.id), null);
+    assert.equal(core.store.deliveryRoot(note.id, 'receiver'), note.id, 'no surviving note points at a missing trigger');
+    assert.equal(core.store.stage(note.id), pending ? 'queued' : state);
+    if (pending) {
+      assert.ok(journal.some(e => e.event === 'digest-released' && e.trigger === trigger.id && JSON.stringify(e.notes) === JSON.stringify([note.id])));
+      const next = core.sendFromSession('sender', ['receiver'], 'next report', undefined, 'notes', undefined, { role: 'implementer' }).message;
+      assert.deepEqual(got.find(m => m.id === next.id)?.digest?.map(m => m.id), [note.id]);
+      core.ack(receiver.connection, next.id);
+      core.markInjected(next.id, 'receiver');
+    } else {
+      const next = core.sendFromSession('sender', ['receiver'], 'next report', undefined, 'notes', undefined, { role: 'implementer' }).message;
+      assert.equal(got.find(m => m.id === next.id)?.digest, undefined);
+    }
+    core.store.close();
+  });
+}
+
+test('released progress survives restart and keeps its own original TTL', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'cland-released-progress-'));
+  const file = join(dir, 'hub.sqlite');
+  let now = 1000;
+  let core = new HubCore({ store: new Store(file), now: () => new Date(now), queueTtlMs: 1000 });
+  try {
+    core.store.ensureTopic('reports', 'Reports', false, new Date(now).toISOString());
+    for (const name of ['fresh', 'expired']) {
+      const joined = core.hello({ type: 'hello', protocol: 2, sessionId: name, name, role: 'coordinator', cwd: '/' }, () => true);
+      assert.ok(joined.ok);
+      core.disconnect(joined.connection);
+    }
+    const note = core.sendFromSession('sender', ['fresh', 'expired'], 'released P', undefined, undefined, undefined, { role: 'implementer' }, undefined, 'progress').message;
+    now = 1900;
+    core.sendFromSession('sender', ['fresh', 'expired'], 'deleted R', undefined, 'reports', undefined, { role: 'implementer' });
+    now = 1950;
+    core.deleteTopic('reports');
+    core.store.close();
+    core = new HubCore({ store: new Store(file), now: () => new Date(now), queueTtlMs: 1000 });
+    const fresh = core.sendFromSession('sender', ['fresh'], 'fresh next report', undefined, undefined, undefined, { role: 'implementer' }).message;
+    assert.deepEqual(core.store.deliveryMessage(fresh.id, 'fresh')?.digest?.map(m => m.id), [note.id]);
+    now = 2001;
+    const expired = core.sendFromSession('sender', ['expired'], 'expired next report', undefined, undefined, undefined, { role: 'implementer' }).message;
+    assert.equal(core.store.deliveryMessage(expired.id, 'expired')?.digest, undefined, 'releasing never extends queued_at');
+  } finally {
+    core.store.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('retention clears a settled binding when another recipient still has a pending digest with the note', () => {
+  const store = new Store();
+  const note = { ...message('P', 'sender', ['a', 'b'], 'shared note'), kind: 'progress' as const };
+  store.record(note, [{ session: 'a', state: 'queued' }, { session: 'b', state: 'queued' }], 1000);
+  store.record(message('R', 'sender', ['a'], 'settled trigger'), [{ session: 'a', state: 'queued' }], 1100);
+  store.markDelivered('R', 'a', 1200);
+  store.markInjected('R', 'a');
+  store.record(message('R2', 'sender', ['b'], 'other report'), [{ session: 'b', state: 'queued' }], 1900);
+  const removed = store.prune(2000, 100);
+  assert.equal(removed.gone, 1);
+  assert.deepEqual(removed.released, [{ trigger: 'R', session: 'a', notes: ['P'], reheld: [] }]);
+  assert.equal(store.deliveryRoot('P', 'a'), 'P');
+  assert.deepEqual(store.pendingFor('a', 2000, 10000).deliver, [], 'settled notes never replay');
+  assert.deepEqual(store.deliveryMessage('R2', 'b')?.digest?.map(m => m.id), ['P']);
+  store.close();
+});
+
+test('rename refuses a dropped duplicate and preserves the source pending digest', () => {
+  let now = 1000;
+  const core = new HubCore({ now: () => new Date(now), queueTtlMs: 1000 });
+  const got: Message[] = [];
+  const hello = (name: string) => {
+    const result = core.hello({ type: 'hello', protocol: 2, sessionId: name, name, role: 'coordinator', cwd: '/' }, m => { got.push(m); return true; });
+    assert.ok(result.ok);
+    return result.connection;
+  };
+  const a = hello('a'), b = hello('b');
+  const note = core.sendFromSession('a', ['a', 'b'], 'P', undefined, undefined, undefined, undefined, undefined, 'progress').message;
+  now = 1100;
+  const r2 = core.sendFromSession('a', ['b'], 'R2').message;
+  now = 1900;
+  const r1 = core.sendFromSession('a', ['a'], 'R1').message;
+  now = 2201;
+  core.store.expireQueued('b', now, 1000);
+  core.disconnect(b);
+  const source = core.store.deliveryMessage(r1.id, 'a');
+  const target = core.store.deliveryMessage(r2.id, 'b');
+  const refusal = core.rename('a', 'b');
+  assert.equal(refusal.ok, false);
+  if (!refusal.ok) assert.match(refusal.error, /"b".*1.*collid/);
+  assert.equal(a.name, 'a');
+  assert.deepEqual(core.store.deliveryMessage(r1.id, 'a'), source);
+  assert.deepEqual(core.store.deliveryMessage(r2.id, 'b'), target);
+  assert.deepEqual(source?.digest?.map(m => m.id), [note.id]);
+  core.ack(a, r1.id);
+  assert.equal(got.filter(m => m.id === r1.id).length, 1);
   core.store.close();
 });
