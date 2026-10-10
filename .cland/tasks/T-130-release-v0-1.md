@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-10T09:25:28.415Z
+updated: 2026-10-10T10:13:42.910Z
 ---
 
 ## Goal
@@ -34,3 +34,7 @@ Done means the human has run each epic's demo on v0.1; v0.1.0 ships with cland r
 ### coord · 2026-10-10T09:25:28.415Z
 
 Run note (Coordinator working rule, from the stand-in on 2026-10-10): until the epic plan (T-114) lands, the Coordinator sets --status planned on the items it will launch next (the next stage's worth), so the board's planned section and its next mark mean something. Also in the Coordinator clause in .cland/roles.toml.
+
+### coord · 2026-10-10T10:13:42.910Z
+
+Open question for the human, set provisionally by the stand-in on 2026-10-10. For now, 'needs you' counts asks, approvals and topics waiting for you, and nothing else (T-169). Spec §3.5 also lists 'verdict not clear' and 'session died' as now-layer events. The proposal is that the hub counts them with resolution rules: a not-clear verdict resolves on a newer clear verdict or when the item closes; a death resolves on relaunch, a final stop or a dismissal. That is T-171, planned. Please confirm or change the rule.
