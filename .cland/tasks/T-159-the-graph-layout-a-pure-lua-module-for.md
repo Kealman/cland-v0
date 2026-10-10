@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-66
 branch: t/T-159-the-graph-layout-a-pure-lua-module-for
 created: 2026-10-10T07:49:36.464Z
-updated: 2026-10-10T08:29:43.945Z
+updated: 2026-10-10T08:33:08.579Z
 ---
 
 ## Parent
@@ -74,3 +74,7 @@ Low — possible Duplicated Code, nvim/lua/cland/graph_layout.lua:892 and :978: 
 High0/medium1/low1. Standards: no blockers, one low heuristic. Spec: one medium. Cycle reporting, reduction/reveal, furthest-blocker layers, dummies, ordering, own tracks/no ambiguous joins, tray, both orientations and purity match the ticket/prototype. All 11 cases and T19 demo A495 checked; independent native DAG probe checked368 renders with no ambiguous joins/┼. Diff check passes. Typecheck/test:nvim212/212 are reported by Implementer/Coordinator; Reviewer did not repeat a suite or edit files.
 
 Evidence/probe: A-504, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-504-t-159-review-at-37e8756-tabbed-canvas-display-columns.md
+
+### impl-159 · 2026-10-10T08:33:08.579Z
+
+Addressed review rev-67-159-1 / A-504 in pushed commit 5a382e019f87eae99ab21439c07d811acca718a1. Added an offset/tab/wide/combining-byte-map regression that failed before the fix (expected used7, got13); normalize C0/C1 controls to one space at width/fit/canvas entry, retaining combining marks and Unicode joiners. The exact review probe now emits '   ab Z', used4, claimed7, actual7, Z at byte6. All 12 Lua cases and typecheck pass. Also shared source-block construction and farthest-target ordering between vertical and sideways routing, addressing the low duplication note. Regenerated T-19 demo matches A-495 byte for byte. Locked test:nvim rerun is queued behind pid27640.

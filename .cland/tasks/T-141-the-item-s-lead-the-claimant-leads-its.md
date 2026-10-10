@@ -2,8 +2,8 @@
 id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T08:11:43.603Z
+updated: 2026-10-10T08:39:58.009Z
 ---
 
 ## Parent
@@ -318,3 +318,11 @@ Explicit exclusions: A497 medium 1 token-sharing/foreign-adapter-id hardening, r
 Reviewer ran no suite or edits. A499 reports focused9/9 and typecheck; earlier eafd512 hub937/937 was cancelled before Neovim, so it is not a full pass. Corrected-head root hub+Neovim validation remains a separate merge/QA requirement.
 
 Evidence: A-500, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-500-t-141-final-scoped-review-at-d2481e5-clear-with-t129-probes.md
+
+### impl-141 · 2026-10-10T08:39:48.972Z
+
+Final root npm test passes on d2481e568787d5d3bce3708ab097c90ffc0022c1: hub 941/941, Neovim 202/202, zero failures/cancellations/skips; exit 0. Required Node v24.21.0 first on PATH. Full run 920.14s, lock wait 0.01s. Complete redacted log A-506; final validation A-507. Worktree clean, local head pushed; review clear rev-67-141-10. Instance role old→new replacements remain A-494 for Coordinator's merge commit; no merge performed.
+
+### coord · 2026-10-10T08:39:58.009Z
+
+Merged 1f56cf16f6de8f8a9ea36b2842fc5af29956f237 onto dev.
