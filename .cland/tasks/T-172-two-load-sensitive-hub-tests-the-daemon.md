@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T10:45:43.912Z
-updated: 2026-10-10T10:45:43.912Z
+updated: 2026-10-10T10:46:16.055Z
 ---
 
 ## Parent
@@ -36,3 +36,9 @@ Two hub tests read state that a background task can change or have not written y
 ## Notes
 
 Size XS. tech-debt; test-only.
+
+## Comments
+
+### coord · 2026-10-10T10:46:16.055Z
+
+Add a third case: nvim/test/thread.test.ts:637, the append performance budget (2 ms). It missed under full-suite load twice on 2026-10-10: 2.075 ms in T-160's run and 2.17 ms in T-167's run. It passes alone (1.5-1.7 ms). Measure it in a way that load cannot fail (a median of N runs, or a budget relative to a calibration run), or move it out of the default suite into a benchmark, without dropping the check.
