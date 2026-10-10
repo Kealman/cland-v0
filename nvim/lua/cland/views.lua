@@ -179,6 +179,8 @@ function M.placeholder(v)
     return require('cland.item_view').render(v.id)
   elseif v.kind == 'board' then
     return require('cland.board').render()
+  elseif v.kind == 'graph' then
+    return require('cland.graph').render()
   elseif v.kind == 'log' then
     return require('cland.agents_log').buffer()
   elseif v.kind == 'inbox' then
@@ -215,6 +217,8 @@ function M.render_placeholder(v)
     return require('cland.item_view').render(v.id)
   elseif v.kind == 'board' then
     return require('cland.board').render()
+  elseif v.kind == 'graph' then
+    return require('cland.graph').render()
   elseif v.kind == 'log' then
     return require('cland.agents_log').render()
   elseif v.kind == 'inbox' then

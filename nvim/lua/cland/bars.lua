@@ -192,6 +192,9 @@ function M.context()
     return v.id .. ' · item' .. (it and (' · ' .. it.state .. (it.claim and (' · claim ' .. it.claim.session) or '')) or '')
   elseif v.kind == 'board' then
     return 'Board · ' .. #state.S.items .. ' items'
+  elseif v.kind == 'graph' then
+    local id = require('cland.graph').parent()
+    return 'Graph' .. (id and (' · ' .. id) or '') .. ' · experimental'
   elseif v.kind == 'log' then
     return 'Agents log'
   elseif v.kind == 'inbox' then

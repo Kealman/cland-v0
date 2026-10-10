@@ -289,7 +289,7 @@ local function centre_opts(w, kind)
     wo.wrap = false
     wo.winhighlight = 'Normal:ClandTerm,NormalNC:ClandTerm'
   else
-    wo.wrap = true
+    wo.wrap = kind ~= 'graph'
     wo.winhighlight = ''
   end
 end
@@ -369,7 +369,7 @@ function M.apply_view(opts)
   end
 end
 
---- Show `view` ({kind = thread|session|item|board|log|inbox, id}) in the centre.
+--- Show `view` ({kind = thread|session|item|board|graph|log|inbox, id}) in the centre.
 function M.show(view, opts)
   -- Agents is read as its log, not as a thread with a composer (#34)
   if view.kind == 'thread' and view.id == 'agents' then

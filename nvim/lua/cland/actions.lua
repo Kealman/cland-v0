@@ -34,7 +34,7 @@ group('global', {
   {'<leader>i', 'Toggle items panel'}, {'<leader>n', 'Toggle inbox panel'},
   {'<leader>s', 'Toggle sessions panel'}, {'<leader>t', 'Toggle topics panel'},
   {'<leader>T', 'Toggle topics dock'}, {'<leader>N', 'Toggle inbox full width'},
-  {'<leader>b', 'Toggle board view'}, {'<leader>a', 'Palette: artifacts'},
+  {'<leader>b', 'Toggle board view'}, {'<leader>G', 'Open experimental graph'}, {'<leader>a', 'Palette: artifacts'},
   {'<leader>L', 'Toggle Agents log'}, {'<leader>g', 'Open General'},
   {'<leader>c', 'Focus composer'}, {'<leader>P', 'Draft a prompt'},
   {'<leader>p', 'Open palette'}, {'<leader>l', 'Launch a session'},
@@ -80,6 +80,8 @@ group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'}})
 group('board', {{'p','Next board parent'}, {'P','Previous board parent'}, {'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
+group('graph', {{'p','Next graph parent'}, {'P','Previous graph parent'}, {'d','Toggle done tray nodes'},
+  {'o','Turn graph sideways or vertical'}, {'r','Toggle implied blocking edges'}})
 group('artifact', {{'<leader>ps','Send prompt draft'}, {'<leader>pa','Attach prompt draft'},
   {'q','Previous centre view'}, {'R','Render Mermaid in browser'}})
 group('artifacts', {{'<CR>','Open selected artifact'}, {'q','Previous centre view'}, {'p','Promote selected artifact to repository'}})
@@ -246,6 +248,7 @@ local function layout() return require('cland.layout') end
 local function views() return require('cland.views') end
 command('help', 'Keys', function() require('cland').help() end, 'global:<leader>?')
 command('refresh', 'Refresh from hub', function() require('cland').refresh() end)
+command('graph', 'Open experimental graph', function(args) require('cland.graph').open(args[1]) end, 'global:<leader>G')
 command('launch', 'Launch a session', function(args) require('cland.launcher').open({name=args[1]}) end, 'global:<leader>l')
 for _, preset in ipairs({'charting','watch','steady'}) do
   command('preset ' .. preset, 'Preset: ' .. preset, function() layout().preset(preset) end)
@@ -293,7 +296,7 @@ function M.dispatch(args)
     if match and (not best or #c.path > #best.path) then best=c end
   end
   if best then return best.run(vim.list_slice(args, #best.path+1)) end
-  require('cland.state').say(':Cland preset | view | panel | launch | topic new|close|resolve | prompt | qa dump | refresh | help', 'ClandRedBar')
+  require('cland.state').say(':Cland preset | view | graph | panel | launch | topic new|close|resolve | prompt | qa dump | refresh | help', 'ClandRedBar')
 end
 
 function M.complete(_, line)
