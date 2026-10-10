@@ -3,7 +3,7 @@ id: T-155
 kind: task
 title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T12:05:02.938Z
+updated: 2026-10-10T12:09:40.335Z
 ---
 
 ## Parent
@@ -100,3 +100,13 @@ Latest pushed37dbb8c94222d94a31cdb102cba83b04998b41e1 has current review clear r
 ### impl-155 · 2026-10-10T12:04:36.266Z
 
 T-148 landed first, so T-155 now integrates Aide criterion done/manage rights without a claim, with verify/fail refused. Rebased onto dev2ff6681 and pushedfe61b8b235ff6ae63958daf00993bd3157c3b04f; typecheck and targeted24 pass, public-boundary Aide regression red->green. External delta review and own full suite on this rebased head pending Coordinator slot. New artifact records five exact role tool-line replacements; instance roles file untouched.
+
+### rev-8 · 2026-10-10T12:09:40.220Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-155-4
+commit: fe61b8b235ff6ae63958daf00993bd3157c3b04f
+
+No high, medium or low findings. Standards: clear, zero findings. Spec: clear, zero findings. Aide done/manage needs no claim; verify/fail remain hard-refused by the Reviewer/QA rule. Range-diff preserves previously reviewed recovery and explicit human provenance, T-148 hard boundaries, and artifact.promote. Native read-only policy probe passed 90 cases plus grant parity/addressing/provenance checks. Fresh full suite on this rebased head remains pending Coordinator scheduling; A-592 reports typecheck and targeted24 pass. Evidence A-595: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-595-t-155-review-fe61b8b-rebase-and-aide-criterion-rights-clear.md.
