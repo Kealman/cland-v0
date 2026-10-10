@@ -5,8 +5,14 @@ local function addressees(m)
   return type(m.to) == 'table' and m.to or {}
 end
 
---- A review/QA report's result, only on its first line (docs/review-and-qa.md).
+--- Hub verdict reports carry a structured result; agent reports retain their first-line convention.
 function M.verdict(m)
+  if m.fromKind == 'hub' and m.kind == 'report' and type(m.detail) == 'table' then
+    local d = m.detail
+    if (d.verdict == 'review' or d.verdict == 'qa') and (d.result == 'clear' or d.result == 'not clear') then
+      return d.result
+    end
+  end
   if m.fromKind ~= 'agent' then return nil end
   local first = (tostring(m.text or ''):match('^[^\r\n]*') or ''):lower()
   local kind, rest = first:match('^(%a+) (.*)$')

@@ -4,7 +4,7 @@
 -- expected: section counts, marks, fractions and epic-first order; T changes next through task events
 -- since: T-128 (successor to prototype/panels PANELS-001 to PANELS-004)
 -- regression: no
-local body='- [x] Outside\n## Acceptance criteria\n- [x] First\n- [ ] Second\n## Notes\n- [x] Outside'
+local body='- [x] Outside\n## Acceptance criteria\n- [x] C1. First\n  - verified: rev-1 [reviewer] · run r-1 · 2026-10-10T10:00Z\n- [ ] Second\n## Notes\n- [x] Outside'
 local function task(id,status,parent,rank,extra)
   return vim.tbl_extend('force',{id='T-'..id,kind='task',title='Row '..id,status=status,
     state=status=='done' and 'closed' or 'open',parent=parent,rank=rank,body=body},extra or {})
@@ -15,7 +15,7 @@ local items={
   {id='T-3',kind='epic',title='Tracker',state='open',parent='T-1',rank=10},
   task(10,'in progress','T-2',10,{claim={session='impl-10'},verdicts={{verdict='review',result='not clear'}}}),
   task(11,'review','T-2',20),task(12,'qa','T-2',30),
-  task(13,'ready','T-2',40,{body='## Acceptance criteria\n- [x] Done'}),
+  task(13,'ready','T-2',40,{body='## Acceptance criteria\n- [x] C1. Done\n  - verified: rev-1 [reviewer] · run r-1 · 2026-10-10T10:00Z'}),
   task(14,'planned','T-2',50,{blocked_by={'T-10'}}),task(15,'planned','T-2',60),
   task(16,'planned','T-3',70),task(17,'backlog','T-2',80),task(18,'done','T-2',90),
   task(19,'planned',nil,100),task(20,'planned','T-2',110),
@@ -28,7 +28,7 @@ return {
     qa.keys('<Esc><Space>i')
     local api=vim.api
     api.nvim_win_set_width(require('cland.layout').win.left,70)
-    qa.wait_for(function() return qa.screen():find('board · 8 in work · 1 done',1,true) and qa.screen():find('1/2',1,true) end,5000,'board with criteria')
+    qa.wait_for(function() return qa.screen():find('board · 8 in work · 1 done',1,true) and qa.screen():find('1/2',1,true) and qa.screen():find('1/1',1,true) end,5000,'board with criteria')
     local screen=qa.screen()
     for _,text in ipairs({'IN PROGRESS · 1','REVIEW · 1','QA · 1','READY · 1','PLANNED · 4','▸ backlog (1)','▸ unscheduled (1)','✗ review','for Reviewer','1/1'}) do
       qa.expect(screen:find(text,1,true)~=nil,text)

@@ -78,27 +78,10 @@ function M.compose()
   return out
 end
 
---- Count checkboxes only in the acceptance section.
-function M.verified(body)
-  local active, checked, total, fenced = false, 0, 0, false
-  for line in ((body or '') .. '\n'):gmatch('(.-)\n') do
-    if line:match('^%s*```') or line:match('^%s*~~~') then fenced = not fenced end
-    if not fenced then
-      if line:lower():match('^##%s+acceptance criteria%s*$') then active = true
-      elseif active and line:match('^##?%s') then break
-      elseif active then
-        local mark = line:match('^%s*[-*+]%s+%[([ xX])%]')
-        if mark then total = total + 1; if mark ~= ' ' then checked = checked + 1 end end
-      end
-    end
-  end
-  return checked, total
-end
-
---- Replace this source when hub criteria marks arrive (T-112).
+--- One source for panel rows, board cards and graph nodes: hub verification marks.
 function M.fraction(it)
   local d = require('cland.item_view').get(it.id)
-  return M.verified(d and d.body)
+  return require('cland.criteria').fraction(d and d.criteria)
 end
 
 local function verdict_mark(v)

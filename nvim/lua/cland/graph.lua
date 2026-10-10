@@ -63,20 +63,9 @@ function M.open(id)
   require('cland.layout').show({ kind = 'graph', id = id }, { insert = false })
 end
 
---- One replaceable source of verified/total: task.view criteria marks when the
---- hub supplies them, otherwise the acceptance-section checkbox count.
+--- Share the board's hub criteria adapter.
 function M.fraction(it)
-  local detail = require('cland.item_view').get(it.id)
-  if detail and type(detail.criteria) == 'table' then
-    local verified = 0
-    for _, criterion in ipairs(detail.criteria) do
-      for _, mark in ipairs(criterion.marks or {}) do
-        if mark.kind == 'verified' then verified = verified + 1; break end
-      end
-    end
-    return verified, #detail.criteria
-  end
-  return require('cland.vboard').verified(detail and detail.body)
+  return require('cland.vboard').fraction(it)
 end
 
 local function latest_verdict(it)

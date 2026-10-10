@@ -78,7 +78,8 @@ group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'
   {'f','Filter Agents by item or session'}, {'F','Clear Agents filter'}})
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
-group('item', {{'e','Edit item file'}, {'L','Agents log for this item'}})
+group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
+  {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})
 group('board', {{'p','Next board parent'}, {'P','Previous board parent'}, {'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
 group('graph', {{'p','Next graph parent'}, {'P','Previous graph parent'}, {'d','Toggle done tray nodes'},
   {'o','Turn graph sideways or vertical'}, {'r','Toggle implied blocking edges'},

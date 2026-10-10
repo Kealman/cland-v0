@@ -22,6 +22,7 @@ import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { parseCriteria } from '../../hub/src/tracker/criteria.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
@@ -286,7 +287,7 @@ function answer(f: Frame) {
       if (scenario.holdView) return;
       const item = scenario.items?.find((i) => i.id === f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
-      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...item, path: `.cland/tasks/${String(item.file)}` } });
+      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...parseCriteria(String(item.body ?? '')), ...item, path: `.cland/tasks/${String(item.file)}` } });
     }
     default:
       return fail(f.id, `the stub hub does not answer ${String(f.type)}`);

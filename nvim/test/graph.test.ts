@@ -73,7 +73,7 @@ test('nodes use hub status, asks, claims, latest verdict and parsed criteria; do
       { id: 'T-13', kind: 'task', title: 'Tray done', status: 'done', state: 'closed', parent: 'T-3', blocked_by: [] },
     ]) });
   await c.input('<Esc><Space>G');
-  await c.waitScreen(s => s.includes('1/3') && s.includes('1/2'), 'criteria fetched');
+  await c.waitScreen(s => s.includes('1/3') && s.includes('0/2'), 'criteria fetched');
   const text = () => c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(),0,-1,false),'\\n')");
   const shown = await text();
   assert.match(shown, /○ T-10 Hub planned/);
@@ -253,7 +253,7 @@ test('visible hub updates retain the node through reflow; no-op task details and
   await c.control({ emit: { type: 'task', id: updated.id, item: updated } });
   await c.waitScreen(s => s.includes('impl-10'), 'claim is drawn'); await node(c, 'T-10');
   assert.ok((await c.lua<number>("return vim.api.nvim_buf_get_changedtick(require('cland.graph').b)")) > Number(before));
-  const reflow = { ...updated, body: '## Acceptance criteria\n- [x] Check', verdicts: [{ verdict: 'review', result: 'clear', current: true }] };
+  const reflow = { ...updated, body: '## Acceptance criteria\n- [x] C1. Check\n  - verified: qa-1 [qa] · run q-1 · 2026-10-10T10:00Z', verdicts: [{ verdict: 'review', result: 'clear', current: true }] };
   scenario.items = scenario.items!.map(it => it.id === updated.id ? reflow : it);
   await c.control({ set: { items: scenario.items } });
   await c.control({ emit: { type: 'task', id: reflow.id, item: reflow } });

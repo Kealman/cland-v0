@@ -76,6 +76,12 @@ local function card(it, w)
   for _, m in ipairs(items.marks(it)) do
     L[#L + 1] = { m }
   end
+  if items.in_work(it) then
+    local verified, total = composition.fraction(it)
+    if total > 0 then
+      L[#L + 1] = { { verified .. '/' .. total, verified == total and 'ClandGreen' or 'ClandDim' } }
+    end
+  end
   return L
 end
 

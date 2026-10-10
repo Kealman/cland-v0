@@ -13,7 +13,7 @@ const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
-const task = (id: number, status: string, parent = 'T-2', extra = {}) => ({ id: `T-${id}`, kind: 'task', title: `Row ${id}`, status, state: status === 'done' ? 'closed' : 'open', parent, rank: id * 10, blocked_by: [], file: `T-${id}.md`, body: '- [x] Outside\n## Acceptance criteria\n- [x] First\n### Details\n- [ ] Second\n## Notes\n- [x] Outside too', ...extra });
+const task = (id: number, status: string, parent = 'T-2', extra = {}) => ({ id: `T-${id}`, kind: 'task', title: `Row ${id}`, status, state: status === 'done' ? 'closed' : 'open', parent, rank: id * 10, blocked_by: [], file: `T-${id}.md`, body: '- [x] Outside\n## Acceptance criteria\n- [x] C1. First\n  - verified: rev-1 [reviewer] · run r-1 · 2026-10-10T10:00Z\n### Details\n- [ ] Second\n## Notes\n- [x] Outside too', ...extra });
 const fixture: Scenario = {
   items: [
     { id: 'T-1', kind: 'release', title: 'Current release', version: '0.1.0', state: 'open' },
@@ -21,7 +21,7 @@ const fixture: Scenario = {
     { id: 'T-3', kind: 'epic', title: 'Tracker', parent: 'T-1', rank: 10, state: 'open' },
     { id: 'T-4', kind: 'release', title: 'Future release', version: '0.2.0', state: 'open' },
     task(10, 'in progress', 'T-2', { claim: { session: 'impl-10' }, verdicts: [{ verdict: 'review', result: 'not clear' }] }),
-    task(11, 'review'), task(12, 'qa'), task(13, 'ready', 'T-2', { body: '## Acceptance criteria\n- [X] Done' }),
+    task(11, 'review'), task(12, 'qa'), task(13, 'ready', 'T-2', { body: '## Acceptance criteria\n- [X] C1. Done\n  - verified: rev-1 [reviewer] · run r-1 · 2026-10-10T10:00Z' }),
     task(14, 'planned', 'T-2', { rank: 10, blocked_by: ['T-10'] }), task(15, 'planned', 'T-2', { rank: 20 }),
     task(16, 'planned', 'T-3'), task(17, 'backlog'), task(18, 'done'), task(19, 'planned', 'T-4'),
     task(20, 'planned', ''),
@@ -202,7 +202,7 @@ test('e and E select configured open containers, persist through ui.json and rec
 test('criteria follow same-timestamp task edits and every row/highlight fits a narrow Unicode panel', { skip }, async t => {
   const c = await start(t);
   await c.waitScreen(s => s.includes('1/2'), 'initial criteria');
-  const edited = { ...fixture.items!.find(it => it.id === 'T-15'), title: '界'.repeat(100) + ' planned', body: '- [x] Outside\n## Acceptance criteria\n```markdown\n- [ ] Example\n```\n### Nested\n- [X] Verified\n## Notes\n- [ ] Not criteria' };
+  const edited = { ...fixture.items!.find(it => it.id === 'T-15'), title: '界'.repeat(100) + ' planned', body: '- [x] Outside\n## Acceptance criteria\n```markdown\n- [ ] Example\n```\n### Nested\n- [X] C1. Verified\n  - verified: qa-1 [qa] · run q-1 · 2026-10-10T10:00Z\n## Notes\n- [ ] Not criteria' };
   await c.control({ set: { items: fixture.items!.map(it => it.id === 'T-15' ? edited : it) }, emit: { type: 'task', id: 'T-15', item: edited } });
   await c.waitScreen(s => /T-15.*1\/1/.test(s), 'updated acceptance section only');
   for (const width of [44, 20, 8, 1]) {

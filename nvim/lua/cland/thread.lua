@@ -384,6 +384,27 @@ function Thread:_build(m, prev, answer)
         b.marks[#b.marks + 1] = { row = base, col = 0, opts = { end_col = #lines[1], hl_group = verdict == 'clear' and 'ClandGreen' or 'ClandRed', priority = 125 } }
       end
     end
+    -- Criteria are attached by the hub to the verdict report. Text is never evidence.
+    if verdict and type(mm.criteria) == 'table' then
+      for _, criterion in ipairs(mm.criteria) do
+        local glyph = require('cland.criteria').GLYPH[criterion.mark]
+        if glyph and (criterion.mark == 'verified' or criterion.mark == 'failed') and type(criterion.id) == 'string' then
+          local label = '  ' .. glyph[1] .. ' ' .. criterion.id .. ' ' .. criterion.mark
+          local chunks = fit({ { label, glyph[2] } }, self:_width())
+          local parts = {}
+          for _, c in ipairs(chunks) do parts[#parts + 1] = c[1] end
+          label = table.concat(parts)
+          add(label, { group = group }, banded({ { col = 0, opts = { end_col = #label, hl_group = glyph[2], priority = 125 } } }))
+          if type(criterion.note) == 'string' and criterion.note ~= '' then
+            -- Use the thread Markdown wrapper for long failure notes at either grid width.
+            local lines = self:body({ text = criterion.id .. ': ' .. criterion.note })
+            for _, line in ipairs(lines) do
+              add(line, { group = group }, banded({ { col = 0, opts = { end_col = #line, hl_group = 'ClandRed', priority = 125 } } }))
+            end
+          end
+        end
+      end
+    end
     for _, a in ipairs(attachments) do
       chip(a)
     end

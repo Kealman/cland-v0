@@ -6,8 +6,9 @@
 local api = vim.api
 local state = require('cland.state')
 local items = require('cland.items')
+local criteria = require('cland.criteria')
 
-local M = { bufs = {}, detail = {}, pending = {}, stale = {} }
+local M = { bufs = {}, detail = {}, pending = {}, stale = {}, criterion_rows = {} }
 local ns = api.nvim_create_namespace('cland.item_view')
 
 function M.setup(client)
@@ -45,8 +46,9 @@ local function wrap(text, width)
         cur = next
       end
       while sw(cur) > width do
-        out[#out + 1] = vim.fn.strcharpart(cur, 0, width)
-        cur = vim.fn.strcharpart(cur, width)
+        local prefix = require('cland.bars').prefix(cur, width)
+        out[#out + 1] = prefix
+        cur = cur:sub(#prefix + 1)
       end
     end
     out[#out + 1] = cur
@@ -198,7 +200,7 @@ local function body_lines(it, d, width)
     end
   end
   text(it.title or '', 'ClandBold')
-  add({ { ' ' .. ((d and d.path) or ('.cland/tasks/' .. (it.file or ''))) .. ' · updated ' .. hhmm(it.updated), 'ClandDim' } })
+  text(((d and d.path) or ('.cland/tasks/' .. (it.file or ''))) .. ' · updated ' .. hhmm(it.updated), 'ClandDim')
   add({ { ' ' .. ('─'):rep(math.max(1, width - 2)), 'ClandFaint' } })
   if not d then
     add({ { ' loading the item…', 'ClandDim' } })
@@ -210,15 +212,52 @@ local function body_lines(it, d, width)
   if d.note then
     add({ { ' not current: ' .. d.note, 'ClandAmber' } })
   end
+  local function criterion_lines()
+    local refs = criteria.refs(d)
+    for i, criterion in ipairs(d.criteria) do
+      local glyph = criteria.GLYPH[criteria.status(criterion)]
+      local prefix = refs[i] .. '. '
+      local first = true
+      for _, line in ipairs(wrap(criterion.text, width - 3 - sw(prefix))) do
+        local chunks = first and { { ' ' .. glyph[1] .. ' ', glyph[2] }, { prefix .. line } }
+          or { { (' '):rep(3 + sw(prefix)) .. line } }
+        chunks.criterion = { id = refs[i], text = criterion.text }
+        add(chunks)
+        first = false
+      end
+      for _, mark in ipairs(criterion.marks or {}) do
+        local label = mark.kind .. ': ' .. M.by(mark.by) .. ' · ' .. hhmm(mark.at)
+          .. (mark.run and (' · run ' .. mark.run) or '') .. (mark.note and (' · ' .. mark.note) or '')
+        for _, line in ipairs(wrap(label, width - 3)) do
+          local chunks = { { '   ' .. line, mark.kind == 'failed' and 'ClandRed' or 'ClandDim' } }
+          chunks.criterion = { id = refs[i], text = criterion.text }
+          add(chunks)
+        end
+      end
+      for _, warning in ipairs(criterion.malformedMarks or {}) do text(warning.text, 'ClandAmber', 3) end
+    end
+  end
   -- the body as Markdown text: headings bold, list markers and quotes kept
   local body = vim.trim(d.body or '')
   if body == '' then
     add({ { ' (no body)', 'ClandDim' } })
   else
-    local fence = false
+    local fence, in_criteria, shown_criteria = nil, false, false
     for _, line in ipairs(vim.split(body, '\n', { plain = true })) do
-      if line:match('^%s*```') then
-        fence = not fence
+      local delimiter = line:match('^%s*(```+)') or line:match('^%s*(~~~+)')
+      local heading = not fence and line:match('^(#+)%s')
+      if heading and #heading <= 2 then in_criteria = false end
+      if not fence and type(d.criteria) == 'table' and line:match('^##%s+Acceptance criteria%s*#*%s*$') then
+        if not shown_criteria then
+          text('ACCEPTANCE CRITERIA', 'ClandSection')
+          criterion_lines()
+        end
+        in_criteria, shown_criteria = true, true
+      elseif in_criteria then
+        -- The structured criteria replace the source section, including its mark sub-items.
+      elseif delimiter then
+        if not fence then fence = delimiter
+        elseif delimiter:sub(1, 1) == fence:sub(1, 1) and #delimiter >= #fence then fence = nil end
         add({ { ' ' .. line, 'ClandFaint' } })
       elseif fence then
         add({ { ' ' .. line, 'ClandDim' } })
@@ -243,6 +282,15 @@ local function body_lines(it, d, width)
           text(line)
         end
       end
+      -- Fences inside the replaced section still protect heading-looking code.
+      if in_criteria and delimiter then
+        if not fence then fence = delimiter
+        elseif delimiter:sub(1, 1) == fence:sub(1, 1) and #delimiter >= #fence then fence = nil end
+      end
+    end
+    if not shown_criteria and type(d.criteria) == 'table' and #d.criteria > 0 then
+      text('ACCEPTANCE CRITERIA', 'ClandSection')
+      criterion_lines()
     end
   end
   add({})
@@ -357,10 +405,13 @@ function M.compose(id, width)
       vim.list_extend(rows, body_lines(it, d, width))
     end
     rows[#rows + 1] = {}
-    rows[#rows + 1] = { { ' e edit the file · gt its topic · gs its session · gi on an id opens it · ␣␣ back', 'ClandFaint' } }
+    for _, line in ipairs(wrap('e edit file · ca add criterion · ce edit · cd remove · gt topic · gs session · gi open id · ␣␣ back', width - 1)) do
+      rows[#rows + 1] = { { ' ' .. line, 'ClandFaint' } }
+    end
   end
-  local lines, marks = {}, {}
+  local lines, marks, criterion_rows = {}, {}, {}
   for r, chunks in ipairs(rows) do
+    criterion_rows[r] = chunks.criterion
     local parts, col = {}, 0
     for _, c in ipairs(chunks) do
       parts[#parts + 1] = c[1]
@@ -371,7 +422,36 @@ function M.compose(id, width)
     end
     lines[r] = table.concat(parts)
   end
-  return lines, marks
+  return lines, marks, criterion_rows
+end
+
+--- Human criterion management goes through the hub, which allocates ids and preserves marks.
+function M.criterion(id, op)
+  local d = M.detail[id]
+  if not d or d.failed or M.stale[id] or d.seen ~= (state.item(id) or {}).updated then
+    M.fetch(id)
+    return state.say('criteria are refreshing; try again when the item is current', 'ClandAmberBar')
+  end
+  local row = api.nvim_win_get_cursor(0)[1]
+  local criterion = op ~= 'add' and (M.criterion_rows[id] or {})[row] or nil
+  if op ~= 'add' and not criterion then return state.say('place the cursor on a criterion first') end
+  local function send(text)
+    if not (M.client and M.client:connected()) then return state.say('criteria need a connected hub', 'ClandAmberBar') end
+    M.client:request({ type = 'task.criterion', item = id, op = op, criterion = criterion and criterion.id, text = text }, function(err)
+      if err then return state.say('criterion: ' .. tostring(err), 'ClandRedBar') end
+      M.invalidate(id)
+      state.changed()
+    end)
+  end
+  if op == 'remove' then
+    vim.ui.select({ 'Keep', 'Remove' }, { prompt = 'Remove ' .. criterion.id .. ': ' .. criterion.text .. '?' }, function(choice)
+      if choice == 'Remove' then send() end
+    end)
+  else
+    vim.ui.input({ prompt = op == 'add' and 'Add criterion: ' or ('Edit ' .. criterion.id .. ': '), default = criterion and criterion.text or '' }, function(text)
+      if text and vim.trim(text) ~= '' then send(text) end
+    end)
+  end
 end
 
 --- `e`: the item's file in a normal buffer in the centre (`:edit`); the hub re-indexes it on save.
@@ -402,6 +482,10 @@ function M.buf(id)
   vim.b[b].cland_role = 'item'
   vim.b[b].cland_item = id
   M.bufs[id] = b
+  for lhs, op in pairs({ ca = 'add', ce = 'edit', cd = 'remove' }) do
+    require('cland.actions').map('n', lhs, function() M.criterion(id, op) end,
+      { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. op .. ' criterion' })
+  end
   require('cland.actions').map('n', 'e', function()
     M.edit(id)
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: edit the item file' })
@@ -417,7 +501,8 @@ function M.render(id)
   M.get(id)
   local win = vim.fn.bufwinid(b)
   local width = api.nvim_win_get_width(win ~= -1 and win or require('cland.layout').centre())
-  local lines, marks = M.compose(id, width - 1)
+  local lines, marks, criterion_rows = M.compose(id, width - 1)
+  M.criterion_rows[id] = criterion_rows
   vim.bo[b].modifiable = true
   api.nvim_buf_set_lines(b, 0, -1, false, lines)
   vim.bo[b].modifiable = false
