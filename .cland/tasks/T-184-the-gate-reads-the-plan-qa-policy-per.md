@@ -3,7 +3,7 @@ id: T-184
 kind: task
 title: "The gate reads the plan: QA policy per stage or override, qa_default, qa-required retired and migrated, ready from the policy"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:38:37.537Z
-updated: 2026-10-10T15:38:37.537Z
+updated: 2026-10-10T17:51:54.689Z
 ---
 
 ## Parent

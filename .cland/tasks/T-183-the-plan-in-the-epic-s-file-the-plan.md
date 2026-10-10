@@ -2,8 +2,8 @@
 id: T-183
 kind: task
 title: "The plan in the epic's file: the ## Plan YAML block, task.plan set and show, validation, journalled changes"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-90
 branch: t/T-183-the-plan-in-the-epic-s-file-the-plan
 created: 2026-10-10T15:38:37.301Z
-updated: 2026-10-10T17:04:31.628Z
+updated: 2026-10-10T17:51:23.010Z
 ---
 
 ## Parent
@@ -41,7 +41,9 @@ The `## Plan` YAML block and its validation; `task.plan set` and `show`, `cland 
   - verified: rev-11 [reviewer] · run rev-20261010-183-1 · 2026-10-10T15:55:34.542Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-2 · 2026-10-10T16:00:56.113Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-3 · 2026-10-10T17:04:31.628Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-183 · 2026-10-10T17:49:56.071Z
+  - verified: rev-14 [reviewer] · run rev-20261010-183-4 · 2026-10-10T17:50:55.864Z
 
 ## Comments
 
@@ -92,3 +94,19 @@ commit: 0b5aa971fbb8e553d5e1706a920d46b1f9f40ec9
 No supported high or medium findings. Standards: no findings. Spec: accept the documented levels[1] convention; §3.1 allows leaves under any container and the existing [release, epic, feature] example at hub/README.md:915 places a level below the epic, so the spec does not mandate lowest-level ownership. With [release, milestone, epic], milestone is the second semantic role; kind names are configurable, not reserved. Arbitrary deeper-ladder role mapping is underspecified in §3.10, so this is an interpretation. All set/show/validation/candidate guards use the same predicate; renamed-level protocol regression covers retention. Actual predicate checks and typecheck passed independently. Prior unchanged behavior and A-652 resolution carry forward from A-659. C1–C3 verified; C4 waits for full-suite evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-14 · 2026-10-10T17:50:55.864Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-183-4
+commit: 0b5aa971fbb8e553d5e1706a920d46b1f9f40ec9
+
+No findings in the focused C4 evidence review. A-694:2–11 records both typecheck phases and the complete package test command; :1181–1187 reports hub 1031/1031 and :1427–1433 reports Neovim 232/232, both with zero failures, cancellations, skips or todos. package.json:16–17 and hub/test/run-suite.ts:221–239 establish full inventories and failure propagation. Independently confirmed clean task worktree and matching HEAD/local origin at the pinned commit; lead reports both commands exit 0. No tests rerun or repository edits. Standards: 0 findings; Spec: 0 findings. C4 verified; C1–C3 marks and same-head full-item clearance from rev-20261010-183-3 carry forward. Details: A-696 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-696-t-183-c4-review-at-0b5aa97-full-validation-verified.md.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-10T17:51:23.010Z
+
+Merged f0724328586a346ffc6d7c84881389e3909d7e4e onto dev.

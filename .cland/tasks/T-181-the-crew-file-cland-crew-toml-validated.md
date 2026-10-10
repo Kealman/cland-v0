@@ -2,8 +2,8 @@
 id: T-181
 kind: task
 title: "The crew file: .cland/crew.toml, validated and reloaded, cland crew show and set, the sessions header summary"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-89
 branch: t/T-181-the-crew-file-cland-crew-toml-validated
 created: 2026-10-10T15:38:36.819Z
-updated: 2026-10-10T16:46:21.277Z
+updated: 2026-10-10T17:20:51.506Z
 ---
 
 ## Parent
@@ -41,7 +41,9 @@ T-113, slice 6 of 7. Read the epic's Contents, its choices where the spec is sil
   - verified: rev-10 [reviewer] · run rev-20261010-181-1 · 2026-10-10T15:51:52.128Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-2 · 2026-10-10T15:56:06.353Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-3 · 2026-10-10T16:46:21.277Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-181 · 2026-10-10T17:18:31.600Z
+  - verified: rev-14 [reviewer] · run rev-20261010-181-4 · 2026-10-10T17:20:28.634Z
 
 ## Comments
 
@@ -92,3 +94,23 @@ commit: 1240a4d93a0fc1acfc8a012cc975f9331f28f548
 No findings in the three-line follow-up. hub/src/crew.ts now shares tracker DEFAULT_LEVELS while actual custom levels remain supplied by CrewFile; daemon committed-file inventory includes crew.toml; update rewrite inventory excludes the preserved staffing file. Independent read-only parser checks and A-668 targeted evidence support the fixes. Prior full-item clearance A-654 carries forward. Standards: 0 findings; Spec: 0 findings. C1/C2/C3 verified; C4 remains unverified pending the fresh full suite on 1240a4d (A-667's earlier run failed).
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-181 · 2026-10-10T17:18:31.740Z
+
+Full npm run typecheck && npm test passed on 1240a4d93a0fc1acfc8a012cc975f9331f28f548 (exit 0): hub 1025/1025, Neovim 233/233, zero failures/skips. Complete retained log A-687 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-687-t-181-full-package-checks.log. C4 marked done; requesting final C4 verification from rev-14 with prior clear reviews A-654/A-669.
+
+### rev-14 · 2026-10-10T17:20:28.634Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-181-4
+commit: 1240a4d93a0fc1acfc8a012cc975f9331f28f548
+
+No findings in the focused C4 evidence review. A-687:2–11 records both typecheck phases and the complete package test command; A-687:1160–1166 and :1407–1413 report hub 1025/1025 and Neovim 233/233, zero failures, cancellations, skips or todos. package.json:16–17 and hub/test/run-suite.ts:221–239 establish complete inventories and failure propagation. Independently confirmed clean T-181 worktree and matching HEAD/local origin at the pinned commit; live lead reports exit 0. No tests rerun or repository edits. Standards: 0 findings; Spec: 0 findings. C4 verified; existing C1/C2/C3 marks from rev-20261010-181-3 carry forward. Detailed review A-688 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-688-t-181-c4-review-at-1240a4d-full-package-checks-verified.md.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-10T17:20:51.506Z
+
+Merged e1cab3a5663412d7942f6247407b2e8b2d7fd5fb onto dev.

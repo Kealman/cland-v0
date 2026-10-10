@@ -2,8 +2,8 @@
 id: T-176
 kind: task
 title: "A Lead on an epic: the lead role, session.launch naming an epic gives its lead claim, only the Coordinator launches Leads"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-91
 branch: t/T-176-a-lead-on-an-epic-the-lead-role-session
 created: 2026-10-10T15:38:35.506Z
-updated: 2026-10-10T16:35:55.022Z
+updated: 2026-10-10T19:23:13.308Z
 ---
 
 ## Parent
@@ -31,17 +31,23 @@ The `lead` role in `roles.toml` and `cland init`; `session.launch` naming an epi
   - done: impl-176 · 2026-10-10T15:57:08.902Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-2 · 2026-10-10T15:58:33.215Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-3 · 2026-10-10T16:35:55.022Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-176-2 · 2026-10-10T19:22:56.013Z
 - [x] C2. Demo: the Coordinator launches `lead-1` on a v0.1 epic, and `@lead T-<epic>` reaches it.
   - done: impl-176 · 2026-10-10T15:47:43.469Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-1 · 2026-10-10T15:55:28.716Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-2 · 2026-10-10T15:58:33.215Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-3 · 2026-10-10T16:35:55.022Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-176-2 · 2026-10-10T19:22:56.013Z
 - [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
   - done: impl-176 · 2026-10-10T15:47:43.864Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-1 · 2026-10-10T15:55:28.879Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-2 · 2026-10-10T15:58:33.215Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-3 · 2026-10-10T16:35:55.022Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - verified: rev-13 [reviewer] · run rev-13-20261010-176-2 · 2026-10-10T19:22:56.013Z
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - verified: rev-13 [reviewer] · run rev-13-20261010-176-1 · 2026-10-10T18:07:28.302Z
+  - done: impl-176 · 2026-10-10T19:22:16.426Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-176-2 · 2026-10-10T19:22:56.013Z
 
 ## Comments
 
@@ -114,3 +120,43 @@ C1–C3 verified. Independent typecheck and diff check passed at 88feb19; A-663 
 Review A-664: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-664-t-176-re-review-at-88feb19-regressions-fixed-c4-pending.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-13 · 2026-10-10T18:07:28.302Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-176-1
+commit: 88feb1966359ff963ceda0dbb23f6b941dccd372
+
+C4 verified. A-699 records npm run typecheck and the completed all-suite run at the unchanged reviewed head: hub 1029/1029 and Neovim 233/233, with zero failures, cancellations, skipped tests or todos in both phases. The log includes the T-176 explicit/preassigned/configured-container Lead and panel tests. Worktree HEAD and branch match 88feb19 and the worktree is clean. Independent typecheck also passed; writing full suites were inspected from durable evidence rather than rerun in the read-only Reviewer sandbox.
+
+No code delta and no new high/medium findings. Carry forward C1–C3 and the separate Standards/Spec clear review rev-12-20261010-176-3 at this exact commit (A-664). Low — hub/src/roles/default-roles.ts:80 retains the prior nonblocking epic/release wording; corrected instance handover lines are A-665.
+
+Review A-700: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-700-t-176-c4-verification-at-88feb19-full-suite-clear.md. Criteria: C4 newly verified; C1–C3 retain prior exact-head verification.
+
+Criteria: C4 verified.
+
+### impl-176 · 2026-10-10T18:08:35.872Z
+
+Coordinator merge gate found conflicts after dev gained T-143/T-181/T-183. Merging origin/dev at 5f435ad: preserve new task.plan grants for existing roles and T-143's verifier loop; keep Lead role/grants and both Neovim documentation additions. Also align built-in Lead/Coordinator launch clause wording with corrected configured-container handover A-665 while a new permissions suite rerun is required. Targeted permissions/item-lead checks, typecheck, delta review, and persistent full rerun follow.
+
+### rev-13 · 2026-10-10T19:22:56.013Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-176-2
+commit: 1e25f991871169c49863dda4e2c0c554c49e1208
+
+No high or medium findings. Finalizes A-706's held merge inspection at the unchanged clean head: both Standards and Spec passes preserve dev plan grants/dispatcher facts, Coordinator-only Lead launch, configured-container ownership/routing, T-143's item loop and Lead/crew documentation. Built-in configured-container clauses now match A-665, fixing the prior low wording finding.
+
+C1–C4 verified. A-721 records complete post-merge typecheck and all-suite output: hub 1043/1043, Neovim 234/234, zero failures/cancellations/skips/todos. The claimant reports command exits 0. Relevant Lead launch/direct-address/container/panel regressions are present. Independent typecheck/diff check and pure permission probes from A-706 remain applicable to the unchanged head. Writing full suites inspected from durable evidence rather than independently rerun in the read-only sandbox.
+
+Final review A-722: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-722-t-176-final-review-1e25f99-merge-and-full-suite-clear.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-10T19:23:13.308Z
+
+Merged f95843fcc6fac6448f4456d478c1a28201feb046 onto dev.

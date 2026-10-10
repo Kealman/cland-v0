@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-92
 branch: t/T-190-one-visibility-classifier-messages-inbox
 created: 2026-10-10T16:25:05.955Z
-updated: 2026-10-10T16:56:43.493Z
+updated: 2026-10-10T18:42:47.570Z
 ---
 
 ## Parent
@@ -30,6 +30,8 @@ A module that places messages, inbox events, sessions, items and artifacts in a 
 - [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
   - done: impl-190 · 2026-10-10T16:55:23.615Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-2 · 2026-10-10T16:56:43.493Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-190-1 · 2026-10-10T17:36:06.942Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-190-3 · 2026-10-10T18:42:47.570Z
 - [x] C2. Demo: a project's `[visibility]` raises long idles to now, and the top bar counts them.
   - done: impl-190 · 2026-10-10T16:40:37.670Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-1 · 2026-10-10T16:52:58.987Z
@@ -38,7 +40,9 @@ A module that places messages, inbox events, sessions, items and artifacts in a 
   - done: impl-190 · 2026-10-10T16:40:37.787Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-1 · 2026-10-10T16:52:59.081Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-2 · 2026-10-10T16:56:43.493Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-190-1 · 2026-10-10T17:36:06.942Z
 - [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - failed: rev-13 [reviewer] · 2026-10-10T18:39:07.656Z · note A-710 Neovim phase failed 6/237 tests beyond the authorized unchanged T-172 request-guard timing exception.
 
 ## Comments
 
@@ -85,3 +89,63 @@ C1–C3 verified. Independent typecheck, diff check and read-only terminal-class
 Review A-675: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-675-t-190-re-review-at-2370772-terminal-session-fix-clear.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-190 · 2026-10-10T17:34:17.765Z
+
+Full-suite A-691 at 2370772: typecheck clean, hub 1028/1030 pass; final-removal task event's layers:{} regression fixed at d611a3752d2818e97c709e8e40f41d4deeee4a51, optional map now omitted for empty item index and documented. Exact tracker regression and populated live-layer-map regression both pass, plus typecheck. Request-guard timing failure left unchanged as T-172 per Coordinator. Delta review requested from rev-13 citing prior clear A-675; fresh full suite pending.
+
+### rev-13 · 2026-10-10T17:36:06.942Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-190-1
+commit: d611a3752d2818e97c709e8e40f41d4deeee4a51
+
+No high or medium findings in the requested 2370772...d611a37 delta. The empty-index guard (hub/src/hub/visibility.ts:174) preserves the exact final-removal frame while populated maps and current-release reclassification remain intact; the Lua consumer independently removes the cached item. Documentation matches. Separate Standards and Spec reviews found no issues.
+
+Independent typecheck, git diff --check and direct read-only classifier probes passed. Exact tracker-removal and populated-map integration regressions inspected; A-692 reports both passing after the fix. C1 verified for this delta; C3 verified. C2 retains prior A-675 verification and is unaffected. C4 unverified pending fresh full suite at this head; unchanged request-guard timing failure is outside this delta per T-172 steering.
+
+Review A-693: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-693-t-190-delta-review-d611a37-empty-map-correction-clear.md.
+
+Criteria: C1 verified, C3 verified.
+
+### rev-13 · 2026-10-10T18:39:07.656Z
+
+verdict: review
+result: not clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-190-2
+commit: d611a3752d2818e97c709e8e40f41d4deeee4a51
+
+Medium — nvim/test/palette.test.ts:86: session chip expects 2 and receives 1; the expectation/fixture must match now-layer counts while preserving live transitions.
+Medium — nvim/test/palette.test.ts:303: split topic content wait times out; the classified message is folded.
+Medium — qa/cases/PANELS-009.lua:22: now count/waiting-chip QA assertion fails.
+Medium — nvim/test/qa.test.ts:96: THREAD-005 and THREAD-006 both fail closed-message fold-count assertions (8 folded in evidence).
+Medium — nvim/test/thread.test.ts:685: retained-answer history has 0 messages rather than 200.
+
+C4 failed. A-710 has typecheck exit 0; hub 1029/1030 with only request-guard's 584ms timing failure, then sequential Neovim 231/237 with six failures. The request's T-172-only exception cannot cover these additional failures. Resolve the policy-specific fixture/expectation or implementation issues while retaining meaningful behavior coverage; re-review any delta and validate the final head. Prior C1–C3 marks remain; no new failure assigned to them solely from these possibly outdated assertions.
+
+Review A-712: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-712-t-190-c4-review-d611a37-six-neovim-failures-remain.md. Full writing suite inspected from durable log, not independently rerun in read-only sandbox.
+
+Criteria: C4 failed (A-710 Neovim phase failed 6/237 tests beyond the authorized unchanged T-172 request-guard timing exception.).
+
+### impl-190 · 2026-10-10T18:41:31.981Z
+
+C4 findings from A-712 resolved at eeb4b3ae16354ea00e1d2ab76f6c1305d017bd07: six headless checks pass after now-only chip expectations, Coordinator-to-human split metadata, hub-side Aide fixture presence and deterministic held/released retention history. Existing fold boundaries/counts, selection/live updates and standalone-answer assertions retained. No production policy change. Typecheck/diff check pass; delta review and fresh final-head full-suite validation requested.
+
+### rev-13 · 2026-10-10T18:42:47.570Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-190-3
+commit: eeb4b3ae16354ea00e1d2ab76f6c1305d017bd07
+
+No high or medium findings in d611a37...eeb4b3a. The fixture/expectation delta matches the classifier contract without weakening behavior coverage: now-only chip with idle transition assertion, split history/live report metadata, hub-known Aide recipient before projection with seven never-fold boundaries, and explicit history hold/release before retention eviction. The unique append marker and all window/standalone-answer/day-rule/delivery assertions remain. No production policy changes. Separate Standards and Spec delta reviews found no issues.
+
+Independent typecheck/diff check and read-only classifier probes passed. The lead reports six focused headless checks passing; writing tests inspected rather than independently rerun in read-only sandbox. C1 verified for coverage; C2/C3 prior verification remains applicable. C4's failed mark from A-712 remains pending final-head package evidence; it is not verified by focused checks.
+
+Review A-717: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-717-t-190-delta-review-eeb4b3a-behavior-coverage-preserved.md.
+
+Criteria: C1 verified.
