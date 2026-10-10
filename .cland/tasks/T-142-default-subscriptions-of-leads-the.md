@@ -2,8 +2,8 @@
 id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T14:24:40.851Z
+updated: 2026-10-10T14:56:35.435Z
 ---
 
 ## Parent
@@ -150,3 +150,45 @@ Evidence: A-587, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-587-t
 ### impl-142 · 2026-10-10T14:24:40.809Z
 
 Neovim suite passes on b69fc375c6fac10cf8f78c460cf126ee9c3d777f; hub 959/960 accepted by Coordinator with known T-172 stop-log race (A-617). Review clear rev-67-142-6 / A-587; typecheck and 46 affected tests pass. Neovim log A-626; handover A-627. sessions.ts only Sessions.releaseInterruptedLaunches(); recovery fixture reuses subscription-hygiene.test.ts's established durable-arrangement/frame-history pattern; no role/default-role/roles.toml changes.
+
+### rev-67 · 2026-10-10T14:37:39.529Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-142-7
+commit: a7ab9e700bd298f0edf536858cb2ece3cb7f2a60
+
+Medium — hub/src/hub/core.ts:495: a default lead occurrence coalesced into an older explicit-subscription event retains direct=0; after claiming the ancestor and transitioning to Aide, that lead’s queued default event is dropped as crew-only, contrary to §3.9 and the claimed-item provenance contract. Upgrade provenance per recipient atomically for eligible unbound coalescing, or keep distinct rows when provenance differs.
+
+Standards: 1 medium documented-contract finding. Spec: 1 medium finding; both are the same unique gap. Root and both independent axes reproduce it without storage faults: explicit child verdict count1 → parent claim → repeated child verdict same ID count2 → Aide role transition drops it, while parent/child defaults remain owned by that session. Fresh defaults survive the same transition. Broadcast and retained explicit-subscription exclusions pass.
+
+Range-diff accounts for all prior patches and the new Aide commit. Conflicts preserve indexed holds, T-152 lead routing, T-148 broadcast exclusion and T-156 report criteria/listener cleanup. Ordinary ownership/recovery and Aide hierarchy probes pass. No edits or suite repeat; full suite separately queued.
+Evidence: A-632, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-632-t-142-rebase-review-at-a7ab9e7-coalesced-default-provenance-gap.md.
+
+### impl-142 · 2026-10-10T14:44:21.458Z
+
+Pushed e375f6279b8453f479f329e18236aafbf23d1d9b: fixes A-632 by unioning direct provenance atomically with coalesced recipient count. Real daemon/frame regression reproduces explicit child verdict → ancestor claim → repeated verdict → Aide transition, red→green with same ID and ×2 delivery. Typecheck/diff-check and defaults 11, item-lead 10, Aide 6, subscription-hygiene 14 all pass (41/41). Existing a7ab9e7 full run continues per Coordinator; no new full run. Delta review pending.
+
+### rev-67 · 2026-10-10T14:47:38.722Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-142-8
+commit: e375f6279b8453f479f329e18236aafbf23d1d9b
+
+No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 findings. Full-item clearance: A-632’s sole remaining medium gap is fixed; all other prior checks carry forward.
+
+Core supplies occurrence-specific default provenance, and Store unions direct with the count in the same eligible recipient update. Root’s original reproduction now retains the same ID at count2 after Aide transition. Controls pass for no downgrade by later nondirect occurrences, other-recipient isolation, bound-batch immutability, unchanged key/window eligibility and Aide broadcast/retained-explicit exclusion. Ordinary ownership/recovery and Aide-parent hierarchy probes also pass. The public daemon regression checks same ID and ×2 delivered.
+
+Earlier rebase preserves T-148 exclusions, T-152 routing, indexed holds and T-156 report criteria/cleanup. A-635 reports typecheck and 41 targeted cases passing; the Coordinator accepts the a7ab9e7 full run plus targeted checks for this small delta. Full package result remains separately reported; no pass invented and no suite repeated. No edits.
+Evidence: A-636, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-636-t-142-full-item-review-at-e375f62-clear.md.
+
+### impl-142 · 2026-10-10T14:56:08.038Z
+
+Final accepted gate complete: full npm test launched at a7ab9e7 exited 0, hub 1019/1019 and Neovim 232/232 (0 failures/skips), evidence A-637. Fix head e375f6279b8453f479f329e18236aafbf23d1d9b has typecheck/41 requested targeted tests passing (A-635) and full-item review clear A-636. Background reporter's notification was refused as a human-only CLI frame after the successful suite; reporting through the cland tool now, no requeue.
+
+### coord · 2026-10-10T14:56:35.435Z
+
+Merged 3c436a7854b024e4933b0baf569d0f64c33e0759 onto dev.
