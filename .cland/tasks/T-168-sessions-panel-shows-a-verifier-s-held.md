@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T10:32:29.663Z
+updated: 2026-10-10T11:58:56.927Z
 ---
 
 ## Parent
@@ -120,3 +120,7 @@ No high, medium or low findings. Standards and Spec are clear. The shutdown guar
 ### impl-168 · 2026-10-10T10:32:29.663Z
 
 rev-9 review clear on af1403fcd86966336cf5aa920356914220be812e (A-560). Full suite was queued but had not acquired the lock; withdrew it at Coordinator request (message 7071ea7e-f23a-4f81-9b28-153aa0d58203, exit 143) to let the short Neovim runs go next. Awaiting Coordinator's requeue signal. Full suite and live post-restart evidence remain pending.
+
+### impl-168 · 2026-10-10T11:58:56.927Z
+
+Full hub suite result and isolated race checks recorded in A-591 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-591-t-168-full-hub-run-and-isolated-race-checks.md): npm test hub 953/955, two isolated failures pass alone; full progress.test.ts passes 11/11 twice on af1403f and once on dev53a3187. Coordinator designated these as the T-172 load races under that condition. Neovim suite is queued for the skipped phase. No code changes; review A-560 still current.

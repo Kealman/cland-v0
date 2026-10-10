@@ -3,7 +3,7 @@ id: T-155
 kind: task
 title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
 state: open
-status: ready
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T10:45:27.434Z
+updated: 2026-10-10T12:05:02.938Z
 ---
 
 ## Parent
@@ -96,3 +96,7 @@ A-569: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-569-t-155-daemo
 ### impl-155 · 2026-10-10T10:45:27.434Z
 
 Latest pushed37dbb8c94222d94a31cdb102cba83b04998b41e1 has current review clear rev-8-20261010-155-3 (A-569). Full npm test at376752e: hub961/964 passed, all criterion13 and both ready fixtures passed; three failures (A-568). Fixed our recovery-ignore provisioning assertion. Complete daemon14/14 and handover4/4 passed twice each on new head; the other two were baseline timing races per Coordinator's instructed check. Waiting for suite requeue signal.
+
+### impl-155 · 2026-10-10T12:04:36.266Z
+
+T-148 landed first, so T-155 now integrates Aide criterion done/manage rights without a claim, with verify/fail refused. Rebased onto dev2ff6681 and pushedfe61b8b235ff6ae63958daf00993bd3157c3b04f; typecheck and targeted24 pass, public-boundary Aide regression red->green. External delta review and own full suite on this rebased head pending Coordinator slot. New artifact records five exact role tool-line replacements; instance roles file untouched.
