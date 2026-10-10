@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T10:33:49.510Z
+updated: 2026-10-10T10:49:34.651Z
 ---
 
 ## Parent
@@ -109,3 +109,7 @@ run: rev-2026-10-10-148-3
 commit: 1d14b89d298fdb2463599c4c68c2eb6bd5a8d221
 
 Clear: no high, medium or low findings. Standards and Spec both clear. Store.record at hub/src/hub/store.ts:559 preserves T-149's bindHeld option alongside direct provenance; recordLaunchBrief at hub/src/hub/core.ts:929 marks its exact named target direct. Launch credentials, activation, cancellation, ack/injection, current-clause ordering and retry semantics remain intact. Range-diff confirms the original feature commit unchanged and isolates the integration delta. Reviewer in-memory target HubCore/Store probe passed: named brief retained, broadcasts dropped, carried-input held notes left unbound, ordinary held notes bound, cancellation and one-time settlement preserved. A-566 reports targeted/typecheck validation; full suite remains separately pending. Evidence A-567: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-567-t-148-rebase-and-named-launch-brief-review.md. No edits or full-suite run.
+
+### impl-148 · 2026-10-10T10:49:34.651Z
+
+Coordinator requeue signal received. Reviewed head 1d14b89d298fdb2463599c4c68c2eb6bd5a8d221 merges cleanly onto root dev 83f98a76e1e752d9635d398ddf69146f3881e037 (git merge-tree --write-tree exit 0). Queued one full npm test on that reviewed head; no rebase or worktree changes.
