@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: ready
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T11:36:29.295Z
+updated: 2026-10-10T11:39:20.198Z
 ---
 
 ## Parent
@@ -128,3 +128,7 @@ Evidence: A-558, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-558-t
 ### impl-142 · 2026-10-10T11:36:29.295Z
 
 Coordinator-approved test-only follow-up: fake Claude now splits channel blocks and chooses the command-bearing block independently of digest order, using its body/topic/msg_id together and excluding event/progress blocks from command execution. Previously failing task-worktrees probe passes; typecheck passes. Checking CLI, rename, approval/failure fixture paths, then committing/pushing for rev-67 and rerunning npm test.
+
+### impl-142 · 2026-10-10T11:38:56.679Z
+
+Committed/pushed b69fc375c6fac10cf8f78c460cf126ee9c3d777f; Coordinator-approved fake command parser delta from reviewed 9556ad8. Affected single-file tests pass 46/46 (task-worktrees 9, permission 7, Claude sessions 12, roles 7, asks 11), typecheck/diff-check pass. Evidence A-585. Fresh full npm test queued once at this head; Coordinator asked to route test-only delta to rev-67.

@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-79
 branch: t/T-163-the-graph-legible-at-size-node-widths
 created: 2026-10-10T07:49:36.868Z
-updated: 2026-10-10T11:17:59.209Z
+updated: 2026-10-10T11:39:41.684Z
 ---
 
 ## Parent
@@ -60,3 +60,7 @@ No findings. Standards and Spec clear against the ticket, §3.15 and prototype. 
 Native in-memory T-19 probes passed six available widths (85/120/125/160/165/200): all 22 linked labels fit, all 32 drawn endpoint pairs preserved, incident ownership valid, and selected node retained through sizing/orientation changes. Implementation reports targeted checks/typecheck passing; full test:nvim pending in reviewed evidence. No reviewer edits or suites.
 
 A-577: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-577-t-163-graph-sizing-and-native-field-qa-review-clear.md
+
+### impl-163 · 2026-10-10T11:39:41.387Z
+
+Handoff: 3e07379b6a0e6576df5df99eac9f919c0b47a9fc committed and pushed to origin; working tree clean. Graph labels fit 120/160/200 columns through numbered continuation bands; +/− sizing, … clipping and wrapped diagnostics preserve node/edge ownership and cursor selection. Vertical remains default; o turns sideways. GRAPH-001 successor uses frozen T-19 topology with native hub fields and a separate workflow sampler, polls rendered state, and checks six widths, orientation, motions, actions, live updates and board coexistence. README documents keys and v0.2 crossing limits. Node v24.21.0: npm run typecheck passed; locked npm run test:nvim passed 222/222, no skips (217.74s run after 1292.35s lock wait). rev-8 review clear at this head, run rev-8-20261010-163-1 (A-577). Canvas evidence A-575: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-575-t-163-t-19-graph-canvas-dumps-at-120-160-and-200-columns.md. Full suite evidence A-586: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-586-t-163-locked-neovim-suite-222-tests-pass.log.

@@ -3,7 +3,7 @@ id: T-151
 kind: task
 title: "The Aide speaks for the human: the crew's clauses say so; the thread's speaks-for-you mark and dashed blue bar; Aide messages never fold"
 state: open
-status: planned
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: T-111
 blocked_by:
   - T-148
   - T-135
-topic: null
-branch: null
+topic: topic-82
+branch: t/T-151-the-aide-speaks-for-the-human-the-crew-s
 created: 2026-10-10T05:33:00.860Z
-updated: 2026-10-10T09:25:25.755Z
+updated: 2026-10-10T11:39:12.386Z
 ---
 
 ## Parent
@@ -36,3 +36,9 @@ The crew's role clauses say that an Aide speaks for the human, decisions include
 ## Notes
 
 Implementer: Codex. ADRs 0001 (roles are hub-held state), 0004 (local git territory), 0003. Research `research/harness-surfaces` (where each adapter puts the role clause; Codex puts it in its first turn). References: `prototype/panels` ("yours" group and `␣A` in `panels.lua`, `palette.lua`), mockups `SessionsPanel.dc.html`, `Palette.dc.html`, `Thread.dc.html`; spec words win, then prototype behaviour, then mockups. The epic's choices where the spec is silent apply. Tests through the v0 seams: hub frame protocol, fake harnesses, headless Neovim; no new seams inside the hub. Instance lines (roles.toml) are listed exactly in the report; the Coordinator commits them.
+
+## Comments
+
+### impl-151 · 2026-10-10T11:39:12.386Z
+
+Implementation: retain T-134's now-layer Aide boundary rule; add the speaks-for-you header and blue dashed gutters (including cursor/wrapped rows), plus an authority instruction in all four default crew clauses. Tests cover clauses delivered by a real hub and rendered history/live thread boundaries. Existing project roles.toml changes will be supplied exactly in the handover for the Coordinator to commit.
