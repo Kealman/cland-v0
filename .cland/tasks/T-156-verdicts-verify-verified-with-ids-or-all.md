@@ -3,7 +3,7 @@ id: T-156
 kind: task
 title: "Verdicts verify: --verified with ids or all on a verdict, failed criteria with notes, the Reviewer and QA clauses and skills verify by id"
 state: open
-status: planned
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-112
 blocked_by:
   - T-155
-topic: null
-branch: null
+topic: topic-86
+branch: t/T-156-verdicts-verify-verified-with-ids-or-all
 created: 2026-10-10T07:49:36.173Z
-updated: 2026-10-10T09:25:26.498Z
+updated: 2026-10-10T12:38:40.941Z
 ---
 
 ## Parent
@@ -37,3 +37,13 @@ A verdict verifies criteria. `cland task comment --verdict review|qa` and the ve
 ## Blocked by
 
 - T-155 (Marks the hub writes)
+
+## Comments
+
+### impl-156 · 2026-10-10T12:30:43.140Z
+
+Implementation started at dev 95f88ee. Seams: real hub frame protocol, MCP spoke and CLI against fixture projects, as T-112 specifies. Package suites paused per Coordinator due to T-175; targeted node --test files and typecheck only until cleared.
+
+### impl-156 · 2026-10-10T12:38:40.941Z
+
+8955991 implements verified ids/all and repeatable CLI --failed C2=note / MCP failed [{criterion,note}]. One protected write records the verdict and marks; invalid ids and revoked grants refuse both. Message.criteria is structured and restart-persistent. npm run typecheck, verdict-criteria (4 tests), tracker-criterion-write (13 tests) pass. Package suites remain paused by Coordinator for T-175. Standards/spec self-review running against 95f88ee.

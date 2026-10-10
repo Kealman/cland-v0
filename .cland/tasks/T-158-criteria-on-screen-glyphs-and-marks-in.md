@@ -3,7 +3,7 @@ id: T-158
 kind: task
 title: "Criteria on screen: glyphs and marks in the item view, verified/total on panel rows and board cards, the human edits criteria, a verdict's criteria in the thread"
 state: open
-status: planned
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-112
 blocked_by:
   - T-155
-topic: null
-branch: null
+topic: topic-85
+branch: t/T-158-criteria-on-screen-glyphs-and-marks-in
 created: 2026-10-10T07:49:36.367Z
-updated: 2026-10-10T09:25:27.005Z
+updated: 2026-10-10T12:30:38.936Z
 ---
 
 ## Parent
@@ -38,3 +38,9 @@ Criteria on screen in Neovim. The item view lists the criteria with glyphs (○ 
 ## Blocked by
 
 - T-155 (Marks the hub writes)
+
+## Comments
+
+### impl-158 · 2026-10-10T12:30:38.936Z
+
+Implementation started on dev 95f88ee. Display uses hub criteria and task.criterion; tracing item, vboard, graph and verdict thread paths. Package suites paused at Coordinator request pending T-175; targeted tests and typecheck permitted.
