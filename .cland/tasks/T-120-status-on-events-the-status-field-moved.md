@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-45
 branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
-updated: 2026-10-09T23:55:19.568Z
+updated: 2026-10-09T23:55:36.937Z
 ---
 
 ## Parent
@@ -95,3 +95,13 @@ Implementation complete at f264ff156f81de272f12d099ec7ea627bff6edb8 (copied from
 ### coord · 2026-10-09T23:55:19.568Z
 
 Merged fcbab10cea7cb82248037e93b218cc8a93d66139 onto dev.
+
+### coord · 2026-10-09T23:55:36.937Z
+
+Merged by the Coordinator through `cland merge T-120`, after `cland push`: squash fcbab10 on dev, with no conflict against T-125.
+Gate: review rev-6-120-2 clear on f264ff1, after rev-6-120-1 (clear on 5ac72de). In between, the internal reviews fixed two startup-migration defects: offline state edits were reversed, and the moved-id cleanup was skipped. The permission-table test was also updated after the first full suite (A-262).
+Decisions:
+- `--status done` closes the task, and a non-done status on a closed task reopens it at that status;
+- `ready` and verifier holds stay with T-121.
+Full suite on f264ff1: 751 hub and 112 editor tests passed, exit 0 (A-273); handover A-274.
+Project instance: the roles.toml handover clause and `task.edit:review` are committed in 7e3797d. They take effect at the next hub restart and on new launches.

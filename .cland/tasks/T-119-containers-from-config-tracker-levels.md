@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-44
 branch: t/T-119-containers-from-config-tracker-levels
 created: 2026-10-09T21:56:19.667Z
-updated: 2026-10-09T23:54:37.997Z
+updated: 2026-10-10T00:16:27.147Z
 ---
 
 ## Parent
@@ -146,3 +146,69 @@ Medium — hub/test/tracker-container-source.test.ts:46–48/:72: definite-kind 
 Scan-drain medium resolved: with one held read and two failures, actual-method virtual-port probes keep both refusal and the next queued write pending with zero renames. After release, both failed filenames are reported, the parent stays unchanged, temporary files are cleaned and the following write commits. Original direct typed/.kind guard bypasses now fail. README names the accepted scan-plus-rename interval, which is not a finding.
 
 Full item reviewed against 9ddfd79, carrying earlier unchanged checks forward; no suite or file edits. Standards: 0 findings. Spec: 1 medium. Evidence A-272: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-272-t-119-review-of-57148b7-scan-drain-resolved-inferred-kind-guard-gap.md.
+
+### impl-119 · 2026-10-10T00:04:03.534Z
+
+Rebased once onto dev 7e3797d with T-120 and T-125. Compiler type-checker guard now follows inferred/destructured Kind aliases without new call-site Kind casts. Combined regression covers custom-container status refusal and status transitions on close/kind conversion/reopen. Internal review exposed watcher status migration skipping the conflicting hand-kind-change warning; reproduced by the existing regression and moved the warning before migration. Targeted verification in progress; no full suite pending.
+
+### impl-119 · 2026-10-10T00:05:16.751Z
+
+Rebased/fixed head copied from git log -1: b4c9d4a9e08102dc8e16e026d087ad37ade373a3, pushed to local origin. A-278 records integration, decisions/config line and targeted results: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-278-t-119-rebased-compiler-guard-and-status-integration-at-b4c9d4a.md. Typecheck passed; levels14/14, status11/11, async30/30, source2/2 passed. Internal review clear after watcher status-migration warning fix. Full suite pending official delta clearance.
+
+### rev-65 · 2026-10-10T00:07:53.598Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-119-5
+commit: b4c9d4a9e08102dc8e16e026d087ad37ade373a3
+
+High: 0. Medium: 1. Low: 0.
+
+Medium — hub/test/tracker-container-source.test.ts:52/:59–62: compiler guard accepts `kind == 'release'`, `kind != 'release'`, `['release'].includes(kind)` and `new Set(['release']).has(kind)`. The operator list omits loose equality, and membership checks only a Kind-bearing receiver, missing a Kind argument against a literal collection. Actual pinned TypeScript-checker probes return [] for each with zero virtual sample semantic diagnostics. These retain Kind and do not use the accepted any/unknown/cast exception; cover ordinary operators and both membership orientations.
+
+Previous inferred/destructured Kind aliases now fail. T-120 integration is clear: actual #write callback order refresh→precommit→rename→index→committed preserves precommit scans and post-index claims; parser/status normalization remains task-only. Actual resumed watcher migration now emits the conflicting parenting filename warning before migration returns. Earlier scan-drain, disk discovery, malformed/unknown handling, custom-level, init/update and Neovim checks carry forward.
+
+Full item reviewed against dev 7e3797d; no suite or edits. Standards: 0 findings. Spec: 1 medium. Evidence A-280: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-280-t-119-rebased-review-of-b4c9d4a-semantic-predicate-guard-gaps.md.
+
+### impl-119 · 2026-10-10T00:10:04.956Z
+
+Guard-only review delta committed/pushed at 41484da847a90fc8b657eed3110867191b1dad90. Equality ==/!=/===/!== and includes/has in both orientations covered; array/Set/Map receiver literals and initializer aliases tested against Kind arguments, with operational release counterparts accepted. Source2/2, typecheck pass. Superseded b4c9d4a suite cancelled while queued via runner, exit143. No new full suite pending until official delta verdict.
+
+### rev-65 · 2026-10-10T00:11:44.830Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-119-6
+commit: 41484da847a90fc8b657eed3110867191b1dad90
+
+High: 0. Medium: 1. Low: 0.
+
+Medium — hub/test/tracker-container-source.test.ts:44/:57–61/:69–70: ordinary operand/binding forms still bypass the guard. Actual pinned compiler probes accept `kind === ('release')`, `const literal = 'release'; kind === literal`, and `const vocabulary = { values: ['release'] }; vocabulary.values.includes(kind)` with [] and zero sample semantic diagnostics. flag only handles bare literal AST nodes; collection traversal ignores property initializers. Kind remains typed, with no any/unknown/casts. Normalize operands and follow ordinary literal/property bindings, then plant these cases; this remains the required predicate class.
+
+A-280's four examples now fail, along with Set/Map and identifier aliases. Operational frame equality and array/Set/Map membership stay accepted. Accepted Map-value overflagging is not a finding. Production is unchanged, so prior status/callback/watcher, scan-drain, indexing, configured hierarchy, init/update and Neovim clearance carries forward. Full item covered against 7e3797d; no suite or edits.
+
+Standards: 0 findings. Spec: 1 medium. Evidence A-285: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-285-t-119-review-of-41484da-ordinary-literal-and-property-binding-gaps.md.
+
+### impl-119 · 2026-10-10T00:15:17.676Z
+
+Final guard head e6bf9b69be17daadccbf45e4c7e5aaf5847611ff committed/pushed. Both operands checked by compiler types, with inline array/Set/Map literal fallback; parentheses/const/as-const and prior direct samples covered. Mutable variable/object widening is the approved exclusion, documented in header. Source2/2/typecheck pass on committed head. Existing full runner verified still queued after commit; log renamed for e6bf9b6. Final levels output pending capture; no production changes since cleared integration.
+
+### rev-65 · 2026-10-10T00:16:27.147Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-119-7
+commit: e6bf9b69be17daadccbf45e4c7e5aaf5847611ff
+
+High: 0. Medium: 0. Low: 0.
+
+Clear under the Coordinator's final type-based guard rule. Actual pinned compiler probes reject parenthesized/reversed comparisons, const literal bindings, inferred/destructured Kind aliases, all equality forms, switch cases, inline array/Set/Map membership and literal-preserving as-const collections/property receivers/aliases. Operational counterparts remain accepted.
+
+Earlier mutable-array/object/Set bindings whose level literals widen away are now deliberately accepted under the explicit exception in 1e5bab06 and 4efc27d4; their as-const counterparts fail. Any/unknown/type-erasing casts and accepted Map-value overflagging are not findings. The guard header names the widening boundary.
+
+Production is unchanged, so A-280's status/callback/watcher integration and earlier scan-drain, indexing, hierarchy, importer, init/update and Neovim clearance carry forward. This verdict covers the full item against 7e3797d. No suite, repository typecheck or edits; focused virtual compiler sample diagnostics are explained in the artifact.
+
+Standards: 0 findings. Spec: 0 findings. Evidence A-288: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-288-t-119-final-guard-review-of-e6bf9b6-clear.md.
