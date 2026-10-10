@@ -324,7 +324,11 @@ function M.winbar(win)
     return head(win, tostring(vim.b[buf].cland_artifact), { { 'read-only · R render Mermaid · q back', 'ClandDimBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)
-    return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', M.thread_marks(t))
+    local marks = M.thread_marks(t)
+    local thread = require('cland.thread').by_buf[buf]
+    local count = thread and thread:folded_count(win) or 0
+    if count > 0 then table.insert(marks, 1, { count .. ' folded · zR  ', 'ClandDimBar' }) end
+    return head(win, (t and t.title or vim.b[buf].cland_topic or '') .. ' · to @coordinator', marks)
   elseif role == 'composer' then
     local tv = views().topics[vim.b[buf].cland_topic]
     local answering = tv and tv.composer.answering

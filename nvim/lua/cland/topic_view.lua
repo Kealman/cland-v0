@@ -114,9 +114,13 @@ function M.new(client, topic)
     require('cland.layout').show({ kind = 'thread', id = topic.id }, { insert = true })
   end)
   require('cland.actions').map('n', '<CR>', function()
+    if view.thread:fold('za') then return end
     local a = (view.thread.artifact_rows or {})[vim.api.nvim_win_get_cursor(0)[1]]
     if a then require('cland.artifacts').open(a) end
   end, { buffer = view.thread.buf, desc = 'open artifact' })
+  for _, key in ipairs({ 'zo', 'za', 'zc', 'zR', 'zM' }) do
+    require('cland.actions').map('n', key, function() view.thread:fold(key) end, { buffer = view.thread.buf })
+  end
   require('cland.actions').map('n', 'ga', function()
     require('cland.layout').show({ kind = 'artifacts', id = topic.id }, { insert = false })
   end, { buffer = view.thread.buf, desc = 'topic artifacts' })

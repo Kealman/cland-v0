@@ -71,7 +71,9 @@ for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   add(scope, 'i', 'Free answer to selected ask' .. (scope == 'thread' and ' or focus composer' or ''))
 end
 group('inbox_full', {{'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}})
-group('thread', {{'<CR>','Open artifact chip'}, {'ga','Artifacts in this topic'}})
+group('thread', {{'<CR>','Toggle agent run or open artifact chip'}, {'ga','Artifacts in this topic'},
+  {'zo','Open agent run'}, {'za','Toggle agent run'}, {'zc','Close agent run'},
+  {'zR','Open all agent runs'}, {'zM','Fold all agent runs'}})
 group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'ga','Artifacts in Agents'},
   {'f','Filter Agents by item or session'}, {'F','Clear Agents filter'}})
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')

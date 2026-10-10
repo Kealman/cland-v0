@@ -273,12 +273,12 @@ async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', chart
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   if (charting) await c.input('<Esc>:Cland preset charting<CR>');
-  return Object.assign(c, { control: (cmd: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
+  return Object.assign(c, { control: (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const sock = createConnection(controlPath);
     let text = '';
     sock.setEncoding('utf8');
     sock.on('error', reject);
-    sock.on('data', chunk => { text += chunk; if (text.includes('\n')) { sock.end(); resolve(); } });
+    sock.on('data', chunk => { text += chunk; if (text.includes('\n')) { sock.end(); resolve(JSON.parse(text.slice(0, text.indexOf('\n')))); } });
     sock.write(`${JSON.stringify(cmd)}\n`);
   }) });
 }
@@ -328,9 +328,11 @@ test('thread options follow the buffer and an arbitrary scratch split restores g
   const result = await c.lua<{ thread: Record<string, unknown>; scratch: Record<string, unknown>; defaults: Record<string, unknown>; reentered: Record<string, unknown>; reset_again: Record<string, unknown>; global_after: Record<string, unknown> }>(`
     local api=vim.api
     local win=require('cland.layout').centre()
-    local names={'statuscolumn','wrap','linebreak','breakindent','breakindentopt','conceallevel','concealcursor'}
-    local defaults={statuscolumn='',wrap=true,linebreak=false,breakindent=false,breakindentopt='',conceallevel=0,concealcursor=''}
-    for name,value in pairs(defaults) do api.nvim_set_option_value(name,value,{scope='global'}) end
+    local names={'statuscolumn','wrap','linebreak','breakindent','breakindentopt','conceallevel','concealcursor','foldmethod','foldtext','foldenable','foldlevel','foldminlines','foldcolumn','fillchars'}
+    local defaults={statuscolumn='',wrap=true,linebreak=false,breakindent=false,breakindentopt='',conceallevel=0,concealcursor='',foldmethod='indent',foldtext='foldtext()',foldenable=false,foldlevel=7,foldminlines=3,foldcolumn='1',fillchars='fold:-,vert:|'}
+    api.nvim_win_call(win,function()
+      for name,value in pairs(defaults) do api.nvim_set_option_value(name,value,{scope='global'}) end
+    end)
     local buf=api.nvim_create_buf(false,true)
     api.nvim_win_set_buf(win,buf)
     require('cland.layout').apply_view({focus=false,insert=false})
@@ -347,16 +349,96 @@ test('thread options follow the buffer and an arbitrary scratch split restores g
     api.nvim_win_set_buf(scratch,buf)
     local reset_again=options(scratch)
     local global_after={}
-    for _,name in ipairs(names) do global_after[name]=api.nvim_get_option_value(name,{scope='global'}) end
+    api.nvim_win_call(win,function()
+      for _,name in ipairs(names) do global_after[name]=api.nvim_get_option_value(name,{scope='global'}) end
+    end)
     api.nvim_win_close(scratch,true)
     api.nvim_buf_delete(buf,{force=true})
     return {thread=thread,scratch=restored,defaults=defaults,reentered=reentered,reset_again=reset_again,global_after=global_after}
   `);
-  assert.deepEqual(result.thread, { statuscolumn: '%!v:lua.ClandThreadGutter()', wrap: true, linebreak: true, breakindent: true, breakindentopt: 'list:-1', conceallevel: 2, concealcursor: 'nc' });
+  assert.deepEqual(result.thread, { statuscolumn: '%!v:lua.ClandThreadGutter()', wrap: true, linebreak: true, breakindent: true, breakindentopt: 'list:-1', conceallevel: 2, concealcursor: 'nc', foldmethod: 'manual', foldtext: 'v:lua.ClandThreadFoldText()', foldenable: true, foldlevel: 0, foldminlines: 0, foldcolumn: '0', fillchars: 'fold: ' });
   assert.deepEqual(result.scratch, result.defaults);
   assert.deepEqual(result.reentered, result.thread);
   assert.deepEqual(result.reset_again, result.defaults);
   assert.deepEqual(result.global_after, result.defaults, 'thread settings never change window-option defaults');
+});
+
+test('background fold reconstruction leaves the focused board alone and rejects non-thread windows', { skip }, async t => {
+  const c = await start(t, { messages: { general: [
+    { ...msg('agent-a', 'implementer'), to: ['reviewer'] },
+    { ...msg('agent-b', 'reviewer'), to: ['implementer'] },
+  ] }, items: [
+    { id: 'T-1', kind: 'release', title: 'Release', state: 'open' },
+    { id: 'T-2', kind: 'epic', title: 'Epic', parent: 'T-1', state: 'open' },
+    { id: 'T-14', kind: 'task', title: 'First', parent: 'T-2', status: 'planned', state: 'open', rank: 10 },
+    { id: 'T-21', kind: 'task', title: 'Selected', parent: 'T-2', status: 'planned', state: 'open', rank: 20 },
+  ], rankEvents: 'manual' }, 'UTC', false);
+  await c.input('<Esc><Space>i');
+  await c.waitScreen(s => s.includes('Selected'), 'board rows');
+  const result = await c.lua<{ before: unknown; after: unknown; wrong_window: number; resets: number }>(`
+    local api=vim.api
+    local thread=require('cland.views').topic('general').thread
+    local board=require('cland.layout').win.left
+    api.nvim_set_current_win(board)
+    api.nvim_set_option_value('foldmethod','manual',{scope='local',win=board})
+    vim.cmd('2,3fold')
+    for row,line in ipairs(api.nvim_buf_get_lines(api.nvim_win_get_buf(board),0,-1,false)) do
+      if line:find(' T-21 ',1,true) then api.nvim_win_set_cursor(board,{row,0}) end
+    end
+    local function snapshot()
+      local folds={}
+      for row=1,api.nvim_buf_line_count(api.nvim_win_get_buf(board)) do
+        folds[#folds+1]={vim.fn.foldlevel(row),vim.fn.foldclosed(row),vim.fn.foldclosedend(row)}
+      end
+      return {win=api.nvim_get_current_win(),mode=api.nvim_get_mode().mode,cursor=api.nvim_win_get_cursor(board),line=api.nvim_get_current_line(),folds=folds}
+    end
+    local before=snapshot()
+    local command=vim.cmd
+    local wrong_window,resets=0,0
+    vim.cmd=function(text)
+      if text:find('fold') or text:find('zE') then
+        if api.nvim_get_current_buf()~=thread.buf then wrong_window=wrong_window+1 end
+      end
+      local value=command(text)
+      if text=='normal! zE' then
+        resets=resets+1
+        for row=1,api.nvim_buf_line_count(thread.buf) do
+          assert(vim.fn.foldlevel(row)==0,'reset actually removes every manual fold')
+        end
+      end
+      return value
+    end
+    local ok,err=pcall(function()
+      thread:render()
+      thread:_build_folds(require('cland.layout').centre(), thread.fold_states[require('cland.layout').centre()])
+      thread:_build_folds(board, {})
+      assert(not thread:fold('zM'),'fold keys reject the focused non-thread window')
+      assert(next(thread:_fold_states(board))==nil,'fold-state reads reject non-thread windows')
+      assert(thread:folded_count(board)==0,'fold counts reject non-thread windows')
+    end)
+    vim.cmd=command
+    if not ok then error(err) end
+    return {before=before,after=snapshot(),wrong_window=wrong_window,resets=resets}
+  `);
+  assert.equal(result.wrong_window, 0, 'fold handlers never execute on a non-thread window');
+  assert.ok(result.resets > 0, 'the real-run thread was reset and rebuilt while the board was focused');
+  assert.deepEqual(result.after, result.before, 'board folds, cursor, selection, mode and focus survive background reconstruction');
+  await c.input('T');
+  const received = await c.control({ requests: true });
+  const ranks = (received.requests as Array<Record<string, unknown>>).filter(frame => frame.type === 'task.rank');
+  assert.equal(ranks[0]?.item, 'T-21', 'board rank key still selects its item after background fold work');
+  assert.equal(ranks[0]?.top, true);
+  const item = { id: 'T-21', kind: 'task', title: 'Selected', parent: 'T-2', status: 'planned', state: 'open', rank: 20 };
+  await c.control({ emit: { type: 'task', id: 'T-21', item, siblings: ['T-21', 'T-14'] } });
+  await c.waitScreen(s => /T-21.*next/.test(s), 'rank event moves selected item first');
+  await c.input('J');
+  await c.control({ emit: { type: 'task', id: 'T-21', item, siblings: ['T-14', 'T-21'] } });
+  await c.waitScreen(s => /T-14.*next/.test(s), 'rank event moves selected item second');
+  await c.input('K');
+  const final = await c.control({ requests: true });
+  const moves = (final.requests as Array<Record<string, unknown>>).filter(frame => frame.type === 'task.rank');
+  assert.equal(moves[1]?.after, 'T-14');
+  assert.equal(moves[2]?.before, 'T-14');
 });
 
 test('delayed initial history preserves focused composer modes and an unfocused composer', { skip }, async t => {
@@ -504,10 +586,19 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       marks[#marks+1]={row=m[2],col=m[3],details=m[4]}
     end
     local groups={}
-    for _,i in ipairs(t.info) do groups[#groups+1]={group=i.group,header=i.head and i.head.id,ask=i.ask and i.ask.id,artifact=i.artifact and i.artifact.id,links=i.links} end
-    return {lines=vim.api.nvim_buf_get_lines(t.buf,0,-1,false),marks=marks,groups=groups}
+    for _,i in ipairs(t.info) do groups[#groups+1]={group=i.group,header=i.head and i.head.id,ask=i.ask and i.ask.id,artifact=i.artifact and i.artifact.id,links=i.links,layer=i.b and i.b.layer} end
+    local folds=vim.api.nvim_win_call(require('cland.layout').centre(),function()
+      local out={}
+      for _,run in ipairs(t:_runs()) do
+        local first,last=run.first.start+2,run.last.start+run.last.n
+        local ids={}; for _,m in ipairs(run.messages) do ids[#ids+1]=m.id end
+        out[#out+1]={first=first,last=last,ids=ids,open=vim.fn.foldclosed(first)==-1}
+      end
+      return out
+    end)
+    return {lines=vim.api.nvim_buf_get_lines(t.buf,0,-1,false),marks=marks,groups=groups,folds=folds}
   `;
-  type Snapshot = { lines: string[]; marks: Array<Record<string, unknown>>; groups: unknown[] };
+  type Snapshot = { lines: string[]; marks: Array<Record<string, unknown>>; groups: unknown[]; folds: unknown[] };
   const canonical = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(canonical);
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, canonical(v)]));
@@ -527,7 +618,7 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         if (answered) messages.push({ ...msg(`answer-${id}`, 'human', `Answer ${id}\nkept body`), ts: `2026-10-${(day + 1).toString().padStart(2, '0')}T09:00:00Z`, answerTo: id });
       }
       const bodies = ['Body **T-58**\n[brief](https://example.com/long/destination)', 'Body `history`\n- list text', 'Body fenced\n```lua\nprint(1)\n```', 'Body unclosed\n```sh\nnot a later message', 'Body table\n\n| Item | Description |\n|---|---|\n| T-58 | ' + 'detail '.repeat(10) + '|', 'Body multiline [the\nbrief](https://example.com/multiline)', 'Body references [brief][ref] and [ref][]\n\n[ref]: https://example.com/reference', 'Body header-only\n\n| ' + 'wide '.repeat(20) + '| **State** |\n|---|---|', 'Body duplicates [a]\n\n[a]: /first\n[a]: /second', 'Body autolinks <https://example.com> <a@example.com>', 'Body sparse\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short |\n| ' + 'long '.repeat(16) + '| present |', 'Body surplus\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short | [extra](https://example.com/extra) | [surplus](https://example.com/surplus) |\n| ' + 'long '.repeat(16) + '| present | tail |', 'Body linked headers\n\n| [Item](https://example.com/' + 'long/'.repeat(15) + ') | **State** |\n|---|---|\n| T-58 | open |'];
-      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 3 === 0 ? 'human' : 'implementer', bodies[i % bodies.length]), ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
+      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 3 === 0 ? 'human' : 'implementer', bodies[i % bodies.length]), to: [i % 3 === 0 ? 'coordinator' : 'reviewer'], ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
     }
     // Cover exactly 200 messages and oversized snapshots requiring initial trimming.
     messages.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
@@ -541,8 +632,10 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         local win=require('cland.layout').centre()
         local oracle=require('cland.thread').new({id='differential',title=t.topic.title})
         _G.thread_oracle=oracle
+        local states=t:_fold_states(win)
         vim.api.nvim_win_set_buf(win,oracle.buf)
         oracle:merge(t.messages)
+        oracle:_build_folds(win,states)
       `);
       const full = normalise(await c.lua<Snapshot>(snapshot));
       await c.lua(`
@@ -556,10 +649,17 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         assert.equal(incremental.lines[i], full.lines[i], `${label}: line ${i}`);
       }
       assert.deepEqual(incremental.groups, full.groups, label + ': row metadata');
+      assert.deepEqual(incremental.folds, full.folds, label + ': fold membership, ranges and window state');
       for (let i = 0; i < Math.max(incremental.marks.length, full.marks.length); i++) {
         assert.deepEqual(incremental.marks[i], full.marks[i], `${label}: extmark ${i}`);
       }
     };
+    await c.lua(`
+      local t=require('cland.views').topic('general').thread
+      local states={}
+      for i,r in ipairs(t:_runs()) do if i%2==0 then for _,m in ipairs(r.messages) do states[m.id]=true end end end
+      t:_build_folds(require('cland.layout').centre(),states)
+    `);
     await compare(`seed ${seed}: initial history and trimming equal full render`);
     for (let step = 0; step < 24; step++) {
       const day = 11 + Math.floor(step / 8);
@@ -586,4 +686,148 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       await compare(`seed ${seed}, live append ${step}: incremental presentation equals full render`);
     }
   }
+});
+
+
+test('one message layer rule covers the Messages table and every never-fold boundary', { skip }, async t => {
+  const c = await start(t, { messages: { general: [msg('layers')] } });
+  const cases = [
+    [msg('human', 'human'), 'now'],
+    [msg('addressed', 'implementer'), 'now'],
+    [msg('coordinator-report', 'coordinator'), 'now'],
+    [{ ...msg('report-kind'), kind: 'report' }, 'now'],
+    [{ ...msg('ask'), to: ['reviewer'], ask: {state: 'open'} }, 'now'],
+    [{ ...msg('answer', 'implementer'), to: ['reviewer'], answerTo: 'unknown' }, 'now'],
+    [{ ...msg('clear', 'reviewer', 'review clear T-58'), to: ['implementer'] }, 'watch'],
+    [{ ...msg('not-clear', 'qa', 'qa not clear T-58'), to: ['implementer'] }, 'now'],
+    [{ ...msg('aide', 'aide'), to: ['implementer'] }, 'now'],
+    [{ ...msg('to-aide', 'implementer'), to: ['human-aide'] }, 'now'],
+    [{ ...msg('exchange', 'implementer'), to: ['reviewer'] }, 'background'],
+    [{ ...msg('artifact', 'implementer'), to: [], artifact: {id:'A-1'} }, 'background'],
+    [{ ...msg('attached-report'), to: [], artifact: {id:'A-1'}, artifacts: [{id:'A-1'}] }, 'now'],
+    [{ ...msg('empty-attachments'), to: [], artifacts: [] }, 'now'],
+    [{ ...msg('event'), fromKind: 'hub', kind: 'event', to: ['coordinator'] }, 'background'],
+    [{ ...msg('progress', 'implementer'), kind: 'progress', to: ['coordinator'] }, 'background'],
+    // Archive and overrides are deferred to T-115: old retained messages use the same rule.
+    [{ ...msg('old', 'implementer'), ts: '2020-01-01T00:00:00Z', to: ['reviewer'] }, 'background'],
+  ];
+  const layers = await c.lua<string[]>(`
+    require('cland.state').S.presence={{name='human-aide',role='aide'}}
+    local out={}
+    for _,m in ipairs(...) do out[#out+1]=require('cland.thread').layer(m) end
+    return out
+  `, cases.map(row => row[0]));
+  assert.deepEqual(layers, cases.map(row => row[1]));
+});
+
+test('fold membership survives extension, split, eviction, union and rewrites per window', { skip }, async t => {
+  const agent = (id: string, seconds: number) => ({ ...msg(id, 'implementer', 'Background ' + id), to: ['reviewer'], ts: `2026-10-09T10:00:${String(seconds).padStart(2, '0')}Z` });
+  const c = await start(t, { messages: { general: [agent('a', 10), agent('b', 20), agent('c', 30), agent('d', 40)] } });
+  await c.lua(`
+    local api=vim.api
+    local t=require('cland.views').topic('general').thread
+    _G.foldwin=require('cland.layout').centre()
+    api.nvim_set_current_win(_G.foldwin)
+    api.nvim_win_set_cursor(0,{2,0})
+    t:fold('zo')
+    _G.otherwin=api.nvim_open_win(t.buf,false,{split='right',win=_G.foldwin})
+  `);
+  const compare = async (label: string, expected: boolean[]) => {
+    const snapshot = `
+      local t=_G.thread_oracle or require('cland.views').topic('general').thread
+      local win=_G.oraclewin or _G.foldwin
+      return vim.api.nvim_win_call(win,function()
+        local folds={}
+        for _,r in ipairs(t:_runs()) do
+          local first,last=r.first.start+2,r.last.start+r.last.n
+          local ids={}; for _,m in ipairs(r.messages) do ids[#ids+1]=m.id end
+          folds[#folds+1]={first=first,last=last,ids=ids,open=vim.fn.foldclosed(first)==-1}
+        end
+        return {folds=folds,count=t:folded_count(win)}
+      end)
+    `;
+    const live = await c.lua<{folds: Array<{open:boolean}>}>(snapshot);
+    assert.deepEqual(live.folds.map(f => f.open), expected, label);
+    await c.lua(`
+      local t=require('cland.views').topic('general').thread
+      local states=t:_fold_states(_G.foldwin)
+      local oracle=require('cland.thread').new({id='fold-oracle',title='Oracle'})
+      _G.thread_oracle=oracle
+      _G.oraclewin=vim.api.nvim_open_win(oracle.buf,false,{split='below',win=_G.foldwin})
+      oracle:merge(t.messages)
+      oracle:_build_folds(_G.oraclewin,states)
+    `);
+    assert.deepEqual(await c.lua(snapshot), live, label + ': full reference fold projection');
+    await c.lua(`
+      vim.api.nvim_win_close(_G.oraclewin,true)
+      vim.api.nvim_buf_delete(_G.thread_oracle.buf,{force=true})
+      _G.thread_oracle,_G.oraclewin=nil,nil
+    `);
+  };
+  await compare('initial open run', [true]);
+  assert.equal(await c.lua("return require('cland.views').topic('general').thread:folded_count(_G.otherwin)"), 4, 'other window stays folded');
+  await c.lua("require('cland.views').topic('general').thread:add(...)", agent('e', 50));
+  await compare('appended member inherits open', [true]);
+  await c.lua("require('cland.views').topic('general').thread:merge({...})", { ...msg('separator', 'human'), ts: '2026-10-09T10:00:25Z' });
+  await compare('human arriving mid-run splits into two open runs', [true, true]);
+  // Exercise joining independent states after a separator leaves the retained model.
+  await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    vim.api.nvim_set_current_win(_G.foldwin)
+    vim.api.nvim_win_set_cursor(0,{t.block_of.c.start+2,0}); t:fold('zc')
+    for i,m in ipairs(t.messages) do if m.id=='separator' then table.remove(t.messages,i); break end end
+    t.by_id.separator=nil
+    -- Rewrite reads the old block membership before projecting the retained model.
+    t:render()
+  `);
+  await compare('rejoined run takes union of open and closed halves', [true]);
+  await c.lua(`
+    local module=require('cland.thread')
+    module.LIMIT=5
+    require('cland.views').topic('general').thread:add(...)
+    module.LIMIT=200
+  `, agent('f', 55));
+  await compare('first member eviction preserves open run', [true]);
+  await c.lua("require('cland.views').topic('general').thread:render()");
+  await compare('full rewrite preserves open run', [true]);
+  await c.lua(`
+    local api=vim.api
+    local t=require('cland.views').topic('general').thread
+    _G.hidden_scratch=api.nvim_create_buf(false,true)
+    api.nvim_set_current_win(_G.foldwin)
+    api.nvim_win_set_buf(_G.foldwin,_G.hidden_scratch)
+    require('cland.thread').LIMIT=2
+  `);
+  for (const [id, second] of [['g', 56], ['h', 57], ['i', 58]] as const) {
+    await c.lua("require('cland.views').topic('general').thread:add(...)", agent(id, second));
+  }
+  await c.lua(`
+    local api=vim.api
+    local t=require('cland.views').topic('general').thread
+    -- Both windows are hidden: no rendering path can carry the open state.
+    api.nvim_set_current_win(_G.otherwin)
+    api.nvim_win_set_buf(_G.otherwin,_G.hidden_scratch)
+  `);
+  for (const [id, second] of [['j', 59], ['k', 59]] as const) {
+    await c.lua("require('cland.views').topic('general').thread:add(...)", agent(id, second));
+  }
+  await c.lua(`
+    local api=vim.api
+    local t=require('cland.views').topic('general').thread
+    require('cland.thread').LIMIT=200
+    api.nvim_set_current_win(_G.foldwin)
+    api.nvim_win_set_buf(_G.foldwin,t.buf)
+  `);
+  await compare('hidden continuing run stays open after every original member is evicted', [true]);
+  await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    vim.api.nvim_win_set_buf(_G.otherwin,t.buf)
+    vim.api.nvim_buf_delete(_G.hidden_scratch,{force=true})
+  `);
+  assert.equal(await c.lua("return require('cland.views').topic('general').thread:folded_count(_G.otherwin)"), 2, 'independent hidden window stays closed through complete eviction');
+  const states = await c.lua<Record<string, Record<string, boolean>>>(`
+    local t=require('cland.views').topic('general').thread
+    return {open=t.fold_states[_G.foldwin],closed=t.fold_states[_G.otherwin]}
+  `);
+  assert.deepEqual(states, {open:{j:true,k:true},closed:{j:false,k:false}}, 'evicted ids are garbage-collected from both window states');
 });

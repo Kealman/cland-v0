@@ -1,5 +1,5 @@
 -- Topic message blocks (T-132), ported from the accepted T-97 prototype.
--- Visibility/folds and new ask/chip presentation are later slices.
+-- Manual background runs (T-134); ask/chip presentation is the next slice.
 local api = vim.api
 local hl = require('cland.hl')
 local fit = require('cland.bars').fit
@@ -90,6 +90,8 @@ function M.new(topic)
     mark_ids = {},
     cursor_block = {},
     at_tail = {},
+    fold_states = {},
+    fold_ready = {},
   }, Thread)
   M.by_buf[buf] = self
   api.nvim_create_autocmd('CursorMoved', {
@@ -140,6 +142,26 @@ function M.verdict(m)
   if rest:match('^clear%f[^%a]') then return 'clear' end
 end
 
+--- The message part of §3.5, kept here for T-115 to replace. Archive/overrides
+--- belong to that epic; this thread projects the latest 200 messages only.
+function M.layer(m)
+  local state = require('cland.state')
+  if m.fromKind == 'human' or m.fromRole == 'aide' or m.answerTo or type(m.ask) == 'table' then return 'now' end
+  local verdict = M.verdict(m)
+  if verdict then return verdict == 'clear' and 'watch' or 'now' end
+  for _, name in ipairs(addressees(m)) do
+    local session = state.session(name)
+    if name == 'human' or name == 'aide' or (session and session.role == 'aide') then return 'now' end
+  end
+  if m.kind == 'event' or m.kind == 'progress' or m.fromKind == 'hub' then return 'background' end
+  if #addressees(m) > 0 then return 'background' end
+  local bare_artifact = type(m.artifact) == 'table' and type(m.artifacts) ~= 'table'
+  if bare_artifact then return 'background' end
+  -- Coordinator reports stay now until the quiet-Coordinator presentation is wired.
+  -- Unaddressed agent messages are deliveries to the human, as the header shows.
+  return 'now'
+end
+
 -- Compatibility with the current ask/chip actions; their rendering is replaced in T-135.
 function Thread:_row_targets()
   self.card_rows, self.artifact_rows = {}, {}
@@ -187,7 +209,7 @@ end
 --- colour, an open ask on a card row, an artifact on a chip row, the message whose header it is). `prev` is the
 --- block above.
 function Thread:_build(m, prev, answer)
-  local b = { m = m, msgs = { m }, lines = {}, marks = {}, info = {}, heads = {} }
+  local b = { m = m, msgs = { m }, lines = {}, marks = {}, info = {}, heads = {}, layer = M.layer(m) }
   b.day, b.day_label = M.day(m.ts)
   local function add(text, info, marks)
     b.lines[#b.lines + 1] = text
@@ -350,6 +372,124 @@ end
 
 -- Windows: the tail and the reading position ------------------------------------------------------------------------------
 
+--- Runs stop at a non-background block or a day rule. Their state belongs to
+--- surviving message ids, per window: extension inherits; splitting preserves
+--- both halves; eviction of the first member preserves; rejoining takes the
+--- union (any open member opens the joined run). No first-message run id survives
+--- all those operations, so capture membership before changing any blocks.
+function Thread:_runs()
+  local runs, current = {}, nil
+  for _, b in ipairs(self.blocks) do
+    if b.layer == 'background' then
+      if not current or current.last.day ~= b.day then
+        current = { first = b, last = b, messages = {} }
+        runs[#runs + 1] = current
+      end
+      current.last = b
+      current.messages[#current.messages + 1] = b.m
+    else
+      current = nil
+    end
+  end
+  return runs
+end
+
+local function run_range(run)
+  return run.first.start + 2, run.last.start + run.last.n
+end
+
+local function thread_window(thread, win)
+  return api.nvim_win_is_valid(win) and api.nvim_win_get_buf(win) == thread.buf
+end
+
+function Thread:_fold_states(win)
+  local states = {}
+  if not thread_window(self, win) then return states end
+  api.nvim_win_call(win, function()
+    for _, run in ipairs(self:_runs()) do
+      local first = run_range(run)
+      if vim.fn.foldlevel(first) > 0 then
+        local open = vim.fn.foldclosed(first) == -1
+        for _, m in ipairs(run.messages) do states[m.id] = open end
+      end
+    end
+  end)
+  return states
+end
+
+--- Update every window's model, including hidden windows, on each mutation.
+--- Propagate openness to all current run members before the next eviction can
+--- remove the last old member. Rebuild the maps to collect all evicted ids.
+--- Rendering a visible window is a separate consumer of this state.
+function Thread:_transition_folds()
+  local runs = self:_runs()
+  for win, previous in pairs(self.fold_states) do
+    local states = {}
+    for _, run in ipairs(runs) do
+      local open = false
+      for _, m in ipairs(run.messages) do open = open or previous[m.id] == true end
+      for _, m in ipairs(run.messages) do states[m.id] = open end
+    end
+    self.fold_states[win] = states
+  end
+end
+
+function Thread:_build_folds(win, states)
+  if not thread_window(self, win) then return end
+  states = states or {}
+  api.nvim_win_call(win, function()
+    local runs = self:_runs()
+    -- Empty threads have no fold work. Do not mutate their window state on
+    -- connection notices and layout redraws while another panel owns input.
+    if #runs == 0 and vim.fn.foldlevel(1) == 0 then
+      local folded = false
+      for row = 2, api.nvim_buf_line_count(self.buf) do
+        if vim.fn.foldlevel(row) > 0 then folded = true; break end
+      end
+      if not folded then return end
+    end
+    local cursor = api.nvim_win_get_cursor(win)
+    vim.cmd('normal! zE')
+    for _, run in ipairs(runs) do
+      local first, last = run_range(run)
+      local open = false
+      for _, m in ipairs(run.messages) do open = open or states[m.id] == true end
+      vim.cmd(('%d,%dfold'):format(first, last))
+      vim.cmd(('%d%s'):format(first, open and 'foldopen' or 'foldclose'))
+    end
+    api.nvim_win_set_cursor(win, cursor)
+  end)
+  self.fold_ready[win] = true
+end
+
+--- Native fold commands are exposed through the registry, including Enter.
+function Thread:fold(key)
+  local win = api.nvim_get_current_win()
+  if not thread_window(self, win) then return false end
+  local row = api.nvim_win_get_cursor(win)[1]
+  local run_at
+  for _, run in ipairs(self:_runs()) do
+    local first, last = run_range(run)
+    if row >= first and row <= last then run_at = true; break end
+  end
+  if key ~= 'zR' and key ~= 'zM' and not run_at then return false end
+  vim.cmd('normal! ' .. key)
+  self.fold_states[win] = self:_fold_states(win)
+  require('cland.bars').redraw()
+  return true
+end
+
+function Thread:folded_count(win)
+  if not thread_window(self, win) then return 0 end
+  local count = 0
+  api.nvim_win_call(win, function()
+    for _, run in ipairs(self:_runs()) do
+      if vim.fn.foldclosed((run_range(run))) ~= -1 then count = count + #run.messages end
+    end
+  end)
+  return count
+end
+
 local function to_tail(win, buf)
   local last = api.nvim_buf_line_count(buf)
   local mode = api.nvim_get_mode().mode
@@ -370,6 +510,8 @@ function Thread:_windows()
   for _, win in ipairs(vim.fn.win_findbuf(self.buf)) do
     local cur = api.nvim_win_get_cursor(win)
     local stay = win == api.nvim_get_current_win() and cur[1] < count
+    if self.fold_ready[win] then self.fold_states[win] = self:_fold_states(win) end
+    self.fold_states[win] = self.fold_states[win] or {}
     local w = { win = win, tail = not stay }
     local i = self.info[cur[1]]
     if stay and i and i.b then
@@ -381,8 +523,10 @@ function Thread:_windows()
 end
 
 function Thread:_settle(wins)
+  self:_transition_folds()
   for _, w in ipairs(wins) do
     if api.nvim_win_is_valid(w.win) and api.nvim_win_get_buf(w.win) == self.buf then
+      self:_build_folds(w.win, self.fold_states[w.win])
       if w.tail then
         to_tail(w.win, self.buf)
         self.at_tail[w.win] = true
@@ -823,11 +967,46 @@ function M.gutter()
   return '%#' .. i.group .. '#' .. glyph .. '%* '
 end
 
+--- Fit the participants first, reserving cells for the count even at 80 columns.
+function M.fold_chunks(messages, cells)
+  local names, seen = {}, {}
+  for _, m in ipairs(messages) do
+    for _, name in ipairs(vim.list_extend({ tostring(m.from) }, addressees(m))) do
+      if not seen[name] then names[#names + 1] = name; seen[name] = true end
+    end
+  end
+  local suffix = ' · ' .. #messages .. (#messages == 1 and ' message' or ' messages')
+  local label = table.concat(names, #names == 2 and ' → ' or ', ')
+  local chunks = fit({ { '▸ ' .. label, 'ClandFaint' } }, math.max(0, cells - api.nvim_strwidth(suffix)))
+  chunks[#chunks + 1] = { suffix, 'ClandFaint' }
+  return fit(chunks, cells)
+end
+
+function M.foldtext()
+  local t = M.by_buf[api.nvim_get_current_buf()]
+  if not t then return vim.fn.foldtext() end
+  for _, run in ipairs(t:_runs()) do
+    if run_range(run) == vim.v.foldstart then
+      local win = api.nvim_get_current_win()
+      return M.fold_chunks(run.messages, api.nvim_win_get_width(win) - vim.fn.getwininfo(win)[1].textoff)
+    end
+  end
+  return ''
+end
+
 -- A window that follows a thread's tail keeps it at its bottom when it is resized: text reflows at another width,
 -- and Neovim keeps the old top line, which leaves empty rows under the tail after a widening.
 local group = api.nvim_create_augroup('cland.thread', { clear = true })
+local window_buffers = {}
 local window_options = {
   statuscolumn = '%!v:lua.ClandThreadGutter()',
+  foldmethod = 'manual',
+  foldtext = 'v:lua.ClandThreadFoldText()',
+  foldenable = true,
+  foldlevel = 0,
+  foldminlines = 0,
+  foldcolumn = '0',
+  fillchars = 'fold: ',
   wrap = true,
   linebreak = true,
   breakindent = true,
@@ -842,12 +1021,52 @@ api.nvim_create_autocmd({ 'BufWinEnter', 'WinNew' }, {
   callback = function(ev)
     local wins = ev.event == 'BufWinEnter' and vim.fn.win_findbuf(ev.buf) or { api.nvim_get_current_win() }
     for _, win in ipairs(wins) do
-      local thread = M.by_buf[api.nvim_win_get_buf(win)]
+      local buf = api.nvim_win_get_buf(win)
+      local thread = M.by_buf[buf]
+      if thread then
+        if window_buffers[win] == buf and thread.fold_ready[win] then
+          thread.fold_states[win] = thread:_fold_states(win)
+        end
+        thread.fold_states[win] = thread.fold_states[win] or {}
+        -- Options and old native folds may be stale on show. Width rendering
+        -- must consume the model, never read those native folds back into it.
+        thread.fold_ready[win] = nil
+      end
+      window_buffers[win] = buf
       for name, value in pairs(window_options) do
-        if not thread then value = api.nvim_get_option_value(name, { scope = 'global' }) end
+        if not thread then
+          -- Window-local defaults belong to the target window, even if the
+          -- autocmd applies to several windows showing the same buffer.
+          value = api.nvim_win_call(win, function() return api.nvim_get_option_value(name, { scope = 'global' }) end)
+        end
         api.nvim_set_option_value(name, value, { scope = 'local', win = win })
       end
-      if thread and thread.body_width ~= thread:_width() then thread:render() end
+      if thread then
+        if thread.body_width ~= thread:_width() then thread:render() end
+        thread:_transition_folds()
+        thread:_build_folds(win, thread.fold_states[win])
+      end
+    end
+  end,
+})
+api.nvim_create_autocmd({ 'BufLeave', 'BufWinLeave' }, {
+  group = group,
+  callback = function(ev)
+    local t = M.by_buf[ev.buf]
+    if t then
+      for _, win in ipairs(vim.fn.win_findbuf(ev.buf)) do
+        if t.fold_ready[win] then t.fold_states[win] = t:_fold_states(win) end
+      end
+    end
+  end,
+})
+api.nvim_create_autocmd('WinClosed', {
+  group = group,
+  callback = function(ev)
+    local win = tonumber(ev.match)
+    window_buffers[win] = nil
+    for _, t in pairs(M.by_buf) do
+      t.fold_states[win], t.fold_ready[win], t.at_tail[win], t.cursor_block[win] = nil, nil, nil, nil
     end
   end,
 })
@@ -892,4 +1111,5 @@ _G.ClandThreadGutter = function()
   local ok, res = pcall(M.gutter)
   return ok and res or '  '
 end
+_G.ClandThreadFoldText = function() return M.foldtext() end
 return M
