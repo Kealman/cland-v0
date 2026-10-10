@@ -3,7 +3,7 @@ id: T-160
 kind: task
 title: "The graph view: ␣G and :Cland graph, the release's open containers as parents with p and P, nodes on the hub's status, claims, verdicts and criteria, the tray"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-116
 blocked_by:
   - T-159
-topic: null
-branch: null
+topic: topic-72
+branch: t/T-160-the-graph-view-g-and-cland-graph-the
 created: 2026-10-10T07:49:36.565Z
-updated: 2026-10-10T07:49:36.565Z
+updated: 2026-10-10T08:58:17.765Z
 ---
 
 ## Parent
@@ -37,3 +37,13 @@ The graph view: `␣G` and `:Cland graph [T-n]` open a centre view that lays out
 ## Blocked by
 
 - T-159 (The graph layout)
+
+## Comments
+
+### impl-160 · 2026-10-10T08:46:22.728Z
+
+Implementation started at dev 8697ca3. Using the existing Neovim headless/stub-hub seam to verify graph entry points, current-release parent cycling, hub node fields and done tray folding. Topic: topic-72.
+
+### impl-160 · 2026-10-10T08:58:17.765Z
+
+Graph implementation is committed. Six headless Neovim/stub-hub tests pass, including an added regression ensuring graph canvas rows do not soft-wrap; typecheck passes. Standards and Spec sub-agent reviews found no issues, including the final wrapping fix. Demo artifact A-510 captures T-107 and T-130 from the hub-index snapshot. The locked full Neovim suite remains queued behind other sessions.

@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T08:41:16.815Z
+updated: 2026-10-10T08:53:29.697Z
 ---
 
 ## Parent
@@ -43,3 +43,7 @@ Implementer: Codex. ADRs 0007 (events reach sessions as deliveries, digested at 
 ### impl-142 · 2026-10-10T08:41:16.815Z
 
 Implementing default lead subscriptions at the existing hub protocol seam. Scope stays in subscription/hygiene code; sessions.ts and adapters remain untouched. Baseline bd9ee7c includes event hygiene and item lead routing.
+
+### impl-142 · 2026-10-10T08:53:29.697Z
+
+Implemented and committed 0355a59: dynamic default subscriptions follow claims (including before first hello), pooled verifier holds, and offline Coordinator recovery; terminal events retain the existing atomic fan-out/checkpoint. Targeted ownership/lifecycle/long-idle/restart tests and typecheck pass. Full npm test and two-axis local review are running; no role/clause changes.

@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-68
 branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
-updated: 2026-10-10T08:41:19.109Z
+updated: 2026-10-10T08:54:10.601Z
 ---
 
 ## Parent
@@ -43,3 +43,7 @@ Implementer: Codex. ADRs 0001 (roles are hub-held state), 0004 (local git territ
 ### impl-149 · 2026-10-10T08:41:19.109Z
 
 Beginning implementation: launch brief text/artifact resolution, one-time role-then-brief delivery through the existing queue, native adapter and reconnect/restart coverage.
+
+### impl-149 · 2026-10-10T08:54:10.601Z
+
+Implemented text/artifact briefs and --brief. Coordinator clarified that the first native input must bundle clause then brief on all three harnesses; Claude Code/OpenCode now bind the initial clause to the ordinary brief delivery digest, with independent records/stages. Targeted native cases, artifact/CLI cases and early-hello/reconnect/restart checks pass; typecheck passes. Running code-review skill and full suite next.

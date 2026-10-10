@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T08:41:16.330Z
+updated: 2026-10-10T08:52:09.683Z
 ---
 
 ## Parent
@@ -43,3 +43,7 @@ Implementer: Codex. ADRs 0001 (roles are hub-held state), 0004 (local git territ
 ### impl-148 · 2026-10-10T08:41:16.330Z
 
 Starting slice 1: verify §3.3 against default roles, hub permission gates, named/role/all/Agents/ask delivery, and lead resolution. Instance roles.toml changes will be provided for Coordinator merge.
+
+### impl-148 · 2026-10-10T08:52:09.683Z
+
+Implemented non-exclusive Aide defaults (Claude Code; model omitted so the human's configured default is used), exact §3.3 tools and rule-naming refusals, named addressing, live/offline broadcast exclusion, artifact promotion MCP/CLI access and tracker status edits. Queued crew notices from a previous role are dropped before Aide deliveries. Five new Aide protocol/fake-harness tests and the existing permissions suite pass; typecheck passes. Full npm test is queued on the machine-wide suite lock.

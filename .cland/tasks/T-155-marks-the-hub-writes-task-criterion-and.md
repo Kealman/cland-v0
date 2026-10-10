@@ -3,7 +3,7 @@ id: T-155
 kind: task
 title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-112
 blocked_by:
   - T-154
-topic: null
-branch: null
+topic: topic-71
+branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T07:49:36.076Z
+updated: 2026-10-10T08:51:08.507Z
 ---
 
 ## Parent
@@ -40,3 +40,9 @@ The hub writes criteria marks. A new tool `task.criterion` and the CLI `cland ta
 ## Blocked by
 
 - T-154 (Criteria in the view)
+
+## Comments
+
+### impl-155 · 2026-10-10T08:51:08.507Z
+
+Implemented the first MCP/CLI done slice and role-scoped operations through the tracker queue. Integration coverage now exercises verification/failure, criteria edits, durable id allocation across restart, and live-claim authorization; concurrent hand-save refusal and documentation are next.
