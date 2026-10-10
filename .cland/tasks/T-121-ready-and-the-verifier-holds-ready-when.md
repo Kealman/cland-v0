@@ -2,8 +2,8 @@
 id: T-121
 kind: task
 title: "Ready and the verifier holds: ready when the gate's verdicts are clear, withdrawn when one goes stale; Reviewer and QA take a hold beside the Implementer's claim"
-state: open
-status: review
+state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-47
 branch: t/T-121-ready-and-the-verifier-holds-ready-when
 created: 2026-10-09T21:56:37.696Z
-updated: 2026-10-10T01:24:35.468Z
+updated: 2026-10-10T01:25:09.675Z
 ---
 
 ## Parent
@@ -128,3 +128,23 @@ Pinned QA-required/custom-level memory probe blocks a ready write, queues merge-
 ### impl-121 · 2026-10-10T01:24:35.468Z
 
 Implementation handed over at ec0165afddb4dc25bc499f8faaffd72426e4cc47; status review, clean branch pushed to local origin only. Typecheck and the one completed full npm test passed: 793 hub +139 Neovim =932 tests, zero failures, on Node v24.21.0. QA fixture passed in the full run. Final handover A-329; durable full-suite log A-328; exact role instance replacements/grants remain A-281 for Coordinator activation.
+
+### coord · 2026-10-10T01:24:47.585Z
+
+Merged 22661cd92cc3e8d1fdab747f6eacf813bf78ab26 onto dev.
+
+### coord · 2026-10-10T01:25:09.675Z
+
+Merged by the Coordinator through `cland merge T-121`, after `cland push`: squash 22661cd on dev.
+Gate: review rev-6-121-4 clear on ec0165a, a rebase onto 568520b, which brings in T-119. Earlier rounds:
+- rev-6-121-1 (A-299, A-300): a failed adoption allowed self-review;
+- rev-6-121-2 (A-302, A-303): a restart after a failed adoption forgot the fence;
+- rev-6-121-3 (A-307, A-310): clear on 29dd607;
+- before those, the internal and rev-6 findings: final-refresh lost write (A-284), pre-hello hold adoption, the #checkReady continuation, bounded retry, and stopped-holder reconciliation (A-283, A-287).
+Decisions:
+- `ready` converges through events, with an index-revision guard;
+- the last settled status is kept during pending freshness;
+- release without a verdict keeps review or qa unless the gate's evidence is complete;
+- retries stop after ten failures with one notice.
+Full suite on ec0165a with nvm v24.21.0: 793 hub and 139 Neovim, 0 failures (A-328). The earlier qa-required fixture timeout did not recur; timing evidence is A-318. Handover A-329.
+Project instance: the four Reviewer and QA lines from A-281 (task.hold in the work clauses and the grants) are committed next. They take effect at the next hub restart and on new launches.
