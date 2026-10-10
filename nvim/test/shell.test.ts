@@ -169,8 +169,8 @@ test('the workbench opens on General: top bar with project, view, Coordinator ch
   // the name with its role, as the hub labels it (spec 4.4)
   assert.match(s, /coord-1 \[Coordinator\] +free/);
   assert.match(s, /impl-1 \[Implementer\] +T-12/);
-  // the adapter declares "waiting for human" heuristic: the panel says so
-  assert.match(s, /Claude Code · sonnet\s.*\n.*waiting for human \(heuristic\)/);
+  // Details appear only after the cursor selects the session (T-127).
+  assert.doesNotMatch(s, /Claude Code · sonnet/);
   assert.match(statusLine(s), /INSERT {2}General · topic/);
   assert.equal(await c.mode(), 'i', 'the composer has the focus');
 });
@@ -255,8 +255,7 @@ test('Enter on a session attaches it in the centre in Terminal mode; ␣␣ retu
   const c = await startShell(t);
   await c.input('<Esc><Space>s<Space>s');
   await c.waitScreen((s) => s.includes('SESSIONS'), 'the sessions panel, focused');
-  // the first row is coord-1
-  await c.input('gg<CR>');
+  await c.input('gg/coord-1<CR><CR>');
   let s = await c.waitScreen((x) => x.includes('keylog ready') && statusLine(x).includes('TERMINAL'), 'the attached terminal');
   assert.match(statusLine(s), /TERMINAL {2}coord-1 · session · attached · busy/);
   assert.match(topBar(s), /│ coord-1 \[Coordinator\]/);
@@ -365,12 +364,16 @@ test('the workbench reads sessions and presence once per connect; events update 
   await c.waitScreen((x) => x.includes('manual [Reviewer]'), 'a newly connected spoke');
   await c.control({ emit: { type: 'presence', sessions: [] } });
   await c.waitScreen((x) => !x.includes('manual [Reviewer]'), 'the spoke leaving');
+  await onSessionRow(c, 'impl-1');
   await c.control({ emit: { type: 'session.usage', session: 'impl-1', sessionId: 'impl-1-id', usage: { total: { totalTokens: 12300, cost: 1.8 } } } });
   await c.waitScreen((x) => x.includes('$1.80'), 'the usage snapshot');
   // An old launch's usage is ignored even when it reuses a current name.
   await c.control({ emit: { type: 'session.usage', session: 'impl-1', sessionId: 'old-launch', usage: { total: { cost: 999 } } } });
   await c.waitScreen((x) => x.includes('$1.80') && !x.includes('$999'), 'usage stays with its launch');
   await c.control({ emit: { type: 'session.process', process: { ...proc('coord-1', 'coordinator', 'unknown'), status: 'exited', attach: null } } });
+  await c.input('zR');
+  await c.waitScreen(x => x.includes('✗ coord-1'), 'exited row unfolded');
+  await c.input('gg/coord-1<CR>');
   await c.waitScreen((x) => x.includes('unknown · died'), 'the exited process');
   assert.equal(await c.lua("return require('cland.state').session('coord-1').attach"), null);
   await c.control({ emit: { type: 'session.process', process: { ...proc('coord-1', 'coordinator', 'idle'), name: 'renamed' } } });
@@ -645,7 +648,22 @@ const requestsOf = async (c: Shell, type: string): Promise<Req[]> => ((await c.c
 async function onSessionRow(c: Shell, name: string) {
   await c.input('<Esc><Space>s<Space>s');
   await c.waitScreen((s) => s.includes('SESSIONS') && statusLine(s).includes('NORMAL'), 'the sessions panel, focused');
-  await c.input(`gg/${name}<CR>`);
+  await c.rpc.request('nvim_exec_lua', `
+    local name=...; local panels=require('cland.panels')
+    for _,win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local b=vim.api.nvim_win_get_buf(win)
+      if vim.b[b].cland_role=='sessions' then
+        for line,row in pairs(panels.rows[b] or {}) do
+          if row.session==name and not row.detail then
+            vim.api.nvim_set_current_win(win)
+            vim.api.nvim_win_set_cursor(win,{line,0})
+            return
+          end
+        end
+      end
+    end
+    error('no session row for '..name)
+  `, [name]);
 }
 
 test('the launcher: ␣l opens the form, a role fills its launch defaults, typed values win, Enter submits session.launch; the session shows in the panel', { skip }, async (t) => {
@@ -659,6 +677,8 @@ test('the launcher: ␣l opens the form, a role fills its launch defaults, typed
   // over the default model: the typed one goes out
   await c.input('<Tab><C-u>gpt-x<CR>');
   s = await c.waitScreen((x) => !x.includes('launch a session') && /rev-2 \[Reviewer\] +free/.test(x), 'rev-2 in the panel');
+  await onSessionRow(c, 'rev-2');
+  s = await c.waitScreen(x => x.includes('Codex · gpt-x · idle'), 'launched session selected');
   assert.match(s, /Codex · gpt-x · idle/);
   assert.match(s, /launched rev-2 \[Reviewer\] · Codex ·/);
   for (const type of ['session.list', 'hub.status']) assert.equal((await requestsOf(c, type)).length, 2, `${type}: connect and own launch`);
@@ -721,6 +741,29 @@ test('the launcher shows what the hub refuses in the form and the panel, never a
   await c.waitScreen((x) => /loner +free/.test(x), 'loner in the panel');
   const [frame] = (await requestsOf(c, 'session.launch')).filter((f) => f.name === 'loner');
   assert.equal(frame?.role, undefined);
+});
+
+for (const distraction of ['launch notice', 'prefix-sharing name']) test(`session row selection ignores a ${distraction}`, { skip }, async t => {
+  const c = await startShell(t, s => {
+    if (distraction === 'prefix-sharing name') s.processes = [proc('other-impl-1', 'implementer', 'busy'), proc('impl-1', 'implementer', 'idle')];
+    else s.adapters = { ...s.adapters, codex: CAPS };
+  });
+  const name = distraction === 'launch notice' ? 'rev-2' : 'impl-1';
+  if (distraction === 'launch notice') {
+    await c.input('<Esc><Space>l');
+    await c.waitScreen(x => x.includes('launch a session'), 'launcher');
+    await c.input('rev-2<Tab>reviewer<CR>');
+    await c.waitScreen(x => x.includes('launched rev-2 [Reviewer]'), 'notice containing the exact session label');
+  } else {
+    await c.waitScreen(x => x.includes('other-impl-1 [Implementer]') && x.includes('impl-1 [Implementer]'), 'both names');
+  }
+  await onSessionRow(c, name);
+  await c.input('c');
+  await c.waitScreen(x => x.includes('capability table'), 'capabilities of the selected session');
+  const lines = await c.lua<string[]>('return vim.api.nvim_buf_get_lines(0,0,-1,false)');
+  const role = distraction === 'launch notice' ? 'Reviewer' : 'Implementer';
+  const harness = distraction === 'launch notice' ? 'Codex' : 'Claude Code';
+  assert.ok(lines.some(line => line.trim() === `${name} [${role}] · ${harness} · capability table`), lines.join('\n'));
 });
 
 test('an attach client that ended is not reused: Enter and C-v run the attach command again', { skip }, async (t) => {
@@ -798,6 +841,8 @@ test('x asks on a line in the panel; n keeps the session, y sends session.stop a
   await c.input('gg/impl-1<CR>x');
   await c.waitScreen((x) => x.includes('stop impl-1?'), 'asked again');
   await c.input('y');
+  await c.waitScreen((x) => x.includes('impl-1 stopped'), 'stop accepted');
+  await c.input('zRgg/^ . impl-1<CR>');
   const s = await c.waitScreen((x) => x.includes('impl-1 stopped') && /× impl-1 \[Implementer\]/.test(x) && x.includes('unknown · stopped'), 'the stopped row');
   assert.doesNotMatch(s, /stop impl-1\?/);
   const stops = await requestsOf(c, 'session.stop');
@@ -807,10 +852,11 @@ test('x asks on a line in the panel; n keeps the session, y sends session.stop a
 
 test('a session.state unknown event shows unknown; a process that died shows unknown · died', { skip }, async (t) => {
   const c = await startShell(t);
-  await c.input('<Esc>');
+  await onSessionRow(c, 'coord-1');
   await c.control({ emit: { type: 'session.state', session: 'coord-1', sessionId: 'coord-1-id', state: 'unknown', source: 'process', ts: ts(5) } });
   await c.waitScreen((x) => /Claude Code · opus · unknown/.test(x) && /\? coord-1 \[Coordinator\]/.test(x), 'coord-1 unknown');
   await c.control({ emit: { type: 'session.process', process: { ...proc('coord-1', 'coordinator', 'unknown'), status: 'exited', attach: null } } });
+  await c.input('zRgg/^ . coord-1<CR>');
   await c.waitScreen((x) => /✗ coord-1 \[Coordinator\]/.test(x) && /Claude Code · opus · unknown · died/.test(x), 'coord-1 died, from its process row event');
 });
 
@@ -1115,8 +1161,12 @@ test('sessions show running token and cost totals; the claiming session total su
         : { total: { totalTokens: 5000, cost: 1.8 }, last: { totalTokens: 12, cost: 0.25 } },
     }));
   });
-  const panel = await c.waitScreen((s) => s.includes('12.3k tok') && s.includes('$1.80'), 'session totals in the panel');
+  await onSessionRow(c, 'coord-1');
+  let panel = await c.waitScreen((s) => s.includes('12.3k tok'), 'selected token total');
   assert.doesNotMatch(panel, /12 tok|\$0\.25/);
+  await c.input('gg/^ . impl-1<CR>');
+  panel = await c.waitScreen((s) => s.includes('$1.80') && !s.includes('12.3k tok'), 'selected cost total');
+  assert.doesNotMatch(panel, /\$0\.25/);
   await c.input('<Esc><Space>s');
   await c.waitScreen((s) => !s.includes('SESSIONS'), 'sessions panel closed');
   await c.input(':Cland view item T-12<CR>');
@@ -1453,6 +1503,8 @@ test('overlapping delayed panel snapshots keep topic, session, artifact and inbo
     { type: 'artifact', artifact: { ...artifact, status: 'archived' } },
     { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } },
   ] });
+  await c.waitScreen(x => x.includes('coord-1 [Implementer]'), 'live session row');
+  await onSessionRow(c, 'coord-1');
   await c.waitScreen((x) => x.includes('coord-1 [Implementer]') && x.includes('$2.40'), 'the live session');
   // This second topics snapshot already contains the status event. Its journal must be independent
   // from the first request's; the stub releases the newer answer before the older one.

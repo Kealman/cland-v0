@@ -154,6 +154,7 @@ export class HubCore {
   readonly #listeners = new Set<(event: HubEvent) => void>();
   /** Each session's state by its session id (a rename moves nothing), set only by adapters (spec 4.2). */
   readonly #states = new Map<string, SessionState>();
+  readonly #approvalCommands = new Map<string, string>();
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
@@ -519,12 +520,22 @@ export class HubCore {
   }
 
   /** A session's state, from its adapter (never from the model's `status`); subscribers hear a change. */
-  setSessionState(sessionId: string, name: string, state: SessionState, source: string): boolean {
-    if (this.#states.get(sessionId) === state) return false;
+  setSessionState(sessionId: string, name: string, state: SessionState, source: string, approvalCommand?: string): boolean {
+    const previous = this.#approvalCommands.get(sessionId);
+    // A poll that still reports waiting supplies no new command. Keep the pushed command until
+    // the state changes; a second approval can update it without a state transition.
+    const command = state === 'waiting for approval' ? approvalCommand ?? previous : undefined;
+    if (this.#states.get(sessionId) === state && command === previous) return false;
     this.#states.set(sessionId, state);
+    if (command !== undefined) this.#approvalCommands.set(sessionId, command);
+    else this.#approvalCommands.delete(sessionId);
     this.#log({ event: 'session-state', session: name, state, source });
-    this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString() });
+    this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString(), ...(command !== undefined ? { approvalCommand: command } : {}) });
     return true;
+  }
+
+  sessionApprovalCommand(sessionId: string): string | undefined {
+    return this.#approvalCommands.get(sessionId);
   }
 
   sessionState(sessionId: string): SessionState {

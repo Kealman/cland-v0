@@ -98,7 +98,7 @@ export type SpawnRequest = LaunchPolicy & {
 
 /** A state signal from the harness, with where it came from and when it happened (ms epoch): an older signal
  *  than the last one applied is dropped, so out-of-order hooks never move a session back. */
-export type StateSignal = { state: SessionState; source: string; at: number };
+export type StateSignal = { state: SessionState; source: string; at: number; approvalCommand?: string };
 
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
@@ -129,7 +129,7 @@ export type AdapterHost = {
 };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { state?: SessionState; model?: string; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureMessages?: Promise<string[]> };
+export type Interpretation = { state?: SessionState; approvalCommand?: string; model?: string; usage?: Record<string, unknown>; confirms?: string[]; turnError?: string; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };

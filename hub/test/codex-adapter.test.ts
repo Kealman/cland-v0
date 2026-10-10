@@ -66,7 +66,7 @@ for (const accepted of [false, true]) test(`Codex failure before a pending steer
 });
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };
-type StateEvent = { type: 'session.state'; session: string; state: string; source: string };
+type StateEvent = { type: 'session.state'; session: string; state: string; source: string; approvalCommand?: string };
 type FakeServer = { pid: number; socket: string; argv: string[]; cwd: string; env: Record<string, string>; path: string };
 
 type FakeCodex = {
@@ -214,6 +214,10 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   const approvalId = await sendGeneral(ui, 'this one needs approval');
   const waiting = await presentAs(ui, 'coord', 'waiting for approval');
   assert.equal(waiting.status, 'idle', "the model's own status line says idle");
+  const commandEvent = await ui.waitFor(f => f.type === 'session.state' && f.session === 'coord' && f.approvalCommand === 'touch approved');
+  assert.equal(commandEvent.state, 'waiting for approval');
+  const pending = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; approvalCommand?: string }> };
+  assert.equal(pending.processes.find(p => p.name === 'coord')?.approvalCommand, 'touch approved');
   // a message during the active turn is steered into it, and confirmed by turn/steer's result
   const steerId = await sendGeneral(ui, 'and this one while you wait');
   await ui.waitFor((f) => f.type === 'delivery' && f.message === steerId && f.stage === 'injected', 15_000);
@@ -224,9 +228,20 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: and this one while you wait', 15_000);
   await presentAs(ui, 'coord', 'idle');
   assert.equal(ui.frames.filter((f) => f.type === 'delivery' && f.message === approvalId && f.stage === 'injected').length, 1);
-  const after = stateEvents(ui, 'coord').map((e) => e.state);
+  // The command can arrive after the waiting state and enrich it in another event.
+  const after = stateEvents(ui, 'coord').map((e) => e.state).filter((s, i, all) => i === 0 || s !== all[i - 1]);
   assert.deepEqual(after.slice(after.lastIndexOf('waiting for approval') - 1), ['busy', 'waiting for approval', 'busy', 'idle']);
   assert.ok(stateEvents(ui, 'coord').every((e) => e.source === 'app-server'), 'no state ever came from the status tool');
+  const cleared = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(cleared.processes[0]?.approvalCommand, undefined);
+  const editMark = ui.frames.length;
+  await sendGeneral(ui, 'needs approval for fileChange');
+  const edit = await ui.waitFor(f => f.type === 'session.state' && f.approvalCommand === 'fileChange');
+  assert.equal(edit.state, 'waiting for approval');
+  assert.ok(!JSON.stringify(ui.frames.slice(editMark)).includes('PRIVATE-TOOL-INPUT'));
+  await fake.approve();
+  await presentAs(ui, 'coord', 'idle');
+
 
   // the capability table
   const list = (await ui.request({ type: 'session.list' })).value as { adapters: Record<string, unknown> };
@@ -259,6 +274,57 @@ test('attach is `codex resume --remote` with no -c and no --profile, and the TUI
   // the fake refuses what would put the real TUI in embedded mode
   const embedded = await fake.run(`codex resume -c model="x" --remote unix://${launched.harnessId} ${launched.harnessSessionId}`);
   assert.equal(embedded.code, 2);
+});
+
+for (const order of ['request-first', 'state-first']) test(`a deferred Codex reconnect snapshot preserves newer approval events (${order})`, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  fake.env.FAKE_CODEX_REFUSE_MS = '0';
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  await writeFile(join(fake.home, 'defer-subscribe'), order);
+  process.kill(launched.pid!, 'SIGUSR2');
+  await eventually('approval arrived during deferred subscription', async () => (await fake.log(launched.pid!)).includes('approval during deferred subscribe') || undefined);
+  if (order === 'state-first') {
+    await ui.waitFor(f => f.type === 'session.state' && f.approvalCommand === 'touch deferred-approved');
+  }
+  const beforeReply = ui.frames.length;
+  await writeFile(join(fake.home, 'release-subscribe'), '');
+  await eventually('subscription response and next waiting event applied', async () => {
+    const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ state: string; approvalCommand?: string }> };
+    return rows.processes.find(p => p.state === 'waiting for approval' && p.approvalCommand === 'touch deferred-approved');
+  });
+  assert.ok(ui.frames.slice(beforeReply).filter(f => f.type === 'session.state').every(f => f.state !== 'busy'), 'the older busy snapshot must not overwrite events received during subscribe');
+  assert.ok(!JSON.stringify(ui.frames).includes('PRIVATE-TOOL-INPUT'));
+});
+
+for (const relaunch of [false, true]) test(`a Codex ${relaunch ? 'relaunch' : 'resume'} idle snapshot clears the completed approval before a new waiting episode`, { skip: NO_PS }, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  await sendGeneral(ui, 'needs approval');
+  await ui.waitFor(f => f.type === 'session.state' && f.approvalCommand === 'touch approved');
+  if (relaunch) {
+    await killDaemon(launched.pid!);
+    await eventually('the old process exited', async () => (await status(ui)).harnesses.find(p => p.status === 'exited'));
+  }
+  await writeFile(join(fake.home, 'idle-subscribe'), '');
+  const resumed = await ui.request({ type: 'session.resume', session: 'coord', relaunch }, 30_000);
+  assert.equal(resumed.ok, true, resumed.error);
+  await presentAs(ui, 'coord', 'idle');
+  const beforeWaiting = ui.frames.length;
+  await writeFile(join(fake.home, 'waiting-without-command'), '');
+  const event = await ui.waitFor(f => ui.frames.indexOf(f) >= beforeWaiting && f.type === 'session.state' && f.state === 'waiting for approval');
+  assert.equal(event.approvalCommand, undefined, 'a completed command must not reappear in the next waiting episode');
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(rows.processes[0]?.approvalCommand, undefined);
 });
 
 test('a Codex app-server that dies: the state turns unknown and the hub logs it once', async (t) => {

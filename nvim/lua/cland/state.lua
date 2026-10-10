@@ -33,6 +33,8 @@ function M.reset(opts)
       sizes = vim.empty_dict(), -- manual left/right widths and dock height; absent means use the formula
       items_filter = 'all',
       current_release = nil, -- reserved for the human's pick (T-128)
+      sessions_sel = nil, -- the cursor-selected session, expanded in the panel
+      sessions_stopped_folded = true,
       confirm = nil, -- { session = name }: the sessions panel asks before stopping it
     },
     attached = {}, -- session name → true while a terminal is attached in this Neovim
@@ -146,12 +148,13 @@ function M.sessions()
       live = live,
       attach = p.attach,
       usage = p.usage,
+      approvalCommand = p.approvalCommand,
     }
     seen[p.name] = true
   end
   for _, p in ipairs(M.S.presence) do
     if not seen[p.name] then
-      out[#out + 1] = { name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true }
+      out[#out + 1] = { name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true, approvalCommand = p.approvalCommand }
       seen[p.name] = true
     end
   end
@@ -231,19 +234,38 @@ function M.reliability(s)
   return caps and caps.states and caps.states[s.state] or nil
 end
 
+function M.folded(key)
+  return key == 'stopped' and M.S.ui.sessions_stopped_folded
+end
+
+function M.set_fold(key, folded)
+  if key == 'stopped' then M.S.ui.sessions_stopped_folded = folded end
+end
+
+-- Visibility layers will replace this rule in T-115. Until then, now means not stopped.
+function M.session_now(s)
+  return s.live
+end
+
+-- T-111 can prepend its Aides group here without changing the renderer.
+M.SESSION_GROUPS = { { 'waiting', 'waiting' }, { 'busy', 'busy' }, { 'idle', 'idle' } }
+
+function M.session_group(s)
+  if not s.live then return 'stopped' end
+  if s.state:match('^waiting') then return 'waiting' end
+  if s.state == 'busy' then return 'busy' end
+  return 'idle' -- the hub cannot classify unknown more precisely
+end
+
 function M.counts()
-  local c = { total = 0, live = 0, busy = 0, idle = 0, waiting = 0, down = 0 }
+  local c = { total = 0, live = 0, busy = 0, idle = 0, waiting = 0, down = 0, now = 0 }
   for _, s in ipairs(M.sessions()) do
     c.total = c.total + 1
+    if M.session_now(s) then c.now = c.now + 1 end
     if s.live then
       c.live = c.live + 1
-      if s.state == 'busy' then
-        c.busy = c.busy + 1
-      elseif s.state == 'idle' then
-        c.idle = c.idle + 1
-      elseif s.state:match('^waiting') then
-        c.waiting = c.waiting + 1
-      end
+      local group = M.session_group(s)
+      c[group] = c[group] + 1
     else
       c.down = c.down + 1
     end
@@ -353,17 +375,19 @@ function M.set_session_role(name, role)
 end
 
 --- A session's state changed (a `session.state` event): true when the session was known.
-function M.set_session_state(name, state)
+function M.set_session_state(name, state, approvalCommand)
   local known = false
   for _, p in ipairs(M.S.processes) do
     if p.name == name then
       p.state = state
+      p.approvalCommand = state == 'waiting for approval' and approvalCommand or nil
       known = true
     end
   end
   for _, p in ipairs(M.S.presence) do
     if p.name == name then
       p.state = state
+      p.approvalCommand = state == 'waiting for approval' and approvalCommand or nil
       known = true
     end
   end

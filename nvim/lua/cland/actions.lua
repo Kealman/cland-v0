@@ -47,11 +47,13 @@ end
 add('global', '<C-\\>', 'Leave Terminal mode', 't')
 add('global', '<S-CR>', 'Send Shift+Enter to harness', 't')
 for _, scope in ipairs({'items', 'sessions', 'topics', 'inbox'}) do
-  group(scope, {{'<CR>', 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
+  group(scope, {{'<CR>', scope == 'sessions' and 'Attach selected session (or toggle stopped fold)' or 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
 end
 group('sessions', {{'l','Launch a session'}, {'<C-v>','Attach session in split'},
   {'x','Stop selected session (confirm)'}, {'L','Agents log for selected session'},
   {'c','Session adapter capabilities'}, {'y','Confirm stopping session'},
+  {'za','Toggle stopped sessions fold'}, {'zo','Open stopped sessions fold'}, {'zc','Close stopped sessions fold'},
+  {'zR','Open all stopped sessions'}, {'zM','Fold all stopped sessions'}, {'<Tab>','Toggle stopped sessions fold'},
   {'n','Keep session running'}, {'<Esc>','Cancel stopping session'}})
 group('topics', {{'n','New topic'}, {'c','Close selected topic'}, {'r','Resolve selected topic'}})
 for i, title in ipairs({'All items','Items in work','Items needing you','Done items','Map items'}) do

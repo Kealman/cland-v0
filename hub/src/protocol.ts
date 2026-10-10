@@ -176,7 +176,7 @@ export type HubEvent =
   /** A message's stage changed. */
   | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
   /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
-  | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string }
+  | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string; approvalCommand?: string }
   /** A session's role changed: assigned, moved, cleared (null), or vacated by its harness's death. */
   | { type: 'session.role'; session: string; role: string | null; previous: string | null; reason: string; ts: string }
   /** A topic changed: created, its status, its warning, its binding or the human's unread count. */
@@ -542,6 +542,8 @@ export type HarnessProcessView = {
   status: 'running' | 'exited' | 'stopped';
   state: SessionState;
   attach: string | null;
+  /** Pending approval command line, or just the tool name; never the tool input body. */
+  approvalCommand?: string;
   /** Session totals and latest turn/step, where its adapter has the capability. */
   usage?: SessionUsage;
 };

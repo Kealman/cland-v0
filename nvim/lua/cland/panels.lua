@@ -3,9 +3,9 @@
 -- state; a row knows what it shows (item, session, topic), which Enter and the motions read.
 --
 -- Items from `task.list` and the `task` event (the tree, filters and badges: items.lua); sessions from
--- `session.list` and the connected spokes (#28): name [Role], harness, model, the state with the adapter's
--- `heuristic` qualifier, usage where the adapter reports it, the claimed item; `unknown` once the process is
--- gone. Its keys: l launches, C-v attaches in a split, x stops after a confirmation line, c shows the
+-- `session.list` and session events: waiting/busy/idle groups, a stopped fold, and selected details.
+-- State and pending approval commands come from the hub; unknown stays unknown. Its keys: l launches,
+-- C-v attaches in a split, x stops after a confirmation line, c shows the
 -- capability table. Topics from `topic.list`; the inbox (`inbox.lua`, #33).
 local api = vim.api
 local state = require('cland.state')
@@ -20,67 +20,43 @@ local function sw(s)
   return api.nvim_strwidth(s or '')
 end
 
---- Fit `s` into `n` display columns, with an ellipsis when cut.
-local function trunc(s, n)
-  if n <= 0 then
-    return ''
-  end
-  if sw(s) <= n then
-    return s
-  end
-  local out, w = {}, 0
-  for ch in s:gmatch('[%z\1-\127\194-\244][\128-\191]*') do
-    local cw = sw(ch)
-    if w + cw > n - 1 then
-      break
-    end
-    out[#out + 1] = ch
-    w = w + cw
-  end
-  return table.concat(out) .. '…'
-end
-
 -- A canvas: lines of {text, hl} chunks with an optional right-aligned part, and per-row info.
 local Canvas = {}
 Canvas.__index = Canvas
 
 local function canvas(width)
-  return setmetatable({ width = math.max(10, width), lines = {}, marks = {}, info = {} }, Canvas)
+  return setmetatable({ width = math.max(1, width), lines = {}, marks = {}, info = {} }, Canvas)
 end
 
 function Canvas:add(left, right, info)
-  right = right or {}
+  local fit = require('cland.bars').fit
+  local function single_line(chunks)
+    local out = {}
+    for _, c in ipairs(chunks or {}) do
+      out[#out + 1] = { tostring(c[1]):gsub('[\r\n]', ' '), c[2] }
+    end
+    return out
+  end
+  right = fit(single_line(right), self.width)
   local row = #self.lines
   local rw = 0
-  for _, c in ipairs(right) do
-    rw = rw + sw(c[1])
-  end
-  local room = self.width - rw - (rw > 0 and 1 or 0)
+  for _, c in ipairs(right) do rw = rw + sw(c[1]) end
   local parts, col, used = {}, 0, 0
   local function put(text, group)
     parts[#parts + 1] = text
+    if group == 'ClandDimBar' then group = 'ClandDim' end
     if group and #text > 0 then
       self.marks[#self.marks + 1] = { row, col, { end_col = col + #text, hl_group = group } }
     end
     col = col + #text
-  end
-  for _, c in ipairs(left) do
-    -- a row is one buffer line: a hub text over several lines (a note, a title) shows on one
-    local text = tostring(c[1]):gsub('\r?\n', ' ')
-    if used + sw(text) > room then
-      text = trunc(text, room - used)
-    end
-    put(text, c[2])
     used = used + sw(text)
-    if used >= room then
-      break
-    end
+  end
+  for _, c in ipairs(fit(single_line(left), self.width - rw - (rw > 0 and 1 or 0))) do
+    put(c[1], c[2])
   end
   if rw > 0 then
-    put((' '):rep(math.max(1, self.width - used - rw)))
-    for _, c in ipairs(right) do
-      put(c[1], c[2])
-    end
+    put((' '):rep(math.max(0, self.width - used - rw)))
+    for _, c in ipairs(right) do put(c[1], c[2]) end
   end
   self.lines[row + 1] = table.concat(parts)
   self.info[row + 1] = info
@@ -121,6 +97,24 @@ M.canvas = canvas
 function M.row_at(buf, row)
   local info = (M.rows[buf] or {})[row]
   return info or nil
+end
+
+--- What a row is, to find it again after a redraw: an item, a session (its second line counts as its row),
+--- a fold's line, a section's or a group's header; nil for the rest.
+function M.row_key(info)
+  if not info then
+    return nil
+  elseif info.item then
+    return 'item:' .. info.item
+  elseif info.session then
+    return 'session:' .. info.session
+  elseif info.fold then
+    return 'fold:' .. info.fold
+  elseif info.section then
+    return 'section:' .. info.section
+  elseif info.group then
+    return 'group:' .. info.group
+  end
 end
 
 -- Sessions --------------------------------------------------------------------------------------------
@@ -190,6 +184,8 @@ end
 
 --- `text` cut into lines of at most `width` columns, at spaces where it can be.
 function M.wrap(text, width)
+  if width <= 0 then return {} end
+  if width == 1 then return tostring(text):find('%S') and { '…' } or {} end
   local out, line = {}, ''
   for word in tostring(text):gmatch('%S+') do
     while sw(word) > width do
@@ -197,9 +193,11 @@ function M.wrap(text, width)
         out[#out + 1] = line
         line = ''
       end
-      local head = vim.fn.strcharpart(word, 0, width)
-      out[#out + 1] = head
-      word = vim.fn.strcharpart(word, vim.fn.strchars(head))
+      local head = require('cland.bars').prefix(word, width)
+      -- Even a character wider than the entire budget must consume input.
+      local consumed = math.max(1, vim.fn.strchars(head))
+      out[#out + 1] = head ~= '' and head or '…'
+      word = vim.fn.strcharpart(word, consumed)
     end
     if line == '' then
       line = word
@@ -223,6 +221,44 @@ local function wrapped(c, text, group)
   end
 end
 
+--- One line per session: the glyph, the name, the role, the item. The selected one (the cursor's, in the
+--- panel) expands its harness, model, state, usage and optional approval command.
+local function session_row(c, s, group)
+  local sel = state.S.ui.sessions_sel == s.name
+  local g, ghl = M.session_glyph(s)
+  local down = not s.live
+  local label = s.label or s.name
+  local role = label:sub(#s.name + 1)
+  c:add(
+    { { sel and '▎' or ' ', 'ClandBlue' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' } },
+    { s.item and { s.item .. ' ', 'ClandTeal' } or { 'free ', 'ClandFaint' } },
+    { session = s.name, group = group }
+  )
+  if not sel then
+    return
+  end
+  local head, tail = M.session_meta_parts(s)
+  tail = M.session_words(s)
+  local mhl = down and 'ClandRed' or 'ClandDim'
+  local meta = '   ' .. head .. ' · ' .. tail
+  if sw(meta) <= c.width then
+    c:add({ { meta, mhl } }, nil, { session = s.name, group = group, detail = true })
+  else
+    -- too wide for the panel: the state words on a line of their own
+    c:add({ { '   ' .. head, mhl } }, nil, { session = s.name, group = group, detail = true })
+    c:add({ { '   ' .. tail, s.state == 'waiting for approval' and 'ClandAmber' or mhl } }, nil, { session = s.name, group = group, detail = true })
+  end
+  local usage = s.live and M.usage_text(s.usage) or nil
+  if usage then
+    c:add({ { '   usage ' .. usage, 'ClandDim' } }, nil, { session = s.name, group = group, detail = true })
+  end
+  if s.state == 'waiting for approval' and type(s.approvalCommand) == 'string' then
+    c:add({ { '   run: ' .. s.approvalCommand, 'ClandDim' } }, nil, { session = s.name, group = group, detail = true })
+  end
+end
+
+local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · x stop · za stopped' }
+
 local function render_sessions(c)
   local list = state.sessions()
   local confirm = state.S.ui.confirm
@@ -238,29 +274,89 @@ local function render_sessions(c)
   if #list == 0 then
     c:add({ { ' No sessions yet.', 'ClandDim' } })
     c:add({ { ' l (or ␣l) launches one.', 'ClandFaint' } })
+    return SESSIONS_FOOTER
   end
+  local groups = { stopped = {} }
+  for _, g in ipairs(state.SESSION_GROUPS) do groups[g[1]] = {} end
   for _, s in ipairs(list) do
-    local g, ghl = M.session_glyph(s)
-    local down = not s.live
-    local label = s.label or s.name
-    local role = label:sub(#s.name + 1)
-    c:add(
-      { { ' ' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' } },
-      { s.item and { s.item .. ' ', 'ClandTeal' } or { 'free ', 'ClandFaint' } },
-      { session = s.name }
-    )
-    local head, tail = M.session_meta_parts(s)
-    local mhl = down and 'ClandRed' or 'ClandDim'
-    local meta = '   ' .. head .. ' · ' .. tail
-    if sw(meta) <= c.width then
-      c:add({ { meta, mhl } }, nil, { session = s.name })
-    else
-      -- too wide for the panel: the state words on a line of their own
-      c:add({ { '   ' .. head, mhl } }, nil, { session = s.name })
-      c:add({ { '   ' .. tail, mhl } }, nil, { session = s.name })
+    table.insert(groups[state.session_group(s)], s)
+  end
+  for _, g in ipairs(state.SESSION_GROUPS) do
+    local rows = groups[g[1]]
+    local group = #rows == 0 and 'ClandFaint' or (g[1] == 'waiting' and 'ClandAmber' or 'ClandSection')
+    c:add({ { ' ' .. g[2]:upper() .. ' · ' .. #rows, group } }, nil, { group = g[1] })
+    for _, s in ipairs(rows) do
+      session_row(c, s, g[1])
     end
   end
-  return { ' ↵ attach · C-v split · c capabilities', ' l launch · x stop · gi item · gt topic' }
+  c:add({})
+  -- the latest first: the processes come oldest first
+  local stopped = {}
+  for i = #groups.stopped, 1, -1 do
+    stopped[#stopped + 1] = groups.stopped[i]
+  end
+  local open = not state.folded('stopped')
+  c:add({ { ' ' .. (open and '▾ ' or '▸ ') .. 'stopped (' .. #stopped .. ')', #stopped > 0 and 'ClandSection' or 'ClandFaint' } }, nil, { fold = 'stopped' })
+  if open then
+    for _, s in ipairs(stopped) do
+      session_row(c, s, 'stopped')
+    end
+  end
+  return SESSIONS_FOOTER
+end
+
+--- The cursor selects a session in the panel: on a session's row it selects that session, whose second line
+--- shows; moving down onto a second line goes on to the row after it, moving up onto it goes to its
+--- session's row, so j and k step from session to session.
+function M.sessions_cursor(b)
+  local win = api.nvim_get_current_win()
+  if api.nvim_win_get_buf(win) ~= b then
+    return
+  end
+  local rows = M.rows[b] or {}
+  local row = api.nvim_win_get_cursor(win)[1]
+  local prev = M.sessions_row or row
+  local info = rows[row]
+  if info and info.detail then
+    local r, step = row, row > prev and 1 or -1
+    while rows[r] and rows[r].detail do
+      r = r + step
+    end
+    r = math.max(1, math.min(r, api.nvim_buf_line_count(b)))
+    pcall(api.nvim_win_set_cursor, win, { r, 0 })
+    row, info = r, rows[r]
+  end
+  M.sessions_row = row
+  if not (info and info.session and not info.detail) or info.session == state.S.ui.sessions_sel then
+    return
+  end
+  state.S.ui.sessions_sel = info.session
+  M.render('sessions', win)
+  -- the row moved up when the second line of a session above it went away (rows with nothing on them are
+  -- holes in the list: walk the lines)
+  local now = M.rows[b] or {}
+  for r = 1, api.nvim_buf_line_count(b) do
+    local i = now[r]
+    if i and i.session == info.session and not i.detail then
+      pcall(api.nvim_win_set_cursor, win, { r, 0 })
+      M.sessions_row = r
+      break
+    end
+  end
+end
+
+--- za, zo, zc on the stopped fold (on its line or inside it); zR and zM open and close it from anywhere.
+function M.session_fold(b, how)
+  if how == 'all open' or how == 'all closed' then
+    state.set_fold('stopped', how == 'all closed')
+    return state.changed()
+  end
+  local info = M.row_at(b, api.nvim_win_get_cursor(0)[1])
+  if not (info and (info.fold == 'stopped' or info.group == 'stopped')) then
+    return state.say('za folds and unfolds the stopped sessions: put the cursor on "stopped"')
+  end
+  state.set_fold('stopped', how == 'toggle' and not state.folded('stopped') or how == 'close')
+  state.changed()
 end
 
 -- Topics ----------------------------------------------------------------------------------------------
@@ -348,7 +444,10 @@ local function open_row(buf)
     return
   end
   local layout = require('cland.layout')
-  if info.session then
+  if info.fold then
+    state.set_fold(info.fold, not state.folded(info.fold))
+    state.changed()
+  elseif info.session then
     layout.show({ kind = 'session', id = info.session }, { insert = true })
   elseif info.topic then
     layout.show({ kind = 'thread', id = info.topic }, { insert = false })
@@ -383,6 +482,18 @@ function M.session_keys(b)
     require('cland.agents_log').open({ session = name })
   end), 'Agents log for this session')
   map('c', on_row(sessions.show_capabilities), "the adapter's capability table")
+  for lhs, how in pairs({ za = 'toggle', zo = 'open', zc = 'close', zR = 'all open', zM = 'all closed', ['<Tab>'] = 'toggle' }) do
+    map(lhs, function()
+      M.session_fold(b, how)
+    end, 'stopped sessions: ' .. how)
+  end
+  -- the cursor's row is the selected session, the one whose second line shows
+  api.nvim_create_autocmd('CursorMoved', {
+    buffer = b,
+    callback = function()
+      M.sessions_cursor(b)
+    end,
+  })
 end
 
 --- The buffer of panel `kind` ('items', 'sessions', 'topics', 'inbox'); `slot` names a second buffer of
@@ -441,8 +552,23 @@ function M.render(kind, win)
   end
   c:footer_at(vim.fn.winheight(win), #(footer or {}))
   local cur = api.nvim_win_get_cursor(win)
+  local follow = kind == 'sessions' and M.row_key((M.rows[b] or {})[cur[1]]) or nil
   M.rows[b] = c:apply(b)
-  pcall(api.nvim_win_set_cursor, win, { math.min(cur[1], #c.lines), 0 })
+  local target = c.cursor_to
+  if not target and follow then
+    for r = 1, #c.lines do
+      if M.row_key(c.info[r]) == follow then
+        target = r
+        break
+      end
+    end
+  end
+  -- the board names the row its moved or folded item now has; else the cursor keeps its row
+  target = math.min(target or cur[1], #c.lines)
+  pcall(api.nvim_win_set_cursor, win, { target, 0 })
+  if kind == 'sessions' then
+    M.sessions_row = target
+  end
   -- a panel whose content fits shows it from its first line (a shrunk window keeps a stale top line)
   if #c.lines <= vim.fn.winheight(win) then
     api.nvim_win_call(win, function()

@@ -421,7 +421,7 @@ async function runSession(id: string): Promise<number> {
     if (body.includes('needs approval')) {
       await callTool('status', { text: 'idle' });
       setStatus('waiting', 'permission prompt');
-      await runHooks('PermissionRequest', { tool_name: 'Bash', tool_input: { command: 'touch approved' } });
+      await runHooks('PermissionRequest', { tool_name: body.includes('needs approval for Edit') ? 'Edit' : 'Bash', tool_input: { command: 'touch approved', content: 'PRIVATE-TOOL-INPUT' } });
       await new Promise<void>((r) => (approve = r));
       setStatus('busy');
       await runHooks('PostToolUse', { tool_name: 'Bash' });

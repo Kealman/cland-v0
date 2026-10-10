@@ -73,20 +73,13 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   await launch(c, 'coord', 'coordinator', 'claude-code', 'claude-fake-1');
   await launch(c, 'rev', 'reviewer', 'codex', 'gpt-fake-2');
   await launch(c, 'impl', 'implementer', 'opencode', 'opencode/fake-free');
-  // each with the model chosen at launch and a live state from its adapter
-  const live = '(idle|busy)';
-  const s = await c.waitScreen(
-    (x) =>
-      /coord \[Coordinator\]/.test(x) &&
-      new RegExp(`Claude Code · claude-fake-1 · ${live}`).test(x) &&
-      /rev \[Reviewer\]/.test(x) &&
-      new RegExp(`Codex · gpt-fake-2 · ${live}`).test(x) &&
-      /impl \[Implementer\]/.test(x) &&
-      new RegExp(`OpenCode · opencode/fake-free(\\s|\\S)*?${live}`).test(x),
-    'the three sessions, live',
-    30_000,
-  );
-  assert.doesNotMatch(s, /refused/);
+  await c.waitScreen(x => /coord \[Coordinator\]/.test(x) && /rev \[Reviewer\]/.test(x) && /impl \[Implementer\]/.test(x), 'three session rows');
+  for (const [name, model] of [['coord','claude-fake-1'], ['rev','gpt-fake-2'], ['impl','opencode/fake-free']]) {
+    await focusPanel(c);
+    await c.input(`gg/^ . ${name} \\[<CR>`);
+    const s = await c.waitScreen(x => x.includes(model!) && /idle|busy/.test(x), `${name} selected with model`, 30000);
+    assert.doesNotMatch(s, /refused/);
+  }
   const log = await hubLog(root);
   for (const name of ['coord', 'rev', 'impl']) assert.match(log, new RegExp(`"event":"session-launched","session":"${name}"`));
 
@@ -106,6 +99,8 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   const [session] = await claude.sessions();
   assert.ok(session, 'the fake Claude Code session runs');
   process.kill(session.pid, 'SIGKILL');
+  await focusPanel(c);
+  await c.input('zRgg/^ . coord \\[<CR>');
   await c.waitScreen((x) => /✗ coord \[Coordinator\]/.test(x) && x.includes('unknown · died'), 'coord unknown after its death', 15_000);
   assert.match(await hubLog(root), /"event":"harness-exited","session":"coord"/);
 
@@ -114,6 +109,8 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   await c.input('gg/^ . rev \\[<CR>x');
   await c.waitScreen((x) => x.includes('stop rev? y stops it'), 'the confirmation line');
   await c.input('y');
+  await c.waitScreen((x) => x.includes('rev stopped'), 'stop accepted', 15000);
+  await c.input('gg/^ . rev \\[<CR>');
   await c.waitScreen((x) => x.includes('rev stopped') && /× rev \[Reviewer\]/.test(x), 'rev stopped', 15_000);
   assert.match(await hubLog(root), /"event":"session-stopped","session":"rev"/);
 });

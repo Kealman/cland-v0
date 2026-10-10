@@ -260,7 +260,7 @@ async function appServer(args: string[]): Promise<number> {
     return t;
   };
 
-  const waitForApproval = (t: Thread, itemId: string) =>
+  const waitForApproval = (t: Thread, itemId: string, fileApproval = false) =>
     new Promise<void>((resolve) => {
       const done = () => {
         clearInterval(poll);
@@ -278,7 +278,7 @@ async function appServer(args: string[]): Promise<number> {
         }
       }, 50);
       let n = 0;
-      for (const c of conns) if (c.subscribed.has(t.id)) send(c, { id: `approval-${itemId}-${n++}`, method: 'item/commandExecution/requestApproval', params: { threadId: t.id, turnId: t.turnId, itemId, command: 'touch approved' } });
+      for (const c of conns) if (c.subscribed.has(t.id)) send(c, { id: `approval-${itemId}-${n++}`, method: fileApproval ? 'item/fileChange/requestApproval' : 'item/commandExecution/requestApproval', params: { threadId: t.id, turnId: t.turnId, itemId, ...(fileApproval ? { content: 'PRIVATE-TOOL-INPUT' } : { command: 'touch approved' }) } });
     });
 
   const runTurn = async (t: Thread) => {
@@ -314,7 +314,7 @@ async function appServer(args: string[]): Promise<number> {
         await callTool('status', { text: 'idle' });
         const itemId = randomUUID();
         setStatus(t, { type: 'active', activeFlags: ['waitingOnApproval'] });
-        await waitForApproval(t, itemId);
+        await waitForApproval(t, itemId, body.includes('needs approval for fileChange'));
         for (const c of conns) if (c.subscribed.has(t.id)) send(c, { method: 'serverRequest/resolved', params: { threadId: t.id, requestId: itemId } });
         setStatus(t, { type: 'active', activeFlags: [] });
         await sleep(TURN_MS);
@@ -411,6 +411,32 @@ async function appServer(args: string[]): Promise<number> {
         if (!t || t.turns === 0) return { error: { code: -32600, message: `no rollout found for thread id ${String(params.threadId)}` } };
         if (typeof params.model === 'string') t.model = params.model;
         c.subscribed.add(t.id);
+        if (existsSync(join(HOME, 'idle-subscribe'))) {
+          rmSync(join(HOME, 'idle-subscribe'));
+          // Approval completed while detached: report idle, then a new waiting episode without metadata.
+          t.status = { type: 'idle' };
+          const poll = setInterval(() => {
+            if (!existsSync(join(HOME, 'waiting-without-command'))) return;
+            rmSync(join(HOME, 'waiting-without-command'));
+            clearInterval(poll);
+            setStatus(t, { type: 'active', activeFlags: ['waitingOnApproval'] });
+          }, 5);
+          poll.unref();
+        }
+        const deferred = join(HOME, 'defer-subscribe');
+        if (existsSync(deferred)) {
+          const order = readFileSync(deferred, 'utf8');
+          rmSync(deferred);
+          // A snapshot taken before the approval event, delivered after it.
+          const snapshot = { ...view(t), status: { type: 'active', activeFlags: [] } };
+          send(c, { id: 'deferred-approval', method: 'item/commandExecution/requestApproval', params: { threadId: t.id, command: 'touch deferred-approved', content: 'PRIVATE-TOOL-INPUT' } });
+          if (order === 'state-first') setStatus(t, { type: 'active', activeFlags: ['waitingOnApproval'] });
+          log('approval during deferred subscribe');
+          while (!existsSync(join(HOME, 'release-subscribe'))) await sleep(5);
+          rmSync(join(HOME, 'release-subscribe'));
+          setImmediate(() => setStatus(t, { type: 'active', activeFlags: ['waitingOnApproval'] }));
+          return { result: { thread: snapshot, model: t.model } };
+        }
         return { result: { thread: view(t), model: t.model } };
       }
       case 'thread/read': {

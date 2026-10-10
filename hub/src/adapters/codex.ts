@@ -272,6 +272,9 @@ type Live = {
   /** The last state the app-server reported for the thread (kept so a signal that came before the
    *  process-table row was written is not lost). */
   state: SessionState;
+  /** Monotonic arrival order for state and approval metadata, including events received during awaits. */
+  eventSequence: number;
+  approvalCommand?: string;
   /** The active turn's id, from `turn/started` and `turn/start`: what `turn/steer` must name. */
   turnId: string | null;
   tokens: Record<string, unknown> | null;
@@ -285,6 +288,7 @@ type OwedInput = { text: string; shape: InputShape; recoveries: number };
 type PendingInput = { id: string; takenUp: Set<string> };
 
 type ThreadResult = { thread: { id: string; status?: unknown; model?: string }; model?: string };
+type SubscriptionSnapshot = { state: SessionState; model: string | null; sequence: number };
 
 export class CodexAdapter implements HarnessAdapter {
   readonly harness = CODEX;
@@ -480,7 +484,15 @@ export class CodexAdapter implements HarnessAdapter {
     });
     client.on('serverRequest', (request: ServerRequest) => {
       // approvals and questions are the attached TUI's; the hub only shows the state the app-server reports
-      if (request.params.threadId === undefined || mine(request.params)) this.#host.log({ event: 'harness-request', harness: this.harness, session: live.p.name, method: request.method });
+      if (request.params.threadId !== undefined && !mine(request.params)) return;
+      this.#host.log({ event: 'harness-request', harness: this.harness, session: live.p.name, method: request.method });
+      if (request.method.startsWith('item/') && request.method.endsWith('/requestApproval')) {
+        live.eventSequence++;
+        // Keep state authoritative from thread/status/changed; requests only enrich its metadata.
+        live.approvalCommand = request.method === 'item/commandExecution/requestApproval' && typeof request.params.command === 'string'
+          ? request.params.command : request.method.split('/')[1] ?? request.method;
+        if (live.state === 'waiting for approval') this.#setState(live, live.state);
+      }
     });
     client.on('close', () => {
       if (live.client === client) live.client = null;
@@ -490,10 +502,17 @@ export class CodexAdapter implements HarnessAdapter {
     });
   }
 
-  #setState(live: Live, state: SessionState): void {
+  #updateState(live: Live, state: SessionState): void {
+    live.eventSequence++;
     live.state = state;
+    // Metadata belongs to this waiting episode, whether state comes from an event or a current snapshot.
+    if (state !== 'waiting for approval') delete live.approvalCommand;
     if (state === 'idle') live.turnId = null;
-    this.#host.signal(live.p.sessionId, { state, source: 'app-server', at: Date.now() });
+  }
+
+  #setState(live: Live, state: SessionState): void {
+    this.#updateState(live, state);
+    this.#host.signal(live.p.sessionId, { state, source: 'app-server', at: Date.now(), ...(live.approvalCommand !== undefined ? { approvalCommand: live.approvalCommand } : {}) });
   }
 
   async #readRateLimits(live: Live): Promise<void> {
@@ -509,27 +528,31 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Subscribe a fresh connection to the thread: `thread/resume` (which needs a rollout), else `thread/read`. */
-  async #subscribe(live: Live, client: AppServerClient, extra: Record<string, unknown> = {}, resumed: Resumed = untimed): Promise<{ state: SessionState; model: string | null }> {
-    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
-      state: SessionState;
-      model: string | null;
-    }, unknown> {
+  async #subscribe(live: Live, client: AppServerClient, extra: Record<string, unknown> = {}, resumed: Resumed = untimed): Promise<SubscriptionSnapshot> {
+    return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, SubscriptionSnapshot, unknown> {
       const threadId = live.p.harnessSessionId as string;
+      const sequence = live.eventSequence;
       try {
         const r = (yield* wait(client.request<ThreadResult>('thread/resume', { threadId, ...extra })));
-        return { state: stateOfStatus(r.thread.status), model: r.model ?? r.thread.model ?? null };
+        return { state: stateOfStatus(r.thread.status), model: r.model ?? r.thread.model ?? null, sequence };
       } catch (err) {
         if (!(err instanceof RpcError) || Object.keys(extra).length)
           throw err;
         // a thread with no turn yet has no rollout: still loaded, and its status is broadcast to every connection
         const r = (yield* wait(client.request<ThreadResult>('thread/read', { threadId })));
-        return { state: stateOfStatus(r.thread.status), model: r.thread.model ?? null };
+        return { state: stateOfStatus(r.thread.status), model: r.thread.model ?? null, sequence };
       }
     }).call(this), resumed);
   }
 
+  #snapshotIsCurrent(live: Live, snapshot: SubscriptionSnapshot): boolean {
+    // Re-read after subscribe: an event received during its await supersedes this earlier snapshot.
+    return live.eventSequence === snapshot.sequence;
+  }
+
   #gone(live: Live, detail: string): void {
     if (this.#stopping.has(live.p.sessionId)) return;
+    this.#updateState(live, 'unknown');
     this.#unwatch(live.p.sessionId);
     live.client?.close();
     live.client = null;
@@ -564,7 +587,7 @@ export class CodexAdapter implements HarnessAdapter {
           startedAt: new Date().toISOString(),
           status: 'running',
         };
-        const live: Live = { p, client: null, connecting: null, state: stateOfStatus(started.thread.status), turnId: null, tokens: null, rateLimits: null };
+        const live: Live = { p, client: null, connecting: null, state: stateOfStatus(started.thread.status), eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
         this.#live.set(sessionId, live);
         this.#attach(live, client);
         void this.#readRateLimits(live);
@@ -802,14 +825,14 @@ export class CodexAdapter implements HarnessAdapter {
   watch(p: HarnessProcess): void {
     let live = this.#live.get(p.sessionId);
     if (!live) {
-      live = { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
+      live = { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
       this.#live.set(p.sessionId, live);
     } else live.p = p;
     this.#watched.add(p.sessionId);
     for (const error of this.#earlyFailures.get(p.sessionId) ?? []) this.#host.turnFailed?.(p.sessionId, error, []);
     this.#earlyFailures.delete(p.sessionId);
     // what the app-server said before the process-table row existed
-    if (live.state !== 'unknown') this.#host.signal(p.sessionId, { state: live.state, source: 'app-server', at: Date.now() });
+    if (live.state !== 'unknown') this.#host.signal(p.sessionId, { state: live.state, source: 'app-server', at: Date.now(), ...(live.approvalCommand !== undefined ? { approvalCommand: live.approvalCommand } : {}) });
     if (!live.client) void this.#reconnect(live);
     if (!this.#timer) {
       this.#timer = setInterval(() => this.#poll(), this.#pollMs);
@@ -854,7 +877,7 @@ export class CodexAdapter implements HarnessAdapter {
         client = await this.#connectTo(socket);
         this.#attach(live, client);
         const r = await this.#subscribe(live, client);
-        if (r.state !== 'unknown') this.#setState(live, r.state);
+        if (this.#snapshotIsCurrent(live, r) && r.state !== 'unknown') this.#setState(live, r.state);
         void this.#readRateLimits(live);
         // a message whose inject failed while the connection was down waits for no state change: retried now
         this.#host.reconnected?.(live.p.sessionId);
@@ -881,6 +904,7 @@ export class CodexAdapter implements HarnessAdapter {
         if (ended) {
           this.#unwatch(p.sessionId);
           const live = this.#live.get(p.sessionId);
+          if (live) this.#updateState(live, 'unknown');
           live?.client?.close();
           this.#live.delete(p.sessionId);
         }
@@ -899,7 +923,7 @@ export class CodexAdapter implements HarnessAdapter {
       const socket = p.harnessId ?? this.#socketPath(p.sessionId);
       if (!p.harnessSessionId)
         return { found: false, reason: 'no thread id recorded' };
-      const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', turnId: null, tokens: null, rateLimits: null };
+      const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
       live.p = p;
       this.#live.set(p.sessionId, live);
       if ((yield* wait(processAlive(p, options.resumed))) && (yield* wait(access(socket).then(() => true, () => false)))) {
@@ -909,9 +933,9 @@ export class CodexAdapter implements HarnessAdapter {
           live.client?.close();
           this.#attach(live, client);
           const r = yield* wait(this.#subscribe(live, client, {}, resumed));
-          live.state = r.state;
+          if (this.#snapshotIsCurrent(live, r)) this.#updateState(live, r.state);
           void this.#readRateLimits(live);
-          return { found: true, process: { ...p, harnessId: socket, model: r.model ?? p.model, status: 'running' }, state: r.state };
+          return { found: true, process: { ...p, harnessId: socket, model: r.model ?? p.model, status: 'running' }, state: live.state };
         } catch (err) {
           client?.close();
           if (!options.relaunch)
@@ -932,12 +956,12 @@ export class CodexAdapter implements HarnessAdapter {
         ({ pid, client } = yield* wait(this.#startServer(p, socket, policy.overrides, files, resumed)));
         this.#attach(live, client);
         const r = yield* wait(this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread }, resumed));
-        live.state = r.state;
+        if (this.#snapshotIsCurrent(live, r)) this.#updateState(live, r.state);
         const relaunched: HarnessProcess = { ...p, pid, harnessId: socket, model: r.model ?? p.model, startedAt: new Date().toISOString(), status: 'running' };
         live.p = relaunched;
         this.#host.log({ event: 'harness-relaunched', harness: this.harness, session: p.name, pid, thread: p.harnessSessionId });
         files.commit();
-        return { found: true, process: relaunched, state: r.state };
+        return { found: true, process: relaunched, state: live.state };
       } catch (err) {
         return yield* wait(this.#recoveries.failed(p.sessionId, p.name, files, err, () => {
           client?.close();

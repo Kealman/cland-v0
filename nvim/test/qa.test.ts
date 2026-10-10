@@ -90,7 +90,7 @@ function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: 
   });
 }
 
-for (const name of ['PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008']) {
+for (const name of ['PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008', 'PANELS-009', 'PANELS-010']) {
   test(`${name} passes through the headless stub-hub QA runner`, { skip }, async (t) => {
     const run = await qa(t, [`${SHIPPED}${name}.lua`]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
@@ -208,7 +208,7 @@ test('qa.state() holds the stub scenario: the sessions with their states, the ro
   // a dump the case asked for along the way, inline as no --out was given
   assert.deepEqual(Object.keys(evidence.dumps), ['sessions']);
   assert.match(evidence.dumps.sessions?.screen ?? '', /impl-1 \[Implementer\]/);
-  assert.match(evidence.dumps.sessions?.screen ?? '', /waiting for human/);
+  assert.match(evidence.dumps.sessions?.screen ?? '', /WAITING · 1/);
   assert.deepEqual(evidence.dumps.sessions?.state.panels, { left: false, right: 'sessions', dock: false });
 });
 

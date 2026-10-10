@@ -30,6 +30,18 @@ local function width(chunks)
   return w
 end
 
+-- The longest character prefix within a display-cell budget; wrapping uses the same fitter.
+local function prefix(text, cells)
+  if cells <= 0 then return '' end
+  local low, high = 0, vim.fn.strchars(text)
+  while low < high do
+    local mid = math.ceil((low + high) / 2)
+    if api.nvim_strwidth(vim.fn.strcharpart(text, 0, mid)) <= cells then low = mid else high = mid - 1 end
+  end
+  return vim.fn.strcharpart(text, 0, low)
+end
+M.prefix = prefix
+
 -- Fit styled chunks to display cells, including the ellipsis in the same budget.
 local function fit(chunks, cells)
   if cells <= 0 then return {} end
@@ -44,12 +56,7 @@ local function fit(chunks, cells)
       out[#out + 1] = chunk
       remaining = remaining - size
     else
-      local low, high = 0, vim.fn.strchars(text)
-      while low < high do
-        local mid = math.ceil((low + high) / 2)
-        if api.nvim_strwidth(vim.fn.strcharpart(text, 0, mid)) <= remaining then low = mid else high = mid - 1 end
-      end
-      out[#out + 1] = { vim.fn.strcharpart(text, 0, low), chunk[2] }
+      out[#out + 1] = { prefix(text, remaining), chunk[2], chunk[3] }
       break
     end
   end
@@ -92,7 +99,8 @@ function M.topbar()
   else
     right[#right + 1] = { ' ▲ no coordinator · messages queue in the hub ', 'ClandChipWarn', 1 }
   end
-  right[#right + 1] = { '  ', 'TabLineFill' }
+  local coordinator = right
+  right = {}
   local n = state.needs_you()
   if n > 0 then
     right[#right + 1] = { ' ▲', 'ClandAmberChip', 2 }
@@ -101,19 +109,32 @@ function M.topbar()
   else
     right[#right + 1] = { ' ✓ needs you 0 ', 'ClandGreenChip', 2 }
   end
-  right[#right + 1] = { '  ', 'TabLineFill' }
+  local needs = right
+  right = {}
   local c = state.counts()
   right[#right + 1] = { ' sessions ', 'ClandTextChip', 3 }
-  right[#right + 1] = { ' ' .. c.live .. ' ', 'ClandChipBadgeN', 3 }
+  right[#right + 1] = { ' ' .. c.now .. ' ', 'ClandChipBadgeN', 3 }
   if c.waiting > 0 then
     right[#right + 1] = { ' ' .. c.waiting .. '▲', 'ClandAmberChip', 3 }
   end
-  if c.down > 0 then
-    right[#right + 1] = { ' ' .. c.down .. '✗', 'ClandRedChip', 3 }
-  end
   right[#right + 1] = { ' ', 'ClandChip', 3 }
   right[#right + 1] = { ' ', 'TabLineFill' }
-  return M.stl(left) .. '%<%#TabLineFill#%=' .. M.stl(right)
+  -- Preserve the counts first; a long Coordinator label consumes only the cells left over.
+  local remaining = math.max(0, vim.o.columns - 1)
+  local sessions = fit(right, remaining)
+  remaining = remaining - width(sessions)
+  needs = fit(needs, remaining - 2)
+  if #needs > 0 then remaining = remaining - width(needs) - 2 end
+  coordinator = fit(coordinator, remaining - 2)
+  right = {}
+  for _, segment in ipairs({ coordinator, needs, sessions }) do
+    if #segment > 0 then
+      if #right > 0 then right[#right + 1] = { '  ', 'TabLineFill' } end
+      vim.list_extend(right, segment)
+    end
+  end
+  left = fit(left, math.max(0, vim.o.columns - 1 - width(right)))
+  return M.stl(left) .. '%#TabLineFill#%=' .. M.stl(right)
 end
 
 --- The top bar's chips are clickable: the Coordinator attaches it, "needs you" opens the inbox,

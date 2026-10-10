@@ -136,8 +136,12 @@ export function interpret(event: string, payload: Record<string, unknown>): Inte
       const usage = typeof payload.usage === 'object' && payload.usage !== null ? (payload.usage as Record<string, unknown>) : undefined;
       return { state: 'idle', ...(usage ? { usage } : {}), ...(usage && typeof usage.model === 'string' ? { model: usage.model } : {}) };
     }
-    case 'permission':
-      return { state: payload.tool_name === 'AskUserQuestion' ? 'waiting for human' : 'waiting for approval' };
+    case 'permission': {
+      // The hook CLI forwards the Bash command line, never the rest of its tool input.
+      const command = typeof payload.approvalCommand === 'string' ? payload.approvalCommand
+        : typeof payload.tool_name === 'string' && payload.tool_name !== 'AskUserQuestion' ? payload.tool_name : undefined;
+      return { state: payload.tool_name === 'AskUserQuestion' ? 'waiting for human' : 'waiting for approval', ...(command !== undefined ? { approvalCommand: command } : {}) };
+    }
     case 'tool-done':
       return { state: 'busy' };
     case 'elicitation':

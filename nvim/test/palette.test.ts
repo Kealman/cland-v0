@@ -54,6 +54,84 @@ test('the palette finds the sessions panel action, displays its key and runs it'
 
 const item = (id: string, title: string, state = 'open') => ({ id, kind: 'task', title, state, labels: [], blocked_by: [], file: `${id}.md` });
 
+test('session events move the selected row between groups and update the chip; stopped sessions fold', { skip }, async t => {
+  const process = (name: string, state: string, status = 'running') => ({ name, sessionId: name+'-id', harness: 'codex', model: 'test-model', role: 'reviewer', state, status });
+  const c = await start(t, { processes: [process('review', 'busy'), process('rest', 'idle'), process('old', 'unknown', 'stopped')] });
+  await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('BUSY · 1') && s.includes('IDLE · 1') && s.includes('stopped (1)'), 'session groups');
+  assert.match((await c.screen())[0]!, /sessions +2 /);
+  await c.lua(`local b=require('cland.panels').buf('sessions'); for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.api.nvim_win_get_buf(w)==b then vim.api.nvim_set_current_win(w); for i,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if l:find('review [',1,true) then vim.api.nvim_win_set_cursor(w,{i,0}); break end end end end`);
+  await c.waitScreen(s => s.includes('test-model'), 'selected details');
+  await c.control({ emit: { type: 'session.state', session: 'review', sessionId: 'review-id', state: 'waiting for approval', approvalCommand: 'npm test', source: 'hook' } });
+  const waiting = await c.waitScreen(s => s.includes('WAITING · 1') && s.includes('BUSY · 0') && s.includes('run: npm test'), 'approval command and moved group');
+  assert.match(waiting.split('\n')[0]!, /sessions +2 +1▲/);
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /review \[Reviewer\]/);
+  await c.control({ emit: { type: 'session.state', session: 'review', sessionId: 'review-id', state: 'idle', source: 'hook' } });
+  await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('IDLE · 2') && !s.includes('run: npm test'), 'approval cleared');
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /review \[Reviewer\]/);
+  await c.input('/stopped (<CR>za');
+  await c.waitScreen(s => s.includes('old [Reviewer]'), 'stopped unfolded');
+  await c.input('za');
+  await c.waitScreen(s => !s.includes('old [Reviewer]'), 'stopped folded again');
+  await c.control({ emit: { type: 'session.process', process: process('review', 'unknown', 'stopped') } });
+  const stopped = await c.waitScreen(s => s.includes('stopped (2)'), 'process stopped');
+  assert.match(stopped.split('\n')[0]!, /sessions +1 /);
+});
+
+test('wide session rows and approval commands fit their cells and the chip stays visible on a narrow screen', { skip }, async t => {
+  const c = await start(t, { processes: [{ name: 'wide-review', sessionId: 'wide-id', harness: 'codex', model: '界'.repeat(100), role: 'reviewer', status: 'running', state: 'waiting for approval', approvalCommand: 'npm test ' + '界'.repeat(120) }] });
+  await c.rpc.request('nvim_ui_try_resize', 80, 30);
+  await c.input('<Esc><Space>s<Space>s/wide-review<CR>');
+  const screen = await c.waitScreen(s => s.includes('run: npm test'), 'approval details');
+  assert.match(screen.split('\n')[0]!, /sessions +1 +1▲/);
+  const rows = await c.lua<Array<{ text: string; cells: number; width: number }>>(`
+    local out={}
+    for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do local b=vim.api.nvim_win_get_buf(w)
+      if vim.b[b].cland_role=='sessions' then for _,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do
+        out[#out+1]={text=line,cells=vim.api.nvim_strwidth(line),width=vim.api.nvim_win_get_width(w)}
+      end end
+    end
+    return out
+  `);
+  assert.ok(rows.some(r => r.text.includes('run: npm test') && r.text.endsWith('…')));
+  for (const row of rows) assert.ok(row.cells <= row.width, JSON.stringify(row));
+});
+
+test('session notices and stop confirmations terminate within budgets of zero, one and two cells', { skip }, async t => {
+  const c = await start(t);
+  const results = await c.lua<Array<{ ok: boolean; error: string; fits: boolean }>>(`
+    local panels=require('cland.panels'); local state=require('cland.state'); local out={}
+    local texts={'Unable to stop 界界 session', 'stop review? y stops it · n keeps it'}
+    local function bounded(fn)
+      debug.sethook(function() error('render exceeded instruction budget') end,'',100000)
+      local ok,result=pcall(fn); debug.sethook()
+      out[#out+1]={ok=ok,error=ok and '' or tostring(result),fits=ok and result or false}
+    end
+    for _,text in ipairs(texts) do for width=0,2 do bounded(function()
+      for _,line in ipairs(panels.wrap(text,width)) do if vim.api.nvim_strwidth(line)>width then return false end end
+      for _,chunk in ipairs(require('cland.bars').fit({{text}},width)) do if vim.api.nvim_strwidth(chunk[1])>width then return false end end
+      return true
+    end) end end
+    local b=panels.buf('sessions')
+    for width=1,2 do
+      local w=vim.api.nvim_open_win(b,false,{relative='editor',row=1,col=1,width=width,height=12,style='minimal',noautocmd=true})
+      for _,kind in ipairs({'notice','confirmation'}) do
+        state.S.sessions_note=kind=='notice' and {text=texts[1],group='ClandAmber'} or nil
+        state.S.ui.confirm=kind=='confirmation' and {session='review'} or nil
+        bounded(function()
+          panels.render('sessions',w)
+          for _,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if vim.api.nvim_strwidth(line)>width then return false end end
+          return true
+        end)
+      end
+      vim.api.nvim_win_close(w,true)
+    end
+    state.S.sessions_note=nil; state.S.ui.confirm=nil
+    return out
+  `);
+  assert.equal(results.length, 10);
+  for (const result of results) assert.ok(result.ok && result.fits, JSON.stringify(result));
+});
+
 test('item prefix opens an item; C-v opens another beside the centre', { skip }, async t => {
   const c = await start(t, { items: [item('T-12', 'Centre item'), item('T-13', 'Split item')] });
   await c.input('<Esc><Space>p#T-12<CR>');
@@ -74,6 +152,20 @@ test('every cland mapping has matching registry metadata; missing keys and drift
     require('cland').help()
   `);
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+  const sessionKeys = ['<CR>', '<C-v>', 'l', 'x', 'c', 'za'];
+  const sessionActions = await c.lua<Array<{ key: string; mapped: boolean }>>(`
+    local a=require('cland.actions'); local b=require('cland.panels').buf('sessions'); local out={}
+    for _,entry in ipairs(a.all()) do if entry.id:sub(1,9)=='sessions:' then
+      local found=false
+      for _,map in ipairs(vim.api.nvim_buf_get_keymap(b,'n')) do if map.desc=='cland: '..entry.title then found=true end end
+      out[#out+1]={key=entry.id:sub(10), mapped=found}
+    end end
+    return out
+  `);
+  for (const key of sessionKeys) assert.ok(sessionActions.some(a => a.key === key && a.mapped), `${key} declared and installed`);
+  await c.input('<Esc><Space>p>Attach selected session');
+  await c.waitScreen(s => s.includes('↵ in sessions'), 'panel Enter action in palette');
+  await c.input('<Esc>');
   await c.lua("vim.keymap.set('n','zz',function() end,{desc='cland: Missing key'})");
   assert.match(JSON.stringify(await c.lua("return require('cland.actions').audit()")), /unregistered.*zz/);
   await c.lua("vim.keymap.del('n','zz'); vim.keymap.set('n','<leader>s',function() end,{desc='cland: Wrong title'})");
@@ -110,7 +202,9 @@ test('all five kinds stay in fixed order while the cursor selects the best match
   });
   await c.input('<Esc><Space>p');
   await c.waitScreen(s => s.includes('palette ›'), 'all kinds');
-  const headers = await c.lua(`local out={}; for _,b in ipairs(vim.api.nvim_list_bufs()) do for _,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do local h=l:match('^ ([A-Z]+) ·'); if h then out[#out+1]=h end end end; return out`);
+  await c.lua("assert(vim.wait(5000,function() return #require('cland.qa').state().items==1 and #require('cland.artifacts').all()==1 end))");
+  await c.input('<C-u>');
+  const headers = await c.lua(`local out={}; for _,b in ipairs(vim.api.nvim_list_bufs()) do if vim.b[b].cland_role~='sessions' then for _,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do local h=l:match('^ ([A-Z]+) ·'); if h then out[#out+1]=h end end end end; return out`);
   assert.deepEqual(headers, ['ACTIONS', 'ITEMS', 'SESSIONS', 'ARTIFACTS', 'TOPICS']);
   await c.input('T-12');
   await c.waitScreen(s => s.includes('T-12 Nebula'), 'exact id match');

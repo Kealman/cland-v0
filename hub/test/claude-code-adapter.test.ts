@@ -12,7 +12,7 @@ import { clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDa
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };
-type StateEvent = { type: 'session.state'; session: string; state: string; source: string };
+type StateEvent = { type: 'session.state'; session: string; state: string; source: string; approvalCommand?: string };
 
 test('a Claude Code StopFailure is recorded in Agents and the inbox and reported to the sender', async (t) => {
   const root = await tempProject(t);
@@ -153,6 +153,9 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   assert.equal(waiting.status, 'idle', "the model's own status line says idle");
   const event = stateEvents(ui, 'coord').findLast((e) => e.state === 'waiting for approval');
   assert.equal(event?.source, 'hook');
+  assert.equal(event?.approvalCommand, 'touch approved');
+  const pending = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; approvalCommand?: string }> };
+  assert.equal(pending.processes.find(p => p.name === 'coord')?.approvalCommand, 'touch approved');
   assert.ok(!stateEvents(ui, 'coord').some((e) => e.source === 'status'), 'no state ever came from the status tool');
   const [session] = await fake.sessions();
   process.kill(session?.pid as number, 'SIGUSR1'); // the human approves in the harness's TUI
@@ -160,6 +163,16 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   await presentAs(ui, 'coord', 'idle');
   const after = stateEvents(ui, 'coord').map((e) => e.state);
   assert.deepEqual(after.slice(after.lastIndexOf('waiting for approval')), ['waiting for approval', 'busy', 'idle']);
+
+  const cleared = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(cleared.processes[0]?.approvalCommand, undefined);
+  const editMark = ui.frames.length;
+  await ui.request({ type: 'topic.send', topic: 'general', text: 'needs approval for Edit' });
+  const edit = await ui.waitFor(f => f.type === 'session.state' && f.approvalCommand === 'Edit');
+  assert.equal(edit.state, 'waiting for approval');
+  assert.ok(!JSON.stringify(ui.frames.slice(editMark)).includes('PRIVATE-TOOL-INPUT'));
+  process.kill(session?.pid as number, 'SIGUSR1');
+  await presentAs(ui, 'coord', 'idle');
 
   // the capability table declares what the adapter cannot do
   const list = (await ui.request({ type: 'session.list' })).value as { adapters: Record<string, { approvalRelay: string; history: string; setModel: string; usage: string; states: Record<string, string> }> };

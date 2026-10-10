@@ -197,6 +197,7 @@ export class Sessions {
   view(p: HarnessProcess): HarnessProcessView {
     const adapter = this.#adapters.get(p.harness);
     const usage = adapter?.usage?.(p) ?? null;
+    const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     return {
       name: p.name,
       harness: p.harness,
@@ -212,6 +213,7 @@ export class Sessions {
       startedAt: p.startedAt,
       status: p.status,
       state: p.status === 'running' ? this.#core.sessionState(p.sessionId) : 'unknown',
+      ...(approvalCommand !== undefined ? { approvalCommand } : {}),
       attach: p.status === 'running' && adapter ? adapter.attachCommand(p) : null,
       ...(usage ? { usage } : {}),
     };
@@ -547,7 +549,7 @@ export class Sessions {
       if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages));
     }
     if (!meaning.state) return { applied: false };
-    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now() }, true);
+    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? Date.now(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
   }
 
@@ -569,7 +571,7 @@ export class Sessions {
     // only push signals order each other: a poll reads a snapshot, and a hook that started before it still counts
     if (push) this.#lastAt.set(sessionId, Math.max(signal.at, this.#lastAt.get(sessionId) ?? 0));
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
-    const changed = this.#core.setSessionState(sessionId, name, signal.state, signal.source);
+    const changed = this.#core.setSessionState(sessionId, name, signal.state, signal.source, signal.approvalCommand);
     // the next idle — a transition, not every poll that finds it idle — retries what was never confirmed
     if (signal.state === 'idle' && changed) this.#retry(p, signal.at);
     return changed;

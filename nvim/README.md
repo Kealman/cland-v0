@@ -83,9 +83,36 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `↵` | panels, board | Open the row in the centre: a session attaches in Terminal mode, a topic opens its thread, an item (or a board card) its view. |
 | `␣l` | anywhere | The session launcher (above). |
 | `l` `C-v` `x` `c` | sessions panel | Launch a session; attach the row's session in a vertical split beside the centre (Terminal mode; the centre view stays); stop it, after a line in the panel asks (`y` stops through `session.stop`, `n` or `Esc` keeps it); its adapter's capability table in a float (each state signal and optional capability as `reliable`, `heuristic` or `none`; `q` closes). |
+| `za` `zo` `zc` `zR` `zM` | sessions panel | Toggle, open or close the stopped fold on its header or rows; open or fold it from anywhere with `zR` or `zM`. Enter or Tab on the fold header also toggles it. |
 | `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. `@reviewer`, `@qa`, … or `@<session>` in the text addresses them instead of the Coordinator. |
 | `C-h` `C-j` `C-k` `C-l` | every mode | Focus left, down, up or right; entering a composer or terminal resumes typing. Use the English layout for these chords. |
 | `C-\` (also `C-\ C-n`) | session terminal | Leave Terminal mode immediately; Esc still goes to the harness. |
+
+### Sessions grouped by state (T-127)
+
+The panel lists **waiting, busy and idle**, with counts, then one folded
+`stopped (N)` line. Waiting includes both waiting for human and waiting for
+approval. Unknown live sessions sit in idle with a `?` glyph; an exited process
+sits in stopped with its death glyph. The hub supplies state and process changes;
+the workbench never infers them from a session's status text or terminal output.
+
+Each row shows glyph, name, role and item. Moving the cursor onto a session
+expands its harness, model, state and running usage total; moving to another
+session collapses the previous details. `j` and `k` skip detail lines. A state
+event that changes the group keeps the cursor on the same session. Approval
+details show `run: <command>` when the hub supplies `approvalCommand`; Claude
+Code and Codex also supply a tool name for approvals without a command. Tool
+input bodies are never copied into display metadata. OpenCode currently supplies
+only the waiting state. Rows and chips use the shared display-cell fitter,
+including wide text and ellipses.
+
+The top-bar sessions chip counts **now sessions**, plus a separate amber waiting
+count. Until T-115's visibility layers land, `state.session_now` counts every
+session whose hub process is running (connected manual spokes count too);
+stopped and exited sessions are excluded. The Aides group and launch keys belong
+to T-111. All panel keys, including the stopped fold, are registered actions
+available in the palette. Ctrl chords use the English layout; Normal-mode letters
+follow `keys.layouts`.
 
 ### Palette and action registry (T-126)
 
@@ -327,6 +354,7 @@ Every test starts the real client headless as `nvim --clean -u nvim/init.lua --h
 - `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the palette, `gi`/`gt`/`gs`, the presets, the topics panel (groups, pinning, unread badges, the warning glyph, Enter, `n`/`c`/`r` and `:Cland topic`), the palette's topics kind, the thread header with the status and the binding, an event while typing, a burst of events without a hit-enter prompt (and four writes of 50 waves of every event kind, malformed ones among them, with Insert mode, the typed text and an empty message area kept), a coordinator `null` after a reconnect, an item view and an ask card made current again after a reconnect (also an ask older than the history the reconnect reads, closed through `inbox.list`), an attach client that ended attached again, a deeply indented list, multi-line asks, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, a real `:restart` re-attaching the session terminal and a `C-v` split, the sessions (#28): the launcher's frame with typed values and role defaults, the item line sending `item` without the directory, refusals in the form and the panel, the roleless warning, `C-v`, `x` with its confirmation line and `session.stop`, `c`, `unknown` from an event and from a dead process, the palette's order and filters, and the items (#36) over a fixture set: the tree, each filter and the map grouping, the item view's fields column, verdicts and comments, the board's columns and a label moving a card, `gi`/`gt`/`gs` between items, topics and sessions both ways (a topic event binding an item followed), `task` events, and the palette's items kind, and the inbox and asks (#33): the sections in order with the top bar's count, `2` on an ask row, `i` arming the composer for a free answer, `d` and `D`, the ask card in the thread answered with `2`, the inbox full width.
 - `test/sessions.test.ts` runs against a real hub with the three fake harnesses of `hub/test/fakes` first on the PATH: Claude Code, Codex and OpenCode sessions launched from the launcher, each in the panel with the model chosen and a live state, attached with Enter (each fake's attach client prints its own line in the terminal), a killed one `unknown · died` with `harness-exited` in the hub's log, and `x` `y` stopping one (`session-stopped`), and the Agents log (#34): rows with `sender [Role]`, kind glyphs, an event adding a row, `␣L`, `:Cland view log`, `r` preparing a reply with `replyTo`.
 - `test/palette.test.ts` covers action execution and keys, keymap drift, prefixes/group order/best match, Tab/Esc, object splits, hub ask answers, dimming and blue matches, and display-cell fitting. Shipped `PANELS-007` and `PANELS-008` exercise palette opening and answering through the headless QA runner.
+- T-127's stub-event test in `test/palette.test.ts` covers state groups, chip updates, approval commands and cursor preservation across group moves. `PANELS-009` and `PANELS-010` cover groups/folding and selected approval/usage details through the headless QA runner.
 - `test/ui.test.ts` checks manual resizing across view/preset switches and fresh Neovim processes against the stub hub, custom panel sets, filters, the reserved release pick, corrupt input, debouncing, and killing the writer before rename. Shipped `PANELS-005` and `PANELS-006` continue the prototype panel cases with persistence and failure checks.
 - `test/qa.test.ts` runs `cland --headless --qa` as a process: the exit code, the JSON line and the dump files for each result (the shipped cases and the ones in `test/qa-cases/`), the state snapshot against a stub scenario, `:Cland qa dump`, `--timeout`, and the three `sandbox-exec` profiles above (skipped with the reason where `sandbox-exec` is missing); a run started inside a live project with a user configuration planted leaves both alone and leaves no process.
 - `test/agents-filters.test.ts` runs headless Neovim against a real hub: item/session completion, history and live filters (including bound-topic notices and a metadata collision), clearing, and `L` from an item view or session row.

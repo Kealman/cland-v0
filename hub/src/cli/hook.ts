@@ -53,6 +53,13 @@ async function readStdin(timeoutMs: number): Promise<string> {
 export function signalPayload(raw: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const k of KEPT) if (raw[k] !== undefined) payload[k] = raw[k];
+  // Display only the Bash command for a permission prompt, never its other tool input fields.
+  const input = raw.tool_input;
+  if (raw.hook_event_name === 'PermissionRequest' && raw.tool_name === 'Bash' && input && typeof input === 'object' && 'command' in input && typeof input.command === 'string') {
+    payload.approvalCommand = input.command;
+  } else if (raw.hook_event_name === 'PermissionRequest' && typeof raw.tool_name === 'string' && raw.tool_name !== 'AskUserQuestion') {
+    payload.approvalCommand = raw.tool_name;
+  }
   const text = typeof raw.prompt === 'string' ? raw.prompt : typeof raw.text === 'string' ? raw.text : null;
   if (text !== null) payload.ids = [...text.matchAll(/<channel source="cland"[^>]* msg_id="([^"]+)"/g)].map((m) => m[1]);
   return payload;
