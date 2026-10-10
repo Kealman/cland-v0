@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T05:17:28.255Z
+updated: 2026-10-10T05:31:56.999Z
 ---
 
 ## Parent
@@ -122,3 +122,25 @@ Evidence and runnable probe A-436: /Users/evgeniyivanov/Projects/cland/v0/.cland
 ### impl-141 · 2026-10-10T05:16:26.919Z
 
 A-436 fix: pending-stop recovery now persists each completed stage (verified stop, row removed, guarded role rollback). Recovery skips every completed stage, so verified exit is never stopped/watched again after restart or receipt-clear failure. Returned-process rollback belongs exclusively to staged settlement; spawn rejection remains direct and identity-guarded. Protocol regressions cover verified stop + native settlement failure + full restart with reused-pid stop refusal, plus completed rollback surviving receipt-clear failure and a later human role assignment. Typecheck, all 19 name-reservation cases and focused 4 recovery assertions pass; two-axis delta self-review clear. Full suite remains unqueued pending T-140 merge/rebase.
+
+### rev-67 · 2026-10-10T05:21:40.406Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-2
+commit: bc67f03b0e5c7e89b6818c66987779db01d77dd3
+
+Medium — hub/src/adapters/sessions.ts:297: failure saving verified-stop completion leaves the durable receipt stopped=false; restart retries stop against a reused PID and cannot finish cleanup despite the original identity's verified exit. Native actual-endProcess probe: stop1 verified true, completion write fails, reconstructed Sessions loads false, stop2 verified false, pending memory1/stored1. Handle this external-stop/checkpoint gap safely.
+
+Medium — hub/src/adapters/sessions.ts:272: role rollback commits before its completion marker at :274; marker-write failure followed by a later human same-role assignment and restart causes replayed rollback to revoke that assignment. Native probe: durable stopped=true/rowRemoved=true/roleRolledBack=false; human assigns Implementer; recovery invokes rollback a second time and sets role null. Commit role effect and marker atomically or fence replay by exact reservation/role revision.
+
+A-436's original row-removal/PID-reuse probe is fixed: one stop, pending0. Receipt-clear-failure control preserves later human assignment. A-428 supervision/foreign-owner rollback, early hello, alias creation during spawn and generated alias exclusion remain fixed. Unchanged full-item checks from A-436 and prior reviews carry forward.
+
+Full-item verdict against 8ac4b70. Standards: two mediums; Spec: role-checkpoint medium (same finding counted once). High0/medium2/low0. No suite or edits. Worktree began rebasing during review; all final probes loaded hub sources directly from pinned bc67f03 git objects. Full-base diff check passes. Restart modeled with retained in-memory SQLite, not an on-disk killed-hub run. Rebase excluded.
+
+Evidence and runnable pinned probes A-441: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-441-t-141-review-at-bc67f03-completion-checkpoint-write-gaps.md
+
+### impl-141 · 2026-10-10T05:31:05.425Z
+
+Rebased once onto origin/dev ceab295 after T-140 squash d9931e4; retained ancestry, expanded subscription instructions, eventSteering and delayed terminal recovery. A-436 follow-up boundaries: durable stop intent before adapter stop; recovery verifies native original pid/start identity (gone/reused settles without signalling, matching live stops through verified path, unreadable keeps receipt and retries). Row deletion+checkpoint atomic in ProcessTable; guarded role rollback+checkpoint atomic in Store, protecting later human assignment even when process receipt save fails. Native adapters expose identity-only unwatch; recovery defers new watching until identity verified, disposes before settlement, and Codex cannot resurrect an in-flight reconnect. Final typecheck, allocation/recovery24, native disposal4, lead10, launch-admission15, session-events3, subscription-hygiene14 and diff check pass; delta self-review clear. Full root suite including Neovim will run after combined-head independent review.
