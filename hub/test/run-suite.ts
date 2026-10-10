@@ -1,4 +1,4 @@
-// Package phases use separate hub/Neovim locks and the same temporary process boundary.
+// Every package phase takes the machine lock; Neovim also takes its phase lock first.
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -122,7 +122,7 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
   throw new Error('suite interrupted while waiting for the lock');
 }
 
-export async function runSuite(suites: string[][], options: { lockDir?: string; cwd?: string; interruption?: Interruption } = {}): Promise<number> {
+export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption } = {}): Promise<number> {
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
   const runId = randomBytes(10).toString('base64url');
@@ -138,7 +138,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const startedIdentity = processStarted(process.pid);
   if (!startedIdentity) throw new Error('cannot establish suite holder process identity');
   const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId, root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
-  let lease: Lease | undefined;
+  const leases: Lease[] = [];
   let root: string | undefined;
   const invoked = Date.now();
   let started = invoked;
@@ -146,7 +146,11 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   try {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') lease = await acquire(options.lockDir ?? '/tmp/cland-suite.lock', () => interruption.signal !== null, holder);
+    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') {
+      for (const dir of options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock']) {
+        leases.push(await acquire(dir, () => interruption.signal !== null, holder));
+      }
+    }
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     started = Date.now();
     peak = loadavg()[0]!;
@@ -157,7 +161,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     const rootInfo = await stat(root);
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
-    await lease?.publishRoot(root);
+    for (const lease of leases) await lease.publishRoot(root);
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     for (const [index, args] of suites.entries()) {
       if (interruption.signal) break;
@@ -184,7 +188,7 @@ process.chdir(cwd);`);
       activeIdentity = captureProcess(active.pid);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
       holder.runner = activeIdentity;
-      await lease?.publishRunner(activeIdentity);
+      for (const lease of leases) await lease.publishRunner(activeIdentity);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
@@ -202,7 +206,7 @@ process.chdir(cwd);`);
     clearInterval(sample);
     try {
       if (root) await sweep(holder);
-      await lease?.release();
+      for (const lease of leases.reverse()) await lease.release();
     } finally {
       for (const { signal, handler } of handlers) process.off(signal, handler);
       process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}\n`);
@@ -227,7 +231,9 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const targets = phase === 'hub' ? ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'] : ['nvim/test/**/*.test.ts'];
       // Release and sweep the previous phase before waiting for the next phase's lock.
-      const code = await runSuite([['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)]], { cwd, lockDir: locks[phase], interruption });
+      // Take Neovim first so waiting for that phase never reserves the machine lock.
+      const lockDirs = phase === 'nvim' ? [locks.nvim, locks.hub] : [locks.hub];
+      const code = await runSuite([['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)]], { cwd, lockDirs, interruption });
       // A signal during runSuite's finally must override its already evaluated return.
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
