@@ -52,6 +52,13 @@ function M.setup()
   set('ClandGreen', { fg = P.green })
   set('ClandRed', { fg = P.red })
   set('ClandBlue', { fg = P.blue })
+  set('ClandHeading', { fg = P.text, bold = true })
+  set('ClandCode', { fg = P.text, bg = P.chip })
+  set('ClandCodeBlock', { bg = P.composer })
+  set('ClandLink', { fg = P.blue, underline = true })
+  set('ClandItalic', { italic = true })
+  set('ClandStrike', { strikethrough = true })
+  set('ClandQuote', { fg = P.dim })
   for role, colour in pairs({ Human = P.blue, Coordinator = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Hub = P.faint, Other = P.dim }) do
     set('ClandRole' .. role, { fg = colour })
   end

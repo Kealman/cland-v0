@@ -1,8 +1,9 @@
 -- Topic message blocks (T-132), ported from the accepted T-97 prototype.
--- Body parsing, visibility/folds and new ask/chip presentation are later slices.
+-- Visibility/folds and new ask/chip presentation are later slices.
 local api = vim.api
 local hl = require('cland.hl')
 local fit = require('cland.bars').fit
+local md = require('cland.thread_md')
 
 local M = { by_buf = {} }
 local ns = api.nvim_create_namespace('cland.thread')
@@ -124,9 +125,19 @@ function Thread:_answers()
   return answers
 end
 
---- The body seam: raw text today; per-message Markdown belongs here in T-133.
+--- The single body seam: cached per-message Markdown and its displayed row metadata.
 function Thread:body(m)
-  return vim.split(tostring(m.text or ''), '\n', { plain = true })
+  return md.render(m.text, self:_width())
+end
+
+--- A review/QA report's result, only on its first line (docs/review-and-qa.md).
+function M.verdict(m)
+  if m.fromKind ~= 'agent' then return nil end
+  local first = (tostring(m.text or ''):match('^[^\r\n]*') or ''):lower()
+  local kind, rest = first:match('^(%a+) (.*)$')
+  if kind ~= 'review' and kind ~= 'qa' then return nil end
+  if rest:match('^not clear%f[^%a]') then return 'not clear' end
+  if rest:match('^clear%f[^%a]') then return 'clear' end
 end
 
 -- Compatibility with the current ask/chip actions; their rendering is replaced in T-135.
@@ -274,12 +285,30 @@ function Thread:_build(m, prev, answer)
     -- a bare artifact post's text is its chip: the chip alone, as today
     local show_text = not (type(mm.artifact) == 'table' and type(mm.artifacts) ~= 'table')
     if show_text then
-      local lines = self:body(mm)
+      local lines, marks, metadata = self:body(mm)
       if #lines == 1 and lines[1] == '' then
         lines = {}
       end
-      for _, l in ipairs(lines) do
-        add(l, { group = group }, banded())
+      local base = #b.lines
+      for k, l in ipairs(lines) do
+        add(l, { group = group, links = metadata[k].links }, banded())
+        local from = 1
+        while true do
+          local a, z = l:find('%f[%w]T%-%d+%f[^%w]', from)
+          if not a then break end
+          b.marks[#b.marks + 1] = { row = base + k - 1, col = a - 1, opts = { end_col = z, hl_group = 'ClandBlue', priority = 140 } }
+          from = z + 1
+        end
+      end
+      for _, s in ipairs(marks) do
+        -- Body-span options contain scalar values only; copy without recursively walking a cached span.
+        local opts = vim.tbl_extend('force', {}, s.opts)
+        if opts.end_row then opts.end_row = opts.end_row + base end
+        b.marks[#b.marks + 1] = { row = base + s.row, col = s.col, opts = opts }
+      end
+      local verdict = M.verdict(mm)
+      if verdict and #lines > 0 then
+        b.marks[#b.marks + 1] = { row = base, col = 0, opts = { end_col = #lines[1], hl_group = verdict == 'clear' and 'ClandGreen' or 'ClandRed', priority = 125 } }
       end
     end
     for _, a in ipairs(attachments) do
@@ -392,6 +421,7 @@ function Thread:render()
   if not api.nvim_buf_is_valid(buf) then
     return
   end
+  self.body_width = self:_width()
   local wins = self:_windows()
   local lines, marks, info = {}, {}, {}
   self.blocks, self.block_of, self.mark_ids = {}, {}, {}
@@ -802,6 +832,8 @@ local window_options = {
   linebreak = true,
   breakindent = true,
   breakindentopt = 'list:-1',
+  conceallevel = 2,
+  concealcursor = 'nc',
 }
 -- Splits inherit local options, and plain vim.wo assignments also change global
 -- defaults. Apply only local values, for every window/buffer transition.
@@ -815,21 +847,44 @@ api.nvim_create_autocmd({ 'BufWinEnter', 'WinNew' }, {
         if not thread then value = api.nvim_get_option_value(name, { scope = 'global' }) end
         api.nvim_set_option_value(name, value, { scope = 'local', win = win })
       end
+      if thread and thread.body_width ~= thread:_width() then thread:render() end
     end
   end,
 })
+local pending_windows
 api.nvim_create_autocmd({ 'WinResized', 'VimResized' }, {
   group = group,
   callback = function()
-    for buf, t in pairs(M.by_buf) do
-      if api.nvim_buf_is_valid(buf) then
-        for _, win in ipairs(vim.fn.win_findbuf(buf)) do
-          if t.at_tail[win] ~= false then
-            to_tail(win, buf)
+    -- Layout handlers resize panels in the same event. Project at their final width,
+    -- rather than caching an intermediate table layout until the next view switch.
+    local queued = pending_windows ~= nil
+    pending_windows = pending_windows or {}
+    for buf in pairs(M.by_buf) do
+      for _, win in ipairs(vim.fn.win_findbuf(buf)) do pending_windows[win] = buf end
+    end
+    if queued then return end
+    vim.schedule(function()
+      local windows = pending_windows
+      pending_windows = nil
+      local threads = {}
+      for win, buf in pairs(windows) do
+        if api.nvim_win_is_valid(win) and api.nvim_win_get_buf(win) == buf and M.by_buf[buf] then
+          threads[buf] = threads[buf] or {}
+          threads[buf][#threads[buf] + 1] = win
+        end
+      end
+      for buf, wins in pairs(threads) do
+        local t = M.by_buf[buf]
+        if api.nvim_buf_is_valid(buf) then
+          if t.body_width ~= t:_width() then t:render() end
+          for _, win in ipairs(wins) do
+            if t.at_tail[win] ~= false then
+              to_tail(win, buf)
+            end
           end
         end
       end
-    end
+    end)
   end,
 })
 

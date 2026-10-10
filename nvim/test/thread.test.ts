@@ -21,6 +21,247 @@ const msg = (id: string, role = 'coordinator', text = 'Taking T-58.') => ({
   text, ts, topic: 'general', stage: role === 'human' ? 'queued' : null,
 });
 
+test('message Markdown conceals headings, code and links and highlights visible item ids', { skip }, async t => {
+  const text = '## Plan\nUse `history` and [the brief](https://example.com/brief).\n- take **T-58**\n```lua\nprint(1)\n```';
+  const c = await start(t, { messages: { general: [msg('markdown', 'coordinator', text)] } });
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('gg');
+  const screen = await c.waitScreen(s => s.includes('Use history and the brief.'), 'concealed Markdown');
+  assert.match(screen, /• take T-58/);
+  assert.match(screen, /  print\(1\)/);
+  assert.ok(!screen.includes('## Plan') && !screen.includes('```'));
+  const groups = await c.lua<string[]>(`
+    local b=vim.fn.bufnr('cland://topic/general')
+    local groups={}
+    for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,vim.api.nvim_get_namespaces()['cland.thread'],0,-1,{details=true})) do
+      if m[4].hl_group then groups[#groups+1]=m[4].hl_group end
+    end
+    return groups
+  `);
+  for (const group of ['ClandHeading', 'ClandCode', 'ClandLink', 'ClandBlue']) assert.ok(groups.includes(group), group);
+});
+
+test('reference links and narrow table header links keep destinations and Markdown styling', { skip }, async t => {
+  const destination = 'https://example.com/reference';
+  const c = await start(t, { messages: { general: [
+    msg('references', 'coordinator', `[brief][ref] and [ref][] and [ref].\n\n[ref]: ${destination}`),
+    msg('header-links', 'coordinator', '| **Item** | [State](https://example.com/state) | Description |\n|---|---|---|\n| T-58 | open | ' + 'detail '.repeat(10) + '|'),
+  ] } });
+  await c.lua('vim.o.columns=80');
+  await c.input('<Esc><Space>i');
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('gg');
+  await c.waitScreen(s => s.includes('Item: T-58') && s.includes('State: open'), 'stacked Markdown headers');
+  const rows = await c.lua<Array<{line: string; links: Array<{destination: string}>}>>(`
+    local t=require('cland.views').topic('general').thread
+    local out={}
+    for r,l in ipairs(vim.api.nvim_buf_get_lines(t.buf,0,-1,false)) do
+      if l:find('[brief]',1,true) or l:find('State',1,true) then out[#out+1]={line=l,links=t.info[r].links} end
+    end
+    return out
+  `);
+  assert.deepEqual(rows[0]?.links.map(l => l.destination), [destination, destination, destination]);
+  assert.deepEqual(rows[1]?.links.map(l => l.destination), ['https://example.com/state']);
+  assert.ok(!rows[1]?.line.includes('https://'), 'header destination is compacted too');
+});
+
+test('header-only tables retain content and table fitting uses concealed cell widths', { skip }, async t => {
+  const destination = 'https://example.com/' + 'long-destination/'.repeat(10);
+  const c = await start(t, { messages: { general: [
+    msg('header-only', 'coordinator', '| ' + 'wide '.repeat(20) + 'HEADER-END | State |\n|---|---|'),
+    msg('visually-small', 'coordinator', `| [Item](${destination}) | State |\n|---|---|\n| T-58 | open |`),
+  ] } });
+  await c.lua('vim.o.columns=80');
+  await c.input('<Esc><Space>i');
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('gg');
+  const screen = await c.waitScreen(s => s.includes('HEADER-END'), 'wide header-only content survives');
+  assert.match(screen, /\| Item +\| State +\|/);
+  assert.match(screen, /\| T-58 +\| open +\|/);
+  assert.ok(!screen.includes('long-destination'));
+});
+
+test('duplicate references and autolinks retain their destination and label ranges', { skip }, async t => {
+  const c = await start(t, { messages: { general: [
+    msg('duplicate', 'coordinator', '[a]\n\n[a]: /first\n[a]: /second'),
+    msg('autolinks', 'coordinator', 'Autolinks <https://example.com> <a@example.com>'),
+  ] } });
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('gg');
+  await c.waitScreen(s => s.includes('Autolinks'), 'autolink body');
+  const rows = await c.lua<Array<{line: string; links: Array<{col: number; end_col: number; destination: string}>}>>(`
+    local thread=require('cland.views').topic('general').thread
+    local out={}
+    for r,line in ipairs(vim.api.nvim_buf_get_lines(thread.buf,0,-1,false)) do
+      out[#out+1]={line=line,links=thread.info[r].links or {}}
+    end
+    return out
+  `);
+  assert.deepEqual(rows.find(r => r.line === '[a]')?.links.map(l => l.destination), ['/first']);
+  const auto = rows.find(r => r.line.startsWith('Autolinks '));
+  assert.deepEqual(auto?.links.map(l => [auto.line.slice(l.col, l.end_col), l.destination]), [
+    ['https://example.com', 'https://example.com'], ['a@example.com', 'mailto:a@example.com'],
+  ]);
+});
+
+test('generated ragged tables preserve every header and cell text and target in projection order', { skip }, async t => {
+  type Cell = { text: string; destination: string };
+  type Projection = { lines: string[]; metadata: Array<{links: Array<{col: number; end_col: number; destination: string}>}> };
+  const widths = [40, 78, 118, 512];
+  const tables = Array.from({ length: 12 }, (_, seed) => {
+    const headers = Array.from({ length: 2 + seed % 4 }, (_, column): Cell => ({
+      text: 'H' + seed + '_' + column,
+      destination: 'https://example.com/header/' + seed + '/' + column,
+    }));
+    const rows = [1, headers.length - 1, headers.length, headers.length + 1, headers.length + 3].map((count, row) =>
+      Array.from({ length: count }, (_, column): Cell => ({
+        text: 'C' + seed + '_' + row + '_' + column + ' ' + 'payload '.repeat((seed + row + column) % 4 + 1).trimEnd(),
+        destination: 'https://example.com/cell/' + seed + '/' + row + '/' + column,
+      })),
+    );
+    const source = (cells: Cell[], header = false) => '| ' + cells.map(cell =>
+      '[' + (header ? '**' + cell.text + '**' : cell.text) + '](' + cell.destination + ')').join(' | ') + ' |';
+    return { headers, rows, source: [source(headers, true), '| ' + headers.map(() => '---').join(' | ') + ' |', ...rows.map(row => source(row))].join('\n') };
+  });
+  const c = await start(t, { messages: { general: [msg('projection-seam')] } });
+  const projections = await c.lua<Projection[][]>(`
+    local bodies,widths=...
+    local result={}
+    for i,body in ipairs(bodies) do
+      result[i]={}
+      for k,width in ipairs(widths) do
+        local lines,_,metadata=require('cland.thread_md').render(body,width)
+        result[i][k]={lines=lines,metadata=metadata}
+      end
+    end
+    return result
+  `, tables.map(table => table.source), widths);
+  let stacked = 0, full = 0;
+  for (const [i, table] of tables.entries()) {
+    for (const [k, width] of widths.entries()) {
+      const projection = projections[i]![k]!;
+      const isFull = projection.lines[0]?.startsWith('| ') ?? false;
+      const expected: Cell[] = [];
+      if (isFull) { full++; expected.push(...table.headers, ...table.rows.flat()); }
+      else {
+        stacked++;
+        for (const row of table.rows) {
+          for (let column = 0; column < Math.max(table.headers.length, row.length); column++) {
+            if (table.headers[column]) expected.push(table.headers[column]!);
+            if (row[column]) expected.push(row[column]!);
+          }
+        }
+      }
+      const actual = projection.metadata.flatMap((metadata, row) => metadata.links.map(link => ({
+        text: Buffer.from(projection.lines[row]!).subarray(link.col, link.end_col).toString(), destination: link.destination,
+      })));
+      assert.deepEqual(actual, expected, 'table ' + i + ', width ' + width + ': ordered text and destinations');
+      assert.deepEqual(projection.lines.join('\n').match(/[HC]\d+_\d+(?:_\d+)?/g), expected.map(cell => cell.text.split(' ')[0]),
+        'table ' + i + ', width ' + width + ': every source cell remains in the buffer');
+      if (width === 512) assert.ok(isFull, 'wide projection uses complete rows');
+    }
+  }
+  assert.ok(stacked > 0 && full > 0, 'both layouts exercised');
+});
+
+test('unclosed fences are isolated, rejected bodies stay plain, and append parses only fresh text', { skip }, async t => {
+  const c = await start(t, { messages: { general: [msg('open', 'implementer', '```lua\nlocal value = 1'), msg('next', 'coordinator', '## Still a heading\n**T-58**')] } });
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('gg');
+  await c.waitScreen(s => s.includes('Still a heading') && !s.includes('## Still'), 'heading after unclosed fence');
+  await c.lua(`
+    _G.body_parses={}
+    local original=vim.treesitter.get_string_parser
+    vim.treesitter.get_string_parser=function(text,lang,...)
+      _G.body_parses[#_G.body_parses+1]=text
+      if text:find('REJECT-BODY',1,true) then error('parser rejected body') end
+      return original(text,lang,...)
+    end
+  `);
+  const fresh = '## FRESH-BODY\n[brief](https://example.com/fresh)';
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: msg('fresh', 'coordinator', fresh) } });
+  await c.waitScreen(s => s.includes('FRESH-BODY'), 'fresh body');
+  assert.deepEqual(await c.lua('return _G.body_parses'), [fresh + '\n'], 'one parse on append');
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: msg('repeat', 'coordinator', fresh) } });
+  await c.lua("require('cland.views').topic('general').thread:render()");
+  assert.deepEqual(await c.lua('return _G.body_parses'), [fresh + '\n'], 'text cache survives repeated bodies and full rewrites');
+  const rejected = '## REJECT-BODY\n[raw](https://example.com/raw)';
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: msg('rejected', 'coordinator', rejected) } });
+  await c.waitScreen(s => s.includes('## REJECT-BODY') && s.includes('[raw](https://example.com/raw)'), 'plain rejected body');
+  await c.lua("require('cland.views').topic('general').thread:render()");
+  assert.deepEqual(await c.lua('return _G.body_parses'), [fresh + '\n', rejected + '\n'], 'failed parses are cached too');
+});
+
+test('verdict results are red/green and the registry gi opens a concealed item reference', { skip }, async t => {
+  const c = await start(t, { items: [{ id: 'T-58', title: 'Markdown target', state: 'open', kind: 'task' }], messages: { general: [
+    msg('fail', 'reviewer', 'review not clear T-58\nA criterion failed.'),
+    msg('pass', 'qa', 'qa clear T-58'),
+    msg('target', 'coordinator', 'See **T-58**.'),
+  ] } });
+  const marks = await c.lua<Array<{line: string; group: string}>>(`
+    local b=vim.fn.bufnr('cland://topic/general')
+    local out={}
+    for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,vim.api.nvim_get_namespaces()['cland.thread'],0,-1,{details=true})) do
+      if m[4].hl_group=='ClandRed' or m[4].hl_group=='ClandGreen' then
+        out[#out+1]={line=vim.api.nvim_buf_get_lines(b,m[2],m[2]+1,false)[1],group=m[4].hl_group}
+      end
+    end
+    return out
+  `);
+  assert.deepEqual(marks, [{ line: 'review not clear T-58', group: 'ClandRed' }, { line: 'qa clear T-58', group: 'ClandGreen' }]);
+  await c.lua(`
+    local w=require('cland.layout').centre()
+    vim.api.nvim_set_current_win(w)
+    for r,l in ipairs(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(w),0,-1,false)) do
+      if l=='See **T-58**.' then vim.api.nvim_win_set_cursor(w,{r,l:find('T-58',1,true)-1}) end
+    end
+  `);
+  await c.input('gi');
+  await c.waitScreen(s => s.includes('Markdown target'), 'gi item view');
+  assert.deepEqual(await c.lua('return require("cland.actions").audit()'), []);
+});
+
+test('resize bursts project once at final width and stale closed/reused windows do nothing', { skip }, async t => {
+  const text = '| Item | Description |\n|---|---|\n| T-58 | ' + 'detail '.repeat(10) + '|';
+  const c = await start(t, { messages: { general: [msg('table-width', 'coordinator', text)] } });
+  await c.lua(`
+    local api=vim.api
+    local t=require('cland.views').topic('general').thread
+    local w=api.nvim_open_win(t.buf,false,{split='right',win=require('cland.layout').centre()})
+    _G.width_win=w
+    _G.width_changes={}
+    api.nvim_buf_attach(t.buf,false,{on_lines=function(_,_,_,first,last,newlast)
+      _G.width_changes[#_G.width_changes+1]={first,last,newlast}
+    end})
+    for _,width in ipairs({40,45,50}) do
+      api.nvim_win_set_width(w,width)
+      api.nvim_exec_autocmds('WinResized',{})
+    end
+  `);
+  const burst = await c.lua<{ changes: number[][]; width: number; rendered: number }>(`
+    local t=require('cland.views').topic('general').thread
+    return {changes=_G.width_changes,width=t:_width(),rendered=t.body_width}
+  `);
+  assert.equal(burst.changes.length, 1, 'one projection for the synchronous resize burst');
+  assert.equal(burst.rendered, burst.width, 'callback measures final live window width');
+  await c.lua('vim.api.nvim_win_close(_G.width_win,true)');
+  for (const transition of ['close', 'reuse']) {
+    await c.lua(`
+      local api=vim.api
+      local t=require('cland.thread').new({id='stale-${transition}',title='Stale'})
+      t:merge({{id='stale-message',from='coordinator',fromKind='agent',fromRole='coordinator',to={'human'},text='${text.replaceAll('\n', '\\n')}',ts='2026-10-09T10:00:00Z'}})
+      local w=api.nvim_open_win(t.buf,false,{split='right',win=require('cland.layout').centre()})
+      _G.stale_changes=0
+      api.nvim_buf_attach(t.buf,false,{on_lines=function() _G.stale_changes=_G.stale_changes+1 end})
+      api.nvim_win_set_width(w,40)
+      api.nvim_exec_autocmds('WinResized',{})
+      ${transition === 'close' ? 'api.nvim_win_close(w,true)' : 'api.nvim_win_set_buf(w,api.nvim_create_buf(false,true)); _G.reused_win=w'}
+    `);
+    assert.equal(await c.lua('return _G.stale_changes'), 0, `${transition} invalidates the queued window`);
+    if (transition === 'reuse') await c.lua('vim.api.nvim_win_close(_G.reused_win,true)');
+  }
+});
+
 async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', charting = true) {
   const root = await mkdtemp(join(tmpdir(), 'cland-thread-'));
   ownDirectory(t, root);
@@ -87,8 +328,8 @@ test('thread options follow the buffer and an arbitrary scratch split restores g
   const result = await c.lua<{ thread: Record<string, unknown>; scratch: Record<string, unknown>; defaults: Record<string, unknown>; reentered: Record<string, unknown>; reset_again: Record<string, unknown>; global_after: Record<string, unknown> }>(`
     local api=vim.api
     local win=require('cland.layout').centre()
-    local names={'statuscolumn','wrap','linebreak','breakindent','breakindentopt'}
-    local defaults={statuscolumn='',wrap=true,linebreak=false,breakindent=false,breakindentopt=''}
+    local names={'statuscolumn','wrap','linebreak','breakindent','breakindentopt','conceallevel','concealcursor'}
+    local defaults={statuscolumn='',wrap=true,linebreak=false,breakindent=false,breakindentopt='',conceallevel=0,concealcursor=''}
     for name,value in pairs(defaults) do api.nvim_set_option_value(name,value,{scope='global'}) end
     local buf=api.nvim_create_buf(false,true)
     api.nvim_win_set_buf(win,buf)
@@ -111,7 +352,7 @@ test('thread options follow the buffer and an arbitrary scratch split restores g
     api.nvim_buf_delete(buf,{force=true})
     return {thread=thread,scratch=restored,defaults=defaults,reentered=reentered,reset_again=reset_again,global_after=global_after}
   `);
-  assert.deepEqual(result.thread, { statuscolumn: '%!v:lua.ClandThreadGutter()', wrap: true, linebreak: true, breakindent: true, breakindentopt: 'list:-1' });
+  assert.deepEqual(result.thread, { statuscolumn: '%!v:lua.ClandThreadGutter()', wrap: true, linebreak: true, breakindent: true, breakindentopt: 'list:-1', conceallevel: 2, concealcursor: 'nc' });
   assert.deepEqual(result.scratch, result.defaults);
   assert.deepEqual(result.reentered, result.thread);
   assert.deepEqual(result.reset_again, result.defaults);
@@ -185,25 +426,46 @@ test('appends touch only new lines, delivery changes no text, and retention remo
 });
 
 test('200 message rewrites and steady-state appends stay within the rendering budget', { skip }, async t => {
-  const text = Array.from({ length: 8 }, (_, i) => `Line ${i}: keep T-58 whole and preserve all of this text at narrow widths.`).join('\n');
+  const text = '## Plan\nLine 1: **T-58** and `history`\n- keep words aligned under the bullet\n[brief](https://example.com/a/long/destination)\n```lua\nlocal value = 1\nprint(value)\n```';
   const c = await start(t, { messages: { general: Array.from({ length: 200 }, (_, i) => msg(`cost${i}`, i % 3 === 0 ? 'human' : 'implementer', text)) } });
-  await c.waitScreen(s => s.includes('Line 7:'), 'history loaded');
-  const costs = await c.lua<{ append: number; rewrite: number }>(`
+  await c.waitScreen(s => s.includes('print(value)'), 'history loaded');
+  const costs = await c.lua<{ append: number; rewrite: number; cold: number; coldParses: number; warmParses: number }>(`
     local t=require('cland.views').topic('general').thread
     local function median(n,fn)
       local samples={}
       for i=1,n do local start=vim.uv.hrtime(); fn(i); samples[i]=(vim.uv.hrtime()-start)/1e6 end
       table.sort(samples); return samples[math.ceil(n/2)]
     end
+    local api=vim.api
+    local original=vim.treesitter.get_string_parser
+    local parses=0
+    vim.treesitter.get_string_parser=function(...) parses=parses+1; return original(...) end
+    local win=require('cland.layout').centre()
+    local cold_thread=require('cland.thread').new({id='cold-cost',title='Cold'})
+    api.nvim_win_set_buf(win,cold_thread.buf)
+    local cold_messages=vim.deepcopy(t.messages)
+    for i,m in ipairs(cold_messages) do m.text=m.text..'\\nCold '..i end
+    local start=vim.uv.hrtime()
+    cold_thread:merge(cold_messages); vim.cmd('redraw!')
+    local cold=(vim.uv.hrtime()-start)/1e6
+    local coldParses=parses
+    api.nvim_win_set_buf(win,t.buf)
+    api.nvim_buf_delete(cold_thread.buf,{force=true})
+    parses=0
     local rewrite=median(15,function() t:render(); vim.cmd('redraw!') end)
+    local warmParses=parses
+    vim.treesitter.get_string_parser=original
     local append=median(31,function(i)
-      t:add({id='cost-new-'..i,from='human',fromKind='human',to={'coordinator'},ts='2026-10-09T10:01:00Z',text='new line\\nsecond line',stage='queued'})
+      t:add({id='cost-new-'..i,from='human',fromKind='human',to={'coordinator'},ts='2026-10-09T10:01:00Z',text='## New '..i..'\\nUse \`history\` and **T-58**',stage='queued'})
     end)
-    return {append=append,rewrite=rewrite}
+    return {append=append,rewrite=rewrite,cold=cold,coldParses=coldParses,warmParses=warmParses}
   `);
   t.diagnostic(`200 messages: append ${costs.append.toFixed(3)} ms (includes eviction); rewrite and redraw ${costs.rewrite.toFixed(3)} ms`);
-  assert.ok(costs.append < 5, `append CI budget: ${costs.append} ms`);
-  assert.ok(costs.rewrite < 75, `full rewrite CI budget: ${costs.rewrite} ms`);
+  t.diagnostic(`Cold distinct-body render ${costs.cold.toFixed(3)} ms / ${costs.coldParses} parses; warm render ${costs.warmParses} parses`);
+  assert.equal(costs.coldParses, 200);
+  assert.equal(costs.warmParses, 0);
+  assert.ok(costs.append <= 2, `append budget: ${costs.append} ms`);
+  assert.ok(costs.rewrite <= 35, `warm rewrite budget: ${costs.rewrite} ms`);
 });
 
 test('a retained answer becomes standalone when its older ask leaves the 200-message window', { skip }, async t => {
@@ -242,7 +504,7 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       marks[#marks+1]={row=m[2],col=m[3],details=m[4]}
     end
     local groups={}
-    for _,i in ipairs(t.info) do groups[#groups+1]={group=i.group,header=i.head and i.head.id,ask=i.ask and i.ask.id,artifact=i.artifact and i.artifact.id} end
+    for _,i in ipairs(t.info) do groups[#groups+1]={group=i.group,header=i.head and i.head.id,ask=i.ask and i.ask.id,artifact=i.artifact and i.artifact.id,links=i.links} end
     return {lines=vim.api.nvim_buf_get_lines(t.buf,0,-1,false),marks=marks,groups=groups}
   `;
   type Snapshot = { lines: string[]; marks: Array<Record<string, unknown>>; groups: unknown[] };
@@ -264,11 +526,13 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         messages.push({ ...msg(id), ts: `2026-10-${day.toString().padStart(2, '0')}T10:00:00Z`, ask: { state: answered ? 'answered' : 'closed', options: ['choice'], free: true, option: answered ? 1 : null } });
         if (answered) messages.push({ ...msg(`answer-${id}`, 'human', `Answer ${id}\nkept body`), ts: `2026-10-${(day + 1).toString().padStart(2, '0')}T09:00:00Z`, answerTo: id });
       }
-      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 3 === 0 ? 'human' : 'implementer', `Body ${i}\nsecond line`), ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
+      const bodies = ['Body **T-58**\n[brief](https://example.com/long/destination)', 'Body `history`\n- list text', 'Body fenced\n```lua\nprint(1)\n```', 'Body unclosed\n```sh\nnot a later message', 'Body table\n\n| Item | Description |\n|---|---|\n| T-58 | ' + 'detail '.repeat(10) + '|', 'Body multiline [the\nbrief](https://example.com/multiline)', 'Body references [brief][ref] and [ref][]\n\n[ref]: https://example.com/reference', 'Body header-only\n\n| ' + 'wide '.repeat(20) + '| **State** |\n|---|---|', 'Body duplicates [a]\n\n[a]: /first\n[a]: /second', 'Body autolinks <https://example.com> <a@example.com>', 'Body sparse\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short |\n| ' + 'long '.repeat(16) + '| present |', 'Body surplus\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short | [extra](https://example.com/extra) | [surplus](https://example.com/surplus) |\n| ' + 'long '.repeat(16) + '| present | tail |', 'Body linked headers\n\n| [Item](https://example.com/' + 'long/'.repeat(15) + ') | **State** |\n|---|---|\n| T-58 | open |'];
+      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 3 === 0 ? 'human' : 'implementer', bodies[i % bodies.length]), ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
     }
     // Cover exactly 200 messages and oversized snapshots requiring initial trimming.
     messages.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
     const c = await start(t, { messages: { general: messages.slice(0, seed === 1 ? 200 : 200 + seed) } }, 'UTC', false);
+    await c.lua(`vim.o.columns=${seed % 2 ? 80 : 120}`);
     await c.waitScreen(s => s.includes('Body'), 'generated history');
     const compare = async (label: string) => {
       const incremental = normalise(await c.lua<Snapshot>(snapshot));
@@ -288,7 +552,13 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         vim.api.nvim_buf_delete(_G.thread_oracle.buf,{force=true})
         _G.thread_oracle=nil
       `);
-      assert.deepEqual(incremental, full, label);
+      for (let i = 0; i < Math.max(incremental.lines.length, full.lines.length); i++) {
+        assert.equal(incremental.lines[i], full.lines[i], `${label}: line ${i}`);
+      }
+      assert.deepEqual(incremental.groups, full.groups, label + ': row metadata');
+      for (let i = 0; i < Math.max(incremental.marks.length, full.marks.length); i++) {
+        assert.deepEqual(incremental.marks[i], full.marks[i], `${label}: extmark ${i}`);
+      }
     };
     await compare(`seed ${seed}: initial history and trimming equal full render`);
     for (let step = 0; step < 24; step++) {
@@ -297,7 +567,7 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       const isAsk = phase === 1 || phase === 4 || phase === 6;
       const answerTo = phase === 2 || phase === 7 ? `live-${seed}-${step - 1}` : undefined;
       const append = {
-        ...msg(`live-${seed}-${step}`, isAsk ? 'coordinator' : 'human', `Live ${seed}/${step}\nbody`),
+        ...msg(`live-${seed}-${step}`, isAsk ? 'coordinator' : 'human', `Live ${seed}/${step}\n**T-58** and [brief](https://example.com/${step})\n${step % 2 ? '```lua\nprint(1)\n```' : '- list `history`'}`),
         ts: `2026-10-${day}T12:00:00Z`, answerTo,
         ...(isAsk ? { ask: { state: phase === 4 ? 'closed' : 'open', options: ['choice'], free: true } } : {}),
       };
