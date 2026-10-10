@@ -3,7 +3,7 @@ id: T-148
 kind: task
 title: "The Aide role in the hub: non-exclusive role, its exact tools and refusals, routing that keeps Aides out of broadcasts, all, Agents notices, asks and @lead"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-111
 blocked_by:
   - T-141
-topic: null
-branch: null
+topic: topic-69
+branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T05:33:00.073Z
+updated: 2026-10-10T08:41:16.330Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ The `aide` role: non-exclusive, in `.cland/roles.toml` (`[aide]`, `[aide.launch]
 ## Notes
 
 Implementer: Codex. ADRs 0001 (roles are hub-held state), 0004 (local git territory), 0003. Research `research/harness-surfaces` (where each adapter puts the role clause; Codex puts it in its first turn). References: `prototype/panels` ("yours" group and `␣A` in `panels.lua`, `palette.lua`), mockups `SessionsPanel.dc.html`, `Palette.dc.html`, `Thread.dc.html`; spec words win, then prototype behaviour, then mockups. The epic's choices where the spec is silent apply. Tests through the v0 seams: hub frame protocol, fake harnesses, headless Neovim; no new seams inside the hub. Instance lines (roles.toml) are listed exactly in the report; the Coordinator commits them.
+
+## Comments
+
+### impl-148 · 2026-10-10T08:41:16.330Z
+
+Starting slice 1: verify §3.3 against default roles, hub permission gates, named/role/all/Agents/ask delivery, and lead resolution. Instance roles.toml changes will be provided for Coordinator merge.

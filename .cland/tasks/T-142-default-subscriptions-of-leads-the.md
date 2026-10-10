@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: T-108
 blocked_by:
   - T-140
   - T-141
-topic: null
-branch: null
+topic: topic-70
+branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T01:52:19.101Z
+updated: 2026-10-10T08:41:16.815Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ Leads hold default subscriptions. The Coordinator holds the item tree less the c
 ## Notes
 
 Implementer: Codex. ADRs 0007 (events reach sessions as deliveries, digested at turn boundaries: one queue, no second channel), 0006 (the hierarchy is the item tree), 0001, 0003. Research: `research/coordinator-load` (T-82, with `analyse.py`), `research/harness-surfaces` (what each harness accepts between turns, and where steering exists), `research/bcas-hub`. Tests through the v0 seams: the hub frame protocol first, then the fake Claude Code, Codex and OpenCode in `hub/test/fakes/`; no new seams inside the hub. The epic's "choices where the spec is silent" apply. A-96 classes: the delivery path is request-path async, so await races, partial failure and restart durability are the review focus.
+
+## Comments
+
+### impl-142 · 2026-10-10T08:41:16.815Z
+
+Implementing default lead subscriptions at the existing hub protocol seam. Scope stays in subscription/hygiene code; sessions.ts and adapters remain untouched. Baseline bd9ee7c includes event hygiene and item lead routing.

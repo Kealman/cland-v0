@@ -3,7 +3,7 @@ id: T-149
 kind: task
 title: "The brief at launch: session.launch and the CLI take a brief (text or artifact), delivered once after the role clause on all three adapters, never again on reconnect"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-111
 blocked_by:
   - T-141
-topic: null
-branch: null
+topic: topic-68
+branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
-updated: 2026-10-10T05:33:00.327Z
+updated: 2026-10-10T08:41:19.109Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ T-111 (The human's own session), slice 2 of 5. Map T-81, "Settled while charting
 ## Notes
 
 Implementer: Codex. ADRs 0001 (roles are hub-held state), 0004 (local git territory), 0003. Research `research/harness-surfaces` (where each adapter puts the role clause; Codex puts it in its first turn). References: `prototype/panels` ("yours" group and `␣A` in `panels.lua`, `palette.lua`), mockups `SessionsPanel.dc.html`, `Palette.dc.html`, `Thread.dc.html`; spec words win, then prototype behaviour, then mockups. The epic's choices where the spec is silent apply. Tests through the v0 seams: hub frame protocol, fake harnesses, headless Neovim; no new seams inside the hub. Instance lines (roles.toml) are listed exactly in the report; the Coordinator commits them.
+
+## Comments
+
+### impl-149 · 2026-10-10T08:41:19.109Z
+
+Beginning implementation: launch brief text/artifact resolution, one-time role-then-brief delivery through the existing queue, native adapter and reconnect/restart coverage.

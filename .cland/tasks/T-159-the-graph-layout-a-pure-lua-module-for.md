@@ -2,8 +2,8 @@
 id: T-159
 kind: task
 title: "The graph layout: a pure Lua module for cycles, reduction, layers, dummy vertices, ordering, tracks and the tray, on a display-column canvas, vertical and sideways"
-state: open
-status: in progress
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-66
 branch: t/T-159-the-graph-layout-a-pure-lua-module-for
 created: 2026-10-10T07:49:36.464Z
-updated: 2026-10-10T08:33:08.579Z
+updated: 2026-10-10T08:45:36.103Z
 ---
 
 ## Parent
@@ -78,3 +78,27 @@ Evidence/probe: A-504, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A
 ### impl-159 · 2026-10-10T08:33:08.579Z
 
 Addressed review rev-67-159-1 / A-504 in pushed commit 5a382e019f87eae99ab21439c07d811acca718a1. Added an offset/tab/wide/combining-byte-map regression that failed before the fix (expected used7, got13); normalize C0/C1 controls to one space at width/fit/canvas entry, retaining combining marks and Unicode joiners. The exact review probe now emits '   ab Z', used4, claimed7, actual7, Z at byte6. All 12 Lua cases and typecheck pass. Also shared source-block construction and farthest-target ordering between vertical and sideways routing, addressing the low duplication note. Regenerated T-19 demo matches A-495 byte for byte. Locked test:nvim rerun is queued behind pid27640.
+
+### impl-159 · 2026-10-10T08:41:35.666Z
+
+Review fixes fully verified at pushed head 5a382e019f87eae99ab21439c07d811acca718a1. Typecheck and 12/12 pure Lua cases passed; locked test:nvim passed 213/213 with zero failures or skips (152.90s running, 333.00s lock wait). C0/C1 control normalization fixes both geometry and byte mapping; offset/tab/wide/combining regression and exact reviewer probe pass. Shared source-block construction addresses the low duplication note. T-19 demo remains byte-identical to A-495. Verification artifact A-508: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-508-t-159-review-fixes-control-normalization-and-shared-routing-verified.md. Worktree clean; returning to review.
+
+### rev-67 · 2026-10-10T08:45:14.296Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-159-2
+commit: 5a382e019f87eae99ab21439c07d811acca718a1
+
+Clear: high0/medium0/low0. Standards and Spec independently clear.
+
+A504 medium is resolved: width/fit/canvas normalize C0/C1 controls to one space before measurement/emission. Exact native ab\tZ at column3 now emits '   ab Z', used4, claimed/actual total7 and correct Z byte6. Root and independent chunk probes preserve wide/combining glyphs, byte maps and highlight ranges. The new controls case pins all65 controls, offsets and sideways geometry.
+
+A504 low duplication is resolved through shared source_blocks. Independent pinned comparison of184 renders confirms old/new text, edge ownership and geometry exactly equal, with zero ambiguous joins. Required cycles/reduction/layers/dummies/order/tracks/tray/both-orientation/purity behavior and prototype checks carry forward. Frozen T19 demo/runner unchanged; A508 reports A495 byte-identical. Full-base diff check passes.
+
+A508 and Coordinator report typecheck,12/12 pure Lua cases and test:nvim213/213 passing with no skips. Reviewer did not repeat a suite or edit files. Full-item evidence: A-509, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-509-t-159-full-item-review-at-5a382e0-clear.md
+
+### coord · 2026-10-10T08:45:36.103Z
+
+Merged 24d722365418a800350f9fcf5bfbeb9e463ceef0 onto dev.
