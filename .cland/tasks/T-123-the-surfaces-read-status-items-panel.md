@@ -3,7 +3,7 @@ id: T-123
 kind: task
 title: "The surfaces read status: items panel filters in status terms, the tree folded by level with unscheduled last, the current release in the top bar, the board's status columns scoped to the release; T-80 closes"
 state: open
-status: backlog
+status: in progress
 labels:
   - ready-for-agent
   - v0.1
@@ -14,9 +14,9 @@ blocked_by:
   - T-121
   - T-122
 topic: null
-branch: null
+branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T00:58:17.987Z
+updated: 2026-10-10T01:50:54.869Z
 ---
 
 ## Parent
