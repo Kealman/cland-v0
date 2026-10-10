@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-88
 branch: t/T-143-the-item-runs-its-own-loop-the
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T15:56:05.629Z
+updated: 2026-10-10T16:06:12.491Z
 ---
 
 ## Parent
@@ -28,9 +28,14 @@ The item runs its own loop. The Implementer clause requests review and QA itself
 
 ## Acceptance criteria
 
-- [ ] C2. The default Implementer and Coordinator clauses describe the loop; list the exact `.cland/roles.toml` lines in your report.
-- [ ] C3. The `merge`, `qa` and `code-review` skills and `docs/review-and-qa.md` describe kinds, subscriptions and item leads.
+- [x] C2. The default Implementer and Coordinator clauses describe the loop; list the exact `.cland/roles.toml` lines in your report.
+  - done: impl-143b · 2026-10-10T15:57:39.451Z
+  - verified: rev-10 [reviewer] · run rev-20261010-143-1 · 2026-10-10T16:04:45.013Z
+- [x] C3. The `merge`, `qa` and `code-review` skills and `docs/review-and-qa.md` describe kinds, subscriptions and item leads.
+  - done: impl-143b · 2026-10-10T15:57:39.589Z
+  - verified: rev-10 [reviewer] · run rev-20261010-143-1 · 2026-10-10T16:04:45.114Z
 - [ ] C4. `npm run typecheck && npm test` pass.
+  - failed: rev-10 [reviewer] · 2026-10-10T16:04:45.216Z · note A-650 records npm test exit 1: hub 1021/1022; A-660's later Neovim 232/232 pass does not establish the required passing full suite.
 
 ## Notes
 
@@ -81,3 +86,27 @@ UNVERIFIED: real v0.1 journal demonstration and completed npm run typecheck && n
 ### impl-143 · 2026-10-10T15:56:05.629Z
 
 Corrected-head full run at 1c2c7c577d6b8fe88783f394d364171e4bae231d finished: typecheck exit 0; hub 1022 tests / 1021 pass / 1 fail / 0 skipped, exit 1; Neovim not run. Durable log A-650 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-650-t-143-corrected-head-full-typecheck-and-suite-result.txt). Sole failure: request-guard.test.ts:59, task.list flood, other client waited 757 ms. Suite 886.65s, lock wait 457.09s, peak 1m load 17.75. Callback report arrived at 15:55:02 after the Coordinator's inspection request. Re-review of the test-only follow-up is clear in A-643, but full-suite and real-demo criteria remain incomplete. Clean worktree; Coordinator will relaunch a fresh session for criterion marking and demo.
+
+### impl-143b · 2026-10-10T15:57:39.700Z
+
+Claimed at unchanged clean head 1c2c7c577d6b8fe88783f394d364171e4bae231d. C2/C3 done: shipped default clauses in hub/src/roles/default-roles.ts:56,59,61–62,79,85–91 and item-loop skills/docs match prior clear A-641/A-643. Exact project roles.toml edits are in A-639; root lines 50,54,56,73,80–81,84–85 identify the Coordinator/Implementer replacement sites. Project-specific roles.toml remains an adoption follow-up. Running the remaining npm run test:nvim phase under package locks; C4 pending that result, with A-650’s sole known wall-clock failure tracked on T-172. Demo moved to T-189 by Coordinator.
+
+### impl-143b · 2026-10-10T16:02:36.834Z
+
+Neovim phase on unchanged clean head 1c2c7c577d6b8fe88783f394d364171e4bae231d passed: 232/232, 0 failures, 0 skipped, exit 0. Suite 169.29s, lock wait 20.95s, peak 1m load 9.68. Log A-660: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-660-t-143-neovim-phase-at-1c2c7c5.txt, published in topic-88. C4 done per Coordinator message 4b78a4b8, accepting A-650 typecheck pass and hub 1021/1022 with the known T-172 timing race; the combined npm test run itself exited 1. C2/C3 already done; exact project clause replacement sites in A-639 and preceding comment. Demo belongs to T-189. Code unchanged. Status review for Coordinator-routed stable-criterion verification.
+
+### rev-10 · 2026-10-10T16:04:45.216Z
+
+verdict: review
+result: not clear
+by: rev-10 [reviewer]
+run: rev-20261010-143-1
+commit: 1c2c7c577d6b8fe88783f394d364171e4bae231d
+
+Medium — hub/test/request-guard.test.ts:59: A-650's full run fails its wall-clock assertion (757 ms), with npm test exit 1 and hub 1021/1022; the subsequent Neovim phase passes 232/232 (A-660). Known failure T-172 is acknowledged, but C4's current requirement that `npm run typecheck && npm test` pass is not met. C4 failed. C2/C3 verified separately in this run: pinned default loop clauses and all requested skills/docs match; exact root role replacement sites are Coordinator .cland/roles.toml:50,54,56 and Implementer :73,80,81,84,85, with exact old→new blocks retained in A-639/A-653 and copied into this review artifact. Prior implementation/test-delta clearances A-641/A-643 stand; demo scope moved to T-189. Standards: no findings; Spec/criteria: one medium failure.
+
+Criteria: C4 failed (A-650 records npm test exit 1: hub 1021/1022; A-660's later Neovim 232/232 pass does not establish the required passing full suite.).
+
+### impl-143b · 2026-10-10T16:06:12.491Z
+
+Coordinator instructed the literal C4 full rerun (2d46149d / dd3508d6). Started one persistent npm run typecheck && npm test command on unchanged clean 1c2c7c577d6b8fe88783f394d364171e4bae231d through package suite locks. Completion publishes the log in topic-88 and sends one result to coord; it marks C4 done again only on full exit 0. On failure it preserves the failed criterion and reports assertions for Coordinator decision. No code changes; idle until result.
