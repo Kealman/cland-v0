@@ -238,6 +238,26 @@ function cases.t19()
   end
 end
 
+function cases.sizing()
+  local original = G.from_items(fixture())
+  for _, width in ipairs({85, 120, 125, 160, 165, 200}) do
+    local L, W, origin = G.fit_window(original, width - 6, 20, 40)
+    local cv, geometry = G.render(L, {width=W, pack=true, measure=measure})
+    readable(cv)
+    eq(#L.chains,32); eq(L.edges,36); eq(#L.hidden,4)
+    eq(#original.layers,10)
+    for _, id in ipairs(original.nodes) do
+      assert(geometry.nodes[id], 'every linked node survives fitting')
+      assert(geometry.nodes[id].col + W <= width - 6, 'label fits at '..width)
+    end
+    for _, chain in ipairs(L.chains) do
+      assert(L.layer[chain.from] < L.layer[chain.to], 'blockers remain before their dependants')
+    end
+    assert(#origin == #L.layers)
+    if width == 85 then assert(#L.layers > 10, 'narrow window continues wide layers') end
+  end
+end
+
 local name = assert(arg[1], 'name a unit case')
 assert(cases[name], 'unknown case '..name)()
 io.write('passed: '..name..'\n')

@@ -1080,12 +1080,80 @@ function M.from_items(items, opts)
   return L
 end
 
+--- Fit vertical bands to a window, continuing wide layers below themselves.
+--- Rebuild only the drawn edges; retain the original reduction/cycle diagnostics.
+--- Returns a drawing layout, label width and original layer per drawing band.
+function M.fit_window(L, room, minimum, maximum)
+  local reals, nodes, edges, reserve = {}, {}, {}, {}
+  for l, ids in ipairs(L.layers) do
+    reals[l], reserve[l] = {}, 0
+    for _, id in ipairs(ids) do
+      if is_dummy(id) then reserve[l] = reserve[l] + 2
+      else reals[l][#reals[l] + 1] = id; nodes[#nodes + 1] = id end
+    end
+  end
+  for _, ch in ipairs(L.chains) do edges[#edges + 1] = { ch.from, ch.to } end
+  local function fits(lay, W)
+    local pos = M.rows(lay, function() return W + 2 end, nil, true)
+    for _, ids in ipairs(lay.layers) do
+      for _, id in ipairs(ids) do
+        if pos[id] + (is_dummy(id) and 1 or W + 2) > room then return false end
+      end
+    end
+    return true
+  end
+  local origin = {}
+  for l in ipairs(L.layers) do origin[l] = l end
+  minimum = math.max(1, math.min(minimum, room - 2))
+  maximum = math.max(minimum, math.min(maximum, room - 2))
+  for W = maximum, minimum, -1 do
+    if fits(L, W) then return L, W, origin end
+  end
+  local function wrap(W)
+    local reserved_columns, lay, original_layer = { unpack(reserve) }, nil, nil
+    -- Added pass-through dummies consume space too. Recut until their reserved
+    -- space settles, bounded by the number of real nodes.
+    for _ = 1, #nodes + 1 do
+      local ranks, base = {}, 0
+      original_layer = {}
+      for l, ids in ipairs(reals) do
+        local row, used = 1, 0
+        for _, id in ipairs(ids) do
+          if used > 0 and used + W + 3 > room - reserved_columns[l] then row, used = row + 1, 0 end
+          ranks[id], used = base + row, used + W + 3
+        end
+        for k = 1, row do original_layer[base + k] = l end
+        base = base + row
+      end
+      lay = M.layout(nodes, edges, { rank = ranks, keep_order = true, reduce = false })
+      if fits(lay, W) then break end
+      local changed = false
+      for l, ids in ipairs(lay.layers) do
+        local n = 0
+        for _, id in ipairs(ids) do if is_dummy(id) then n = n + 1 end end
+        if 2 * n > reserved_columns[original_layer[l]] then reserved_columns[original_layer[l]], changed = 2 * n, true end
+      end
+      if not changed then break end
+    end
+    lay.nodes, lay.tray, lay.outside = L.nodes, L.tray, L.outside
+    lay.hidden, lay.cycles, lay.edges = L.hidden, L.cycles, L.edges
+    return lay, original_layer
+  end
+  local best, from = wrap(minimum)
+  for W = maximum, minimum + 1, -1 do
+    local lay, at = wrap(W)
+    if #lay.layers <= #best.layers and fits(lay, W) then return lay, W, at end
+  end
+  return best, minimum, from
+end
+
 --- Render either orientation from the same layout, including the tray below it.
 --- opts.label(id, width) returns lines of {text, highlight} chunks, with the first
 --- cell reserved as the node's edge port. Following lines leave that cell empty.
 --- The default label is the id. Width defaults to 24 display columns; labels are
 --- clipped to it. opts.measure supplies Unicode display widths. top/left are
---- zero-based offsets; tray_columns defaults to 3. No window sizing or folding.
+--- zero-based offsets; tray_columns defaults to 3. opts.pack starts each band
+--- at its left edge instead of aligning it towards neighbouring bands. No folding.
 --- Returns the canvas and geometry: nodes (row/col/width/height/tray), positions
 --- along each layer, and drawing bounds. Canvas:render returns text and byte maps.
 function M.render(L, opts)
@@ -1111,7 +1179,7 @@ function M.render(L, opts)
     end
   end
   for _, id in ipairs(L.tray or {}) do prepare(id) end
-  local pos = M.rows(L, function(id) return vertical and (W + 2) or heights[id] end)
+  local pos = M.rows(L, function(id) return vertical and (W + 2) or heights[id] end, nil, opts.pack)
   local draw_opts = {
     top = opts.top or 0, left = opts.left or 0, width = W,
     label_width = function(id) return widths[id] end,

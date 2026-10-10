@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { nvimOrSkip } from './harness.ts';
 
 const nvim = await nvimOrSkip();
-const cases = ['cycles', 'reduction', 'layers', 'ordering', 'positions', 'tracks', 'tray', 'canvas', 'controls', 'orientations', 'dense', 't19'];
+const cases = ['cycles', 'reduction', 'layers', 'ordering', 'positions', 'tracks', 'tray', 'canvas', 'controls', 'orientations', 'dense', 't19', 'sizing'];
 for (const name of cases) {
   test(`graph layout: ${name}`, { skip: 'skip' in nvim ? nvim.skip : false }, () => {
     if (!('bin' in nvim)) return;

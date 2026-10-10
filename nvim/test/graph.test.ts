@@ -236,7 +236,7 @@ test('sideways scrolling keeps the selected label visible at 80 columns, includi
   await c.input('<CR>'); await c.waitScreen(s => s.includes('T-17 NODE 17'), 'item opens');
   await c.input('<Space><Space>'); await node(c, 'T-17'); visible(await view());
   await c.rpc.request('nvim_ui_try_resize', 120, 45);
-  await waitRendered(c, "return require('cland.graph').model.nodes['T-17'].width", v => v === 40, 'resized nodes');
+  await waitRendered(c, "return require('cland.graph').window_width", v => v === 120, 'resized graph window');
   visible(await view());
   await node(c, 'T-10', '^'); visible(await view());
 });

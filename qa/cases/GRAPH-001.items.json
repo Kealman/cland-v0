@@ -1,0 +1,1732 @@
+{
+  "source": "T-86 frozen T-19 topology (44 children, 22 linked, 36 edges); native fields from task.list/task.view, 2026-10-10. Later unlinked tail items are excluded.",
+  "items": [
+    {
+      "id": "T-21",
+      "kind": "task",
+      "title": "Repository skeleton and the BCAS hub core extracted",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 210,
+      "blocked_by": [],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "`hub/` builds with Node 24 and TypeScript by type stripping (no build step) and its test suite passes, driving a real spoke and a real hub as BCAS did",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "No reference to Discord, evidence, boards, slots, SRE or BCAS owner names remains in `hub/`",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`cland --version` prints a version from the repo root",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`docs/` gains a short `hub/README.md` or equivalent note describing the extracted modules and what was dropped, with a pointer to the BCAS research",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Nothing in the repo contains machine paths or secrets",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-22",
+      "kind": "task",
+      "title": "Per-project hub daemon with discovery and secret",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 220,
+      "blocked_by": [
+        "T-21"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Starting the hub twice in one project is idempotent; the second call reports the running daemon",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A spoke connects using only the discovery file and the secret; a wrong secret is refused",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The hub outlives the shell that started it; `cland hub status` shows it from a new shell",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The volatile files are ignored by git through the managed `.cland/.gitignore`; nothing under `.cland/` other than `tasks/`, `roles.toml`, `config.toml` and `.gitignore` is meant to be committed",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests start a real hub in a temporary project and connect a real spoke through discovery",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-23",
+      "kind": "task",
+      "title": "General topic over the UI socket with a minimal Neovim client",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 230,
+      "blocked_by": [
+        "T-22"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "General and Agents exist after the first start and cannot be deleted or renamed",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A message typed in the Neovim client reaches a test spoke as a `deliver` with topic id and title; its stage shows `queued` while no spoke is connected and `delivered` once a spoke accepts it",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A message from the spoke appears in the client's thread within one event round trip, with sender name and time",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The same frames work over stdio when the client spawns the hub as a child process (test with a stub hub)",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The client loads nothing from the user's own Neovim configuration (`:scriptnames` shows only the bundled runtime and cland's files)",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests: a real hub plus a scripted UI client over the socket; a headless Neovim driven by `nvim_input` with `screenstring()` asserting the thread text",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-24",
+      "kind": "task",
+      "title": "Claude Code adapter: spawn, attach, inject and state",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 240,
+      "blocked_by": [
+        "T-23"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "From the Neovim client, a human message in General reaches a real Claude Code session; the stage shows `injected` once the mod submits it; the reply appears in the thread",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The session's state changes are visible in the hub (`busy` during a turn, `idle` after, `waiting for approval` on a permission prompt) and come from hooks or the mod, never from the model's self-report",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`attach_command` returns a command that, run in a terminal, attaches to the live session; two attached clients work",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "After a hub restart, `resume` re-finds the running session through the process table and reconnects state reporting",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The capability table declares what the adapter cannot do (for example approval relay) instead of emulating it",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests drive the adapter against a fake Claude Code (a fake harness process honouring the hooks and the mod surface); one manual smoke run against the real harness is recorded in the ticket",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-25",
+      "kind": "task",
+      "title": "Workbench shell in Neovim",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 250,
+      "blocked_by": [
+        "T-24"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "`cland` from the repo root opens the workbench on General with the Claude Code session visible in the sessions panel; Enter attaches it in the centre; `:restart` re-attaches rather than kills it",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Panels toggle with the keys of `WORKBENCH.md`; pressing the active right-panel key hides the panel; the state line always names the centre view",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Shift+Enter inserts a newline in the composer and reaches a harness TUI in a terminal buffer as the kitty CSI-u sequence; pasting text with tabs into a terminal buffer keeps the tabs",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "No hit-enter prompt can be triggered by hub events; UI updates land while the user is typing",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Headless tests drive the shell with `nvim_input` and assert `screenstring()` for each panel toggle and view switch against a stub hub over stdio",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-26",
+      "kind": "task",
+      "title": "Codex adapter",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 260,
+      "blocked_by": [
+        "T-24"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "A Codex session spawned from the hub appears in the registry with its state; a message to it from General is `injected` and its reply comes back",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`attach_command` opens the real Codex TUI on the hub-owned thread; a Neovim restart leaves the thread running",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "No `-c` override or `--profile` is ever passed to the Codex TUI process",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "State transitions `idle` \u2192 `active` \u2192 `waiting for approval` \u2192 `idle` are observed from the app-server, not inferred",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests run against a fake Codex app-server speaking JSON-RPC on a Unix socket; one manual smoke run against the real harness is recorded",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-27",
+      "kind": "task",
+      "title": "OpenCode adapter",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 270,
+      "blocked_by": [
+        "T-24"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "An OpenCode session spawned from the hub receives a General message as `injected` and replies into the thread",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The capability table marks `waiting for human` as heuristic and the UI shows that qualifier",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`attach_command` opens the OpenCode TUI on the hub's session; the session survives a Neovim restart",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A pending permission in OpenCode shows as `waiting for approval` in the hub within one event",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests run against a fake OpenCode server (HTTP plus SSE); one manual smoke run against the real harness with a free model is recorded",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-28",
+      "kind": "task",
+      "title": "Session launcher and the sessions panel",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 280,
+      "blocked_by": [
+        "T-25",
+        "T-26",
+        "T-27"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Launching Claude Code, Codex and OpenCode sessions from the UI works with the model chosen at launch; each appears in the panel with live state",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Enter attaches the selected session in the centre; `C-v` attaches in a split; `x` stops it after confirmation",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The panel shows `unknown` for a session whose process died and a journal event is written",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The picker's sessions kind filters by name, role and harness and attaches on Enter",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Headless tests cover launch, attach command resolution, stop and the capability display against fake harnesses",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-29",
+      "kind": "task",
+      "title": "Roles config and clause delivery",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 290,
+      "blocked_by": [
+        "T-28"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Assigning a role delivers its clause to the session as a hub event; the journal shows the delivery; a reconnect of the session delivers it again",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A second Coordinator assignment is refused with a reason; revoking the only Coordinator shows the vacancy warning within one event",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A session launched for a role uses the role's launch defaults from `roles.toml`; editing the file changes the next launch",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The sessions panel, the picker and the top bar show the role with the name",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests cover assignment, exclusivity, clause redelivery on reconnect and the vacancy warning against fake harnesses",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-30",
+      "kind": "task",
+      "title": "Hub permissions by role and the audit log",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 300,
+      "blocked_by": [
+        "T-29"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "A refused call returns a typed error naming the missing permission; the UI shows it in the Agents topic",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Every call, allowed or refused, appears in the journal with session, role, tool and outcome",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Changing a session's role changes its permissions on the next call without a reconnect",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests exercise every row of the table for every role with a real hub and scripted spokes",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-31",
+      "kind": "task",
+      "title": "Role handover with a note",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 310,
+      "blocked_by": [
+        "T-30"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "A handover from session A to session B moves the Coordinator role atomically: B receives clause plus note, A receives \"role revoked\", the Agents topic shows both events",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A handover without a note from the Coordinator is refused; from the human it is allowed",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "After the handover, B's `history` and the role-state query return the topics waiting for an agent and the claims held by the role",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests cover handover, refusal without a note, revocation mid-turn and the state pull against fake harnesses",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-32",
+      "kind": "task",
+      "title": "Topic model: statuses, bindings, creation and mentions",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 320,
+      "blocked_by": [
+        "T-25",
+        "T-29"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Status follows direction: a human message sets `waiting for agent`, an agent reply sets `open`; `resolve` clears a wait",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`@reviewer` in a message reaches the session holding Reviewer and its reply appears in the same topic; `@name` reaches that session",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A message to a vacant Coordinator is queued and delivered when a Coordinator is assigned; the topic shows the warning meanwhile",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "An agent-created topic requires a title; a second topic for the same unit of work is refused",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The topics panel and picker show statuses, unread counts and pinning as in the design; headless tests assert the screen",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-33",
+      "kind": "task",
+      "title": "Asks and the inbox",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 330,
+      "blocked_by": [
+        "T-32"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Only a session holding Coordinator can post an ask; others are refused with a typed error",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Answering with `2` from the inbox posts the answer with `answer_to`, clears the topic's wait and removes the row; the thread shows the answer under the card",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A session entering `waiting for approval` appears under approvals within one event and disappears when the state changes; Enter attaches it",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Notifications dismiss with `d` and `D` and never block anything; asks and approvals cannot be dismissed",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The \"needs you\" count equals asks plus approvals plus waiting topics; headless tests assert the inbox sections and the count",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-34",
+      "kind": "task",
+      "title": "Agents topic, journal and hygiene",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 340,
+      "blocked_by": [
+        "T-32"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Two sessions exchanging messages show up in Agents with sender, role and time; the human's own topics show nothing of it",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A looping pair trips the breaker at the configured threshold, both see a typed refusal, the Agents topic shows the mute, and the mute survives a hub restart",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Changing a threshold in `config.toml` takes effect on the next hub start",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The journal file contains every event and audit line as JSON lines and is append-only across restarts",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests cover the breaker, persistence of mutes and the Agents view against a real hub",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-35",
+      "kind": "task",
+      "title": "Tracker items as files with the hub index and the cland task CLI",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 350,
+      "blocked_by": [
+        "T-22"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "`cland task create` writes a file with the frontmatter and a sequential id; `cland task list --state open --label x` queries the index",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Editing a file by hand updates the index within a second; a concurrent hub write and hand edit end with the last writer's content and a journal note",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`cland task claim T-12` records a claim in the hub without touching the file; `cland task view T-12` shows both assignee and claim",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A verdict comment with the structured header is stored in the file and queryable through the index (`cland task list --verdict review=clear`)",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests drive the CLI against a real hub in a temporary project and assert on the files and the index",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-36",
+      "kind": "task",
+      "title": "Items panel, item view and board",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 360,
+      "blocked_by": [
+        "T-35",
+        "T-32",
+        "T-25"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "The tree reflects the files within a second of a change; filters and the map grouping match the design's rules",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "From an item, `gt` opens its topic (creating none; the topic appears when the first message about the item arrives) and `gs` attaches the claiming session; from a topic, `gi` opens the bound item",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The board's columns derive from state, claims and verdicts without a stored workflow status",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Headless tests assert the panel, the view and the board text for a fixture set of items against a real hub",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-37",
+      "kind": "task",
+      "title": "Skills on the own tracker",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 370,
+      "blocked_by": [
+        "T-35"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "`to-tickets` run in a test project creates items with parent and blocked-by edges in `.cland/tasks` through `cland task`",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`wayfinder` creates a map item and child items, claims through the assignee and finds the frontier through the CLI",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`triage` applies the configured labels through `cland task edit`",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Every patch to a vendored skill is listed in a `skills/PATCHES.md` note with the reason",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The `docs/agents/issue-tracker.md` template is the one `cland init` will provision",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-38",
+      "kind": "task",
+      "title": "Migration of GitHub Issues into .cland/tasks",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 380,
+      "blocked_by": [
+        "T-37"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "Importing a test repository with sub-issues and blocked-by edges reproduces parent and `blocked_by` in the frontmatter and the comments in the files",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Re-running the import changes nothing when GitHub has not changed",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Run once on the cland repo: every open issue has an item, and `docs/agents/issue-tracker.md` on `main` describes `cland task`",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The run and its counts are recorded in a comment on this ticket",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-39",
+      "kind": "task",
+      "title": "cland init and managed files",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 390,
+      "blocked_by": [
+        "T-24",
+        "T-29",
+        "T-37"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "`cland init` on an empty repo and on a repo with its own `AGENTS.md`, `CLAUDE.md` and `.claude/settings.json` leaves user content intact and adds only managed parts",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Running `cland init` twice changes nothing; `cland update` after a version bump rewrites only managed parts",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A session launched in the initialised project reads the generic instructions from `AGENTS.md` under all three harnesses (Claude Code through the import when `CLAUDE.md` exists)",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "`git status` after init shows only the committed set (`tasks/`, `roles.toml`, `config.toml`, `.gitignore`, skills, docs, `AGENTS.md`, hooks)",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests run init and update on fixture repos and diff the results",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-40",
+      "kind": "task",
+      "title": "cland doctor",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 400,
+      "blocked_by": [
+        "T-39"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "On a healthy machine every check passes; removing the hub's discovery file or breaking the skills symlink produces a named failure with the fix",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A harness version outside the tested range is reported as a warning, not a failure",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The output is plain text suitable for pasting into an item comment",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Tests fake each failure condition and assert the report",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-41",
+      "kind": "task",
+      "title": "Review and QA through the roles",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 410,
+      "blocked_by": [
+        "T-26",
+        "T-30",
+        "T-35"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "A review request from the Coordinator reaches a real Codex session holding Reviewer; its verdict comment lands on the item with the structured header; the item view shows \"review clear\" or \"not clear\"",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The same for QA with astra, including one headless Neovim check in its run",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "A verdict written by a session not holding the role is refused by the hub",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The fallback path through `/codex:rescue` is documented in the Reviewer and QA clauses and tried once",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The run is recorded in a comment on this ticket with the item used",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-42",
+      "kind": "task",
+      "title": "Dogfooding: the first real cland task inside cland",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 420,
+      "blocked_by": [
+        "T-31",
+        "T-33",
+        "T-34",
+        "T-36",
+        "T-38",
+        "T-40",
+        "T-41"
+      ],
+      "assignee": "Kealman",
+      "claim": null,
+      "topic": null,
+      "criteria": [
+        {
+          "id": null,
+          "text": "One real item of the cland project is taken from claim to verdicts entirely inside cland, with the three harnesses in their roles",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "At least one ask was raised by the Coordinator and answered from the inbox; at least one role handover or reconnect happened without losing the thread",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "Every blocker found is either fixed in this ticket or filed as an item with a link here",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        },
+        {
+          "id": null,
+          "text": "The human confirms in a comment that cland replaced the previous set of tools for that task",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ]
+    },
+    {
+      "id": "T-43",
+      "kind": "task",
+      "title": "cland inbox and cland topic answer: answer an ask from the CLI",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 430,
+      "blocked_by": [],
+      "assignee": "impl-43b",
+      "claim": null,
+      "topic": "topic-1",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-43 [qa]",
+          "run": "qa-2026-10-08-43-1",
+          "author": "qa-43",
+          "at": "2026-10-08T19:44:24.284Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-44",
+      "kind": "task",
+      "title": "cland CLI: find the hub from a worktree of the project",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 440,
+      "blocked_by": [],
+      "assignee": "impl-44",
+      "claim": null,
+      "topic": "topic-3",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-1 [qa]",
+          "run": "qa-2026-10-09-T44-1",
+          "author": "qa-1",
+          "at": "2026-10-09T06:51:09.970Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-45",
+      "kind": "task",
+      "title": "spoke session.launch: accept cwd, so the Coordinator can launch a session in a worktree",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 450,
+      "blocked_by": [],
+      "assignee": "impl-45",
+      "claim": null,
+      "topic": "topic-4",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-1 [qa]",
+          "run": "qa-2026-10-09-T45-1",
+          "author": "qa-1",
+          "at": "2026-10-09T06:39:15.633Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-46",
+      "kind": "task",
+      "title": "OpenCode: a deprecated default free model fails every turn, and the failure is silent",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 460,
+      "blocked_by": [],
+      "assignee": "impl-46",
+      "claim": null,
+      "topic": "topic-5",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-3 [reviewer]",
+          "run": "rev-20261009-46-9a73ec4",
+          "author": "rev-3",
+          "at": "2026-10-09T08:07:00.337Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-47",
+      "kind": "task",
+      "title": "Session usage: a running total per session, the same meaning for every adapter",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 470,
+      "blocked_by": [],
+      "assignee": "impl-47",
+      "claim": null,
+      "topic": "topic-6",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-1 [qa]",
+          "run": "qa-2026-10-09-T47-1",
+          "author": "qa-1",
+          "at": "2026-10-09T07:22:34.056Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-48",
+      "kind": "task",
+      "title": "Codex sessions launched by cland: approvals auto-approved and a per-role sandbox, so no check or commit waits on the human",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 480,
+      "blocked_by": [],
+      "assignee": "impl-48",
+      "claim": null,
+      "topic": "topic-2",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-2 [qa]",
+          "run": "qa-2026-10-09-T48-1",
+          "author": "qa-2",
+          "at": "2026-10-09T07:42:02.352Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-49",
+      "kind": "task",
+      "title": "cland CLI with a session identity: the hub refuses the human-only commands",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 490,
+      "blocked_by": [],
+      "assignee": "impl-48",
+      "claim": null,
+      "topic": "topic-7",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-3 [qa]",
+          "run": "qa-2026-10-09-T49-1",
+          "author": "qa-3",
+          "at": "2026-10-09T07:51:29.730Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-50",
+      "kind": "task",
+      "title": "A message injected into a Codex session in the last second of its turn is marked injected but never acted on",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 500,
+      "blocked_by": [],
+      "assignee": "impl-50",
+      "claim": null,
+      "topic": "topic-9",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-7 [reviewer]",
+          "run": "rev-2026-10-09-T50-resolution-1",
+          "author": "rev-7",
+          "at": "2026-10-09T10:12:19.299Z",
+          "commit": "57b08abae645b04c7cff6da58ce003408abcaeb2",
+          "source": "hub",
+          "writer": {
+            "sessionId": "e5f0fff4-4890-4792-af63-9653aa2c1821",
+            "role": "reviewer"
+          },
+          "current": true
+        }
+      ]
+    },
+    {
+      "id": "T-51",
+      "kind": "task",
+      "title": "A Codex session's spoke replaced with no attach behind it: the session's tool calls then fail silently until a stop and relaunch",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 510,
+      "blocked_by": [],
+      "assignee": "impl-51",
+      "claim": null,
+      "topic": "topic-8",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-5 [qa]",
+          "run": "qa-2026-10-09-t51-2",
+          "author": "qa-5",
+          "at": "2026-10-09T09:13:53.727Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-52",
+      "kind": "task",
+      "title": "OpenCode launch with no model on a cold catalog picks the first listed free model before the Zen models arrive",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 520,
+      "blocked_by": [],
+      "assignee": "impl-52",
+      "claim": null,
+      "topic": "topic-17",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-12 [qa]",
+          "run": "qa-12-52-1",
+          "author": "qa-12",
+          "at": "2026-10-09T12:07:29.791Z",
+          "commit": "61a5e0659188d29f29c37d5273a2ced895820e23",
+          "source": "hub",
+          "writer": {
+            "sessionId": "941a6435-105f-4693-8913-c2e4cddbee21",
+            "role": "qa"
+          },
+          "current": true
+        }
+      ]
+    },
+    {
+      "id": "T-65",
+      "kind": "task",
+      "title": "Codex Implementer and QA sessions run with full access by default: any work a role needs, on any harness",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 650,
+      "blocked_by": [],
+      "assignee": "impl-65",
+      "claim": null,
+      "topic": "topic-15",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-9 [qa]",
+          "run": "qa-2026-10-09-T65-1",
+          "author": "qa-9",
+          "at": "2026-10-09T09:29:19.923Z",
+          "source": "file",
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-66",
+      "kind": "task",
+      "title": "Under load the items tree reverted to an earlier snapshot after live updates: a late full list overwriting newer events?",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 660,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-34",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-6 [reviewer]",
+          "run": "rev-6-66-2",
+          "author": "rev-6",
+          "at": "2026-10-09T18:32:06.796Z",
+          "commit": "1cf752b94aa8fefb0d9fabed86fb6445391aef73",
+          "source": "hub",
+          "writer": {
+            "sessionId": "dcf6f54e-2cad-4338-90e7-0b83e9dc7fb3",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-68",
+      "kind": "task",
+      "title": "Codex redelivery (T-50) fires on every delivery to an idle session: the thread check reads userMessage items only, and hub_event tool outputs never match",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 200,
+      "blocked_by": [],
+      "assignee": "impl-68",
+      "claim": null,
+      "topic": "topic-19",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-7 [reviewer]",
+          "run": "rev-7-68-3",
+          "author": "rev-7",
+          "at": "2026-10-09T11:23:33.546Z",
+          "commit": "22e01d323f428f252887551759113f118aef7673",
+          "source": "hub",
+          "writer": {
+            "sessionId": "e5f0fff4-4890-4792-af63-9653aa2c1821",
+            "role": "reviewer"
+          },
+          "current": true
+        }
+      ]
+    },
+    {
+      "id": "T-69",
+      "kind": "task",
+      "title": "The test harness takes a machine-wide lock before spawning daemons, runs the hub suite at bounded concurrency, and kills its daemons on failure",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 690,
+      "blocked_by": [],
+      "assignee": "impl-69",
+      "claim": null,
+      "topic": "topic-20",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-12 [qa]",
+          "run": "qa-12-69-2",
+          "author": "qa-12",
+          "at": "2026-10-09T13:16:21.849Z",
+          "commit": "e06f9cce68d4522f5cba4e198cae074a6badd529",
+          "source": "hub",
+          "writer": {
+            "sessionId": "941a6435-105f-4693-8913-c2e4cddbee21",
+            "role": "qa"
+          },
+          "current": true
+        }
+      ]
+    },
+    {
+      "id": "T-70",
+      "kind": "task",
+      "title": "Orphan harness servers and hub daemons: session stop ends the server, doctor and hub start sweep what no session owns",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 700,
+      "blocked_by": [],
+      "assignee": "impl-70",
+      "claim": null,
+      "topic": "topic-23",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-6 [reviewer]",
+          "run": "rev-6-70-4",
+          "author": "rev-6",
+          "at": "2026-10-09T15:11:36.652Z",
+          "commit": "bd9f9a00fc3e08b744d7ed29a83698f4756c8225",
+          "source": "hub",
+          "writer": {
+            "sessionId": "dcf6f54e-2cad-4338-90e7-0b83e9dc7fb3",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-74",
+      "kind": "task",
+      "title": "The Coordinator's tracker and docs commits have no sanctioned path to the territory's dev: the hook refuses them, and the only workaround is the raw marker",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 740,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-31",
+      "verdicts": [
+        {
+          "verdict": "qa",
+          "result": "not clear",
+          "by": "qa-12 [qa]",
+          "run": "qa-12-74-1",
+          "author": "qa-12",
+          "at": "2026-10-09T17:58:26.897Z",
+          "commit": "f79164bcf0ab91c3af0f97a2c68e74e4706ecc24",
+          "source": "hub",
+          "writer": {
+            "sessionId": "941a6435-105f-4693-8913-c2e4cddbee21",
+            "role": "qa"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-75",
+      "kind": "task",
+      "title": "Shared synchronous I/O on every hub request: the permission check reads roles.toml and the journal writes with writeSync",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 750,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-32",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-6 [reviewer]",
+          "run": "rev-6-75-4",
+          "author": "rev-6",
+          "at": "2026-10-09T18:01:13.963Z",
+          "commit": "7fc47c3d427638162d205d315446425b17dbec48",
+          "source": "hub",
+          "writer": {
+            "sessionId": "dcf6f54e-2cad-4338-90e7-0b83e9dc7fb3",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-76",
+      "kind": "task",
+      "title": "Orphan sweep misses the live app-server of a session recorded as exited",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 760,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-33",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-65 [reviewer]",
+          "run": "rev-65-76-6",
+          "author": "rev-65",
+          "at": "2026-10-09T19:26:15.490Z",
+          "commit": "9ab3009b86eb6ee1af3193519016d24bed5ff162",
+          "source": "hub",
+          "writer": {
+            "sessionId": "ac380950-372f-4563-8c77-e47ac82a8818",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-77",
+      "kind": "task",
+      "title": "Tracker writes on hub request paths still use synchronous fs: item commits in Tracker's atomic write",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 770,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-35",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-6 [reviewer]",
+          "run": "rev-6-77-3",
+          "author": "rev-6",
+          "at": "2026-10-09T19:33:27.519Z",
+          "commit": "591650783eb0a2ba49f2a45af899d05a75d43c9e",
+          "source": "hub",
+          "writer": {
+            "sessionId": "dcf6f54e-2cad-4338-90e7-0b83e9dc7fb3",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-78",
+      "kind": "task",
+      "title": "Merge, worktree and release checks still read items through the tracker's synchronous view",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 780,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-37",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-65 [reviewer]",
+          "run": "rev-65-78-4",
+          "author": "rev-65",
+          "at": "2026-10-09T21:52:44.142Z",
+          "commit": "aa84c7fd90004ab52e57f0a5d54243f00488e3ef",
+          "source": "hub",
+          "writer": {
+            "sessionId": "ac380950-372f-4563-8c77-e47ac82a8818",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-79",
+      "kind": "task",
+      "title": "Harness adapters do synchronous fs while spawning a session: Codex mkdirSync, rmSync, openSync and closeSync on launch",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 790,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": "topic-40",
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-6 [reviewer]",
+          "run": "rev-6-79-4",
+          "author": "rev-6",
+          "at": "2026-10-09T22:27:47.002Z",
+          "commit": "a2ec3ceae16b38b5ac52793ecd52158f798d089c",
+          "source": "hub",
+          "writer": {
+            "sessionId": "dcf6f54e-2cad-4338-90e7-0b83e9dc7fb3",
+            "role": "reviewer"
+          },
+          "current": false
+        }
+      ]
+    },
+    {
+      "id": "T-80",
+      "kind": "task",
+      "title": "Items panel: the \"in work\" filter hides items between review and QA and planned items",
+      "parent": "T-19",
+      "state": "closed",
+      "status": "done",
+      "rank": 800,
+      "blocked_by": [],
+      "assignee": null,
+      "claim": null,
+      "topic": null
+    }
+  ]
+}

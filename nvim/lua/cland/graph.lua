@@ -5,7 +5,7 @@ local bit = require('bit')
 local state = require('cland.state')
 local items = require('cland.items')
 local G = require('cland.graph_layout')
-local M = { tray_done = false, orient = 'vertical', reduce = true, sel = {} }
+local M = { tray_done = false, orient = 'vertical', reduce = true, sel = {}, vmin = 20, width = 30 }
 local ns = api.nvim_create_namespace('cland.graph')
 local focus_ns = api.nvim_create_namespace('cland.graph.focus')
 
@@ -88,7 +88,7 @@ local function latest_verdict(it)
 end
 
 --- Badge rows stay separate so the claim cannot clip the verdict or fraction.
-function M.label(it)
+function M.label(it, width)
   local done = it.status == 'done' or it.state == 'closed'
   local function chunk(text, group) return { text, done and 'ClandDim' or group } end
   local glyph = items.GLYPH[items.status(it)] or items.GLYPH.open
@@ -112,6 +112,15 @@ function M.label(it)
     evidence[#evidence + 1] = chunk(verified .. '/' .. total, verified == total and 'ClandGreen' or 'ClandDim')
   end
   if #evidence > 0 then lines[#lines + 1] = evidence end
+  if width then
+    for row, chunks in ipairs(lines) do
+      local room = width - (row > 1 and 1 or 0)
+      for _, c in ipairs(chunks) do
+        c[1] = G.fit(c[1], room, api.nvim_strwidth)
+        room = room - G.width(c[1], api.nvim_strwidth)
+      end
+    end
+  end
   return lines
 end
 
@@ -127,16 +136,23 @@ function M.compose(id, width)
     else tray[#tray + 1] = node end
   end
   L.tray = tray
-  local parallel = 1
+  local W, origin = math.min(M.width, math.max(1, width - 4)), {}
   if M.orient == 'vertical' then
-    for _, layer in ipairs(L.layers) do parallel = math.max(parallel, #layer) end
+    L, W, origin = G.fit_window(L, math.max(3, width - 6), M.vmin, 40)
   end
-  local W = math.max(20, math.min(40, math.floor((width - 2) / parallel) - 3))
-  local cv, geometry = G.render(L, { width = W, top = 2, left = 1, orient = M.orient,
+  local left = M.orient == 'vertical' and 4 or 1
+  local cv, geometry = G.render(L, { width = W, top = 2, left = left, orient = M.orient,
+    pack = M.orient == 'vertical',
     measure = api.nvim_strwidth, tray_columns = math.max(1, math.floor((width - 2) / (W + 3))),
-    tray_hl = 'ClandSection', label = function(node) return M.label(byid[node]) end })
+    tray_hl = 'ClandSection', label = function(node, w) return M.label(byid[node], w) end })
   local parent = id and state.item(id)
-  cv:put(0, 1, { { 'Graph · ' .. (parent and (id .. ' ' .. parent.title) or 'No current release'), 'ClandBold' } })
+  cv:put(0, 1, { { 'Graph · ' .. (parent and (id .. ' ' .. parent.title) or 'No current release'), 'ClandBold' } }, width - 2)
+  local wrapped = 0
+  for band, layer in ipairs(origin) do
+    local continuation = origin[band - 1] == layer
+    wrapped = wrapped + (continuation and 1 or 0)
+    cv:put(geometry.bounds.y[band], 0, { { continuation and ' ↳' or tostring(layer), 'ClandDim' } }, 3)
+  end
   if #kids == 0 then cv:put(2, 1, { { 'No children to draw.', 'ClandDim' } }) end
   if #tray + folded > 0 then
     local row = cv.maxr + 2
@@ -144,21 +160,33 @@ function M.compose(id, width)
     cv:put(row, 1, { { 'Tray · ' .. (#tray + folded) .. ' unlinked', 'ClandSection' },
       { folded > 0 and (' · ' .. folded .. ' done folded, d shows them') or ' · d folds done', 'ClandFaint' } })
   end
+  local function note(text, group, gap)
+    local row, line = cv.maxr + (gap or 1), ''
+    for word in text:gmatch('%S+') do
+      local next = line == '' and word or (line .. ' ' .. word)
+      if line ~= '' and G.width(next, api.nvim_strwidth) > width - 2 then
+        cv:put(row, 1, { { line, group } }); row, line = row + 1, word
+      else line = next end
+    end
+    cv:put(row, 1, { { line, group } })
+  end
   local crossings = cv:count()
-  cv:put(cv.maxr + 2, 1, { { ('%d linked · %d layers · %d edges drawn · %d hidden · %d crossings'):format(
-    #L.nodes, #L.layers, #L.chains, #L.hidden, crossings), 'ClandFaint' } })
+  note(('%d linked · %d layers · %d edges drawn · %d hidden · %d crossings · nodes %d wide%s'):format(
+    #L.nodes, #L.layers, #L.chains, #L.hidden, crossings, W,
+    wrapped > 0 and (' · ' .. wrapped .. ' continuations ↳') or ''), 'ClandFaint', 2)
   local function edges_line(label, edges, group)
     if #edges == 0 then return end
     local names = {}
     for _, e in ipairs(edges) do names[#names + 1] = e[1] .. ' → ' .. e[2] end
-    cv:put(cv.maxr + 1, 1, { { label .. table.concat(names, ', '), group } })
+    note(label .. table.concat(names, ', '), group)
   end
   edges_line('Left out to break a cycle: ', L.cycles, 'ClandRed')
   edges_line('Implied by longer paths: ', L.hidden, 'ClandFaint')
   edges_line('Blockers outside ' .. (id or 'the graph') .. ': ', L.outside, 'ClandAmber')
-  cv:put(cv.maxr + 2, 1, { { 'h/j/k/l nodes · ^/$ ends · ↵ open · gi/gt/gs · p/P parent · d done · o turn · r edges · ␣␣ back', 'ClandFaint' } })
+  note('h/j/k/l nodes · ^/$ ends · ↵ open · gi/gt/gs · p/P parent · d done · o turn · r edges · +/- width · ␣␣ back', 'ClandFaint', 2)
   local lines, marks, bytecol, crossings = cv:render('ClandFaint')
   geometry.bytecol, geometry.layout, geometry.orient = bytecol, L, M.orient
+  geometry.width, geometry.wrapped, geometry.origin = W, wrapped, origin
   geometry.edge_cells, geometry.crossings = cv:cells_of_edges(), crossings
   geometry.bands, geometry.tray, geometry.by_row, geometry.incident = {}, {}, {}, {}
   for layer, ids in ipairs(L.layers) do
@@ -173,7 +201,7 @@ function M.compose(id, width)
   end
   for _, node in ipairs(L.tray) do
     local n = geometry.nodes[node]
-    local column = math.floor((n.col - 1) / (W + 3)) + 1
+    local column = math.floor((n.col - left) / (W + 3)) + 1
     geometry.tray[column] = geometry.tray[column] or {}
     table.insert(geometry.tray[column], node)
   end
@@ -418,6 +446,13 @@ function M.buf()
   for key, step in pairs({ p = 1, P = -1 }) do map(key, function() M.cycle(step) end) end
   map('d', function() M.tray_done = not M.tray_done; state.changed() end)
   map('o', function() M.orient = M.orient == 'vertical' and 'horizontal' or 'vertical'; state.changed() end)
+  for key, step in pairs({ ['+'] = 1, ['-'] = -1 }) do
+    map(key, function()
+      if M.orient == 'vertical' then M.vmin = math.max(14, math.min(36, M.vmin + step * 2))
+      else M.width = math.max(18, math.min(60, M.width + step * 4)) end
+      state.changed()
+    end)
+  end
   map('r', function() M.reduce = not M.reduce; state.changed() end)
   api.nvim_create_autocmd('CursorMoved', { buffer = M.b, callback = function()
     local id, parent = M.node_at(), M.parent()
