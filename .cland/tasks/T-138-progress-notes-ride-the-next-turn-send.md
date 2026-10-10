@@ -3,7 +3,7 @@ id: T-138
 kind: task
 title: "Progress notes ride the next turn: send gains kind; progress is held and digested with the next turn on all three adapters, across a hub restart"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-52
 branch: t/T-138-progress-notes-ride-the-next-turn-send
 created: 2026-10-10T01:52:18.096Z
-updated: 2026-10-10T02:08:55.104Z
+updated: 2026-10-10T02:29:28.039Z
 ---
 
 ## Parent
@@ -68,3 +68,67 @@ Medium — hub/src/hub/core.ts:692 / hub/src/hub/store.ts:620: rename a→offlin
 All four are reproduced with pinned code and an actual in-memory SQLite Store; rename also exercises the actual Core method. Ordinary batch order, isolation of later notes, uncertain hold/manual retry and whole-batch confirmation pass. Three-adapter/restart regressions were reviewed, not rerun. Default clause changes match A-344's instance lines 45/70/98/122. No suite or edits.
 
 Full item against e4bdb0c. Standards: 0 findings. Spec: 4 medium. Evidence A-347: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-347-t-138-full-review-of-2b0755a-queue-lifetime-and-batch-identity-findings.md. Combined fix head is pending.
+
+### rev-65 · 2026-10-10T02:18:05.010Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-138-2
+commit: c92646cf7fe806f3bf9ce7cf5aa2a66d18f80593
+
+High: 0. Medium: 2. Low: 0.
+
+Medium — hub/src/hub/core.ts:712 / hub/src/hub/store.ts:650: the queued-only rename guard permits a→b when b's duplicate P/R2 is delivered, uncertain or injected; moving the rows drops P from a's pending R1[P], leaving R1[]. Refuse before mutation for these destination states, naming target/count, as decided in 340aad67.
+
+Medium — hub/src/hub/store.ts:839: deleting a trigger's topic leaves surviving cross-topic progress queued with a nonexistent digest_id; replay, TTL expiry, pruning and the next report all skip it. Unbind/re-hold surviving notes with their original TTL and journal root/released IDs on every trigger-deletion path, as decided in 340aad67.
+
+The four A-347 findings are resolved. Pinned production Core/SQLite probes pass role-claim binding, expiry-before-binding with a drop journal, retention of complete pending digests, bound trigger TTL, and refusal of the original queued-target rename without mutation. The new rename collision is reproduced in all three destination states; topic deletion leaves one orphan queued note beyond its TTL and excludes it from a later report.
+
+Full item against e4bdb0c. Standards: 0 findings. Spec: 2 medium. Three-adapter/restart regressions reviewed, not rerun. No suite or file edits. Evidence A-352: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-352-t-138-full-review-of-c92646c-digest-collisions-and-orphaned-notes.md.
+
+The new hold clause arrived after review completion. task_hold is absent from this session's MCP tool list; the CLI hold attempt was refused by the sandbox with connect EPERM .cland/hub.sock. Reported to Coordinator.
+
+### impl-138 · 2026-10-10T02:20:16.817Z
+
+Coordinator's review corrections now implemented: rename refuses target queued/delivered/uncertain/injected rows; common transactional physical-message deletion releases surviving pending notes with original queued_at, clears settled bindings without replay, and reports released batches for journalling. New Store/Core lifecycle, restart/TTL and settled-retention regressions pass (15 Store tests). Reviewing the delta before one correction commit; the queued full suite was interrupted before acquiring the lock and will be requeued on the new head.
+
+### rev-65 · 2026-10-10T02:24:50.310Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-138-3
+commit: dffd0bba31776fbc6aa0a6c161cedf830acef0a4
+
+High: 0. Medium: 2. Low: 0.
+
+Medium — hub/src/hub/store.ts:651: a dropped-only target permits rename, but update-or-ignore plus deletion discards the source's duplicate note row and changes its still-valid pending R1[P] to R1[]. Refuse any source/target message-row collision in any state, preserving the separate unacknowledged-row refusal, as decided in a68cb134.
+
+Medium — hub/src/hub/core.ts:1383 / hub/src/hub/journal.ts:199: digest-released is logged but absent from JOURNALLED, so Journal.tap discards every release record. Add the event and verify trigger/released IDs at the Core-to-Journal boundary, as decided in a68cb134.
+
+The specified A-352 states now pass: rename refuses queued/delivered/uncertain/injected targets without mutation; trigger deletion re-holds pending notes at original TTL and leaves injected/dropped notes settled. Pinned search confirms all physical message deletion uses the shared transactional helper. Actual Core/SQLite probes reproduce dropped-only digest loss, and actual Core→Journal.tap with an in-memory native append port filters the release while successfully appending a send control.
+
+Full item against e4bdb0c. Standards: 0 findings. Spec: 2 medium. No suite, file edits or CLI hold workaround. Evidence A-356: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-356-t-138-full-review-of-dffd0bb-dropped-collisions-and-journal-filtering.md.
+
+### rev-65 · 2026-10-10T02:29:18.436Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-138-4
+commit: f64573ff07c89ee4c57dc17e2f4c3f88f09dbfb6
+
+High: 0. Medium: 0. Low: 0. All earlier findings resolved.
+
+Pinned production Core/SQLite probes now refuse the dropped duplicate before mutation, naming the target and one collision; both R1[P] and R2[P] stay intact. Queued/delivered/uncertain/injected target refusals remain intact. Empty and noncolliding dropped targets still rename successfully with their source digest preserved.
+
+The actual Core→Journal.tap probe now appends digest-released with trigger and note IDs, inject-uncertain for both batch members, and inject-retry. All other added/changed batch controls are whitelisted. The new Core-to-Journal regression checks persisted metadata and private-text exclusion.
+
+Cross-topic trigger deletion still re-holds pending notes with original TTL and leaves injected/dropped notes settled. All physical message deletion uses the shared transactional helper. Earlier kind/default, adapter, restart, immutable-retry, role-claim, expiry and retention reviews carry forward. Default clause changes match A-344's instance lines 45/70/98/122.
+
+Full item against e4bdb0c. Standards: 0 findings. Spec: 0 findings. No suite or file edits; suite validation remains with Implementer/Coordinator as requested. Evidence A-358: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-358-t-138-full-review-of-f64573f-clear.md.
+
+### impl-138 · 2026-10-10T02:29:28.039Z
+
+Latest correction head f64573ff07c89ee4c57dc17e2f4c3f88f09dbfb6 (copied from git log -1) pushed to local origin. Rename now guards duplicate rows in every state as well as target unacknowledged rows. digest-released, inject-uncertain and inject-retry pass JOURNALLED; a real Core-to-Journal regression checks IDs, kinds and transitions. Typecheck, 16 Store/Core tests and journal regression pass; root suite is queued on this head behind the machine lock. Evidence A-357, with A-354 preserving exact instance-role edits.

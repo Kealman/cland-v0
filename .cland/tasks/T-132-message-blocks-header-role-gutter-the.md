@@ -3,7 +3,7 @@ id: T-132
 kind: task
 title: "Message blocks: header, role gutter, the human's band, day rules, delivery stage; appends touch only their own lines"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-50
 branch: t/T-132-message-blocks-header-role-gutter-the
 created: 2026-10-10T01:20:46.278Z
-updated: 2026-10-10T02:17:26.253Z
+updated: 2026-10-10T02:41:06.148Z
 ---
 
 ## Parent
@@ -100,3 +100,27 @@ Evidence: A-343, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-343-t
 ### impl-132 · 2026-10-10T02:17:26.253Z
 
 Committed and pushed local origin fe86d6f7eed6a960d251661974b1aaf5f8c423d9 (copied from git log -1). First locked root run finished: hub797/797, Neovim143/154, 11 regressions (A-350). Fixed the class with one BufWinEnter/WinNew handler using explicit local scope and global defaults on other buffers; nested startup events make initial splits obey it. Added arbitrary scratch split/re-entry/default preservation and delayed initial history mode/focus/wrapped-tail checks for Insert, Replace, Normal and Terminal. All8 thread tests, affected item integration/QA and composer/panel checks, plus typecheck pass. Append0.305ms including eviction, fullrewrite/redraw5.166ms. A-351 reports details. Waiting for rev-6 delta review before the root rerun, as Coordinator requested.
+
+### rev-6 · 2026-10-10T02:23:15.732Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-132-3
+commit: fe86d6f7eed6a960d251661974b1aaf5f8c423d9
+
+Standards: clear. Spec: clear. No high, medium or low findings. Full e980bf1..fe86d6f covered by carrying rev-6-132-2 forward and reviewing the complete five-file delta.
+
+Independent embedded Neovim probes confirm thread options remain local: arbitrary scratch splits restore defaults, both re-entry directions work, and global defaults stay unchanged. Insert, Replace, Normal with the composer unfocused, and Terminal retain actual mode and focus, show the correct status label and place the final wrapped tail row exactly at the viewport bottom. No UI mode-change notifications occurred during the merges.
+
+Existing item, panel and ITEMS-001 checks are untouched. Nested startup events and the documented global breakat choice match the scope. Diff check passed; no suite run. Per Coordinator's explicit direction, no hold was taken because this launched session lacks task.hold.
+
+Evidence: A-355, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-355-t-132-window-and-mode-delta-review-rev-6-132-3-at-fe86d6f.md.
+
+### impl-132 · 2026-10-10T02:24:13.493Z
+
+rev-6-132-3 is clear on fe86d6f7eed6a960d251661974b1aaf5f8c423d9. Queued final root npm test on that committed head with /Users/evgeniyivanov/.nvm/versions/node/v24.21.0/bin first on PATH, behind the shared suite lock held since02:19:04Z. No further code changes.
+
+### impl-132 · 2026-10-10T02:41:05.980Z
+
+Final root npm test passed (exit0) on fe86d6f7eed6a960d251661974b1aaf5f8c423d9: hub797/797 and Neovim156/156, zero failures. Pinned Nodev24.21.0, machine lock wait291.38s, suite690.87s. At200 messages append+eviction0.615ms and fullrewrite/redraw7.632ms. Typecheck passes; reviewrev-6-132-3 clear on the same head; worktree clean and branch pushed to local origin. Full final log A-362, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-362-t-132-final-root-suite-green-at-fe86d6f.log. Implementation/deviation notes A-335/A-342/A-351, real General evidence A-336/A-337. Slice1 only; no merge performed.

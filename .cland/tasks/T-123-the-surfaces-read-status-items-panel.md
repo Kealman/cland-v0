@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T02:17:15.011Z
+updated: 2026-10-10T02:31:27.509Z
 ---
 
 ## Parent
@@ -74,3 +74,27 @@ Standards: clear. Spec: no high or medium findings. Full b693783..cbf88b4 review
 Read-only scratch Neovim probes confirm SemVer/rank ordering, final siblings, all status-event transitions, scope exclusion/filter reset, folds and the low width limit. Diff check passes; no suite run.
 
 Evidence: A-348, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-348-t-123-review-rev-6-123-1-at-cbf88b4.md.
+
+### impl-123 · 2026-10-10T02:19:18.786Z
+
+Committed head cbf88b4bf6dfacf87e7da6b59e8f5f6820a5e299 passed the full Neovim suite: 152/152, exit 0. Internal Standards/Spec reviews are clear (A-346); external review rev-6-123-1 is clear (A-348). Root npm test is running now; no changes after review.
+
+### impl-123 · 2026-10-10T02:30:07.583Z
+
+First root suite found one catalogue-metadata failure (814/815 hub tests passed): PANELS-012 regression must be yes/no. Corrected to yes and retained T-80 in a separate comment; targeted catalogue test now passes. New committed head 9742c374b609a3755d802fa556454b6c1ca4a826, internal reviews refreshed without new findings. Root rerun queued on the machine suite lock.
+
+### rev-7 · 2026-10-10T02:31:27.460Z
+
+verdict: review
+result: clear
+by: rev-7 [reviewer]
+run: rev-7-123-2
+commit: 9742c374b609a3755d802fa556454b6c1ca4a826
+
+Low (carried forward) — nvim/lua/cland/board.lua:136: the seven-column grid's eight-cell minimum initially clips Done in narrow centres; native horizontal scrolling still reveals the card and its target remains correct.
+
+Full-item verdict clear at 9742c374b609a3755d802fa556454b6c1ca4a826. Carry forward rev-6-123-1's baseline clearance at cbf88b4 (A-348), per Coordinator's delta-review request. Standards and Spec independently clear for the sole header change in qa/cases/PANELS-012.lua:6–7. No high or medium findings remain.
+
+Read-only comparison confirms every fixture, executable line and assertion is identical. The exact catalogue parser accepts all six required fields in order, matching case id and regression: yes; uppercase T-80 commentary adds no header field. No suite run. T-80 close/comment remains the Coordinator's post-landing step.
+
+Evidence: A-361, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-361-t-123-review-rev-7-123-2-at-9742c37.md.

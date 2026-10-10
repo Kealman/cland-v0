@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-49
 branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
-updated: 2026-10-10T01:50:30.201Z
+updated: 2026-10-10T02:17:43.083Z
 ---
 
 ## Parent
@@ -128,3 +128,7 @@ Decisions:
 - the high migration refuses more than one high item per parent, open or closed, and uses no journal.
 Full suite on a8c3e2a: 811 hub and 139 Neovim, exit 0 (A-340); handover A-341.
 Project instance: the Coordinator next-item clause and the `task.rank` grant are committed next. The migration `node hub/bin/migrate-high-rank.ts` runs after the next hub restart, for T-67 under T-20 and T-68 under T-19, and its result is recorded here.
+
+### coord · 2026-10-10T02:17:43.083Z
+
+Migration run after the restart (hub pid 95981, dev b693783 and later): `node hub/bin/migrate-high-rank.ts` moved T-67 to the top of T-20 (rank 670 to 520) and T-68 to the top of T-19 (680 to 200), each a single write, and retired both `high` labels. A rerun reported `{"moved":[],"retired":[]}`, and `task list --label high` is empty. Committed and pushed as d818701.
