@@ -6,6 +6,7 @@
 // concurrent hand saves; other writes keep their last-writer-wins policy.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
+import { PlanError, parsePlan, planInBody, withPlan, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
 import { criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
@@ -77,6 +78,9 @@ export type ItemView = IndexedItem & {
   /** The integration branch used for patch-id comparisons, or null when neither exists. */
   verdictBase: string | null;
   body: string;
+  /** Last valid plan; a refused hand save is reported separately. */
+  plan: EpicPlan | null;
+  planError?: string;
   criteria: Criterion[];
   criteriaWarnings: CriterionWarning[];
   comments: Comment[];
@@ -169,6 +173,8 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'li
 export class Tracker {
   readonly levels: readonly string[];
   get kinds(): string[] { return kindsFor(this.levels); }
+  /** The default epic occupies the second configured container level. */
+  isPlanContainer(kind: Kind): boolean { return this.levels[1] !== undefined && kind === this.levels[1]; }
   readonly #files: TrackerFiles;
   #queue: Promise<unknown> = Promise.resolve();
   readonly #root: string;
@@ -179,6 +185,10 @@ export class Tracker {
   #watcher: FolderWatch | null = null;
   #stopping: Promise<void> | null = null;
   #polling = false;
+  #bootstrapping = true;
+  readonly #planErrors = new Map<string, string>();
+  /** Parsed file candidates, including temporarily invalid plans waiting for dependent hand saves. */
+  readonly #planCandidates = new Map<string, { item: Item; source: 'hub' | 'hand'; writer?: Actor }>();
   readonly #background = new Set<Promise<unknown>>();
   readonly #watchResumed: Resumed;
   /** The folder as the last poll saw it (only used when it cannot be watched). */
@@ -454,6 +464,9 @@ export class Tracker {
   start(): void {
     this.#recoverCriterionCaptures();
     this.rescan();
+    // Membership is checked after every file has been indexed, including newly added children.
+    this.#bootstrapping = false;
+    this.rescan();
     // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
     for (const item of this.list()) this.#announced.set(item.id, item);
     this.#watcher = watchFolder(
@@ -589,12 +602,16 @@ export class Tracker {
     }
     if (known && known.hash === hash) {
       const indexed = this.#index.get(knownId!);
-      if (indexed?.kind !== 'task' || indexed.status !== undefined) return;
+      if (indexed?.kind !== 'task' || indexed.status !== undefined) {
+        this.#plansAfterIndex(item, 'hand');
+        return;
+      }
     }
     const id = item.fm.id;
     // the id moved out of this file (someone rewrote it by hand): the old row goes
     if (knownId && knownId !== id) {
       this.#index.remove(knownId);
+      this.#planCandidates.delete(knownId);
       this.#changed(knownId);
     }
     const prior = this.#index.get(id);
@@ -622,6 +639,7 @@ export class Tracker {
     }
     const wasOpen = prior?.state === 'open';
     this.#index.put(item, { file: name, hash, source: 'hand', indexedAt: now });
+    this.#plansAfterIndex(item, 'hand');
     if (migrated) {
       // Bootstrap indexes synchronously before the hub serves requests. Its migrations still write through
       // the same queue, reading again with the pre-scan state so an offline close/reopen keeps its meaning.
@@ -707,6 +725,9 @@ export class Tracker {
     const id = this.#index.idOfFile(name);
     if (!id) return;
     this.#index.remove(id);
+    this.#planCandidates.delete(id);
+    this.#planErrors.delete(id);
+    if (!this.#bootstrapping) this.#retryPlans();
     this.#log({ event: 'task-removed', id, file: name });
     this.#changed(id);
   }
@@ -715,6 +736,81 @@ export class Tracker {
     const error = err instanceof Error ? err.message : String(err);
     if (err instanceof UnknownKindError) this.#dropFile(name);
     this.#log({ event: 'task-unreadable', file: name, error });
+  }
+
+  #validPlan(item: Item): EpicPlan | null {
+    const plan = planInBody(item.body);
+    if (!plan) return null;
+    if (!this.isPlanContainer(item.fm.kind)) throw new PlanError('a plan belongs only to an epic');
+    for (const stage of plan.stages) for (const lane of stage.lanes) for (const id of lane) {
+      const child = this.#index.get(id);
+      if (!child) throw new PlanError(`${id}: no such plan item`);
+      if (child.kind !== 'task') throw new PlanError(`${id}: a lane item must be a task`);
+      const seen = new Set<string>();
+      let parent = child.parent;
+      while (parent && parent !== item.fm.id && !seen.has(parent)) {
+        seen.add(parent);
+        parent = this.#index.get(parent)?.parent ?? null;
+      }
+      if (parent !== item.fm.id) throw new PlanError(`${id}: plan item is not under epic ${item.fm.id}`);
+    }
+    for (const [id, override] of Object.entries(plan.items ?? {})) {
+      const ids = this.#index.criterionIds(id);
+      for (const criterion of override.qa_criteria ?? []) if (!ids.includes(criterion)) throw new PlanError(`${id}: no criterion ${criterion}`);
+    }
+    return plan;
+  }
+
+  #planState(item: Item): { plan: EpicPlan | null; planError?: string } {
+    try { return { plan: this.#validPlan(item) }; }
+    catch (err) {
+      if (!(err instanceof PlanError)) throw err;
+      return { plan: this.#index.plan(item.fm.id), planError: err.message };
+    }
+  }
+
+  #plansAfterIndex(item: Item, source: 'hub' | 'hand', writer?: Actor): void {
+    if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(item.fm.id, { item, source, ...(writer ? { writer } : {}) });
+    else this.#planCandidates.delete(item.fm.id);
+    if (this.#bootstrapping) return;
+    this.#acceptPlan(item, source, writer);
+    // Criterion, kind or parent changes can make a previously refused epic candidate valid.
+    this.#retryPlans(item.fm.id);
+  }
+
+  #retryPlans(except?: string): void {
+    for (const [id, candidate] of this.#planCandidates) {
+      if (id !== except) this.#acceptPlan(candidate.item, candidate.source, candidate.writer);
+    }
+  }
+
+  #acceptPlan(item: Item, source: 'hub' | 'hand', writer?: Actor): { plan: EpicPlan | null; planError?: string } {
+    const state = this.#planState(item), id = item.fm.id;
+    if (state.planError) {
+      if (this.#planErrors.get(id) !== state.planError) this.#log({ event: 'task-plan-refused', id, file: this.#index.metaOf(id)?.file, error: state.planError, source });
+      this.#planErrors.set(id, state.planError);
+      return state;
+    }
+    this.#planErrors.delete(id);
+    const previous = this.#index.plan(id);
+    if (JSON.stringify(previous) === JSON.stringify(state.plan)) return state;
+    this.#index.rememberPlan(id, state.plan);
+    this.#log({ event: 'task-plan-changed', id, by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), source, previous, plan: state.plan });
+    return state;
+  }
+
+  /** Plans use the same admitted read/modify/publication cycle as other item writes. */
+  setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    return this.#serial(() => {
+      checkText(yaml, 'plan YAML');
+      let plan: EpicPlan;
+      try { plan = parsePlan(yaml); }
+      catch (err) { throw new TrackerError(err instanceof Error ? err.message : String(err)); }
+      return this.#mutate(rawId, actor, 'plan set', item => {
+        if (!this.isPlanContainer(item.fm.kind)) throw new TrackerError('a plan belongs only to an epic');
+        item.body = withPlan(item.body, plan);
+      }, resumed, undefined, authorize);
+    }, resumed);
   }
 
   // ---------------------------------------------------------------- reading
@@ -772,6 +868,7 @@ export class Tracker {
     this.#normalizeStatus(item);
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
+    if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
     return {
       ...indexed,
       verdictBase: this.#fresh.base(),
@@ -781,6 +878,9 @@ export class Tracker {
       path: join(TASKS_REL, file),
       ancestry: this.#ancestry(item),
       body: item.body,
+      // A read may see a valid hand save before its watcher turn. Retain and journal that exact plan
+      // before showing it, so a following invalid save cannot restore an older version.
+      ...this.#acceptPlan(item, 'hand'),
       ...parseCriteria(item.body),
       comments: item.comments,
       verdicts: this.#fresh.annotate(id, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
@@ -904,10 +1004,11 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>): Promise<Item> {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, planWriter?: Actor): Promise<Item> {
     this.#normalizeStatus(item);
     const text = serializeItem(item);
     const written = parseItem(text, name, this.levels);
+    this.#validPlan(written);
     const path = join(this.#dir, name);
     const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
     try {
@@ -926,6 +1027,7 @@ export class Tracker {
       return resumed(() => {
         if (read?.captured) this.#log({ event: 'task-criterion-source', id: read.id, path: read.captured, note: 'retained source protects late saves through an already open editor handle' });
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
+        this.#plansAfterIndex(written, 'hub', planWriter);
         committed?.();
         this.#changed(written.fm.id);
         if (read && (before !== read.hash || replaced !== read.hash)) {
@@ -995,7 +1097,7 @@ export class Tracker {
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         change(item);
         item.fm.updated = this.#now().toISOString();
-        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename);
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename, actor);
       });
       result = { written };
     } catch (error) { result = { error }; }
@@ -1069,7 +1171,7 @@ export class Tracker {
         body: kind === this.levels[0] ? withReleaseNotes(input.body ?? '') : input.body?.trim() ?? '',
         comments: [],
       };
-      const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); });
+      const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); }, undefined, undefined, actor);
       return resumed(() => {
         this.#log({ event: 'task-written', id, file: name, op: 'create', by: actor.name });
         if (topic !== null) this.#topicBinding?.bound(id, topic);
@@ -1682,7 +1784,7 @@ export class Tracker {
       this.#normalizeStatus(item);
       if (existing && serializeItem(item) === existing.text) return Promise.resolve('unchanged');
       item.fm.updated = this.#now().toISOString();
-      return this.#write(file, item, resumed, undefined, undefined, check, undefined, refresh).then(() => resumed(() => {
+      return this.#write(file, item, resumed, undefined, undefined, check, undefined, refresh, actor).then(() => resumed(() => {
         this.#log({ event: 'task-written', id: item.fm.id, file, op, by: actor.name });
         return existing ? 'updated' : 'created';
       }));

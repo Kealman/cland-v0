@@ -12,6 +12,8 @@ const KIND = { type: 'string', description: 'Configured container kind, task, qu
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [
+  { name: 'task.plan', description: 'Set or show an epic plan. Set validates YAML before replacing ## Plan; invalid hand saves keep the last accepted plan and return planError. Setting defaults to Coordinator and human.',
+    inputSchema: { type: 'object', properties: { id: itemId, op: { type: 'string', enum: ['set', 'show'] }, yaml: { ...str, description: 'The plan YAML text; required for set' } }, required: ['id', 'op'] } },
   { name: 'task.criterion', description: 'Mark a criterion done (claimant Implementer, Coordinator, Aide or human), verify or fail with a note (Reviewer or QA), or add, edit or remove criteria (Coordinator, Aide or human). Verify requires a run id.',
     inputSchema: { type: 'object', properties: { id: itemId, op: { type: 'string', enum: ['done', 'verify', 'fail', 'add', 'edit', 'remove'] }, criterion: { ...str, description: 'Stable criterion id, C1, C2, …; omitted for add' }, text: str, note: str, run: str }, required: ['id', 'op'] } },
   { name: 'task.hold', description: 'Take a Reviewer or QA verifier hold beside the Implementer claim, setting review or qa, or release your hold. Verdicts and session stop release it.',

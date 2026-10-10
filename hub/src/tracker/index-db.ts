@@ -1,6 +1,8 @@
 // The tracker's index and claims: tables of their own in the hub's SQLite file, through a connection of
 // their own. The index is derived from the files and rebuilt from them at every start; claims are hub
 // state (a session's live hold on an item) and are never written to a file.
+import { parseCriteria } from './criteria.ts';
+import type { EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
@@ -58,6 +60,11 @@ create table if not exists tracker_written_verdicts (
   role text,
   at text not null,
   primary key (item_id, comment_key)
+);
+-- Last accepted plans survive an invalid hand save and a hub restart. Valid files replace them.
+create table if not exists tracker_plans (
+  item_id text primary key,
+  plan_json text not null
 );
 create table if not exists tracker_claims (
   item_id text primary key,
@@ -151,6 +158,9 @@ export class TrackerIndex {
     const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
     if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
     if (!itemColumns.has('rank')) this.#db.exec('alter table tracker_items add column rank integer');
+    if (!itemColumns.has('criteria_ids')) {
+      this.#db.exec("alter table tracker_items add column criteria_ids text not null default '[]'; update tracker_items set hash = ''");
+    }
     if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
@@ -187,6 +197,7 @@ export class TrackerIndex {
            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
+      this.#db.prepare('update tracker_items set criteria_ids = ? where id = ?').run(JSON.stringify(parseCriteria(item.body).criteria.flatMap(c => c.id ? [c.id] : [])), fm.id);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
@@ -204,7 +215,23 @@ export class TrackerIndex {
     });
   }
 
+  criterionIds(id: string): string[] {
+    const row = this.#db.prepare('select criteria_ids from tracker_items where id = ?').get(id) as Row | undefined;
+    return row ? JSON.parse(row.criteria_ids as string) as string[] : [];
+  }
+
+  plan(id: string): EpicPlan | null {
+    const row = this.#db.prepare('select plan_json from tracker_plans where item_id = ?').get(id) as Row | undefined;
+    return row ? JSON.parse(row.plan_json as string) as EpicPlan : null;
+  }
+
+  rememberPlan(id: string, plan: EpicPlan | null): void {
+    if (plan === null) this.#db.prepare('delete from tracker_plans where item_id = ?').run(id);
+    else this.#db.prepare('insert into tracker_plans (item_id, plan_json) values (?, ?) on conflict(item_id) do update set plan_json = excluded.plan_json').run(id, JSON.stringify(plan));
+  }
+
   remove(id: string): void {
+    this.rememberPlan(id, null);
     this.#db.prepare('delete from tracker_items where id = ?').run(id);
   }
 

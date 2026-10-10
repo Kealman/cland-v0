@@ -39,6 +39,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'resolve',
   'topic.create',
   'task.create',
+  'task.plan',
   'task.view',
   'task.list',
   'task.comment',
@@ -67,6 +68,7 @@ export const KNOWN_TOOLS: readonly string[] = [
 /** The scopes a tool can be granted in, beside the whole of it. */
 export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   send: ['agents', 'human'],
+  'task.plan': ['show', 'set'],
   'task.claim': ['own'],
   'task.edit': ['review'],
   'task.criterion': ['done', 'verify', 'manage'],
@@ -78,12 +80,13 @@ const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 's
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
+  aide: [ 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
   coordinator: [
     'send',
     'ask',
     'resolve',
     'topic.create',
+    'task.plan',
     'task.create',
     'task.edit',
     'task.close',
@@ -108,9 +111,9 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', ...READS],
-  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS],
-  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS],
+  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', ...READS, 'task.plan:show'],
+  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS, 'task.plan:show'],
+  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS, 'task.plan:show'],
 };
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */
@@ -134,6 +137,7 @@ export type ToolCall = {
   /** Manual status edit: Coordinator or Aide, or the claiming Implementer handing over. */
   status?: unknown;
   criterionOp?: unknown;
+  planOp?: unknown;
   statusOnly?: boolean;
   claimed?: () => boolean;
   /** `send`: no addressee, so the message is for the human. */
@@ -211,6 +215,10 @@ export function decide(role: string | null, grants: readonly string[] | undefine
         return { ok: false, permission: 'send:human', reason: `only the Coordinator writes to the human, and a session the human's latest message in the topic mentioned: ${who} sends to the coordinator instead` };
       }
       return has('send:agents') ? { ok: true } : { ok: false, permission: 'send:agents', reason: `${who} may write only to the human` };
+    case 'task.plan': {
+      const scope = call.planOp === 'show' ? 'show' : 'set';
+      return has(`task.plan:${scope}`) ? { ok: true } : { ok: false, permission: `task.plan:${scope}`, reason: `${who} is not granted plan ${scope}` };
+    }
     case 'task.criterion': {
       const scope = call.criterionOp === 'done' ? 'done' : call.criterionOp === 'verify' || call.criterionOp === 'fail' ? 'verify' : 'manage';
       return has(`task.criterion:${scope}`) ? { ok: true } : { ok: false, permission: `task.criterion:${scope}`, reason: `${who} is not granted criterion ${scope}` };

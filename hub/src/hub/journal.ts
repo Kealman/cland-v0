@@ -76,6 +76,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'topic-status',
   // the tracker
   'task-written',
+  'task-plan-changed',
+  'task-plan-refused',
   'task-unreadable',
   'task-parenting-warning',
   'task-claimed',

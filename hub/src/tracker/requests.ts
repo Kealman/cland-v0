@@ -24,6 +24,7 @@ export type TaskRequest =
       branch?: string | null;
       as?: ActorField;
     }
+  | { type: 'task.plan'; id: string; item: string; op: 'set' | 'show'; yaml?: string; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
   | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
@@ -57,7 +58,7 @@ export type TaskRequest =
  *  (`$CLAND_SESSION_*`), not a name the human gave with `--as`: one the hub does not know is then a roleless session. */
 export type ActorField = { name: string; role?: string | null; sessionId?: string; shell?: boolean };
 
-export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.rank', 'task.criterion', 'task.claim', 'task.hold', 'task.import'] as const;
+export const TASK_REQUEST_TYPES = ['task.create', 'task.plan', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.rank', 'task.criterion', 'task.claim', 'task.hold', 'task.import'] as const;
 
 export function isTaskRequest(f: Record<string, unknown>): f is TaskRequest {
   return typeof f.id === 'string' && (TASK_REQUEST_TYPES as readonly unknown[]).includes(f.type);
@@ -92,6 +93,14 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       if (!isStr(f.title)) throw new TrackerError('`title` is required');
       const { type: _t, id: _i, as: _a, ...input } = frame;
       return { item: await tracker.create(actor, input, resumed, authorize) };
+    }
+    case 'task.plan': {
+      optStr(f, 'yaml');
+      if (frame.op !== 'show' && frame.op !== 'set') throw new TrackerError('task.plan op must be set or show');
+      if (frame.op === 'set' && typeof frame.yaml !== 'string') throw new TrackerError('task.plan set needs yaml');
+      const item = frame.op === 'set' ? await tracker.setPlan(actor, needItem(f), frame.yaml!, resumed, authorize) : await tracker.viewAsync(needItem(f), resumed);
+      if (!tracker.isPlanContainer(item.kind)) throw new TrackerError('a plan belongs only to an epic');
+      return { id: item.id, plan: item.plan, ...(item.planError ? { planError: item.planError } : {}) };
     }
     case 'task.view':
       return { item: await tracker.viewAsync(needItem(f), resumed) };

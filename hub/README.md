@@ -330,10 +330,10 @@ An unknown tool or scope makes the file unreadable (the last good version stays 
 
 | Role | Tools |
 | --- | --- |
-| Coordinator | `send`, `ask`, `resolve`, `topic.create`, `task.create`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.rank`, `task.criterion`, `task.comment`, `session.launch` (and `session.list`), `session.stop`, `session.resume`, `hub.stop` (the last three from its shell: The CLI in a session's shell), `role.handover`, `merge`, `release`, `sync` (release and sync from its shell only), `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
-| Implementer | `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `task.edit:review`, `task.criterion:done`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Coordinator | `send`, `ask`, `resolve`, `topic.create`, `task.create`, `task.plan`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.rank`, `task.criterion`, `task.comment`, `session.launch` (and `session.list`), `session.stop`, `session.resume`, `hub.stop` (the last three from its shell: The CLI in a session's shell), `role.handover`, `merge`, `release`, `sync` (release and sync from its shell only), `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Implementer | `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `task.edit:review`, `task.criterion:done`, `task.plan:show`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | Aide | `task.criterion` (done and manage), `task.create`, `task.edit` (any status), `task.close`, `task.link`, `task.comment`, `task.claim`, `task.view`, `task.list`, `artifact.create`, `artifact.promote`, `send` (session names or topics), `topic.create`, `history`, `who`, `status` |
-| Reviewer, QA | `send:agents`, `task.hold`, `task.comment:verdict`, `task.criterion:verify`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
+| Reviewer, QA | `send:agents`, `task.hold`, `task.comment:verdict`, `task.criterion:verify`, `task.plan:show`, `artifact.create`, `who`, `history`, `status`, `task.view`, `task.list` |
 | no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
 
 `merge` uses the verdict gate below. `role.state` is no table tool: a spoke reads only its own role's state. `task.import` is the human's (the CLI). The heartbeat (`ping`) and acks are not tool calls. A hub with no project (no `roles.toml`) checks nothing. The UI and the CLI act as the human, whom the table does not restrict, with two limits. A client's hello comes over the Unix socket or stdio only: on a project's hub, one over the spokes' WebSocket is refused (`unauthorized`), so the bearer secret a spoke holds makes no human. A CLI `task.*` call acting as a session the hub knows (`as` carries its `sessionId`, which decides before any name: `cland task` in a launched session's shell always sends `$CLAND_SESSION_ID`, whatever `--as` says; or the human's `--as` names a session that holds or held that name) is that session's call: checked against the role the hub holds for it (never the frame's `role`), audited as it (`client: "cli"`), and its claims held by its session id.
@@ -924,6 +924,76 @@ not assign ids, rewrite marks or change checkboxes.
 - **Retiring the priority label.** After merging T-122, restarting the hub and adding `task.rank` to this project's Coordinator permissions, run `node hub/bin/migrate-high-rank.ts` from the root. It lists items through the CLI and refuses before any writes when more than one item under a parent carries the label (open or closed), naming those items. Each singleton is ranked to the top unless already first, then its label is removed through the hub. Multiple-item support would need stable numeric id order: the original implicit ranks are id × 10 and migration never changes ids. Its JSON report names moved items, old/new ranks, parents and changed ids, plus retired ids. A successful rerun writes nothing; a failed label removal retries without moving the already-first item. The JSON report preserves the committed prefix even on failure. No item files are edited by the script.
 - **Writes (T-77)** go through the hub and await an ordered read–change–write–rename–index cycle. One tracker-wide queue admits file mutations, import batches, watcher reads, serving-time rescans and views in call order. A view waits for earlier writes; hand renames, moved frontmatter ids and reindexing cannot put writes to the same file on different queues. Verdict Git resolution runs inside its admitted operation, so later tracker operations wait behind it. A task claim writes its status through the queue and publishes the claim after the file and index commit; it survives a racing comment. Fallback directory listings and stats are asynchronous and share the queue. Import batches reserve the queue before lookup and id allocation, so concurrent first imports cannot duplicate a GitHub reference. Nothing is committed to Git.
 - **Atomicity and completion.** Item text is written to a temporary file in the same directory, then renamed over the item. A failed temporary write or rename rejects the call and cleans up its temporary file; the old item stays intact. A process crash before rename may leave a temporary file, which scans ignore. Results wait for rename, index/evidence updates and notifications; verdict evidence is available when the call returns. As before, there is no `fsync`: completion promises process-crash durability of the replacement, not a power-loss guarantee. Every mutation rechecks the caller's permission immediately before rename; a revoked call removes its temporary file and refuses. Comment writers also recheck their identity, preserving verdict provenance. Each synchronous continuation after Git or file I/O is measured as resumed request work; nested scopes of the same request count as one continuous stretch; disk waits are excluded. Shutdown drains admitted commits and watcher work before closing the index.
+
+**Epic plans (T-183).** The second configured container level (`tracker.levels[1]`,
+`epic` by default) keeps its plan in one `## Plan` section containing
+one fenced `yaml` (or `yml`) block. Stages run in list order; each lane is an ordered
+list of tasks worked in parallel with the other lanes of that stage. For example,
+where T-55, T-57, T-58 and T-63 are tasks under the epic and T-63 has criterion C1:
+
+```yaml
+stages:
+  - name: schema and CLI
+    qa: { scope: affected, when: after-stage }
+    lanes:
+      - [T-55, T-57]
+      - [T-58]
+  - name: panels
+    qa: { scope: full, when: per-item }
+    lanes:
+      - [T-63]
+items:
+  T-58:
+    qa: { scope: none, when: per-item }
+  T-63:
+    qa: { scope: affected, when: per-item }
+    qa_criteria: [C1]
+```
+
+Stage names are unique, nonempty single lines. Stages, lanes and each lane's item
+list must be nonempty. Each task appears once, must exist, and must be a descendant
+of the epic. Plans may cover a subset of its tasks. Every stage supplies `qa.scope`
+(`none`, `affected`, `full`) and `qa.when` (`per-item`, `after-stage`). The optional
+root `items` mapping holds per-item `qa` overrides and/or `qa_criteria`: stable
+criterion ids that exist on that task. Overrides for items outside the lanes,
+duplicate criterion ids, unknown fields and malformed or duplicate YAML keys are
+refused with a reason. This slice stores the policy; gate enforcement, approval,
+stage QA and the plan view follow in later slices of T-114.
+
+Save the example as `plan.yaml`, then run:
+
+```sh
+cland task plan set T-<epic> --file plan.yaml
+cland task plan show T-<epic>
+cland task plan show T-<epic> --json
+```
+
+`--file -` reads YAML from stdin. MCP `task.plan` takes `{id, op: "set", yaml}` or
+`{id, op: "show"}`; frames use `type: "task.plan"` and `item` in place of `id`.
+Set/show return `{id, plan}`; no plan is `null`. `task view --json` and MCP
+`task.view` also return `item.plan`. Set replaces only the Plan section, preserving
+other body sections and comments, and never changes the lane items. Generic body
+writes validate plans too, so `task.edit` cannot publish an invalid plan.
+
+A refused tool write leaves the file and accepted plan intact. An invalid hand
+save remains on disk for repair: the watcher logs `task-plan-refused`, retains the
+last accepted plan in the index, and view/show report its `planError` beside that
+plan. The retained version survives hub restarts. A valid hand save replaces the
+snapshot; removing the section clears the plan. When child criteria or membership
+change, the tracker retries dependent plan candidates, including an epic save
+indexed before its child save. A read that sees a valid save before the watcher
+retains and journals that same version before showing it. The files remain the source of
+truth: a fresh database rebuild reads valid plans after indexing their lane tasks.
+Changes are journalled as `task-plan-changed` with the epic id, author, source,
+and full previous/new plans; rejected hand saves name the validation reason.
+
+The default Coordinator has `task.plan` (set and show). Implementer, Reviewer and
+QA have `task.plan:show`; `task.plan:set` grants writes separately. The human can
+set/show from their own shell. Existing projects with explicit permission lists
+must add `"task.plan"` to `[coordinator.permissions] tools` and `"task.plan:show"`
+to the Implementer, Reviewer and QA lists to use these tools. Lead/Aide grants and
+approval arrive in their own slices. No role clause changes in T-183.
+
 - **Synchronous read API.** Construction, the initial `start()` scan and its initial directory stamp run before serving and retain synchronous filesystem calls. `view()`, `mergeView()`, `files()`, `reserveId()` and `rescan()` remain synchronous for standalone/bootstrap use; `cland init` keeps its own synchronous provisioning code. The task CLI has no offline tracker writer: its mutations and reads all call the hub. Serving-time `task.view`, mutations, imports, topic creation and the shared item-launch path use asynchronous APIs. Merge/worktree/release/sync checks also use queued asynchronous views (T-78), including `mergeViewAsync()` for durable verdict evidence; native adapter spawn filesystem calls remain T-79.
 - **Hand edits** are picked up by a watcher on the folder (debounced 100 ms) and re-indexed, about 120 ms after the write as the hub log's `task-reindexed` stamps it (the test asserts under a second on that stamp; a `cland task list` poll adds its own process start-up, seconds on a loaded machine); a hand-edited file is read leniently (a missing field takes its default). Last writer wins: a hand edit landing within 2 s of a hub write of the same item, or a hub write finding a hand edit the watcher has not reached yet (the hub's change is then applied on top of it), or a hand edit landing while the hub writes the item (between its read and its rename: the file is checked just before the rename and the replaced file just after; the hand edit is overwritten), is logged as `task-conflict` in the hub's log. A file that cannot be parsed is logged as `task-unreadable` and keeps its last indexed version.
 - **Verdict commits and provenance.** `task.comment` accepts `verdict.commit` on the wire, `commit` on the spoke tool, or `--commit <sha>` on the CLI. An explicit SHA must resolve to a commit and is written in full; without it, the hub records the tip of the item's local `branch`, if it resolves. The result includes `commit: {sha, source: "explicit" | "branch" | "none", note}` and the plain CLI prints the note, including when no commit could be recorded. Text verdict headers accept `commit:` too.
@@ -940,7 +1010,8 @@ not assign ids, rewrite marks or change checkboxes.
 | Command | Tool | What it does |
 | --- | --- | --- |
 | `cland task create <title> [--kind] [--version] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
-| `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, criteria and their warnings, comments, verdicts and the claim. |
+| `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, plan (and planError on an invalid hand save), criteria and their warnings, comments, verdicts and the claim. |
+| `cland task plan <set\|show> <epic-id> [--file plan.yaml]` | `task.plan` | Validates and writes, or shows, the epic plan (Epic plans above). |
 | `cland task list [--under T-n] [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
 | `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id> [--commit <sha>]]` | `task.comment` | Appends a comment, or a verdict. |
 | `cland task edit <id> [--version] [--title] [--body] [--kind] [--state] [--status] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |

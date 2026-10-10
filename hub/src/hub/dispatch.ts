@@ -372,6 +372,7 @@ export class Dispatcher {
     };
     return {
       tool,
+      ...(tool === 'task.plan' ? { planOp: frame.op } : {}),
       item,
       own,
       ...(tool === 'task.edit' || tool === 'task.criterion' ? {

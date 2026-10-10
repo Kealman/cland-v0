@@ -27,6 +27,8 @@ const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? 
 export function lifecycleNotice(entry: LogEntry, label: (name: string) => string): TopicNotice | null {
   const session = str(entry.session);
   switch (entry.event) {
+    case 'task-plan-refused':
+      return { kind: 'refusal', text: `${String(entry.id)}: plan refused: ${String(entry.error)}; keeping the last valid plan`, detail: { item: entry.id } };
     case 'task-unreadable':
       return { kind: 'refusal', text: `${String(entry.file)}: refused at index: ${String(entry.error)}`, detail: { file: entry.file } };
     case 'task-parenting-warning':
