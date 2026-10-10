@@ -2,8 +2,8 @@
 id: T-167
 kind: task
 title: "Items panel in release scope: only the release's items; unscheduled holds open orphans only, never done items or other epics' subtrees"
-state: open
-status: ready
+state: closed
+status: done
 rank: 1170
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-76
 branch: t/T-167-items-panel-in-release-scope-only-the
 created: 2026-10-10T09:25:25.219Z
-updated: 2026-10-10T10:16:26.928Z
+updated: 2026-10-10T10:46:38.884Z
 ---
 
 ## Parent
@@ -81,3 +81,7 @@ commit: b401c3367404cf0c88e4cd3bb19625c58db1df63
 No findings. nvim/lua/cland/init.lua:281 now matches the implemented numeric filters and f/F cycle: 1 board, 2 in work, 3 needs you, 4 done, 5 map, 6 all. A-556's low help note is resolved. Standards and Spec delta reviews are clear; prior full-item clear carries forward. Read-only inspection; no suites run for this text-only delta.
 
 A-559: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-559-t-167-help-delta-review-clear.md
+
+### coord · 2026-10-10T10:46:38.884Z
+
+Merged 8293adf78dd922cb74e7b6c7cc5a1a3bcc547d6c onto dev.
