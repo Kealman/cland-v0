@@ -336,7 +336,7 @@ export class Dispatcher {
     const type = String(frame.type);
     // listing the launched sessions goes with launching them
     const tool = type.startsWith('event.') ? type.slice(6) : type === 'session.list' ? 'session.launch' : type === 'artifact.list' ? 'history' : type;
-    if (!KNOWN_TOOLS.includes(tool)) return null;
+    if (!KNOWN_TOOLS.includes(tool) && !(connection.role === 'aide' && (tool === 'role.state' || tool.startsWith('session.')))) return null;
     const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
     const tracker = this.#options.tracker;
     const own = (): boolean | undefined => {
@@ -369,7 +369,7 @@ export class Dispatcher {
           return !!claim && !!tracker?.sameSession(claim.sessionId, sessionActor(connection, UNKNOWN_SESSION).id);
         },
       } : {}),
-      ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
+      ...(tool === 'send' ? { to: Array.isArray(frame.to) ? frame.to as string[] : [], toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
       ...(tool === 'task.comment'
         ? {
@@ -391,7 +391,7 @@ export class Dispatcher {
       const caller = callerNow();
       const topic = typeof frame.topic === 'string' ? core.store.topic(frame.topic) : null;
       if (!topic) throw new ArtifactError('artifact-topic', 'no such artifact topic');
-      if (caller !== null && caller.role !== 'coordinator') {
+      if (caller !== null && caller.role !== 'coordinator' && caller.role !== 'aide') {
         const own = topic.item !== null && this.#toolCall(caller, { type: 'task.claim', item: topic.item })?.own?.() === true;
         if (topic.id === GENERAL.id || topic.id === AGENTS.id || !(own || core.store.addressedInTopic(caller.sessionId, topic.id))) {
           throw new ToolForbidden(caller.role, 'artifact.create', 'artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s');
@@ -585,10 +585,10 @@ export class Dispatcher {
       const resumed = <T,>(body: () => T): T => this.#guard.measure(frame.type, client, body, 'resumed');
       const authorize = () => {
         if (!caller) return;
-        const now = this.#asSession(frame);
+        const now = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
         const grants = core.roles?.get().get(now?.role ?? '')?.permissions.tools;
         const decision = decide(now?.role ?? null, grants, { tool: frame.type });
-        if (client !== 'cli' || !now || now.role !== 'coordinator' || !decision.ok) throw new ToolForbidden(now?.role ?? null, frame.type, 'promotion belongs to the human or the Coordinator from its own shell');
+        if (!now || now.sessionId !== caller.sessionId || !decision.ok || !(now.role === 'aide' || (client === 'cli' && now.role === 'coordinator'))) throw new ToolForbidden(now?.role ?? null, frame.type, 'promotion belongs to the human, an Aide, or the Coordinator from its own shell');
       };
       later(frame.type, this.artifacts.promote(frame.artifact, frame.path, authorize, resumed).then(
         value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value }) as HubFrame),
@@ -715,6 +715,7 @@ export class Dispatcher {
           case 'merge':
             return merge(frame, connection);
           case 'artifact.promote':
+            if (connection?.role === 'aide') return promote(frame, connection);
             throw new ToolForbidden(connection?.role ?? null, frame.type, 'promote from the Coordinator’s shell with cland artifact promote');
           case 'artifact.create':
           case 'artifact.list':

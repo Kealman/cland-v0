@@ -19,7 +19,7 @@
 // day their frame arrives, through the same `decide`; `ask` (#33) has its frame. `resolve` and `topic.create` (#32) have theirs; `role.handover`
 // (#31) is the Coordinator's; `role.state` is no table tool: a session reads the state of the role it holds (the
 // dispatcher checks).
-import { ROLE_LABELS } from '../names.ts';
+import { NAME_RE, BUILTIN_RESERVED, ROLE_LABELS } from '../names.ts';
 
 /** Every tool the table knows: today's spoke frames and the ones still to come. */
 export const KNOWN_TOOLS: readonly string[] = [
@@ -72,6 +72,7 @@ const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 's
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
+  aide: ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
   coordinator: [
     'send',
     'ask',
@@ -123,12 +124,14 @@ export function grantRefusal(grant: string, where: string): string | null {
  */
 export type ToolCall = {
   tool: string;
-  /** Manual status edit, limited to Coordinator or the claiming Implementer handing over. */
+  /** Manual status edit: Coordinator or Aide, or the claiming Implementer handing over. */
   status?: unknown;
   statusOnly?: boolean;
   claimed?: () => boolean;
   /** `send`: no addressee, so the message is for the human. */
   toHuman?: boolean;
+  /** Explicit session addresses on a send; Aides address sessions by name only. */
+  to?: string[];
   /** `send` to the human: whether the human's latest message in the target topic addressed the caller (by name or
    *  by its role), which lets it reply there without `send:human`. */
   mentioned?: () => boolean;
@@ -155,14 +158,21 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   const call: ToolCall = { ...input, item: typeof input.item === 'string' ? input.item.trim() || null : (input.item ?? null) };
   const { tool } = call;
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
+  // v0.1 §3.3: an Aide's tool boundary and named addressing are fixed, even if its file grants more.
+  if (role === 'aide') {
+    if (!DEFAULT_PERMISSIONS.aide!.includes(tool)) return { ok: false, permission: tool, reason: `Aide rule (v0.1 §3.3): an Aide may not use ${tool}; its tools are limited to the tracker, artifacts, named sends, topics, history, who and status` };
+    if (tool === 'send' && call.to?.some(tag => { const name = tag.trim().replace(/^@/, ''); return !NAME_RE.test(name) || BUILTIN_RESERVED.has(name); })) {
+      return { ok: false, permission: 'send', reason: 'Aide rule (v0.1 §3.3): an Aide sends to sessions by name only, or to topics without addressees' };
+    }
+  }
   // a Reviewer records review verdicts and QA records QA verdicts, whatever else its list grants
   const own = role === 'reviewer' ? 'review' : role === 'qa' ? 'qa' : null;
   if (tool === 'task.comment' && call.verdict && own !== null && call.verdictKind !== undefined && call.verdictKind !== own) {
     return { ok: false, permission: 'task.comment:verdict', reason: `${label(role)} may write only ${own === 'qa' ? 'QA' : 'review'} verdicts` };
   }
-  if (tool === 'task.edit' && call.status !== undefined && role !== 'coordinator') {
+  if (tool === 'task.edit' && call.status !== undefined && role !== 'coordinator' && role !== 'aide') {
     if (role !== 'implementer' || call.status !== 'review' || !call.statusOnly || call.claimed?.() !== true) {
-      return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator sets any status; an Implementer may set only review on its claimed item, without other edits' };
+      return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator or an Aide sets any status; an Implementer may set only review on its claimed item, without other edits' };
     }
   }
   if (tool === 'task.hold' && role !== 'reviewer' && role !== 'qa') return { ok: false, permission: tool, reason: 'only Reviewer and QA take verifier holds' };

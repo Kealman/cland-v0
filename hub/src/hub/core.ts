@@ -378,7 +378,7 @@ export class HubCore {
       if (!s.events.includes(event) && !finalSubject) continue;
       if (!selected && !this.#eventMatches(s, subject, facts)) continue;
       const name = this.#store.nameOfSession(s.subscriberId);
-      if (!name) continue;
+      if (!name || this.#store.roleOf(name) === 'aide') continue;
       const mode = s.digest === 'now' && this.#canSteerEvents(s.subscriberId) ? 'now' : 'turn';
       if (recipients.get(name) !== 'now') recipients.set(name, mode);
     }
@@ -466,7 +466,7 @@ export class HubCore {
     if (!found) throw new Error(`no item ${item}: address coordinator instead`);
     if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
     const claim = found.claim;
-    if (claim?.role === 'implementer') {
+    if (claim?.role === 'implementer' || claim?.role === 'aide') {
       const id = this.sessionIdentity(claim.sessionId);
       // A real identity follows renames; a provisional identity can name only its unadopted session.
       const name = id.startsWith('name:') ? id.slice(5) : this.connectionOf(id)?.name ?? this.#store.nameOfSession(id);
@@ -657,6 +657,7 @@ export class HubCore {
   flushQueued(name: string): void {
     const connection = this.#live.get(name);
     if (!connection) return;
+    this.#dropCrewDeliveries(name);
     const { deliver, dropped } = this.#store.pendingFor(name, this.#now().getTime(), this.#queueTtlMs);
     for (const message of dropped) {
       this.#afterCommit(() => this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name }));
@@ -720,8 +721,20 @@ export class HubCore {
 
   #record(...args: Parameters<Store['record']>): void {
     // Expired progress is settled before a new delivery can bind it. No transport await separates these writes.
-    for (const delivery of args[1]) this.#dropExpired(delivery.session);
+    for (const delivery of args[1]) {
+      this.#dropCrewDeliveries(delivery.session);
+      this.#dropExpired(delivery.session);
+    }
     this.#store.record(...args);
+  }
+
+  #dropCrewDeliveries(name: string): void {
+    if (this.#store.roleOf(name) !== 'aide') return;
+    const { dropped, reheld } = this.#store.dropCrewDeliveries(name);
+    for (const id of dropped) {
+      this.#afterCommit(() => this.#log({ event: 'dropped', reason: 'Aide receives only direct addresses and its role clause (v0.1 §3.3)', id, session: name }));
+    }
+    for (const id of [...dropped, ...reheld]) this.#afterCommit(() => this.#emitStage(id));
   }
 
   #claimRoleQueue(role: string, name: string): { moved: number; merged: string[] } {
@@ -870,7 +883,7 @@ export class HubCore {
       const stored = this.#store.message(notice.id);
       if (stored !== null) return stored;
     }
-    const to = [...new Set(notice.to ?? [])];
+    const to = [...new Set(notice.to ?? [])].filter(name => this.#store.roleOf(name) !== 'aide');
     const message: Message = {
       id: notice.id ?? randomUUID(),
       from: 'hub',
@@ -913,7 +926,7 @@ export class HubCore {
     const name = message.to[0]!;
     this.#store.transaction(() => {
       // A carried input contains only clause and brief; leave held notes for the next ordinary delivery.
-      this.#record(message, [{ session: name, state: 'queued' }], this.#now().getTime(), null, !carried);
+      this.#record(message, [{ session: name, state: 'queued', direct: true }], this.#now().getTime(), null, !carried);
       this.#store.rememberLaunchBrief(message.id, name, launchId);
     });
     this.#store.touchTopic(AGENTS.id, message.ts);
@@ -1495,6 +1508,7 @@ export class HubCore {
     const since = this.#now().getTime() - this.#queueTtlMs;
     const roles = new Map<string, string[]>();
     for (const role of ROLE_NAMES) {
+      if (role === 'aide') { roles.set(role, []); continue; }
       const live = [...this.#live.values()].filter((c) => c.role === role).map((c) => c.name);
       const holders = live.length || vacant === 'placeholder' ? live : this.#store.sessionsWithRole(role, since).filter((n) => known.has(n) && !this.#live.has(n));
       roles.set(role, [...new Set(holders)].sort());
@@ -1512,8 +1526,10 @@ export class HubCore {
     const connected = [...this.#live.keys()];
     const known = this.#known();
     const knownSet = new Set([...connected, ...known]);
+    const broadcast = (name: string) => this.#store.roleOf(name) !== 'aide';
     const ctx = { connected, known, roles: this.#roleHolders(knownSet, vacant) };
     const sessions = new Set<string>();
+    const direct = new Set<string>(); // explicit name or claimed-item lead; a broadcast cannot establish it
     const unknown: string[] = [];
     const empty: Array<{ tag: string; reason: string }> = []; // tags that reach nobody but the sender — a fact, never a refusal
     const tagOf = new Map<string, string[]>(); // tag → the session names it resolved to
@@ -1525,21 +1541,22 @@ export class HubCore {
       const r = claimant ? { kind: 'session' as const, name: claimant } : resolveTag(target, ctx);
       switch (r.kind) {
         case 'all': {
-          const names = [...knownSet].filter((n) => n !== except);
+          const names = [...knownSet].filter((n) => n !== except && broadcast(n));
           if (names.length) tagOf.set(tag, names);
           else unknown.push(tag); // nobody else is connected or known — `all` names no one
           for (const n of names) sessions.add(n);
           break;
         }
         case 'glob': {
-          const names = r.names.filter((n) => n !== except);
+          const names = r.names.filter((n) => n !== except && broadcast(n));
           if (names.length) tagOf.set(tag, names);
           else unknown.push(tag);
           for (const n of names) sessions.add(n);
           break;
         }
         case 'role': {
-          const names = r.names.filter((n) => n !== except);
+          if (r.role === 'aide') { unknown.push(tag); break; }
+          const names = r.names.filter((n) => n !== except && broadcast(n));
           if (names.length) tagOf.set(tag, names);
           else empty.push({ tag: lead ? target : tag, reason: r.names.length ? `the sender is the only session holding role "${target}"` : `role "${target}" has no holder` });
           for (const n of names) sessions.add(n);
@@ -1547,13 +1564,14 @@ export class HubCore {
         }
         case 'session':
           sessions.add(r.name);
+          if (!lead || claimant) direct.add(r.name);
           tagOf.set(tag, [r.name]);
           break;
         case 'unknown':
           unknown.push(tag);
       }
     }
-    return { sessions, unknown, empty, tagOf };
+    return { sessions, direct, unknown, empty, tagOf };
   }
 
   // ---------------------------------------------------------------- topics
@@ -1793,7 +1811,7 @@ export class HubCore {
       unmentioned = found.unknown;
     }
     // a role with no live holder waits for the next session to take it, not for a holder that went away
-    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(tags, HUMAN, 'placeholder');
+    const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(tags, HUMAN, 'placeholder');
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     for (const tag of unmentioned) outcomes.push({ to: tag, outcome: 'unknown', reason: `@${tag} names no session the hub knows and no role: not addressed` });
     // a role with no holder: held for the role, not refused
@@ -1814,7 +1832,7 @@ export class HubCore {
     };
     this.#record(
       message,
-      [...[...sessions].map((session) => ({ session, state: 'queued' as const })), ...placeholders.map((role) => ({ session: `@${role}`, state: 'queued' as const }))],
+      [...[...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), ...placeholders.map((role) => ({ session: `@${role}`, state: 'queued' as const }))],
       nowMs,
     );
     this.#store.touchTopic(topic.id, message.ts);
@@ -1858,7 +1876,7 @@ export class HubCore {
       this.#log({ event: 'rate-limited', session: from });
       throw new HygieneError(rate, { code: 'hygiene', rule: 'rate' });
     }
-    const { sessions, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders');
+    const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders');
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     for (const { tag, reason } of empty) outcomes.push({ to: tag, outcome: 'empty', reason });
     // the loop breaker: a muted pair refuses; a pair crossing the threshold gets muted and refuses
@@ -1910,7 +1928,7 @@ export class HubCore {
     if (sessions.size > 0 || toHuman) {
       // who the human's latest message here waited for, read before this one is recorded
       const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
-      this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const })), nowMs);
+      this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), nowMs);
       this.#store.touchTopic(topic.id, message.ts);
       for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);

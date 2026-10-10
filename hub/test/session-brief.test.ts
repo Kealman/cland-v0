@@ -186,6 +186,35 @@ test('an unacknowledged brief retries after the current clause without the super
   assert.ok(!input.digest?.some(note => note.text.includes('you hold the role Implementer')));
 });
 
+test('a queued launch brief survives a session becoming an Aide and follows its current clause', async t => {
+  const root = await tempProject(t);
+  const f = await fixture(t, root);
+  const brief = 'Retain this named brief after the Aide transition.';
+  assert.equal((await f.ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'fake', brief })).ok, true);
+  const original = f.launched();
+  original.peer.close();
+  await eventually('launch connection gone', async () => {
+    const roles = (await f.ui.request({ type: 'role.list' })).value as { roles: Array<{ holders: Array<{ name: string; live: boolean }> }> };
+    return !roles.roles.some(role => role.holders.some(holder => holder.name === 'impl' && holder.live)) || undefined;
+  });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'aide' })).ok, true);
+  const peer = await f.open();
+  const welcome = await peer.next();
+  assert.equal(welcome.type, 'welcome');
+  assert.equal(welcome.role, 'aide');
+  const clause = await peer.next();
+  assert.equal(clause.type, 'role');
+  assert.match((clause.message as { text: string }).text, /you hold the role Aide/);
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ id: string; stage?: string }> };
+  assert.equal(history.messages.find(message => message.id === original.frames[1]!.id)?.stage, 'queued');
+  const retry = await peer.next();
+  assert.equal(retry.type, 'deliver');
+  assert.equal(retry.id, original.frames[1]!.id);
+  const input = retry.message as { text: string; digest?: Array<{ text: string }> };
+  assert.equal(input.text, brief);
+  assert.ok(!input.digest?.some(note => note.text.includes('you hold the role Implementer')));
+});
+
 test('a brief accepted in the native first turn before hello stays injected after a hub restart', async t => {
   const root = await tempProject(t);
   const first = await fixture(t, root, { deferHello: true, carried: true });

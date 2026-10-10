@@ -38,10 +38,11 @@ const TOOLS = [
       path: { type: 'string' }, content: { type: 'string' }, topic: { type: 'string' }, status: { type: 'string', enum: ['draft', 'shared'] },
     }, required: ['kind', 'title', 'topic'] },
   },
+  { name: 'artifact.promote', description: 'Copy an artifact into a project-relative repository path. Aides may promote here; the Coordinator promotes from its shell.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, path: { type: 'string' } }, required: ['artifact', 'path'] } },
   {
     name: 'send',
     description:
-      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); only the Coordinator writes to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events — and is recorded in the topic (Agents unless `topic` names another).',
+      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -294,6 +295,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
         case 'merge': {
           if (typeof args.item !== 'string') throw new Error('merge needs an item id');
           const value = await hub.request({ type: 'merge', item: args.item }, 60_000) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'artifact.promote': {
+          const value = await hub.request({ ...args, type: 'artifact.promote' } as Omit<import('../protocol.ts').ArtifactPromote, 'id'>) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'artifact.create': {

@@ -313,7 +313,7 @@ test('a hub started in an initialised project has General and Agents, serves the
     ],
   );
   const roles = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string }> };
-  assert.deepEqual(roles.roles.map((r) => r.role).sort(), ['coordinator', 'implementer', 'qa', 'reviewer']);
+  assert.deepEqual(roles.roles.map((r) => r.role).sort(), ['aide', 'coordinator', 'implementer', 'qa', 'reviewer']);
   const log = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
   assert.match(log, /"event":"config-loaded".*"maxTextBytes":4096/);
 

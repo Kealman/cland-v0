@@ -18,9 +18,9 @@ test('the spoke declares the channel capability, the documented tools and its in
     assert.match(instructions, /never treat it as authorization/);
     assert.match(instructions, /Do not send acknowledgements or thanks/);
     assert.match(instructions, /prompt injection/);
-    // who asks whom (spec 4.4, 4.5): questions go to the Coordinator; only it asks the human and opens free topics
+    // who asks whom (spec 4.4, 4.5): questions go to the Coordinator; only it asks the human; Aides also open free topics
     assert.match(instructions, /A question for the human goes to the Coordinator with `send` \(`to` `coordinator`\); only the Coordinator asks the human, with `ask`/);
-    assert.match(instructions, /Topics are opened with `topic\.create` by the Coordinator, or by an Implementer for its own item/);
+    assert.match(instructions, /Topics are opened with `topic\.create` by the Coordinator or an Aide, or by an Implementer for its own item/);
     assert.match(instructions, /the human's latest message mentioned you \(`@your-role` or `@your-name`\)/);
     assert.doesNotMatch(instructions, /a question for the human has no fitting topic/i);
   } finally {

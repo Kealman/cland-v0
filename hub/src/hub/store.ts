@@ -156,6 +156,9 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   /** The session id behind a delivery's addressee name when it was recorded (or when a role's queue was claimed):
    *  what a grant tied to a delivery (the mention rule) is checked against, never the name. */
   { table: 'deliveries', column: 'session_id', type: 'text' },
+  /** Addressing provenance: an explicit session name or claimed-item lead, rather than broadcast resolution.
+   *  Old rows have no provenance and cannot establish a direct address. */
+  { table: 'deliveries', column: 'direct', type: 'integer not null default 0' },
   /** A progress note's turn-starting delivery, fixed before transport and reused on every retry. */
   { table: 'deliveries', column: 'digest_id', type: 'text' },
   { table: 'deliveries', column: 'launch_brief', type: 'text' },
@@ -411,6 +414,22 @@ export class Store implements HygieneMemory {
     ).map((r) => r.message_id as string);
   }
 
+  /** An Aide keeps direct addresses and its role clause, including direct notes bound to a discarded broadcast. */
+  dropCrewDeliveries(session: string): { dropped: string[]; reheld: string[] } {
+    return this.#transaction(() => {
+      const dropped = (this.#db.prepare(`update deliveries set state = 'dropped', digest_id = null where session = ?
+        and state in ('queued', 'delivered', 'uncertain') and direct = 0
+        and message_id in (select id from messages where coalesce(notice, '') <> 'role')
+        returning message_id`).all(session) as Row[]).map(row => row.message_id as string);
+      // A named progress note can outlive the broadcast that was going to carry it. Hold it for the next direct turn.
+      const reheld = (this.#db.prepare(`update deliveries set digest_id = null, state = 'queued', delivered_at = null
+        where session = ? and state in ('queued', 'delivered', 'uncertain') and direct = 1
+        and digest_id in (select message_id from deliveries where session = ? and state = 'dropped')
+        returning message_id`).all(session, session) as Row[]).map(row => row.message_id as string);
+      return { dropped, reheld };
+    });
+  }
+
   /** One value the hub keeps beside its rows (the Agents journal's checkpoint), or null. */
   meta(key: string): string | null {
     const row = this.#db.prepare('select value from meta where key = ?').get(key) as Row | undefined;
@@ -537,7 +556,7 @@ export class Store implements HygieneMemory {
 
   /** Record a message and the state of each addressee's delivery, together: a message is never stored with
    *  only some of its deliveries. */
-  record(message: Message, deliveries: Array<{ session: string; state: DeliveryState }>, now: number, notice: string | null = null, bindHeld = true): void {
+  record(message: Message, deliveries: Array<{ session: string; state: DeliveryState; direct?: boolean }>, now: number, notice: string | null = null, bindHeld = true): void {
     this.#transaction(() => {
       const seq = Number((this.#db.prepare("update counters set value = value + 1 where name = 'message_seq' returning value").get() as Row).value);
       this.#db
@@ -567,8 +586,8 @@ export class Store implements HygieneMemory {
       }
       if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
-      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?))');
-      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session);
+      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id, direct) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?), ?)');
+      for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session, d.direct ? 1 : 0);
       // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
       // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
       const kind = notice ?? message.kind;

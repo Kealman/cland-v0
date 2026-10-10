@@ -1580,7 +1580,7 @@ export class Tracker {
   /** The live claim is an index fact, read without opening the item file. */
   claimOf(rawId: string): Claim | null { return this.#index.claimOf(this.#require(rawId).id); }
 
-  /** Claims share the file queue: an Implementer's new claim persists in progress before it is announced. */
+  /** Claims share the file queue: an Implementer's or Aide's new claim persists in progress before it is announced. */
   claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ id: string; claim: Claim | null }> {
     return this.#serial(async () => {
       authorize();
@@ -1606,7 +1606,7 @@ export class Tracker {
       if (held?.sessionId === this.#sessionId(actor.id) && held.session === actor.name && held.role === actor.role) return { id, claim: held };
       const claim: Claim = { session: actor.name, sessionId: this.#sessionId(actor.id), role: actor.role,
         claimedAt: held?.sessionId === this.#sessionId(actor.id) ? held.claimedAt : this.#now().toISOString() };
-      const persist = actor.role === 'implementer' && this.#index.get(id)?.kind === 'task';
+      const persist = (actor.role === 'implementer' || actor.role === 'aide') && this.#index.get(id)?.kind === 'task';
       if (persist) {
         await this.#mutate(id, actor, 'claim', item => this.#setStatus(item, 'in progress'), resumed, undefined, () => { check(); }, () => this.#index.setClaim(id, { ...claim, sessionId: this.#sessionId(actor.id) }));
       }
