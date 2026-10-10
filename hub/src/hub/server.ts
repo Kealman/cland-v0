@@ -75,7 +75,14 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   const unbindTopics = options.tracker?.bindTopicsThrough(core.topicBinding());
   core.reconcileBindings();
   // a verdict comment is an inbox notification (#33)
-  const unwatchVerdicts = options.tracker?.onVerdict((id, author, v) => core.inbox.verdict({ item: id, author, verdict: v.verdict, result: v.result, run: v.run }));
+  const unwatchVerdicts = options.tracker?.onVerdict((id, author, v, report) => {
+    core.inbox.verdict({ item: id, author, verdict: v.verdict, result: v.result, run: v.run });
+    if (report) core.noticeInTopic(report.topic ?? 'agents', {
+      kind: 'report', text: `${id} ${v.verdict} ${v.result} · ${v.by} · run ${v.run}${report.text ? `\n\n${report.text}` : ''}`,
+      detail: { item: id, session: author, verdict: v.verdict, result: v.result, run: v.run },
+      ...(report.criteria !== undefined ? { criteria: report.criteria } : {}),
+    });
+  });
   const dispatcher = new Dispatcher({
     core,
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),

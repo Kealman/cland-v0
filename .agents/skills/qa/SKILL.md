@@ -35,7 +35,7 @@ A request is `qa request T-<n>`; the brief it names is the whole job. Do not fix
    ```
 
    Use `hub-api` for checks of the hub through the `cland` CLI. Put captures under `.cland/qa/T-<n>/<run>/` first. A grant the brief does not list is a grant you do not have: record the case `BLOCKED`.
-5. **Write the verdict**, one `task.comment`, `verdict` qa, `run` your run id, `commit` the commit you ran (full SHA), `result`:
+5. **Verify criteria and write the verdict.** Match the cases and checks to the stable ids in `task.view` criteria. A clear verdict includes `verified: "C1,C3"` for the criteria established by this run, or `verified: "all"` when every criterion was checked. A not-clear verdict includes `failed: [{ criterion: "C2", note: "what failed" }]` for each failed criterion; notes are nonempty and single-line. For separate marks use `task.criterion` verify with `criterion` and `run`, or fail with `criterion` and `note`. Leave unchecked criteria unverified. The hub lists the marks in the verdict report. Write one `task.comment`, `verdict` qa, `run` your run id, `commit` the commit you ran (full SHA), `result`:
    - `clear` only when **every** case and check in scope is PASS;
    - `not clear` when any is FAIL, BLOCKED or INCONCLUSIVE, and the text names each such case by id.
 

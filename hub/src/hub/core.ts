@@ -148,7 +148,7 @@ export type CoreOptions = {
 /** The `meta` key holding the id of the last journalled lifecycle notice recorded in Agents. */
 export const AGENTS_JOURNAL_CHECKPOINT = 'agents-journal-checkpoint';
 
-export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown>; id?: string };
+export type TopicNotice = { kind: string; text: string; to?: string[]; detail?: Record<string, unknown>; criteria?: Message['criteria']; id?: string };
 
 /** The one exclusive role (spec 4.4): a vacancy is announced. */
 export const COORDINATOR = 'coordinator';
@@ -909,6 +909,7 @@ export class HubCore {
       topic: topic.id,
       kind: notice.kind,
       ...(notice.detail ? { detail: notice.detail } : {}),
+      ...(notice.criteria !== undefined ? { criteria: notice.criteria } : {}),
     };
     this.#record(
       message,

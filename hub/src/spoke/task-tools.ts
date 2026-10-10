@@ -40,7 +40,7 @@ export const TASK_TOOLS = [
     description: 'Comment on an item. With `verdict`, `result` and `run` it is a verdict, recorded as by you and your role.',
     inputSchema: {
       type: 'object',
-      properties: { id: itemId, text: str, verdict: { type: 'string', enum: ['review', 'qa'] }, result: { type: 'string', enum: ['clear', 'not clear'] }, commit: { type: 'string', description: 'The Git commit SHA covered by this verdict; defaults to the item branch tip' }, run: { type: 'string', description: 'The id of the review or QA run' } },
+      properties: { id: itemId, text: str, verified: { ...str, description: 'On a clear verdict: criterion ids C1,C3 or all; Reviewer or QA only' }, failed: { type: 'array', items: { type: 'object', properties: { criterion: str, note: str }, required: ['criterion', 'note'] }, description: 'On a not-clear verdict: criteria to fail with single-line notes; Reviewer or QA only' }, verdict: { type: 'string', enum: ['review', 'qa'] }, result: { type: 'string', enum: ['clear', 'not clear'] }, commit: { type: 'string', description: 'The Git commit SHA covered by this verdict; defaults to the item branch tip' }, run: { type: 'string', description: 'The id of the review or QA run' } },
       required: ['id'],
     },
   },
@@ -75,7 +75,7 @@ export const TASK_TOOL_NAMES: ReadonlySet<string> = new Set(TASK_TOOLS.map((t) =
 
 /** The frame for a `task.*` tool call. */
 export function taskFrame(tool: string, args: Record<string, unknown>): DistributiveOmit<TaskRequest, 'id'> {
-  const { id, label, verdict, result, run, commit, ...rest } = args;
+  const { id, label, verdict, result, run, commit, verified, failed, ...rest } = args;
   const item = id === undefined ? {} : { item: id };
   switch (tool) {
     case 'task.list':
@@ -83,7 +83,7 @@ export function taskFrame(tool: string, args: Record<string, unknown>): Distribu
     case 'task.criterion':
       return { type: 'task.criterion', ...rest, ...item, ...(run !== undefined ? { run } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
     case 'task.comment':
-      return { type: 'task.comment', ...rest, ...item, ...(verdict !== undefined || result !== undefined || run !== undefined || commit !== undefined ? { verdict: { verdict, result, run, ...(commit !== undefined ? { commit } : {}) } } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
+      return { type: 'task.comment', ...rest, ...item, ...(verdict !== undefined || result !== undefined || run !== undefined || commit !== undefined || verified !== undefined || failed !== undefined ? { verdict: { verdict, result, run, ...(commit !== undefined ? { commit } : {}), ...(verified !== undefined ? { verified } : {}), ...(failed !== undefined ? { failed } : {}) } } : {}) } as DistributiveOmit<TaskRequest, 'id'>;
     default:
       return { type: tool, ...rest, ...item } as DistributiveOmit<TaskRequest, 'id'>;
   }

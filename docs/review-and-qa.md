@@ -16,6 +16,22 @@ How a change gets reviewed and checked in slice 1 (spec 4.10 and 6 (g), ticket #
 
 Only Reviewer and QA (`task.comment:verdict`) and the Coordinator (`task.comment`) may write a verdict. Anyone else gets the typed error `forbidden: task.comment:verdict (<Role> may not write verdicts)`, and the refusal shows in Agents.
 
+## Criteria in a verdict
+
+Reviewer and QA read the stable criterion ids from `task.view`. A clear verdict can verify selected ids or every criterion with its run:
+
+```sh
+cland task comment T-12 "Checked the criteria" --verdict review --result clear --run rev-12 --verified C1,C3
+cland task comment T-12 "All checked" --verdict review --result clear --run rev-13 --verified all
+cland task comment T-12 "Reconnect failed" --verdict qa --result "not clear" --run qa-12 --failed "C2=Reconnect drops the clause"
+```
+
+Repeat `--failed "C<n>=note"` for multiple failures. The MCP `task.comment` tool takes `verified: "C1,C3"` or `"all"`, or `failed: [{ criterion: "C2", note: "Reconnect drops the clause" }]`. Wire requests carry those fields inside the `verdict` object. Verification requires a clear verdict; failures require a not-clear verdict and a nonempty, single-line note. Reviewer and QA need `task.criterion:verify` beside their verdict grant; the Coordinator and human may record verdicts but cannot mark verified or failed criteria.
+
+A verdict and its marks publish in one tracker write. An unknown id names that id and refuses the whole verdict. Malformed criteria and revoked grants also refuse the write. A concurrent save before publication refuses without recording the verdict; a late in-place save through an old editor handle retains the captured `.conflict` source named in the error for recovery before retry, following `task.criterion`'s existing policy. Such a refused late write creates no hub verdict evidence or thread report, even if the tentative item text is already at the live path. Verification keeps done marks; failure replaces done and verification with its note, unchecks the checkbox and reopens the task in progress, just like `task.criterion fail`. Legacy criteria receive ids on first touch.
+
+The hub posts a report in the item's bound topic, or Agents when it has none. It lists the marked ids in text and carries structured `criteria: [{ id, mark: "verified" | "failed", note? }]` for the thread. Use `all` only after checking every criterion; unchecked criteria remain unverified. Separate verification and failure marks still use `task.criterion` with the id and run or note.
+
 ## The messages
 
 The request's first line is conventional, so the UI can style it later; the rest is free text:

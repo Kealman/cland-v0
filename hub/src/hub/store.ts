@@ -135,6 +135,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'sessions', column: 'session_id', type: 'text' },
   { table: 'messages', column: 'artifact', type: 'text' },
   { table: 'messages', column: 'artifacts', type: 'text' },
+  { table: 'messages', column: 'criteria', type: 'text' },
   { table: 'messages', column: 'from_role', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
@@ -196,6 +197,7 @@ type Row = Record<string, string | number | null>;
 const toMessage = (row: Row): Message => ({
   ...(typeof row.artifact === 'string' ? { artifact: JSON.parse(row.artifact) as Artifact } : {}),
   ...(typeof row.artifacts === 'string' ? { artifacts: JSON.parse(row.artifacts) as Artifact[] } : {}),
+  ...(typeof row.criteria === 'string' ? { criteria: JSON.parse(row.criteria) as NonNullable<Message['criteria']> } : {}),
   id: row.id as string,
   from: row.from_name as string,
   fromKind: row.from_kind as Message['fromKind'],
@@ -578,6 +580,7 @@ export class Store implements HygieneMemory {
           message.answerTo ?? null,
           seq,
         );
+      if (message.criteria !== undefined) this.#db.prepare('update messages set criteria = ? where id = ?').run(JSON.stringify(message.criteria), message.id);
       if (message.artifact) this.#db.prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
       if (message.artifacts?.length) {
         this.#db.prepare('update messages set artifacts = ? where id = ?').run(JSON.stringify(message.artifacts), message.id);

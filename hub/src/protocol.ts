@@ -80,6 +80,8 @@ export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string }
 /** Filters on the Agents record; when both are given they intersect. */
 export type AgentsHistoryFilter = { item?: string; session?: string };
 
+export type MarkedCriterion = { id: string; mark: 'verified' | 'failed'; note?: string };
+
 export type Message = {
   id: string;
   from: string;
@@ -102,6 +104,8 @@ export type Message = {
   detail?: Record<string, unknown>;
   /** The human's answer to an ask (#33): the ask's message id. */
   answerTo?: string;
+  /** Criteria marked by a recorded verdict; consumers render these directly. */
+  criteria?: MarkedCriterion[];
   artifact?: Artifact;
   artifacts?: Artifact[];
 };

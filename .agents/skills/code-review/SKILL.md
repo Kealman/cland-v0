@@ -73,7 +73,11 @@ Issue both sub-agent calls together, in the foreground, and aggregate the report
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-### 5. Aggregate
+### 5. Verify the criteria
+
+When holding the Reviewer role, use the item's `task.view` criteria as the checklist. Record which stable ids the review established and which failed. Write one review verdict with `task.comment`: `verdict: "review"`, `result`, `run` and the reviewed `commit`. A clear verdict includes `verified: "C1,C3"`; use `verified: "all"` only when every criterion was checked. A not-clear verdict includes `failed: [{ criterion: "C2", note: "what failed" }]` for each failed criterion. Each note is nonempty and single-line. For a separate mark use `task.criterion` verify with the criterion id and run, or fail with the id and note. Unchecked criteria remain unverified. The hub records the marks and lists them in the verdict report.
+
+### 6. Aggregate
 
 Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings, because the two axes are deliberately separate (see _Why two axes_).
 

@@ -7,6 +7,7 @@
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
+import type { MarkedCriterion } from '../protocol.ts';
 import { criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
@@ -130,7 +131,8 @@ export type LinkInput = {
   branch?: string | null;
 };
 
-export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string };
+export type VerdictReport = { topic: string | null; text: string; criteria?: MarkedCriterion[] };
+export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; verified?: string; failed?: { criterion: string; note: string }[] };
 
 export class TrackerError extends Error {
   /** `git-unavailable`: Git did not answer a question the write needs (a verdict's commit, a branch tip). */
@@ -191,7 +193,7 @@ export class Tracker {
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
-  readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict) => void>();
+  readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict, report?: VerdictReport) => void>();
   /** The hub's topic binding; without one (a tracker on its own) the `topic` field is written as given. */
   #topicBinding: TopicBinding | null = null;
   readonly #git: Git;
@@ -414,7 +416,7 @@ export class Tracker {
   }
 
   /** Listen to verdict comments written through the hub; returns the unsubscribe. */
-  onVerdict(listener: (id: string, author: string, verdict: Verdict) => void): () => void {
+  onVerdict(listener: (id: string, author: string, verdict: Verdict, report?: VerdictReport) => void): () => void {
     this.#verdictListeners.add(listener);
     return () => this.#verdictListeners.delete(listener);
   }
@@ -1101,18 +1103,41 @@ export class Tracker {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
       }
     }
+    const marking = verdict?.verified !== undefined || verdict?.failed !== undefined;
+    const checkMarks = (writer: Actor) => {
+      if (!marking) return;
+      const reason = criterionRefusal('verify', { role: writer.role, human: writer.human ?? (writer.role === null), claimed: false });
+      if (reason) throw new TrackerError(reason);
+      if (!/^\S+$/.test(v?.run ?? '')) throw new TrackerError('verify needs a run id (no whitespace)');
+      if (verdict?.verified !== undefined && (typeof verdict.verified !== 'string' || !/^(?:all|C[1-9]\d*(?:,C[1-9]\d*)*)$/.test(verdict.verified))) throw new TrackerError('verified must be criterion ids such as C1,C3 or all');
+      if (verdict?.verified !== undefined && v?.result !== 'clear') throw new TrackerError('verified requires a clear verdict');
+      if (verdict?.failed !== undefined) {
+        if (v?.result !== 'not clear') throw new TrackerError('failed requires a not-clear verdict');
+        if (!Array.isArray(verdict.failed) || !verdict.failed.length) throw new TrackerError('failed must be a nonempty list of { criterion, note }');
+        for (const failure of verdict.failed) {
+          if (!failure || typeof failure.criterion !== 'string' || !/^C[1-9]\d*$/.test(failure.criterion)) throw new TrackerError('failed criterion must be an id such as C1');
+          if (typeof failure.note !== 'string' || !failure.note.trim() || /[\r\n]/.test(failure.note)) throw new TrackerError('fail needs a note (one line)');
+          checkText(failure.note, 'failure note');
+        }
+        if (new Set(verdict.failed.map(f => f.criterion)).size !== verdict.failed.length) throw new TrackerError('failed criterion ids must be unique');
+      }
+    };
+    checkMarks(actor);
     let tip: { branch: string; sha: string | null } | null = null;
     // Git resolution belongs to this admitted operation; later writes and views wait behind it.
     const write = () => {
       const writer = currentActor ? currentActor() : actor;
       this.#ensureSession(writer);
+      checkMarks(writer);
       if (v) v.by = formatVerdictBy(writer.name, writer.role);
       if (tip?.sha) this.#fresh.noteTip(tip.branch, tip.sha);
-      return this.#writeComment(writer, rawId, body, v, tip, resumed, currentActor ? () => {
+      return this.#writeComment(writer, rawId, body, v, tip, resumed, () => {
+        checkMarks(writer);
+        if (!currentActor) return;
         const now = currentActor();
         this.#ensureSession(now);
-        if (now.id !== writer.id || now.name !== writer.name || now.role !== writer.role) throw new TrackerError('comment writer changed while the item was being written; nothing was written, retry');
-      } : undefined);
+        if (now.id !== writer.id || now.name !== writer.name || now.role !== writer.role || now.human !== writer.human) throw new TrackerError('comment writer changed while the item was being written; nothing was written, retry');
+      }, verdict);
     };
     if (v && verdict?.commit !== undefined) {
       return this.#resolve(verdict.commit, `the verdict's commit ${verdict.commit}`).then(commit => resumed(() => {
@@ -1131,24 +1156,40 @@ export class Tracker {
     return write();
   }
 
-  async #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null, resumed: Resumed, beforeCommit?: () => void): Promise<ItemView> {
-    const view = await this.#mutate(rawId, actor, v ? 'verdict' : 'comment', (item) => {
+  async #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null, resumed: Resumed, beforeCommit?: () => void, input?: VerdictInput): Promise<ItemView> {
+    const marking = input?.verified !== undefined || input?.failed !== undefined;
+    const marked: MarkedCriterion[] = [];
+    const view = await this.#mutate(rawId, actor, marking ? 'criterion' : v ? 'verdict' : 'comment', (item) => {
       if (v && !v.commit) {
         // a hand edit moved the branch meanwhile: the tip the cache last read for it
         const sha = item.fm.branch === tip?.branch ? tip.sha : this.#fresh.tip(item.fm.branch);
         if (sha) v.commit = sha;
       }
-      item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
+      if (marking) {
+        const criteria = this.#prepareCriteria(item).criteria;
+        const verified = input?.verified === 'all' ? criteria.map(c => c.id!) : input?.verified?.split(',') ?? [];
+        for (const id of new Set(verified)) {
+          this.#changeCriterion(item, actor, { op: 'verify', criterion: id, run: v!.run });
+          marked.push({ id, mark: 'verified' });
+        }
+        for (const failure of input?.failed ?? []) {
+          this.#changeCriterion(item, actor, { op: 'fail', criterion: failure.criterion, note: failure.note });
+          marked.push({ id: failure.criterion, mark: 'failed', note: failure.note.trim() });
+        }
+      }
+      const summary = marked.length ? `Criteria: ${marked.map(c => `${c.id} ${c.mark}${c.note ? ` (${c.note})` : ''}`).join(', ')}.` : '';
+      item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: [body, summary].filter(Boolean).join('\n\n'), ...(v ? { verdict: v } : {}) });
       if (v?.result === 'not clear') this.#setStatus(item, 'in progress');
     }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(normalizeId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined);
     return resumed(() => {
+      for (const c of marked) this.#criterionEvent(view.id, c.id, c.mark);
       // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
       // as one (its header lines), so every verdict on record is a notification
       const recorded = view.comments.at(-1)?.verdict;
       if (recorded) {
         for (const listener of [...this.#verdictListeners]) {
           try {
-            listener(view.id, actor.name, recorded);
+            listener(view.id, actor.name, recorded, v ? { topic: view.topic, text: view.comments.at(-1)!.text, ...(marking ? { criteria: marked } : {}) } : undefined);
           } catch (err) {
             this.#log({ event: 'task-verdict-listener-failed', id: view.id, error: err instanceof Error ? err.message : String(err) });
           }
@@ -1290,6 +1331,80 @@ export class Tracker {
     }, resumed);
   }
 
+  #criterionEvent(id: string, criterion: string, mark: string): void {
+    for (const listener of [...this.#changeListeners]) {
+      try { listener({ id, item: this.list().find(i => i.id === id)!, events: [`criterion marked ${criterion} ${mark}`] }); }
+      catch (err) { this.#log({ event: 'task-listener-error', id, error: String(err) }); }
+    }
+  }
+
+  #prepareCriteria(item: Item) {
+    if (item.fm.kind !== 'task') throw new TrackerError('criteria operations require a task');
+    const parsed = criteriaSource(item.body);
+    if (parsed.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
+    const ids = parsed.criteria.flatMap(c => c.id ? [c.id] : []);
+    if (new Set(ids).size !== ids.length) throw new TrackerError('duplicate criterion ids; fix the section first');
+    let sequence = Math.max(item.fm.criterion_seq ?? 0, ...ids.map(id => Number(id.slice(1))));
+    const allocate = () => {
+      sequence++;
+      if (!Number.isSafeInteger(sequence)) throw new TrackerError('criterion ids exhausted');
+      return `C${sequence}`;
+    };
+    const lines = item.body.split(/\r?\n/);
+    for (const [index, c] of parsed.criteria.entries()) {
+      if (c.id) continue;
+      c.id = allocate();
+      const source = parsed.sources[index]!;
+      lines[source.start] = lines[source.start]!.replace(/^( *[-*+] \[[ xX]\])(?:[ \t]+)?/, `$1 ${c.id}. `);
+    }
+    item.fm.criterion_seq = sequence;
+    item.body = lines.join('\n');
+    return criteriaSource(item.body);
+  }
+
+  #changeCriterion(item: Item, actor: Actor, input: { op: string; criterion?: string; text?: string; note?: string; run?: string }): string {
+    const parsed = this.#prepareCriteria(item);
+    if (input.op === 'add' && parsed.insertionInFence) throw new TrackerError('cannot add a criterion inside an unclosed Markdown code fence; close the fence first');
+    const lines = item.body.split(/\r?\n/);
+    const id = item.fm.id;
+    let criterion = input.criterion!;
+    if (input.op === 'add') {
+      criterion = `C${(item.fm.criterion_seq ?? 0) + 1}`;
+      if (!Number.isSafeInteger(Number(criterion.slice(1)))) throw new TrackerError('criterion ids exhausted');
+      item.fm.criterion_seq = Number(criterion.slice(1));
+      const block = [`- [ ] ${criterion}. ${input.text!.trim().replace(/\r?\n/g, '\n  ')}`];
+      if (parsed.hasSection) lines.splice(parsed.sectionEnd, 0, ...block);
+      else lines.push('', '## Acceptance criteria', '', ...block);
+    } else {
+      const at = parsed.criteria.findIndex(c => c.id === criterion);
+      if (at < 0) throw new TrackerError(`no criterion ${criterion} on ${id}`);
+      const c = parsed.criteria[at]!, source = parsed.sources[at]!;
+      let marks = c.marks;
+      let text = c.text;
+      let checked = c.marks.some(m => m.kind === 'done');
+      const timestamp = this.#now().toISOString();
+      if (input.op === 'done') {
+        marks = [...marks.filter(m => m.kind !== 'done' && m.kind !== 'failed'), { kind: 'done', by: actor.name, at: timestamp }];
+        checked = true;
+      } else if (input.op === 'verify') {
+        marks = [...marks.filter(m => m.kind !== 'failed'), { kind: 'verified', by: formatVerdictBy(actor.name, actor.role), at: timestamp, run: input.run! }];
+      } else if (input.op === 'fail') {
+        marks = [{ kind: 'failed', by: formatVerdictBy(actor.name, actor.role), at: timestamp, note: input.note!.trim() }];
+        checked = false;
+        this.#setStatus(item, 'in progress');
+      } else if (input.op === 'edit') text = input.text!.trim();
+      const indent = ' '.repeat(source.indent);
+      const block = input.op === 'remove' ? [] : [
+        `${indent}- [${checked ? 'x' : ' '}] ${criterion}. ${text.replace(/\r?\n/g, `\n${indent}  `)}`,
+        ...marks.map(m => `${indent}  - ${m.kind}: ${m.by} · ${m.kind === 'verified' ? `run ${m.run} · ` : ''}${m.at}${m.kind === 'failed' ? ` · note ${m.note}` : ''}`),
+      ];
+      for (const line of [...source.lines].reverse()) lines.splice(line, 1);
+      lines.splice(source.start, 0, ...block);
+    }
+    item.body = lines.join('\n');
+    return criterion;
+  }
+
   /** Criteria share the tracker queue and reauthorize after every file await. */
   criterion(actor: Actor, rawId: string, input: { op: string; criterion?: string; text?: string; note?: string; run?: string }, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
     return this.#serial(async () => {
@@ -1311,65 +1426,10 @@ export class Tracker {
       }
       let criterion = input.criterion!;
       const view = await this.#mutate(id, actor, 'criterion', item => {
-        if (item.fm.kind !== 'task') throw new TrackerError('criteria operations require a task');
-        const parsed = criteriaSource(item.body);
-        if (input.op === 'add' && parsed.insertionInFence) throw new TrackerError('cannot add a criterion inside an unclosed Markdown code fence; close the fence first');
-        if (parsed.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
-        const ids = parsed.criteria.flatMap(c => c.id ? [c.id] : []);
-        if (new Set(ids).size !== ids.length) throw new TrackerError('duplicate criterion ids; fix the section first');
-        let sequence = Math.max(item.fm.criterion_seq ?? 0, ...ids.map(id => Number(id.slice(1))));
-        const allocate = () => {
-          sequence++;
-          if (!Number.isSafeInteger(sequence)) throw new TrackerError('criterion ids exhausted');
-          return `C${sequence}`;
-        };
-        const lines = item.body.split(/\r?\n/);
-        for (const [index, c] of parsed.criteria.entries()) {
-          if (c.id) continue;
-          c.id = allocate();
-          const source = parsed.sources[index]!;
-          lines[source.start] = lines[source.start]!.replace(/^( *[-*+] \[[ xX]\])(?:[ \t]+)?/, `$1 ${c.id}. `);
-        }
-        if (input.op === 'add') {
-          criterion = allocate();
-          const block = [`- [ ] ${criterion}. ${input.text!.trim().replace(/\r?\n/g, '\n  ')}`];
-          if (parsed.hasSection) lines.splice(parsed.sectionEnd, 0, ...block);
-          else lines.push('', '## Acceptance criteria', '', ...block);
-        } else {
-          const at = parsed.criteria.findIndex(c => c.id === criterion);
-          if (at < 0) throw new TrackerError(`no criterion ${criterion} on ${id}`);
-          const c = parsed.criteria[at]!, source = parsed.sources[at]!;
-          let marks = c.marks;
-          let text = c.text;
-          let checked = c.marks.some(m => m.kind === 'done');
-          const timestamp = this.#now().toISOString();
-          if (input.op === 'done') {
-            marks = [...marks.filter(m => m.kind !== 'done' && m.kind !== 'failed'), { kind: 'done', by: actor.name, at: timestamp }];
-            checked = true;
-          } else if (input.op === 'verify') {
-            marks = [...marks.filter(m => m.kind !== 'failed'), { kind: 'verified', by: formatVerdictBy(actor.name, actor.role), at: timestamp, run: input.run! }];
-          } else if (input.op === 'fail') {
-            marks = [{ kind: 'failed', by: formatVerdictBy(actor.name, actor.role), at: timestamp, note: input.note!.trim() }];
-            checked = false;
-            this.#setStatus(item, 'in progress');
-          } else if (input.op === 'edit') text = input.text!.trim();
-          const indent = ' '.repeat(source.indent);
-          const block = input.op === 'remove' ? [] : [
-            `${indent}- [${checked ? 'x' : ' '}] ${criterion}. ${text.replace(/\r?\n/g, `\n${indent}  `)}`,
-            ...marks.map(m => `${indent}  - ${m.kind}: ${m.by} · ${m.kind === 'verified' ? `run ${m.run} · ` : ''}${m.at}${m.kind === 'failed' ? ` · note ${m.note}` : ''}`),
-          ];
-          for (const line of [...source.lines].reverse()) lines.splice(line, 1);
-          lines.splice(source.start, 0, ...block);
-        }
-        item.fm.criterion_seq = sequence;
-        item.body = lines.join('\n');
+        criterion = this.#changeCriterion(item, actor, input);
       }, resumed, undefined, check);
       return resumed(() => {
-        const event = `criterion marked ${criterion} ${input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op}`;
-        for (const listener of [...this.#changeListeners]) {
-          try { listener({ id, item: this.list().find(i => i.id === id)!, events: [event] }); }
-          catch (err) { this.#log({ event: 'task-listener-error', id, error: String(err) }); }
-        }
+        this.#criterionEvent(id, criterion, input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op);
         return view;
       });
     }, resumed);

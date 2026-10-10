@@ -386,6 +386,7 @@ export class Dispatcher {
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
       ...(tool === 'task.comment'
         ? {
+            verdictCriteria: typeof frame.verdict === 'object' && frame.verdict !== null && ((frame.verdict as { verified?: unknown }).verified !== undefined || (frame.verdict as { failed?: unknown }).failed !== undefined),
             verdict: (typeof frame.verdict === 'object' && frame.verdict !== null) || (typeof frame.text === 'string' && readsAsVerdict(frame.text)),
             ...(typeof frame.verdict === 'object' && frame.verdict !== null && typeof (frame.verdict as { verdict?: unknown }).verdict === 'string' ? { verdictKind: (frame.verdict as { verdict: string }).verdict } : {}),
           }

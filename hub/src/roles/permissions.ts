@@ -147,6 +147,8 @@ export type ToolCall = {
   verdict?: boolean;
   /** `task.comment` with a verdict: its kind (`review`, `qa`). */
   verdictKind?: string;
+  /** A verdict also marks criteria, requiring the same grant as task.criterion verify/fail. */
+  verdictCriteria?: boolean;
   /** The item the call is on (`task.*`), or the one a new topic binds to (`topic.create`). */
   item?: string | null;
   /** Whether `item` is the caller's own item; undefined when it does not exist (the tool's own error says so). */
@@ -188,6 +190,10 @@ export function decide(role: string | null, grants: readonly string[] | undefine
     if (reason) return { ok: false, permission: tool, reason };
   }
   if (tool === 'task.hold' && role !== 'reviewer' && role !== 'qa') return { ok: false, permission: tool, reason: 'only Reviewer and QA take verifier holds' };
+  if (tool === 'task.comment' && call.verdictCriteria) {
+    const decision = decide(role, grants, { tool: 'task.criterion', criterionOp: 'verify' });
+    if (!decision.ok) return decision;
+  }
   const list = grants ?? [];
   const has = (g: string) => list.includes(g);
   if (has(tool)) return { ok: true };

@@ -57,6 +57,8 @@ Marks are sub-items, such as `  - done: impl-57 · 2026-10-09T10:00Z` or `  - ve
 
 Each successful criterion operation emits a subscribed `task` event with `criterion marked`, the task id, criterion id and operation/mark. Writes use the tracker queue and recheck permission before publication. A concurrent hand save refuses a stale write with a retry reason. A save racing publication retains the captured source at the `.conflict` path named in the error; recover that source before retrying. A newer save at the task path always wins. Successful writes also retain the captured `.conflict` source, recording its path as `task-criterion-source` in the hub log: an already open editor handle may complete a late save there. Keep these recovery files until editors have closed them; they are not tracker items and are ignored by Git in provisioned projects. An atomic capture-intent file lets startup restore a missing live item from its captured source before indexing after a process crash. Existing live files win over recovery sources.
 
+Verdicts can include criteria in the same write: `cland task comment T-n "checked" --verdict review --result clear --run rev-1 --verified C1,C3` (or `--verified all`); a not-clear verdict takes repeatable `--failed "C2=reason"`. MCP `task.comment` takes `verified: "C1,C3" | "all"` or `failed: [{ criterion: "C2", note: "reason" }]`. Reviewer and QA only, with their criterion verify grant. Unknown ids refuse the verdict; its topic report lists the marks. See [review and QA](../review-and-qa.md#criteria-in-a-verdict).
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** cland's tracker has no pull requests; `/triage` works on items only.
