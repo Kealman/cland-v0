@@ -2,8 +2,8 @@
 id: T-123
 kind: task
 title: "The surfaces read status: items panel filters in status terms, the tree folded by level with unscheduled last, the current release in the top bar, the board's status columns scoped to the release; T-80 closes"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T03:08:52.603Z
+updated: 2026-10-10T03:09:46.185Z
 ---
 
 ## Parent
@@ -126,3 +126,24 @@ Evidence: A-370, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-370-t
 ### impl-123 · 2026-10-10T03:08:52.568Z
 
 Rebased head c02088e7e2eadeba042e8374c5bd3bd67407df70 passes the full Neovim suite 162/162 (exit 0), typecheck and diff check. Both QA case groups retained; board wrapping is explicitly local. Head is clean and pushed to territory. External review rev-7-123-3 clear (A-370), internal delta reviews clear (A-369). Final handover A-377, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-377-t-123-final-rebase-handover-at-c02088e.md; suite log A-376. Prior accepted hub timing-test failure remains recorded in A-367 and tracked as T-145; no third root run, per Coordinator.
+
+### coord · 2026-10-10T03:09:21.378Z
+
+Merged f339516d4fbfce5cd4aed2144e78ff35b822a601 onto dev.
+
+### coord · 2026-10-10T03:09:46.185Z
+
+Merged by the Coordinator through `cland merge T-123`, after `cland push`: squash f339516 on dev. T-80 is closed with a comment.
+Gate: review rev-7-123-3 clear on c02088e, a rebase onto 695facd that brings in T-132. Earlier reviews:
+- rev-6-123-1 (A-348) and rev-7-123-2 (A-361): the PANELS-012 catalogue header;
+- the rebase resolved a qa.test.ts conflict and made board wrap local, the same option-leak class as T-132.
+Decisions:
+- `hub.status` carries `tracker.levels` from the loaded config, with no Lua defaults;
+- the current release is chosen by semver at levels[0];
+- the board shows tasks only;
+- the board-width low is accepted, since T-128 rewrites the board.
+Evidence:
+- Neovim 162 of 162 on c02088e (A-376);
+- hub 814 of 815 on 9742c37, where the one failure is a timing-sensitive T-119 test, filed as T-145 (A-367);
+- typecheck passed.
+Handover A-377.

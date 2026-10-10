@@ -2,8 +2,8 @@
 id: T-80
 kind: task
 title: 'Items panel: the "in work" filter hides items between review and QA and planned items'
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - needs-triage
   - ui
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:04.194Z
-updated: 2026-10-10T00:58:17.883Z
+updated: 2026-10-10T03:09:46.085Z
 ---
 
 ## Observed
@@ -33,3 +33,7 @@ The proper fix waits on the v0.1 map ticket "Item workflow status and order: exp
 ### human · 2026-10-09T19:31:04.179Z
 
 Decided in T-88: in work = planned, in progress, review, qa, ready, once the explicit status field exists (spec v0.1 §3.2). Until then a stopgap that also counts items with a pending verdict or the qa-required label is acceptable.
+
+### coord · 2026-10-10T03:09:46.085Z
+
+Fixed by T-123 (squash f339516 on dev). The items panel reads the hub's status, and "in work" is planned, in progress, review, qa and ready, so an item under review or between review and QA now shows. T-80's case is a regression test (PANELS-012, together with the stub-hub status tests). Closed by the Coordinator.
