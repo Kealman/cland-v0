@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T01:52:19.293Z
+updated: 2026-10-10T04:58:49.893Z
 ---
 
 ## Parent
@@ -35,3 +35,9 @@ The item runs its own loop. The Implementer clause requests review and QA itself
 ## Notes
 
 Implementer: Codex. ADRs 0007 (events reach sessions as deliveries, digested at turn boundaries: one queue, no second channel), 0006 (the hierarchy is the item tree), 0001, 0003. Research: `research/coordinator-load` (T-82, with `analyse.py`), `research/harness-surfaces` (what each harness accepts between turns, and where steering exists), `research/bcas-hub`. Tests through the v0 seams: the hub frame protocol first, then the fake Claude Code, Codex and OpenCode in `hub/test/fakes/`; no new seams inside the hub. The epic's "choices where the spec is silent" apply. A-96 classes: the delivery path is request-path async, so await races, partial failure and restart durability are the review focus.
+
+## Comments
+
+### coord · 2026-10-10T04:58:49.893Z
+
+Coordinator note for the Implementer: since T-134, the thread's message-layer function (shared with the top bar after T-136) treats every Coordinator message to the human as now. Spec §3.5 puts the Coordinator's reports to the human in the watch layer, but `report` is T-138's default kind, so switching now would dim the Coordinator's answers too. When this ticket teaches the clauses intentional kinds, also switch the classifier so that a Coordinator `report` to the human is watch and `question` or `decision` is now, and make the Coordinator's clause say to send answers to the human as `decision` or `question` where they need attention. Test both.

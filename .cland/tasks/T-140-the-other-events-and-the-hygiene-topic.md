@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-57
 branch: t/T-140-the-other-events-and-the-hygiene-topic
 created: 2026-10-10T01:52:18.585Z
-updated: 2026-10-10T04:42:45.266Z
+updated: 2026-10-10T05:18:46.866Z
 ---
 
 ## Parent
@@ -121,3 +121,29 @@ Immediate retry probe remains one admission/one transport, injected stage, zero 
 Standards: 0 remaining findings. Spec: 0 remaining findings. Native memory probes under Node v24.21.0 only; fake-Codex regression and A-423 evidence read, no suite or file edits. Future T-141 rebase excluded.
 
 Evidence A-424: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-424-t-140-full-item-clear-review-at-cb87507.md.
+
+### impl-140 · 2026-10-10T05:03:59.066Z
+
+Root suite at cb87507 finished 867/868 hub tests, with the lifecycle re-subscribe/relaunch case failing under load; Neovim stage did not start. Deterministic real-frame diagnosis found repeated terminal metadata publication deleting a fresh subscription for the next launch. Added a red/green role-update regression and made the terminal checkpoint cover cleanup too. Coordinator's fake-clock launched/died/launched probe separately reproduced nonconsecutive coalescing; the latest event for each recipient/concrete subject is now the only coalescing candidate. Changed the immutable count/cap fixture to consecutive claim facts. Both affected files pass (subscriptions 15/15, hygiene 14/14), with all three fake harnesses, cold-start recovery and the sixty-second window; typecheck passes. Preparing committed delta for review and the required root suite rerun.
+
+### rev-67 · 2026-10-10T05:06:41.797Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-140-4
+commit: f9365f2178637e4dd1144a773c3e4576870b76fb
+
+Clear — high 0, medium 0, low 0. Full-item verdict at f9365f2; A-424/rev-67-140-3's unchanged full-item checks carried forward.
+
+Standards: 0 findings. Spec: 0 findings. Terminal checkpoint now prevents duplicate cleanup as well as fan-out; a fresh exact watch survives repeated stopped-session metadata publication. Coalescing considers only the latest recipient event for its concrete subject, preserving intervening transitions and bound/settled barriers.
+
+The revised consecutive-claim fixture retains independent counts, frozen offline digest membership/counts across restart, cap 10, correct overflow and subsequent nonreplayed delivery. No immutability assertion weakened.
+
+Native Node24 memory probes pass: launched/died/launched remain three facts; frozen counts 3/4, cap 10 plus overflow 3, independent later count 2, unchanged bound digest, settled barrier and fixed 60-second boundary. git diff --check passes; pinned worktree clean. No suite or source edits; full suite rerun remains with Coordinator/Implementer. Future rebase excluded.
+
+Evidence A-433: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-433-t-140-full-item-clear-review-at-f9365f2.md
+
+### impl-140 · 2026-10-10T05:18:46.786Z
+
+Final root npm test on f9365f2178637e4dd1144a773c3e4576870b76fb (head copied from git log -1) passed: hub 870/870, Neovim 178/178, exit 0, machine lock held throughout; Node v24.21.0 first on PATH. Root typecheck and targeted subscriptions 15/15/hygiene 14/14 passed. Worktree clean; task branch pushed to local origin; no rebase or merge. Handover A-440 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-440-t-140-handover-at-f9365f2178637e4dd1144a773c3e4576870b76fb.md; passing suite log A-439 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-439-t-140-passing-root-suite-at-f9365f2178637e4dd1144a773c3e4576870b76fb.log. A-431 describes the delta from A-424's clear reviewed cb87507 head. Ready for Coordinator's review/merge gate.

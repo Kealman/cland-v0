@@ -3,7 +3,7 @@ id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T04:46:59.620Z
+updated: 2026-10-10T05:17:28.255Z
 ---
 
 ## Parent
@@ -96,3 +96,29 @@ Medium — hub/src/adapters/sessions.ts:354: when conflict cleanup stop refuses,
 Medium — hub/src/adapters/sessions.ts:372: spawn rejection leaves conflictingSpawn undefined, so releaseLaunchRole skips its identity guard and can revoke an unrelated session's role. Deferred probe: old-id takes target with Implementer role during spawn; spawn rejects; role changes Implementer→null. This is the pre-existing sibling exposed by the requested generalized rollback audit. Owner preservation must also cover spawn-error rollback.
 
 A-420 is resolved: rerun now refuses the alias conflict, stops only new-id, writes no row and preserves the alias owner. Own early hello and live/offline/unknown-owner stop-wait variations pass. No other full-item findings; A-416 remains resolved and instance report lines106/133 remain correct. No suite run. Evidence/two-axis reports A-428: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-428-t-141-review-rev-8-141-3-cleanup-supervision-and-spawn-error-rollback.md.
+
+### impl-141 · 2026-10-10T05:07:43.487Z
+
+A-428 fix round: failed returned processes enter durable pending-stop supervision, with atomic accepted-row quarantine, ownership-verified stop retry and guarded rollback receipt. Recovery keeps the receipt through deletion/role rollback failure; restart retries cleanup. Spawn rejection protects foreign role owners. session.cleanup removes stale process identity from live and delayed Neovim snapshots. Targeted checks: name-reservation 17, item-lead 10, adapter-native-boundary 58, request-guard 14, new Neovim snapshot case and typecheck pass; self-review has no blockers. Full suite waits for T-140 merge and the agreed rebase.
+
+### rev-67 · 2026-10-10T05:13:16.223Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-1
+commit: 1d9d4497f4ab2ac02fb35ab780f75c849e14be03
+
+Medium — hub/src/adapters/sessions.ts:286: after stop verifies exit, a row-removal or role-rollback failure retains a receipt without recording completion; restart/retry calls stop again with stopped status, so a reused original PID is refused forever and pending ownership keeps launches/worktree blocked. Persist verified-exit completion and retry settlement independently. All three native adapters enable allowReused only for exited rows (claude-code.ts:480, codex.ts:900, opencode.ts:380); README:668 promises completion after verified exit, removal and rollback.
+
+Native Node24 memory probe with actual endProcess: stop1 stopped/verified=true, faulted row deletion, reconstructed Sessions, repaired deletion plus reused PID → stop2 stopped/verified=false, pending memory1/stored1 and row stopped. No real signals, files or suite. Crash boundary modeled through retained in-memory durable table, not an on-disk killed-process run.
+
+A-428's two findings are resolved: foreign-owner spawn rejection preserves Implementer role; refused stop retains watched/stored pending ownership. Actual deferred alias rename probe refuses launch, stops only new-id, preserves old-id alias/Coordinator and writes no process row. Own early hello remains accepted; generated hello skips pending alias. Normal quarantine/settlement recovery passes without PID reuse.
+
+Full-item review against 8ac4b70; prior unchanged A-416/A-420/A-428 checks carried forward. Standards: one medium. Spec: no additional findings. Lead routing, authoritative identity, recorded recipient stability, unknown/closed refusal, and exact Reviewer/QA instance replacements remain consistent. Stable identity cleanup and delayed snapshot replay checked. Diff check passes; pinned worktree clean. No suite; future T-140 rebase excluded.
+
+Evidence and runnable probe A-436: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-436-t-141-full-item-review-at-1d9d449-verified-exit-recovery-stage-lost.md
+
+### impl-141 · 2026-10-10T05:16:26.919Z
+
+A-436 fix: pending-stop recovery now persists each completed stage (verified stop, row removed, guarded role rollback). Recovery skips every completed stage, so verified exit is never stopped/watched again after restart or receipt-clear failure. Returned-process rollback belongs exclusively to staged settlement; spawn rejection remains direct and identity-guarded. Protocol regressions cover verified stop + native settlement failure + full restart with reused-pid stop refusal, plus completed rollback surviving receipt-clear failure and a later human role assignment. Typecheck, all 19 name-reservation cases and focused 4 recovery assertions pass; two-axis delta self-review clear. Full suite remains unqueued pending T-140 merge/rebase.
