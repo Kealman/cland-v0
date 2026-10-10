@@ -28,6 +28,17 @@ async function status(ui: FrameClient): Promise<Status> {
 
 const isClause = (e: ChannelEvent) => e.params.meta?.kind === 'role';
 
+test('every crew role receives the Aide speaking-for-the-human instruction in its clause', async t => {
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  for (const role of ['coordinator', 'implementer', 'reviewer', 'qa']) {
+    const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'crew-' + role, sessionId: 'sess-' + role, role });
+    t.after(() => spoke.close());
+    const clause = await spoke.waitForEvent(isClause);
+    assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
+  }
+});
+
 test('roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);

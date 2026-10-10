@@ -371,6 +371,46 @@ async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', chart
   }) });
 }
 
+test('Aide headers speak for you with blue dashed gutters and never-fold boundaries', { skip }, async t => {
+  const background = (id: string) => ({ ...msg(id, 'implementer', 'Crew detail ' + id), to: ['reviewer'] });
+  const aide = { ...msg('aide', 'aide', 'Rank T-58 above T-59.\n' + 'Human context '.repeat(25)), from: 'helper-7', to: ['coordinator'], kind: 'decision' };
+  const toAide = { ...msg('to-aide', 'coordinator', 'Rank updated for you.'), to: ['helper-7'], kind: 'progress' };
+  const c = await start(t, { presence: [{ name: 'helper-7', role: 'aide' }], messages: { general: [
+    background('before'), aide, background('middle'), toAide, background('after'), msg('human', 'human', 'Human marker'),
+  ] } });
+  const screen = await c.waitScreen(s => s.includes('helper-7 [Aide] · speaks for you → coordinator') && s.includes('Rank updated for you.'), 'Aide history remains visible among folded crew traffic');
+  assert.match(screen, /┆ helper-7 \[Aide\] · speaks for you → coordinator  10:00 · decision/);
+  assert.match(screen, /┆ Rank T-58 above T-59\./);
+  assert.equal(screen.split('\n').filter(row => /┆ .*Human context/.test(row)).length, 3, 'wrapped screen rows retain the dashed gutter');
+  assert.match(screen, /[▎▌] you → coordinator/, 'the human retains its solid bar');
+  assert.deepEqual(await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    local win=require('cland.layout').centre()
+    return vim.api.nvim_win_call(win,function()
+      local out={}
+      for _,id in ipairs({'aide','to-aide'}) do
+        local b=t.block_of[id]
+        for row=b.start+2,b.start+#b.lines do out[#out+1]=vim.fn.foldlevel(row) end
+      end
+      return out
+    end)
+  `), [0, 0, 0, 0, 0], 'messages both from and to a named Aide have no native folds');
+  assert.deepEqual(await c.lua(`
+    return {vim.api.nvim_get_hl(0,{name='ClandRoleAide'}).fg,vim.api.nvim_get_hl(0,{name='ClandRoleHuman'}).fg}
+  `), [0x6aa5ff, 0x6aa5ff]);
+  await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    local win=require('cland.layout').centre()
+    vim.api.nvim_set_current_win(win)
+    vim.api.nvim_win_set_cursor(win,{t.block_of.aide.start+2,0})
+  `);
+  await c.waitScreen(s => s.includes('┇ helper-7 [Aide] · speaks for you'), 'cursor keeps the Aide bar dashed');
+  await c.input('zM');
+  await c.waitScreen(s => s.includes('Rank T-58 above T-59.') && s.includes('Rank updated for you.'), 'close-all leaves both Aide boundaries visible');
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: { ...aide, id: 'live-aide', text: 'Live human decision.', kind: 'progress' } } });
+  await c.waitScreen(s => s.includes('Live human decision.') && s.includes('speaks for you'), 'live Aide progress remains visible');
+});
+
 test('General shows addressees, local day rules, role gutters and the human band', { skip }, async t => {
   const c = await start(t, { messages: { general: [msg('c'), msg('i', 'implementer'), msg('r', 'reviewer'), msg('q', 'qa'), msg('h', 'human', 'Please take T-58.')] } });
   const screen = await c.waitScreen(s => s.includes('coordinator [Coordinator] → you  10:00'), 'the message header');

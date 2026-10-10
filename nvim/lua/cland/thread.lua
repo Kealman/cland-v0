@@ -14,6 +14,8 @@ vim.o.breakat = ' '
 M.LIMIT = 200
 M.GUTTER = '▎'
 M.GUTTER_CURSOR = '▌'
+M.GUTTER_AIDE = '┆'
+M.GUTTER_AIDE_CURSOR = '┇'
 --- More addressees than this show as `+n`.
 local TO_MAX = 3
 
@@ -274,6 +276,7 @@ function Thread:_build(m, prev, answer)
       -- name [Role], as everywhere (spec 4.4): the role's label, never its key
       put(require('cland.state').label(name, mm.fromRole):sub(#name + 1), group)
     end
+    if mm.fromRole == 'aide' then put(' · speaks for you', group) end
     local to = addressees(mm)
     if #to > 0 then
       local shown = {}
@@ -1002,7 +1005,7 @@ function Thread:artifact_at(row)
 end
 
 --- 'statuscolumn': one cell in the role colour on every screen row of a message (wrapped rows too), a blank on
---- virtual lines and between messages; a heavier bar on the message under the cursor.
+--- virtual lines and between messages; a heavier bar on the message under the cursor. Aides use a dashed bar.
 function M.gutter()
   local win = vim.g.statusline_winid
   local ok, buf = pcall(api.nvim_win_get_buf, win)
@@ -1014,7 +1017,9 @@ function M.gutter()
   if not i or not i.group then
     return '  '
   end
-  local glyph = t.cursor_block[win] == i.b and M.GUTTER_CURSOR or M.GUTTER
+  local cursor = t.cursor_block[win] == i.b
+  local glyph = i.group == hl.ROLE.aide and (cursor and M.GUTTER_AIDE_CURSOR or M.GUTTER_AIDE)
+    or (cursor and M.GUTTER_CURSOR or M.GUTTER)
   return '%#' .. i.group .. '#' .. glyph .. '%* '
 end
 
