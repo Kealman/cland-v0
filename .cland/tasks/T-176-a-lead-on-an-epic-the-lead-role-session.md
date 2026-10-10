@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-91
 branch: t/T-176-a-lead-on-an-epic-the-lead-role-session
 created: 2026-10-10T15:38:35.506Z
-updated: 2026-10-10T15:59:06.947Z
+updated: 2026-10-10T16:35:55.022Z
 ---
 
 ## Parent
@@ -30,14 +30,17 @@ The `lead` role in `roles.toml` and `cland init`; `session.launch` naming an epi
 - [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
   - done: impl-176 · 2026-10-10T15:57:08.902Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-2 · 2026-10-10T15:58:33.215Z
+  - verified: rev-12 [reviewer] · run rev-12-20261010-176-3 · 2026-10-10T16:35:55.022Z
 - [x] C2. Demo: the Coordinator launches `lead-1` on a v0.1 epic, and `@lead T-<epic>` reaches it.
   - done: impl-176 · 2026-10-10T15:47:43.469Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-1 · 2026-10-10T15:55:28.716Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-2 · 2026-10-10T15:58:33.215Z
+  - verified: rev-12 [reviewer] · run rev-12-20261010-176-3 · 2026-10-10T16:35:55.022Z
 - [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
   - done: impl-176 · 2026-10-10T15:47:43.864Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-1 · 2026-10-10T15:55:28.879Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-176-2 · 2026-10-10T15:58:33.215Z
+  - verified: rev-12 [reviewer] · run rev-12-20261010-176-3 · 2026-10-10T16:35:55.022Z
 - [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
 
 ## Comments
@@ -89,3 +92,25 @@ Reference correction for rev-12-20261010-176-2: its clear review artifact is A-6
 ### coord · 2026-10-10T15:59:06.947Z
 
 Reference correction for rev-12's verdict at 5e90bd7: the re-review artifact is A-657, not A-656. A-656 is impl-176's cancelled suite log, not a test failure. Recorded by the Coordinator at rev-12's request, since Reviewers may only post verdict comments.
+
+### impl-176 · 2026-10-10T16:33:03.210Z
+
+Full suite A-662 found six regressions at 5e90bd7. Targeted repro confirmed the new Sessions.launchRole dependency broke four existing launch seams, fixed kind literals violated configured tracker levels, and role-list insertion changed a CLI refusal diagnostic. Fix resolves omitted item-launch roles in the dispatcher via its existing store and rechecks the assignment across awaits, uses tracker.levels for Lead launch/claim admission, and appends Lead to the diagnostic role list. Added a real-hub custom-container launch test, red before the fix and green after. Existing failing tests remain intact.
+
+### rev-12 · 2026-10-10T16:35:55.022Z
+
+verdict: review
+result: clear
+by: rev-12 [reviewer]
+run: rev-12-20261010-176-3
+commit: 88feb1966359ff963ceda0dbb23f6b941dccd372
+
+No remaining high or medium findings. Dispatcher normalization preserves the preassigned Lead launch fix, keeps permission checks on the original frame and rechecks inferred roles across awaits. Removing the Sessions helper restores existing collaborator interfaces. Launch/claim admission now uses configured tracker.levels, and role-list append preserves CLI diagnostics. Separate Standards and Spec delta reviews are complete; prior full-item ownership/refusal/routing/UI checks remain applicable.
+
+Low — hub/src/roles/default-roles.ts:80: the Lead clause says epic or release although configured containers may be named feature or initiative; generic container wording would match the README. Nonblocking.
+
+C1–C3 verified. Independent typecheck and diff check passed at 88feb19; A-663 reports 37 targeted tests passing. Writing E2E tests were inspected, not rerun in this read-only reviewer sandbox. C4 stays unverified until the stable-head full rerun completes.
+
+Review A-664: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-664-t-176-re-review-at-88feb19-regressions-fixed-c4-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.

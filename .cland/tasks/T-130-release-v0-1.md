@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-10T11:53:29.344Z
+updated: 2026-10-10T16:40:36.821Z
 ---
 
 ## Goal
@@ -46,3 +46,10 @@ Run note: the batch-merge rule (Coordinator working rule, approved by the stand-
 - After each batch of at most 2-3 such items, run one full npm test on integrated dev before any hub restart. A red integrated suite is reverted or fixed forward within the hour, and dev stays unreleasable until green.
 - Hub-side items that touch launch, ownership, storage, routing or the merge gate keep their own full suite before merging.
 - Note on each batched item's topic that it merged under this rule.
+
+### coord · 2026-10-10T16:40:36.821Z
+
+D16 (the human, via the stand-in, 2026-10-10 ~16:00Z): the human accepts the release at most, never each epic.
+- An epic closes when all its children are closed and QA has run its definition-of-done demo on dev, with a clear verdict recorded on the epic (criteria verified by id, the same gate shape as items). There is no human step.
+- The human's one acceptance is T-117's pass: the version, the notes and one walkthrough on v0.1.
+Applied: spec §4 and the epics' Definition of done openings are amended; QA briefs written for T-107, T-109, T-110, T-111 and T-112; T-116 follows once T-162 lands. T-166 and T-171, the follow-ups filed under T-110, moved to T-115 (Visibility; the inbox and needsYou now belong to its classifier), so T-110 can close.

@@ -3,17 +3,17 @@ id: T-190
 kind: task
 title: "One visibility classifier: messages, inbox events, sessions, items and artifacts placed by the default table, [visibility] overrides; thread, top bar and palette move onto it"
 state: open
-status: planned
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
 parent: T-115
 blocked_by: []
-topic: null
-branch: null
+topic: topic-92
+branch: t/T-190-one-visibility-classifier-messages-inbox
 created: 2026-10-10T16:25:05.955Z
-updated: 2026-10-10T16:25:14.619Z
+updated: 2026-10-10T16:26:50.169Z
 ---
 
 ## Parent
@@ -30,3 +30,9 @@ A module that places messages, inbox events, sessions, items and artifacts in a 
 - [ ] Demo: a project's `[visibility]` raises long idles to now, and the top bar counts them.
 - [ ] Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
 - [ ] `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+
+## Comments
+
+### impl-190 · 2026-10-10T16:26:50.169Z
+
+Implementation seams are the epic's agreed ones: real daemon frames/MCP, fake harness idle signals, then headless Neovim on the stub hub. Classifier will live in the hub: project config and authoritative needsYou are hub-owned; additive layer fields on outgoing frames let every Lua surface consume one decision without duplicating policy.
