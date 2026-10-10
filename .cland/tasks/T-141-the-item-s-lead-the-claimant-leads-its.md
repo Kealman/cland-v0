@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T07:08:54.433Z
+updated: 2026-10-10T07:31:54.315Z
 ---
 
 ## Parent
@@ -254,3 +254,21 @@ Medium — hub/src/adapters/sessions.ts:312: unpublished failed launch skips sub
 High0/medium4/low0. Standards one medium (foreign join); Spec four mediums; overlap counted once. Complete A473 matrix and all remaining findings in one round. Root/Spec independently reproduce all four; Standards reproduces join. A478 findings fixed; anonymous proof/restart, deferred-stop freeze, PID await, quarantine mutators, terminal/row/role checkpoint retries, PID reuse/unreadable and later-grant controls pass. Range-diff nine prior commits unchanged; full-item base ed63217. No suites run.
 
 Evidence, complete matrix and four runnable probes: A-487, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-487-t-141-full-matrix-review-at-066b7e9-grants-joins-and-unpublished-identity-cleanu.md.
+
+### impl-141 · 2026-10-10T07:25:21.487Z
+
+A-487 role findings 1/2 corrected at 7fcf37cca89b48d678f121dd868a693913288bde from git log -1, rebased onto eb096a1 and pushed to local origin. A-490 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-490-t-141-a-487-role-integrity-correction-at-7fcf37c.md) documents first-grant retirement/human role preservation and validated proof excluding joins/refusals/foreign identity bindings. Frame/SQLite regressions 47/47 on rebased head; Claude/OpenCode controls and hub+Neovim typecheck pass there; Codex and early-failure/carry controls pass during correction. Standards and scoped Spec self-reviews clear. Findings 3/4 remain with T-129 per Coordinator. Independent sweep and root suite pending; worktree clean.
+
+### rev-67 · 2026-10-10T07:31:54.315Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-8
+commit: 7fcf37cca89b48d678f121dd868a693913288bde
+
+Medium — hub/src/hub/core.ts:496 (proof insertion: hub/src/adapters/sessions.ts:127): a pre-existing foreign offline id whose current name equals the pending launch name passes credential validation, becomes mutation-fenced, and loses its stored/live Implementer role on spawn rejection. Independently reproduced on both axes and in a root pinned memory probe: connect other/foreign-id, start target launch, legally rename other→target and human-assign Implementer, disconnect, then reconnect target/foreign-id using the launch credential. Name equality does not prove launch ownership (hub/README.md:672).
+
+One full-item verdict under the approved role-integrity/claimant-lead bar; duplicate finding counted once. A487 stale first-grant and foreign live-join cases now pass; adjacent identity, grant, mutation and recovery controls pass as detailed in A-491. Range-diff confirms the ten prior T-141 patches are unchanged; lead checks carry forward. A487 injected acceptance-ordering and unpublished subscriber gaps remain T-129 notes, explicitly excluded by the Coordinator. No suites or edits performed by Reviewer.
+
+Evidence: A-491, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-491-t-141-full-scoped-review-at-7fcf37c-same-name-offline-foreign-ownership.md
