@@ -1,10 +1,11 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connectUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, tempProject, sleep } from './harness.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
+import { taskWriteGate } from './tracker-write-gate.ts';
 
 type Subscription = { id: string; subject: { item: string } | { session: string }; events: string[]; digest: string };
 
@@ -368,7 +369,8 @@ test('fan-out preserves independent recipient digests when one subscriber discon
 
 test('subscribe and unsubscribe racing an awaited task write take effect before its event is recorded', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '1000' });
+  const gate = await taskWriteGate(t, root);
+  const { discovery } = await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -376,13 +378,15 @@ test('subscribe and unsubscribe racing an awaited task write take effect before 
   await coord.waitForPresence(['coord']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Racing subscription' });
   for (const subscribing of [true, false]) {
+    await gate.arm();
     const editing = ui.request({ type: 'task.edit', item: item.id, status: subscribing ? 'planned' : 'review' });
-    await eventually('tracker temporary file written before its paused rename', async () => (await readdir(join(root, '.cland', 'tasks'))).some(name => name.endsWith('.tmp')) || undefined);
+    await gate.entered();
     if (subscribing) await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
     else {
       const { subscriptions } = await coord.call<{ subscriptions: Subscription[] }>('subscriptions');
       assert.equal((await coord.call<{ removed: boolean }>('unsubscribe', { subscription: subscriptions[0]!.id })).removed, true);
     }
+    await gate.release();
     assert.equal((await editing).ok, true);
   }
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });

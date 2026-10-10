@@ -227,7 +227,7 @@ export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
   return clandWithEnv(cwd, {}, ...args);
 }
 
-/** `cland` with `extra` added to its environment: a test timing such as CLAND_TEST_TASK_WRITE_PAUSE_MS, or a daemon that launches a fake harness. */
+/** `cland` with `extra` added to its environment: a test hook such as CLAND_TEST_TASK_WRITE_GATE, or a daemon that launches a fake harness. */
 export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;

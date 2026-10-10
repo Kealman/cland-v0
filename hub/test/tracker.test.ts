@@ -7,6 +7,7 @@ import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
+import { taskWriteGate } from './tracker-write-gate.ts';
 import { cland, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 type Summary = { id: string; title: string; state: string; status?: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
@@ -178,15 +179,17 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
 
 test('a hand edit landing while the hub is writing the same item is overwritten, and the hub logs the conflict', async (t) => {
   const root = await tempProject(t);
-  // every hub write holds still for a while between its temporary file and the rename
-  await startDaemon(t, root, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '1500' });
+  const gate = await taskWriteGate(t, root);
+  await startDaemon(t, root, gate.env);
   ok(await cland(root, 'task', 'create', 'Overlapped'));
   const file = join(tasksDir(root), 'T-1-overlapped.md');
 
+  await gate.arm();
   const writing = cland(root, 'task', 'comment', 'T-1', 'from the hub');
   // the hub has read the file and written its new version aside: the hand edit lands now, before the rename
-  await eventually(5000, async () => assert.ok((await readdir(tasksDir(root))).some((n) => n.endsWith('.tmp'))));
+  await gate.entered();
   await writeFile(file, (await readFile(file, 'utf8')).replace('title: Overlapped', 'title: Hand in between'));
+  await gate.release();
   ok(await writing);
 
   const final = await readFile(file, 'utf8');

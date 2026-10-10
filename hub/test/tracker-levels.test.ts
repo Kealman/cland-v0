@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseItem } from '../src/tracker/item.ts';
+import { taskWriteGate } from './tracker-write-gate.ts';
 import { cland, connectUi, eventually, readDiscovery, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 
 test('configured containers work through CLI, MCP and the hub and enforce adjacent levels', async t => {
@@ -44,12 +45,17 @@ test('configured containers work through CLI, MCP and the hub and enforce adjace
 
 test('queued close sees the child committed while it waited for the tracker write queue', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '300' });
+  const gate = await taskWriteGate(t, root);
+  await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, await readDiscovery(root));
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'epic' })).ok, true);
+  await gate.arm();
   const child = ui.request({ type: 'task.create', title: 'Queued child', parent: 'T-1' });
-  await eventually('child write in flight', async () => (await readdir(join(root, '.cland/tasks'))).some(file => file.startsWith('.T-2-')) || undefined);
+  await gate.entered();
   const close = ui.request({ type: 'task.close', item: 'T-1' });
+  // The following frame's answer confirms close was dispatched while the queue was held.
+  assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
+  await gate.release();
   assert.equal((await child).ok, true);
   const refused = await close;
   assert.equal(refused.ok, false);
@@ -58,7 +64,8 @@ test('queued close sees the child committed while it waited for the tracker writ
 
 test('close rechecks a child reopened during the parent temporary write before rename', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '300' });
+  const gate = await taskWriteGate(t, root);
+  await startDaemon(t, root, gate.env);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Container', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
     assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
@@ -68,9 +75,11 @@ test('close rechecks a child reopened during the parent temporary write before r
   const parent = join(dir, 'T-1-container.md');
   const child = join(dir, 'T-2-child.md');
   const before = await readFile(parent, 'utf8');
+  await gate.arm();
   const close = ui.request({ type: 'task.close', item: 'T-1' });
-  await eventually('parent temporary write', async () => (await readdir(dir)).some(file => file.startsWith('.T-1-')) || undefined);
+  await gate.entered();
   await writeFile(child, (await readFile(child, 'utf8')).replace('state: closed', 'state: open'));
+  await gate.release();
   const refused = await close;
   assert.equal(refused.ok, false);
   assert.match(refused.error ?? '', /open children.*T-2/);
@@ -83,7 +92,8 @@ test('close and every kind-change path discover an unindexed disk reparent', asy
     const root = await tempProject(t);
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["feature"]\n');
-    await startDaemon(t, root, { CLAND_TEST_TASK_WRITE_PAUSE_MS: '300' });
+    const gate = await taskWriteGate(t, root);
+    await startDaemon(t, root, gate.env);
     const ui = await connectUi(t, await readDiscovery(root));
     const issue = { number: 1, url: 'https://example.com/1', title: 'Container', body: '', labels: ['feature'], state: 'open', assignee: null, parent: null, blocked_by: [], comments: [], created: '2026-01-01T00:00:00.000Z' };
     assert.equal((await ui.request({ type: 'task.import', repo: 'test/project', issues: [issue] })).ok, true);
@@ -95,9 +105,11 @@ test('close and every kind-change path discover an unindexed disk reparent', asy
     const frame = operation === 'close' ? { type: 'task.close', item: 'T-1' }
       : operation === 'edit' ? { type: 'task.edit', item: 'T-1', kind: 'task' }
       : { type: 'task.import', repo: 'test/project', issues: [{ ...issue, labels: [] }] };
+    await gate.arm();
     const pending = ui.request(frame);
-    await eventually(`${operation} temporary write`, async () => (await readdir(dir)).some(file => file.startsWith('.T-1-')) || undefined);
+    await gate.entered();
     await writeFile(child, (await readFile(child, 'utf8')).replace('parent: null', 'parent: T-1'));
+    await gate.release();
     const refused = await pending;
     assert.equal(refused.ok, false, operation);
     assert.match(refused.error ?? '', /T-2/, operation);
@@ -241,10 +253,10 @@ test('kind changes with children are refused by edit and reported for hand edits
   await eventually('hand kind change notice', async () => {
     const history = await ui.request({ type: 'topic.history', topic: 'agents' });
     assert.match(JSON.stringify(history.value), /T-1-container\.md.*parenting rule.*child T-2/);
+    const listed = (await ui.request({ type: 'task.list' })).value as { items: Array<{ kind: string }> };
+    assert.equal(listed.items[0]?.kind, 'task', 'the valid hand edit remains authoritative');
     return true;
   });
-  const listed = (await ui.request({ type: 'task.list' })).value as { items: Array<{ kind: string }> };
-  assert.equal(listed.items[0]?.kind, 'task', 'the valid hand edit remains authoritative');
 });
 
 test('a malformed indexed child stays visible and prevents close with its file named', async t => {

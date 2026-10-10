@@ -6,6 +6,8 @@ import nativeFiles from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { cland, clandWithEnv, connectUi, eventually, fakeClaude, pidAlive, spawnSpoke, startDaemon } from './harness.ts';
+import type { Presence } from '../src/protocol.ts';
+import { taskWriteGate } from './tracker-write-gate.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
 import { manualTips } from './freshness-harness.ts';
 import { join } from 'node:path';
@@ -344,7 +346,10 @@ test('stop during hold rename releases the hold after publication on the tracker
   const daemon = await serveProject(root, { log: () => {} });
   t.after(async () => { unpause(); await daemon.stop(); process.env = priorEnv; });
   const ui = await connectUi(t, daemon.discovery!);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, 30_000)).ok, true);
+  // The launch answer can precede the spoke's hello, which adopts the verifier's identity.
+  await ui.waitFor(f => f.type === 'presence' && (f.sessions as Presence[]).some(s => s.name === 'rev' && s.role === 'reviewer'));
   const made = await ui.request({ type: 'task.create', title: 'Stop during hold' });
   const item = (made.value as { item: ItemView }).item;
   let enter!: () => void;
@@ -550,13 +555,16 @@ test('restart reconciles a stop recorded before queued hold cleanup, preserving 
   const root = await tempProject(t);
   await repository(root);
   const fake = await fakeClaude(t);
-  const first = await startDaemon(t, root, { ...fake.env, CLAND_TEST_CRASH_AT: 'stop-recorded', CLAND_TEST_TASK_WRITE_PAUSE_MS: '1500' });
+  const gate = await taskWriteGate(t, root);
+  const first = await startDaemon(t, root, { ...fake.env, ...gate.env, CLAND_TEST_CRASH_AT: 'stop-recorded' });
   const ui = await connectUi(t, first.discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
   const made = await ui.request({ type: 'task.create', title: 'Reconcile holds', assignee: 'impl' });
   const item = (made.value as { item: ItemView }).item;
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
   assert.equal((await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, 30_000)).ok, true);
+  await ui.waitFor(f => f.type === 'presence' && (f.sessions as Presence[]).some(s => s.name === 'rev' && s.role === 'reviewer'));
   assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
   const direct = await spawnSpoke({ discover: true, cwd: root, name: 'direct', sessionId: 'direct-reviewer', role: 'reviewer' });
   t.after(() => direct.close());
@@ -566,8 +574,9 @@ test('restart reconciles a stop recorded before queued hold cleanup, preserving 
   const before = ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
   assert.equal(before.holds.length, 3);
   // Hold the tracker queue across the process-row write, so cleanup cannot publish before the crash.
+  await gate.arm();
   const writing = ui.request({ type: 'task.comment', item: item.id, text: 'paused native write' }).catch(() => null);
-  await eventually('tracker write paused', async () => (await files.readdir(join(root, '.cland', 'tasks'))).some(n => n.endsWith('.tmp')) ? true : undefined);
+  await gate.entered();
   const stopping = ui.request({ type: 'session.stop', session: 'rev' }).catch(() => null);
   await eventually('hub crashed after stop row', async () => !pidAlive(first.discovery.pid) ? true : undefined);
   await Promise.all([writing, stopping]);

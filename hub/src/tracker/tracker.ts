@@ -178,8 +178,8 @@ export class Tracker {
   readonly #pending = new Map<string, NodeJS.Timeout>();
   #rescanTimer: NodeJS.Timeout | null = null;
 
-  /** Tests only: async pause between the temporary write and rename. */
-  readonly #writePauseMs: number;
+  /** Tests only: hold a completed temporary write until the test releases it. */
+  readonly #writeGate: (() => Promise<void>) | undefined;
   /** Told when an item closes (the hub's close, an edit to `closed`, a hand edit): its topic closes too (spec 4.5). */
   readonly #closedListeners = new Set<(id: string) => void>();
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
@@ -205,12 +205,12 @@ export class Tracker {
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
     this.#files = options.files ?? files;
     this.#watchResumed = options.watchResumed ?? untimed;
     this.#root = options.root;
-    this.#writePauseMs = options.writePauseMs ?? 0;
+    this.#writeGate = options.writeGate;
     this.#dir = join(options.root, TASKS_REL);
     this.#log = options.log ?? (() => {});
     this.#now = options.now ?? (() => new Date());
@@ -858,7 +858,7 @@ export class Tracker {
       await this.#files.writeFile(tmp, text);
       // No fsync was used by the synchronous implementation: completion promises atomic replacement,
       // not survival of power loss. A process crash before rename leaves the previous item intact.
-      if (this.#writePauseMs > 0) await new Promise<void>(done => setTimeout(done, this.#writePauseMs));
+      if (this.#writeGate) await this.#writeGate();
       const before = read ? await this.#files.readFile(path, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
       if (beforeRename) await resumed(beforeRename);
       await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });

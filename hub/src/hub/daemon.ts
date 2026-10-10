@@ -7,6 +7,7 @@
 // binding is forbidden). It still takes the lock — the store is one hub's alone — but writes no `hub.json`
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
 import { mkdirSync } from 'node:fs';
+import { access, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sweepOrphans } from '../orphans.ts';
 import { Store } from './store.ts';
@@ -97,11 +98,22 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
 
   const startedAt = new Date();
   // the tracker's index lives in the same file, in tables of its own; it is rebuilt from the item files here
-  const writePauseMs = Number(process.env.CLAND_TEST_TASK_WRITE_PAUSE_MS ?? 0);
+  // Tests only: consume a one-shot arm, acknowledge the completed temp write, and await release.
+  const gateDir = process.env.CLAND_TEST_TASK_WRITE_GATE;
+  const writeGate = gateDir ? async () => {
+    try { await unlink(join(gateDir, 'armed')); }
+    catch (err) { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return; throw err; }
+    await writeFile(join(gateDir, 'entered'), '');
+    for (;;) {
+      try { await access(join(gateDir, 'release')); return; }
+      catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; }
+      await new Promise<void>(done => setTimeout(done, 10));
+    }
+  } : undefined;
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
   const config = readProjectConfig(l.config, root, error => log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }));
-  const tracker = new Tracker({ ...(config ? { levels: config.tracker.levels } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writePauseMs > 0 ? { writePauseMs } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  const tracker = new Tracker({ ...(config ? { levels: config.tracker.levels } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
