@@ -13,15 +13,17 @@
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
 import { stat } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
-import type { HubCore } from '../hub/core.ts';
+import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, SessionState } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal } from './contract.ts';
-import { ProcessTable, processStarted } from './processes.ts';
+import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText } from '../roles/clause.ts';
+import { systemProcesses } from '../system-processes.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
@@ -31,6 +33,13 @@ export type LaunchRequest = { name: string; role?: string | null; model?: string
 
 /** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
 export class InvalidLaunchCwd extends Error {}
+
+type LaunchOwnership = { name: string; prior: string | null; existingIds: Set<string>; sessionIds: Set<string>; anonymousSessionId: string | null; returnedId: string | null };
+
+function launchIdentityRefusal(launch: LaunchOwnership, id: string): string | null {
+  if (id === UNKNOWN_SESSION) return `launch "${launch.name}" must prove a stable session identity, not unknown`;
+  return launch.existingIds.has(id) ? `launch "${launch.name}" cannot prove pre-existing session identity (${id}); use the launch's new identity` : null;
+}
 
 export type SessionsOptions = {
   core: HubCore;
@@ -69,13 +78,19 @@ export class Sessions {
   readonly #earlyBridges = new Map<string, Array<() => void>>();
   /** The role each launch is for, until its session's first hello (which may beat the process-table row), and
    *  whether the launch's first turn carried the clause (Codex). Taken once. */
-  readonly #firstHello = new Map<string, { role: string; carried: boolean }>();
+  readonly #firstHello = new Map<string, { role: string | null; carried: boolean; acceptedId: string | null }>();
+  /** Credential-keyed provenance retains every proven early/returned identity until settlement. */
+  readonly #launchIdentities = new Map<string, LaunchOwnership>();
+  readonly #unhello: () => void;
   /** While the hub vacates a dead session's role: the process table keeps the role a relaunch takes back. */
   #vacating = false;
   readonly #usageTimers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #unprocess: () => void;
   #closed = false;
   #resuming = 0;
+  readonly #pendingStops = new Map<string, PendingStop>();
+  readonly #stoppingLaunches = new Set<string>();
+  #stopRetry: ReturnType<typeof setInterval> | null = null;
   readonly #lifecycle = new Map<string, Promise<void>>();
 
   /** Reserve synchronously; queued operations re-read the row by its stable identity after admission. */
@@ -91,7 +106,7 @@ export class Sessions {
   }
 
   /** The spawn-to-row gap is protected by these reservations, including relaunches. */
-  lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0; }
+  lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0 || this.#pendingStops.size > 0; }
 
   constructor(options: SessionsOptions) {
     this.#core = options.core;
@@ -101,18 +116,61 @@ export class Sessions {
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
     // Recovery must select the persisted recipient's delivery mode before recording its final event.
     this.#core.eventSteering(id => { const p = this.#table.bySessionId(id); return p?.harness === 'codex' || p?.harness === 'opencode'; });
-    this.#unprocess = this.#table.subscribe((p) => this.#core.publishProcess(this.view(p)));
+    for (const entry of this.#table.pendingStops()) this.#pendingStops.set(entry.process.sessionId, entry);
+    this.#core.launchIdentity((credential, id) => {
+      const pending = [...this.#pendingStops.values()].find(entry => entry.ownership?.credential === credential);
+      if (pending?.ownership) {
+        // Once cleanup begins, only receipt-committed identities may receive a grant,
+        // including while the original spawn call is still awaiting its stop.
+        const proven = pending.ownership.sessionIds;
+        const candidate = proven.includes(id) ? id : pending.ownership.anonymousSessionId ?? pending.process.sessionId;
+        if (candidate === UNKNOWN_SESSION || !proven.includes(candidate)) return { refusal: `pending launch "${pending.process.name}" has no proven stable session identity; cleanup is pending` };
+        return { name: pending.process.name, sessionId: candidate, prove: () => {} };
+      }
+      const launch = this.#launchIdentities.get(credential);
+      if (launch) {
+        const proven = id === UNKNOWN_SESSION ? launch.anonymousSessionId ?? launch.returnedId ?? randomUUID() : id;
+        const refusal = launchIdentityRefusal(launch, proven);
+        if (refusal) return { refusal };
+        return { name: launch.name, sessionId: proven, prove: () => {
+          if (id === UNKNOWN_SESSION) launch.anonymousSessionId ??= proven;
+          launch.sessionIds.add(proven);
+        } };
+      }
+      const accepted = this.#firstHello.get(credential)?.acceptedId;
+      const name = accepted ? this.#core.store.nameOfSession(accepted) : null;
+      if (accepted && name) return { name, sessionId: accepted, prove: () => {} };
+      return null;
+    });
+    this.#unhello = this.#core.onSessionHello((_name, _id, credential) => {
+      if (!credential) return;
+      this.#firstHello.delete(credential);
+    });
+    this.#core.pendingLaunch(id => {
+      return [...this.#pendingStops.values()].find(entry => (!entry.ownership && entry.process.sessionId === id) || entry.ownership?.sessionIds.includes(id) || (entry.priorSessionId ?? entry.rollback?.previousSessionId) === id)?.process.name
+        ?? [...this.#launchIdentities.values()].find(identity => identity.prior === id || identity.sessionIds.has(id))?.name
+        ?? null;
+    });
+    this.#unprocess = this.#table.subscribe((p) => {
+      // Quarantined status is not a verified exit. Metadata changes must leave the
+      // final fact to cleanup, which publishes it only after the original process is gone.
+      if (!this.#pendingStops.has(p.sessionId)) {
+        if (p.status !== 'running') for (const [credential, first] of this.#firstHello) if (first.acceptedId === p.sessionId) this.#firstHello.delete(credential);
+        this.#core.publishProcess(this.view(p));
+      }
+    });
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
-    this.#core.launchedRole((name, sessionId) => {
+    this.#core.launchedRole((_name, sessionId, token) => {
       // the launch's first hello, taken once: a reconnect gets the clause again, injected
-      const first = this.#firstHello.get(name);
-      if (first) {
-        this.#firstHello.delete(name);
+      const first = token ? this.#firstHello.get(token) : undefined;
+      if (first && token && first.acceptedId === null) {
         return { role: first.role, first: true, carried: first.carried };
       }
-      const row = this.#table.bySessionId(sessionId);
-      return row ? { role: row.role, first: false, carried: false } : null;
+      const row = sessionId !== UNKNOWN_SESSION ? this.#table.bySessionId(sessionId) : null;
+      // Acceptance retires the first grant. A late hello uses the current row/held role;
+      // only its unchanged first-turn clause may still need a carried notice.
+      return row ? { role: row.role, first: false, carried: first?.acceptedId === sessionId && first.role === row.role && first.carried } : null;
     });
     // the human's assignment or revocation is what a relaunch starts with: the row is found by the session's id,
     // never by a name (a renamed session's row is renamed with it, and a name may have been reused)
@@ -134,7 +192,7 @@ export class Sessions {
       }
     });
     // An active snapshot emits nothing; terminal recovery waits for the fully configured startup sequence.
-    for (const p of this.#table.running()) this.#core.rememberProcess(this.view(p));
+    for (const p of this.#table.running()) if (!this.#pendingStops.has(p.sessionId)) this.#core.rememberProcess(this.view(p));
   }
 
   readonly #unsubscribe: () => void;
@@ -143,11 +201,7 @@ export class Sessions {
   /** The process-table row of the session that holds `name` now: by its session id (live, else as the store remembers it). */
   #rowOfName(name: string): HarnessProcess | null {
     const id = this.#core.presence().find((p) => p.name === name)?.sessionId ?? this.#core.store.sessionIdOf(name);
-    const byId = id ? this.#table.bySessionId(id) : null;
-    if (byId) return byId;
-    const byName = this.#table.get(name);
-    // a row under this name whose session is another one the store knows under another name is not this one's
-    return byName && (id === null || byName.sessionId === id) ? byName : null;
+    return id && id !== UNKNOWN_SESSION ? this.#table.bySessionId(id) : null;
   }
 
   /** The live Coordinator, or null ("no coordinator"). */
@@ -188,6 +242,11 @@ export class Sessions {
 
   register(adapter: HarnessAdapter): void {
     this.#adapters.set(adapter.harness, adapter);
+    for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.stages.stopped && !entry.stopIntent) {
+      try { adapter.watch(entry.process); }
+      catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
+    }
+    this.#retryStops();
   }
 
   adapter(harness: string): HarnessAdapter {
@@ -236,7 +295,94 @@ export class Sessions {
   }
 
   list(): HarnessProcessView[] {
-    return this.#table.all().map((p) => this.view(p));
+    return this.#table.all().filter(p => !this.#pendingStops.has(p.sessionId)).map((p) => this.view(p));
+  }
+
+  /** Durable failed launches remain supervised pending stop, apart from accepted process rows. */
+  pendingStops(): Array<{ process: HarnessProcess; state: 'pending stop'; error: string }> {
+    return [...this.#pendingStops.values()].map(({ process, error }) => ({ process, error, state: 'pending stop' }));
+  }
+
+  #retryStops(): void {
+    if (this.#stopRetry || !this.#pendingStops.size || this.#closed) return;
+    this.#stopRetry = setInterval(() => {
+      for (const entry of this.#pendingStops.values()) void this.#stopFailedLaunch(entry).catch(() => {});
+    }, 5000);
+    this.#stopRetry.unref();
+  }
+
+  #settleFailedLaunch(entry: PendingStop): void {
+    const { process, rollback } = entry;
+    const proven = entry.ownership ? entry.ownership.sessionIds : [process.sessionId];
+    const rollbackIds = proven.length ? proven : [null];
+    const checkpoint = (id: string | null) => id === null || id === process.sessionId ? process.sessionId : `${process.sessionId}:${id}`;
+    // A failed persistence attempt must not erase ownership after stop succeeds. Retry the whole
+    // transition and row removal before releasing the role and clearing the recovery receipt.
+    this.#table.pendingStop(entry);
+    this.adapter(process.harness).unwatch?.(process.sessionId);
+    if (!entry.stages.rowRemoved) {
+      // A published launch has a terminal transition even when later setup fails. The
+      // core commits its final fan-out, subscription closure and checkpoint together.
+      if (entry.published) {
+        const row = this.#table.bySessionId(process.sessionId);
+        this.#core.publishProcess(this.view(row?.sessionId === process.sessionId ? row : process));
+      }
+      this.#table.removePendingRow(entry);
+    }
+    if (!entry.stages.roleRolledBack) {
+      if (rollback) for (const id of rollbackIds) this.#core.releaseLaunchRole(process.name, rollback.role, rollback.previous, 'launch-failed', id, rollback.previousSessionId, checkpoint(id));
+      entry.stages.roleRolledBack = true;
+      this.#table.pendingStop(entry);
+    }
+    this.#table.clearPendingStop(process.sessionId);
+    for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
+    this.#pendingStops.delete(process.sessionId);
+    this.#core.publishCleanup(process.sessionId, false);
+    if (!this.#pendingStops.size && this.#stopRetry) { clearInterval(this.#stopRetry); this.#stopRetry = null; }
+  }
+
+  async #stopFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
+    const p = entry.process;
+    if (this.#stoppingLaunches.has(p.sessionId) || this.#closed) return;
+    this.#stoppingLaunches.add(p.sessionId);
+    try {
+      let preparationError: unknown;
+      resumed(() => {
+        // One failed persistence/watch operation must not skip the ownership-verified stop attempt.
+        try { this.#table.pendingStop(entry); } catch (error) { preparationError = error; }
+        if (!entry.stages.stopped && !entry.stopIntent) try { this.adapter(p.harness).watch(p); } catch (error) { preparationError ??= error; }
+        try { this.#core.publishCleanup(p.sessionId, true); } catch (error) { preparationError ??= error; }
+      });
+      try {
+        if (!entry.stages.stopped) {
+          const recovering = entry.stopIntent === true;
+          resumed(() => { entry.stopIntent = true; this.#table.pendingStop(entry); });
+          let gone = false;
+          if (recovering) {
+            const rows = await systemProcesses(resumed);
+            gone = resumed(() => {
+              if (p.pid === null) throw new Error('failed launch process identity is unknown; cleanup remains pending');
+              const current = rows.find(row => row.pid === p.pid);
+              if (!current) return true;
+              if (!p.pidStarted) throw new Error('failed launch start identity is unknown; cleanup remains pending');
+              return current.started !== p.pidStarted;
+            });
+          }
+          if (!gone) {
+            if (recovering) resumed(() => {
+              try { this.adapter(p.harness).watch(p); } catch (error) { preparationError ??= error; }
+            });
+            await resumed(() => this.adapter(p.harness).stop(p, resumed));
+          } else resumed(() => this.adapter(p.harness).unwatch?.(p.sessionId));
+          resumed(() => { entry.stages.stopped = true; this.#table.pendingStop(entry); });
+        }
+      }
+      catch (error) {
+        if (preparationError) throw new Error(`${String(error)}; recovery preparation failed: ${String(preparationError)}`);
+        throw error;
+      }
+      resumed(() => this.#settleFailedLaunch(entry));
+    } finally { resumed(() => this.#stoppingLaunches.delete(p.sessionId)); }
   }
 
   /** Each adapter's capability table (spec 4.3): what it can do and how far each state signal is trusted. */
@@ -269,20 +415,34 @@ export class Sessions {
     if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
-    if (this.#core.presence().some((p) => p.name === request.name)) throw new Error(`name "${request.name}" is in use by a live session`);
+    const reserved = this.#core.nameReservation(request.name);
+    if (reserved) throw new Error(reserved);
+    if ([...this.#pendingStops.values()].some(entry => entry.process.name === request.name)) throw new Error(`failed launch of "${request.name}" is still supervised; cleanup is pending`);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
+    const existingIds = this.#core.sessionIds();
+    for (const process of this.#table.all()) existingIds.add(process.sessionId);
+    for (const entry of this.#pendingStops.values()) {
+      existingIds.add(entry.process.sessionId);
+      for (const id of entry.ownership?.sessionIds ?? []) existingIds.add(id);
+    }
+    existingIds.delete(UNKNOWN_SESSION);
     // Ticket every named role before I/O: even a nonexclusive cached definition may become exclusive at fresh.
     const admission = role !== null ? this.#core.admitRole(request.name, role) : null;
     const slot = this.#lifecycleSlot(existing?.sessionId ?? `new:${request.name}`);
-    let reservation: { previous: string | null } | null = null;
+    let reservation: { previous: string | null; previousSessionId: string | null } | null = null;
     const launching: SignalFrame[] = [];
     this.#launching.set(request.name, launching);
+    const priorIdentity = existing?.sessionId ?? this.#core.store.sessionIdOf(request.name);
+    const launchToken = randomUUID();
+    const identity: LaunchOwnership = { name: request.name, prior: priorIdentity === UNKNOWN_SESSION ? null : priorIdentity, existingIds, sessionIds: new Set(), anonymousSessionId: null, returnedId: null };
+    this.#launchIdentities.set(launchToken, identity);
     const abort = () => {
       if (this.#launching.get(request.name) !== launching) return;
       this.#launching.delete(request.name);
       this.#earlyBridges.delete(request.name);
-      this.#firstHello.delete(request.name);
-      if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous);
+      this.#firstHello.delete(launchToken);
+      this.#launchIdentities.delete(launchToken);
+      if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous, 'launch-failed', null, reservation.previousSessionId);
       admission?.release();
     };
     try {
@@ -308,10 +468,12 @@ export class Sessions {
         try {
           authorize();
           admission?.validate();
+          const reserved = this.#core.nameReservation(request.name);
+          if (reserved) throw new Error(reserved);
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(request, cwd, resumed, reservation, () => admission?.release());
+          return this.#spawnLaunch(request, cwd, resumed, reservation, () => admission?.release(), launchToken, identity);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -321,7 +483,7 @@ export class Sessions {
     } finally { resumed(() => slot.release()); }
   }
 
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null } | null, releaseAdmission: () => void): Promise<HarnessProcessView> {
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership): Promise<HarnessProcessView> {
     const role = request.role ?? null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
@@ -332,46 +494,75 @@ export class Sessions {
     const policy = this.#launchPolicy(role);
     const adapter = this.adapter(harness);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roles.get().get(role)) : null;
-    if (role !== null) this.#firstHello.set(request.name, { role, carried: clause !== null && adapter.clauseAtSpawn === true });
+    this.#firstHello.set(launchToken, { role, carried: clause !== null && adapter.clauseAtSpawn === true, acceptedId: null });
     const item = request.item ?? null;
-    let spawned: { process: HarnessProcess } | { error: unknown };
+    let owned: HarnessProcess | null = null;
+    let conflict = false;
+    let accepted = false;
     try {
-      const process = await adapter.spawn({ name: request.name, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed);
-      const pidStarted = process.pidStarted ?? (process.pid !== null ? await processStarted(process.pid, undefined, resumed) : null);
-      spawned = { process: { ...process, pidStarted } };
-    } catch (err) {
-      spawned = { error: err };
-    }
-    // Publication, cleanup, watch and replay form one continuous stretch after spawn settles.
-    return resumed(() => {
-      let early: SignalFrame[] = [];
-      let p: HarnessProcess;
-      try {
-        if ('error' in spawned) throw spawned.error;
-        const process = spawned.process;
-        p = { ...process, item, pidStarted: process.pidStarted ?? null };
+      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed);
+      resumed(() => {
+        if (!launchIdentityRefusal(identity, owned!.sessionId)) identity.sessionIds.add(owned!.sessionId);
+        identity.returnedId = owned!.sessionId;
+      });
+      // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
+      const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed) : null);
+      const p: HarnessProcess = { ...owned, item, pidStarted };
+      owned = p;
+      return resumed(() => {
+        const proofRefusal = launchIdentityRefusal(identity, p.sessionId);
+        if (proofRefusal) throw new Error(proofRefusal);
+        const refusal = this.#core.nameReservation(request.name, p.sessionId);
+        if (refusal) { conflict = true; throw new Error(refusal); }
+        this.#core.rememberLaunchIdentity(p.name, p.sessionId, launchToken);
+        if (this.#core.roles) p.role = this.#core.store.roleOf(p.name);
         this.#table.put(p);
+        adapter.watch(p);
         if (reservation) this.#core.launchSettled(request.name);
-      } catch (err) {
-        this.#earlyBridges.delete(request.name);
-        this.#firstHello.delete(request.name);
-        if (role !== null && reservation) this.#core.releaseLaunchRole(request.name, role, reservation.previous);
-        throw err;
-      } finally {
-        early = this.#launching.get(request.name) ?? [];
+        this.#lastAt.delete(p.sessionId);
+        this.#lastPush.delete(p.sessionId);
+        this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
+        const early = this.#launching.get(request.name) ?? [];
         this.#launching.delete(request.name);
-        releaseAdmission();
+        for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
+        this.#earlyBridges.delete(p.name);
+        for (const frame of early) this.signal(frame);
+        const view = this.view(this.#table.get(p.name) ?? p);
+        const first = this.#firstHello.get(launchToken);
+        if (first) first.acceptedId = p.sessionId;
+        accepted = true;
+        return view;
+      });
+    } catch (cause) {
+      let detail = cause instanceof Error ? cause.message : String(cause);
+      if (owned) {
+        const process: HarnessProcess = { ...owned, item, status: 'stopped' };
+        const entry: PendingStop = { process, error: detail, priorSessionId: conflict ? null : identity.prior, ownership: { credential: launchToken, sessionIds: [...identity.sessionIds], anonymousSessionId: identity.anonymousSessionId }, stages: { stopped: false, rowRemoved: false, roleRolledBack: false }, ...(role !== null && reservation ? { rollback: { role, previous: reservation.previous, previousSessionId: conflict ? null : reservation.previousSessionId } } : {}) };
+        resumed(() => {
+          this.#pendingStops.set(process.sessionId, entry);
+          this.#retryStops();
+        });
+        try { await this.#stopFailedLaunch(entry, resumed); }
+        catch (error) { detail += `; spawned process cleanup failed: ${error instanceof Error ? error.message : String(error)}; cleanup is pending and the failed launch remains supervised`; }
       }
-      this.#lastAt.delete(p.sessionId);
-      this.#lastPush.delete(p.sessionId);
-      adapter.watch(p);
-      this.#log({ event: 'session-launched', session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: early.length });
-      // the bridges first: the early SessionStart's idle retries what the spoke accepted, through them
-      for (const connect of this.#earlyBridges.get(p.name) ?? []) connect();
-      this.#earlyBridges.delete(p.name);
-      for (const frame of early) this.signal(frame);
-      return this.view(this.#table.get(p.name) ?? p);
-    });
+      return resumed(() => {
+        // Returned processes own their rollback through the durable stage receipt, including failures.
+        if (role !== null && reservation && !owned) {
+          const proven = [...identity.sessionIds];
+          for (const id of proven.length ? proven : [null]) this.#core.releaseLaunchRole(request.name, role, reservation.previous, 'launch-failed', id, reservation.previousSessionId);
+        }
+        if (cause instanceof Error) { cause.message = detail; throw cause; }
+        throw new Error(detail);
+      });
+    } finally {
+      resumed(() => {
+        this.#earlyBridges.delete(request.name);
+        if (!accepted) this.#firstHello.delete(launchToken);
+        this.#launching.delete(request.name);
+        this.#launchIdentities.delete(launchToken);
+        releaseAdmission();
+      });
+    }
   }
 
   attachCommand(name: string): string {
@@ -479,13 +670,18 @@ export class Sessions {
 
   /** After all adapters/callbacks are installed, reconcile terminal rows and interrupted launch reservations. */
   releaseInterruptedLaunches(): void {
-    for (const p of this.#table.all()) this.#core.rememberProcess(this.view(p));
-    this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running');
+    for (const p of this.#table.all()) if (!this.#pendingStops.has(p.sessionId)) this.#core.rememberProcess(this.view(p));
+    this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }
 
   /** At the hub's start: every process the table says runs is re-found or marked gone. */
   async resumeAll(): Promise<void> {
+    for (const entry of [...this.#pendingStops.values()]) {
+      try { await this.#stopFailedLaunch(entry); }
+      catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
+    }
     for (const p of this.#table.running()) {
+      if (this.#pendingStops.has(p.sessionId)) continue;
       try {
         await this.resume(p.name);
       } catch (err) {
@@ -604,6 +800,13 @@ export class Sessions {
   }
 
   #exited(sessionId: string, detail: string): void {
+    if (this.#pendingStops.has(sessionId)) {
+      const entry = this.#pendingStops.get(sessionId)!;
+      entry.stages.stopped = true;
+      this.#table.pendingStop(entry);
+      this.#settleFailedLaunch(entry);
+      return;
+    }
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
     this.#table.update(p.name, { status: 'exited' });
@@ -724,9 +927,14 @@ export class Sessions {
 
   close(): void {
     this.#closed = true;
+    if (this.#stopRetry) clearInterval(this.#stopRetry);
+    this.#stopRetry = null;
     for (const a of this.#adapters.values()) a.close();
     this.#core.onDelivered(null);
     this.#core.launchedRole(null);
+    this.#core.pendingLaunch(null);
+    this.#core.launchIdentity(null);
+    this.#unhello();
     this.#unsubscribe();
     this.#unprocess();
     for (const timer of this.#usageTimers.values()) clearTimeout(timer);

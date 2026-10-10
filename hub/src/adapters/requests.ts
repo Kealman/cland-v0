@@ -90,7 +90,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
         return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
       }
       case 'session.list':
-        return ok({ processes: sessions.list(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
+        return ok({ processes: sessions.list(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator() });
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
       case 'session.stop':

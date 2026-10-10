@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
+import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -121,6 +121,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   assert.equal(config.mcp.servers.cland.type, 'local');
   assert.equal(config.mcp.servers.cland.environment.CLAND_SESSION_ID, launched.sessionId);
   assert.equal(config.mcp.servers.cland.environment.CLAND_DELIVERY, 'adapter');
+  assert.ok(config.mcp.servers.cland.environment.CLAND_LAUNCH_TOKEN, 'the private MCP configuration carries the launch credential');
   assert.equal(await readFile(join(root, '.cland', 'opencode', '.gitignore'), 'utf8').then((s) => s.split('\n').includes('*')), true);
   assert.equal((await stat(join(root, '.cland', 'opencode', 'impl', 'password'))).mode & 0o077, 0, 'the password file is private');
   // the first turn is the role clause the hub delivered
@@ -128,6 +129,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const present = await presentAs(ui, 'impl', 'idle');
   assert.equal(present.role, 'coordinator');
   assert.equal(present.sessionId, launched.sessionId);
+  assertFirstLaunchClause(await hubLog(root), 'impl');
 
   // session.list: the session, its state, and the capability table with its heuristic waiting states
   const list = (await ui.request({ type: 'session.list' })).value as { processes: Harness[]; adapters: Record<string, unknown> };

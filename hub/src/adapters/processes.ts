@@ -55,9 +55,25 @@ create table if not exists harness_processes (
   item text
 );
 create index if not exists harness_processes_session on harness_processes (session_id);
+create table if not exists harness_pending_stops (
+  session_id text primary key,
+  recovery_json text not null
+);
 `;
 
 type Row = Record<string, string | number | null>;
+
+export type PendingStop = {
+  process: HarnessProcess;
+  error: string;
+  stopIntent?: boolean;
+  published?: boolean;
+  priorSessionId?: string | null;
+  /** Credential provenance survives disagreement between an early hello and the returned adapter identity. */
+  ownership?: { credential: string; sessionIds: string[]; anonymousSessionId: string | null };
+  stages: { stopped: boolean; rowRemoved: boolean; roleRolledBack: boolean };
+  rollback?: { role: string; previous: string | null; previousSessionId: string | null };
+};
 
 const toProcess = (r: Row): HarnessProcess => ({
   name: r.name as string,
@@ -172,4 +188,50 @@ export class ProcessTable {
   running(): HarnessProcess[] {
     return this.all().filter((p) => p.status === 'running');
   }
+
+  /** Failed launch ownership is keyed by identity, so it cannot replace a name's accepted process. */
+  pendingStops(): PendingStop[] {
+    return (this.#db.prepare('select recovery_json from harness_pending_stops').all() as Row[])
+      .map(row => {
+        const entry = JSON.parse(row.recovery_json as string) as PendingStop;
+        return { ...entry, stages: entry.stages ?? { stopped: false, rowRemoved: false, roleRolledBack: false } };
+      });
+  }
+
+  pendingStop(entry: PendingStop): void {
+    // Quarantine and recovery ownership commit together: no crash can leave a failed launch running
+    // without its cleanup receipt. Removal waits until verified exit, and can be retried independently.
+    this.#db.exec('begin immediate');
+    try {
+      // Keep publication ownership with quarantine, including a put whose observer threw
+      // after committing. A name conflict with no owned row must never end its owner's subscriptions.
+      const published = entry.published || !!this.#db.prepare('select 1 from harness_processes where session_id = ?').get(entry.process.sessionId);
+      this.#db.prepare('insert or replace into harness_pending_stops (session_id, recovery_json) values (?, ?)')
+        .run(entry.process.sessionId, JSON.stringify({ ...entry, published, process: { ...entry.process, status: 'stopped' } }));
+      this.#db.prepare("update harness_processes set status = 'stopped' where session_id = ?").run(entry.process.sessionId);
+      this.#db.exec('commit');
+      entry.published = published;
+    } catch (error) {
+      this.#db.exec('rollback');
+      throw error;
+    }
+  }
+
+  clearPendingStop(sessionId: string): void {
+    this.#db.prepare('delete from harness_pending_stops where session_id = ?').run(sessionId);
+  }
+
+  /** Row removal and its checkpoint share a transaction: recovery never observes only one. */
+  removePendingRow(entry: PendingStop): void {
+    const completed = { ...entry, stages: { ...entry.stages, rowRemoved: true } };
+    this.#db.exec('begin immediate');
+    try {
+      this.#db.prepare('delete from harness_processes where session_id = ?').run(entry.process.sessionId);
+      this.#db.prepare('insert or replace into harness_pending_stops (session_id, recovery_json) values (?, ?)')
+        .run(entry.process.sessionId, JSON.stringify(completed));
+      this.#db.exec('commit');
+    } catch (error) { this.#db.exec('rollback'); throw error; }
+    entry.stages.rowRemoved = true;
+  }
+
 }

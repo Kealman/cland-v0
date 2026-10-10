@@ -197,9 +197,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- the harness's CLI
 
-  #run(args: string[], cwd: string, timeoutMs = 30_000, resumed: Resumed = untimed): Promise<{ code: number; stdout: string; stderr: string }> {
+  #run(args: string[], cwd: string, timeoutMs = 30_000, resumed: Resumed = untimed, launchToken?: string): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      execFile(this.#bin, args, { cwd, env: this.#env, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
+      execFile(this.#bin, args, { cwd, env: { ...this.#env, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {
         if (err && typeof err.code !== 'number') reject(new Error(`${this.#bin} ${args[0] ?? ''}: ${err.message}`));
         else resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
       }));
@@ -269,7 +269,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return /claude attach (\S+)/.exec(stdout)?.[1]?.replace(/[`'".,]+$/, '') ?? /\(([0-9a-f]{6,})\)/.exec(stdout)?.[1] ?? /\b([0-9a-f]{8})\b/.exec(stdout)?.[1] ?? null;
   }
 
-  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed): Promise<HarnessProcess> {
+  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       const worktree = p.item ? p.cwd : null;
       // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
@@ -283,7 +283,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         ...(effort ? ['--effort', effort] : []),
         ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree),
       ];
-      const r = yield* wait(this.#run(args, p.cwd, undefined, resumed));
+      const r = yield* wait(this.#run(args, p.cwd, undefined, resumed, launchToken));
       const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
       const launched: HarnessProcess = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running' };
       try {
@@ -316,7 +316,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null, resumed);
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null, resumed, request.launchToken);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -419,6 +419,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       clearInterval(this.#timer);
       this.#timer = null;
     }
+  }
+
+  unwatch(sessionId: string): void {
+    this.#unwatch(sessionId);
+    this.#bridges.delete(sessionId);
   }
 
   async #poll(): Promise<void> {

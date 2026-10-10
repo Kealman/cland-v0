@@ -127,11 +127,12 @@ export class OpenCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- launch
 
   /** The OpenCode config the session's server reads: the spoke as a local MCP server, with the session's identity. */
-  #config(name: string, role: string | null, sessionId: string): Record<string, unknown> {
+  #config(name: string, role: string | null, sessionId: string, launchToken?: string): Record<string, unknown> {
     const environment: Record<string, string> = {
       CLAND_HUB_FILE: this.#host.discoveryFile,
       CLAND_SESSION_ID: sessionId,
       CLAND_SESSION_NAME: name,
+      ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
       // the adapter injects: the spoke only accepts deliveries
       CLAND_DELIVERY: 'adapter',
       ...(role ? { CLAND_ROLE: role } : {}),
@@ -139,14 +140,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       const files = this.#files(p.name);
       const transaction = new LaunchFiles(resumed);
       let pid: number | undefined;
       try {
-        const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
+        const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
         yield* wait(transaction.file(files.log, true));
         const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: this.#env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
         pid = started.pid;
@@ -201,7 +202,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, resumed);
+    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, resumed, request.launchToken);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -370,6 +371,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#timer = null;
     }
   }
+
+  unwatch(sessionId: string): void { this.#unwatch(sessionId); }
 
   // ---------------------------------------------------------------- stop, resume
 

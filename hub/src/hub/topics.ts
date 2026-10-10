@@ -6,6 +6,7 @@ import { parseTags } from '../address.ts';
 import { ROLE_NAMES } from '../names.ts';
 import type { Resumed } from './budget.ts';
 import type { Tracker } from '../tracker/tracker.ts';
+import type { Claim } from '../tracker/index-db.ts';
 
 /**
  * What moves a topic's status:
@@ -52,7 +53,7 @@ export function mentions(text: string, known: (name: string) => boolean): { to: 
   const unknown: string[] = [];
   for (const tag of parseTags(text)) {
     if (tag.toLowerCase() === 'all' || tag.includes('*')) continue;
-    if (ROLE_NAMES.includes(tag) || known(tag)) to.push(tag);
+    if (tag === 'lead' || tag.startsWith('lead ') || ROLE_NAMES.includes(tag) || known(tag)) to.push(tag);
     else unknown.push(tag);
   }
   return { to, unknown };
@@ -69,6 +70,9 @@ export function vacancyWarning(roles: string[]): string | undefined {
  */
 export type TopicItems = {
   ancestry?: (item: string) => string[];
+  /** Current indexed ownership, without file I/O: resolution and recording must not yield. */
+  lead: (item: string) => { state: string; claim: Claim | null } | null;
+  provisionalSession: (name: string) => boolean;
   /** The item's normalized id (`T-12`), with the topic its file names (or null); throws why it cannot be bound. */
   check: (item: string) => { id: string; topic: string | null; state: string };
   /** Record the binding in the item's file (`topic:`), through the tracker. */
@@ -86,6 +90,8 @@ export function trackerItems(tracker: Tracker): TopicItems {
       for (let id: string | null | undefined = item; id && !path.includes(id); id = parents.get(id)) path.push(id);
       return path;
     },
+    lead: item => tracker.itemLead(item),
+    provisionalSession: name => tracker.hasProvisionalSession(name),
     check: (item) => {
       const view = tracker.view(item);
       return { id: view.id, topic: view.topic ?? null, state: view.state };

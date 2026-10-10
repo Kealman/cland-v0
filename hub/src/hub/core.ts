@@ -109,6 +109,7 @@ function wire(connection: Connection): void {
 
 /** What the adapters' side says of a hello's launch (`HubCore.launchedRole`). */
 export type LaunchedRole = { role: string | null; first: boolean; carried: boolean };
+type LaunchIdentityBinding = { name: string; sessionId: string; prove: () => void } | { refusal: string };
 
 export type HelloResult = { ok: true; name: string; connection: Connection; spoke: SpokeSocket } | { ok: false; code: RefusalCode; message: string };
 
@@ -171,13 +172,15 @@ export class HubCore {
   /** The role a session was launched for, by the adapters' side (`Sessions`): `first` once, at the first hello of a
    *  launch (with `carried` when its first turn already carried the clause, Codex), else the role its process-table
    *  row keeps (a relaunch takes it back). A hello's role is honoured for it. */
-  #launchedRole: ((name: string, sessionId: string) => LaunchedRole | null) | null = null;
+  #launchedRole: ((name: string, sessionId: string, launchToken?: string) => LaunchedRole | null) | null = null;
+  #pendingLaunch: ((sessionId: string) => string | null) | null = null;
+  #launchIdentity: ((credential: string, sessionId: string) => LaunchIdentityBinding | null) | null = null;
   /** A clause the session already has (its launch's first turn), recorded as injected: sent once with the next flush. */
   readonly #carriedNotice = new Map<string, string>();
   /** The role notices sent this run, by message id: they go out as `role` frames, not `deliver`s. */
   readonly #roleNotices = new Map<string, RoleClause>();
   /** Told of every accepted hello (a pending claim move waits for its receiver's session id). */
-  readonly #hellos = new Set<(name: string, sessionId: string) => void>();
+  readonly #hellos = new Set<(name: string, sessionId: string, launchToken?: string) => void>();
   /** Told when a session takes a new name (the process table renames its row). */
   readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
@@ -331,6 +334,10 @@ export class HubCore {
     this.#emit({ type: 'session.process', process });
   }
 
+  publishCleanup(sessionId: string, pending: boolean): void {
+    this.#emit({ type: 'session.cleanup', sessionId, state: pending ? 'pending stop' : 'settled' });
+  }
+
   publishTask(change: ItemChange): void {
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
@@ -435,6 +442,39 @@ export class HubCore {
     return this.#store;
   }
 
+  /** Authoritative identity before the tracker's queued durable adoption has completed. */
+  sessionIdentity(id: string): string {
+    if (!id.startsWith('name:')) return id;
+    const alias = this.#store.sessionAlias(id.slice(5));
+    if (alias) return alias;
+    const actual = this.#store.sessionIdOf(id.slice(5));
+    return actual && actual !== UNKNOWN_SESSION ? actual : id;
+  }
+
+  /** Shared name reservation invariant. Explicit paths may reuse settled history; generated names may not.
+   * Pending aliases stay reserved until adoption settles, including for their owner. */
+  nameReservation(name: string, sessionId?: string, retained?: ReadonlySet<string>): string | null {
+    const holder = this.#live.get(name);
+    if (holder && holder.sessionId !== sessionId) return `name "${name}" is in use by a live session`;
+    if (this.#store.sessionAlias(name)) return `name "${name}" has a pending session identity adoption: retry after adoption succeeds`;
+    if (retained?.has(name)) return `name "${name}" has retained traffic`;
+    return null;
+  }
+
+  #itemLead(item: string): string | null {
+    const found = this.#items?.lead(item);
+    if (!found) throw new Error(`no item ${item}: address coordinator instead`);
+    if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
+    const claim = found.claim;
+    if (claim?.role === 'implementer') {
+      const id = this.sessionIdentity(claim.sessionId);
+      // A real identity follows renames; a provisional identity can name only its unadopted session.
+      const name = id.startsWith('name:') ? id.slice(5) : this.connectionOf(id)?.name ?? this.#store.nameOfSession(id);
+      if (name && name !== HUMAN) return name;
+    }
+    return null;
+  }
+
   // ---------------------------------------------------------------- presence
 
   hello(
@@ -445,6 +485,19 @@ export class HubCore {
   ): HelloResult {
     if (hello.protocol !== PROTOCOL_VERSION) {
       return { ok: false, code: 'version', message: `protocol ${hello.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}` };
+    }
+    // A credential-proven anonymous hello gets a unique stable identity before any grant.
+    // Uncredentialed UNKNOWN_SESSION remains anonymous and cannot own a launch by name.
+    const original = hello.sessionId !== UNKNOWN_SESSION ? this.connectionOf(hello.sessionId) : undefined;
+    const joining = original && (hello.name === undefined || hello.name === original.name);
+    const launchIdentity = hello.launchToken && !joining ? this.#launchIdentity?.(hello.launchToken, hello.sessionId) : null;
+    if (launchIdentity && 'refusal' in launchIdentity) return { ok: false, code: 'name-in-use', message: launchIdentity.refusal };
+    if (launchIdentity) {
+      const known = this.connectionOf(launchIdentity.sessionId)?.name ?? this.#store.nameOfSession(launchIdentity.sessionId);
+      if ((known !== null && known !== undefined && known !== launchIdentity.name) || (hello.name !== undefined && hello.name !== launchIdentity.name)) {
+        return { ok: false, code: 'name-in-use', message: `launch "${launchIdentity.name}" cannot bind session "${known ?? hello.name}" (${launchIdentity.sessionId}) to another identity; use the launch's own session identity and name` };
+      }
+      hello = { ...hello, name: hello.name ?? launchIdentity.name, sessionId: launchIdentity.sessionId };
     }
     // The session id is the stable identity; a hello with the unknown id identifies nobody.
     const identified = hello.sessionId !== UNKNOWN_SESSION;
@@ -467,20 +520,20 @@ export class HubCore {
       // No name asked for: a session the hub already knows gets its own name back (unless another session
       // claimed it by name since), with whatever waited for it.
       const previous = this.#store.nameOfSession(hello.sessionId);
-      const holder = previous === null ? undefined : this.#live.get(previous);
-      if (previous !== null && nameRefusal(previous, this.#reserved) === null && (!holder || holder.sessionId === hello.sessionId)) requested = previous;
+      if (previous !== null && nameRefusal(previous, this.#reserved) === null && this.nameReservation(previous, hello.sessionId) === null) requested = previous;
     }
     let name: string;
     if (requested !== undefined) {
       const refusal = nameRefusal(requested, this.#reserved);
       if (refusal) return { ok: false, code: 'bad-name', message: refusal };
-      const holder = this.#live.get(requested);
-      // a live holder here is another session (this one's own spoke joined it above): refused
-      if (holder) return { ok: false, code: 'name-in-use', message: `name "${requested}" is in use by a live session` };
+      // This session's own existing connection joined above; every remaining live holder is a collision.
+      const identityRefusal = this.nameReservation(requested);
+      if (identityRefusal) return { ok: false, code: 'name-in-use', message: identityRefusal };
       name = requested;
     } else {
       // Never a name any session has held: a generated name carries no other session's queue or history.
-      name = generatedName(new Set([...this.#live.keys(), ...this.#reserved, ...this.#store.sessionNames()]));
+      const retained = new Set(this.#store.sessionNames());
+      name = generatedName(candidate => nameRefusal(candidate, this.#reserved) !== null || this.nameReservation(candidate, undefined, retained) !== null);
     }
     let role: string | null = null;
     let fresh = false;
@@ -497,6 +550,9 @@ export class HubCore {
       if (ROLE_NAMES.includes(hello.role)) role = hello.role;
       else this.#log({ event: 'role-ignored', name, role: hello.role, roles: ROLE_NAMES });
     }
+    // Only a validated new hello proves launch ownership. A join returned above;
+    // refused names and roles likewise cannot enter a launch's rollback targets.
+    launchIdentity?.prove();
     const spoke: SpokeSocket = { deliver, deliverRole, close };
     const connection: Connection = {
       name,
@@ -540,7 +596,7 @@ export class HubCore {
     this.#announceCoordinator();
     for (const fn of [...this.#hellos]) {
       try {
-        fn(name, hello.sessionId);
+        fn(name, hello.sessionId, hello.launchToken);
       } catch (err) {
         this.#log({ event: 'hello-listener-failed', name, error: err instanceof Error ? err.message : String(err) });
       }
@@ -559,13 +615,13 @@ export class HubCore {
    */
   #helloRole(name: string, hello: Hello): { ok: true; role: string; fresh: boolean; carried: boolean } | { ok: false; message: string } {
     const refusal = (role: string, taken: string) => `role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``;
-    const launched = this.#launchedRole?.(name, hello.sessionId) ?? null;
-    if (launched?.first && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+    const launched = this.#launchedRole?.(name, hello.sessionId, hello.launchToken) ?? null;
+    const held = this.#store.roleOf(name);
+    if (launched?.first && launched.role !== null && launched.role === held && ROLE_NAMES.includes(launched.role)) {
       const taken = this.#exclusiveHolder(launched.role, name);
       if (taken) return { ok: false, message: refusal(launched.role, taken) };
       return { ok: true, role: launched.role, fresh: true, carried: launched.carried };
     }
-    const held = this.#store.roleOf(name);
     if (held !== null && ROLE_NAMES.includes(held)) {
       const taken = this.#exclusiveHolder(held, name);
       if (taken) {
@@ -576,9 +632,9 @@ export class HubCore {
         return { ok: false, message: `no role: "${name}" no longer holds the role ${ROLE_LABELS[held] ?? held}: ${taken} holds it now, and one session holds it at a time — assign another with \`cland role set ${name} <${ROLE_NAMES.join('|')}>\`; the session connects on its next retry` };
       }
       if (hello.role !== undefined && hello.role !== held) this.#log({ event: 'role-request-ignored', name, requested: hello.role, holds: held });
-      return { ok: true, role: held, fresh: false, carried: false };
+      return { ok: true, role: held, fresh: false, carried: launched?.role === held && launched.carried };
     }
-    if (launched !== null && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
+    if (launched !== null && !launched.first && launched.role !== null && ROLE_NAMES.includes(launched.role)) {
       const taken = this.#exclusiveHolder(launched.role, name);
       if (taken) return { ok: false, message: refusal(launched.role, taken) };
       return { ok: true, role: launched.role, fresh: true, carried: false };
@@ -840,7 +896,7 @@ export class HubCore {
   }
 
   /** Listen to every accepted hello (`name`, session id); returns the unsubscribe. */
-  onSessionHello(listener: (name: string, sessionId: string) => void): () => void {
+  onSessionHello(listener: (name: string, sessionId: string, launchToken?: string) => void): () => void {
     this.#hellos.add(listener);
     return () => this.#hellos.delete(listener);
   }
@@ -871,14 +927,19 @@ export class HubCore {
   rename(from: string, to: string): { ok: true; name: string } | { ok: false; error: string } {
     const c = this.#live.get(from);
     if (!c) return { ok: false, error: `unknown session ${from}` };
+    const launch = this.#launchMutationRefusal(from);
+    if (launch) return { ok: false, error: launch };
     if (to === from) return { ok: true, name: to };
     const refusal = nameRefusal(to, this.#reserved);
     if (refusal) return { ok: false, error: refusal };
-    if (this.#live.has(to)) return { ok: false, error: `name "${to}" is in use by a live session` };
+    const identityRefusal = this.nameReservation(to);
+    if (identityRefusal) return { ok: false, error: identityRefusal };
     const pending = this.#store.unacknowledgedCount(to);
     if (pending) return { ok: false, error: `name "${to}" has ${pending} unacknowledged deliveries: rename refused` };
     const collisions = this.#store.deliveryCollisionCount(from, to);
     if (collisions) return { ok: false, error: `name "${to}" has ${collisions} colliding delivery rows: rename refused` };
+    // Persist before deleting the name's session row; a restart can rebuild the same adoption fence.
+    if (this.#items?.provisionalSession(from)) this.#store.preserveSessionAlias(from, c.sessionId);
     this.#live.delete(from);
     c.name = to;
     this.#live.set(to, c);
@@ -934,8 +995,46 @@ export class HubCore {
   }
 
   /** Who tells a hello which role its session was launched for (the adapters' side); one at a time. */
-  launchedRole(lookup: ((name: string, sessionId: string) => LaunchedRole | null) | null): void {
+  launchedRole(lookup: ((name: string, sessionId: string, launchToken?: string) => LaunchedRole | null) | null): void {
     this.#launchedRole = lookup;
+  }
+
+  /** Unfinalized launch identities cannot mutate their name or role until settlement. */
+  pendingLaunch(lookup: ((sessionId: string) => string | null) | null): void {
+    this.#pendingLaunch = lookup;
+  }
+
+  /** Resolve a launch credential to the stable identity its hello proves. */
+  launchIdentity(lookup: ((credential: string, sessionId: string) => LaunchIdentityBinding | null) | null): void {
+    this.#launchIdentity = lookup;
+  }
+
+  /** Stable identities already recorded by the hub, including durable aliases and live sessions. */
+  sessionIds(): Set<string> {
+    const ids = new Set(this.#store.sessionNames().map(name => this.#store.sessionIdOf(name)).filter((id): id is string => id !== null));
+    for (const alias of this.#store.sessionAliases()) ids.add(alias.id);
+    for (const connection of this.#live.values()) ids.add(connection.sessionId);
+    ids.delete(UNKNOWN_SESSION);
+    return ids;
+  }
+
+  /** A credential-proven adapter identity becomes authoritative when its launch is published. */
+  rememberLaunchIdentity(name: string, sessionId: string, credential: string): void {
+    const binding = this.#launchIdentity?.(credential, sessionId);
+    if (binding && 'refusal' in binding) throw new Error(binding.refusal);
+    if (sessionId === UNKNOWN_SESSION || binding?.sessionId !== sessionId) throw new Error('a launch must publish a credential-proven stable session identity');
+    const refusal = this.nameReservation(name, sessionId);
+    if (refusal) throw new Error(refusal);
+    this.#store.transaction(() => {
+      this.#store.rememberSession(name, this.#now().getTime());
+      this.#store.rememberSessionId(name, sessionId);
+    });
+  }
+
+  #launchMutationRefusal(name: string): string | null {
+    const id = this.#live.get(name)?.sessionId ?? this.#store.sessionIdOf(name);
+    const launch = id && id !== UNKNOWN_SESSION ? this.#pendingLaunch?.(id) : null;
+    return launch ? `pending launch "${launch}" is not finalized; rename and role changes are refused until settlement` : null;
   }
 
   /**
@@ -943,12 +1042,15 @@ export class HubCore {
    * it): a second launch, or the human's assignment, of an exclusive role is refused while the first is under way.
    * Returns what the name held before, for `releaseLaunchRole`. Throws the exclusivity refusal.
    */
-  reserveLaunchRole(name: string, role: string): { previous: string | null } {
+  reserveLaunchRole(name: string, role: string): { previous: string | null; previousSessionId: string | null } {
     if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const identityRefusal = this.nameReservation(name, this.#live.get(name)?.sessionId);
+    if (identityRefusal) throw new Error(identityRefusal);
     const taken = this.#exclusiveHolder(role, name);
     if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
     const c = this.#live.get(name);
     const previous = c ? c.role : this.#store.roleOf(name);
+    const previousSessionId = this.#store.sessionIdOf(name);
     const at = this.#now().getTime();
     // the reservation is recorded with the role: a hub that dies before the launch's process row exists gives it
     // back at its next start (`releaseInterruptedLaunches`)
@@ -958,13 +1060,15 @@ export class HubCore {
       this.#store.saveReservation(name, role, previous, at);
     });
     this.#log({ event: 'role-reserved', session: name, role, previous });
-    return { previous };
+    return { previous, previousSessionId };
   }
 
   /** Take a ticket before I/O, then validate against each fresh snapshot. A move may replace the current holder.
    * Tickets do not grant a role; release on success or refusal, including failures before fresh validation. */
   admitRole(name: string, role: string, move = false): { validate: () => void; release: () => void } {
     if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    const identityRefusal = this.nameReservation(name, this.#live.get(name)?.sessionId);
+    if (identityRefusal) throw new Error(identityRefusal);
     const refusal = nameRefusal(name, this.#reserved);
     if (refusal) throw new Error(refusal);
     const reservation = { name };
@@ -979,6 +1083,8 @@ export class HubCore {
       this.#log({ event: 'role-admission-released', session: name, role });
     };
     const validate = () => {
+      const identityRefusal = this.nameReservation(name, this.#live.get(name)?.sessionId);
+      if (identityRefusal) throw new Error(identityRefusal);
       if (!this.#roles?.get().get(role)?.exclusive) return;
       const earlier = admissions[0] !== reservation ? admissions[0] : undefined;
       const from = move ? this.holderOf(role, name) : null;
@@ -998,15 +1104,41 @@ export class HubCore {
   }
 
   /** A launch failed: the role it reserved (or its early hello took) is rolled back, unless something changed it since. */
-  releaseLaunchRole(name: string, role: string, previous: string | null, reason = 'launch-failed'): void {
-    this.#store.dropReservation(name);
+  releaseLaunchRole(name: string, role: string, previous: string | null, reason = 'launch-failed', sessionId?: string | null, previousSessionId: string | null = null, cleanupId?: string): void {
+    const checkpoint = cleanupId ? `launch-role-rollback:${cleanupId}` : null;
+    if (checkpoint && this.#store.meta(checkpoint) === 'done') return;
+    const reservedName = name;
+    const identified = sessionId && sessionId !== UNKNOWN_SESSION ? this.connectionOf(sessionId)?.name ?? this.#store.nameOfSession(sessionId) : null;
+    if (identified) name = identified;
     const c = this.#live.get(name);
+    const alias = this.#store.sessionAlias(name);
+    const stored = this.#store.sessionIdOf(name);
+    const foreign = sessionId !== undefined && ((c && c.sessionId !== sessionId) || (alias && alias !== sessionId) || (stored && stored !== sessionId && stored !== previousSessionId));
     const current = c ? c.role : this.#store.roleOf(name);
-    if (current !== role) return;
-    this.#log({ event: 'role-reservation-released', session: name, role, previous, reason });
-    if (c) this.#vacate(name, 'its launch failed');
-    else this.#store.rememberRole(name, previous);
-    this.#announceCoordinator();
+    const apply = !foreign && current === role && (sessionId === undefined || sessionId === null || identified !== null);
+    this.#store.transaction(() => {
+      this.#store.dropReservation(reservedName);
+      let clause: string | null = null;
+      if (apply) {
+        this.#store.rememberRole(name, c ? null : previous);
+        if (c) clause = this.#recordClause({ ...c, role: null }, 'its launch failed', current);
+        else this.#store.dropNotices(name, ROLE_NOTICE);
+      }
+      // This checkpoint belongs to the same connection and commit as the role mutation.
+      if (checkpoint) this.#store.setMeta(checkpoint, 'done');
+      if (apply) {
+        // Each observer is independent: a logging or transport fault cannot suppress
+        // another publication of the committed rollback.
+        this.#afterCommit(() => { if (c) c.role = null; });
+        this.#afterCommit(() => this.#log({ event: 'role-reservation-released', session: name, role, previous, reason }));
+        if (c) {
+          this.#afterCommit(() => this.#log({ event: 'role-cleared', session: name, previous: current, reason: 'its launch failed', live: true }));
+          if (clause) { const id = clause; this.#afterCommit(() => this.#send(this.#store.message(id) as Message, name)); }
+          this.#afterCommit(() => this.#emitRole(name, null, current, 'its launch failed'));
+        }
+        this.#afterCommit(() => this.#announceCoordinator());
+      }
+    });
   }
 
   /**
@@ -1045,9 +1177,13 @@ export class HubCore {
    * when a session takes the name. An exclusive role another session holds is refused with the reason.
    */
   assignRole(name: string, role: string): RoleHolder {
+    const launch = this.#launchMutationRefusal(name);
+    if (launch) throw new Error(launch);
     if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
     const refusal = nameRefusal(name, this.#reserved);
     if (refusal) throw new Error(refusal);
+    const reserved = this.nameReservation(name, this.#live.get(name)?.sessionId);
+    if (reserved) throw new Error(reserved);
     const taken = this.#exclusiveHolder(role, name);
     if (taken) throw new Error(`role "${role}" is held by ${taken}: one session holds it at a time — clear it first with \`cland role clear ${taken.split(' ')[0]}\``);
     const c = this.#live.get(name);
@@ -1072,6 +1208,8 @@ export class HubCore {
 
   /** The human revokes a session's role. A live holder is told to stop acting in it (decision #10). */
   clearRole(name: string, reason = 'revoked by the human'): RoleHolder {
+    const launch = this.#launchMutationRefusal(name);
+    if (launch) throw new Error(launch);
     const c = this.#live.get(name);
     const previous = c ? c.role : this.#store.roleOf(name);
     if (previous === null) throw new Error(`"${name}" holds no role`);
@@ -1125,9 +1263,15 @@ export class HubCore {
    */
   moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; claims?: PendingClaims | null }): RoleHolder {
     const { role, from, to, by, note, then } = move;
+    for (const name of from === null ? [to] : [from, to]) {
+      const launch = this.#launchMutationRefusal(name);
+      if (launch) throw new Error(launch);
+    }
     if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
     const refusal = nameRefusal(to, this.#reserved);
     if (refusal) throw new Error(refusal);
+    const reserved = this.nameReservation(to, this.#live.get(to)?.sessionId);
+    if (reserved) throw new Error(reserved);
     if (from === to) throw new Error(`${withRole(to, role)} already holds the role`);
     if (then !== null && (!ROLE_NAMES.includes(then) || then === role || this.#roles?.get().get(then)?.exclusive)) throw new Error(`a handover may leave the previous holder an Implementer (then: "implementer"), not "${then}"`);
     const taken = this.#exclusiveHolder(role, from === null ? [to] : [to, from]);
@@ -1327,7 +1471,11 @@ export class HubCore {
     const empty: Array<{ tag: string; reason: string }> = []; // tags that reach nobody but the sender — a fact, never a refusal
     const tagOf = new Map<string, string[]>(); // tag → the session names it resolved to
     for (const tag of HubCore.#normalized(tags)) {
-      const r = resolveTag(tag, ctx);
+      const lead = /^lead\s+(T-[1-9]\d*)$/.exec(tag);
+      if (/^lead(?:\s|$)/.test(tag) && !lead) throw new Error(`invalid item lead address "${tag}": use @lead T-<n>, or address coordinator instead`);
+      const claimant = lead ? this.#itemLead(lead[1]!) : null;
+      const target = lead ? this.coordinator() ?? COORDINATOR : tag;
+      const r = claimant ? { kind: 'session' as const, name: claimant } : resolveTag(target, ctx);
       switch (r.kind) {
         case 'all': {
           const names = [...knownSet].filter((n) => n !== except);
@@ -1346,7 +1494,7 @@ export class HubCore {
         case 'role': {
           const names = r.names.filter((n) => n !== except);
           if (names.length) tagOf.set(tag, names);
-          else empty.push({ tag, reason: r.names.length ? `the sender is the only session holding role "${tag}"` : `role "${tag}" has no holder` });
+          else empty.push({ tag: lead ? target : tag, reason: r.names.length ? `the sender is the only session holding role "${target}"` : `role "${target}" has no holder` });
           for (const n of names) sessions.add(n);
           break;
         }

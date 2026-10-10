@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string; status: string | null; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
@@ -104,6 +104,7 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   const present = await presentAs(ui, 'coord', 'idle');
   assert.equal(present.role, 'coordinator');
   assert.equal(present.sessionId, launched.sessionId);
+  assertFirstLaunchClause(await hubLog(root), 'coord');
 
   // attach is the harness's own command; run in a terminal, it attaches (twice: two clients)
   const attach = (await ui.request({ type: 'session.attach', session: 'coord' })).value as { command: string };

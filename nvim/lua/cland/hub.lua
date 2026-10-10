@@ -133,7 +133,7 @@ end
 local snapshot_events = {
   ['task.list'] = { task = true },
   ['topic.list'] = { topic = true, message = true },
-  ['session.list'] = { ['session.process'] = true, ['session.state'] = true, ['session.role'] = true, ['session.usage'] = true },
+  ['session.list'] = { ['session.cleanup'] = true, ['session.process'] = true, ['session.state'] = true, ['session.role'] = true, ['session.usage'] = true },
   ['hub.status'] = { presence = true, ['session.state'] = true, ['session.role'] = true, ['role.vacant'] = true, ['role.filled'] = true, inbox = true },
   ['artifact.list'] = { artifact = true, message = true },
   ['topic.history'] = { ask = true, delivery = true, message = true, topic = true },
@@ -383,7 +383,7 @@ function Client:_frame(frame, line)
         self:_call('request ' .. tostring(frame.id), cb, frame.error or 'failed')
       end
     end
-  elseif t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'session.usage' then
+  elseif t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'session.cleanup' or t == 'session.usage' then
     for journal in pairs(self.snapshots) do
       if relevant(journal.request, frame) then
         local bytes = line and #line or #vim.json.encode(frame)

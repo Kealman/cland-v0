@@ -359,6 +359,17 @@ function M.upsert_process(process)
   M.changed()
 end
 
+--- A rejected launch leaves accepted rows by identity; another launch may already own its old name.
+function M.remove_process(sessionId)
+  if not sessionId then return end
+  local rows = {}
+  for _, p in ipairs(M.S.processes) do
+    if p.sessionId ~= sessionId then rows[#rows + 1] = p end
+  end
+  M.S.processes = rows
+  M.changed()
+end
+
 function M.set_session_usage(sessionId, usage)
   if not sessionId or type(usage) ~= 'table' then return end
   for _, p in ipairs(M.S.processes) do

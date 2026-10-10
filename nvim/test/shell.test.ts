@@ -1691,6 +1691,24 @@ test('events already reflected in a delayed items snapshot are idempotent; a fai
   }
 });
 
+test('failed-launch cleanup removes its identity live and during delayed session snapshots without removing a new name owner', { skip }, async t => {
+  const c = await startShell(t);
+  await c.control({ set: { holdSnapshots: ['session.list'] } });
+  await c.lua("require('cland').refresh_sessions()");
+  await c.control({ waitSnapshot: 'session.list' });
+  await c.control({ emit: { type: 'session.cleanup', sessionId: 'impl-1-id', state: 'pending stop' } });
+  await c.lua("assert(vim.wait(5000, function() for _, p in ipairs(require('cland.state').S.processes) do if p.sessionId == 'impl-1-id' then return false end end return true end))");
+  const replacement = { ...proc('impl-1', 'implementer', 'idle'), sessionId: 'replacement-id' };
+  await c.control({ emits: [
+    { type: 'session.process', process: replacement },
+    { type: 'session.cleanup', sessionId: 'impl-1-id', state: 'settled' },
+  ] });
+  await c.control({ releaseSnapshots: ['session.list'], set: { holdSnapshots: [] } });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.pending) == nil end))");
+  const identities = await c.lua<string[]>("local ids = {}; for _, p in ipairs(require('cland.state').S.processes) do ids[#ids+1] = p.sessionId end; return ids");
+  assert.deepEqual(identities.sort(), ['coord-1-id', 'replacement-id']);
+});
+
 test('disconnect releases snapshot journals even when another refresh is queued', { skip }, async (t) => {
   const c = await startShell(t, withItems);
   await c.control({ set: { holdSnapshots: ['task.list', 'session.list'] } });

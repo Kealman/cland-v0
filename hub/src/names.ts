@@ -16,8 +16,8 @@ export function withRole(name: string, role: string | null | undefined): string 
   return role ? `${name} [${ROLE_LABELS[role] ?? role}]` : name;
 }
 
-/** Names no session may take: the broadcast tag, the hub itself, and the roles. */
-export const BUILTIN_RESERVED: ReadonlySet<string> = new Set(['all', 'hub', ...ROLE_NAMES]);
+/** Names no session may take: address tags, the hub itself, and the roles. */
+export const BUILTIN_RESERVED: ReadonlySet<string> = new Set(['all', 'lead', 'hub', ...ROLE_NAMES]);
 
 /** A refusal reason, or null when the name is acceptable. Live names are the caller's to check. */
 export function nameRefusal(name: string, reserved: ReadonlySet<string> = new Set()): string | null {
@@ -30,9 +30,9 @@ export function nameRefusal(name: string, reserved: ReadonlySet<string> = new Se
 export const GENERATED_PREFIX = 'session';
 
 /** `session-<n>` with the lowest free n ≥ 1. */
-export function generatedName(taken: ReadonlySet<string>): string {
+export function generatedName(reserved: (name: string) => boolean): string {
   for (let n = 1; ; n += 1) {
     const candidate = `${GENERATED_PREFIX}-${n}`;
-    if (!taken.has(candidate)) return candidate;
+    if (!reserved(candidate)) return candidate;
   }
 }

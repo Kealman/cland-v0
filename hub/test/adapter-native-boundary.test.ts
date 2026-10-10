@@ -41,7 +41,7 @@ for (const Adapter of [CodexAdapter, OpenCodeAdapter, ClaudeCodeAdapter]) test(`
 
 const adapters = [CodexAdapter, OpenCodeAdapter, ClaudeCodeAdapter];
 // Only the external CLI/protocol is replaced. Files, process identity and termination remain native.
-async function fixture(t: TestContext, Adapter: typeof adapters[number]) {
+async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs = 600_000) {
   const root = await tempProject(t);
   const children: cp.ChildProcess[] = [];
   const nativeSpawn = cp.spawn;
@@ -49,6 +49,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number]) {
   let fault = '';
   let identityRefused = false;
   let clientClosed = 0;
+  const watchCalls: string[] = [];
   const events: Array<Record<string, unknown>> = [];
   let delay = () => {};
   let delayed = false;
@@ -75,6 +76,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number]) {
       child({ cwd: root, stdio: 'ignore' });
       return setImmediate(() => callback(null, 'claude attach abcdef12', ''));
     }
+    if (args[0] === 'agents') watchCalls.push('agents');
     if (args[0] === 'agents') return setImmediate(() => callback(null, JSON.stringify([{ id: 'abcdef12', sessionId: claudeId, pid: children.at(-1)?.pid }]), ''));
     if (args[0] === 'stop') {
       const p = children.at(-1);
@@ -94,6 +96,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number]) {
     },
   });
   t.mock.method(AppServerClient, 'connect', async (socket: string) => {
+    watchCalls.push('connect');
     await fsp.writeFile(socket, 'socket placeholder');
     if (fault === 'connect') throw new Error('planted connect failure');
     return client;
@@ -105,21 +108,70 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number]) {
   t.mock.method(OpenCodeClient.prototype, 'models', async () => [{ id: 'big-pickle', providerID: 'opencode', cost: [{ input: 0, output: 0 }], capabilities: { tools: true } }]);
   t.mock.method(OpenCodeClient.prototype, 'session', async () => ({ id: 'session-1' }));
   t.mock.method(OpenCodeClient.prototype, 'snapshot', async () => ({ running: false, permissions: [], forms: [] }));
-  t.mock.method(OpenCodeClient.prototype, 'events', async (_event: unknown, _open: unknown, signal: AbortSignal) => { if (!signal.aborted) await once(signal, 'abort'); });
+  t.mock.method(OpenCodeClient.prototype, 'events', async (_event: unknown, _open: unknown, signal: AbortSignal) => { watchCalls.push('events'); if (!signal.aborted) await once(signal, 'abort'); });
   const host: AdapterHost = {
     root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '',
     log: entry => { events.push(entry); if (entry.event === (Adapter === CodexAdapter ? 'harness-thread-started' : 'harness-launched')) delay(); if (fault === 'log' && entry.event === 'harness-launched') throw new Error('planted log failure'); },
     signal: () => {}, recordPid: () => {}, exited: () => {},
   };
-  const adapter = new Adapter(host, { bin: 'fake-harness', spawnDeadlineMs: 1000, pollMs: 600_000, stopGraceMs: 50 });
+  const adapter = new Adapter(host, { bin: 'fake-harness', spawnDeadlineMs: 1000, pollMs, stopGraceMs: 50 });
   t.after(async () => {
     adapter.close();
     for (const p of children) { if (p.exitCode === null && p.signalCode === null) { p.kill(); await once(p, 'exit'); } }
     t.mock.restoreAll(); syncBuiltinESMExports();
   });
   const request = { name: 'impl', cwd: root, role: null, model: 'test/model', sandbox: { mode: 'workspace-write' as const, writableRoots: [root], network: 'local' as const } };
-  return { root, adapter, request, children, events, closedClients: () => clientClosed, refuseIdentity: (value: boolean) => { identityRefused = value; }, setDelay: (value: () => void) => { delay = value; }, setFault: (value: string) => { fault = value; } };
+  return { root, adapter, request, children, events, watchCalls, disconnect: () => client.emit('close'), closedClients: () => clientClosed, refuseIdentity: (value: boolean) => { identityRefused = value; }, setDelay: (value: () => void) => { delay = value; }, setFault: (value: string) => { fault = value; } };
 }
+
+for (const Adapter of adapters) test(`${Adapter.name}: identity unwatch ends poll and reconnect loops without signalling`, async t => {
+  const f = await fixture(t, Adapter, 25);
+  const p = await f.adapter.spawn(f.request);
+  let pidChecks = 0;
+  const kill = process.kill.bind(process);
+  t.mock.method(process, 'kill', (pid: number, signal?: string | number) => {
+    if (pid === p.pid && signal === 0) pidChecks++;
+    return kill(pid, signal);
+  });
+  f.adapter.watch(p);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  if (Adapter === CodexAdapter) assert.ok(f.closedClients() === 0);
+  f.adapter.unwatch(p.sessionId);
+  await new Promise(resolve => setTimeout(resolve, 100)); // Let any in-flight inspection finish.
+  const calls = f.watchCalls.length + pidChecks;
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assert.equal(f.watchCalls.length + pidChecks, calls, 'no poll, stream subscription or reconnect survives unwatch');
+  assert.ok(f.children.every(child => child.exitCode === null && child.signalCode === null), 'unwatch signals no harness process');
+  if (Adapter === CodexAdapter) assert.ok(f.closedClients() > 0);
+});
+
+test('Codex identity disposal closes an in-flight reconnect without restoring its watcher', async t => {
+  const f = await fixture(t, CodexAdapter, 25);
+  const p = await f.adapter.spawn(f.request);
+  const connect = AppServerClient.connect;
+  let entered!: () => void;
+  let release!: () => void;
+  const waiting = new Promise<void>(resolve => { entered = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  t.after(() => release());
+  t.mock.method(AppServerClient, 'connect', async (...args: Parameters<typeof connect>) => {
+    entered();
+    await gate;
+    return connect(...args);
+  });
+  f.adapter.watch(p);
+  f.disconnect();
+  await waiting;
+  f.adapter.unwatch(p.sessionId);
+  const closed = f.closedClients();
+  release();
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.ok(f.closedClients() > closed, 'late connection is disposed after the identity was removed');
+  const calls = f.watchCalls.length;
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assert.equal(f.watchCalls.length, calls, 'no reconnect loop is restored');
+  assert.ok(f.children.every(child => child.exitCode === null && child.signalCode === null));
+});
 
 for (const Adapter of adapters) test(`${Adapter.name}: successful spawn, watch, live resume, stop and relaunch use no synchronous native call`, async t => {
   const f = await fixture(t, Adapter);

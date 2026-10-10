@@ -418,6 +418,22 @@ export class Store implements HygieneMemory {
     this.#db.prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
   }
 
+  clearMeta(key: string): void { this.#db.prepare('delete from meta where key = ?').run(key); }
+
+  /** A provisional tracker identity kept while its real session renames during failed adoption. */
+  sessionAlias(name: string): string | null { return this.meta(`session-alias:${name}`); }
+
+  sessionAliases(): Array<{ name: string; id: string }> {
+    const rows = this.#db.prepare("select key, value from meta where key like 'session-alias:%'").all() as Row[];
+    return rows.map(row => ({ name: (row.key as string).slice('session-alias:'.length), id: row.value as string }));
+  }
+
+  preserveSessionAlias(name: string, id: string): void { this.setMeta(`session-alias:${name}`, id); }
+
+  settleSessionAlias(name: string, id: string): void {
+    this.#db.prepare('delete from meta where key = ? and value = ?').run(`session-alias:${name}`, id);
+  }
+
   /** A launch reserved `role` for `name` (what the name held before: `previous`); cleared once its process row is
    *  written or the launch gave the role back. One left at a start belongs to a launch the hub died in. */
   saveReservation(name: string, role: string, previous: string | null, at: number): void {

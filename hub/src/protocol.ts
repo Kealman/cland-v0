@@ -190,6 +190,8 @@ export type HubEvent =
   | { type: 'presence'; sessions: Presence[] }
   /** A process-table row changed: the same view as session.list, replaced by stable session id or name. */
   | { type: 'session.process'; process: HarnessProcessView }
+  /** Failed launch supervision changed; no accepted process row is implied. */
+  | { type: 'session.cleanup'; sessionId: string; state: 'pending stop' | 'settled' }
   /** Latest usage totals, coalesced per launch; old launches must never update a new row under the same name. */
   | { type: 'session.usage'; session: string; sessionId: string; usage: SessionUsage }
   /** A new message in a topic: the human's, an agent's. */
@@ -259,6 +261,8 @@ export type Hello = {
   cwd: string;
   /** Requested name; absent means "assign me one". */
   name?: string;
+  /** Proves this hello belongs to a particular pending launch; supplied through CLAND_LAUNCH_TOKEN. */
+  launchToken?: string;
   /** The role the session asks for (`CLAND_ROLE`). A project's hub honours it only for a session it launched for
    *  that role; otherwise the role is the one the human assigned (`role.set`), and a session with none is refused. */
   role?: string;
@@ -339,6 +343,7 @@ export function isHello(f: Record<string, unknown>): f is Hello {
     typeof f.sessionId === 'string' &&
     typeof f.cwd === 'string' &&
     (f.name === undefined || typeof f.name === 'string') &&
+    (f.launchToken === undefined || typeof f.launchToken === 'string') &&
     (f.role === undefined || typeof f.role === 'string')
   );
 }

@@ -80,6 +80,8 @@ export type LaunchPolicy = {
 
 export type SpawnRequest = LaunchPolicy & {
   name: string;
+  /** Hub-issued credential carried by this launch's spoke hello; never inferred from a session name. */
+  launchToken?: string;
   role: string | null;
   /** The model to run; the harness's default when null. */
   model: string | null;
@@ -165,6 +167,8 @@ export interface HarnessAdapter {
   renamed?(process: HarnessProcess, from: string): void;
   /** Start watching a process (after spawn or resume): the polled fallback and the liveness check. */
   watch(process: HarnessProcess): void;
+  /** Dispose identity-owned supervision after verified exit, without signalling any process. */
+  unwatch?(sessionId: string): void;
   /** Stop through the harness; the process table then says `stopped`. */
   stop(process: HarnessProcess, resumed?: Resumed): Promise<void>;
   /**

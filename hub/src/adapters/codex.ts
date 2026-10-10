@@ -132,6 +132,8 @@ export function mcpOverrides(host: Pick<AdapterHost, 'node' | 'spoke' | 'discove
   return [
     ...set('command', host.node),
     ...set('args', [host.spoke]),
+    // The credential travels through the process environment, never a command-line value.
+    ...set('env_vars', ['CLAND_LAUNCH_TOKEN']),
     ...Object.entries(env).flatMap(([k, v]) => set(`env.${k}`, v)),
     ...set('enabled', true),
     // the thread does not start without the hub's tools
@@ -360,7 +362,7 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed): Promise<{ pid: number; client: AppServerClient }> {
+  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string): Promise<{ pid: number; client: AppServerClient }> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
       pid: number;
       client: AppServerClient;
@@ -385,6 +387,7 @@ export class CodexAdapter implements HarnessAdapter {
           PATH: [dirname(this.#host.node), this.#env.PATH].filter(Boolean).join(delimiter),
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,
+          ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
           ...(p.role ? { CLAND_ROLE: p.role } : {}),
         };
         const child = spawn(this.#bin, args, { cwd: p.cwd, env, detached: true, stdio: ['ignore', out.fd, out.fd] });
@@ -574,7 +577,7 @@ export class CodexAdapter implements HarnessAdapter {
       let client: AppServerClient | undefined;
       try {
         const policy = yield* wait(this.#threadPolicy(request.cwd, request, files, resumed));
-        ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed)));
+        ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed, request.launchToken)));
         const started = yield* wait(client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread }));
         const threadId = started.thread.id;
         const p: HarnessProcess = {
@@ -854,6 +857,12 @@ export class CodexAdapter implements HarnessAdapter {
     }
   }
 
+  unwatch(sessionId: string): void {
+    this.#unwatch(sessionId);
+    this.#live.get(sessionId)?.client?.close();
+    this.#live.delete(sessionId);
+  }
+
   #poll(): void {
     for (const sessionId of [...this.#watched]) {
       const live = this.#live.get(sessionId);
@@ -875,8 +884,10 @@ export class CodexAdapter implements HarnessAdapter {
       let client: AppServerClient | null = null;
       try {
         client = await this.#connectTo(socket);
+        if (this.#closed || this.#live.get(live.p.sessionId) !== live) { client.close(); return; }
         this.#attach(live, client);
         const r = await this.#subscribe(live, client);
+        if (this.#closed || this.#live.get(live.p.sessionId) !== live) { client.close(); return; }
         if (this.#snapshotIsCurrent(live, r) && r.state !== 'unknown') this.#setState(live, r.state);
         void this.#readRateLimits(live);
         // a message whose inject failed while the connection was down waits for no state change: retried now

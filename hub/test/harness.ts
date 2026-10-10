@@ -4,6 +4,7 @@
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
 import { execFile } from 'node:child_process';
+import assert from 'node:assert/strict';
 import { mkdtemp, readdir, readFile, realpath, rm } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -32,6 +33,15 @@ export type ChannelEvent = z.infer<typeof ChannelEvent>;
 
 export const TEST_SECRET = 'test-secret';
 
+/** An early first clause grants the launch role; after acceptance it uses the authoritative held role. */
+export function assertFirstLaunchClause(log: string, session: string): void {
+  const events = log.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line) as { event: string; session?: string; name?: string; reason?: string });
+  const acceptedAt = events.findIndex(event => event.event === 'session-launched' && event.session === session);
+  const helloAt = events.findIndex(event => event.event === 'hello' && event.name === session);
+  assert.ok(acceptedAt >= 0 && helloAt >= 0);
+  assert.equal(events.find(event => event.event === 'role-clause' && event.session === session)?.reason, acceptedAt < helloAt ? 'hello' : 'assigned at launch', 'acceptance retires the first grant; a later hello uses the held role');
+}
+
 export async function startHub(options: Partial<HubOptions> = {}): Promise<Hub> {
   return createHub({ port: 0, host: '127.0.0.1', secret: TEST_SECRET, ...options });
 }
@@ -55,6 +65,7 @@ export type SpokeOptions = {
   /** No hub url and secret either: the spoke finds the hub through `.cland/hub.json` from its `cwd` up. */
   discover?: boolean;
   sessionId?: string;
+  launchToken?: string;
   cwd?: string;
   heartbeatMs?: number;
   /** How long a request waits for the hub's reply (CLAND_HUB_REQUEST_TIMEOUT_MS). */
@@ -100,6 +111,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
   if (options.discover && options.name && options.assignRole !== false) await assignRole(options.cwd as string, options.name, options.role ?? 'implementer');
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
+  if (options.launchToken) env.CLAND_LAUNCH_TOKEN = options.launchToken;
   const workDir = await mkdtemp(join(tmpdir(), 'cland-spoke-'));
   const cleanup = ownDirectory(undefined, workDir);
   const transport = new StdioClientTransport({ command: process.execPath, args: [SPOKE_ENTRY], env, cwd: options.cwd ?? workDir, stderr: 'pipe' });

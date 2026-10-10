@@ -1,17 +1,18 @@
 // The address grammar: tags anywhere in a text.
 //   @<name>    one session        @all      every session the hub knows
 //   @<glob>    `*` over names     @<role>   the sessions holding that role
+//   @lead T-n the claimant of an open item, or the Coordinator
 // A tag is a token, not a mention: `@server-1,` and `(@rate-*)` both tag. Resolution is the hub's
 // (it knows who is connected and who holds which role); this module only finds and classifies.
 
-const TAG_RE = /(?<![A-Za-z0-9_.])@([A-Za-z0-9][A-Za-z0-9._*-]*)/g;
+const TAG_RE = /(?<![A-Za-z0-9_.])@(lead\s+T-[1-9]\d*(?![A-Za-z0-9_-])|[A-Za-z0-9][A-Za-z0-9._*-]*)/g;
 
 /** Every distinct tag in the text, in order of first appearance, without the `@`. */
 export function parseTags(text: string): string[] {
   const seen = new Set<string>();
   const tags: string[] = [];
   for (const match of text.matchAll(TAG_RE)) {
-    const tag = (match[1] as string).replace(/[.]+$/, ''); // a sentence-final dot is punctuation
+    const tag = (match[1] as string).replace(/[.]+$/, '').replace(/\s+/g, ' '); // a sentence-final dot is punctuation
     if (tag.length === 0 || seen.has(tag)) continue;
     seen.add(tag);
     tags.push(tag);

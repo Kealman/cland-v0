@@ -140,13 +140,14 @@ export class Dispatcher {
     options.core.subscribe(event => {
       this.#guard.changed();
       if (event.type === 'session.process' && event.process.status !== 'running') options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
+      if (event.type === 'session.cleanup' && event.state === 'settled') options.tracker?.releaseHolds(event.sessionId);
     });
     options.tracker?.onChange(() => this.#guard.changed());
-    options.tracker?.useSessionIdentity(id => {
-      if (!id.startsWith('name:')) return id;
-      const actual = options.core.store.sessionIdOf(id.slice(5));
-      return actual && actual !== UNKNOWN_SESSION ? actual : id;
-    });
+    // A crash after the tracker commit but before alias cleanup must not reserve the old name forever.
+    if (options.tracker) for (const { name, id } of options.core.store.sessionAliases()) {
+      if (!options.tracker.hasProvisionalSession(name)) options.core.store.settleSessionAlias(name, id);
+    }
+    options.tracker?.useSessionIdentity(id => options.core.sessionIdentity(id), (name, id) => options.core.store.settleSessionAlias(name, id));
     // a role moved to a name with no session yet: its claims follow at that session's hello; and what a hub that
     // died between a move's commit and its claims left pending is finished now
     options.core.onSessionHello((name, sessionId) => {
@@ -182,6 +183,7 @@ export class Dispatcher {
   #sessionCwds(): SessionCwd[] {
     const out: SessionCwd[] = this.#options.core.presence().filter((p) => typeof p.cwd === 'string' && p.cwd !== '').map((p) => ({ name: p.name, cwd: p.cwd }));
     for (const p of this.#sessions?.list() ?? []) if (p.status === 'running') out.push({ name: p.name, cwd: p.cwd });
+    for (const { process } of this.#sessions?.pendingStops() ?? []) out.push({ name: process.name, cwd: process.cwd });
     return out;
   }
 

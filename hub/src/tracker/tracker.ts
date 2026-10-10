@@ -203,8 +203,9 @@ export class Tracker {
   readonly #readyErrors = new Map<string, string>();
   readonly #retryDelays = new Map<string, number>();
   readonly #sessionIds = new Map<string, string>();
-  readonly #adoptions = new Map<string, string>();
-  #identityOf: (id: string) => string = id => id;
+  readonly #adoptions = new Map<string, Set<string>>();
+  #identityOf: (id: string) => string = id => this.#sessionIds.get(id) ?? id;
+  #identityAdopted: (name: string, id: string) => void = () => {};
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
@@ -834,6 +835,14 @@ export class Tracker {
     const base = this.#fresh.base();
     return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#fresh.annotate(i.id, i.branch, verdicts.get(i.id) ?? []) }));
   }
+
+  /** Routing reads only committed index facts, without reading item files or yielding. */
+  itemLead(id: string): { state: string; claim: Claim | null } | null {
+    const item = this.#index.get(id);
+    return item ? { state: item.state, claim: this.#index.claimOf(id) } : null;
+  }
+
+  hasProvisionalSession(name: string): boolean { return this.#index.provisionalSessions().includes(`name:${name}`); }
 
   // ---------------------------------------------------------------- writing
 
@@ -1484,8 +1493,9 @@ export class Tracker {
   }
 
   /** The hub's authoritative mapping also compares gate evidence before durable adoption succeeds. */
-  useSessionIdentity(identityOf: (id: string) => string): void {
+  useSessionIdentity(identityOf: (id: string) => string, adopted: (name: string, id: string) => void = () => {}): void {
     this.#identityOf = identityOf;
+    this.#identityAdopted = adopted;
     this.reconcileSessionIdentities();
   }
 
@@ -1503,29 +1513,35 @@ export class Tracker {
   /** Failed adoption fences work until the same queued transaction succeeds. */
   adoptSession(name: string, sessionId: string): void {
     if (sessionId === `name:${name}` || sessionId === 'unknown') return;
-    this.#adoptions.set(sessionId, name);
+    const names = this.#adoptions.get(sessionId) ?? new Set<string>();
+    names.add(name);
+    this.#adoptions.set(sessionId, names);
     this.#runBackground(() => this.#serial(() => this.#adopt(sessionId), this.#watchResumed));
   }
 
   #adopt(sessionId: string): void {
-    const name = this.#adoptions.get(sessionId);
-    if (!name) return;
-    let changed: string[];
-    try { changed = this.#index.adoptSession(name, sessionId); }
-    catch (err) { throw new TrackerError(`session identity adoption failed for ${name}: ${err instanceof Error ? err.message : String(err)}; retry`); }
-    // Publication follows the SQLite commit: a partial failure never changes the working identity.
-    this.#sessionIds.set(`name:${name}`, sessionId);
+    const names = this.#adoptions.get(sessionId);
+    if (!names) return;
+    for (const name of names) {
+      let changed: string[];
+      try { changed = this.#index.adoptSession(name, sessionId); }
+      catch (err) { throw new TrackerError(`session identity adoption failed for ${name}: ${err instanceof Error ? err.message : String(err)}; retry`); }
+      // Publication follows the SQLite commit: a partial failure never changes the working identity.
+      this.#sessionIds.set(`name:${name}`, sessionId);
+      for (const id of changed) this.#changed(id);
+      this.#identityAdopted(name, sessionId);
+      names.delete(name);
+    }
     this.#adoptions.delete(sessionId);
-    for (const id of changed) this.#changed(id);
   }
 
   #ensureSession(actor: Actor): void {
     const pending = this.#adoptions.has(actor.id) ? actor.id
-      : [...this.#adoptions].find(([, name]) => actor.id === `name:${name}`)?.[0];
+      : [...this.#adoptions].find(([, names]) => actor.id.startsWith('name:') && names.has(actor.id.slice(5)))?.[0];
     if (pending) this.#adopt(pending);
   }
 
-  #sessionId(id: string): string { return this.#sessionIds.get(id) ?? id; }
+  #sessionId(id: string): string { return this.#identityOf(id); }
 
   /** Stop/death releases verification work; the Implementer's claim remains independent. */
   releaseHolds(sessionId: string, name?: string): void {

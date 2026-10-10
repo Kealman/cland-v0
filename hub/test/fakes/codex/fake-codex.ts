@@ -205,7 +205,7 @@ async function appServer(args: string[]): Promise<number> {
 
   // the MCP servers, started once: the real spoke, connected to the real hub
   const mcp = new Map<string, Client>();
-  type Server = { command: string; args?: string[]; env?: Record<string, string>; enabled?: boolean };
+  type Server = { command: string; args?: string[]; env?: Record<string, string>; env_vars?: string[]; enabled?: boolean };
   // One set of MCP server processes per thread, as the real app-server starts them (measured with 0.160.0: every
   // `thread/start` spawns the configured servers again, with the same environment). The first set is the session's
   // thread's: its turns call their tools through it for as long as the app-server lives.
@@ -214,6 +214,10 @@ async function appServer(args: string[]): Promise<number> {
       if (server.enabled === false) continue;
       const client = new Client({ name: 'fake-codex', version: VERSION }, { capabilities: {} });
       const env: Record<string, string> = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', ...(server.env ?? {}) };
+      for (const key of server.env_vars ?? []) {
+        const value = process.env[key];
+        if (value !== undefined) env[key] = value;
+      }
       const transport = new StdioClientTransport({ command: server.command, args: server.args ?? [], env, cwd: process.cwd(), stderr: 'pipe' });
       transport.stderr?.on('data', (c: Buffer) => log(`[mcp ${name}] ${String(c).trim()}`));
       await client.connect(transport);

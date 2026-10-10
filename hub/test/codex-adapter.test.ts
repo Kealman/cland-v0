@@ -454,7 +454,10 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
 
   // the session's shell is the session's: `cland task` run there acts as it, not as the human
   const [server] = (await fake.servers()).filter((s) => s.pid === impl.launched.pid);
-  assert.deepEqual(server?.env, { CLAND_SESSION_ID: impl.launched.sessionId, CLAND_SESSION_NAME: 'impl-1', CLAND_ROLE: 'implementer' });
+  assert.ok(server);
+  const { CLAND_LAUNCH_TOKEN: launchToken, ...sessionEnv } = server.env;
+  assert.deepEqual(sessionEnv, { CLAND_SESSION_ID: impl.launched.sessionId, CLAND_SESSION_NAME: 'impl-1', CLAND_ROLE: 'implementer' });
+  assert.equal(typeof launchToken === 'string' && launchToken.length > 0, true, 'the launch credential is forwarded to the session shell');
   // ... and `node` there is the hub's own, ahead of any other on the PATH
   assert.equal(server?.path.split(delimiter)[0], dirname(process.execPath));
 
