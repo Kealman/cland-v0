@@ -1,0 +1,282 @@
+{
+  "source": "node hub/bin/cland.ts task list --json, children of T-19, 2026-10-09",
+  "items": [
+    {
+      "id": "T-21",
+      "title": "Repository skeleton and the BCAS hub core extracted",
+      "blocked_by": []
+    },
+    {
+      "id": "T-22",
+      "title": "Per-project hub daemon with discovery and secret",
+      "blocked_by": [
+        "T-21"
+      ]
+    },
+    {
+      "id": "T-23",
+      "title": "General topic over the UI socket with a minimal Neovim client",
+      "blocked_by": [
+        "T-22"
+      ]
+    },
+    {
+      "id": "T-24",
+      "title": "Claude Code adapter: spawn, attach, inject and state",
+      "blocked_by": [
+        "T-23"
+      ]
+    },
+    {
+      "id": "T-25",
+      "title": "Workbench shell in Neovim",
+      "blocked_by": [
+        "T-24"
+      ]
+    },
+    {
+      "id": "T-26",
+      "title": "Codex adapter",
+      "blocked_by": [
+        "T-24"
+      ]
+    },
+    {
+      "id": "T-27",
+      "title": "OpenCode adapter",
+      "blocked_by": [
+        "T-24"
+      ]
+    },
+    {
+      "id": "T-28",
+      "title": "Session launcher and the sessions panel",
+      "blocked_by": [
+        "T-25",
+        "T-26",
+        "T-27"
+      ]
+    },
+    {
+      "id": "T-29",
+      "title": "Roles config and clause delivery",
+      "blocked_by": [
+        "T-28"
+      ]
+    },
+    {
+      "id": "T-30",
+      "title": "Hub permissions by role and the audit log",
+      "blocked_by": [
+        "T-29"
+      ]
+    },
+    {
+      "id": "T-31",
+      "title": "Role handover with a note",
+      "blocked_by": [
+        "T-30"
+      ]
+    },
+    {
+      "id": "T-32",
+      "title": "Topic model: statuses, bindings, creation and mentions",
+      "blocked_by": [
+        "T-25",
+        "T-29"
+      ]
+    },
+    {
+      "id": "T-33",
+      "title": "Asks and the inbox",
+      "blocked_by": [
+        "T-32"
+      ]
+    },
+    {
+      "id": "T-34",
+      "title": "Agents topic, journal and hygiene",
+      "blocked_by": [
+        "T-32"
+      ]
+    },
+    {
+      "id": "T-35",
+      "title": "Tracker items as files with the hub index and the cland task CLI",
+      "blocked_by": [
+        "T-22"
+      ]
+    },
+    {
+      "id": "T-36",
+      "title": "Items panel, item view and board",
+      "blocked_by": [
+        "T-35",
+        "T-32",
+        "T-25"
+      ]
+    },
+    {
+      "id": "T-37",
+      "title": "Skills on the own tracker",
+      "blocked_by": [
+        "T-35"
+      ]
+    },
+    {
+      "id": "T-38",
+      "title": "Migration of GitHub Issues into .cland/tasks",
+      "blocked_by": [
+        "T-37"
+      ]
+    },
+    {
+      "id": "T-39",
+      "title": "cland init and managed files",
+      "blocked_by": [
+        "T-24",
+        "T-29",
+        "T-37"
+      ]
+    },
+    {
+      "id": "T-40",
+      "title": "cland doctor",
+      "blocked_by": [
+        "T-39"
+      ]
+    },
+    {
+      "id": "T-41",
+      "title": "Review and QA through the roles",
+      "blocked_by": [
+        "T-26",
+        "T-30",
+        "T-35"
+      ]
+    },
+    {
+      "id": "T-42",
+      "title": "Dogfooding: the first real cland task inside cland",
+      "blocked_by": [
+        "T-31",
+        "T-33",
+        "T-34",
+        "T-36",
+        "T-38",
+        "T-40",
+        "T-41"
+      ]
+    },
+    {
+      "id": "T-43",
+      "title": "cland inbox and cland topic answer: answer an ask from the CLI",
+      "blocked_by": []
+    },
+    {
+      "id": "T-44",
+      "title": "cland CLI: find the hub from a worktree of the project",
+      "blocked_by": []
+    },
+    {
+      "id": "T-45",
+      "title": "spoke session.launch: accept cwd, so the Coordinator can launch a session in a worktree",
+      "blocked_by": []
+    },
+    {
+      "id": "T-46",
+      "title": "OpenCode: a deprecated default free model fails every turn, and the failure is silent",
+      "blocked_by": []
+    },
+    {
+      "id": "T-47",
+      "title": "Session usage: a running total per session, the same meaning for every adapter",
+      "blocked_by": []
+    },
+    {
+      "id": "T-48",
+      "title": "Codex sessions launched by cland: approvals auto-approved and a per-role sandbox, so no check or commit waits on the human",
+      "blocked_by": []
+    },
+    {
+      "id": "T-49",
+      "title": "cland CLI with a session identity: the hub refuses the human-only commands",
+      "blocked_by": []
+    },
+    {
+      "id": "T-50",
+      "title": "A message injected into a Codex session in the last second of its turn is marked injected but never acted on",
+      "blocked_by": []
+    },
+    {
+      "id": "T-51",
+      "title": "A Codex session's spoke replaced with no attach behind it: the session's tool calls then fail silently until a stop and relaunch",
+      "blocked_by": []
+    },
+    {
+      "id": "T-52",
+      "title": "OpenCode launch with no model on a cold catalog picks the first listed free model before the Zen models arrive",
+      "blocked_by": []
+    },
+    {
+      "id": "T-65",
+      "title": "Codex Implementer and QA sessions run with full access by default: any work a role needs, on any harness",
+      "blocked_by": []
+    },
+    {
+      "id": "T-66",
+      "title": "Under load the items tree reverted to an earlier snapshot after live updates: a late full list overwriting newer events?",
+      "blocked_by": []
+    },
+    {
+      "id": "T-68",
+      "title": "Codex redelivery (T-50) fires on every delivery to an idle session: the thread check reads userMessage items only, and hub_event tool outputs never match",
+      "blocked_by": []
+    },
+    {
+      "id": "T-69",
+      "title": "The test harness takes a machine-wide lock before spawning daemons, runs the hub suite at bounded concurrency, and kills its daemons on failure",
+      "blocked_by": []
+    },
+    {
+      "id": "T-70",
+      "title": "Orphan harness servers and hub daemons: session stop ends the server, doctor and hub start sweep what no session owns",
+      "blocked_by": []
+    },
+    {
+      "id": "T-74",
+      "title": "The Coordinator's tracker and docs commits have no sanctioned path to the territory's dev: the hook refuses them, and the only workaround is the raw marker",
+      "blocked_by": []
+    },
+    {
+      "id": "T-75",
+      "title": "Shared synchronous I/O on every hub request: the permission check reads roles.toml and the journal writes with writeSync",
+      "blocked_by": []
+    },
+    {
+      "id": "T-76",
+      "title": "Orphan sweep misses the live app-server of a session recorded as exited",
+      "blocked_by": []
+    },
+    {
+      "id": "T-77",
+      "title": "Tracker writes on hub request paths still use synchronous fs: item commits in Tracker's atomic write",
+      "blocked_by": []
+    },
+    {
+      "id": "T-78",
+      "title": "Merge, worktree and release checks still read items through the tracker's synchronous view",
+      "blocked_by": []
+    },
+    {
+      "id": "T-79",
+      "title": "Harness adapters do synchronous fs while spawning a session: Codex mkdirSync, rmSync, openSync and closeSync on launch",
+      "blocked_by": []
+    },
+    {
+      "id": "T-80",
+      "title": "Items panel: the \"in work\" filter hides items between review and QA and planned items",
+      "blocked_by": []
+    }
+  ]
+}
