@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T09:30:07.185Z
+updated: 2026-10-10T09:49:45.776Z
 ---
 
 ## Parent
@@ -81,3 +81,18 @@ commit: 3bf53ca046a2c41ea66b379cfef38fd908f1d7d5
 No high, medium or low findings remain. Standards: clear; Spec: clear. All three A-523 findings are fixed: ancestor/default ownership, published verified-stop receipt seeding, and distinct anonymous claimant identity. Root independently reran the original probes and ordinary full-item recovery/ownership probes against pinned 3bf53ca; all passed. Extended probes cover child subtree overrides, pooled grandchild holds, own idle/death to parent, terminal fallback and inherited final close; independent Spec pass checks unverified quarantine control. Prior full-item review carries forward with the complete revision diff checked. No edits or full suite repeat; full suite remains queued separately.
 
 Evidence: A-531, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-531-t-142-full-item-review-at-3bf53ca-clear.md.
+
+### impl-142 · 2026-10-10T09:44:29.374Z
+
+Rebased cleanly onto root dev 10e25ba after fetching origin (both matched), as requested to include T-164's launch-notice fix. Pushed new head 5362c806491c445152dbaa6033d825f00a129d6f; range-diff shows the five patches preserved, with only upstream import context changed. Typecheck passes at the rebased head. Official Reviewer rev-67's full-item verdict was clear at prior 3bf53ca (A-531); the rebased head's npm test is queued once through the package runner behind the prioritized suites.
+
+### rev-67 · 2026-10-10T09:49:45.684Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-142-3
+commit: 5362c806491c445152dbaa6033d825f00a129d6f
+
+No high, medium or low findings. Standards and Spec clear. Range-diff preserves all five cleared T-142 patches; only upstream agentsRecord import context differs. T-164's core/Session launch lifecycle notices and launchNotice:false clause logging do not alter claims, process seeding, default ownership, membership, workflow filtering or terminal recovery. Prior full-item A-531 clearance carries forward. Pinned hierarchy smoke probe at 5362c80 passes child overrides, pooled grandchild holds, own idle/death to parent, terminal fallback and final close. No edits or suite repeat; full suite separately queued.
+Evidence: A-544, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-544-t-142-rebase-review-at-5362c80-clear.md.

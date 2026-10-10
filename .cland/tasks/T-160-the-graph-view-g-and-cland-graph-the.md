@@ -3,7 +3,7 @@ id: T-160
 kind: task
 title: "The graph view: ␣G and :Cland graph, the release's open containers as parents with p and P, nodes on the hub's status, claims, verdicts and criteria, the tray"
 state: open
-status: ready
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-72
 branch: t/T-160-the-graph-view-g-and-cland-graph-the
 created: 2026-10-10T07:49:36.565Z
-updated: 2026-10-10T09:19:14.360Z
+updated: 2026-10-10T09:51:39.300Z
 ---
 
 ## Parent
@@ -57,3 +57,7 @@ run: rev-8-20261010-160-1
 commit: e49a3b553195a490c3f7740173297d30f097e159
 
 No high, medium, or low findings. Standards and Spec clear. Entry points, rank/tree parent cycle with release last, hub-backed node fields/criteria accessor and dimmed/folded done tray match this slice; board implementation unchanged. Independent native headless probe confirmed configured-level parent order, structured 1/2 fraction overriding checked-box fallback, linked done visibility and tray folding/toggle. Reviewed A-510 demo and A-512 typecheck/six graph tests evidence. Full test:nvim remains queued, as requested; no reviewer suites or edits. Artifact A-521: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-521-t-160-review-experimental-graph-clear.md.
+
+### impl-160 · 2026-10-10T09:50:56.557Z
+
+Full test:nvim first run: 218/220 passed. Reproduced graph orientation/reduction test input-redraw race in targeted run; added three waitScreen rendered-state polls. All six graph tests and typecheck pass. Existing thread append budget miss (2.075 ms at load 11.22) passes isolated at 1.524 ms; Coordinator says do not alter it in this item. Committing test-only fix and rerunning full suite.

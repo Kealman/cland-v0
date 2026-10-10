@@ -2,8 +2,8 @@
 id: T-165
 kind: task
 title: "The needs-you chip counts only the inbox's now-layer sections: no unread messages or notifications; one shared count with the inbox header"
-state: open
-status: ready
+state: closed
+status: done
 rank: 1310
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-74
 branch: t/T-165-the-needs-you-chip-counts-only-the-inbox
 created: 2026-10-10T09:19:59.837Z
-updated: 2026-10-10T09:34:40.144Z
+updated: 2026-10-10T09:52:14.393Z
 ---
 
 ## Parent
@@ -62,3 +62,11 @@ commit: fd5f4c452ea827f51307c76414978da22eb78683
 No high, medium or low findings. Standards: clear; Spec: clear. Chip, inbox headers and empty state share state.needs_you(); all five requested inbox action kinds count, ordinary notes/messages and unread totals do not. Optimistic answer/dismiss updates and inbox snapshots use those same rows. Complete ten-file diff and unchanged inbox paths reviewed. Pinned native Neovim probe passed actual rendered agreement at unread98/198, all five actions, ordinary-note exclusion, resolutions/dismissals and stale aggregate exclusion after inbox load. New shell regressions cover actual 98-message frames and startup/refresh/reconnect; THREAD-009/010 match the corrected rule. No edits or suite repeat; full test:nvim remains separately queued.
 
 Evidence: A-533, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-533-t-165-review-at-fd5f4c4-shared-now-count-clear.md.
+
+### impl-165 · 2026-10-10T09:51:47.252Z
+
+Final validation: npm run typecheck passed with Node v24.21.0; locked npm run test:nvim retry passed all 208 tests, no skips/failures (178.00s, 94.16s lock wait). First suite run passed 207/208; unrelated pre-existing board-rank test at thread.test.ts:529 failed once, passed immediately isolated, then passed in the unchanged full retry. A-529 documents the exact 98-vs-empty reproduction and implementation/self-review; A-541 preserves the first full-run log. Final head fd5f4c452ea827f51307c76414978da22eb78683 is pushed to origin and has current clear review verdict rev-67-165-1. All T-165 acceptance criteria are implemented and validated.
+
+### coord · 2026-10-10T09:52:14.393Z
+
+Merged fdadb7beaaa8156083ce342cb2d2156d57725ab6 onto dev.

@@ -3,7 +3,7 @@ id: T-168
 kind: task
 title: "Sessions panel shows a verifier's held item, tagged with its role, instead of free: holds in the hub's session data"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T09:41:56.958Z
+updated: 2026-10-10T09:51:02.568Z
 ---
 
 ## Parent
@@ -64,3 +64,41 @@ Medium — hub/src/hub/core.ts:837: presence passes raw sessionId='unknown' to h
 Low — possible Feature Envy / repeated full projection, hub/src/hub/server.ts:71: each session lookup calls tracker.list(), including all verdict/hold queries; every tracker change repeats it for connected and process sessions. Prefer a narrow Tracker claims/holds query, read once per refresh. Heuristic only; no measured regression claimed.
 
 Stable-ID take/release/stop/reconnect paths, additive payload shape and claim-first tagged column otherwise look correct. Full suite and live post-restart check remain pending as instructed. Read-only review; no edits or suite run. Two-axis evidence: A-536, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-536-t-168-review-provisional-session-identities-still-show-free.md.
+
+### impl-168 · 2026-10-10T09:44:22.969Z
+
+Resolved A-536 medium: session-hold projection now uses the same sessionActor identity as tracker requests, including name:<session> isolation for unknown ids. Added real daemon/frame take-release/isolation regression; reproduced missing hold before fix. Also moved the projection into a narrow Tracker ownership query, addressing the low note without full item/verdict reads. Typecheck and 7 targeted frame/headless/session-event tests pass; diff check clean. Pushed 2010c04589c7912ae902590cce8de3d01cb2c8f7. Evidence A-540: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-540-t-168-review-follow-up-unknown-session-identity.md. Full suite still waits for Coordinator signal.
+
+### rev-9 · 2026-10-10T09:47:03.195Z
+
+verdict: review
+result: not clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-168-2
+commit: 2010c04589c7912ae902590cce8de3d01cb2c8f7
+
+Medium — hub/src/tracker/tracker.ts:841: the ownership-only session projection includes removed item IDs because claims/holds persist independently of tracker_items; deleting or re-IDing a held item now leaves T-n review/item in the panel, whereas the prior tracker.list projection excluded it. Intersect the narrow ownership queries with current indexed items, retaining durable ownership for recovery. In-memory target TrackerIndex probe after remove(T-1): indexedItems=[], bulkHoldItems=[T-1], bulkClaimItems=[T-1]; refresh/display consequence traced in source.
+
+A-536's medium and low are resolved: sessionActor normalization preserves two unknown sessions' name isolation, and Tracker owns a narrow bulk projection. Full-item lifecycle/display/payload checks otherwise remain clear. Standards 0 findings; Spec 1 medium. Full suite/live post-restart check remain pending. No reviewer edits or suite run.
+
+Evidence: A-542, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-542-t-168-rereview-orphan-ownership-rows-leak-into-session-work.md.
+
+### impl-168 · 2026-10-10T09:49:41.477Z
+
+Resolved A-542 by joining indexedClaims/indexedHolds against tracker_items. Ownership remains durable but removed/re-IDed items are excluded from current session work. Real frame regression reproduces stale work before the fix, then verifies deletion clears claim+review hold and restoration recovers both. Typecheck, diff check and 5 targeted frame/headless tests pass. Pushed 8128e87093b168484c7e390326b26ca23ddf9eb2; delta 2010c04589c7912ae902590cce8de3d01cb2c8f7..8128e87093b168484c7e390326b26ca23ddf9eb2. Evidence A-543: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-543-t-168-orphan-ownership-projection-fix.md. Full suite remains deferred.
+
+### rev-9 · 2026-10-10T09:51:02.472Z
+
+verdict: review
+result: clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-168-3
+commit: 8128e87093b168484c7e390326b26ca23ddf9eb2
+
+Clear: no high, medium or low findings. Standards and Spec independently clear across the full item.
+
+A-542 is resolved: indexed ownership reads join tracker_items, hiding removed work while retaining durable rows. Reviewer in-memory removal/restoration probe shows both work lists clearing, durable claim+hold remaining, and both returning after restoration. A-536 identity/isolation and narrow-query fixes remain intact. Additive payload shape, claim-first tagged display, normal take/release/stop/reconnect refresh and older-payload fallback carry forward.
+
+A-543 reports five frame/headless cases and typecheck passing. Full npm test and live post-restart panel verification remain separate pending acceptance checks. Reviewer made no edits or suite run.
+
+Evidence: A-545, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-545-t-168-full-item-review-clear-identity-and-indexed-ownership-fixes.md.

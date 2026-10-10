@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T09:26:44.507Z
+updated: 2026-10-10T09:44:01.603Z
 ---
 
 ## Parent
@@ -91,3 +91,7 @@ Two-axis review and probe evidence: A-527, /Users/evgeniyivanov/Projects/cland/v
 ### impl-148 · 2026-10-10T09:26:44.507Z
 
 rev-9's delta review is clear at bff320ae77ef20f01f2aef54d26f3a705e77b680 (A-527). Full npm test requeued at 09:26 per Coordinator signal, currently waiting behind T-164's suite lock.
+
+### impl-148 · 2026-10-10T09:44:01.603Z
+
+Rebased cleanly onto root dev 10e25ba205a024cc5674c89b56e76a23204473cd, including T-164's launch-notice fix; pushed with lease to origin. New head c480e761162427178a4074b100b603fd91f2beea. One full npm test requeued per Coordinator signal, behind the Neovim-only runs. Original clear review was bff320a/A-527; A-513 instance lines and A-525 implementation/migration report remain valid.
