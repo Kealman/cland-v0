@@ -1099,12 +1099,12 @@ export class Store implements HygieneMemory {
   prune(now: number, retentionMs: number): { gone: number; released: ReleasedDigest[] } {
     return this.#transaction(() => {
       const result = this.#deleteMessages(`with pending_digests as (
-      select distinct coalesce(d.digest_id, d.message_id) as root from deliveries d
+      select distinct d.session, coalesce(d.digest_id, d.message_id) as root from deliveries d
       where d.state in ('queued', 'delivered', 'uncertain') and (d.digest_id is not null or exists
         (select 1 from deliveries member where member.session = d.session and member.digest_id = d.message_id))
     ) select id from messages where created_at < ? and id not in (select id from asks where state = 'open')
-      and id not in (select message_id from deliveries where message_id in (select root from pending_digests)
-        or digest_id in (select root from pending_digests))`, [now - retentionMs]);
+      and id not in (select d.message_id from deliveries d join pending_digests pending
+        on pending.session = d.session and (d.message_id = pending.root or d.digest_id = pending.root))`, [now - retentionMs]);
       // an answered, withdrawn or cancelled ask goes with its message
       if (result.gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
       return result;

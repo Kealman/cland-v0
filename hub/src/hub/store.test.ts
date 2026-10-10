@@ -232,6 +232,30 @@ test('retention clears a settled binding when another recipient still has a pend
   store.close();
 });
 
+test("retention prunes a broadcast recipient's settled notes while another recipient's digest is pending", () => {
+  const store = new Store();
+  try {
+    store.record({ ...message('Pa', 'sender', ['a'], 'settled note'), kind: 'progress' }, [{ session: 'a', state: 'queued' }], 1000);
+    store.record({ ...message('Pb', 'sender', ['b'], 'pending note'), kind: 'progress' }, [{ session: 'b', state: 'queued' }], 1000);
+    store.record(message('R', 'sender', ['a', 'b'], 'broadcast report'), [{ session: 'a', state: 'queued' }, { session: 'b', state: 'queued' }], 1100);
+    store.markDelivered('R', 'a', 1200);
+    store.markInjected('R', 'a');
+
+    assert.deepEqual(store.prune(2000, 100), { gone: 1, released: [] });
+    assert.equal(store.message('Pa'), null, 'the settled recipient no longer needs its distinct note');
+    assert.ok(store.message('Pb'), 'the pending recipient keeps its note');
+    assert.ok(store.message('R'), 'the pending recipient keeps the shared trigger');
+    assert.deepEqual(store.deliveryMessage('R', 'b')?.digest?.map(m => m.id), ['Pb']);
+    assert.deepEqual(store.pendingFor('a', 2000, 10000).deliver, [], 'settled notes never replay');
+
+    store.markDelivered('R', 'b', 2100);
+    store.markInjected('R', 'b');
+    assert.deepEqual(store.prune(2200, 100), { gone: 2, released: [] }, 'the remaining messages prune once both recipients settle');
+  } finally {
+    store.close();
+  }
+});
+
 test('rename refuses a dropped duplicate and preserves the source pending digest', () => {
   let now = 1000;
   const core = new HubCore({ now: () => new Date(now), queueTtlMs: 1000 });
