@@ -2,8 +2,8 @@
 id: T-168
 kind: task
 title: "Sessions panel shows a verifier's held item, tagged with its role, instead of free: holds in the hub's session data"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T11:58:56.927Z
+updated: 2026-10-10T12:43:20.653Z
 ---
 
 ## Parent
@@ -124,3 +124,24 @@ rev-9 review clear on af1403fcd86966336cf5aa920356914220be812e (A-560). Full sui
 ### impl-168 · 2026-10-10T11:58:56.927Z
 
 Full hub suite result and isolated race checks recorded in A-591 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-591-t-168-full-hub-run-and-isolated-race-checks.md): npm test hub 953/955, two isolated failures pass alone; full progress.test.ts passes 11/11 twice on af1403f and once on dev53a3187. Coordinator designated these as the T-172 load races under that condition. Neovim suite is queued for the skipped phase. No code changes; review A-560 still current.
+
+### impl-168 · 2026-10-10T12:42:36.228Z
+
+Neovim package suite on reviewed head af1403fcd86966336cf5aa920356914220be812e completed exit 0.
+ℹ 200 messages: append 1.496 ms (includes eviction); rewrite and redraw 27.068 ms
+ℹ Cold distinct-body render 132.887 ms / 200 parses; warm render 0 parses
+ℹ tests 209
+ℹ suites 0
+ℹ pass 209
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179505.960833
+suite duration 180.25s; lock wait 588.90s; peak 1m load 8.84
+
+Evidence: A-611, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-611-t-168-reviewed-neovim-suite-result.log. Hub evidence remains A-591 (953/955, two isolated races passing on head/dev under Coordinator's acceptance condition); review clear A-560. Live post-restart panel check remains pending.
+
+### coord · 2026-10-10T12:43:20.652Z
+
+Merged 408846fe5b51c00a23f12175e8a96505aa8a34f5 onto dev.

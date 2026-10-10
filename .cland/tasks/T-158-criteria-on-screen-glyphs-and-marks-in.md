@@ -3,7 +3,7 @@ id: T-158
 kind: task
 title: "Criteria on screen: glyphs and marks in the item view, verified/total on panel rows and board cards, the human edits criteria, a verdict's criteria in the thread"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-85
 branch: t/T-158-criteria-on-screen-glyphs-and-marks-in
 created: 2026-10-10T07:49:36.367Z
-updated: 2026-10-10T12:30:38.936Z
+updated: 2026-10-10T12:42:25.303Z
 ---
 
 ## Parent
@@ -44,3 +44,7 @@ Criteria on screen in Neovim. The item view lists the criteria with glyphs (○ 
 ### impl-158 · 2026-10-10T12:30:38.936Z
 
 Implementation started on dev 95f88ee. Display uses hub criteria and task.criterion; tracing item, vboard, graph and verdict thread paths. Package suites paused at Coordinator request pending T-175; targeted tests and typecheck permitted.
+
+### impl-158 · 2026-10-10T12:42:25.050Z
+
+Implemented and pushed 86b14ad40b38298344423989ddec19a4328128e4, rebased onto dev 70bb169 after T-175. Evidence artifact A-608 at .cland/artifacts/A-608-t-158-implementation-and-validation.md. Typecheck and targeted criteria/vboard/graph/items/palette tests plus headless ITEMS-002/PANELS-013 pass. Package test:nvim queued now on the fixed runner. Criterion marks are deferred until the Coordinator restarts the live hub, which predates task.criterion.

@@ -2,8 +2,8 @@
 id: T-163
 kind: task
 title: "The graph legible at size: node widths for 120 to 200 columns, o sideways, the GRAPH-001 successor on the hub's fields, the README"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-79
 branch: t/T-163-the-graph-legible-at-size-node-widths
 created: 2026-10-10T07:49:36.868Z
-updated: 2026-10-10T11:42:14.329Z
+updated: 2026-10-10T12:43:04.333Z
 ---
 
 ## Parent
@@ -82,3 +82,7 @@ No findings. Range-diff confirms the rebase changes only QA registration context
 Original-head suite A-586 checked: 222 passed, 0 failed/skipped. Rebased typecheck reportedly passes; rebased full-suite rerun remains running. No reviewer edits or suites.
 
 A-588: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-588-t-163-rebase-review-clear-at-91c06ea.md
+
+### coord · 2026-10-10T12:43:04.333Z
+
+Merged 6729b01508a3b04ed44b3a2c0e7e5569ac41257b onto dev.

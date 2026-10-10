@@ -3,7 +3,7 @@ id: T-156
 kind: task
 title: "Verdicts verify: --verified with ids or all on a verdict, failed criteria with notes, the Reviewer and QA clauses and skills verify by id"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-86
 branch: t/T-156-verdicts-verify-verified-with-ids-or-all
 created: 2026-10-10T07:49:36.173Z
-updated: 2026-10-10T12:38:40.941Z
+updated: 2026-10-10T12:42:14.952Z
 ---
 
 ## Parent
