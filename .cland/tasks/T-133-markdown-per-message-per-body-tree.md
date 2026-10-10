@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
-updated: 2026-10-10T02:48:34.396Z
+updated: 2026-10-10T03:09:15.983Z
 ---
 
 ## Parent
@@ -48,3 +48,35 @@ Starting at the assigned Neovim/stub-hub seam. Reading spec, ADR, research/probe
 ### impl-133 · 2026-10-10T02:48:34.396Z
 
 Implemented cached per-body tree-sitter spans through T-132's body seam, code inset/fence conceal, compact links retaining row destinations, responsive table projection, verdict colours and existing registry gi targets. Thread targeted suite 11/11 including Markdown differential states/extmarks/links; THREAD-003/004 pass at 120/80 columns. Four T-86 breakages covered; foldtext clipping is deferred to T-134 per Coordinator. Optimizing cached redraw cost before final checks.
+
+### impl-133 · 2026-10-10T02:58:58.931Z
+
+Committed head from git log -1: 28e89fcc8fb9a9da2ce9b0880b2f5dced2b7134d. Focused thread 12/12 and THREAD-001..004 4/4 pass; typecheck passes. Warm redraw 22.609 ms/0 parses, append+fresh parse+eviction 1.243 ms, cold 200 distinct bodies 227.508 ms/200 parses; bounds ≤35/≤2 ms. Resize differential regression and coalesced burst/stale window cases pass. Skill review runs before the single locked root suite; no block cache.
+
+### rev-66 · 2026-10-10T03:02:23.897Z
+
+verdict: review
+result: not clear
+by: rev-66 [reviewer]
+run: rev-66-133-1
+commit: 28e89fcc8fb9a9da2ce9b0880b2f5dced2b7134d
+
+High: 0. Medium: 3. Low: 0.
+
+Medium — nvim/lua/cland/thread_md.lua:334: a valid wide header-only pipe table produces lines=[] when stacked because only data rows are emitted; the message body disappears at narrow widths.
+
+Medium — nvim/lua/cland/thread_md.lua:338: stacked header labels copy raw Markdown without spans/link metadata, so [brief](https://...) becomes visible URL text and loses its destination range; project header decorations and links too.
+
+Medium — nvim/lua/cland/thread_md.lua:265: fit uses raw table source width before compacting hidden URLs, so a table with short labels stacks even when its displayed rows fit; fit against projected display-cell widths.
+
+All three reproduced with actual thread_md and bundled Neovim parser in a read-only focused probe. Worktree module matches pinned head; tests reviewed from git show because another session has a dirty test file. Independent per-body parsing/cache, plain failure fallback, bounded fences, full extmark/row-link differential, first-line verdict colours, blue ids/registry gi, scheduled resize guards and local-only conceal options have no other findings. Coordinator's accepted warm ≤35/append ≤2 ms and deferred T-134 foldtext scope respected. No suite or edits.
+
+Standards: 0 findings. Spec: 3 medium findings. Evidence A-373: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-373-t-133-review-28e89fc-table-projection-findings.md.
+
+### impl-133 · 2026-10-10T03:08:22.736Z
+
+Review follow-up: reproduced header-only table loss and stacked header Markdown/link metadata loss. Shared table cell projection now preserves text, highlights and links, fits by rendered widths through the cell fitter, and retains header-only cells. Added valid reference-link destination resolution. Focused new regression checks and updated THREAD-003/004 pass; expanded 80/120 differential and full targeted rerun pending. Root suite remains held.
+
+### impl-133 · 2026-10-10T03:09:15.983Z
+
+Delta head from git log -1: 952b8d9eb275e7a22097d5a42be229e6315d1b9c, clean. Focused thread14/14 and width-aware differential pass; updated THREAD-003/004 pass and typecheck passes. Table cells/headers carry rendered text, spans and links together; full columns fit rendered widths through shared fitter, narrow headers retain Markdown/targets, header-only content stays. Valid reference links also retain destinations. Warm21.412 ms/0 parses, append+eviction1.279 ms, cold221.701 ms/200 distinct parses. Root suite held for Coordinator's review delta.

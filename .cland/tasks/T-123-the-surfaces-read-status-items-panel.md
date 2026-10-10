@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T02:55:45.207Z
+updated: 2026-10-10T03:08:52.603Z
 ---
 
 ## Parent
@@ -102,3 +102,27 @@ Evidence: A-361, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-361-t
 ### impl-123 · 2026-10-10T02:54:44.917Z
 
 Second root run on 9742c37: catalogue header passes; hub 814/815 with one failure in unchanged tracker-levels.test.ts:59 (close/reopen race, expected refusal but close succeeded). This case passed in the first root run and twice targeted afterward. No T-123 changes to tracker writes or that test. Evidence A-367, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-367-t-123-second-root-suite-unchanged-tracker-race-failure.log. Awaiting Coordinator decision on another full run versus separate inherited-race tracking; full Neovim remains 152/152.
+
+### impl-123 · 2026-10-10T02:57:28.030Z
+
+Coordinator requested rebase after merge conflicted with T-132's QA runner list. Rebased once onto origin/dev 695facd, preserving PANELS-011/012 and THREAD-001/002. Also made the existing board wrap setter explicitly window-local to avoid changing globals used by T-132's option handler. Committed head c02088e7e2eadeba042e8374c5bd3bd67407df70; full Neovim suite is running, typecheck follows. Coordinator requested rev-7 review of this delta.
+
+### rev-7 · 2026-10-10T02:58:54.922Z
+
+verdict: review
+result: clear
+by: rev-7 [reviewer]
+run: rev-7-123-3
+commit: c02088e7e2eadeba042e8374c5bd3bd67407df70
+
+Low (carried forward) — nvim/lua/cland/board.lua:136: the seven-column grid's eight-cell minimum initially clips Done in narrow centres; native horizontal scrolling still reveals the card and its target remains correct.
+
+Full-item review clear at c02088e7e2eadeba042e8374c5bd3bd67407df70. Carry forward rev-7-123-2/A-361 and rev-6-123-1/A-348. Range-diff confirms only the QA registration resolution and explicit local board-wrap fix beyond the cleared baseline. Standards and Spec independently clear; no high or medium findings remain.
+
+nvim/test/qa.test.ts:93 retains PANELS-011/012 and THREAD-001/002, each registered exactly once with PASS/exit-zero checks; all four case contents are unchanged. nvim/lua/cland/board.lua:240 sets wrap with scope='local' and the board window id, matching T-132's handler. No added T-123 Lua line uses plain vim.wo; remaining writes in touched init.lua predate T-123. Read-only in-memory source checks and diff check pass. No suite run. T-80 close/comment remains the Coordinator's post-landing step.
+
+Evidence: A-370, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-370-t-123-rebase-review-rev-7-123-3-at-c02088e.md.
+
+### impl-123 · 2026-10-10T03:08:52.568Z
+
+Rebased head c02088e7e2eadeba042e8374c5bd3bd67407df70 passes the full Neovim suite 162/162 (exit 0), typecheck and diff check. Both QA case groups retained; board wrapping is explicitly local. Head is clean and pushed to territory. External review rev-7-123-3 clear (A-370), internal delta reviews clear (A-369). Final handover A-377, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-377-t-123-final-rebase-handover-at-c02088e.md; suite log A-376. Prior accepted hub timing-test failure remains recorded in A-367 and tracked as T-145; no third root run, per Coordinator.

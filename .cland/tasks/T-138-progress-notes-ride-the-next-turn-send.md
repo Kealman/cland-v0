@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-52
 branch: t/T-138-progress-notes-ride-the-next-turn-send
 created: 2026-10-10T01:52:18.096Z
-updated: 2026-10-10T02:46:50.761Z
+updated: 2026-10-10T03:07:54.335Z
 ---
 
 ## Parent
@@ -150,3 +150,25 @@ Full-item clear carries rev-65-138-4 on f64573f forward to 6d6a625. Pinned Store
 Agents assertion is stronger: exact ordered kinds, both original report texts and unchanged ID comparisons. Standards: 0 findings. Spec: 1 low temporary-retention finding. No suite or file edits; suite validation remains with Implementer/Coordinator.
 
 Evidence A-364: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-364-t-138-final-review-6d6a625-clear-with-retention-follow-up.md.
+
+### impl-138 · 2026-10-10T03:06:47.358Z
+
+Root run completed: hub 838/838 pass; Neovim 145/146, with only a stale kind??text assertion expecting 'loop sentinel' where required default kind is now report. Production kind/display audit clean (Agents glyph logic gated by fromKind hub; agent text unchanged). Coordinator approved one-test change plus carrying hub result forward. Latest head f84e37a2ebc16a3d8eef31853c765ed4001c2d90 changes only that Neovim assertion, preserving sentinel text/live screen/IDs. Targeted case passes; npm run test:nvim queued/running with Node v24.21.0. Root log A-374.
+
+### rev-66 · 2026-10-10T03:07:54.304Z
+
+verdict: review
+result: clear
+by: rev-66 [reviewer]
+run: rev-66-138-2
+commit: f84e37a2ebc16a3d8eef31853c765ed4001c2d90
+
+High: 0. Medium: 0. Low: 1 carried forward; no new findings.
+
+Low — hub/src/hub/store.ts:981: unchanged temporary cross-recipient over-retention from rev-66-138-1/A-364; settled distinct notes prune after the broadcast trigger's final recipient settles. Coordinator follow-up planned.
+
+Full-item clearance carries rev-66-138-1 and rev-65-138-4 forward to f84e37a. The Neovim assertion is stronger: exact ordered kinds plus exact loop sentinel text, with unchanged live-screen exclusion and spoke/history IDs. Production spot-audit confirms Agents notice glyphs are gated by fromKind hub; agent text remains independently rendered. No kind-to-text fallback found; optional kind checks concern metadata forwarding/validation.
+
+A-374's preceding root run confirms hub 838/838 and Neovim 145/146 with only the corrected assertion failing. No suite or edits; latest Neovim validation remains with Implementer/Coordinator. Standards: 0; Spec: 0 new, 1 existing low.
+
+Evidence A-375: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-375-t-138-f84e37a-full-item-review-assertion-delta-clear.md.
