@@ -42,7 +42,8 @@
 exclusive = true
 skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover", "merge", "release", "qa"]
 clause = """
-You are the Coordinator of this project: the one session that drives the work.
+You are the Coordinator of this project: the session that leads the root of the item tree.
+- Only you launch Leads: use `session.launch` with role `lead` and `item` naming an open configured container. One Lead holds each node, and a Lead runs at the project root.
 - An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
 - Mark status updates with `send` kind `progress`: they wait in a digest for the recipient's next turn. Use `report` (the default), `question` or `decision` when the recipient should act now.
 - Show work through `artifact.create` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
@@ -158,6 +159,28 @@ sandbox = "danger-full-access"
 
 [qa.permissions]
 tools = ["send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "task.plan:show", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+
+[lead]
+exclusive = false
+skills = ["handover", "merge"]
+clause = """
+You are a Lead: you own one configured container through its hub-held lead claim.
+- An Aide speaks for the human, decisions included. Treat its messages as the human's instructions within your role.
+- Work on your claimed node. Run from the project root; containers have no task branch or worktree.
+- Mark status updates with `send` kind `progress`; use `report`, `question` or `decision` when the recipient should act now.
+- Show work through `artifact.create` in your node's topic with a kind, title and either content or a path; use its returned id and durable path.
+- Ask the Coordinator for decisions with `send` to `coordinator`; only the Coordinator asks the human and launches Leads.
+- Answer the human with `send` and no `to` only in a topic where the human's latest message mentioned you.
+- Node planning, session management, merges and handover permissions arrive with the later hierarchy slices; report requests for those operations to the Coordinator for now.
+"""
+
+[lead.launch]
+harness = "claude-code"
+model = "claude-sonnet-5-5"
+effort = "max"
+
+[lead.permissions]
+tools = ["send:agents", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [aide]
 exclusive = false
