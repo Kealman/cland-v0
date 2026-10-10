@@ -3,17 +3,17 @@ id: T-173
 kind: task
 title: "The Neovim suite takes its own lock: test:nvim never waits behind a hub suite"
 state: open
-status: backlog
+status: in progress
 labels:
   - tech-debt
   - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-83
+branch: t/T-173-the-neovim-suite-takes-its-own-lock-test
 created: 2026-10-10T12:06:34.443Z
-updated: 2026-10-10T12:06:34.443Z
+updated: 2026-10-10T12:07:12.272Z
 ---
 
 ## Parent
@@ -37,3 +37,9 @@ When `npm test` runs both phases, the hub phase takes the machine lock and the N
 ## Notes
 
 Size S. tech-debt; high payoff for the v0.1 run.
+
+## Comments
+
+### impl-173 · 2026-10-10T12:07:12.272Z
+
+Implementation started. Runner currently holds one machine lock across hub and Neovim; will acquire/release per phase, keep shared ownership/recovery cleanup, cover routing and both locks, and update Implementer/QA guidance.

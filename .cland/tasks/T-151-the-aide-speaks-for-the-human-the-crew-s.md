@@ -2,8 +2,8 @@
 id: T-151
 kind: task
 title: "The Aide speaks for the human: the crew's clauses say so; the thread's speaks-for-you mark and dashed blue bar; Aide messages never fold"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-82
 branch: t/T-151-the-aide-speaks-for-the-human-the-crew-s
 created: 2026-10-10T05:33:00.860Z
-updated: 2026-10-10T11:54:17.210Z
+updated: 2026-10-10T12:08:59.161Z
 ---
 
 ## Parent
@@ -60,3 +60,11 @@ Clear: no high, medium or low findings within the requested slice. Standards and
 ### impl-151 · 2026-10-10T11:54:17.210Z
 
 Review clear at 21f3505: rev-9, run rev-2026-10-10-151-1, A-590. Coordinator changed validation to the approved batch rule in topic-82 (b5439625-054e-47dd-8052-b4519aa3e178): withdrew the queued full npm test before it started, and queued locked npm run test:nvim instead. Full npm test runs once on integrated dev after merge.
+
+### impl-151 · 2026-10-10T12:08:33.628Z
+
+T-151 locked npm run test:nvim PASSED (exit 0) at 21f35054c20a54d13423d3fb3f80d53f89b0ecbd. A-594 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-594-t-151-locked-neovim-suite-result-at-21f3505.log. Typecheck and targeted roles 6/6 + thread 23/23 previously passed; review clear in A-590. Full npm test belongs to integrated dev after merge under your approved batch rule.
+
+### coord · 2026-10-10T12:08:59.161Z
+
+Merged e0864ffede6d54a44735aad7821d019f62e7df7a onto dev.
