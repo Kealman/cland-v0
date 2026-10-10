@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
+import { spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
 
@@ -19,6 +20,90 @@ const msg = (id: string, role = 'coordinator', text = 'Taking T-58.') => ({
   id, from: role === 'human' ? 'human' : role, fromKind: role === 'human' ? 'human' : 'agent',
   fromRole: role === 'human' ? null : role, to: role === 'human' ? ['coordinator'] : ['human'],
   text, ts, topic: 'general', stage: role === 'human' ? 'queued' : null,
+});
+
+test('a digit in the thread answers through the real hub with answer_to; the ask and next chip share a header', { skip }, async t => {
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const asked = await coord.call<{ok: boolean; ask: string}>('ask', { topic: 'general', question: 'Which scope?', options: ['Whole diff', 'Fix only'] });
+  assert.equal(asked.ok, true);
+  await coord.call('artifact.create', { topic: 'general', kind: 'note', title: 'Review evidence', content: 'Evidence for the choice.' });
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('Review evidence') && s.includes('Which scope?'), 'real ask and chip');
+  await c.input('<Esc>');
+  await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    vim.api.nvim_set_current_win(require('cland.layout').centre())
+    for row in ipairs(t.info) do if t:ask_at(row) then vim.api.nvim_win_set_cursor(0,{row,0}); break end end
+  `);
+  await c.input('2');
+  await coord.waitForEvent(e => e.params.meta?.from_kind === 'human' && e.params.content === 'Fix only' && e.params.meta.answer_to === asked.ask);
+  await c.waitScreen(s => s.includes('┃ ✓ 2  Fix only') && s.includes('ask · ✓ answered'), 'answer in place');
+  assert.deepEqual(await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    local ask=t.by_id[...]
+    local b=t.block_of[ask.id]
+    local headers,targets=0,0
+    for _,i in ipairs(b.info) do if i.head then headers=headers+1 end; if i.ask then targets=targets+1 end end
+    return {messages=#b.msgs,headers=headers,open_targets=targets,artifact=b.msgs[2].artifact.id}
+  `, asked.ask), {messages: 3, headers: 2, open_targets: 0, artifact: 'A-1'});
+  await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    for row,i in ipairs(t.info) do if i.artifact then vim.api.nvim_win_set_cursor(0,{row,0}); break end end
+  `);
+  await c.input('<CR>');
+  await c.waitScreen(s => s.includes('Evidence for the choice.'), 'grouped chip opens its durable source');
+});
+
+test('live chip grouping rewrites only its ask, and unrelated senders, intervening messages and days keep headers', { skip }, async t => {
+  const ask = (id: string) => ({ ...msg(id), to: [], text: 'Ask ' + id, ask: {state: 'open', options: ['Yes'], free: true} });
+  const chip = (id: string) => ({ ...msg(id), to: [], artifact: {id: 'A-' + id, kind: 'note', title: 'Evidence ' + id} });
+  const c = await start(t, {messages: {general: [msg('earlier'), ask('live')]}});
+  await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    _G.changes={}; _G.ask_start=t.block_of.live.start
+    vim.api.nvim_buf_attach(t.buf,false,{on_lines=function(_,_,_,first,last,newlast) _G.changes[#_G.changes+1]={first,last,newlast} end})
+  `);
+  await c.control({emit: {type:'message', topic:{id:'general',title:'General'}, message:chip('live-chip')}});
+  await c.waitScreen(s => s.includes('Evidence live-chip'), 'live grouped chip');
+  assert.deepEqual(await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    return {changes=#_G.changes,from=_G.changes[1][1],start=_G.ask_start,shared=t.block_of.live==t.block_of['live-chip'],headers=vim.tbl_count(t.block_of.live.heads)}
+  `), {changes:1,from:3,start:3,shared:true,headers:1});
+  const messages = [ask('other'), {...chip('other-chip'),from:'another-coordinator'}, ask('intervening'), msg('between'), chip('separate'), ask('day'), {...chip('next-day'),ts:'2026-10-10T10:00:00Z'}];
+  await c.lua("require('cland.views').topic('general').thread:merge(...)", messages);
+  assert.deepEqual(await c.lua(`
+    local t=require('cland.views').topic('general').thread
+    local out={}
+    for _,pair in ipairs({{'other','other-chip'},{'intervening','separate'},{'day','next-day'}}) do out[#out+1]=t.block_of[pair[1]]~=t.block_of[pair[2]] end
+    return out
+  `), [true,true,true]);
+});
+
+test('asks have an amber band, kinds stay visible and a clear verdict is one dimmed row while failures keep notes', { skip }, async t => {
+  const c = await start(t, {messages:{general:[
+    {...msg('ask'),ask:{state:'open',options:['Yes'],free:true}},
+    ...['progress','report','question','decision'].map(kind => ({...msg(kind),kind})),
+    {...msg('clear','qa','qa clear T-58\nLong supporting detail'),kind:'report'},
+    {...msg('failed','reviewer','review not clear T-58\nC3 failed: the order is wrong.'),kind:'report'},
+  ]}});
+  const result = await c.lua<{kinds:string[]; clear:string[]; failed:string[]; group:string; band:number; colour:number; bright:number}>(`
+    local t=require('cland.views').topic('general').thread
+    local kinds={}; for _,id in ipairs({'progress','report','question','decision'}) do kinds[#kinds+1]=t.block_of[id].lines[2] end
+    local band=0
+    for _,m in ipairs(vim.api.nvim_buf_get_extmarks(t.buf,vim.api.nvim_get_namespaces()['cland.thread'],0,-1,{details=true})) do if m[4].line_hl_group=='ClandAsk' then band=band+1 end end
+    return {kinds=kinds,clear=t.block_of.clear.lines,failed=t.block_of.failed.lines,group=t.block_of.clear.info[2].group,band=band,colour=vim.api.nvim_get_hl(0,{name='ClandRoleQaWatch'}).fg,bright=vim.api.nvim_get_hl(0,{name='ClandRoleQa'}).fg}
+  `);
+  result.kinds.forEach((header,i) => assert.ok(header.endsWith(' · ' + ['progress','report','question','decision'][i])));
+  assert.equal(result.clear.length,2,'one message row plus its outside separator');
+  assert.match(result.clear[1] ?? '', /✓ qa clear T-58$/);
+  assert.ok(result.failed.includes('C3 failed: the order is wrong.'));
+  assert.equal(result.group,'ClandRoleQaWatch');
+  assert.notEqual(result.colour,result.bright);
+  assert.equal(result.band,3,'question, option and hint are banded');
 });
 
 test('message Markdown conceals headings, code and links and highlights visible item ids', { skip }, async t => {
@@ -208,7 +293,10 @@ test('verdict results are red/green and the registry gi opens a concealed item r
     end
     return out
   `);
-  assert.deepEqual(marks, [{ line: 'review not clear T-58', group: 'ClandRed' }, { line: 'qa clear T-58', group: 'ClandGreen' }]);
+  assert.equal(marks[0]?.line, 'review not clear T-58');
+  assert.equal(marks[0]?.group, 'ClandRed');
+  assert.match(marks[1]?.line ?? '', /qa \[QA\].*· report  ✓ qa clear T-58$/);
+  assert.equal(marks[1]?.group, 'ClandGreen');
   await c.lua(`
     local w=require('cland.layout').centre()
     vim.api.nvim_set_current_win(w)
@@ -287,7 +375,7 @@ test('General shows addressees, local day rules, role gutters and the human band
   const c = await start(t, { messages: { general: [msg('c'), msg('i', 'implementer'), msg('r', 'reviewer'), msg('q', 'qa'), msg('h', 'human', 'Please take T-58.')] } });
   const screen = await c.waitScreen(s => s.includes('coordinator [Coordinator] → you  10:00'), 'the message header');
   assert.match(screen, /── Fri 9 Oct/);
-  assert.match(screen, /[▎▌] you → coordinator  10:00 +⌁ queued/);
+  assert.match(screen, /[▎▌] you → coordinator  10:00 · message +⌁ queued/);
   const colours = await c.lua<number[]>(`
     local out={}
     for _,g in ipairs({'ClandRoleCoordinator','ClandRoleImplementer','ClandRoleReviewer','ClandRoleQa','ClandRoleHuman'}) do
@@ -615,10 +703,11 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         const id = `ask-${seed}-${day}-${i}`;
         const answered = (seed + i) % 2 === 0;
         messages.push({ ...msg(id), ts: `2026-10-${day.toString().padStart(2, '0')}T10:00:00Z`, ask: { state: answered ? 'answered' : 'closed', options: ['choice'], free: true, option: answered ? 1 : null } });
+        messages.push({ ...msg(`chip-${id}`), ts: `2026-10-${day.toString().padStart(2, '0')}T10:00:00Z`, to: [], artifact: { id: `A-${seed}-${day}-${i}`, kind: 'note', title: 'Ask evidence' } });
         if (answered) messages.push({ ...msg(`answer-${id}`, 'human', `Answer ${id}\nkept body`), ts: `2026-10-${(day + 1).toString().padStart(2, '0')}T09:00:00Z`, answerTo: id });
       }
       const bodies = ['Body **T-58**\n[brief](https://example.com/long/destination)', 'Body `history`\n- list text', 'Body fenced\n```lua\nprint(1)\n```', 'Body unclosed\n```sh\nnot a later message', 'Body table\n\n| Item | Description |\n|---|---|\n| T-58 | ' + 'detail '.repeat(10) + '|', 'Body multiline [the\nbrief](https://example.com/multiline)', 'Body references [brief][ref] and [ref][]\n\n[ref]: https://example.com/reference', 'Body header-only\n\n| ' + 'wide '.repeat(20) + '| **State** |\n|---|---|', 'Body duplicates [a]\n\n[a]: /first\n[a]: /second', 'Body autolinks <https://example.com> <a@example.com>', 'Body sparse\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short |\n| ' + 'long '.repeat(16) + '| present |', 'Body surplus\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short | [extra](https://example.com/extra) | [surplus](https://example.com/surplus) |\n| ' + 'long '.repeat(16) + '| present | tail |', 'Body linked headers\n\n| [Item](https://example.com/' + 'long/'.repeat(15) + ') | **State** |\n|---|---|\n| T-58 | open |'];
-      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 3 === 0 ? 'human' : 'implementer', bodies[i % bodies.length]), to: [i % 3 === 0 ? 'coordinator' : 'reviewer'], ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
+      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 13 === 0 ? 'qa' : i % 3 === 0 ? 'human' : 'implementer', i % 13 === 0 ? (i % 2 ? 'qa not clear T-58\nC3 failed: preserve this note.' : 'qa clear T-58\nDetails omitted from compact clear verdict.') : bodies[i % bodies.length]), kind: ['report', 'question', 'decision', 'progress'][i % 4], to: [i % 3 === 0 ? 'coordinator' : 'reviewer'], ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
     }
     // Cover exactly 200 messages and oversized snapshots requiring initial trimming.
     messages.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
@@ -667,8 +756,9 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       const isAsk = phase === 1 || phase === 4 || phase === 6;
       const answerTo = phase === 2 || phase === 7 ? `live-${seed}-${step - 1}` : undefined;
       const append = {
-        ...msg(`live-${seed}-${step}`, isAsk ? 'coordinator' : 'human', `Live ${seed}/${step}\n**T-58** and [brief](https://example.com/${step})\n${step % 2 ? '```lua\nprint(1)\n```' : '- list `history`'}`),
+        ...msg(`live-${seed}-${step}`, isAsk || phase === 5 ? 'coordinator' : 'human', `Live ${seed}/${step}\n**T-58** and [brief](https://example.com/${step})\n${step % 2 ? '```lua\nprint(1)\n```' : '- list `history`'}`),
         ts: `2026-10-${day}T12:00:00Z`, answerTo,
+        ...(phase === 5 ? { to: [], artifact: { id: `A-live-${seed}-${step}`, kind: 'note', title: `Live ${seed}/${step}` } } : {}),
         ...(isAsk ? { ask: { state: phase === 4 ? 'closed' : 'open', options: ['choice'], free: true } } : {}),
       };
       const boundary = await c.lua<string>(`

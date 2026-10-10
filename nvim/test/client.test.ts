@@ -27,7 +27,7 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
 
   await c.input('hello<CR>');
-  const queued = await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d +⌁ queued $/m.test(centreOf(s)) && /^[▎▌] hello +$/m.test(centreOf(s)), 'hello, queued');
+  const queued = await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d · message +⌁ queued $/m.test(centreOf(s)) && /^[▎▌] hello +$/m.test(centreOf(s)), 'hello, queued');
   assert.equal(notice(queued), false, 'no notice: the client is connected');
   assert.deepEqual(await composerLines(c), ['› '], 'the composer is empty again');
 
@@ -37,17 +37,17 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
   assert.equal(event.params.meta?.topic, 'general');
   assert.equal(event.params.meta?.topic_title, 'General');
   assert.equal(event.params.meta?.from_kind, 'human');
-  await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d +✓ delivered $/m.test(centreOf(s)), 'hello, delivered');
+  await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d · message +✓ delivered $/m.test(centreOf(s)), 'hello, delivered');
 
   const reply = await coord.call<{ ok: boolean }>('send', { text: 'hello, human' });
   assert.equal(reply.ok, true);
   const [last] = (await coord.call<{ messages: Array<{ ts: string; text: string }> }>('history', { limit: 1 })).messages;
   assert.equal(last?.text, 'hello, human');
   const screen = await c.waitScreen((s) => centreOf(s).includes('hello, human'), 'the reply');
-  assert.match(centreOf(screen), new RegExp(`^[▎▌] coord \\[Coordinator\\] → you {2}${clock(last?.ts ?? '')} *$`, 'm'), 'sender [Role] and local time');
+  assert.match(centreOf(screen), new RegExp(`^[▎▌] coord \\[Coordinator\\] → you {2}${clock(last?.ts ?? '')} · report *$`, 'm'), 'sender [Role], local time and kind');
   assert.match(centreOf(screen), /^[▎▌] hello, human *$/m);
   // the human's message keeps its stage; the agent's has none
-  assert.match(centreOf(screen), /^[▎▌] you → coordinator {2}\d\d:\d\d +✓ delivered $/m);
+  assert.match(centreOf(screen), /^[▎▌] you → coordinator {2}\d\d:\d\d · message +✓ delivered $/m);
 });
 
 test('Shift+Enter inserts a newline in the composer; Enter sends both lines as one message', { skip }, async (t) => {

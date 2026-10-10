@@ -63,6 +63,19 @@ function M.setup()
     set('ClandRole' .. role, { fg = colour })
   end
   set('ClandMine', { bg = P.mine })
+  set('ClandAsk', { bg = '#211c12' })
+  set('ClandWatch', { fg = P.dim })
+  for name, colour in pairs({ Coordinator = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Other = P.dim }) do
+    local function soften(hex)
+      local out = '#'
+      for i = 2, 6, 2 do
+        local fg, bg = tonumber(hex:sub(i, i + 1), 16), tonumber(P.bg:sub(i, i + 1), 16)
+        out = out .. ('%02x'):format(math.floor((fg + bg) / 2))
+      end
+      return out
+    end
+    set('ClandRole' .. name .. 'Watch', { fg = soften(colour) })
+  end
   set('ClandPanel', { fg = P.text, bg = P.panel })
   set('ClandPanelEob', { fg = P.panel, bg = P.panel })
   set('ClandComposer', { fg = P.text, bg = P.composer })

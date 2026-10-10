@@ -1,5 +1,5 @@
 -- Topic message blocks (T-132), ported from the accepted T-97 prototype.
--- Manual background runs (T-134); ask/chip presentation is the next slice.
+-- Manual background runs (T-134), asks/chips/kinds and watch presentation (T-135).
 local api = vim.api
 local hl = require('cland.hl')
 local fit = require('cland.bars').fit
@@ -62,6 +62,16 @@ end
 
 local function role_group(m)
   return hl.role_group(m.fromKind, m.fromRole ~= vim.NIL and m.fromRole or nil)
+end
+
+local function item_marks(line, row, marks)
+  local from = 1
+  while true do
+    local a, z = line:find('%f[%w]T%-%d+%f[^%w]', from)
+    if not a then break end
+    marks[#marks + 1] = { row = row, col = a - 1, opts = { end_col = z, hl_group = 'ClandBlue', priority = 140 } }
+    from = z + 1
+  end
 end
 
 -- The buffer ------------------------------------------------------------------------------------------------
@@ -127,6 +137,40 @@ function Thread:_answers()
   return answers
 end
 
+--- Only the immediately following bare chip by the same Coordinator belongs to an ask.
+--- Derive ownership from retained history, so eviction and older snapshots use the same rule.
+function Thread:_chip_owner(m)
+  if m.fromKind ~= 'agent' or m.fromRole ~= 'coordinator' or #addressees(m) > 0 or
+      type(m.artifact) ~= 'table' or type(m.artifacts) == 'table' then return nil end
+  for k, candidate in ipairs(self.messages) do
+    if candidate.id == m.id then
+      local prev = self.messages[k - 1]
+      if prev and type(prev.ask) == 'table' and prev.fromKind == 'agent' and
+          prev.fromRole == 'coordinator' and prev.from == m.from and
+          prev.topic == m.topic and M.day(prev.ts) == M.day(m.ts) then return prev end
+      return nil
+    end
+  end
+end
+
+function Thread:_chip(m)
+  if type(m.ask) ~= 'table' then return nil end
+  for k, candidate in ipairs(self.messages) do
+    if candidate.id == m.id then
+      local next_message = self.messages[k + 1]
+      return next_message and self:_chip_owner(next_message) == m and next_message or nil
+    end
+  end
+end
+
+--- Old messages without a send kind retain a useful header label.
+function M.kind(m)
+  if m.kind and m.kind ~= vim.NIL then return tostring(m.kind) end
+  if type(m.ask) == 'table' then return 'question' end
+  if type(m.artifact) == 'table' and type(m.artifacts) ~= 'table' then return 'artifact' end
+  return m.fromKind == 'agent' and 'report' or m.fromKind == 'hub' and 'event' or 'message'
+end
+
 --- The single body seam: cached per-message Markdown and its displayed row metadata.
 function Thread:body(m)
   return md.render(m.text, self:_width())
@@ -162,7 +206,7 @@ function M.layer(m)
   return 'now'
 end
 
--- Compatibility with the current ask/chip actions; their rendering is replaced in T-135.
+-- Row targets consumed by the shared ask/chip actions.
 function Thread:_row_targets()
   self.card_rows, self.artifact_rows = {}, {}
   for row, i in ipairs(self.info) do
@@ -228,7 +272,9 @@ function Thread:_build(m, prev, answer)
 
   local function message(mm)
     local mine = mm.fromKind == 'human'
-    local group = role_group(mm)
+    local watch = M.layer(mm) == 'watch'
+    local group = role_group(mm) .. (watch and 'Watch' or '')
+    local verdict = M.verdict(mm)
     local band = mine and { col = 0, opts = { line_hl_group = 'ClandMine', priority = 50 } } or nil
     local function banded(marks)
       marks = marks or {}
@@ -238,17 +284,18 @@ function Thread:_build(m, prev, answer)
       return marks
     end
     -- the header: name [Role] → addressees  HH:MM
-    local text, hmarks = '', {}
+    local text, hmarks, chunks = '', {}, {}
     local function put(s, g, extra)
       local c = #text
       text = text .. s
+      chunks[#chunks + 1] = { s, g }
       if g then
         local opts = { end_col = #text, hl_group = g, priority = 120 }
         hmarks[#hmarks + 1] = { col = c, opts = vim.tbl_extend('force', opts, extra or {}) }
       end
     end
     local name = mine and 'you' or tostring(mm.from)
-    put(name, 'ClandBold')
+    put(name, watch and 'ClandWatch' or 'ClandBold')
     if not mine and mm.fromRole and mm.fromRole ~= vim.NIL then
       -- name [Role], as everywhere (spec 4.4): the role's label, never its key
       put(require('cland.state').label(name, mm.fromRole):sub(#name + 1), group)
@@ -267,7 +314,25 @@ function Thread:_build(m, prev, answer)
     elseif mm.fromKind == 'agent' and not (type(mm.artifact) == 'table' and type(mm.artifacts) ~= 'table') then
       put(' → you', 'ClandDim')
     end
+    local prefix_chunks = chunks
+    chunks = {}
     put('  ' .. M.clock(mm.ts), 'ClandDim')
+    put(' · ' .. M.kind(mm), 'ClandFaint')
+    if verdict == 'clear' then
+      put('  ✓ ' .. (tostring(mm.text):match('^[^\r\n]*') or ''), 'ClandGreen')
+      if api.nvim_strwidth(text) > self:_width() then
+        -- Reserve the time, kind and result before fitting long participant names.
+        local cells = self:_width()
+        local suffix = fit(chunks, math.max(0, cells - math.min(24, math.floor(cells / 3))))
+        local suffix_width = 0
+        for _, chunk in ipairs(suffix) do suffix_width = suffix_width + api.nvim_strwidth(chunk[1]) end
+        local fitted = fit(prefix_chunks, cells - suffix_width)
+        vim.list_extend(fitted, suffix)
+        text, hmarks, chunks = '', {}, {}
+        for _, chunk in ipairs(fitted) do put(chunk[1], chunk[2]) end
+      end
+      item_marks(text, 0, hmarks)
+    end
     local stage = self:_stage(mm)
     if stage then
       hmarks[#hmarks + 1] = {
@@ -284,16 +349,30 @@ function Thread:_build(m, prev, answer)
     b.heads[mm.id] = #b.lines
     add(text, { group = group, head = mm }, banded(hmarks))
 
+    local function chip(a)
+      local text = '▣ ' .. tostring(a.id) .. ' ' .. tostring(a.kind) .. ' · ' .. tostring(a.title)
+      add(text, { group = group, artifact = a }, banded({ { col = 0, opts = { end_col = #text, hl_group = 'ClandBlue', priority = 120 } } }))
+    end
+
     if card then
       -- the ask's card, as today (#33): the question, the numbered options, the state; the answer beneath
       local open = card.state == 'open'
       local ask = { id = mm.id, topic = mm.topic or self.topic.id, question = mm.text, options = card.options or {}, free = card.free }
       for _, l in ipairs(require('cland.ask_card').lines(card, mm.text)) do
-        local marks = { { col = 1, opts = { end_col = 4, hl_group = l[4], priority = 120 } } }
+        local marks = {
+          { col = 0, opts = { line_hl_group = 'ClandAsk', priority = 50 } },
+          { col = 1, opts = { end_col = 4, hl_group = l[4], priority = 120 } },
+        }
         if l[2] then
           marks[#marks + 1] = { col = 5, opts = { end_col = #l[1], hl_group = l[2], priority = 120 } }
         end
         add(l[1], { group = group, ask = open and ask or nil }, marks)
+      end
+      for _, a in ipairs(mm.artifacts or {}) do chip(a) end
+      local following = self:_chip(mm)
+      if following then
+        b.msgs[#b.msgs + 1] = following
+        chip(following.artifact)
       end
       if answer then
         b.msgs[#b.msgs + 1] = answer
@@ -306,21 +385,17 @@ function Thread:_build(m, prev, answer)
     local attachments = mm.artifacts or (type(mm.artifact) == 'table' and { mm.artifact } or {})
     -- a bare artifact post's text is its chip: the chip alone, as today
     local show_text = not (type(mm.artifact) == 'table' and type(mm.artifacts) ~= 'table')
-    if show_text then
+    if show_text and verdict ~= 'clear' then
       local lines, marks, metadata = self:body(mm)
       if #lines == 1 and lines[1] == '' then
         lines = {}
       end
       local base = #b.lines
       for k, l in ipairs(lines) do
-        add(l, { group = group, links = metadata[k].links }, banded())
-        local from = 1
-        while true do
-          local a, z = l:find('%f[%w]T%-%d+%f[^%w]', from)
-          if not a then break end
-          b.marks[#b.marks + 1] = { row = base + k - 1, col = a - 1, opts = { end_col = z, hl_group = 'ClandBlue', priority = 140 } }
-          from = z + 1
-        end
+        add(l, { group = group, links = metadata[k].links }, banded(watch and {
+          { col = 0, opts = { end_col = #l, hl_group = 'ClandWatch', priority = 150 } },
+        } or nil))
+        item_marks(l, base + k - 1, b.marks)
       end
       for _, s in ipairs(marks) do
         -- Body-span options contain scalar values only; copy without recursively walking a cached span.
@@ -328,14 +403,12 @@ function Thread:_build(m, prev, answer)
         if opts.end_row then opts.end_row = opts.end_row + base end
         b.marks[#b.marks + 1] = { row = base + s.row, col = s.col, opts = opts }
       end
-      local verdict = M.verdict(mm)
       if verdict and #lines > 0 then
         b.marks[#b.marks + 1] = { row = base, col = 0, opts = { end_col = #lines[1], hl_group = verdict == 'clear' and 'ClandGreen' or 'ClandRed', priority = 125 } }
       end
     end
     for _, a in ipairs(attachments) do
-      local chip = '▣ ' .. tostring(a.id) .. ' ' .. tostring(a.kind) .. ' · ' .. tostring(a.title)
-      add(chip, { group = group, artifact = a }, banded({ { col = 0, opts = { end_col = #chip, hl_group = 'ClandBlue', priority = 120 } } }))
+      chip(a)
     end
   end
   message(m)
@@ -572,7 +645,7 @@ function Thread:render()
   local answers = self:_answers()
   local prev
   for _, m in ipairs(self.messages) do
-    if not (m.answerTo and answers[m.answerTo] == m) then
+    if not (m.answerTo and answers[m.answerTo] == m) and not self:_chip_owner(m) then
       local b = self:_build(m, prev, answers[m.id])
       b.start = #lines
       for k, l in ipairs(b.lines) do
@@ -632,7 +705,7 @@ function Thread:_append(m)
   write(self.buf, b.start, b.start, b.lines)
   self:_marks(b.start, b.marks)
   self.blocks[#self.blocks + 1] = b
-  self.block_of[m.id] = b
+  for _, mm in ipairs(b.msgs) do self.block_of[mm.id] = b end
   self:_row_targets()
   self:_settle(wins)
 end
@@ -794,6 +867,10 @@ end
 
 --- A new message into the buffer: under its ask's card when it answers one, else at the end.
 function Thread:_place(m)
+  -- A batch merge can have already incorporated this companion into its ask.
+  if self.block_of[m.id] then return end
+  local owner = self:_chip_owner(m)
+  if owner and self.block_of[owner.id] then return self:_replace(self.block_of[owner.id]) end
   local ask = m.answerTo and self.by_id[m.answerTo]
   if ask and type(ask.ask) == 'table' and self.block_of[ask.id] then
     return self:_replace(self.block_of[ask.id])
