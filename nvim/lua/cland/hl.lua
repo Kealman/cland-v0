@@ -13,6 +13,7 @@ M.P = {
   bg = '#0b0e14', panel = '#10141b', bar = '#10141b', composer = '#0d1117', mine = '#141a23',
   border = '#222a35', chip = '#1a212c', chipb = '#2a3340', sel = '#182131', keyon = '#1b2a3f', term = '#07090d',
   text = '#d6dbe4', dim = '#8a94a3', faint = '#5a6370', ink = '#1a1400',
+  violet = '#bc8cff', pink = '#f778ba', sky = '#56d4dd',
   amber = '#f0b429', teal = '#35c4a0', green = '#7ddc8a', red = '#ff7b72', blue = '#6aa5ff', bluel = '#9cc3ff',
 }
 
@@ -51,6 +52,9 @@ function M.setup()
   set('ClandGreen', { fg = P.green })
   set('ClandRed', { fg = P.red })
   set('ClandBlue', { fg = P.blue })
+  for role, colour in pairs({ Human = P.blue, Coordinator = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Hub = P.faint, Other = P.dim }) do
+    set('ClandRole' .. role, { fg = colour })
+  end
   set('ClandMine', { bg = P.mine })
   set('ClandPanel', { fg = P.text, bg = P.panel })
   set('ClandPanelEob', { fg = P.panel, bg = P.panel })
@@ -106,6 +110,14 @@ M.SESSION = {
   exited = { '✗', 'ClandRed', 'died' },
   stopped = { '×', 'ClandRed', 'stopped' },
 }
+
+M.ROLE = { coordinator = 'ClandRoleCoordinator', implementer = 'ClandRoleImplementer', reviewer = 'ClandRoleReviewer', qa = 'ClandRoleQa' }
+
+function M.role_group(from_kind, role)
+  if from_kind == 'human' then return 'ClandRoleHuman' end
+  if from_kind == 'hub' then return 'ClandRoleHub' end
+  return M.ROLE[role] or 'ClandRoleOther'
+end
 
 --- An item's state as a glyph and a colour (the tracker knows open and closed so far).
 M.ITEM = {

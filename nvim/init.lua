@@ -48,6 +48,7 @@ vim.o.timeoutlen = 600
 vim.o.fillchars = 'eob: ,vert:│,horiz:─'
 
 vim.api.nvim_create_autocmd('VimEnter', {
+  nested = true, -- Window/buffer entry handlers must also run while the shell builds its initial splits.
   once = true,
   callback = function()
     -- `cland --headless --qa <case.lua>`: the case builds its fixture project and starts the shell itself

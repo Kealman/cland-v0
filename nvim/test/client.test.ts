@@ -18,7 +18,7 @@ const bin = 'bin' in nvim ? nvim.bin : '';
 const composerLines = (c: { lua: <T>(code: string) => Promise<T> }) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(vim.fn.bufnr('cland://composer/general'), 0, -1, false)");
 
 /** The thread's one-line notice (` ▲ …` under the messages) is on screen; the header's `▲ no coordinator` is not one. */
-const notice = (s: string): boolean => /^ ▲ /m.test(centreOf(s));
+const notice = (s: string): boolean => /^   ▲ /m.test(centreOf(s));
 
 test('a message typed in the composer shows queued, reaches a coordinator with the topic, and turns delivered; the reply shows with sender and time', { skip }, async (t) => {
   const root = await tempProject(t);
@@ -27,7 +27,7 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'the empty General thread, connected');
 
   await c.input('hello<CR>');
-  const queued = await c.waitScreen((s) => /^ you {2}\d\d:\d\d +⌁ queued $/m.test(centreOf(s)) && /^ hello +$/m.test(centreOf(s)), 'hello, queued');
+  const queued = await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d +⌁ queued $/m.test(centreOf(s)) && /^[▎▌] hello +$/m.test(centreOf(s)), 'hello, queued');
   assert.equal(notice(queued), false, 'no notice: the client is connected');
   assert.deepEqual(await composerLines(c), ['› '], 'the composer is empty again');
 
@@ -37,17 +37,17 @@ test('a message typed in the composer shows queued, reaches a coordinator with t
   assert.equal(event.params.meta?.topic, 'general');
   assert.equal(event.params.meta?.topic_title, 'General');
   assert.equal(event.params.meta?.from_kind, 'human');
-  await c.waitScreen((s) => /^ you {2}\d\d:\d\d +✓ delivered $/m.test(centreOf(s)), 'hello, delivered');
+  await c.waitScreen((s) => /^[▎▌] you → coordinator {2}\d\d:\d\d +✓ delivered $/m.test(centreOf(s)), 'hello, delivered');
 
   const reply = await coord.call<{ ok: boolean }>('send', { text: 'hello, human' });
   assert.equal(reply.ok, true);
   const [last] = (await coord.call<{ messages: Array<{ ts: string; text: string }> }>('history', { limit: 1 })).messages;
   assert.equal(last?.text, 'hello, human');
   const screen = await c.waitScreen((s) => centreOf(s).includes('hello, human'), 'the reply');
-  assert.match(centreOf(screen), new RegExp(`^ coord \\[Coordinator\\] {2}${clock(last?.ts ?? '')} *$`, 'm'), 'sender [Role] and local time');
-  assert.match(centreOf(screen), /^ hello, human *$/m);
+  assert.match(centreOf(screen), new RegExp(`^[▎▌] coord \\[Coordinator\\] → you {2}${clock(last?.ts ?? '')} *$`, 'm'), 'sender [Role] and local time');
+  assert.match(centreOf(screen), /^[▎▌] hello, human *$/m);
   // the human's message keeps its stage; the agent's has none
-  assert.match(centreOf(screen), /^ you {2}\d\d:\d\d +✓ delivered $/m);
+  assert.match(centreOf(screen), /^[▎▌] you → coordinator {2}\d\d:\d\d +✓ delivered $/m);
 });
 
 test('Shift+Enter inserts a newline in the composer; Enter sends both lines as one message', { skip }, async (t) => {
@@ -59,7 +59,7 @@ test('Shift+Enter inserts a newline in the composer; Enter sends both lines as o
   assert.deepEqual(await composerLines(c), ['› first line', 'second line']);
   assert.deepEqual(await c.lua('return vim.api.nvim_get_mode()'), { mode: 'i', blocking: false });
   await c.input('<CR>');
-  const screen = await c.waitScreen((s) => /^ first line *\n second line *$/m.test(centreOf(s)), 'the two-line message');
+  const screen = await c.waitScreen((s) => /^[▎▌] first line *\n[▎▌] second line *$/m.test(centreOf(s)), 'the two-line message');
   assert.match(centreOf(screen), /⌁ queued/);
   assert.deepEqual(await composerLines(c), ['› ']);
 });
@@ -155,12 +155,12 @@ test('the client follows its hub through a restart and keeps the thread', { skip
   const c = await startClient(t, bin, root);
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected');
   await c.input('before<CR>');
-  await c.waitScreen((s) => /^ before *$/m.test(centreOf(s)), 'the first message');
+  await c.waitScreen((s) => /^[▎▌] before *$/m.test(centreOf(s)), 'the first message');
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await c.waitScreen((s) => notice(s), 'a notice that the hub is gone');
   await startDaemon(t, root);
   await c.waitScreen((s) => !notice(s), 'the notice cleared on reconnect', 15_000);
   await c.input('after<CR>');
-  const screen = await c.waitScreen((s) => /^ after *$/m.test(centreOf(s)), 'the second message');
-  assert.equal(centreOf(screen).match(/^ before *$/gm)?.length, 1, 'the history merged without duplicates');
+  const screen = await c.waitScreen((s) => /^[▎▌] after *$/m.test(centreOf(s)), 'the second message');
+  assert.equal(centreOf(screen).match(/^[▎▌] before *$/gm)?.length, 1, 'the history merged without duplicates');
 });

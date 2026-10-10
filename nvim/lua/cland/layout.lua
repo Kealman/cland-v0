@@ -284,7 +284,6 @@ local function centre_opts(w, kind)
   wo.list = false
   wo.cursorline = false
   if kind == 'thread' then
-    wo.wrap, wo.linebreak, wo.breakindent = true, true, true
     wo.winhighlight = ''
   elseif kind == 'session' then
     wo.wrap = false
@@ -584,9 +583,8 @@ function M.render()
   end
   for win, view in pairs(M.win.object_splits or {}) do
     if valid(win) then
-      if view.kind == 'thread' and view.id ~= 'agents' then
-        require('cland.views').topic(view.id).thread:render()
-      else
+      -- Topic buffers already apply message/card/delivery events incrementally in every window.
+      if view.kind ~= 'thread' or view.id == 'agents' then
         require('cland.views').render_placeholder(view.id == 'agents' and {kind='log'} or view)
       end
     end

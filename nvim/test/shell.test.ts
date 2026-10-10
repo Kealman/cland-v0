@@ -1766,7 +1766,7 @@ test('the ask card in the thread: the question, numbered options and the free-an
   const c = await startShell(t, withInbox);
   await c.input('<Esc>:Cland view thread topic-1<CR>');
   let s = await c.waitScreen((x) => x.includes('┃ 2  the harness session id'), 'the card');
-  const card = [`coord-1 [Coordinator]  ${clockOf(ts(1))}`, '┃ Which should win?', '┃ 1  the name recorded by the spoke', '┃ 2  the harness session id', '┃ 3  ask me later', '┃ 1-9 answers · free answer: i'].map((w) => s.indexOf(w));
+  const card = [`coord-1 [Coordinator] → you  ${clockOf(ts(1))}`, '┃ Which should win?', '┃ 1  the name recorded by the spoke', '┃ 2  the harness session id', '┃ 3  ask me later', '┃ 1-9 answers · free answer: i'].map((w) => s.indexOf(w));
   assert.ok(card.every((at) => at >= 0), `the card:\n${s}`);
   assert.deepEqual([...card].sort((a, b) => a - b), card);
   assert.match(s, /ask · ▲ waiting for you/);
@@ -1777,7 +1777,7 @@ test('the ask card in the thread: the question, numbered options and the free-an
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 2]]);
   // the answer message under the card
   const at = s.indexOf('┃ answered with 2');
-  const you = s.indexOf(' you  ', at);
+  const you = s.indexOf(' you → coord-1  ', at);
   assert.ok(at >= 0 && you > at && s.indexOf('the harness session id', you) > you, `the answer beneath the card:\n${s}`);
   assert.match(topBar(s), /needs you {2}2 /);
 });
