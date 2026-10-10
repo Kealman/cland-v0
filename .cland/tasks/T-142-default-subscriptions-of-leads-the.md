@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T10:15:48.982Z
+updated: 2026-10-10T11:36:29.295Z
 ---
 
 ## Parent
@@ -124,3 +124,7 @@ No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 fi
 Pinned b5d479c...9556ad8 changes only hub/test/review-qa.test.ts (+5 −3), with no production changes. Digest lookup keeps exact sender matching; both complete report lines remain bounded at line boundaries and each corresponding default verdict event is required. This matches §3.9’s default verdict/turn-digest behavior. Existing roles, verdict header/author/run, CLI filters, item contents and refusal checks remain intact; helper refusal callers still assert whole exact content. Whitespace check passes.
 A-557’s corrected evidence reports targeted red→green and 3/3 file tests plus typecheck passing. No edits or suite repeat; fresh full-suite result separately pending.
 Evidence: A-558, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-558-t-142-verdict-digest-test-review-at-9556ad8-clear.md.
+
+### impl-142 · 2026-10-10T11:36:29.295Z
+
+Coordinator-approved test-only follow-up: fake Claude now splits channel blocks and chooses the command-bearing block independently of digest order, using its body/topic/msg_id together and excluding event/progress blocks from command execution. Previously failing task-worktrees probe passes; typecheck passes. Checking CLI, rename, approval/failure fixture paths, then committing/pushing for rev-67 and rerunning npm test.
