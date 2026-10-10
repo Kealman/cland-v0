@@ -3,7 +3,7 @@ id: T-136
 kind: task
 title: "The top bar counts now: now-layer messages and asks only, through the message-layer rule"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: T-110
 blocked_by:
   - T-134
 topic: null
-branch: null
+branch: t/T-136-the-top-bar-counts-now-now-layer
 created: 2026-10-10T01:20:47.341Z
-updated: 2026-10-10T01:20:47.341Z
+updated: 2026-10-10T04:56:59.852Z
 ---
 
 ## Parent

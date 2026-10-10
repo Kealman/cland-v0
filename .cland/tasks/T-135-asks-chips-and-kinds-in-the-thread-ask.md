@@ -3,7 +3,7 @@ id: T-135
 kind: task
 title: "Asks, chips and kinds in the thread: ask cards answered in place, artifact chips, the kind on each header, watch dimming"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-110
 blocked_by:
   - T-134
-topic: null
-branch: null
+topic: topic-59
+branch: t/T-135-asks-chips-and-kinds-in-the-thread-ask
 created: 2026-10-10T01:20:47.097Z
-updated: 2026-10-10T01:20:47.097Z
+updated: 2026-10-10T04:57:16.994Z
 ---
 
 ## Parent
