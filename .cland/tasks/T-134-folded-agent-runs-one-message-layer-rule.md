@@ -3,7 +3,7 @@ id: T-134
 kind: task
 title: "Folded agent runs: one message-layer rule, manual per-run folds with the fold keys and Enter, the folded count, what never folds"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: T-110
 blocked_by:
   - T-133
 topic: null
-branch: null
+branch: t/T-134-folded-agent-runs-one-message-layer-rule
 created: 2026-10-10T01:20:46.817Z
-updated: 2026-10-10T02:43:21.637Z
+updated: 2026-10-10T03:56:42.818Z
 ---
 
 ## Parent
