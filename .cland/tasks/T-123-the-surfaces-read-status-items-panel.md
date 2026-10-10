@@ -13,10 +13,10 @@ blocked_by:
   - T-119
   - T-121
   - T-122
-topic: null
+topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T01:50:54.869Z
+updated: 2026-10-10T01:51:26.253Z
 ---
 
 ## Parent
@@ -48,3 +48,9 @@ The vertical board in the items panel, the rank keys and the "next" mark are T-1
 ## Notes
 
 Size M. Implementer: Codex. References: `prototype/panels` `vboard.lua` (`M.status`) and `prototype/graph` `graph.lua` (`M.status`) for the derived rules this replaces; mockups `ItemsBoard.dc.html`, `Main.dc.html`, `screens/v01-items-board.png`. Precedence: the spec, then the prototype's behaviour, then the mockups. Lands before T-109's vertical-board ticket, which rewrites the items panel on top of it.
+
+## Comments
+
+### impl-123 · 2026-10-10T01:51:26.253Z
+
+Reading the status/tree surfaces and tracker protocol. Tests will use the agreed Neovim stub-hub seam plus headless QA cases; the shared rank fixture will verify client ordering.
