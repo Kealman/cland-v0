@@ -83,15 +83,16 @@ test('session events move the selected row between groups and update the chip; s
   const process = (name: string, state: string, status = 'running') => ({ name, sessionId: name+'-id', harness: 'codex', model: 'test-model', role: 'reviewer', state, status });
   const c = await start(t, { processes: [process('review', 'busy'), process('rest', 'idle'), process('old', 'unknown', 'stopped')] });
   await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('BUSY · 1') && s.includes('IDLE · 1') && s.includes('stopped (1)'), 'session groups');
-  assert.match((await c.screen())[0]!, /sessions +2 /);
+  assert.match((await c.screen())[0]!, /sessions +1 /, 'busy is now; idle is watch and stopped is background');
   await c.lua(`local b=require('cland.panels').buf('sessions'); for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.api.nvim_win_get_buf(w)==b then vim.api.nvim_set_current_win(w); for i,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if l:find('review [',1,true) then vim.api.nvim_win_set_cursor(w,{i,0}); break end end end end`);
   await c.waitScreen(s => s.includes('test-model'), 'selected details');
   await c.control({ emit: { type: 'session.state', session: 'review', sessionId: 'review-id', state: 'waiting for approval', approvalCommand: 'npm test', source: 'hook' } });
   const waiting = await c.waitScreen(s => s.includes('WAITING · 1') && s.includes('BUSY · 0') && s.includes('run: npm test'), 'approval command and moved group');
-  assert.match(waiting.split('\n')[0]!, /sessions +2 +1▲/);
+  assert.match(waiting.split('\n')[0]!, /sessions +1 +1▲/);
   assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /review \[Reviewer\]/);
   await c.control({ emit: { type: 'session.state', session: 'review', sessionId: 'review-id', state: 'idle', source: 'hook' } });
-  await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('IDLE · 2') && !s.includes('run: npm test'), 'approval cleared');
+  const idle = await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('IDLE · 2') && !s.includes('run: npm test'), 'approval cleared');
+  assert.match(idle.split('\n')[0]!, /sessions +0 /, 'idle sessions leave now while their rows remain visible');
   assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /review \[Reviewer\]/);
   await c.input('/stopped (<CR>za');
   await c.waitScreen(s => s.includes('old [Reviewer]'), 'stopped unfolded');
@@ -99,7 +100,7 @@ test('session events move the selected row between groups and update the chip; s
   await c.waitScreen(s => !s.includes('old [Reviewer]'), 'stopped folded again');
   await c.control({ emit: { type: 'session.process', process: process('review', 'unknown', 'stopped') } });
   const stopped = await c.waitScreen(s => s.includes('stopped (2)'), 'process stopped');
-  assert.match(stopped.split('\n')[0]!, /sessions +1 /);
+  assert.match(stopped.split('\n')[0]!, /sessions +0 /);
 });
 
 test('wide session rows and approval commands fit their cells and the chip stays visible on a narrow screen', { skip }, async t => {
@@ -291,7 +292,7 @@ test('session, topic and text-artifact selections open in splits and receive liv
     processes: [{ name: 'palette-session', harness: 'codex', role: 'reviewer', status: 'running', state: 'idle' }],
     attach: { 'palette-session': "printf 'palette attached\\n'; sleep 600" },
     topics: [{ id: 'general', title: 'General', status: 'open' }, { id: 'topic-split', title: 'Split topic', status: 'open' }],
-    messages: { 'topic-split': [{ id: 'm1', from: 'coord', text: 'Split topic content', ts: '2026-10-09T12:00:00Z', topic: 'topic-split' }] },
+    messages: { 'topic-split': [{ id: 'm1', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', to: ['human'], text: 'Split topic content', ts: '2026-10-09T12:00:00Z', topic: 'topic-split' }] },
   });
   const path = join(c.root, 'split.md');
   await writeFile(path, '# Split artifact');
@@ -301,7 +302,7 @@ test('session, topic and text-artifact selections open in splits and receive liv
   assert.equal(await c.mode(), 't');
   await c.input('<C-\\><Space>p/Split topic<C-v>');
   await c.waitScreen(s => s.includes('Split topic content'), 'topic split');
-  await c.control({ emit: { type: 'message', topic: { id: 'topic-split' }, message: { id: 'm2', from: 'coord', text: 'Live split update', ts: '2026-10-09T12:01:00Z', topic: 'topic-split' } } });
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-split' }, message: { id: 'm2', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', to: ['human'], text: 'Live split update', ts: '2026-10-09T12:01:00Z', topic: 'topic-split' } } });
   await c.waitScreen(s => s.includes('Live split update'), 'live topic split');
   await c.input('<Space>aA-1<C-v>');
   await c.waitScreen(s => s.includes('# Split artifact'), 'text artifact split');

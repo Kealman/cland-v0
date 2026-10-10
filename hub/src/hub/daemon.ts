@@ -137,6 +137,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       ...(config ? { rateLimit: config.hygiene.rateLimit, eventLimit: config.hygiene.eventLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
       tracker,
       roles,
+      visibility: config?.visibility ?? {},
       crew,
       artifactRetentionDays: config?.artifacts.retentionDays ?? 30,
       idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),

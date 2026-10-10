@@ -70,7 +70,7 @@ end
 local function replay_sessions(events, processes)
   for _, e in ipairs(events) do
     if e.type == 'session.role' then state.set_session_role(e.session, e.role)
-    elseif e.type == 'session.state' then state.set_session_state(e.session, e.state, e.approvalCommand)
+    elseif e.type == 'session.state' then state.set_session_state(e.session, e.state, e.approvalCommand, e.layer)
     elseif processes and e.type == 'session.process' then state.upsert_process(e.process)
     elseif processes and e.type == 'session.cleanup' then state.remove_process(e.sessionId)
     elseif processes and e.type == 'session.usage' then state.set_session_usage(e.sessionId, e.usage)
@@ -258,7 +258,7 @@ local function wire_client(client)
     state.set_session_role(event.session, event.role)
   end)
   client:on('session.state', function(event)
-    state.set_session_state(event.session, event.state, event.approvalCommand)
+    state.set_session_state(event.session, event.state, event.approvalCommand, event.layer)
   end)
   client:on('presence', function(event)
     if type(event.sessions) == 'table' then

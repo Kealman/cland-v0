@@ -224,6 +224,12 @@ end
 function M.apply_event(ev)
   local id = ev and ev.id
   if not id then return end
+  -- Current-release or parent changes can reclassify rows beyond the changed item.
+  if type(ev.layers) == 'table' then
+    for _, it in ipairs(state.S.items) do
+      if ev.layers[it.id] then it.layer = ev.layers[it.id] end
+    end
+  end
   local item = type(ev.item) == 'table' and ev.item or nil
   for i, it in ipairs(state.S.items) do
     if it.id == id then

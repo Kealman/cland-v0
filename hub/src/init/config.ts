@@ -2,6 +2,7 @@
 // `cland init` writes it with the defaults; `cland update` rewrites it to the current template, keeping the values
 // it finds (so a threshold the human changed survives an update). A file without the mark is the human's and left
 // alone. The hub reads the thresholds at start; a missing or unreadable file means the built-in defaults.
+import { visibilityOverrides, type VisibilityOverrides } from '../hub/visibility.ts';
 import { DEFAULT_LEVELS, configuredLevels } from '../tracker/kinds.ts';
 import { basename } from 'node:path';
 import { parse } from 'smol-toml';
@@ -12,6 +13,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
+  visibility: VisibilityOverrides;
   tracker: { levels: string[] };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
@@ -22,6 +24,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
+  visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
   artifacts: { retentionDays: 30 },
   keys: { layouts: [] },
@@ -64,6 +67,10 @@ max_text_bytes = ${h.maxTextBytes}
 # Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]
 retention_days = ${c.artifacts.retentionDays}
+
+# Surface.kind = layer (now, watch, background, archive); read at hub start.
+[visibility]
+${Object.entries(c.visibility).flatMap(([surface, kinds]) => Object.entries(kinds).map(([kind, layer]) => `${surface}.${kind} = ${JSON.stringify(layer)}`)).join("\n")}
 `;
 }
 
@@ -73,6 +80,7 @@ const positive = (v: unknown): number | undefined => (typeof v === 'number' && N
 export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
+  c.visibility = visibilityOverrides(doc.visibility);
   const project = (doc.project ?? {}) as Record<string, unknown>;
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
   const tracker = (doc.tracker ?? {}) as Record<string, unknown>;

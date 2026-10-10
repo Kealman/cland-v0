@@ -1,6 +1,7 @@
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
 // Frames travel as JSON text over one WebSocket per spoke.
 
+import type { Layer } from './hub/visibility.ts';
 import type { ItemSummary } from './tracker/tracker.ts';
 
 export const PROTOCOL_VERSION = 2;
@@ -49,6 +50,7 @@ export function isHeldDelivery(message: { kind?: string | undefined; detail?: Re
 export type SessionHold = { item: string; role: 'item' | 'review' | 'qa' };
 
 export type Presence = {
+  layer?: Layer;
   name: string;
   sessionId: string;
   cwd: string;
@@ -69,8 +71,10 @@ export const SESSION_STATES: readonly SessionState[] = ['idle', 'busy', 'waiting
 
 export type ArtifactKind = 'prompt' | 'note' | 'page' | 'diagram' | 'file';
 export type Artifact = {
+  layer?: Layer;
   id: string; title: string; kind: ArtifactKind; path: string; creator: string; time: string;
   topic: string; status: 'draft' | 'sent' | 'shared' | 'archived';
+  creatorRole?: string | null;
   promoted?: string; archivedAt?: string; fileDeleted?: boolean;
 };
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; status?: 'draft' | 'shared' };
@@ -83,6 +87,7 @@ export type AgentsHistoryFilter = { item?: string; session?: string };
 export type MarkedCriterion = { id: string; mark: 'verified' | 'failed'; note?: string };
 
 export type Message = {
+  layer?: Layer;
   id: string;
   from: string;
   fromKind: FromKind;
@@ -119,6 +124,7 @@ export type HygieneRefusal = { code: 'hygiene'; rule: 'rate' | 'loop' | 'size'; 
 export type TopicStatus = 'open' | 'waiting for human' | 'waiting for agent' | 'closed';
 
 export type Topic = {
+  layer?: Layer;
   id: string;
   title: string;
   /** Set by message direction, `resolve` and `close` (spec 4.5, `src/hub/topics.ts`); Agents stays `open`. */
@@ -168,15 +174,16 @@ export type AskCard = {
 };
 
 /** An open ask as the inbox lists it. */
-export type InboxAsk = { id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; label: string; ts: string };
+export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; label: string; ts: string };
 
 /** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
-export type InboxApproval = { session: string; label: string; harness: string | null; since: string | null; attach: string | null };
+export type InboxApproval = { layer?: Layer; session: string; label: string; harness: string | null; since: string | null; attach: string | null };
 
-export type NotificationKind = 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed';
+export type NotificationKind = 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
 /** Something worth the human's eye from the journal (until #34, the hub's own events): dismissable, never blocking. */
 export type InboxNotification = {
+  layer?: Layer;
   id: string;
   kind: NotificationKind;
   text: string;
@@ -188,7 +195,7 @@ export type InboxNotification = {
   dismissed: boolean;
 };
 
-/** The inbox (spec 5): what only the human can unblock first, in this order; `needsYou` = asks + approvals + waiting. */
+/** The inbox (§3.5): needsYou counts entries classified now by the hub. */
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
 
 /** What the hub pushes to a subscribed client. */
@@ -208,7 +215,7 @@ export type HubEvent =
   /** A message's stage changed. */
   | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
   /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
-  | { type: 'session.state'; session: string; sessionId: string; state: SessionState; source: string; ts: string; approvalCommand?: string }
+  | { type: 'session.state'; layer?: Layer; session: string; sessionId: string; state: SessionState; source: string; ts: string; approvalCommand?: string }
   /** A session's role changed: assigned, moved, cleared (null), or vacated by its harness's death. */
   | { type: 'session.role'; session: string; role: string | null; previous: string | null; reason: string; ts: string }
   /** A topic changed: created, its status, its warning, its binding or the human's unread count. */
@@ -223,7 +230,7 @@ export type HubEvent =
   | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string }
   /** The tracker's index changed (a hub write, a hand edit the watcher read, a removed file, a claim): the item as
    *  `task.list` shows it, or null when its file is gone. */
-  | { type: 'task'; id: string; item: ItemSummary | null; siblings?: string[] };
+  | { type: 'task'; id: string; item: ItemSummary | null; siblings?: string[]; layers?: Record<string, Layer> };
 
 /** A role's clause as the hub delivers it to the holder (spec 4.4): on assignment and on every reconnect.
  *  `role` null: the session's role was revoked. */
@@ -568,6 +575,7 @@ export type SessionUsage = {
 
 /** A row of the hub's process table as clients see it. */
 export type HarnessProcessView = {
+  layer?: Layer;
   name: string;
   harness: string;
   role: string | null;

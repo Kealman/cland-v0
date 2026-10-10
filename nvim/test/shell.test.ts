@@ -2168,3 +2168,52 @@ test('the inbox full width (␣N) shows the same sections and acts the same', { 
   await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } } });
   s = await c.waitScreen((x) => centreOf(x).includes('✓ nothing needs you') && topBar(x).includes('✓ needs you 0'), 'an empty inbox');
 });
+
+test('visibility overrides drive thread folds, palette dimming and session counts; the needs-you chip remains hub-owned', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.visibility = { inbox: { idle: 'now' }, messages: { agent: 'now' }, sessions: { idle: 'now' }, items: { backlog: 'watch' } };
+    s.inbox = { asks: [], approvals: [], waiting: [], notifications: [{ id: 'idle-now', kind: 'idle', text: 'impl-1 idle 30 min', ts: ts(12) }] };
+    s.messages!.general!.push({ id: 'raised', from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', to: ['coord-1'], kind: 'report', text: 'Raised agent report', topic: 'general', ts: ts(12) });
+    s.processes![1]!.state = 'idle';
+  });
+  await c.waitScreen(s =>  /needs you\s+1/.test(topBar(s)), 'the raised idle is counted by the stub hub');
+  const values = await c.lua<{ message: string; idle: string; backlog: string; dim: boolean; now: number }>(`local s = require('cland.state'); local t = require('cland.views').topic('general').thread; return {message = t.blocks[#t.blocks].layer, idle = s.session('impl-1').layer, backlog = s.item('T-13').layer, dim = require('cland.palette').dim('items', s.item('T-13')), now = s.counts().now}`);
+  assert.equal(values.message, 'now');
+  assert.equal(values.idle, 'now');
+  assert.equal(values.backlog, 'watch');
+  assert.equal(values.dim, false);
+  assert.equal(values.now, 2);
+  // The same classified-now row cannot override a hub count of zero.
+  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [{ id: 'idle-now', kind: 'idle', text: 'impl-1 idle 30 min', ts: ts(12) }], needsYou: 0 } } });
+  await c.waitScreen(s => /needs you\s+0/.test(topBar(s)), 'the chip obeys the hub despite a now notification');
+});
+
+test('a current-release change updates other item placements and palette dimming without a snapshot reload', { skip }, async t => {
+  const first = { id: 'T-201', kind: 'release', title: 'First release', state: 'open', version: '0.1.0', parent: null };
+  const next = { id: 'T-202', kind: 'release', title: 'Next release', state: 'open', version: '0.2.0', parent: null };
+  const work = { id: 'T-203', kind: 'task', title: 'Future work', state: 'open', status: 'in progress', parent: next.id };
+  const c = await startShell(t, s => { s.items!.push(first, next, work); });
+  assert.equal(await c.lua("return require('cland.palette').dim('items', require('cland.state').item('T-203'))"), true);
+  await c.control({ set: { items: [ { ...first, state: 'closed' }, next, work ] } });
+  await c.control({ emit: { type: 'task', id: first.id, item: { ...first, state: 'closed' } } });
+  assert.equal(await c.lua("return vim.wait(5000, function() return require('cland.state').item('T-203').layer == 'now' end, 10)"), true);
+  assert.equal(await c.lua("return require('cland.palette').dim('items', require('cland.state').item('T-203'))"), false);
+});
+
+for (const [status, role, layer, count] of [['stopped', 'implementer', 'background', 1], ['exited', 'implementer', 'background', 1], ['stopped', 'aide', 'now', 2]] as const) {
+  test(`live ${role} ${status} keeps palette and session count consistent after its state event`, { skip }, async t => {
+    const c = await startShell(t, s => {
+      s.visibility = { sessions: { idle: 'now' } };
+      s.processes![1] = proc('impl-1', role, 'idle');
+    });
+    const ended = { ...proc('impl-1', role, 'unknown'), status, attach: null };
+    await c.control({ set: { processes: [proc('coord-1', 'coordinator', 'busy'), ended] } });
+    await c.control({ emits: [
+      { type: 'session.process', process: ended },
+      { type: 'session.state', session: 'impl-1', sessionId: 'impl-1-id', state: 'unknown', source: status === 'stopped' ? 'stopped' : 'process', ts: ts(12) },
+    ] });
+    assert.equal(await c.lua(`return vim.wait(5000, function() local s = require('cland.state').session('impl-1'); return s.status == '${status}' and s.state == 'unknown' end, 10)`), true);
+    const observed = await c.lua<{ layer: string; dim: boolean; count: number }>("local s = require('cland.state'); return {layer = s.session('impl-1').layer, dim = require('cland.palette').dim('sessions', s.session('impl-1')), count = s.counts().now}");
+    assert.deepEqual(observed, { layer, dim: layer === 'background', count });
+  });
+}

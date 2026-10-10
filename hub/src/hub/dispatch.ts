@@ -420,7 +420,7 @@ export class Dispatcher {
     const root = this.#options.control?.status().root;
     const name = caller?.name ?? 'human';
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
-    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.' }, (a) => {
+    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', role: () => callerNow()?.role ?? null }, (a) => {
       if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
       const current = callerNow();
@@ -464,7 +464,7 @@ export class Dispatcher {
     const peer: Peer = {
       send: (frame) => {
         settle(frame);
-        wire.send(frame);
+        wire.send(core.visibility.frame(frame));
         guard.answered(frame);
       },
       close: (code, reason) => wire.close(code, reason),
@@ -979,7 +979,7 @@ export class Dispatcher {
         this.#guard.changed();
       }
       const again = guard.replay(frame, kind === 'spoke' ? (name ?? '?') : client);
-      if (again) wire.send(again);
+      if (again) wire.send(core.visibility.frame(again));
       return again !== null;
     };
 

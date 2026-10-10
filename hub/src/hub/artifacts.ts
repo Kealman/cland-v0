@@ -12,7 +12,7 @@ export class ArtifactError extends Error {
 }
 const extensions: Record<ArtifactKind, string> = { prompt: '.md', note: '.md', page: '.html', diagram: '.mmd', file: '.txt' };
 
-export async function createArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>): Promise<Artifact> {
+export async function createArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; role?: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>): Promise<Artifact> {
   if (!root) throw new ArtifactError('artifact-unavailable', 'this hub serves no project for artifacts');
   if (!(typeof request.kind === 'string' && Object.hasOwn(extensions, request.kind))) throw new ArtifactError('artifact-kind', 'kind must be prompt, note, page, diagram or file');
   if (typeof request.title !== 'string' || !request.title.trim()) throw new ArtifactError('artifact-title', 'an artifact needs a title');
@@ -61,7 +61,7 @@ export async function createArtifact(store: Store, root: string | undefined, req
       authorize(); // topic, caller identity, and permissions are read again after file preparation
       const artifact = store.registerArtifact((id) => {
         if (id !== prepared.id) throw new Error('artifact reservation moved');
-        return { id, title, kind, path: prepared.path, creator: actor.name, time: new Date().toISOString(), topic: request.topic, status: request.status ?? 'shared' };
+        return { id, title, kind, path: prepared.path, creator: actor.name, ...(actor.role !== undefined ? { creatorRole: actor.role() } : {}), time: new Date().toISOString(), topic: request.topic, status: request.status ?? 'shared' };
       }, publish);
       return artifact;
     });

@@ -141,6 +141,7 @@ function M.sessions()
   for _, p in ipairs(M.S.processes) do
     local live = p.status == 'running'
     out[#out + 1] = {
+      layer = p.layer,
       name = p.name,
       role = p.role,
       label = M.label(p.name, p.role, p.label),
@@ -162,7 +163,7 @@ function M.sessions()
   for _, p in ipairs(M.S.presence) do
     if type(p.holds) == 'table' then holds[p.name] = p.holds end
     if not seen[p.name] then
-      out[#out + 1] = { name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true, approvalCommand = p.approvalCommand }
+      out[#out + 1] = { layer = p.layer, name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true, approvalCommand = p.approvalCommand }
       seen[p.name] = true
     end
   end
@@ -251,9 +252,9 @@ function M.set_fold(key, folded)
   if key == 'stopped' then M.S.ui.sessions_stopped_folded = folded end
 end
 
--- Visibility layers will replace this rule in T-115. Until then, now means not stopped.
+-- The session count shares the hub classifier used by every surface.
 function M.session_now(s)
-  return s.live
+  return require('cland.visibility').layer(s) == 'now'
 end
 
 M.SESSION_GROUPS = { { 'yours', 'yours' }, { 'waiting', 'waiting' }, { 'busy', 'busy' }, { 'idle', 'idle' } }
@@ -387,11 +388,12 @@ function M.set_session_role(name, role)
 end
 
 --- A session's state changed (a `session.state` event): true when the session was known.
-function M.set_session_state(name, state, approvalCommand)
+function M.set_session_state(name, state, approvalCommand, layer)
   local known = false
   for _, p in ipairs(M.S.processes) do
     if p.name == name then
       p.state = state
+      p.layer = layer
       p.approvalCommand = state == 'waiting for approval' and approvalCommand or nil
       known = true
     end
@@ -399,6 +401,7 @@ function M.set_session_state(name, state, approvalCommand)
   for _, p in ipairs(M.S.presence) do
     if p.name == name then
       p.state = state
+      p.layer = layer
       p.approvalCommand = state == 'waiting for approval' and approvalCommand or nil
       known = true
     end

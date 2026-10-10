@@ -21,12 +21,11 @@ return function(columns)
   return {
     title='Manual agent-run keys and fitted summaries at '..columns..' columns',hub='stub',
     fixture={project='qa-thread-folds'},
-    scenario={messages={general=messages},inbox={}},
+    -- Recipient roles belong to the hub classifier, before history is projected.
+    scenario={messages={general=messages},inbox={},presence={{name='aide-1',role='aide'}}},
     run=function(qa)
       local api=vim.api
       qa.wait_for(function() return #require('cland.views').topic('general').thread.messages==#messages end,10000,'history')
-      -- Aide resolution uses the same live session state as the production classifier.
-      require('cland.state').S.presence={{name='aide-1',role='aide'}}
       vim.o.columns,vim.o.lines=columns,55
       qa.keys('<Esc>:Cland preset charting<CR><Space>i')
       local win=require('cland.layout').centre()
@@ -66,7 +65,8 @@ return function(columns)
       local composer=require('cland.layout').win.composer
       api.nvim_set_current_win(composer)
       qa.keys('iunsent draft')
-      t:add(message('append',{text='Appended run'}))
+      -- Direct renderer input carries the layer a hub background-message frame supplies.
+      t:add(message('append',{text='Appended run',layer='background'}))
       qa.expect(api.nvim_get_mode().mode=='i','background append preserves composer Insert')
       qa.expect(api.nvim_get_current_win()==composer,'background append keeps composer focus')
       qa.expect(api.nvim_win_call(win,function() return vim.fn.foldclosed(long)==-1 end),'open run stays open as it grows in Insert mode')

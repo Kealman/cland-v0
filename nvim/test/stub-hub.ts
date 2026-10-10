@@ -23,6 +23,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { parseCriteria } from '../../hub/src/tracker/criteria.ts';
+import { Visibility } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
@@ -53,6 +54,7 @@ export type Scenario = {
   holdSnapshots?: string[];
   /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
+  visibility?: import('../../hub/src/hub/visibility.ts').VisibilityOverrides;
   inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null };
 };
 
@@ -103,7 +105,16 @@ function launched(f: Frame): Record<string, unknown> {
 const requests: Frame[] = [];
 const held: Frame[] = [];
 
-const write = (frame: unknown) => process.stdout.write(`${JSON.stringify(frame)}\n`);
+const visibility = () => new Visibility({
+  overrides: scenario.visibility ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.visibility ?? {},
+  role: name => String([...(scenario.presence ?? []), ...(scenario.processes ?? [])].find(s => s.name === name)?.role ?? '') || null,
+  process: id => scenario.processes?.find(p => p.sessionId === id),
+  items: () => scenario.items ?? [], topLevel: () => scenario.tracker?.levels[0] ?? 'release',
+  // Age scenarios can pin the hub clock independently of message timestamps.
+  now: () => new Date(process.env.CLAND_STUB_NOW ?? Date.now()),
+});
+const projected = (frame: unknown) => visibility().frame(frame as Frame);
+const write = (frame: unknown) => process.stdout.write(`${JSON.stringify(projected(frame))}\n`);
 const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
 const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
 const ok = (id: unknown, value: unknown) => {
@@ -144,8 +155,14 @@ function inboxValue(): Record<string, unknown> {
   const asks = ib.asks ?? [];
   const approvals = ib.approvals ?? [];
   const waiting = ib.waiting ?? [];
+  const notifications = ib.notifications ?? [];
+  const policy = visibility();
+  const count = asks.filter(r => policy.place('inbox', r, 'ask').layer === 'now').length
+    + approvals.filter(r => policy.place('inbox', r, 'approval').layer === 'now').length
+    + waiting.filter(r => policy.place('inbox', r, 'waiting').layer === 'now').length
+    + notifications.filter(r => policy.place('inbox', r).layer === 'now').length;
   return { asks, approvals, waiting, notifications: ib.notifications ?? [],
-    ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? asks.length + approvals.length + waiting.length }) };
+    ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? count }) };
 }
 
 /** The human answers an ask: the answer message (with answerTo, to the asker), the card answered, the row gone. */
@@ -331,7 +348,7 @@ if (controlPath) {
         buf = buf.slice(nl + 1);
         const cmd = JSON.parse(line) as Record<string, unknown>;
         if (cmd.emit) write(cmd.emit);
-        if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map((f) => `${JSON.stringify(f)}\n`).join(''));
+        if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map((f) => `${JSON.stringify(projected(f))}\n`).join(''));
         if (cmd.set) Object.assign(scenario, cmd.set);
         if (Array.isArray(cmd.releaseSnapshots)) {
           for (let i = snapshots.length - 1; i >= 0; i--) {

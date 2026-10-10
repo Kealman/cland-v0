@@ -681,11 +681,15 @@ test('200 message rewrites and steady-state appends stay within the rendering bu
 test('a retained answer becomes standalone when its older ask leaves the 200-message window', { skip }, async t => {
   const ask = { ...msg('old-ask'), ts: '2026-10-08T10:00:00Z', text: 'Expired question', ask: { state: 'answered', options: ['chosen option'], free: true, option: 1 } };
   const answer = { ...msg('answer', 'human', 'Retained answer'), ts: '2026-10-09T10:00:00Z', answerTo: 'old-ask' };
-  const c = await start(t, { messages: { general: [ask, answer, ...Array.from({ length: 198 }, (_, i) => ({ ...msg(`filler${i}`), ts: '2026-10-09T11:00:00Z' }))] } });
+  const c = await start(t, { holdSnapshots: ['topic.history'], messages: { general: [ask, answer, ...Array.from({ length: 198 }, (_, i) => ({ ...msg(`filler${i}`), ts: '2026-10-09T11:00:00Z' }))] } });
+  await c.control({ waitSnapshot: 'topic.history' });
+  assert.equal(await c.lua("return #require('cland.views').topic('general').thread.messages"), 0, 'connection precedes initial history');
+  await c.control({ releaseSnapshots: ['topic.history'] });
+  assert.equal(await c.lua("return vim.wait(5000, function() return #require('cland.views').topic('general').thread.messages == 200 end, 10)"), true, 'wait for the retained window before evicting its ask');
   assert.equal(await c.lua("return #require('cland.views').topic('general').thread.messages"), 200);
   assert.equal(await c.lua("return require('cland.views').topic('general').thread.by_id['old-ask'] ~= nil"), true, 'the ask starts in the live window');
-  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: { ...msg('new'), ts: '2026-10-09T12:00:00Z' } } });
-  await c.waitScreen(s => s.includes('Taking T-58.'), 'live append');
+  await c.control({ emit: { type: 'message', topic: { id: 'general', title: 'General' }, message: { ...msg('new', 'coordinator', 'Newest retained message'), ts: '2026-10-09T12:00:00Z' } } });
+  await c.waitScreen(s => s.includes('Newest retained message'), 'live append');
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
   await c.input('gg');
   await c.waitScreen(s => s.includes('Retained answer'), 'the retained answer');
@@ -820,8 +824,7 @@ test('generated live appends, ask evictions and delivery changes equal a full re
 
 
 test('one message layer rule covers the Messages table and every never-fold boundary', { skip }, async t => {
-  const c = await start(t, { messages: { general: [msg('layers')] } });
-  const cases = [
+  const cases: Array<[Record<string, unknown>, string]> = [
     [msg('human', 'human'), 'now'],
     [msg('addressed', 'implementer'), 'now'],
     [msg('coordinator-report', 'coordinator'), 'watch'],
@@ -842,20 +845,21 @@ test('one message layer rule covers the Messages table and every never-fold boun
     [{ ...msg('empty-attachments'), to: [], artifacts: [] }, 'watch'],
     [{ ...msg('event'), fromKind: 'hub', kind: 'event', to: ['coordinator'] }, 'background'],
     [{ ...msg('progress', 'implementer'), kind: 'progress', to: ['coordinator'] }, 'background'],
-    // Archive and overrides are deferred to T-115: old retained messages use the same rule.
-    [{ ...msg('old', 'implementer'), ts: '2020-01-01T00:00:00Z', to: ['reviewer'] }, 'background'],
+    // Age is classified on the hub before the thread consumes history.
+    [{ ...msg('old', 'implementer'), ts: '2020-01-01T00:00:00Z', to: ['reviewer'] }, 'archive'],
   ];
+  const c = await start(t, { messages: { general: cases.map(r => r[0]) }, presence: [{name:'human-aide', role:'aide'}] });
   const layers = await c.lua<string[]>(`
-    require('cland.state').S.presence={{name='human-aide',role='aide'}}
     local out={}
-    for _,m in ipairs(...) do out[#out+1]=require('cland.thread').layer(m) end
+    local thread=require('cland.views').topic('general').thread
+    for _,id in ipairs(...) do out[#out+1]=require('cland.thread').layer(thread.by_id[id]) end
     return out
-  `, cases.map(row => row[0]));
+  `, cases.map(r => (r[0] as {id: string}).id));
   assert.deepEqual(layers, cases.map(row => row[1]));
 });
 
 test('fold membership survives extension, split, eviction, union and rewrites per window', { skip }, async t => {
-  const agent = (id: string, seconds: number) => ({ ...msg(id, 'implementer', 'Background ' + id), to: ['reviewer'], ts: `2026-10-09T10:00:${String(seconds).padStart(2, '0')}Z` });
+  const agent = (id: string, seconds: number) => ({ layer: 'background', ...msg(id, 'implementer', 'Background ' + id), to: ['reviewer'], ts: `2026-10-09T10:00:${String(seconds).padStart(2, '0')}Z` });
   const c = await start(t, { messages: { general: [agent('a', 10), agent('b', 20), agent('c', 30), agent('d', 40)] } });
   await c.lua(`
     local api=vim.api
@@ -902,7 +906,7 @@ test('fold membership survives extension, split, eviction, union and rewrites pe
   assert.equal(await c.lua("return require('cland.views').topic('general').thread:folded_count(_G.otherwin)"), 4, 'other window stays folded');
   await c.lua("require('cland.views').topic('general').thread:add(...)", agent('e', 50));
   await compare('appended member inherits open', [true]);
-  await c.lua("require('cland.views').topic('general').thread:merge({...})", { ...msg('separator', 'human'), ts: '2026-10-09T10:00:25Z' });
+  await c.lua("require('cland.views').topic('general').thread:merge({...})", { layer: 'now', ...msg('separator', 'human'), ts: '2026-10-09T10:00:25Z' });
   await compare('human arriving mid-run splits into two open runs', [true, true]);
   // Exercise joining independent states after a separator leaves the retained model.
   await c.lua(`

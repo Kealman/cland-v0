@@ -92,7 +92,7 @@ export type ItemView = IndexedItem & {
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & { claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ItemSummary = IndexedItem & { layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; previousAncestry?: string[] };

@@ -46,6 +46,7 @@ import type { ItemChange, ItemSummary, TopicBinding } from '../tracker/tracker.t
 import { sessionActor } from '../tracker/requests.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
+import { Visibility, type VisibilityOverrides } from './visibility.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
 
 /** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
@@ -145,6 +146,8 @@ export type CoreOptions = {
   sessionHolds?: (sessionId: string) => SessionHold[];
   /** How long a session stays idle before subscriptions report it, ms (default 30 min; 0: never). */
   idleNotifyMs?: number;
+  visibility?: VisibilityOverrides;
+  topLevel?: () => string;
 };
 
 /** A hub notice recorded in a topic (Agents: the lifecycle record, spec 4.5): its kind, its text, who it is
@@ -198,7 +201,7 @@ export class HubCore {
   #canSteerEvents: (sessionId: string) => boolean = () => false;
   readonly #processItems = new Map<string, string | null>();
   readonly #artifactStates = new Map<string, Artifact['status']>();
-  readonly #processStatus = new Map<string, HarnessProcessView['status']>();
+  readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role'>>();
   #publishedPresence = '[]';
   #items: TopicItems | null;
   readonly #sessionHolds: (sessionId: string) => SessionHold[];
@@ -211,6 +214,7 @@ export class HubCore {
   readonly asks: Asks;
   /** The human's inbox (#33): open asks, approvals, waiting topics, notifications. */
   readonly inbox: InboxBoard;
+  readonly visibility: Visibility;
 
   constructor(options: CoreOptions = {}) {
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
@@ -221,6 +225,7 @@ export class HubCore {
     this.crew = options.crew;
     this.#items = options.items ?? null;
     this.#sessionHolds = options.sessionHolds ?? (() => []);
+    this.visibility = new Visibility({ overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], topLevel: options.topLevel ?? (() => 'release') });
     for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(item.id, item);
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
@@ -255,6 +260,7 @@ export class HubCore {
       },
     });
     this.inbox = new InboxBoard({
+      visibility: this.visibility,
       store: this.#store,
       now: this.#now,
       log: this.#log,
@@ -307,7 +313,7 @@ export class HubCore {
 
   /** Seed ownership facts without publishing or advancing terminal checkpoints. */
   seedProcess(process: HarnessProcessView): void {
-    this.#processStatus.set(process.sessionId, process.status);
+    this.#processFacts.set(process.sessionId, { status: process.status, role: process.role });
     this.#processItems.set(process.sessionId, process.item);
   }
 
@@ -332,7 +338,7 @@ export class HubCore {
 
   /** Adapter-owned process facts go through the same subscription as the core's events. */
   publishProcess(process: HarnessProcessView): void {
-    const previous = this.#processStatus.get(process.sessionId);
+    const previous = this.#processFacts.get(process.sessionId)?.status;
     this.seedProcess(process);
     const context = { role: process.role, item: process.item };
     const items = process.item ? [process.item] : this.#sessionItems(process.sessionId);
@@ -402,7 +408,7 @@ export class HubCore {
     // Store-and-forward includes a disconnected root lead, especially before spokes reconnect on restart.
     return this.coordinator() ?? this.#store.sessionsWithRole(COORDINATOR, this.#now().getTime() - this.#queueTtlMs)
       .find(name => {
-        const status = this.#processStatus.get(this.#store.sessionIdOf(name) ?? '');
+        const status = this.#processFacts.get(this.#store.sessionIdOf(name) ?? '')?.status;
         return status !== 'stopped' && status !== 'exited';
       }) ?? null;
   }
@@ -414,7 +420,7 @@ export class HubCore {
       const claim = isNodeLeadRole(node.claim?.role) ? node.claim : null;
       const id = claim ? this.sessionIdentity(claim.sessionId) : null;
       if (!id || id === excluded || id === UNKNOWN_SESSION || !this.#leadName(id)) continue;
-      const status = this.#processStatus.get(id);
+      const status = this.#processFacts.get(id)?.status;
       if (status !== 'stopped' && status !== 'exited') return id;
     }
     return null;

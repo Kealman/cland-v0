@@ -1,9 +1,5 @@
--- The shared message rule from §3.5/§3.14 (T-134, T-136). T-115 owns archive and overrides.
+-- Verdict presentation plus compatibility access to the hub's shared placement.
 local M = {}
-
-local function addressees(m)
-  return type(m.to) == 'table' and m.to or {}
-end
 
 --- Hub verdict reports carry a structured result; agent reports retain their first-line convention.
 function M.verdict(m)
@@ -21,28 +17,9 @@ function M.verdict(m)
   if rest:match('^clear%f[^%a]') then return 'clear' end
 end
 
---- The message part of §3.5, kept here for T-115 to replace. Archive/overrides
---- belong to that epic; cold history loads project the latest 200 messages only.
+-- Compatibility alias for thread callers; classification belongs to the hub.
 function M.layer(m)
-  local state = require('cland.state')
-  if m.fromKind == 'human' or m.fromRole == 'aide' or m.answerTo or type(m.ask) == 'table' then return 'now' end
-  local verdict = M.verdict(m)
-  if verdict then return verdict == 'clear' and 'watch' or 'now' end
-  for _, name in ipairs(addressees(m)) do
-    local session = state.session(name)
-    if name == 'aide' or (session and session.role == 'aide') then return 'now' end
-  end
-  local to_human = #addressees(m) == 0 or vim.tbl_contains(addressees(m), 'human')
-  if to_human and m.fromKind == 'agent' and m.fromRole == 'coordinator' and
-      (m.kind == nil or m.kind == 'report') and
-      not (type(m.artifact) == 'table' and type(m.artifacts) ~= 'table') then return 'watch' end
-  if vim.tbl_contains(addressees(m), 'human') then return 'now' end
-  if m.kind == 'event' or m.kind == 'progress' or m.fromKind == 'hub' then return 'background' end
-  if #addressees(m) > 0 then return 'background' end
-  local bare_artifact = type(m.artifact) == 'table' and type(m.artifacts) ~= 'table'
-  if bare_artifact then return 'background' end
-  -- Unaddressed agent messages are deliveries to the human, as the header shows.
-  return 'now'
+  return require('cland.visibility').layer(m)
 end
 
 return M

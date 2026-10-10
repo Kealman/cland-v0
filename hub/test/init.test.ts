@@ -249,7 +249,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   settings.hooks.Stop?.push({ hooks: [{ type: 'command', command: 'echo ours' }] });
   await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
   const configPath = join(root, '.cland', 'config.toml');
-  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('rate_limit_max = 30', 'rate_limit_max = 50').replace('event_limit_max = 120', 'event_limit_max = 60').replace('event_limit_window_minutes = 10', 'event_limit_window_minutes = 2').replace('retention_days = 30', 'retention_days = 0').replace('layouts = []', 'layouts = ["ru"]'));
+  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('rate_limit_max = 30', 'rate_limit_max = 50').replace('event_limit_max = 120', 'event_limit_max = 60').replace('event_limit_window_minutes = 10', 'event_limit_window_minutes = 2').replace('retention_days = 30', 'retention_days = 0').replace('layouts = []', 'layouts = ["ru"]').replace('[visibility]\n', '[visibility]\ninbox.idle = "now"\nmessages.agent = "watch"\n'));
   await writeFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'ours\n');
   const rolesBefore = await readFile(join(root, '.cland', 'roles.toml'), 'utf8');
   const before = await tree(root);
@@ -293,6 +293,9 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   assert.match(await readFile(configPath, 'utf8'), /^event_limit_window_minutes = 2$/m);
   assert.match(await readFile(configPath, 'utf8'), /^retention_days = 0$/m);
   assert.match(await readFile(configPath, 'utf8'), /^layouts = \["ru"\]$/m);
+  assert.match(await readFile(configPath, 'utf8'), /inbox\.idle = "now"/);
+  assert.match(await readFile(configPath, 'utf8'), /messages\.agent = "watch"/);
+
   assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'ours\n');
   assert.equal(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'), rolesBefore);
 

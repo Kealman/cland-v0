@@ -157,9 +157,12 @@ async function select(c: Awaited<ReturnType<typeof start>>, id: string) {
   await c.lua(`local id=...; local b=require('cland.panels').buf('items'); local w=vim.fn.bufwinid(b); vim.api.nvim_set_current_win(w); for i, line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if line:find(' '..id..' ',1,true) then vim.api.nvim_win_set_cursor(w,{i,0}); return end end; error('no row '..id)`, id);
 }
 test('T, K and J send rank operations; only task events and final siblings reorder and move next', { skip }, async t => {
-  const rankFixture: Scenario = { ...fixture, items: fixture.items!.filter(it => it.id !== 'T-16').concat(task(21, 'planned')), rankEvents: 'manual' };
+  const rankFixture: Scenario = { ...fixture, items: fixture.items!.filter(it => it.id !== 'T-16').concat(task(21, 'planned')), rankEvents: 'manual', holdSnapshots: ['task.rank'] };
   const c = await start(t, rankFixture);
   await select(c, 'T-21'); await c.input('T');
+  // Input acceptance is earlier than the stub receiving the request. Wait at that seam.
+  await c.control({ waitSnapshot: 'task.rank' });
+  await c.control({ releaseSnapshots: ['task.rank'] });
   const received = await c.control({ requests: true });
   const ranks = (received.requests as Array<Record<string, unknown>>).filter(f => f.type === 'task.rank');
   assert.equal(ranks.length, 1); assert.equal(ranks[0]?.item, 'T-21'); assert.equal(ranks[0]?.top, true);
@@ -172,8 +175,14 @@ test('T, K and J send rank operations; only task events and final siblings reord
   lines = await panel(c); assert.ok(lines.findIndex(l => l.includes('T-21')) < lines.findIndex(l => l.includes('T-15')));
   assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /T-21/, 'cursor follows moved item');
   await c.input('J');
+  await c.control({ waitSnapshot: 'task.rank' });
+  await c.control({ releaseSnapshots: ['task.rank'] });
   await c.control({ emit: { type: 'task', id: 'T-21', item: rankFixture.items!.find(it => it.id === 'T-21'), siblings: ['T-14', 'T-21', 'T-15', ...final.slice(3)] } });
-  await c.waitScreen(s => s.includes('Row 21'), 'J event'); await c.input('K');
+  await c.waitScreen(s => /Row 14[\s\S]*Row 21/.test(s), 'J event reorders the siblings');
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /T-21/, 'cursor follows J');
+  await c.input('K');
+  await c.control({ waitSnapshot: 'task.rank' });
+  await c.control({ releaseSnapshots: ['task.rank'] });
   const frames = ((await c.control({ requests: true })).requests as Array<Record<string, unknown>>).filter(f => f.type === 'task.rank');
   assert.equal(frames[1]?.after, 'T-14'); assert.equal(frames[2]?.before, 'T-14');
   await c.control({ set: { rankError: 'rank refused' } }); await c.input('T');

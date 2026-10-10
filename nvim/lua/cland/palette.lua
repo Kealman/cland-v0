@@ -31,11 +31,9 @@ end
 
 -- The groups' entries -----------------------------------------------------------------------------
 
---- Temporary visibility rule; T-115 replaces this one classifier with visibility layers.
+--- Dim background and archive hits using the hub's classification.
 function M.dim(kind, object)
-  return object and ((kind == 'items' and object.state == 'closed')
-    or (kind == 'sessions' and not object.live)
-    or (kind == 'topics' and object.status == 'closed')) or false
+  return require('cland.visibility').dim(object)
 end
 
 local function build(key)
@@ -49,7 +47,7 @@ local function build(key)
     out = require('cland.picker').BUILD[key]()
     for _, e in ipairs(out) do
       e.text = first_line(e.key)
-      local object = key == 'items' and state.item(e.value) or key == 'sessions' and state.session(e.value) or key == 'topics' and state.topic(e.value) or nil
+      local object = key == 'items' and state.item(e.value) or key == 'sessions' and state.session(e.value) or key == 'topics' and state.topic(e.value) or key == 'artifacts' and require('cland.artifacts').get(e.value) or nil
       e.dim = M.dim(key, object)
     end
   end

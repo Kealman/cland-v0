@@ -8,8 +8,9 @@
 //                  (`session.role`, `session.state`), the tracker's verdicts, and for a handover its one `handover`
 //                  notice in Agents (#31, #34) rather than its two `session.role` events.
 //
-// The "needs you" count is asks + approvals + waiting; notifications never count. Subscribers get the whole inbox
+// The "needs you" count is the number of inbox entries classified now. Subscribers get the whole inbox
 // in an `inbox` event whenever any of it changed, coalesced to one per turn of the event loop.
+import { messageVerdict, type Visibility } from './visibility.ts';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
@@ -50,6 +51,7 @@ const DEATH_REASONS = new Set(['its harness exited', 'its session was stopped'])
 
 export type InboxPort = {
   store: Store;
+  visibility: Visibility;
   now: () => Date;
   log: LogFn;
   emit: (event: HubEvent) => void;
@@ -59,7 +61,7 @@ export type InboxPort = {
   stateOf: (sessionId: string) => SessionState;
   /** How long an idle session waits before it is an event, ms; 0 or less: never. */
   idleNotifyMs: number;
-  /** Long idle is a background event for subscribed sessions, never an inbox notification. */
+  /** Long idle also reaches subscribed sessions, independently of its human inbox layer. */
   idle: (session: string, minutes: number) => void;
 };
 
@@ -71,6 +73,7 @@ export class InboxBoard {
   readonly #since = new Map<string, string>();
   /** One timer per idle session, by session id. */
   readonly #idle = new Map<string, NodeJS.Timeout>();
+  readonly #deaths = new Set<string>();
   #scheduled = false;
   #published: string | null = null;
   #closed = false;
@@ -105,11 +108,27 @@ export class InboxBoard {
       case 'session.state':
         this.#sessionState(event);
         break;
+      case 'session.process': {
+        const proc = event.process;
+        const key = `${proc.sessionId}:${proc.startedAt}`;
+        if (proc.status === 'exited' && !this.#deaths.has(key)) {
+          this.#deaths.add(key);
+          this.#notify('death', `${proc.name} died`, { session: proc.name });
+        }
+        break;
+      }
       case 'session.role':
         // a death has its own notification; a handover is one notification, from its Agents notice (below)
         if (!DEATH_REASONS.has(event.reason) && event.reason !== 'handover') this.#roleChange(event);
         break;
       case 'message':
+        if (event.message.fromKind === 'hub') {
+          const result = messageVerdict(event.message);
+          if (result) {
+            const detail = event.message.detail!;
+            this.#notify('verdict', event.message.text.split('\n')[0] ?? '', { ...(typeof detail.item === 'string' ? { item: detail.item } : {}), ...(typeof detail.session === 'string' ? { session: detail.session } : {}), result });
+          }
+        }
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'turn-failed') {
           this.#notify('turn-failed', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
         }
@@ -157,6 +176,7 @@ export class InboxBoard {
       const minutes = Math.max(1, Math.round(this.#port.idleNotifyMs / 60_000));
       const name = this.#port.store.nameOfSession(sessionId) ?? session;
       this.#port.idle(name, minutes);
+      this.#notify('idle', `${name} idle ${minutes} min`, { session: name });
     } catch (err) {
       this.#port.log({ event: 'inbox-failed', error: err instanceof Error ? err.message : String(err) });
     }
@@ -221,7 +241,12 @@ export class InboxBoard {
       approvals.push({ session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? null, attach: null });
     }
     approvals.sort((a, b) => String(a.since ?? '').localeCompare(String(b.since ?? '')));
-    return { asks, approvals, waiting, notifications: p.store.notifications(), needsYou: asks.length + approvals.length + waiting.length };
+    const notifications = p.store.notifications().map(n => p.visibility.place('inbox', n));
+    const needsYou = asks.filter(a => p.visibility.place('inbox', a, 'ask').layer === 'now').length
+      + approvals.filter(a => p.visibility.place('inbox', a, 'approval').layer === 'now').length
+      + waiting.filter(t => p.visibility.place('inbox', t, 'waiting').layer === 'now').length
+      + notifications.filter(n => n.layer === 'now').length;
+    return { asks, approvals, waiting, notifications, needsYou };
   }
 
   needsYou(): number {

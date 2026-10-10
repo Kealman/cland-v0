@@ -15,6 +15,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/watch.ts` | A folder watch that falls back to polling every 500 ms where watching is refused (a macOS sandbox denies FSEvents): used for `.cland/tasks/`; roles refresh uses its own async timer. |
 | `src/hub/topics.ts` | The topic model (spec 4.5): the status moves, the mentions of a human message, the "no coordinator" warning, the port to the tracker a binding goes through. |
 | `src/hub/asks.ts` | Asks (spec 4.5, #33): the Coordinator's question with numbered options; the human's answer with `answer_to`; withdrawn by `resolve`, cancelled by a close. |
+| `src/hub/visibility.ts` | The §3.5 placement table, project overrides and outgoing frame layer projection shared by all surfaces. |
 | `src/hub/inbox.ts` | The inbox (spec 5, #33): asks, approvals, waiting topics and notifications, the "needs you" count, the `inbox` event; the idle threshold from `.cland/config.toml`. |
 | `src/hub/store.ts` | The SQLite store (WAL): sessions, topics (status, binding, the human's read mark), messages (each in a topic), per-addressee deliveries (queued → delivered on the spoke's ack → injected on the adapter's confirmation, or dropped past the TTL), hygiene state, additive migrations guarded by `pragma table_info`. |
 | `src/hub/hygiene.ts` | Size cap, rate limit per session, loop breaker per pair, keyed by the session id (a rename changes nothing) and written through to the store so a restart keeps a mute. Its constants are the defaults; `.cland/config.toml` `[hygiene]` overrides them at hub start (`src/init/config.ts`). |
@@ -167,7 +168,7 @@ The **inbox** (spec 5, `Inbox.dc.html`) is the human's queue, in a fixed order: 
 | `waiting` | Topics `waiting for human` with no open ask (`Topic`). |
 | `notifications` | Dismissable, never blocking: a verdict comment written through the hub, from the verdict the file records (a structured `verdict` or a text whose header lines read back as one) (`T-1 review not clear · rev-1 · run r-1`, with `item`, `session`, `result`), a role assigned, cleared or granted at launch (`rev-1 is Reviewer: assigned`, from the `session.role` event), a handover (one row, the first line of its `handover` notice in Agents: `coord [Coordinator] handed the Coordinator role over to next, with a handover note`; its two `session.role` events make none), a harness that died (`impl-3 [Implementer] died: its harness exited; …`), a session idle longer than the threshold (`impl-1 [Implementer] idle 30 min`), an inject whose outcome is unknown (`coord [Coordinator]: a message may or may not have reached its harness (…); … cland session retry coord <id> sends it again`). Each `{"id","kind":"verdict|role|death|idle|delivery-uncertain","text","ts","item"?,"session"?,"result"?,"dismissed":false}`, stored in `hub.db` (table `notifications`) with its `dismissed` flag. |
 
-`needsYou` is asks + approvals + waiting; notifications never count. Retention never removes an open ask or its message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
+`needsYou` counts inbox entries classified `now` by the hub, with default notifications in `watch` until T-171 defines their resolution. Project overrides can raise verdicts, deaths or long idles to `now`; they count until dismissed. See [visibility classification](../docs/visibility.md). Retention never removes an open ask or its message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
 
 | Request | Result `value` |
 | --- | --- |
@@ -1285,7 +1286,7 @@ when its durable cleanup receipt remains pending. Ordinary
 busy/idle, launch and waiting-for-human transitions require explicit subscriptions.
 Explicit requests can also widen the event types or request `digest: "now"`; an
 overlap still delivers an occurrence once per recipient. Verdicts, deaths and long
-idle create no inbox notifications. Harness approval prompts remain in the inbox
+idles also create inbox notifications classified by the shared visibility policy. Harness approval prompts remain in the inbox
 because they require the human to answer.
 
 ### Crew staffing
