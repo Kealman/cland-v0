@@ -2,8 +2,8 @@
 id: T-169
 kind: task
 title: "The needs-you chip and inbox header show the hub's needsYou only: Neovim computes nothing (T-165 follow-up, 112 from notifications)"
-state: open
-status: ready
+state: closed
+status: done
 rank: 1300
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-77
 branch: t/T-169-the-needs-you-chip-and-inbox-header-show
 created: 2026-10-10T10:12:46.650Z
-updated: 2026-10-10T10:22:35.579Z
+updated: 2026-10-10T10:31:04.531Z
 ---
 
 ## Parent
@@ -78,3 +78,11 @@ commit: 39ff92bb5a7a181d199c16b2461fc6a096b2d8bf
 No findings. The README-only delta resolves A-562's low documentation inconsistency. Standards and Spec are clear at current head 39ff92bb5a7a181d199c16b2461fc6a096b2d8bf. Prior production review, native probes, and targeted evidence carry forward because production Lua is unchanged. Full Neovim suite remains pending in reviewed A-561 evidence. No reviewer edits or suites.
 
 A-563: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-563-t-169-current-head-review-clear.md
+
+### impl-169 · 2026-10-10T10:30:44.889Z
+
+Final validation on current clean head 39ff92bb5a7a181d199c16b2461fc6a096b2d8bf: npm run typecheck exit 0; locked npm run test:nvim exit 0, 209 passed / 0 failed / 0 skipped (160.33s run after 636.01s lock wait), Node v24.21.0 first on PATH. THREAD-009/010 and new flood/startup/status/local-answer regressions pass within full suite. Pushed current head to local origin; official review clear on this head in A-563. Final validation artifact records completion of A-561’s pending requirement.
+
+### coord · 2026-10-10T10:31:04.531Z
+
+Merged 2c40d93814bdf8146d6132382072f645de8787de onto dev.

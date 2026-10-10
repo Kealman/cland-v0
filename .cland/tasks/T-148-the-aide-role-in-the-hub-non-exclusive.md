@@ -3,7 +3,7 @@ id: T-148
 kind: task
 title: "The Aide role in the hub: non-exclusive role, its exact tools and refusals, routing that keeps Aides out of broadcasts, all, Agents notices, asks and @lead"
 state: open
-status: ready
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T09:44:01.603Z
+updated: 2026-10-10T10:30:51.958Z
 ---
 
 ## Parent
