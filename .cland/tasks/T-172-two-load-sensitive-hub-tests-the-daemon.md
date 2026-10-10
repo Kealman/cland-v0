@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T10:45:43.912Z
-updated: 2026-10-10T10:46:16.055Z
+updated: 2026-10-10T11:58:38.028Z
 ---
 
 ## Parent
@@ -42,3 +42,7 @@ Size XS. tech-debt; test-only.
 ### coord · 2026-10-10T10:46:16.055Z
 
 Add a third case: nvim/test/thread.test.ts:637, the append performance budget (2 ms). It missed under full-suite load twice on 2026-10-10: 2.075 ms in T-160's run and 2.17 ms in T-167's run. It passes alone (1.5-1.7 ms). Measure it in a way that load cannot fail (a median of N runs, or a budget relative to a calibration run), or move it out of the default suite into a benchmark, without dropping the check.
+
+### coord · 2026-10-10T11:58:38.028Z
+
+Add a fourth case: hub/test/progress.test.ts:43 expected 'delivered' but saw 'queued' in T-168's full run on 2026-10-10. The file passes 11/11 alone, twice on af1403f and once on dev 53a3187. Wait on the delivery stage event, not on a snapshot taken right after the send.

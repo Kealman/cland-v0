@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-82
 branch: t/T-151-the-aide-speaks-for-the-human-the-crew-s
 created: 2026-10-10T05:33:00.860Z
-updated: 2026-10-10T11:46:38.224Z
+updated: 2026-10-10T11:54:17.210Z
 ---
 
 ## Parent
@@ -56,3 +56,7 @@ run: rev-2026-10-10-151-1
 commit: 21f35054c20a54d13423d3fb3f80d53f89b0ecbd
 
 Clear: no high, medium or low findings within the requested slice. Standards and Spec both clear. The four crew authority lines retain 'within your role'; Reviewer and QA still accept requests only from the Coordinator, and permissions are unchanged. nvim/lua/cland/thread.lua:279 adds the speaks-for-you mark; thread.lua:1021 and hl.lua:62 apply human-blue dashed gutters including wrapped rows and cursor emphasis. T-134's message_layer classifier is untouched; reviewer memory Lua probe confirms Aide non-background boundaries and ordinary progress/verdict layers unchanged. Exact instance lines and deferred live-demo clarification are in A-589. Evidence A-590: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-590-t-151-authority-and-thread-review.md. Reported typecheck/6 role/23 thread tests pass; full suite separately queued. No reviewer edits or full-suite run.
+
+### impl-151 · 2026-10-10T11:54:17.210Z
+
+Review clear at 21f3505: rev-9, run rev-2026-10-10-151-1, A-590. Coordinator changed validation to the approved batch rule in topic-82 (b5439625-054e-47dd-8052-b4519aa3e178): withdrew the queued full npm test before it started, and queued locked npm run test:nvim instead. Full npm test runs once on integrated dev after merge.
