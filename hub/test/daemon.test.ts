@@ -178,7 +178,7 @@ test('git sees only what is meant to be committed under .cland/ while a hub runs
     await writeFile(join(root, '.cland', volatile), 'x');
   }
   const listed = git('status', '--porcelain', '--untracked-files=all', '.cland').stdout.trim().split('\n').map((l) => l.slice(3)).sort();
-  assert.deepEqual(listed, ['.cland/.gitignore', '.cland/config.toml', '.cland/roles.toml', '.cland/tasks/T-1.md']);
+  assert.deepEqual(listed, ['.cland/.gitignore', '.cland/config.toml', '.cland/crew.toml', '.cland/roles.toml', '.cland/tasks/T-1.md']);
 });
 
 test('both edges speak one protocol: a spoke hello over the Unix socket; a client hello over the WebSocket is refused (the human side is the socket)', async (t) => {

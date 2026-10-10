@@ -1,5 +1,6 @@
 // The hub's core: presence, names, routing and store-and-forward. Transport-free, so the network
 // edge (`./server.ts`) is one thin layer over it.
+import { crewSummary, type CrewConfig, type CrewSource } from '../crew.ts';
 import type { Resumed } from './budget.ts';
 import { randomUUID } from 'node:crypto';
 import {
@@ -137,6 +138,7 @@ export type CoreOptions = {
    * human side) a hello's role is taken as declared.
    */
   roles?: RolesSource;
+  crew?: CrewSource;
   /** The tracker as a topic's binding sees it (`topic.create` with an item); absent, a binding is refused. */
   items?: TopicItems;
   /** Indexed session work, without file I/O; absent on a hub without a tracker. */
@@ -158,6 +160,8 @@ export const COORDINATOR = 'coordinator';
 const ROLE_NOTICE = 'role';
 
 export class HubCore {
+  readonly crew: CrewSource | undefined;
+  publishCrew(config: CrewConfig): void { this.#emit({ type: 'crew', config, summary: crewSummary(config) }); }
   readonly #live = new Map<string, Connection>();
   readonly #reserved: ReadonlySet<string>;
   readonly #now: () => Date;
@@ -214,6 +218,7 @@ export class HubCore {
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
     this.#roles = options.roles ?? null;
+    this.crew = options.crew;
     this.#items = options.items ?? null;
     this.#sessionHolds = options.sessionHolds ?? (() => []);
     for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(item.id, item);

@@ -2,7 +2,7 @@
 // Every managed file or block carries "managed by cland <version>"; a file without the mark is the project's own and
 // is never written. Running it again changes nothing; after a version change it rewrites the managed parts only.
 //
-//   .cland/.gitignore, config.toml, roles.toml (written once, then the human's), tasks/.gitkeep
+//   .cland/.gitignore, config.toml, crew.toml and roles.toml (written once, then the human's), tasks/.gitkeep
 //   the General and Agents topics, in .cland/hub.db (not committed), through the store: no hub is needed
 //   .agents/skills/<name>/ and its manifest, .claude/skills (a symlink, or one per skill in the project's own folder)
 //   docs/agents/issue-tracker.md, domain.md, triage-labels.md
@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { AGENTS, GENERAL } from '../hub/core.ts';
 import { Store } from '../hub/store.ts';
 import { GITIGNORE, MANAGED_BY, layout } from '../project.ts';
+import { DEFAULT_CREW_TOML } from '../crew.ts';
 import { DEFAULT_ROLES_TOML } from '../roles/default-roles.ts';
 import { provisionClaudeSettings } from './claude-settings.ts';
 import { provisionConfig } from './config.ts';
@@ -46,6 +47,8 @@ export function provision(root: string, options: ProvisionOptions = {}): Change[
   provisionConfig(report, l.config, root);
   if (existsSync(l.roles)) report.add(l.roles, 'unchanged', 'written once with the defaults, then the human\'s: cland never rewrites it');
   else writeIfChanged(report, l.roles, DEFAULT_ROLES_TOML, null);
+  if (existsSync(l.crew)) report.add(l.crew, 'unchanged', 'project staffing: cland never rewrites it');
+  else writeIfChanged(report, l.crew, DEFAULT_CREW_TOML, null);
   const keep = join(l.tasks, '.gitkeep');
   const keepText = readText(keep);
   if (keepText !== null && keepText !== '' && !isManagedFile(keepText)) report.add(keep, 'kept', 'the project\'s own');

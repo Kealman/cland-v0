@@ -20,6 +20,7 @@ import { Tracker } from '../tracker/tracker.ts';
 import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
 import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
+import { CrewFile, crewSummary } from '../crew.ts';
 import { RolesFile } from '../roles/config.ts';
 import { readProjectConfig } from '../init/config.ts';
 import { Journal, journalPath, readJournal, type JournalOpen } from './journal.ts';
@@ -119,6 +120,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
   let hub!: HubBase;
+  const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker.levels, requestGuard.resumer('crew.refresh'));
   let adapters: ProjectSessions | null = null;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
@@ -126,6 +128,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     tracker.start();
     await tracker.rescanAsync();
     await roles.start();
+    await crew.start();
     hub = createHubBase({
       secret,
       store: new Store(l.db),
@@ -134,6 +137,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       ...(config ? { rateLimit: config.hygiene.rateLimit, eventLimit: config.hygiene.eventLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
       tracker,
       roles,
+      crew,
       artifactRetentionDays: config?.artifacts.retentionDays ?? 30,
       idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),
       // tests only: how long a queued message and a remembered name last (the default is a day)
@@ -148,6 +152,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
           version: VERSION,
           root,
           startedAt: startedAt.toISOString(),
+          crew: { config: crew.get(), summary: crewSummary(crew.get()) },
           keys: config?.keys ?? { layouts: [] },
           tracker: config?.tracker ?? { levels: [...tracker.levels] },
           uptimeMs: Date.now() - startedAt.getTime(),
@@ -157,6 +162,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       },
     });
   } catch (err) {
+    await crew.stop();
     await roles.stop();
     await tracker.stop();
     try { await closeLogs(); } finally { lock.release(); }
@@ -181,6 +187,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       await sweep;
       adapters?.close();
       await tracker.stop();
+      await crew.stop();
       await hub.close();
       await roles.stop();
       // the discovery file and then the lock go last: a successor can only start once this hub is gone
@@ -205,6 +212,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       await ws?.close();
       ws = null;
       if (listen === 'required') {
+        await crew.stop();
         await hub.close();
         await tracker.stop();
         await roles.stop();

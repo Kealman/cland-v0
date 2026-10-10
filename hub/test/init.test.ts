@@ -20,6 +20,15 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   const root = await tempProject(t);
   await gitRepo(root);
   await run(root, 'init');
+  const crewPath = join(root, '.cland/crew.toml');
+  const crew = await readFile(crewPath, 'utf8');
+  assert.match(crew, /leads = \[\]/);
+  assert.match(crew, /\[crew.reviewer\][\s\S]*?size = 1[\s\S]*?keep_context = true/);
+  const customCrew = crew.replace('size = 1', 'size = 2');
+  await writeFile(crewPath, customCrew);
+  await run(root, 'init');
+  await run(root, 'update');
+  assert.equal(await readFile(crewPath, 'utf8'), customCrew, 'init and update preserve project staffing');
   const path = join(root, '.cland/config.toml');
   const initial = await readFile(path, 'utf8');
   assert.match(initial, /\[tracker\]\nlevels = \["release","epic"\]/);
@@ -110,6 +119,7 @@ test('cland init on an empty repository: git status shows exactly the committed 
     '.claude/skills',
     '.cland/.gitignore',
     '.cland/config.toml',
+    '.cland/crew.toml',
     '.cland/roles.toml',
     '.cland/tasks/.gitkeep',
     'AGENTS.md',
@@ -321,7 +331,7 @@ test('a hub started in an initialised project has General and Agents, serves the
   const secret = (await readFile(join(root, '.cland', 'secret'), 'utf8')).trim();
   assert.match(secret, /^[0-9a-f]{64}$/);
   const status = await gitStatus(root);
-  assert.ok(status.every((p) => /^(\.agents\/skills\/|\.claude\/(settings\.json|skills)$|\.cland\/(\.gitignore|config\.toml|roles\.toml|tasks\/\.gitkeep)$|AGENTS\.md$|docs\/agents\/)/.test(p)), status.join('\n'));
+  assert.ok(status.every((p) => /^(\.agents\/skills\/|\.claude\/(settings\.json|skills)$|\.cland\/(\.gitignore|config\.toml|crew\.toml|roles\.toml|tasks\/\.gitkeep)$|AGENTS\.md$|docs\/agents\/)/.test(p)), status.join('\n'));
   for (const f of status) {
     if ((await lstat(join(root, f))).isSymbolicLink()) continue;
     assert.ok(!(await readFile(join(root, f), 'utf8')).includes(secret), `${f} holds the secret`);

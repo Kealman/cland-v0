@@ -314,6 +314,9 @@ function M.winbar(win)
     return head(win, 'ITEMS', { { require('cland.items').summary(), 'ClandDimBar' } })
   elseif role == 'sessions' then
     local c = state.counts()
+    if state.S.crew and state.S.crew.summary then
+      return head(win, 'SESSIONS', { { state.S.crew.summary, 'ClandDimBar' } })
+    end
     return head(win, 'SESSIONS', { { c.live .. ' live · ' .. c.waiting .. ' waiting' .. (c.down > 0 and (' · ' .. c.down .. ' down') or ''), 'ClandDimBar' } })
   elseif role == 'topics' then
     local unread = state.unread_total()

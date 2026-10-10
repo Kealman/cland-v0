@@ -17,6 +17,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
+import { crewSummary } from '../crew.ts';
 import type { RolesConfig } from '../roles/config.ts';
 import { ROLE_NAMES, withRole } from '../names.ts';
 import {
@@ -101,7 +102,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1033,6 +1034,22 @@ export class Dispatcher {
           const bad = Dispatcher.#verdictFromText(frame);
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           return task(frame, 'client');
+        }
+        if (isClientRequest(frame) && (frame.type === 'crew.show' || frame.type === 'crew.set')) {
+          const crew = core.crew;
+          if (!crew) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub has no crew configuration')));
+          const value = () => ({ config: crew.get(), summary: crewSummary(crew.get()) });
+          if (frame.type === 'crew.show') return peer.send({ type: 'result', id: frame.id, ok: true, value: value() });
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (caller && (!now || now.sessionId !== caller.sessionId || !['coordinator', 'lead', 'aide'].includes(now.role ?? ''))) throw new ToolForbidden(now?.role ?? null, 'crew.set', 'crew editing belongs to the Coordinator, a Lead, an Aide or the human');
+          };
+          if (caller && !['coordinator', 'lead', 'aide'].includes(caller.role ?? '')) return this.#refuse(caller, frame, peer, 'crew.set', 'crew editing belongs to the Coordinator, a Lead, an Aide or the human');
+          const resumed = this.#guard.resumer(frame.type, client);
+          return later(frame.type, crew.set(frame.key, frame.value, resumed, authorize).then(
+            () => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: value() })),
+            err => resumed(() => Dispatcher.#failure(frame.id, err)),
+          ));
         }
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
         if (isSessionRequest(frame)) return session(frame);

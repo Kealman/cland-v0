@@ -29,6 +29,7 @@ const READS: ReadonlySet<string> = new Set([
   'topic.list',
   'topic.history',
   'inbox.list',
+  'crew.show',
   'role.list',
   'role.state',
   'hub.status',

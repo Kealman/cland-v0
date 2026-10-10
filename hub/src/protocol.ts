@@ -193,6 +193,7 @@ export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Top
 
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
+  | { type: 'crew'; config: import('./crew.ts').CrewConfig; summary: string }
   | { type: 'artifact'; artifact: Artifact }
   /** The connected sessions, replaced on a hello, last spoke leaving, rename, status or role change. */
   | { type: 'presence'; sessions: Presence[] }
@@ -451,6 +452,8 @@ export type ClientRequest =
   | PromptSend
   | ArtifactPromote
   /** What runs: the hub's process and the connected sessions. */
+  | { type: 'crew.show'; id: string }
+  | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
   | { type: 'hub.status'; id: string; flushLogs?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
@@ -519,6 +522,7 @@ export type RoleList = {
 };
 
 export type HubStatus = {
+  crew?: { config: import('./crew.ts').CrewConfig; summary: string };
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
   keys?: { layouts: string[] };
   /** Loaded tracker container levels, ordered top-down; the UI uses these for release scope. */
@@ -612,6 +616,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'prompt.send':
     case 'artifact.promote':
       return true;
+    case 'crew.set':
+      return typeof f.key === 'string' && f.value !== undefined;
+    case 'crew.show':
     case 'hub.subscriptions':
     case 'hub.status':
     case 'hub.stop':

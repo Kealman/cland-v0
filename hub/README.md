@@ -443,6 +443,7 @@ Nothing is written or removed through a symbolic link: every destination and eac
 | --- | --- | --- |
 | `.cland/.gitignore` | yes | The hub's own rule: rewritten while its first line carries the mark. |
 | `.cland/config.toml` | yes | Written with the defaults; `update` rewrites it to the current template and keeps the values it finds. |
+| `.cland/crew.toml` | yes | Staffing policy, written once with defaults; reloaded on change, keeping the last good version. |
 | `.cland/roles.toml` | yes | Written with the defaults when missing, then the human's: never rewritten (`roles.toml` above). |
 | `.cland/tasks/.gitkeep` | yes | A mark line. |
 | `.cland/hub.db` | no | The General and Agents topics, created through the store as the hub would at its first start. |
@@ -1204,3 +1205,13 @@ Explicit requests can also widen the event types or request `digest: "now"`; an
 overlap still delivers an occurrence once per recipient. Verdicts, deaths and long
 idle create no inbox notifications. Harness approval prompts remain in the inbox
 because they require the human to answer.
+
+### Crew staffing
+
+`.cland/crew.toml` is committed project staffing policy. Init and the first hub start write it once; init/update preserve existing files. `roles.toml` continues to hold role definitions, permissions and harness defaults.
+
+The top-level `leads` is a unique list of configured container levels (empty for a flat crew). Tables `[crew.<role>]` accept `policy` (`per-item`, `per-group`, `pool`, `singleton`), optional positive integer `size`, boolean `keep_context` and `subagents`, and `stop_after` (`merge` or `never`). Unknown roles and keys are refused. Missing roles/keys take built-in defaults: Coordinator singleton; Lead per-item; Implementer per-item stopping after merge; Reviewer pool of one with kept context; QA singleton; Aide per-item without a cap. Only Coordinator and Lead allow sub-agents by default. Pool size defaults to one; singleton size must be one. Per-item/per-group size may be omitted for no cap. `per-group` is accepted for epic plans to staff later.
+
+`cland crew show [--json]` returns the effective policy and its summary. `cland crew set reviewer.size 2` validates and atomically saves a complete TOML file; values accept TOML booleans, integers and quoted strings, or bare policy names. `cland crew set leads '["epic"]'` changes lead levels. Set normalizes the file, including filling omitted defaults. The human, Coordinator, Lead and Aide may set it; other session shells may show it. No role-clause or permission-file changes are needed.
+
+The hub reloads every 500 ms off the request path. A malformed, invalid or missing file emits an Agents refusal notice to the Coordinator and retains the last good crew (built-in defaults before the first valid load). Set refuses to overwrite an invalid file. `crew.show` returns `{config, summary}`; `crew.set` takes `{key, value}` and returns the same shape. `hub.status.crew` carries that snapshot, and a `crew` event carries `{config, summary}` when the effective policy changes. The sessions panel header follows both snapshots and events, for example `impl per item · rev pool 2 · qa 1 · leads: epic`. Launch caps, pool reuse, merge stops and clause enforcement are implemented in the next staffing slice.

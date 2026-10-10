@@ -31,6 +31,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return { kind: 'refusal', text: `${String(entry.file)}: refused at index: ${String(entry.error)}`, detail: { file: entry.file } };
     case 'task-parenting-warning':
       return { kind: 'refusal', text: `${String(entry.file)}: hand edit retained with invalid parenting: ${String(entry.error)}`, detail: { file: entry.file } };
+    case 'crew-refused':
+      return { kind: 'refusal', text: `${String(entry.path)}: crew refused: ${String(entry.error)}; keeping the last good crew`, to: ['coordinator'], detail: { file: entry.path } };
     case 'config-unreadable':
       return { kind: 'refusal', text: `${String(entry.file)}: config refused: ${String(entry.error)}; keeping the defaults`, detail: { file: entry.file } };
     case 'task-ready-paused':

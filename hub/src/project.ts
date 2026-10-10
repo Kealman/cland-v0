@@ -29,10 +29,10 @@ export const MANAGED_BY = `managed by cland ${VERSION}`;
 
 /**
  * `.cland/.gitignore`: everything volatile, QA runs and their evidence (`qa/`, decision D14) included. What is
- * meant to be committed — `tasks/`, `roles.toml`, `config.toml` and this file — is deliberately absent.
+ * meant to be committed — `tasks/`, `roles.toml`, `crew.toml`, `config.toml` and this file — is deliberately absent.
  */
 export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; remove this line to take the file over.
-# Volatile hub state: never committed. tasks/, roles.toml and config.toml are.
+# Volatile hub state: never committed. tasks/, roles.toml, crew.toml and config.toml are.
 hub.db*
 hub.json
 ui.json
@@ -67,6 +67,7 @@ export type Layout = {
   gitignore: string;
   /** The role definitions (spec 4.4): written with the defaults when missing, then the human's. */
   roles: string;
+  crew: string;
   /** The project's settings (`cland init`): its name, the hygiene thresholds. */
   config: string;
   /** The tracker's items, committed. */
@@ -90,6 +91,7 @@ export function layout(root: string): Layout {
     lock: join(dir, 'hub.lock'),
     gitignore: join(dir, '.gitignore'),
     roles: join(dir, 'roles.toml'),
+    crew: join(dir, 'crew.toml'),
     config: join(dir, 'config.toml'),
     tasks: join(dir, 'tasks'),
     logDir: join(dir, 'log'),

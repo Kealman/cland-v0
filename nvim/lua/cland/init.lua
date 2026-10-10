@@ -78,6 +78,7 @@ local function replay_sessions(events, processes)
       if e.type == 'presence' and type(e.sessions) == 'table' then state.S.presence = e.sessions
       elseif e.type == 'role.vacant' then state.S.hub_coordinator = { name = nil }
       elseif e.type == 'role.filled' then state.S.hub_coordinator = { name = e.session }
+      elseif e.type == 'crew' then state.S.crew = { config = e.config, summary = e.summary }
       elseif e.type == 'inbox' then state.set_inbox(e.inbox) end
     end
   end
@@ -131,6 +132,7 @@ local refresh_sessions = single_flight(function(done)
   M.client:snapshot({ type = 'hub.status' }, function(err, value, events)
     if not err and value then
       state.S.presence = value.sessions or {}
+      state.S.crew = type(value.crew) == 'table' and value.crew or nil
       require('cland.keys').layouts(value.keys and value.keys.layouts or {})
       state.S.tracker = type(value.tracker) == 'table' and value.tracker or { levels = {} }
       if value.coordinator == vim.NIL then
@@ -243,6 +245,10 @@ local function wire_client(client)
   end)
   client:on('role.filled', function(event)
     state.S.hub_coordinator = { name = event.session }
+    state.changed()
+  end)
+  client:on('crew', function(event)
+    state.S.crew = { config = event.config, summary = event.summary }
     state.changed()
   end)
   client:on('session.role', function(event)
