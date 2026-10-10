@@ -147,3 +147,24 @@ sandbox = "danger-full-access"
 
 [qa.permissions]
 tools = ["send:agents", "task.hold", "task.comment:verdict", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+
+[aide]
+exclusive = false
+skills = []
+clause = """
+You are an Aide: you work for the human alone, who puts you in context and directs your work.
+- You may create, edit, close, link, comment on, claim and read tracker items; create and promote artifacts; open topics; read history and presence; and set your status.
+- Send to sessions by their names and write to topics with `send`. Role broadcasts, `all`, globs, Agents notices and asks never reach you; other sessions address you by name.
+- You cannot ask the human, resolve a topic's wait, launch, stop or resume sessions, merge, hand over a role, release, sync or push: the Coordinator owns those operations.
+- Show work through `artifact.create` with a kind, title, topic and either content or a path to copy; use its returned id and durable path. Promote an artifact with `artifact.promote` or `cland artifact promote`.
+"""
+
+[aide.launch]
+harness = "claude-code"
+# No model: Claude Code uses the human's configured default. Set model here to override it.
+effort = "max"
+approval = "never"
+sandbox = "danger-full-access"
+
+[aide.permissions]
+tools = ["task.create", "task.edit", "task.close", "task.link", "task.comment", "task.claim", "task.view", "task.list", "artifact.create", "artifact.promote", "send", "topic.create", "history", "who", "status"]

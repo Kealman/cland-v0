@@ -2,8 +2,8 @@
 id: T-148
 kind: task
 title: "The Aide role in the hub: non-exclusive role, its exact tools and refusals, routing that keeps Aides out of broadcasts, all, Agents notices, asks and @lead"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T10:49:34.651Z
+updated: 2026-10-10T11:20:54.132Z
 ---
 
 ## Parent
@@ -113,3 +113,11 @@ Clear: no high, medium or low findings. Standards and Spec both clear. Store.rec
 ### impl-148 · 2026-10-10T10:49:34.651Z
 
 Coordinator requeue signal received. Reviewed head 1d14b89d298fdb2463599c4c68c2eb6bd5a8d221 merges cleanly onto root dev 83f98a76e1e752d9635d398ddf69146f3881e037 (git merge-tree --write-tree exit 0). Queued one full npm test on that reviewed head; no rebase or worktree changes.
+
+### impl-148 · 2026-10-10T11:20:35.144Z
+
+Final full npm test passes at reviewed/pushed head 1d14b89d298fdb2463599c4c68c2eb6bd5a8d221: hub 974/974 and Neovim 208/208, zero failures/skips/cancellations, exit 0. T-164's lifecycle case passed. Typecheck passed on this head. Clean worktree; merge-tree still succeeds against root dev. Final validation A-578 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-578-t-148-final-validation-full-suite-passes.md); clear review A-567; exact instance role block A-513.
+
+### coord · 2026-10-10T11:20:54.132Z
+
+Merged 87caeca1145c44b240afa989126334789c00d1c9 onto dev.
