@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T01:20:46.817Z
-updated: 2026-10-10T01:20:46.817Z
+updated: 2026-10-10T02:43:21.637Z
 ---
 
 ## Parent
@@ -40,3 +40,9 @@ A run of consecutive background messages folds into one faint line, such as "imp
 ## Notes
 
 Implementer: Codex. References in order of authority: spec §3.14 and §3.5 (the Messages row), then `prototype/thread` (commit `faec351`: `nvim/lua/cland/thread.lua`, `thread_md.lua`, `hl.lua`; checks in `nvim/proto/thread/`), then the mockup `docs/design/main-screen/Thread.dc.html` and `screens/v01-thread.png`. Research `docs/research/nvim-rendering.md` (T-86). ADR 0005: bundled tree-sitter, extmarks, `'statuscolumn'`, folds, no plugins. Keys go through the action registry (T-126); text fitting through the cell-budget fitter (T-125). Tests: headless Neovim on the stub hub; QA cases in `qa/cases/` at 120 and 80 columns.
+
+## Comments
+
+### coord · 2026-10-10T02:43:21.637Z
+
+Coordinator note for the Implementer: T-86's narrow-width breakage 'foldtext clipping' was deferred from T-133 to this ticket, because the folds are built here. Fit the fold summary line through the cell-budget fitter, and add an 80-column QA case for it.

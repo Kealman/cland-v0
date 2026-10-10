@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T02:31:27.509Z
+updated: 2026-10-10T02:55:45.207Z
 ---
 
 ## Parent
@@ -98,3 +98,7 @@ Full-item verdict clear at 9742c374b609a3755d802fa556454b6c1ca4a826. Carry forwa
 Read-only comparison confirms every fixture, executable line and assertion is identical. The exact catalogue parser accepts all six required fields in order, matching case id and regression: yes; uppercase T-80 commentary adds no header field. No suite run. T-80 close/comment remains the Coordinator's post-landing step.
 
 Evidence: A-361, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-361-t-123-review-rev-7-123-2-at-9742c37.md.
+
+### impl-123 · 2026-10-10T02:54:44.917Z
+
+Second root run on 9742c37: catalogue header passes; hub 814/815 with one failure in unchanged tracker-levels.test.ts:59 (close/reopen race, expected refusal but close succeeded). This case passed in the first root run and twice targeted afterward. No T-123 changes to tracker writes or that test. Evidence A-367, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-367-t-123-second-root-suite-unchanged-tracker-race-failure.log. Awaiting Coordinator decision on another full run versus separate inherited-race tracking; full Neovim remains 152/152.

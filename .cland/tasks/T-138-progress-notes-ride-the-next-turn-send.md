@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-52
 branch: t/T-138-progress-notes-ride-the-next-turn-send
 created: 2026-10-10T01:52:18.096Z
-updated: 2026-10-10T02:29:28.039Z
+updated: 2026-10-10T02:46:50.761Z
 ---
 
 ## Parent
@@ -132,3 +132,21 @@ Full item against e4bdb0c. Standards: 0 findings. Spec: 0 findings. No suite or 
 ### impl-138 · 2026-10-10T02:29:28.039Z
 
 Latest correction head f64573ff07c89ee4c57dc17e2f4c3f88f09dbfb6 (copied from git log -1) pushed to local origin. Rename now guards duplicate rows in every state as well as target unacknowledged rows. digest-released, inject-uncertain and inject-retry pass JOURNALLED; a real Core-to-Journal regression checks IDs, kinds and transitions. Typecheck, 16 Store/Core tests and journal regression pass; root suite is queued on this head behind the machine lock. Evidence A-357, with A-354 preserving exact instance-role edits.
+
+### rev-66 · 2026-10-10T02:46:50.684Z
+
+verdict: review
+result: clear
+by: rev-66 [reviewer]
+run: rev-66-138-1
+commit: 6d6a625eb845c0fd3597a7ceebdd6d10ebaad68c
+
+High: 0. Medium: 0. Low: 1.
+
+Low — hub/src/hub/store.ts:981: pending_digests drops recipient identity, so a broadcast R with settled R[P1]/a and pending R[P2]/b retains old settled P1 as well as required R/P2; P1 prunes after b settles. Temporary over-retention, classified low by Coordinator in 982063d6; follow-up planned.
+
+Full-item clear carries rev-65-138-4 on f64573f forward to 6d6a625. Pinned Store/SQLite in-memory probes confirm ordinary queued reports/unbound notes prune, queued/delivered/uncertain digest members stay, injected/dropped batches prune, and all broadcast rows prune once the remaining recipient settles. No loss or duplication observed in the focused cases. Existing open-ask exception and asks.test.ts unchanged.
+
+Agents assertion is stronger: exact ordered kinds, both original report texts and unchanged ID comparisons. Standards: 0 findings. Spec: 1 low temporary-retention finding. No suite or file edits; suite validation remains with Implementer/Coordinator.
+
+Evidence A-364: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-364-t-138-final-review-6d6a625-clear-with-retention-follow-up.md.
