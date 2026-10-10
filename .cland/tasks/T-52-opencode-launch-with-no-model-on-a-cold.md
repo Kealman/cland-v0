@@ -3,6 +3,7 @@ id: T-52
 kind: task
 title: OpenCode launch with no model on a cold catalog picks the first listed free model before the Zen models arrive
 state: closed
+status: done
 labels:
   - slice-1
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-17
 branch: t/T-52-opencode-cold-catalog
 created: 2026-10-09T08:04:42.494Z
-updated: 2026-10-09T12:19:09.822Z
+updated: 2026-10-10T00:58:17.568Z
 ---
 
 ## Parent

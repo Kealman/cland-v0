@@ -3,6 +3,7 @@ id: T-78
 kind: task
 title: Merge, worktree and release checks still read items through the tracker's synchronous view
 state: closed
+status: done
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-37
 branch: t/T-78-merge-worktree-and-release-checks-still
 created: 2026-10-09T18:46:27.376Z
-updated: 2026-10-09T22:03:39.433Z
+updated: 2026-10-10T00:58:17.872Z
 ---
 
 ## Parent

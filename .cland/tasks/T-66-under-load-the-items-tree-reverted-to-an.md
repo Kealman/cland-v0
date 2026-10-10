@@ -3,6 +3,7 @@ id: T-66
 kind: task
 title: "Under load the items tree reverted to an earlier snapshot after live updates: a late full list overwriting newer events?"
 state: closed
+status: done
 labels:
   - slice-1
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-34
 branch: t/T-66-under-load-the-items-tree-reverted-to-an
 created: 2026-10-09T08:58:42.263Z
-updated: 2026-10-09T18:39:01.683Z
+updated: 2026-10-10T00:58:17.728Z
 ---
 
 ## Parent

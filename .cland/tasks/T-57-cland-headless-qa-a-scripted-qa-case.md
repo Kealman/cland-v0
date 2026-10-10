@@ -3,6 +3,7 @@ id: T-57
 kind: task
 title: "cland --headless --qa: a scripted QA case drives a headless workbench and exits with its verdict"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-14
 branch: t/T-57-headless-qa-runner
 created: 2026-10-09T08:33:53.699Z
-updated: 2026-10-09T10:28:19.880Z
+updated: 2026-10-10T00:58:17.659Z
 ---
 
 ## Parent

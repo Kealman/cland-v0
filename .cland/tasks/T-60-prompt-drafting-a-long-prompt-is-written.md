@@ -3,6 +3,7 @@ id: T-60
 kind: task
 title: "prompt drafting: a long prompt is written in a full buffer as a prompt artifact, then sent or attached"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-27
 branch: t/T-60-prompt-drafting-a-long-prompt-is-written
 created: 2026-10-09T08:34:54.748Z
-updated: 2026-10-09T15:58:14.268Z
+updated: 2026-10-10T00:58:17.688Z
 ---
 
 ## Parent

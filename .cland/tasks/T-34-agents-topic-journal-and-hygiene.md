@@ -3,6 +3,7 @@ id: T-34
 kind: task
 title: Agents topic, journal and hygiene
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:58Z
-updated: 2026-10-08T18:56:26.195Z
+updated: 2026-10-10T00:58:17.392Z
 github:
   repo: Kealman/cland-v0
   number: 34

@@ -3,6 +3,7 @@ id: T-29
 kind: task
 title: Roles config and clause delivery
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:20Z
-updated: 2026-10-08T18:56:26.192Z
+updated: 2026-10-10T00:58:17.369Z
 github:
   repo: Kealman/cland-v0
   number: 29

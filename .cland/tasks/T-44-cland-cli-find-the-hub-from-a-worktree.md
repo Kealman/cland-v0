@@ -3,6 +3,7 @@ id: T-44
 kind: task
 title: "cland CLI: find the hub from a worktree of the project"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-3
 branch: t/T-44-cli-hub-from-worktree
 created: 2026-10-08T19:01:49.025Z
-updated: 2026-10-09T06:54:35.338Z
+updated: 2026-10-10T00:58:17.510Z
 ---
 
 ## Parent

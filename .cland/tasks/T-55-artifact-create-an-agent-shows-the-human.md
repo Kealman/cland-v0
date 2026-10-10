@@ -3,6 +3,7 @@ id: T-55
 kind: task
 title: "artifact.create: an agent shows the human a file in one call, and the topic lists what was shared"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-12
 branch: t/T-55-artifact-create
 created: 2026-10-09T08:33:53.670Z
-updated: 2026-10-09T10:14:10.114Z
+updated: 2026-10-10T00:58:17.646Z
 ---
 
 ## Parent

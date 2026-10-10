@@ -3,6 +3,7 @@ id: T-41
 kind: task
 title: Review and QA through the roles
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -15,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:49Z
-updated: 2026-10-08T18:56:26.198Z
+updated: 2026-10-10T00:58:17.488Z
 github:
   repo: Kealman/cland-v0
   number: 41

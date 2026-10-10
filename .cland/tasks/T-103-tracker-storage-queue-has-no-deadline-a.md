@@ -3,6 +3,7 @@ id: T-103
 kind: task
 title: "Tracker storage queue has no deadline: a hung write stalls all tracker work"
 state: open
+status: backlog
 labels:
   - needs-triage
   - hub
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:23:07.021Z
-updated: 2026-10-09T21:57:43.488Z
+updated: 2026-10-10T00:58:17.905Z
 ---
 
 ## Parent

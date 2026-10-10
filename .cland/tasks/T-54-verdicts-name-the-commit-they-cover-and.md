@@ -3,6 +3,7 @@ id: T-54
 kind: task
 title: verdicts name the commit they cover, and the hub knows which verdicts it wrote
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-11
 branch: t/T-54-verdict-commit-and-provenance
 created: 2026-10-09T08:33:53.658Z
-updated: 2026-10-09T10:00:10.485Z
+updated: 2026-10-10T00:58:17.638Z
 ---
 
 ## Parent

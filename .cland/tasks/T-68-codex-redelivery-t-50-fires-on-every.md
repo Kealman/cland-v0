@@ -3,6 +3,7 @@ id: T-68
 kind: task
 title: "Codex redelivery (T-50) fires on every delivery to an idle session: the thread check reads userMessage items only, and hub_event tool outputs never match"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - hub
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-19
 branch: t/T-68-codex-redelivery-idle-shape
 created: 2026-10-09T10:21:50.136Z
-updated: 2026-10-09T11:29:29.561Z
+updated: 2026-10-10T00:58:17.745Z
 ---
 
 ## Parent

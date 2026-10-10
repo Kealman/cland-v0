@@ -3,6 +3,7 @@ id: T-118
 kind: task
 title: "The v0.1 release item: the release kind, the parenting rule, list --under and the path header; v0.1 created and its epics re-parented"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-41
 branch: t/T-118-the-v0-1-release-item-the-release-kind
 created: 2026-10-09T21:56:01.700Z
-updated: 2026-10-09T23:02:55.277Z
+updated: 2026-10-10T00:58:17.932Z
 ---
 
 ## Parent

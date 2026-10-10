@@ -3,6 +3,7 @@ id: T-65
 kind: task
 title: "Codex Implementer and QA sessions run with full access by default: any work a role needs, on any harness"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-15
 branch: t/T-65-codex-full-access-defaults
 created: 2026-10-09T08:55:35.290Z
-updated: 2026-10-09T10:23:53.676Z
+updated: 2026-10-10T00:58:17.721Z
 ---
 
 ## Parent

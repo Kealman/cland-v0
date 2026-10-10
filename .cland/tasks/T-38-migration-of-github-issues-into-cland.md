@@ -3,6 +3,7 @@ id: T-38
 kind: task
 title: Migration of GitHub Issues into .cland/tasks
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:26Z
-updated: 2026-10-08T18:56:26.196Z
+updated: 2026-10-10T00:58:17.473Z
 github:
   repo: Kealman/cland-v0
   number: 38

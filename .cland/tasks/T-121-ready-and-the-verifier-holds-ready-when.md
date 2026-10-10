@@ -3,6 +3,7 @@ id: T-121
 kind: task
 title: "Ready and the verifier holds: ready when the gate's verdicts are clear, withdrawn when one goes stale; Reviewer and QA take a hold beside the Implementer's claim"
 state: open
+status: in progress
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-47
 branch: t/T-121-ready-and-the-verifier-holds-ready-when
 created: 2026-10-09T21:56:37.696Z
-updated: 2026-10-10T00:55:27.547Z
+updated: 2026-10-10T00:58:17.966Z
 ---
 
 ## Parent

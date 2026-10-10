@@ -3,6 +3,7 @@ id: T-61
 kind: task
 title: "artifacts kept or let go: promote into the repo, archive with the topic, delete after the retention period"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-29
 branch: t/T-61-artifacts-kept-or-let-go-promote-into
 created: 2026-10-09T08:34:54.761Z
-updated: 2026-10-09T16:14:29.766Z
+updated: 2026-10-10T00:58:17.698Z
 ---
 
 ## Parent

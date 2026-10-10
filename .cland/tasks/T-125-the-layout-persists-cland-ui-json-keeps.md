@@ -3,6 +3,7 @@ id: T-125
 kind: task
 title: "The layout persists: .cland/ui.json keeps the preset, panels, sizes, filters and scope; a manual resize beats the layout formulas"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-43
 branch: t/T-125-the-layout-persists-cland-ui-json-keeps
 created: 2026-10-09T21:57:18.371Z
-updated: 2026-10-09T23:44:10.412Z
+updated: 2026-10-10T00:58:18.003Z
 ---
 
 ## Parent

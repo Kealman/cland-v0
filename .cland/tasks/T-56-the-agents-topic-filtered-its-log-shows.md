@@ -3,6 +3,7 @@ id: T-56
 kind: task
 title: "the Agents topic, filtered: its log shows one item's or one session's traffic"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-13
 branch: t/T-56-agents-topic-filters
 created: 2026-10-09T08:33:53.682Z
-updated: 2026-10-09T09:47:05.395Z
+updated: 2026-10-10T00:58:17.651Z
 ---
 
 ## Parent

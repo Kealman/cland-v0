@@ -3,6 +3,7 @@ id: T-131
 kind: task
 title: CLI commands that need no database still import node:sqlite; its ExperimentalWarning pollutes exact stderr
 state: open
+status: backlog
 labels:
   - tech-debt
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T00:25:36.040Z
-updated: 2026-10-10T00:25:36.040Z
+updated: 2026-10-10T00:58:18.042Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-64
 kind: task
 title: "v0 done: cland's first release leaves for GitHub through cland release from inside cland"
 state: closed
+status: done
 labels:
   - ready-for-human
   - slice-2
@@ -23,7 +24,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T08:35:32.127Z
-updated: 2026-10-09T16:44:17.531Z
+updated: 2026-10-10T00:58:17.716Z
 ---
 
 ## Parent

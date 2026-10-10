@@ -3,6 +3,7 @@ id: T-43
 kind: task
 title: "cland inbox and cland topic answer: answer an ask from the CLI"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-1
 branch: t/T-43-cland-inbox-topic-answer
 created: 2026-10-08T18:56:39.124Z
-updated: 2026-10-08T19:47:17.337Z
+updated: 2026-10-10T00:58:17.503Z
 ---
 
 ## Parent

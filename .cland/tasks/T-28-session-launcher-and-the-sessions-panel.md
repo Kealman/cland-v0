@@ -3,6 +3,7 @@ id: T-28
 kind: task
 title: Session launcher and the sessions panel
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -15,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:14Z
-updated: 2026-10-08T18:56:26.191Z
+updated: 2026-10-10T00:58:17.360Z
 github:
   repo: Kealman/cland-v0
   number: 28

@@ -3,6 +3,7 @@ id: T-58
 kind: task
 title: "task branches: claiming a task makes its branch from dev in its own worktree, and its Implementer launches there"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-16
 branch: t/T-58-task-branches-and-launch-with-item
 created: 2026-10-09T08:34:54.694Z
-updated: 2026-10-09T12:09:33.356Z
+updated: 2026-10-10T00:58:17.675Z
 ---
 
 ## Parent

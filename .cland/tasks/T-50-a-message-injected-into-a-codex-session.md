@@ -3,6 +3,7 @@ id: T-50
 kind: task
 title: A message injected into a Codex session in the last second of its turn is marked injected but never acted on
 state: closed
+status: done
 labels:
   - slice-1
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-9
 branch: t/T-50-steer-lost-at-turn-end
 created: 2026-10-09T07:04:04.157Z
-updated: 2026-10-09T10:28:21.242Z
+updated: 2026-10-10T00:58:17.552Z
 ---
 
 ## Parent

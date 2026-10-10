@@ -3,6 +3,7 @@ id: T-76
 kind: task
 title: Orphan sweep misses the live app-server of a session recorded as exited
 state: closed
+status: done
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-33
 branch: t/T-76-orphan-sweep-misses-the-live-app-server
 created: 2026-10-09T16:38:16.092Z
-updated: 2026-10-09T19:43:48.648Z
+updated: 2026-10-10T00:58:17.852Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-37
 kind: task
 title: Skills on the own tracker
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:19Z
-updated: 2026-10-08T13:17:15.606Z
+updated: 2026-10-10T00:58:17.406Z
 github:
   repo: Kealman/cland-v0
   number: 37

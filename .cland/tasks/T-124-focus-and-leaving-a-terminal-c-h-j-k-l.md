@@ -3,6 +3,7 @@ id: T-124
 kind: task
 title: "Focus and leaving a terminal: C-h/j/k/l in every mode, a lone C-\\ leaves Terminal mode, doctor's two key warnings, [keys] layouts with langmap, the kitty base-layout check recorded"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-42
 branch: t/T-124-focus-and-leaving-a-terminal-c-h-j-k-l
 created: 2026-10-09T21:57:02.030Z
-updated: 2026-10-09T22:29:28.059Z
+updated: 2026-10-10T00:58:17.996Z
 ---
 
 ## Parent

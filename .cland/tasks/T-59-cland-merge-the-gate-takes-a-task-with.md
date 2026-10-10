@@ -3,6 +3,7 @@ id: T-59
 kind: task
 title: "cland merge: the gate takes a task with clear verdicts onto dev as one squash commit"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-21
 branch: t/T-59-cland-merge
 created: 2026-10-09T08:34:54.729Z
-updated: 2026-10-09T14:26:56.275Z
+updated: 2026-10-10T00:58:17.681Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-49
 kind: task
 title: "cland CLI with a session identity: the hub refuses the human-only commands"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-7
 branch: t/T-49-cli-session-identity
 created: 2026-10-09T06:33:20.718Z
-updated: 2026-10-09T07:57:23.467Z
+updated: 2026-10-10T00:58:17.545Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-104
 kind: task
 title: "Concurrent launches for one exclusive role: the role is reserved after awaits, so admission order can flip under load"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-36
 branch: t/T-104-concurrent-launches-for-one-exclusive
 created: 2026-10-09T20:04:50.886Z
-updated: 2026-10-09T20:46:29.630Z
+updated: 2026-10-10T00:58:17.911Z
 ---
 
 ## Parent

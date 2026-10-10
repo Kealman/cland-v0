@@ -3,6 +3,7 @@ id: T-129
 kind: task
 title: "Launch recovery ownership survives a hub restart: a failed spawn's pending cleanup is persisted and gates reuse until it settles"
 state: open
+status: backlog
 labels:
   - needs-triage
   - hub
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T22:17:07.427Z
-updated: 2026-10-09T22:17:07.427Z
+updated: 2026-10-10T00:58:18.035Z
 ---
 
 ## Parent

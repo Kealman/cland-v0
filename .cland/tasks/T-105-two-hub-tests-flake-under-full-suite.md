@@ -3,6 +3,7 @@ id: T-105
 kind: task
 title: "Two hub tests flake under full-suite load: the deleted-project doctor sweep lock (ENOENT) and the process-row rename publication timeout"
 state: closed
+status: done
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-38
 branch: t/T-105-two-hub-tests-flake-under-full-suite
 created: 2026-10-09T20:43:35.328Z
-updated: 2026-10-09T21:09:09.691Z
+updated: 2026-10-10T00:58:17.917Z
 ---
 
 ## Parent

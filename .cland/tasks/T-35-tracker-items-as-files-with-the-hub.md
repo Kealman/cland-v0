@@ -3,6 +3,7 @@ id: T-35
 kind: task
 title: Tracker items as files with the hub index and the cland task CLI
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:05Z
-updated: 2026-10-08T13:17:15.605Z
+updated: 2026-10-10T00:58:17.397Z
 github:
   repo: Kealman/cland-v0
   number: 35

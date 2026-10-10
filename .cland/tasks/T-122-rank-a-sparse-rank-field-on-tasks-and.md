@@ -3,6 +3,7 @@ id: T-122
 kind: task
 title: "Rank: a sparse rank field on tasks and epics, cland task rank, lists sorted by rank then id, the Coordinator's next-item rule; the high label retires"
 state: open
+status: in progress
 labels:
   - ready-for-agent
   - v0.1
@@ -10,10 +11,10 @@ assignee: null
 parent: T-107
 blocked_by:
   - T-118
-topic: null
-branch: null
+topic: topic-49
+branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
-updated: 2026-10-09T21:56:37.730Z
+updated: 2026-10-10T00:58:29.414Z
 ---
 
 ## Parent
@@ -36,3 +37,9 @@ A task or an epic carries `rank`, a sparse integer such as 10, 20 and 30, that o
 ## Notes
 
 Size S. Implementer: Codex. Rank writes ride the tracker's single queue (T-77). It can run in parallel with slices 2 to 4, rebasing once on the item parser.
+
+## Comments
+
+### impl-122 · 2026-10-10T00:58:29.414Z
+
+Implementing rank through the existing hub protocol/CLI seam prescribed by T-107, including dense minimal renumbering, parent refusal, shared ordering and queue checks. Post-restart high migration will use the hub only.

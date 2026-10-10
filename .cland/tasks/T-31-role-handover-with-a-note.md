@@ -3,6 +3,7 @@ id: T-31
 kind: task
 title: Role handover with a note
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:34Z
-updated: 2026-10-08T18:56:26.193Z
+updated: 2026-10-10T00:58:17.378Z
 github:
   repo: Kealman/cland-v0
   number: 31

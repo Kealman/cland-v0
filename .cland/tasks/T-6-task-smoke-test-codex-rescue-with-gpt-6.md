@@ -3,6 +3,7 @@ id: T-6
 kind: task
 title: "Task: smoke-test codex:rescue with gpt 6.1 sol and gpt 6 astra"
 state: closed
+status: done
 labels:
   - wayfinder:task
 assignee: Kealman
@@ -11,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-07T14:52:00Z
-updated: 2026-10-08T13:17:15.590Z
+updated: 2026-10-10T00:58:17.304Z
 github:
   repo: Kealman/cland-v0
   number: 6

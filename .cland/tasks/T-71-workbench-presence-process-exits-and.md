@@ -3,6 +3,7 @@ id: T-71
 kind: task
 title: "Workbench: presence, process exits and token totals as hub events, so the sessions panel stops polling session.list"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-24
 branch: t/T-71-sessions-panel-events
 created: 2026-10-09T10:46:33.920Z
-updated: 2026-10-09T14:26:56.303Z
+updated: 2026-10-10T00:58:17.791Z
 ---
 
 ## Parent

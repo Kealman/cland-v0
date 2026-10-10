@@ -3,6 +3,7 @@ id: T-42
 kind: task
 title: "Dogfooding: the first real cland task inside cland"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -19,7 +20,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:55:56Z
-updated: 2026-10-09T14:52:19.355Z
+updated: 2026-10-10T00:58:17.494Z
 github:
   repo: Kealman/cland-v0
   number: 42

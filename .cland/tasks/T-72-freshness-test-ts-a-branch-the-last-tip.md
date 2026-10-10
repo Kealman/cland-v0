@@ -3,6 +3,7 @@ id: T-72
 kind: task
 title: freshness.test.ts "a branch the last tip read did not hold" races the 2 s tip timer and fails under load
 state: closed
+status: done
 labels:
   - ready-for-agent
   - tests
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-22
 branch: t/T-72-freshness-test-seam
 created: 2026-10-09T11:55:08.930Z
-updated: 2026-10-09T12:51:01.268Z
+updated: 2026-10-10T00:58:17.807Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-119
 kind: task
 title: "Containers from config: [tracker] levels replaces the hard-coded container kinds; a container with open children cannot close"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-44
 branch: t/T-119-containers-from-config-tracker-levels
 created: 2026-10-09T21:56:19.667Z
-updated: 2026-10-10T00:57:28.176Z
+updated: 2026-10-10T00:58:17.938Z
 ---
 
 ## Parent

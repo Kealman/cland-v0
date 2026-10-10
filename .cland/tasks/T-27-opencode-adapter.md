@@ -3,6 +3,7 @@ id: T-27
 kind: task
 title: OpenCode adapter
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:07Z
-updated: 2026-10-08T18:56:26.190Z
+updated: 2026-10-10T00:58:17.349Z
 github:
   repo: Kealman/cland-v0
   number: 27

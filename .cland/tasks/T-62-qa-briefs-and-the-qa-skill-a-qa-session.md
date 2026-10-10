@@ -3,6 +3,7 @@ id: T-62
 kind: task
 title: "QA briefs and the qa skill: a QA session runs an item's brief and records its verdict and runs"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-28
 branch: t/T-62-qa-briefs-and-the-qa-skill-a-qa-session
 created: 2026-10-09T08:34:54.777Z
-updated: 2026-10-09T16:28:20.206Z
+updated: 2026-10-10T00:58:17.703Z
 ---
 
 ## Parent

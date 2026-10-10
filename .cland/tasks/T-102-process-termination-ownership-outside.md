@@ -3,6 +3,7 @@ id: T-102
 kind: task
 title: "Process termination ownership outside the sweep: overlapping doctors on deleted hubs, direct endProcess calls, and the SIGCONT doc"
 state: open
+status: backlog
 labels:
   - needs-triage
   - hub
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:16:42.280Z
-updated: 2026-10-09T21:57:43.147Z
+updated: 2026-10-10T00:58:17.900Z
 ---
 
 ## Parent

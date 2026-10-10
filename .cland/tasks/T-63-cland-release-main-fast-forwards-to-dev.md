@@ -3,6 +3,7 @@ id: T-63
 kind: task
 title: "cland release: main fast-forwards to dev, tagged with notes from the items, and goes to GitHub; cland sync brings GitHub back"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-2
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-25
 branch: t/T-63-cland-release-main-fast-forwards-to-dev
 created: 2026-10-09T08:35:16.599Z
-updated: 2026-10-09T15:13:02.406Z
+updated: 2026-10-10T00:58:17.709Z
 ---
 
 ## Parent

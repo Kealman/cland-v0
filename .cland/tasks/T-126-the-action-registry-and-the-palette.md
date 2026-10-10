@@ -3,6 +3,7 @@ id: T-126
 kind: task
 title: "The action registry and the palette: every command, toggle, view, launch and ask answer registered with its key; ␣p over actions and objects with prefixes; ␣a on artifacts"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-46
 branch: t/T-126-the-action-registry-and-the-palette
 created: 2026-10-09T21:57:18.399Z
-updated: 2026-10-10T00:24:02.681Z
+updated: 2026-10-10T00:58:18.009Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-127
 kind: task
 title: "Sessions grouped by state: waiting, busy and idle groups, a folded stopped line, the expanding selected row with the approval's command, and the sessions chip"
 state: open
+status: in progress
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-48
 branch: t/T-127-sessions-grouped-by-state-waiting-busy
 created: 2026-10-09T21:57:34.743Z
-updated: 2026-10-10T00:52:59.746Z
+updated: 2026-10-10T00:58:18.024Z
 ---
 
 ## Parent

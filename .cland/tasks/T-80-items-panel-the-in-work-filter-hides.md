@@ -3,6 +3,7 @@ id: T-80
 kind: task
 title: 'Items panel: the "in work" filter hides items between review and QA and planned items'
 state: open
+status: backlog
 labels:
   - needs-triage
   - ui
@@ -12,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:08:04.194Z
-updated: 2026-10-09T19:31:04.179Z
+updated: 2026-10-10T00:58:17.883Z
 ---
 
 ## Observed

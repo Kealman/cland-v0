@@ -3,6 +3,7 @@ id: T-77
 kind: task
 title: "Tracker writes on hub request paths still use synchronous fs: item commits in Tracker's atomic write"
 state: closed
+status: done
 labels:
   - hub
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-35
 branch: t/T-77-tracker-writes-on-hub-request-paths
 created: 2026-10-09T16:57:34.637Z
-updated: 2026-10-09T19:54:57.795Z
+updated: 2026-10-10T00:58:17.863Z
 ---
 
 ## Parent

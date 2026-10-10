@@ -3,6 +3,7 @@ id: T-120
 kind: task
 title: "Status on events: the status field, moved by claims, verdicts, merges, closes and reopens; set by hand only by the Coordinator, the human and the Implementer's review"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by:
 topic: topic-45
 branch: t/T-120-status-on-events-the-status-field-moved
 created: 2026-10-09T21:56:19.707Z
-updated: 2026-10-09T23:55:36.937Z
+updated: 2026-10-10T00:58:17.953Z
 ---
 
 ## Parent

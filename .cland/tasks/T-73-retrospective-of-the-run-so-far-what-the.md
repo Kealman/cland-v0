@@ -3,6 +3,7 @@ id: T-73
 kind: task
 title: "Retrospective of the run so far: what the run notes say about pace, failure patterns and process, for planning the rest of v0"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - process
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-26
 branch: t/T-73-retrospective-of-the-run-so-far-what-the
 created: 2026-10-09T14:57:57.906Z
-updated: 2026-10-09T15:13:02.377Z
+updated: 2026-10-10T00:58:17.820Z
 ---
 
 ## Parent

@@ -3,6 +3,7 @@ id: T-21
 kind: task
 title: Repository skeleton and the BCAS hub core extracted
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-08T11:53:09Z
-updated: 2026-10-08T13:17:15.599Z
+updated: 2026-10-10T00:58:17.316Z
 github:
   repo: Kealman/cland-v0
   number: 21

@@ -3,6 +3,7 @@ id: T-48
 kind: task
 title: "Codex sessions launched by cland: approvals auto-approved and a per-role sandbox, so no check or commit waits on the human"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-2
 branch: t/T-48-codex-qa-sandbox
 created: 2026-10-08T19:48:52.717Z
-updated: 2026-10-09T07:57:23.486Z
+updated: 2026-10-10T00:58:17.540Z
 ---
 
 ## Parent

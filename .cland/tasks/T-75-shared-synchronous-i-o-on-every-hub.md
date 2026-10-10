@@ -3,6 +3,7 @@ id: T-75
 kind: task
 title: "Shared synchronous I/O on every hub request: the permission check reads roles.toml and the journal writes with writeSync"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-32
 branch: t/T-75-shared-synchronous-i-o-on-every-hub
 created: 2026-10-09T15:35:43.178Z
-updated: 2026-10-09T18:22:38.035Z
+updated: 2026-10-10T00:58:17.844Z
 ---
 
 ## Parent

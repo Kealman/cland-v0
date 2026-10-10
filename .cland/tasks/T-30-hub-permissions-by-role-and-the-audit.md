@@ -3,6 +3,7 @@ id: T-30
 kind: task
 title: Hub permissions by role and the audit log
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -13,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-08T11:54:27Z
-updated: 2026-10-08T18:56:26.192Z
+updated: 2026-10-10T00:58:17.373Z
 github:
   repo: Kealman/cland-v0
   number: 30

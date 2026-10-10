@@ -3,6 +3,7 @@ id: T-51
 kind: task
 title: "A Codex session's spoke replaced with no attach behind it: the session's tool calls then fail silently until a stop and relaunch"
 state: closed
+status: done
 labels:
   - slice-1
   - ready-for-agent
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-8
 branch: t/T-51-replaced-spoke-stale-state
 created: 2026-10-09T07:21:18.317Z
-updated: 2026-10-09T10:02:01.031Z
+updated: 2026-10-10T00:58:17.563Z
 ---
 
 ## Parent

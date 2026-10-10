@@ -3,6 +3,7 @@ id: T-70
 kind: task
 title: "Orphan harness servers and hub daemons: session stop ends the server, doctor and hub start sweep what no session owns"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - hub
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-23
 branch: t/T-70-orphan-servers-and-sync-ps
 created: 2026-10-09T10:44:01.288Z
-updated: 2026-10-09T15:20:13.914Z
+updated: 2026-10-10T00:58:17.781Z
 ---
 
 ## Parent

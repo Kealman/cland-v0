@@ -3,6 +3,7 @@ id: T-46
 kind: task
 title: "OpenCode: a deprecated default free model fails every turn, and the failure is silent"
 state: closed
+status: done
 labels:
   - ready-for-agent
   - slice-1
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-5
 branch: t/T-46-opencode-failed-turn-and-default-model
 created: 2026-10-08T19:09:47.340Z
-updated: 2026-10-09T08:09:28.065Z
+updated: 2026-10-10T00:58:17.526Z
 ---
 
 ## Parent
