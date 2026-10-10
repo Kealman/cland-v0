@@ -1,18 +1,19 @@
 # Review and QA through the roles
 
-How a change gets reviewed and checked in slice 1 (spec 4.10 and 6 (g), ticket #41). The roles, their clauses and their permissions are in `.cland/roles.toml` (`hub/src/roles/default-roles.ts` writes the defaults); the tracker's verdict comments are in `hub/README.md`, "The tracker".
+How an item’s lead runs review and QA until the hub marks it ready (v0.1 §3.7–3.9). The roles, their clauses and their permissions are in `.cland/roles.toml` (`hub/src/roles/default-roles.ts` writes the defaults); the tracker's verdict comments are in `hub/README.md`, "The tracker".
 
 ## The flow
 
-1. The Coordinator has an item, say `T-12`, whose work is ready: a branch, commits or a diff.
-2. It sends a request through the hub to the session holding the role: `send` with `to: ["reviewer"]` (or `["qa"]`, or the holder's name). When no holder is live, it launches one first with `session.launch` and the role; `roles.toml` gives the harness and the model (Reviewer: Codex with `gpt-6.1-sol`; QA: Codex with `gpt-6-astra`), and the first turn is the role's clause.
-3. The holder works as its clause says:
-   - Reviewer: reads the item with `task.view`, then the changes the request names, read-only, against the spec and the acceptance criteria. It edits nothing.
-   - QA: reads the item and the brief the request names (The brief, below), runs each case of the brief with `cland --headless --qa` (a headless Neovim fed with `nvim_input` and read with `screenstring()`) and each manual check, and records every case as a line of `.cland/qa/runs.jsonl`. It fixes nothing.
+1. The Coordinator launches an Implementer for an item and, when QA is needed, writes and commits `qa/briefs/T-<n>.md` with the `qa` skill and gives its path to the Implementer. It launches Reviewer and QA holders when needed.
+2. The Implementer’s claim makes it the item lead. It commits and pushes to `origin`, sets `task.edit` status `review`, and sends `review request T-<n>` to `reviewer` with the branch/head, criteria and scope. When a QA brief was supplied it also sends `qa request T-<n>` to `qa`, naming that committed brief and build. Without a brief it requests review only; if QA is required, it reports blocked to the Coordinator.
+3. Reviewer and QA accept requests from the live claimant in `task.view` or the Coordinator, and take a `task.hold` beside the claim. Reviewer reads the changes against the spec and criteria, read-only. QA follows the brief and records each case in `.cland/qa/runs.jsonl`, fixing nothing.
+4. Each verifier writes one `task.comment` verdict with `result`, `run` and the checked `commit`, then reports to `lead T-<n>` in the request’s topic. The address resolves to the live claimant, or the Coordinator when unclaimed; for closed or unknown items use `coordinator` directly.
+5. The lead fixes not-clear findings, verifies and pushes a new head, and requests the affected review or QA again itself. It reports blocked when it needs a verifier, a brief or a decision. Clear verdicts need no Coordinator relay.
+6. The hub checks that the gate’s required verdicts are clear and current and marks the item `ready`. That status event reaches the Coordinator once and starts its turn, standing for the lead’s ready report. The Coordinator uses the `merge` skill to land it; the lead keeps its claim until merge.
 
-   Neither waits on an approval: Reviewer is read-only with no network; QA has full access by default (The Codex sandbox, below).
-4. The holder writes its verdict on the item with one `task.comment` (`verdict`, `result`, `run`); the hub adds `by` and writes the header.
-5. The holder reports back with `send` to the Coordinator, in the request's topic.
+Use `send` kind `progress` for routine status notes: they wait for the recipient’s next turn. Requests and verdicts use `report` (the default), blockers use `question` or `report`, and decisions use `decision`; these start turns. Coordinator reports to the human appear in Watch, while answers needing attention use `question` or `decision` in Now.
+
+Default subscriptions give the lead its item’s status/verdict and verifier death or long idle, digested at its next turn. The Coordinator covers the tree outside active leads and receives a lead’s death or long idle; `ready` is the immediate merge-action exception. Use `subscribe` for additional subjects and `subscriptions` to inspect them instead of polling. An explicit Coordinator subscription to a claimed item widens its traffic, so avoid one when measuring the one-delivery loop.
 
 Only Reviewer and QA (`task.comment:verdict`) and the Coordinator (`task.comment`) may write a verdict. Anyone else gets the typed error `forbidden: task.comment:verdict (<Role> may not write verdicts)`, and the refusal shows in Agents.
 
@@ -49,7 +50,7 @@ Branch t/T-12-closed-items-release-claims, commits a1b2c3..d4e5f6. Check the acc
 
 ```
 qa request T-12
-On branch t/T-12-closed-items-release-claims: `cland task list --state open` lists T-12, and the items panel in a headless Neovim shows it.
+Brief qa/briefs/T-12.md, branch t/T-12-closed-items-release-claims, head d4e5f6. Run the committed brief at that build.
 ```
 
 The report's first line is the verdict and the item, then the points that matter:
@@ -66,9 +67,10 @@ High: hub/src/tracker/tracker.ts:212 a closed item keeps its claim.
 1. Run `cland update`, then `git status`: `.agents/skills/qa/` and `.cland/.gitignore` changed. `.cland/qa/` is ignored from now on.
 2. In `.cland/roles.toml`, add `"qa"` to the existing `skills` list of the Coordinator and of the QA role, keeping what is there (QA's default list is then `["qa", "diagnosing-bugs"]`).
 3. In the QA clause, replace the bullets for the request, the work, the verdict and the fallback with the current ones (`hub/src/roles/default-roles.ts`, `[qa]`): the request names the brief `qa/briefs/T-<n>.md` and the `qa` skill is the whole job; the work is each case through `sh .agents/skills/qa/qa-record.sh`; the verdict gives `commit` and is `clear` only when every case in scope passed; the fallback is `/codex:rescue --background --fresh --model gpt-6-astra`.
-4. In the Coordinator clause, extend the "Reviews and QA go through…" bullet with the brief (`qa/briefs/T-<n>.md`, written with the `qa` skill, committed and self-contained) and the fallback bullet with the QA rescue form `"Run the QA brief in qa/briefs/T-<n>.md exactly"`, the append of the returned lines to `.cland/qa/runs.jsonl`, the note that the merge gate does not count a verdict the Coordinator records, and filing each finding as an item labelled `qa-found` and `needs-triage`.
+4. In the Coordinator clause, use the current item-lead loop from `hub/src/roles/default-roles.ts`: the Coordinator writes the brief before launch, the lead requests its own review and QA, and the Coordinator merges on the hub’s immediate `ready` event. Keep the fallback bullet with the QA rescue form `"Run the QA brief in qa/briefs/T-<n>.md exactly"`, the append of the returned lines to `.cland/qa/runs.jsonl`, the note that the merge gate does not count a verdict the Coordinator records, and filing each finding as an item labelled `qa-found` and `needs-triage`.
 5. Optional, for a restricted QA sandbox: under `[qa.launch]` with `sandbox = "workspace-write"` and no `writable_roots`, QA's are `[".cland/qa"]` already. A written `writable_roots` replaces them, so keep `".cland/qa"` in it.
-6. The hub re-reads `roles.toml` when it changes: the next QA launch and the next assignment use it. Sessions already running keep their clause until relaunched.
+6. The hub re-reads `roles.toml` when it changes: the next QA launch and the next assignment use it. Reconnect or reassign a running session to deliver the refreshed clause; relaunch when changing launch policy.
+7. Adopt the current Implementer and Reviewer clauses too: the Implementer requests review/QA itself and reports blocked, and Reviewer/QA accept requests from the item lead. Keep project-specific launch settings and permissions. `cland update` does not apply these clause edits for you.
 
 ## The brief
 

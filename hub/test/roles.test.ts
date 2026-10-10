@@ -36,6 +36,17 @@ test('every crew role receives the Aide speaking-for-the-human instruction in it
     t.after(() => spoke.close());
     const clause = await spoke.waitForEvent(isClause);
     assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
+    if (role === 'implementer') {
+      assert.match(clause.params.content, /Request review yourself/);
+      assert.match(clause.params.content, /On a not-clear verdict/);
+      assert.match(clause.params.content, /report only if blocked/);
+    } else if (role === 'coordinator') {
+      assert.match(clause.params.content, /Merge on the hub’s `ready` status event/);
+      assert.match(clause.params.content, /routine `report` messages appear in Watch/);
+    } else {
+      assert.match(clause.params.content, /from the item’s lead .* or the Coordinator/);
+    }
+
   }
 });
 

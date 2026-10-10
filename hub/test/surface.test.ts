@@ -60,10 +60,10 @@ test('the default role clauses agree with the permission table: only the Coordin
     assert.doesNotMatch(clause, /Never write to the human/, role);
     assert.match(clause, /When the human mentions you in a topic \(`@[a-z]+` or your name\), answer the human in that topic with `send` and no `to`/, role);
     if (role === 'implementer') {
-      assert.match(clause, /report to the Coordinator/, role);
-      assert.match(clause, /`send` to `coordinator`/, role);
+      assert.match(clause, /When blocked, report .* to the Coordinator with `send`/, role);
+      assert.match(clause, /only the Coordinator asks the human/, role);
     } else {
-      assert.match(clause, /Report: `send` to `@lead T-<n>` \(`to: \["lead T-<n>"\]`\)/, role);
+      assert.match(clause, /Report: `send` kind `report` to `@lead T-<n>` \(`to: \["lead T-<n>"\]`\)/, role);
       assert.match(clause, /For a closed or unknown item, address `coordinator` instead/, role);
     }
   }

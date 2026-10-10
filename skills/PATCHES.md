@@ -18,6 +18,12 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - **Change**: "a structured comment posted on a GitHub issue or PR" now reads "a structured comment posted on an issue (or PR) on the project issue tracker".
 - **Why**: the brief is posted through whatever tracker `docs/agents/issue-tracker.md` names. With cland, that is `cland task comment`.
 
+## code-review
+
+- **File**: `.agents/skills/code-review/SKILL.md`, "Hub review requests" and steps 1–2.
+- **Change**: accept requests from the item lead or Coordinator; return hub verdicts to `lead T-<n>` with intentional send kinds; describe default subscriptions and the ready handover. Resolve the spec from the request’s tracker item and ask its sender for missing inputs.
+- **Why**: the claimant runs its review loop without a Coordinator relay (T-143).
+
 ## Checked and left unpatched
 
 - `to-spec`, `implement`: they only "publish to the issue tracker" and "fetch the ticket", which the tracker doc defines.

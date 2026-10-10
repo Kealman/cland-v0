@@ -12,11 +12,17 @@ Both axes run as **parallel sub-agents** so they don't pollute each other's cont
 
 The issue tracker should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.
 
+## Hub review requests
+
+When holding the Reviewer role, accept `review request T-<n>` from the item’s lead (the live claimant in `task.view`) or the Coordinator. Take `task.hold` before reviewing the named branch/head and criteria. Ask the lead for missing review inputs. After recording the verdict, `send` kind `report` to `lead T-<n>` in the request’s topic with first line `review clear T-<n>` or `review not clear T-<n>` and the findings that matter. The claimant fixes findings and requests re-review itself; the Coordinator merges on the hub’s `ready` event, without relaying verdicts. An unclaimed item’s lead address resolves to the Coordinator; for a closed or unknown item address `coordinator` directly.
+
+Default subscriptions deliver item status/verdict and verifier death or long idle to the lead, digested at its next turn. Use `subscribe` to watch additional subjects and `subscriptions` to inspect them instead of polling. Routine updates use kind `progress`; requests and verdict reports use `report`; blockers use `question` or `report`.
+
 ## Process
 
 ### 1. Pin the fixed point
 
-Whatever the user said is the fixed point (a commit SHA, branch name, tag, `main`, `HEAD~5`, etc.). If they didn't specify one, ask for it.
+Use the fixed point named by the request or user (a commit SHA, branch name, tag, `main`, `HEAD~5`, etc.). If none is specified, ask the requester for it.
 
 Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
 
@@ -26,7 +32,7 @@ Before going further, confirm the fixed point resolves (`git rev-parse <fixed-po
 
 Look for the originating spec, in this order:
 
-1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the workflow in the tracker doc.
+1. The request’s `T-<n>` item or item references in the commit messages, fetched via the workflow in the tracker doc.
 2. A path the user passed as an argument.
 3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the branch name or feature.
 4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report "no spec available".

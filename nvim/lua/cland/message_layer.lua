@@ -30,13 +30,17 @@ function M.layer(m)
   if verdict then return verdict == 'clear' and 'watch' or 'now' end
   for _, name in ipairs(addressees(m)) do
     local session = state.session(name)
-    if name == 'human' or name == 'aide' or (session and session.role == 'aide') then return 'now' end
+    if name == 'aide' or (session and session.role == 'aide') then return 'now' end
   end
+  local to_human = #addressees(m) == 0 or vim.tbl_contains(addressees(m), 'human')
+  if to_human and m.fromKind == 'agent' and m.fromRole == 'coordinator' and
+      (m.kind == nil or m.kind == 'report') and
+      not (type(m.artifact) == 'table' and type(m.artifacts) ~= 'table') then return 'watch' end
+  if vim.tbl_contains(addressees(m), 'human') then return 'now' end
   if m.kind == 'event' or m.kind == 'progress' or m.fromKind == 'hub' then return 'background' end
   if #addressees(m) > 0 then return 'background' end
   local bare_artifact = type(m.artifact) == 'table' and type(m.artifacts) ~= 'table'
   if bare_artifact then return 'background' end
-  -- Coordinator reports stay now until T-143 teaches intentional report kinds.
   -- Unaddressed agent messages are deliveries to the human, as the header shows.
   return 'now'
 end

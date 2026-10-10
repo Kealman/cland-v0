@@ -7,13 +7,15 @@ Use the hub's `merge` tool with `item: T-<n>`, or `cland merge T-<n>` from the C
 
 The Coordinator performs the merge itself. **Never delegate a merge to a sub-agent:** a sub-agent in the Coordinator's shell is taken for the Coordinator and inherits its authority.
 
-Read the item with `task.view`. Request a Reviewer verdict and, for `qa-required`, a QA verdict through the corresponding role. Only the latest hub-written verdict of each kind counts: the writer must have held the corresponding role at write time, must not claim the item, and the verdict must be clear and current for the task branch. A Coordinator's rescue-run verdict does not satisfy the gate.
+On the hub’s `ready` status event, read the item with `task.view` and call the gate yourself. This one event starts the Coordinator’s turn and stands for the item lead’s ready report. The claimant leads its review and QA loop: it requests the Reviewer verdict and, for `qa-required`, the QA verdict, and fixes not-clear findings before requesting a new pass. Reports address `lead T-<n>`; the Coordinator is the fallback for an unclaimed item. Let the lead handle the loop instead of relaying verdicts. Only the latest hub-written verdict of each kind counts: the writer must have held the corresponding role at write time, must not claim the item, and the verdict must be clear and current for the task branch. A Coordinator's rescue-run verdict does not satisfy the gate.
+
+Default subscriptions give the Coordinator the tree outside active item leads, plus the immediate `ready` exception. Other events are digested at the next turn; use `subscribe` for additional subjects and `subscriptions` to inspect them instead of polling. Send routine status updates as kind `progress`; blockers and actionable refusals use `question` or `report`.
 
 Call `merge` when that evidence is present. No check command runs in the gate; review and QA supply the evidence. The hub merges the tree without rewriting the task branch, lands one squash commit, closes the item and its topic, releases the claim and removes its worktree and branch. Removal waits while a session stands inside; stop finished sessions so cleanup can complete.
 
 On refusal:
 
-- Missing, invalid, not-clear or stale verdict: send the findings to the Implementer or request a new verdict from the role named by the refusal.
+- Missing, invalid, not-clear or stale verdict: send the refusal to `lead T-<n>` with kind `report`; the lead requests the new verdict from the role named by the refusal. For an unclaimed item, request it yourself.
 - `verdict-missing`: preserve the durable record and restore its missing or altered comment; an older clear cannot replace it.
 - Freshness pending: let the async cache settle, then retry once; if still pending, report the refusal.
 - Conflict: send the named files to the Implementer to rebase in its worktree. After the rebase, let the gate check whether the reviewed patch is preserved.

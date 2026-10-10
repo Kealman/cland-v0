@@ -42,4 +42,4 @@ none. (Otherwise the grant, why the case needs it, and who set it.)
 3. Fix nothing. A failure is a finding: write down the case id, the command and what it showed.
 4. Verdict `clear` only when every case and check in scope is PASS; otherwise `not clear`, naming each case that was FAIL, BLOCKED or INCONCLUSIVE.
 5. If a step fails, keep what is already written, finish from there and never rerun a case under the same run id (the skill, "When a step fails").
-6. Through the hub: write it with `task.comment` (`verdict` qa, `result`, `run`, `commit`) and `send` it to the coordinator as `qa clear T-<n>` or `qa not clear T-<n>`. Without a hub: print every `runs.jsonl` line, the case table and `verdict: qa`, `result:`, `commit:`, `run:`.
+6. Through the hub: write it with `task.comment` (`verdict` qa, `result`, `run`, `commit`) and `send` kind `report` to `lead T-<n>` in the request’s topic as `qa clear T-<n>` or `qa not clear T-<n>`. Without a hub: print every `runs.jsonl` line, the case table and `verdict: qa`, `result:`, `commit:`, `run:`.

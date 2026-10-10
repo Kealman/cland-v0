@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Write a QA brief and run it. The Coordinator writes qa/briefs/T-<n>.md and sends it to the QA role or a rescue run; the QA role runs each case, records the runs and writes the verdict.
+description: Write a Coordinator QA brief, request QA as the item lead, or run the brief as QA and record its verdict.
 ---
 
 A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. The cases it names are Lua files, `qa/cases/<ID>.lua`, run with `cland --headless --qa`. Every case ends as one line of `.cland/qa/runs.jsonl`; the run ends as one verdict on the item.
@@ -10,14 +10,21 @@ A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed 
 ## If you are the Coordinator
 
 1. **Write the brief.** Copy `BRIEF.md` to `qa/briefs/T-<n>.md` in the item's worktree (or on the branch the item will land from), fill in every section and commit it with the work. A brief has: the item; the build (branch and commit); the cases, each a catalogue id with its surface (`headless-grid` by default, or `tmux`, `web-terminal`, `hub-api`); manual checks, each a command with its expected outcome; what is out of scope; the grants it needs (none by default). Do not leave a section out: write "none". A case that does not exist yet is written first, in `qa/cases/<ID>.lua` with its catalogue header (see "Cases" below).
-2. **Pick the path.**
-   - *Through the hub (preferred).* `send` to the `qa` role (launch one with `session.launch` if none is live) with first line `qa request T-<n>` and the brief's path (the brief carries its own build rule: the branch tip when the run starts). The QA session runs the brief, records the runs and writes a QA verdict through the hub; the merge gate counts it (decision D5).
+2. **Give the brief to the item lead.** The live claimant from `task.view` requests QA itself and handles not-clear findings and re-runs. Launch a QA holder when none is available. For an unclaimed item, act as its lead and request QA yourself.
+3. **Handle an unclaimed item or unavailable QA.**
+   - *For an unclaimed item, through the hub (preferred).* `send` to the `qa` role (launch one with `session.launch` if none is live) with first line `qa request T-<n>` and the brief's path (the brief carries its own build rule: the branch tip when the run starts). The QA session runs the brief, records the runs and writes a QA verdict through the hub; the merge gate counts it (decision D5).
    - *Rescue (fallback, or a second opinion).* `/codex:rescue --background --fresh --model gpt-6-astra "Run the QA brief in qa/briefs/T-<n>.md exactly"`, then `/codex:status` and `/codex:result`. A rescue run reaches no hub socket: it returns the `runs.jsonl` lines and the verdict in its output. Recover the run's evidence and lines as "Recovering a rescue run" below says, and record the verdict with `task.comment` (`verdict` qa, `result`, `run` the rescue job id, `commit`), saying in the text that it came through `/codex:rescue`. That verdict shows as yours and **the merge gate does not count it** (decision D5): it informs, it does not clear.
-3. **Read the result.** The verdict is `clear` only when every case in scope passed. File each finding as an item: `cland task create "<finding>" --label qa-found --label needs-triage --body-file -`, with the case id, the commit, the command and what it showed.
+4. **Read findings escalated by the lead.** The verdict is `clear` only when every case in scope passed. File each finding as an item: `cland task create "<finding>" --label qa-found --label needs-triage --body-file -`, with the case id, the commit, the command and what it showed.
+
+## If you are the item lead
+
+After committing and pushing the work to `origin`, send kind `report` to `qa` in the item topic, with first line `qa request T-<n>`, the Coordinator’s committed `qa/briefs/T-<n>.md` and the branch/head. Request QA when a brief was supplied; without one request review only, unless the item is `qa-required`, in which case report blocked to the Coordinator. Fix not-clear findings and request a new run at the new head. Keep the claim until merge. The hub’s `ready` event supplies the Coordinator’s handover; a clear QA verdict needs no relay.
+
+Default item subscriptions deliver status/verdict and verifier death or long idle to the lead at its next turn. Use `subscribe` for additional subjects and `subscriptions` to inspect them; routine updates use kind `progress`, requests and verdicts use `report`, blockers use `question` or `report`. `lead T-<n>` falls back to the Coordinator for an unclaimed item; for a closed or unknown item address `coordinator` directly.
 
 ## If you are the QA role
 
-A request is `qa request T-<n>`; the brief it names is the whole job. Do not fix what you find.
+Accept `qa request T-<n>` from the item’s lead (the live claimant in `task.view`) or the Coordinator; the Coordinator-authored brief it names is the whole job. Questions about the build or findings go to `lead T-<n>`; a missing brief blocks the run. Do not fix what you find.
 
 1. **Read.** `task.view` the item, then the brief. Work from the item's worktree (`.cland/worktrees/T-<n>`, or the path the request names) and apply the brief's build rule: `git status --short` must be empty and `git rev-parse HEAD` is the build, which you run and then name in the verdict. A request that names a commit is honoured when it equals HEAD; when it differs the run is `BLOCKED` and the verdict names both commits. A brief that names no cases, or a worktree that is dirty or off the branch, is `BLOCKED`: say so in the verdict instead of guessing.
 2. **Choose a run id** of your own, unique for the item: `qa-<date>-<n>`, for example `qa-2026-10-09-1`.
@@ -49,7 +56,7 @@ A request is `qa request T-<n>`; the brief it names is the whole job. Do not fix
 
    not clear: ITEMS-001 FAILED (T-2 missing from the items panel).
    ```
-6. **Report** to the Coordinator with `send` (to `coordinator`, in the request's topic): first line `qa clear T-<n>` or `qa not clear T-<n>`, then the failed cases.
+6. **Report** to the item lead with `send` kind `report` (`to: ["lead T-<n>"]`, in the request's topic): first line `qa clear T-<n>` or `qa not clear T-<n>`, then the failed cases.
 
 ## If you are a rescue run
 

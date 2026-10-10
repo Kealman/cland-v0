@@ -74,7 +74,7 @@ export const TOPIC_HISTORY_LIMIT = 200;
 
 type DefaultItem = Pick<ItemSummary, 'id' | 'state' | 'parent' | 'claim'>;
 
-type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' };
+type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; ready?: boolean; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' };
 
 export type Connection = {
   name: string;
@@ -371,7 +371,7 @@ export class HubCore {
     }
     for (const text of change.events ?? []) {
       if (text === 'closed') this.#terminalEvent({ item: change.id }, 'task', `${change.id} closed`);
-      else this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`, text.startsWith('status changed ') ? { taskChange: 'status' } : text.startsWith('verdict posted ') ? { taskChange: 'verdict' } : {});
+      else this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`, text.startsWith('status changed ') ? { taskChange: 'status', ready: change.item.status === 'ready' } : text.startsWith('verdict posted ') ? { taskChange: 'verdict' } : {});
     }
     if (change.item.state === 'closed') this.#defaultItems.delete(change.id);
   }
@@ -467,6 +467,15 @@ export class HubCore {
       if (s.default) defaultRecipients.add(name);
       const mode = s.digest === 'now' && this.#canSteerEvents(s.subscriberId) ? 'now' : 'turn';
       if (recipients.get(name) !== 'now') recipients.set(name, mode);
+    }
+    // Ready is the lead's handover: one action delivery to the Coordinator through the ordinary queue.
+    // It must start a turn even on adapters without steering; other defaults remain digested.
+    if (event === 'task' && facts.ready) {
+      const coordinator = this.#defaultCoordinator();
+      if (coordinator) {
+        defaultRecipients.add(coordinator);
+        recipients.set(coordinator, 'now');
+      }
     }
     if (session && (facts.lifecycle === 'long idle' || facts.lifecycle === 'died' || facts.lifecycle === 'stopped')) {
       const sessionId = this.sessionIdentity(`name:${session}`);

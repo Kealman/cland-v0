@@ -97,7 +97,11 @@ test('the Reviewer and QA clauses in the roles.toml defaults say how a request a
   assert.match(qa, /nvim_input/, 'QA drives a headless Neovim with nvim_input');
   assert.match(qa, /screenstring\(\)/, 'QA reads its grid with screenstring()');
   assert.match(qa, /cland task/, 'QA uses the cland task CLI');
-  assert.match(coordinator, /review request T-/, 'the Coordinator sends the conventional request');
+  const implementer = roles.get('implementer')?.clause ?? '';
+  assert.match(implementer, /review request T-/, 'the Implementer sends its own conventional review request');
+  assert.match(implementer, /qa request T-/, 'the Implementer sends its own conventional QA request');
+  assert.match(coordinator, /The item’s lead requests its own review and QA/, 'the Coordinator gives the loop to the item lead');
+  assert.match(coordinator, /For an unclaimed item, act as its lead yourself/, 'the Coordinator is the unclaimed-item fallback');
   assert.match(coordinator, /\/codex:rescue --wait --fresh --model gpt-6\.1-sol/, 'the Coordinator fallback for review');
   assert.match(coordinator, /gpt-6-astra/, 'the Coordinator fallback for QA');
 });

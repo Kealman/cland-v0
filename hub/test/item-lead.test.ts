@@ -19,7 +19,7 @@ test('Reviewer reports resolve to the item claimant; unclaimed reports resolve t
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await impl.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'impl', 'rev']);
-  await rev.waitForEvent(e => e.params.content.includes('Report: `send` to `@lead T-<n>`'));
+  await rev.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Item lead', assignee: 'impl' });
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   const text = `review not clear ${item.id}`;
@@ -49,7 +49,7 @@ test('verdict events use the lead explicit subscription and QA reports use the s
   const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
   t.after(async () => { await coord.close(); await impl.close(); await qa.close(); });
   await qa.waitForPresence(['coord', 'impl', 'qa-one']);
-  await qa.waitForEvent(e => e.params.content.includes('Report: `send` to `@lead T-<n>`'));
+  await qa.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('`to: ["lead T-<n>"]`'));
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'QA lead', assignee: 'impl' });
   await impl.call('task.claim', { id: item.id });
   await impl.call('subscribe', { subject: { item: item.id }, events: ['task'] });

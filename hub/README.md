@@ -1079,6 +1079,14 @@ After opening its sockets, a new hub sweeps this project’s harness servers who
 
 `cland doctor [dir]` reports orphan servers, names their recorded session and status, and recommends `cland doctor --fix`. The fix ends verified orphan harness servers while preserving running sessions and unverifiable identities. An unpublished server is preserved while another live hub holds the project lock, because doctor cannot see that hub’s in-flight launch reservations; stop that hub before retrying cleanup. Doctor also reports cland hub daemons whose project directories were deleted, using their OS cwd and open project files to prove ownership, and `--fix` ends those daemons. Doctor tests scope deleted-project discovery to their fixture root with `CLAND_TEST_ORPHAN_ROOT`, so parallel fixtures cannot end each other’s hubs. If the OS cannot supply ownership evidence, inspect the candidate manually. On Linux the sweep reads `/proc`; on macOS it uses bounded asynchronous `lsof` calls. Every session start-time probe and termination probe uses asynchronous `ps`, keeping process inspection off the hub’s synchronous request path.
 
+### The item’s review and QA loop
+
+The Implementer’s claim makes it the item lead. After committing and pushing its branch to `origin`, it sets status `review` and sends kind `report` to `reviewer`, first line `review request T-<n>`, naming branch/head, criteria and scope. Reviewer and QA accept requests from that lead or the Coordinator. For QA, the Coordinator writes and commits `qa/briefs/T-<n>.md` before launch; the lead names it in `qa request T-<n>`. Without a brief, the lead requests review only, unless QA is required: a missing brief or verifier is a blocker to report to the Coordinator.
+
+Verifiers take `task.hold`, record their verdict and report with kind `report` to `lead T-<n>` in the request topic. The claimant fixes not-clear findings, pushes and requests another pass itself. The hub checks current verdicts and marks the item `ready`; that one status event starts the Coordinator’s turn and stands for the lead’s ready report. The Coordinator merges through the gate without relaying verdicts. Keep the claim until merge. For unclaimed items the lead address resolves to the Coordinator; closed or unknown items must be addressed to `coordinator` directly.
+
+Routine updates use kind `progress` and wait for the next turn; requests, verdicts and blockers use `report` or `question`, decisions use `decision`. Coordinator reports to the human appear in Watch, while questions and decisions needing attention appear in Now. Default subscriptions handle the lead’s intermediate events; use `subscribe` for additional subjects and `subscriptions` instead of polling. See [review and QA](../docs/review-and-qa.md).
+
 ### Event subscriptions
 
 A session calls `subscribe({ subject: { session: "impl-3" }, events: ["session.state"] })`
@@ -1182,7 +1190,8 @@ identities; anonymous hellos retain distinct provisional name identities. Both s
 They follow claims, handovers, renames and reconnects; `unsubscribe` removes only
 explicit requests. Closing an item delivers its final event and removes its default.
 
-Default task events cover status changes, verdicts and final close/removal events;
+Default task events cover status changes, verdicts and final close/removal events.
+A transition to `ready` also reaches the Coordinator with `digest: "now"`, even without an explicit subscription; it starts a turn through the ordinary queue on adapters without steering. Intermediate claimed-item events stay lead-only and digested. Explicit subscriptions may widen this traffic, and overlap still delivers once per recipient;
 claim events require explicit subscriptions. Default session events cover death/stop, waiting for approval and idle beyond
 `[inbox] idle_minutes` (30 minutes by default, zero disables idle events). Launched
 item membership and current claims or Reviewer/QA holds identify which items a
