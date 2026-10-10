@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-84
 branch: t/T-175-fix-forward-t-173-the-neovim-suite-must
 created: 2026-10-10T12:28:36.106Z
-updated: 2026-10-10T12:42:51.354Z
+updated: 2026-10-10T14:06:56.106Z
 ---
 
 ## Parent
