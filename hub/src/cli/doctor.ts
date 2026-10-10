@@ -4,12 +4,10 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { journalPath, readJournal } from '../hub/journal.ts';
-import { checkProject } from '../doctor/project.ts';
 import { render, summarise, warn, ok, type Check } from '../doctor/report.ts';
 import { checkToolchain } from '../doctor/toolchain.ts';
 import { checkKeys } from '../doctor/keys.ts';
 import { projectRoot } from '../project.ts';
-import { findOrphans, sweepOrphans, SweepBusy } from '../orphans.ts';
 import { VERSION } from '../version.ts';
 
 export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub and what cland init provisioned; one line per
@@ -22,6 +20,8 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
   if (extra !== undefined || args.some((a) => a.startsWith('--') && a !== '--json' && a !== '--fix')) throw new Error('usage: cland doctor [dir] [--json] [--fix]');
   const root = dir === undefined ? projectRoot(cwd) : resolve(cwd, dir);
   if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
+  const { findOrphans, sweepOrphans, SweepBusy } = await import('../orphans.ts');
+  const { checkProject } = await import('../doctor/project.ts');
   const [toolchain, project, keys] = await Promise.all([checkToolchain(env), checkProject(root), checkKeys(env)]);
   const orphanChecks: Check[] = [];
   // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.

@@ -2,7 +2,6 @@
 // after a version change. Both are idempotent and need no hub; see `src/init/provision.ts` for the managed set.
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { provision } from '../init/provision.ts';
 import type { Change } from '../init/files.ts';
 import { CLAND_DIR, projectRoot } from '../project.ts';
 import { VERSION } from '../version.ts';
@@ -54,7 +53,7 @@ async function run(command: 'init' | 'update', args: string[], cwd: string): Pro
   if (command === 'update' && !existsSync(resolve(root, CLAND_DIR))) throw new Error(`${root} has no ${CLAND_DIR}/: run \`cland init\` first`);
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
-  const changes = report?.changes ?? provision(root, { territory: command === 'init' || existsSync(territoryPath(root)) });
+  const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory: command === 'init' || existsSync(territoryPath(root)) });
   process.stdout.write(json ? `${JSON.stringify({ root, version: VERSION, changes })}\n` : `${describe(changes, root, command)}\n`);
   return 0;
 }

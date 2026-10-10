@@ -3,7 +3,6 @@
 import { spawn } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { serveProject } from '../hub/daemon.ts';
 import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
 import { hubDiscovery, layout, pidAlive, projectRoot, readDiscovery, removeDiscovery, type Discovery, type Layout } from '../project.ts';
@@ -232,6 +231,7 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
     return 2;
   }
   // A stdio hub serves its parent even where listening is forbidden; the project's lock is taken either way.
+  const { serveProject } = await import('../hub/daemon.ts');
   const daemon = await serveProject(root, { listen: !listen ? 'never' : stdio ? 'optional' : 'required' });
   const log = daemon.log;
   if (stdio) {
