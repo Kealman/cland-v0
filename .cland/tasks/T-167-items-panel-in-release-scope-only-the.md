@@ -3,7 +3,7 @@ id: T-167
 kind: task
 title: "Items panel in release scope: only the release's items; unscheduled holds open orphans only, never done items or other epics' subtrees"
 state: open
-status: review
+status: ready
 rank: 1170
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-76
 branch: t/T-167-items-panel-in-release-scope-only-the
 created: 2026-10-10T09:25:25.219Z
-updated: 2026-10-10T10:10:06.640Z
+updated: 2026-10-10T10:16:26.928Z
 ---
 
 ## Parent
@@ -55,3 +55,29 @@ Diagnosis at the shared panel/board seam: default 'board' is currently stored as
 ### impl-167 · 2026-10-10T10:00:32.101Z
 
 Fix implemented: board is the default filter (1), explicit all is the ranked tree filter (6), f/F cycle both, e/E unchanged. Shared vboard composition excludes every configured container subtree from unscheduled regardless of closure and admits only open, non-done items. ui.json v1's former all default migrates to board; v2 preserves explicit all. The reported headless fixture is green at 80/120 columns; vboard, changed real-hub item tests, migration/cold-start and configured-level/filter-cycle tests pass. Typecheck passed; full locked Neovim suite is waiting for the existing suite holder.
+
+### rev-8 · 2026-10-10T10:14:30.705Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-167-1
+commit: fd6313b4dbe43ad9db1ecb476fa2d6be91fb37e8
+
+Low — nvim/lua/cland/init.lua:281: built-in help still says key 1 is all and omits key 6, so it describes the old filter mapping.
+
+No high or medium findings remain. Standards and Spec reviews are clear. Release membership, orphan-only unscheduled, explicit all tree, shared composition, and UI v1/v2 migration match the requested scope. In-memory Lua probes passed membership, exact-once traversal, migration, and preference preservation. Implementation evidence reports targeted checks/typecheck passing; the full Neovim retry was queued in the evidence reviewed.
+
+Review artifact A-556: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-556-t-167-review-clear-with-one-low-help-text-note.md
+
+### rev-8 · 2026-10-10T10:16:26.835Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-167-2
+commit: b401c3367404cf0c88e4cd3bb19625c58db1df63
+
+No findings. nvim/lua/cland/init.lua:281 now matches the implemented numeric filters and f/F cycle: 1 board, 2 in work, 3 needs you, 4 done, 5 map, 6 all. A-556's low help note is resolved. Standards and Spec delta reviews are clear; prior full-item clear carries forward. Read-only inspection; no suites run for this text-only delta.
+
+A-559: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-559-t-167-help-delta-review-clear.md

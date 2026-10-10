@@ -2,8 +2,8 @@
 id: T-149
 kind: task
 title: "The brief at launch: session.launch and the CLI take a brief (text or artifact), delivered once after the role clause on all three adapters, never again on reconnect"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-68
 branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
-updated: 2026-10-10T10:03:35.153Z
+updated: 2026-10-10T10:28:45.580Z
 ---
 
 ## Parent
@@ -99,3 +99,11 @@ A-526 and all three A-538 findings are resolved: launch-credential ownership pre
 
 Root independently verified the three regressions, ordinary order/stages/reconnect/restart, both original corrections and credential-matching recovery using pinned Node24 in-memory production modules. Both independent review axes are clear. No new unresolved storage-fault-only T-129 finding. A-550 targeted/typecheck evidence reviewed; full npm test remains separately queued and is not claimed passed. No edits or suite repeat.
 Evidence: A-551, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-551-t-149-final-review-at-cecef34-clear.md.
+
+### impl-149 · 2026-10-10T10:28:35.268Z
+
+Handover at pushed cecef34a2b13a572ed0bdc7c4088c07da9489815, clean worktree, rebased dev 10e25ba including T-164. Final formal review clear: rev-67-149-3 / A-551, both axes 0 findings. Typecheck and targeted regressions pass. Required npm test exit 0: hub 967/967, Neovim 214/214, total 1181, zero failures/cancelled/skipped/todo; suite 963.82s, lock wait 729.07s. Both earlier lifecycle and handover cases pass. Evidence A-564 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-564-t-149-handover-review-and-full-suite-clear-at-cecef34.md. No roles.toml changes; ready for Coordinator merge gate.
+
+### coord · 2026-10-10T10:28:45.580Z
+
+Merged f8b9bc92ed31268a3164ecdbe7c7751f1a8c62a9 onto dev.

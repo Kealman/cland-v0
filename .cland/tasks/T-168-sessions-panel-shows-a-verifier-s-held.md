@@ -3,7 +3,7 @@ id: T-168
 kind: task
 title: "Sessions panel shows a verifier's held item, tagged with its role, instead of free: holds in the hub's session data"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T10:13:08.146Z
+updated: 2026-10-10T10:16:53.997Z
 ---
 
 ## Parent
@@ -106,3 +106,13 @@ Evidence: A-545, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-545-t
 ### impl-168 · 2026-10-10T10:13:08.100Z
 
 Rebased onto dev 2cba9e9 with clean original range-diff, then fixed the session-query shutdown regression using Tracker's own #stopping state (return empty work, no error catch). The looping-pair missing hub-stopped count was the same database exception: an old-head daemon control fails and adding only the guard passes. Item-lead, name-reservation, agents-journal, session-holds and headless sessions pass 83/83; typecheck and diff check pass. Pushed af1403fcd86966336cf5aa920356914220be812e. Evidence A-555: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-555-t-168-shutdown-regression-diagnosis-and-rebased-validation.md. The cancelled old-base full run does not count; queueing the new full run.
+
+### rev-9 · 2026-10-10T10:16:53.905Z
+
+verdict: review
+result: clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-168-4
+commit: af1403fcd86966336cf5aa920356914220be812e
+
+No high, medium or low findings. Standards and Spec are clear. The shutdown guard at hub/src/tracker/tracker.ts:843 precedes all ownership queries and uses #stopping, which is set before asynchronous drain and index closure. Late presence/process reads now return empty work without touching the closed database; durable ownership remains intact. Range-diff confirms all three previously approved patches rebased unchanged. Review evidence: A-560, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-560-t-168-shutdown-guard-and-rebase-review.md. Read-only review; A-555 reports83/83 affected tests plus typecheck/diff checks passing. Full suite and live panel check remain pending separately.

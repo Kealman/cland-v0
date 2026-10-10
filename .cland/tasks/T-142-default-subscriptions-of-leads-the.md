@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T10:12:35.428Z
+updated: 2026-10-10T10:15:48.982Z
 ---
 
 ## Parent
@@ -110,3 +110,17 @@ No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 fi
 Pinned 5362c80...b5d479c changes only hub/test/agents-filters.test.ts (+9 −5), with no production changes. The added default task-status event belongs in Agents history under spec §3.9’s status-change subscriptions and ordinary deliveries plus v0’s Agents lifecycle record. Exact event text/alpha recipient are asserted. Latest-window, limit, item/session intersection, exact nonrecipient exclusions and MCP/history ID checks remain intact; indexes follow the added row. Whitespace check passes.
 A-553 reports 2/2 affected tests and typecheck passing. No suite repeat or edits; fresh full-suite result separately pending.
 Evidence: A-554, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-554-t-142-test-only-review-at-b5d479c-clear.md.
+
+### rev-67 · 2026-10-10T10:15:48.876Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-142-5
+commit: 9556ad828d701d36d86f63043ed0602987a7e091
+
+No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 findings. A-554 full-item clearance carries forward.
+
+Pinned b5d479c...9556ad8 changes only hub/test/review-qa.test.ts (+5 −3), with no production changes. Digest lookup keeps exact sender matching; both complete report lines remain bounded at line boundaries and each corresponding default verdict event is required. This matches §3.9’s default verdict/turn-digest behavior. Existing roles, verdict header/author/run, CLI filters, item contents and refusal checks remain intact; helper refusal callers still assert whole exact content. Whitespace check passes.
+A-557’s corrected evidence reports targeted red→green and 3/3 file tests plus typecheck passing. No edits or suite repeat; fresh full-suite result separately pending.
+Evidence: A-558, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-558-t-142-verdict-digest-test-review-at-9556ad8-clear.md.
