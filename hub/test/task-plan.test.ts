@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import type { EpicPlan } from '../src/tracker/plan.ts';
+import { withPlan, type EpicPlan } from '../src/tracker/plan.ts';
 import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 
 type Result = { ok: boolean; error?: string; id: string; plan: EpicPlan | null; planError?: string };
@@ -76,6 +76,25 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
     assert.equal(changes[1].by, 'coord');
   });
   assert.equal((await cland(root, 'task', 'plan', 'show', epic.id)).code, 0);
+});
+
+test('a refused epic close does not accept or journal the proposed plan', async t => {
+  const { root, ui, epic, a, b, c, plan, set } = await setup(t);
+  assert.equal((await set(stringify(plan))).ok, true);
+  for (const child of [a, b, c]) assert.equal((await ui.request({ type: 'task.close', item: child.id })).ok, true);
+  const original = await readFile(join(root, epic.path), 'utf8');
+  const current = (await ui.request({ type: 'task.view', item: epic.id })).value as { item: ItemView };
+  const changed = structuredClone(plan);
+  changed.stages[0]!.name = 'Unpublished stage';
+  const changes = async () => (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(line => line.includes('"event":"task-plan-changed"'));
+  const accepted = await changes();
+  const refused = await ui.request({ type: 'task.edit', item: epic.id, state: 'closed', body: withPlan(current.item.body, changed) });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error ?? '', /qa-missing/);
+  assert.equal(await readFile(join(root, epic.path), 'utf8'), original);
+  assert.deepEqual(await changes(), accepted, 'a refused publication cannot record an accepted plan');
+  const view = (await ui.request({ type: 'task.view', item: epic.id })).value as { item: ItemView };
+  assert.deepEqual(view.item.plan, plan);
 });
 
 test('invalid schema and references are refused without changing the previous epic or its plan', async t => {

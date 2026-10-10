@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -88,7 +88,10 @@ test('Lead launch requires an open epic or release; concurrent launches take onl
   assert.match((await launch('no-node')).error!, /needs `item`/);
   for (const kind of ['task', 'question', 'spec', 'map', 'epic']) {
     const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: `Invalid ${kind}`, kind });
-    if (kind === 'epic') await coord.call('task.close', { id: item.id });
+    if (kind === 'epic') {
+      const closed = await cland(root, 'task', 'close', item.id, '--override', 'Lead fixture: no epic demo');
+      assert.equal(closed.code, 0, closed.stderr);
+    }
     const refused = await launch(`invalid-${kind}`, item.id);
     assert.equal(refused.ok, false);
     assert.match(refused.error!, /open configured container/);

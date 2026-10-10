@@ -287,7 +287,7 @@ test('a malformed indexed child stays visible and prevents close with its file n
     assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
     return true;
   });
-  assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-1', override: 'Child-file fixture: no epic demo' })).ok, true);
 });
 
 test('close validates a previously closed child file without waiting for the watcher', async t => {
@@ -305,7 +305,10 @@ test('close validates a previously closed child file without waiting for the wat
   assert.equal(close.ok, false);
   assert.match(close.error ?? '', /T-2-child\.md/);
   await writeFile(file, before);
-  assert.equal((await ui.request({ type: 'task.edit', item: 'T-1', state: 'closed' })).ok, true);
+  const qaMissing = await ui.request({ type: 'task.edit', item: 'T-1', state: 'closed' });
+  assert.equal(qaMissing.ok, false);
+  assert.match(qaMissing.error ?? '', /qa-missing/);
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-1', override: 'Child-file fixture: no epic demo' })).ok, true);
 });
 
 test('containers refuse close and closed-state edits naming open children, then close after children close or move', async t => {
@@ -335,7 +338,7 @@ test('containers refuse close and closed-state edits naming open children, then 
   assert.match(JSON.stringify(release.content), /open children.*T-2.*Epic/);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-3' })).ok, true);
   assert.equal((await ui.request({ type: 'task.link', item: 'T-4', parent: null })).ok, true);
-  assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-2', override: 'Hierarchy fixture: no epic demo' })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, true);
 });
 

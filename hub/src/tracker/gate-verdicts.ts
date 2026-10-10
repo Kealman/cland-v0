@@ -38,3 +38,22 @@ export function gateVerdicts(view: ItemView): { review: IndexedVerdict; qa: Inde
   const qa = view.labels.includes('qa-required') ? verdict(view, 'qa') : null;
   return { review, qa };
 }
+
+/** Epic demos are QA on dev, not a task merge: no review or Implementer done marks are required. */
+export function incompleteEpicCriteria(view: ItemView, qa?: IndexedVerdict): string[] {
+  return view.criteria.flatMap(c => {
+    const verified = c.marks.some(m => m.kind === 'verified' && m.by === qa?.by && m.run === qa?.run);
+    return !c.id || c.marks.some(m => m.kind === 'failed') || !verified
+      ? [`${c.id ?? 'legacy criterion'}: ${c.text} (not verified in the current QA run)`] : [];
+  });
+}
+
+export function gateEpicVerdict(view: ItemView): IndexedVerdict {
+  const qa = verdict(view, 'qa');
+  const incomplete = incompleteEpicCriteria(view, qa);
+  if (view.criteriaWarnings.length || new Set(view.criteria.map(c => c.id)).size !== view.criteria.length) {
+    throw new MergeError('criteria-incomplete', `${view.id}: fix malformed criterion sub-items or duplicate criterion ids before closing the epic`);
+  }
+  if (incomplete.length) throw new MergeError('criteria-incomplete', `${view.id}: incomplete epic criteria:\n${incomplete.join('\n')}\nQA runs the Definition of done on dev and records a clear verdict with --verified C<n> or --verified all. Legacy ids are assigned on the first criterion operation; read task view again.`);
+  return qa;
+}

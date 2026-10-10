@@ -53,8 +53,8 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.close',
-    description: 'Close an item, optionally with a closing comment. Its claim is released.',
-    inputSchema: { type: 'object', properties: { id: itemId, comment: str }, required: ['id'] },
+    description: 'Close an item, optionally with a closing comment. Epics require a current clear QA verdict on dev and every criterion verified; open children still refuse. Its claim is released.',
+    inputSchema: { type: 'object', properties: { id: itemId, comment: str, override: { ...str, description: "Human shell only: skip epic QA evidence with an audited reason; sessions cannot override." } }, required: ['id'] },
   },
   {
     name: 'task.link',

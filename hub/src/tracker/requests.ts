@@ -6,6 +6,7 @@ import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { Connection } from '../hub/core.ts';
 import { TrackerError, type Actor, type Tracker, type VerdictInput } from './tracker.ts';
 import { importIssues, type ImportRequest } from './import-github.ts';
+import { isPlanningContainer } from './kinds.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
 export type TaskRequest =
@@ -45,7 +46,7 @@ export type TaskRequest =
       assignee?: string | null;
       as?: ActorField;
     }
-  | { type: 'task.close'; id: string; item: string; comment?: string; as?: ActorField }
+  | { type: 'task.close'; id: string; item: string; comment?: string; override?: string; as?: ActorField }
   | { type: 'task.link'; id: string; item: string; parent?: string | null; blocked_by?: string[]; unblock?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
   | { type: 'task.hold'; id: string; item: string; release?: boolean; as?: ActorField }
   | { type: 'task.rank'; id: string; item: string; top?: boolean; before?: string; after?: string; as?: ActorField }
@@ -83,7 +84,7 @@ const needItem = (f: Record<string, unknown>): string => {
 export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, actor: Actor, resumed?: <T>(write: () => T) => T, currentActor?: () => Actor): Promise<unknown> {
   const authorize = () => { currentActor?.(); };
   const f = frame as unknown as Record<string, unknown>;
-  for (const k of ['title', 'body', 'text', 'comment', 'under']) optStr(f, k);
+  for (const k of ['title', 'body', 'text', 'comment', 'under', 'override']) optStr(f, k);
   for (const k of ['assignee', 'parent', 'topic', 'branch', 'version']) optNullableStr(f, k);
   for (const k of ['labels', 'add_labels', 'remove_labels', 'blocked_by', 'unblock']) optList(f, k);
   if (f.kind !== undefined && !tracker.kinds.includes(f.kind as Kind)) throw new TrackerError(`unknown kind "${String(f.kind)}" (one of ${tracker.kinds.join(', ')})`);
@@ -130,7 +131,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       if (!recorded) return { item };
       const sha = recorded.commit ?? null;
       const source = frame.verdict?.commit !== undefined ? 'explicit' : sha ? 'branch' : 'none';
-      const note = source === 'explicit' ? `verdict commit: ${sha}` : source === 'branch' ? `verdict records branch tip ${item.branch}: ${sha}` : 'verdict has no commit: the item has no resolving branch';
+      const note = source === 'explicit' ? `verdict commit: ${sha}` : source === 'branch' ? `verdict records branch tip ${isPlanningContainer(item.kind, tracker.levels) ? 'dev' : item.branch}: ${sha}` : 'verdict has no commit: the item has no resolving branch';
       return { item, commit: { sha, source, note } };
     }
     case 'task.criterion':
@@ -144,7 +145,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       return { item: await tracker.edit(actor, needItem(f), input, resumed, authorize) };
     }
     case 'task.close':
-      return { item: await tracker.close(actor, needItem(f), frame.comment, resumed, authorize) };
+      return { item: await tracker.close(actor, needItem(f), frame.comment, resumed, authorize, frame.override) };
     case 'task.link': {
       const { type: _t, id: _i, as: _a, item: _item, ...input } = frame;
       return { item: await tracker.link(actor, needItem(f), input, resumed, authorize) };

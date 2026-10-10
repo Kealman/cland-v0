@@ -18,7 +18,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--verified C1,C3|all | --failed "C1=note"]…]
   task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
-  task close <id> [--comment t]
+  task close <id> [--comment t] [--override reason (human shell only)]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
@@ -49,7 +49,7 @@ const OPTIONS = {
   list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
   comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
   edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
-  close: { ...COMMON, comment: { type: 'string' } },
+  close: { ...COMMON, comment: { type: 'string' }, override: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   hold: { ...COMMON, release: { type: 'boolean' } },
   criterion: { ...COMMON, run: { type: 'string' }, note: { type: 'string' }, text: { type: 'string' } },
@@ -138,7 +138,7 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         assignee: clearable(v.assignee as string | undefined),
       }) as { type: string };
     case 'close':
-      return defined({ type: 'task.close', item: needId(), comment: v.comment }) as { type: string };
+      return defined({ type: 'task.close', item: needId(), comment: v.comment, override: v.override }) as { type: string };
     case 'link':
       return defined({
         type: 'task.link',

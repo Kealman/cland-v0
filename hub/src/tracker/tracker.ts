@@ -10,7 +10,7 @@ import { PlanError, parsePlan, planInBody, withPlan, type EpicPlan } from './pla
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
 import { criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
-import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
+import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, linkSync, unlinkSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
@@ -50,8 +50,8 @@ import {
 } from './item.ts';
 import type { LogFn } from '../log.ts';
 import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
-import { gateVerdicts } from './gate-verdicts.ts';
-import { MergeError } from '../merge.ts';
+import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts } from './gate-verdicts.ts';
+import { MergeError, type MergeCode } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
 import { Freshness, pending, type TipSchedule } from './freshness.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
@@ -140,8 +140,8 @@ export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: s
 
 export class TrackerError extends Error {
   /** `git-unavailable`: Git did not answer a question the write needs (a verdict's commit, a branch tip). */
-  readonly code?: 'git-unavailable';
-  constructor(message: string, code?: 'git-unavailable') {
+  readonly code?: 'git-unavailable' | MergeCode;
+  constructor(message: string, code?: 'git-unavailable' | MergeCode) {
     super(message);
     if (code) this.code = code;
   }
@@ -386,7 +386,7 @@ export class Tracker {
    */
   #announce(id: string, ifMoved: boolean, siblings?: string[]): void {
     const indexed = this.#index.get(id);
-    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#fresh.annotate(id, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     const shown = item ? JSON.stringify([item.verdictBase, item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
     const previous = this.#announced.get(id);
@@ -864,11 +864,11 @@ export class Tracker {
     }, resumed);
   }
 
-  #viewOf(id: string, file: string, item: Item): ItemView {
+  #viewOf(id: string, file: string, item: Item, source: 'file' | 'proposal' = 'file'): ItemView {
     this.#normalizeStatus(item);
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
-    if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
+    if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
     return {
       ...indexed,
       verdictBase: this.#fresh.base(),
@@ -880,10 +880,11 @@ export class Tracker {
       body: item.body,
       // A read may see a valid hand save before its watcher turn. Retain and journal that exact plan
       // before showing it, so a following invalid save cannot restore an older version.
-      ...this.#acceptPlan(item, 'hand'),
-      ...parseCriteria(item.body),
+      // Gate previews are unpublished proposals, so they must not retain or journal a plan.
+      ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
+      ...parseCriteria(item.body, this.levels.includes(item.fm.kind)),
       comments: item.comments,
-      verdicts: this.#fresh.annotate(id, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
+      verdicts: this.#annotateVerdicts(id, item.fm.kind, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),
     };
   }
@@ -920,8 +921,38 @@ export class Tracker {
     const hub = evidence.verdicts.map(({ current: _current, ...v }) => ({ ...v,
       ...(v.writer ? { writer: { ...v.writer, sessionId: this.#identityOf(v.writer.sessionId) } } : {}),
     }));
-    const annotated = this.#fresh.annotate(view.id, view.branch, hub);
+    const annotated = this.#annotateVerdicts(view.id, view.kind, view.branch, hub);
     return { ...view, claim: view.claim ? { ...view.claim, sessionId: this.#identityOf(view.claim.sessionId) } : null, verdicts: [...view.verdicts.filter(v => v.source === 'file'), ...annotated] };
+  }
+
+  /** An epic verdict covers the exact integration build, including empty commits; task patch equivalence does not apply. */
+  #annotateVerdicts(id: string, kind: Kind, branch: string | null, verdicts: IndexedVerdict[]): IndexedVerdict[] {
+    if (!isPlanningContainer(kind, this.levels)) return this.#fresh.annotate(id, branch, verdicts);
+    const tip = this.#fresh.tip('dev');
+    return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict) ? v : { ...v, current: !!tip && v.commit === tip });
+  }
+
+  #checkEpicClose(view: ItemView, tip: string | null): void {
+    try {
+      const evidence = this.#mergeViewOf({ ...view, kind: this.levels[1]! });
+      gateEpicVerdict({ ...evidence, verdicts: evidence.verdicts.map(v => ({ ...v, current: !!tip && v.commit === tip })) });
+    }
+    catch (err) {
+      if (err instanceof MergeError) throw new TrackerError(err.message, err.code);
+      throw err;
+    }
+  }
+
+  /** Every planning-container close rereads the build and original item before publication. */
+  async #epicCloseEvidence(id: string, source: string, resumed: Resumed, verifyBuild = true): Promise<{ tip: string | null; view: ItemView }> {
+    const tip = verifyBuild ? await this.#resolve('refs/heads/dev', 'the epic demo build on dev') : null;
+    const { file } = resumed(() => this.#require(id));
+    const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+    return resumed(() => {
+      const live = parseItem(text, file, this.levels);
+      if (serializeItem(live) !== source) throw new TrackerError(`${id}: epic evidence changed while closing; retry`);
+      return { tip, view: this.#viewOf(id, file, live) };
+    });
   }
 
   recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
@@ -960,7 +991,7 @@ export class Tracker {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
-    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#fresh.annotate(i.id, i.branch, verdicts.get(i.id) ?? []) }));
+    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
   }
 
   /** Session work reads indexed ownership; item bodies and verdict provenance are irrelevant. */
@@ -1247,7 +1278,8 @@ export class Tracker {
       }));
     }
     if (v) {
-      const branch = this.#index.get(this.#require(rawId).id)?.branch ?? null;
+      const indexed = this.#index.get(this.#require(rawId).id);
+      const branch = isPlanningContainer(indexed?.kind, this.levels) ? 'dev' : indexed?.branch ?? null;
       if (branch) return this.#resolve(`refs/heads/${branch}`, `the tip of branch ${branch}`).then(sha => resumed(() => {
         tip = { branch, sha };
         return write();
@@ -1262,7 +1294,8 @@ export class Tracker {
     const view = await this.#mutate(rawId, actor, marking ? 'criterion' : v ? 'verdict' : 'comment', (item) => {
       if (v && !v.commit) {
         // a hand edit moved the branch meanwhile: the tip the cache last read for it
-        const sha = item.fm.branch === tip?.branch ? tip.sha : this.#fresh.tip(item.fm.branch);
+        const branch = isPlanningContainer(item.fm.kind, this.levels) ? 'dev' : item.fm.branch;
+        const sha = branch === tip?.branch ? tip.sha : this.#fresh.tip(branch);
         if (sha) v.commit = sha;
       }
       if (marking) {
@@ -1279,7 +1312,10 @@ export class Tracker {
       }
       const summary = marked.length ? `Criteria: ${marked.map(c => `${c.id} ${c.mark}${c.note ? ` (${c.note})` : ''}`).join(', ')}.` : '';
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: [body, summary].filter(Boolean).join('\n\n'), ...(v ? { verdict: v } : {}) });
-      if (v?.result === 'not clear') this.#setStatus(item, 'in progress');
+      if (v?.result === 'not clear') {
+        this.#setStatus(item, 'in progress');
+        if (this.levels.includes(item.fm.kind)) item.fm.state = 'open';
+      }
     }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(normalizeId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined);
     return resumed(() => {
       for (const c of marked) this.#criterionEvent(view.id, c.id, c.mark);
@@ -1369,10 +1405,15 @@ export class Tracker {
       if (input.body !== undefined) checkText(input.body, 'body');
       let closing: { id: string; kinds: Kind[] } | undefined;
       let changingKind: { id: string; previous: Kind; next: Kind } | undefined;
+      let epicEvidence: ItemView | undefined;
+      let epicSource: string | undefined;
+      let epicTip: string | null = null;
       let children: Child[] = [];
       const view = await this.#mutate(rawId, actor, 'edit', (item) => {
         const fm = item.fm;
         const previousKind = fm.kind;
+        const previousState = fm.state;
+        if (isPlanningContainer(previousKind, this.levels) || isPlanningContainer(input.kind, this.levels)) epicSource = serializeItem(item);
         if (input.title !== undefined) fm.title = input.title.trim();
         if (input.body !== undefined) item.body = input.body.trim();
         if (input.kind !== undefined && input.kind !== fm.kind) {
@@ -1393,7 +1434,6 @@ export class Tracker {
             fm.version = input.version;
           }
         }
-        if (input.state === 'closed') closing = { id: fm.id, kinds: [previousKind, fm.kind] };
         if (!rankable(fm.kind, this.levels)) delete fm.rank;
         if (fm.kind !== 'task') delete fm.status;
         else this.#normalizeStatus(item);
@@ -1413,12 +1453,21 @@ export class Tracker {
         if (input.add_labels) fm.labels = uniq([...fm.labels, ...input.add_labels]);
         if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
         if (input.assignee !== undefined) fm.assignee = input.assignee || null;
+        if (fm.state === 'closed' && (previousState === 'open' || input.state === 'closed' || input.status === 'done')) {
+          closing = { id: fm.id, kinds: [previousKind, fm.kind] };
+          if (closing.kinds.some(kind => isPlanningContainer(kind, this.levels))) epicEvidence = this.#viewOf(fm.id, this.#require(fm.id).file, { ...item, fm: { ...fm, kind: this.levels[1]! } }, 'proposal');
+        }
       }, resumed, undefined, () => {
         authorize();
         if (closing) for (const kind of closing.kinds) this.#checkClose(closing.id, kind, children);
         if (changingKind) this.#checkKindChange(changingKind.previous, changingKind.next, children);
+        if (epicEvidence) this.#checkEpicClose(epicEvidence, epicTip);
       }, undefined, async () => {
         const id = changingKind?.id ?? (closing?.kinds.some(kind => this.levels.includes(kind)) ? closing.id : undefined);
+        if (epicEvidence) {
+          const refreshed = await this.#epicCloseEvidence(epicEvidence.id, epicSource!, resumed);
+          resumed(() => { epicTip = refreshed.tip; });
+        }
         if (id) children = await this.#scanChildren(id, resumed);
       });
       return resumed(() => {
@@ -1439,8 +1488,8 @@ export class Tracker {
   }
 
   #prepareCriteria(item: Item) {
-    if (item.fm.kind !== 'task') throw new TrackerError('criteria operations require a task');
-    const parsed = criteriaSource(item.body);
+    if (item.fm.kind !== 'task' && !this.levels.includes(item.fm.kind)) throw new TrackerError('criteria operations require a task or container');
+    const parsed = criteriaSource(item.body, this.levels.includes(item.fm.kind));
     if (parsed.criteriaWarnings.length) throw new TrackerError('fix malformed criterion sub-items before changing criteria');
     const ids = parsed.criteria.flatMap(c => c.id ? [c.id] : []);
     if (new Set(ids).size !== ids.length) throw new TrackerError('duplicate criterion ids; fix the section first');
@@ -1459,7 +1508,7 @@ export class Tracker {
     }
     item.fm.criterion_seq = sequence;
     item.body = lines.join('\n');
-    return criteriaSource(item.body);
+    return criteriaSource(item.body, this.levels.includes(item.fm.kind));
   }
 
   #changeCriterion(item: Item, actor: Actor, input: { op: string; criterion?: string; text?: string; note?: string; run?: string }): string {
@@ -1492,6 +1541,7 @@ export class Tracker {
         marks = [{ kind: 'failed', by: formatVerdictBy(actor.name, actor.role), at: timestamp, note: input.note!.trim() }];
         checked = false;
         this.#setStatus(item, 'in progress');
+        if (this.levels.includes(item.fm.kind)) item.fm.state = 'open';
       } else if (input.op === 'edit') text = input.text!.trim();
       const indent = ' '.repeat(source.indent);
       const block = input.op === 'remove' ? [] : [
@@ -1535,18 +1585,41 @@ export class Tracker {
     }, resumed);
   }
 
-  close(actor: Actor, rawId: string, comment?: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+  close(actor: Actor, rawId: string, comment?: string, resumed: Resumed = untimed, authorize: () => void = () => {}, override?: string): Promise<ItemView> {
     return this.#serial(async () => {
+      const checkOverride = () => {
+        authorize();
+        if (override !== undefined) {
+          if (!actor.human || actor.role !== null) throw new TrackerError("only the human shell may override epic QA");
+          if (!override.trim()) throw new TrackerError("an override needs a reason");
+        }
+      };
+      checkOverride();
       const body = comment?.trim() ?? '';
       checkText(body, 'comment');
       let closing!: { id: string; kind: Kind };
       let children: Child[] = [];
+      let evidence: ItemView | undefined;
+      let source: string | undefined;
+      let epicTip: string | null = null;
       const view = await this.#mutate(rawId, actor, 'close', (item) => {
         closing = { id: item.fm.id, kind: item.fm.kind };
+        if (isPlanningContainer(closing.kind, this.levels)) source = serializeItem(item);
         item.fm.state = 'closed';
         this.#setStatus(item, 'done');
         if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
-      }, resumed, undefined, () => { authorize(); this.#checkClose(closing.id, closing.kind, children); }, undefined, async () => {
+      }, resumed, undefined, () => {
+        checkOverride();
+        this.#checkClose(closing.id, closing.kind, children);
+        if (evidence) {
+          if (override === undefined) this.#checkEpicClose(evidence, epicTip);
+          else this.#log({ event: 'epic-close-overridden', id: closing.id, by: actor.name, override: override.trim(), criteria: incompleteEpicCriteria(evidence, evidence.verdicts.filter(v => v.source === 'hub' && v.verdict === 'qa').at(-1)) });
+        }
+      }, undefined, async () => {
+        if (isPlanningContainer(closing.kind, this.levels)) {
+          const refreshed = await this.#epicCloseEvidence(closing.id, source!, resumed, override === undefined);
+          resumed(() => { epicTip = refreshed.tip; evidence = refreshed.view; });
+        }
         if (this.levels.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
       });
       return resumed(() => {
@@ -1764,11 +1837,18 @@ export class Tracker {
 
   async #writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed, authorize: () => void): Promise<'created' | 'updated' | 'unchanged'> {
     const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
-    const previous = existing ? parseItem(existing.text, file, this.levels).fm : null;
+    const previousItem = existing ? parseItem(existing.text, file, this.levels) : null;
+    const previous = previousItem?.fm ?? null;
     const closing = previous?.state === 'open' && item.fm.state === 'closed';
     const changingKind = previous !== null && previous.kind !== item.fm.kind;
+    const closingEpic = closing && [previous?.kind, item.fm.kind].some(kind => isPlanningContainer(kind, this.levels));
+    let epicEvidence: { tip: string | null; view: ItemView } | undefined;
     let children: Child[] = [];
     const refresh = async () => {
+      if (closingEpic) {
+        const refreshed = await this.#epicCloseEvidence(item.fm.id, serializeItem(previousItem!), resumed);
+        resumed(() => { epicEvidence = refreshed; });
+      }
       if (changingKind || closing && previous && [previous.kind, item.fm.kind].some(kind => this.levels.includes(kind))) children = await this.#scanChildren(item.fm.id, resumed);
     };
     const check = () => {
@@ -1778,6 +1858,10 @@ export class Tracker {
         this.#checkClose(item.fm.id, item.fm.kind, children);
       }
       this.#checkKindChange(previous?.kind, item.fm.kind, children);
+      if (epicEvidence) {
+        if (isPlanningContainer(previous?.kind, this.levels)) this.#checkEpicClose(epicEvidence.view, epicEvidence.tip);
+        this.#checkEpicClose(this.#viewOf(item.fm.id, file, { ...item, fm: { ...item.fm, kind: this.levels[1]! } }, 'proposal'), epicEvidence.tip);
+      }
     };
     const prepare = (): Promise<'created' | 'updated' | 'unchanged'> => {
       authorize();

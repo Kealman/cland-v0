@@ -99,6 +99,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'merge-recovery-pending',
   'merge-refused',
   'merge-criteria-overridden',
+  'epic-close-overridden',
   'merge-cleanup-failed',
   'task-worktree',
   'task-worktree-failed',

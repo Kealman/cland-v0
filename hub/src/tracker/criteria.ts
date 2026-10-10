@@ -44,7 +44,7 @@ function markOf(kind: string, value: string): CriterionMark | null {
 }
 
 /** §3.4's list and mark sub-items. The checkbox is preserved independently of marks. */
-export function criteriaSource(body: string) {
+export function criteriaSource(body: string, definitionOfDone = false) {
   const sources: { start: number; lines: number[]; indent: number }[] = [];
   let sectionEnd: number | undefined;
   let hasSection = false;
@@ -62,7 +62,7 @@ export function criteriaSource(body: string) {
       continue;
     }
     if (fenced) { fence = { character: fenced[1]![0]!, length: fenced[1]!.length }; textOpen = false; continue; }
-    if (/^##[ \t]+Acceptance criteria(?:[ \t]+#+)?[ \t]*$/.test(line)) { inSection = true; hasSection = true; sectionEnd = undefined; current = undefined; indent = undefined; continue; }
+    if (/^##[ \t]+Acceptance criteria(?:[ \t]+#+)?[ \t]*$/.test(line) || definitionOfDone && /^##[ \t]+Definition of done(?:[ \t]+#+)?[ \t]*$/.test(line)) { inSection = true; hasSection = true; sectionEnd = undefined; current = undefined; indent = undefined; continue; }
     if (!inSection) continue;
     if (/^#{1,2}\s/.test(line)) { sectionEnd = index; inSection = false; current = undefined; continue; }
     const checkbox = /^( {0,3})[-*+] \[([ xX])\](?:[ \t]+(.*))?$/.exec(line);
@@ -105,8 +105,8 @@ export function criteriaSource(body: string) {
   return { criteria, criteriaWarnings, sources, sectionEnd: sectionEnd ?? body.split(/\r?\n/).length, hasSection, insertionInFence: sectionEnd === undefined && fence !== undefined };
 }
 
-export function parseCriteria(body: string): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
-  const { criteria, criteriaWarnings } = criteriaSource(body);
+export function parseCriteria(body: string, definitionOfDone = false): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
+  const { criteria, criteriaWarnings } = criteriaSource(body, definitionOfDone);
   return { criteria, criteriaWarnings };
 }
 

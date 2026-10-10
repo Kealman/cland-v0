@@ -39,6 +39,14 @@ The human's `cland merge T-12 --override "reason"` bypasses verdicts and criteri
 
 For an item already in flight with legacy checkboxes, the claiming Implementer marks the first criterion done with `cland task criterion T-12 done C1`; this assigns stable ids in list order. Read `task view` again for the ids and mark the remaining criteria done. The Coordinator, human or Aide can also mark done. Then Reviewer or QA checks the criteria and records a clear verdict with `--verified all` or the checked ids. An existing clear verdict without these marks leaves the gate closed. The refusal describes this path, so the item can finish on its existing branch.
 
+## Epic closure by QA (D16)
+
+The epic planning role belongs to `tracker.levels[1]`, including renamed hierarchies. QA runs that container's Definition-of-done demo on `dev` from the Coordinator's committed brief. Container criteria include the checkboxes under `## Definition of done` and `## Acceptance criteria`; `task.view` exposes their stable ids. Record the verdict on the epic with `commit` equal to the full `dev` SHA and `verified` listing the tested ids (`all` only when every criterion passed). Without an explicit commit, an epic verdict records the local `dev` tip.
+
+`cland task close T-<epic>`, `task.edit` resulting in closure (including kind conversion with `status: done`), and re-import closure of an existing epic require no open children, the latest hub-written QA verdict to be clear and written by a QA session on the exact current `dev` commit, and every criterion to have a QA verification mark from that verdict's run. Review verdicts, older-run marks and task patch equivalence do not satisfy epic closure. Epics need no Implementer done mark or review verdict. Refusals name missing QA evidence or incomplete criterion ids. A failed criterion or not-clear verdict reopens a container without giving it a task status.
+
+The human shell's `cland task close T-<epic> --override "reason"` skips QA evidence and criteria, with `epic-close-overridden` recording the reason and unmet criteria in the journal. Sessions cannot override, and open children still refuse. Releases retain their own path through `cland release --item`; the human accepts the release once. This replaces the interim text-only criterion and deferred-check rules in `qa/briefs/T-107.md` steps 6a and 6b: deferred or blocked epic criteria remain unverified and prevent closure.
+
 ## The messages
 
 The request's first line is conventional, so the UI can style it later; the rest is free text:
