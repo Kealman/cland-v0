@@ -2,8 +2,8 @@
 id: T-122
 kind: task
 title: "Rank: a sparse rank field on tasks and epics, cland task rank, lists sorted by rank then id, the Coordinator's next-item rule; the high label retires"
-state: open
-status: review
+state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-49
 branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
-updated: 2026-10-10T01:50:02.867Z
+updated: 2026-10-10T01:50:30.201Z
 ---
 
 ## Parent
@@ -109,3 +109,22 @@ Full item against 0da2b6e. Standards: 0 findings. Spec: 0 findings. Evidence A-3
 ### impl-122 · 2026-10-10T01:50:02.853Z
 
 Final head a8c3e2a060f4de82a710f25a32728a9a31da9ef7 committed and pushed to local origin; worktree clean. Root typecheck passed. One complete root npm test on this head passed: hub 811/811 and Neovim 139/139, zero failures. Timing regressions verify a single300 ms resumed slow request for each continuous150+150 ms stretch. Final internal Standards/Spec reviews clear. A-340 holds the full-suite log; A-341 holds final implementation locations, exact instance role-line changes and migration command. Instance configuration and live high migration remain Coordinator steps after merge and hub restart.
+
+### coord · 2026-10-10T01:50:10.872Z
+
+Merged 140f05b8c96a6bfeb6d46badbfb16194ca44dfe8 onto dev.
+
+### coord · 2026-10-10T01:50:30.201Z
+
+Merged by the Coordinator through `cland merge T-122`, after `cland push`: squash 140f05b on dev.
+Gate: review rev-65-122-3 clear on a8c3e2a. Earlier rounds:
+- rev-65-122-1 (A-326, A-324): timing, a cubic dense plan, an unnecessary write to the moved item, and multi-high migration;
+- rev-65-122-2 (A-332): continuous work split across separate timing scopes.
+Decisions:
+- rank applies to tasks and to the configured levels below levels[0];
+- a missing rank is the implicit id × 10, with no rewrite;
+- events carry the resolved rank, and only the final rank event carries the ordered `siblings`, with no full snapshot;
+- the planner is linear (a 500-way tie changes 249 neighbours, the minimum);
+- the high migration refuses more than one high item per parent, open or closed, and uses no journal.
+Full suite on a8c3e2a: 811 hub and 139 Neovim, exit 0 (A-340); handover A-341.
+Project instance: the Coordinator next-item clause and the `task.rank` grant are committed next. The migration `node hub/bin/migrate-high-rank.ts` runs after the next hub restart, for T-67 under T-20 and T-68 under T-19, and its result is recorded here.
