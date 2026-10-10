@@ -6,6 +6,8 @@ import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
   isSendKind,
+  isHeldDelivery,
+  type SubscriptionSubject,
   type Artifact,
   type AgentsHistoryFilter,
   type HandoverNote,
@@ -36,7 +38,7 @@ import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
-import type { TopicBinding } from '../tracker/tracker.ts';
+import type { ItemChange, TopicBinding } from '../tracker/tracker.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
@@ -175,6 +177,7 @@ export class HubCore {
   readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
+  readonly #processStatus = new Map<string, HarnessProcessView['status']>();
   #publishedPresence = '[]';
   #items: TopicItems | null;
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
@@ -266,9 +269,34 @@ export class HubCore {
     this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
   }
 
+  /** Seed the restart snapshot without announcing another launch. */
+  rememberProcess(process: HarnessProcessView): void {
+    this.#processStatus.set(process.sessionId, process.status);
+  }
+
   /** Adapter-owned process facts go through the same subscription as the core's events. */
   publishProcess(process: HarnessProcessView): void {
+    const previous = this.#processStatus.get(process.sessionId);
+    this.rememberProcess(process);
+    const state = previous === process.status ? null : process.status === 'running' ? 'launched'
+      : process.status === 'stopped' ? 'stopped' : 'died';
+    if (state) this.publishEvent({ session: process.name }, 'session.state', `${process.name} ${state}${process.item ? ` · ${process.item}` : ''}`);
     this.#emit({ type: 'session.process', process });
+  }
+
+  publishTask(change: ItemChange): void {
+    for (const text of change.events ?? []) this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`);
+  }
+
+  /** Fan-out is recorded once in the ordinary queue, before any observer can re-enter or fail. */
+  publishEvent(subject: SubscriptionSubject, event: 'session.state' | 'task', text: string): void {
+    const to = [...new Set(this.#store.eventSubscribers(subject, event).flatMap(id => {
+      const name = this.#store.nameOfSession(id);
+      return name ? [name] : [];
+    }))];
+    if (!to.length) return;
+    const id = this.noticeInTopic(AGENTS.id, { kind: 'event', to, text: `event · ${event} · ${text.replace(/[\r\n\u2028\u2029]+/g, ' ')}`, detail: { event, subject } });
+    if (id) this.#log({ event: 'event-delivery', id, subject, kind: event, to });
   }
 
   publishUsage(session: string, sessionId: string, usage: SessionUsage): void {
@@ -550,10 +578,12 @@ export class HubCore {
     // the state changes; a second approval can update it without a state transition.
     const command = state === 'waiting for approval' ? approvalCommand ?? previous : undefined;
     if (this.#states.get(sessionId) === state && command === previous) return false;
+    const changed = this.#states.get(sessionId) !== state;
     this.#states.set(sessionId, state);
     if (command !== undefined) this.#approvalCommands.set(sessionId, command);
     else this.#approvalCommands.delete(sessionId);
     this.#log({ event: 'session-state', session: name, state, source });
+    if (changed && state !== 'unknown') this.publishEvent({ session: name }, 'session.state', `${name} ${state}`);
     this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString(), ...(command !== undefined ? { approvalCommand: command } : {}) });
     return true;
   }
@@ -720,6 +750,7 @@ export class HubCore {
     // spoke accepted and its adapter has not injected yet, so the confirmation and the retry find them
     const merged = this.#store.moveQueued(from, to);
     this.#store.moveUninjected(from, to);
+    this.#store.renameSubscriptionSubject(from, to);
     this.#store.forgetSession(from);
     for (const id of merged) this.#emitStage(id);
     this.#store.rememberSession(to, this.#now().getTime());
@@ -1117,7 +1148,7 @@ export class HubCore {
 
   /** A role notice goes out as a `role` frame, everything else as a `deliver`. */
   #sendTo(c: Connection, message: Message): boolean {
-    if (message.kind === 'progress') return false;
+    if (isHeldDelivery(message)) return false;
     const clause = this.#roleNotices.get(message.id);
     return clause ? c.deliverRole(message, clause) : c.deliver(this.#store.deliveryMessage(message.id, c.name) ?? message);
   }

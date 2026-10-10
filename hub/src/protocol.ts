@@ -30,6 +30,19 @@ export function isSendKind(value: unknown): value is SendKind {
 }
 export type Outcome = 'delivered' | 'queued' | 'unknown' | 'refused' | 'empty';
 
+/** A standing request for hub events, owned by the caller's stable session identity. */
+export type SubscriptionSubject = { session: string } | { item: string };
+export type SubscriptionEvent = 'session.state' | 'task';
+export type Subscription = { id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest: 'turn' };
+export type SubscriptionRequest = (
+  | { type: 'event.subscribe'; id: string; subject: SubscriptionSubject; events: SubscriptionEvent[] }
+  | { type: 'event.unsubscribe'; id: string; subscription: string }
+  | { type: 'event.subscriptions'; id: string }
+) & { as?: { name: string; sessionId?: string; shell?: boolean } };
+export function isHeldDelivery(message: { kind?: string | undefined }): boolean {
+  return message.kind === 'progress' || message.kind === 'event';
+}
+
 export type Presence = {
   name: string;
   sessionId: string;
@@ -77,7 +90,7 @@ export type Message = {
   topic?: string;
   /** An agent's send kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
   kind?: string;
-  /** Held progress attached to this addressee's turn-starting delivery, oldest first. */
+  /** Held progress and events attached to this addressee's turn-starting delivery, oldest first. */
   digest?: Message[];
   /** The notice's facts, typed by its kind: a mute carries its `HygieneRefusal` and the pair. */
   detail?: Record<string, unknown>;
@@ -254,6 +267,7 @@ export type ReleaseRequest = { type: 'release'; id: string; version?: string; dr
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string };
 
 export type SpokeRequest =
+  | SubscriptionRequest
   | MergeRequest
   | ArtifactCreate
   | ArtifactList
@@ -334,6 +348,10 @@ export function isAck(f: Record<string, unknown>): f is Ack {
 export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'event.subscribe':
+    case 'event.unsubscribe':
+    case 'event.subscriptions':
+      return true;
     case 'merge':
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':

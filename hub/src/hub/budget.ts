@@ -22,6 +22,7 @@ export const REPEAT_MS = 250;
 
 /** The requests that only read: the ones a UI polls, safe to answer again. */
 const READS: ReadonlySet<string> = new Set([
+  'event.subscriptions',
   'task.list',
   'task.view',
   'session.list',

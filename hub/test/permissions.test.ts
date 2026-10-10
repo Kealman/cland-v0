@@ -455,7 +455,7 @@ test('roles.toml is the table: an edited permission list is in force on the next
   // the human gives the Reviewer the human's ear and closing, and takes `who` away
   const file = join(root, '.cland', 'roles.toml');
   const text = await readFile(file, 'utf8');
-  const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "artifact.create", "who", "history", "status", "task.view", "task.list"]';
+  const reviewerList = 'tools = ["send:agents", "task.hold", "task.comment:verdict", "artifact.create", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]';
   assert.ok(text.includes(reviewerList));
   const edited = text.replace(reviewerList, 'tools = ["send:agents", "send:human", "task.comment:verdict", "task.close", "history", "status"]');
   await writeFile(file, edited);
@@ -463,4 +463,9 @@ test('roles.toml is the table: an edited permission list is in force on the next
   await check(root, ui, rev, { tool: 'send', args: { text: 'hello human' } });
   await check(root, ui, rev, { tool: 'task.close', args: { id: 'T-1' } });
   await check(root, ui, rev, { tool: 'who', forbidden: 'who', reason: /Reviewer may not use who/ });
+  const denied = await s.call<ToolResult>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
+  assert.deepEqual([denied.ok, denied.code, denied.permission], [false, 'forbidden', 'subscribe']);
+  await notice(ui, 'rev [Reviewer] tried event.subscribe: forbidden (Reviewer may not use subscribe)');
+  await flushLogs(ui);
+  assert.ok((await audits(root)).some(a => a.session === 'rev' && a.tool === 'event.subscribe' && a.outcome === 'forbidden' && a.permission === 'subscribe'));
 });

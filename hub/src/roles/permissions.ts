@@ -23,6 +23,9 @@ import { ROLE_LABELS } from '../names.ts';
 
 /** Every tool the table knows: today's spoke frames and the ones still to come. */
 export const KNOWN_TOOLS: readonly string[] = [
+  'subscribe',
+  'unsubscribe',
+  'subscriptions',
   'send',
   'who',
   'history',
@@ -65,7 +68,7 @@ export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   'topic.create': ['own'],
 };
 
-const READS = ['who', 'history', 'status', 'task.view', 'task.list'];
+const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 'status', 'task.view', 'task.list'];
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {

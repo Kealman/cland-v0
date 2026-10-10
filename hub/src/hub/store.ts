@@ -1,7 +1,8 @@
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
-import type { Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import { isHeldDelivery } from '../protocol.ts';
+import type { Subscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import { vacancyWarning } from './topics.ts';
 
@@ -12,6 +13,14 @@ export type KnownSession = { name: string; lastSeen: string; status: string | nu
 export type ReleasedDigest = { trigger: string; session: string; notes: string[]; reheld: string[] };
 
 const SCHEMA = `
+create table if not exists subscriptions (
+  id text primary key,
+  subscriber_id text not null,
+  subject_json text not null,
+  events_json text not null
+);
+create index if not exists subscriptions_owner on subscriptions (subscriber_id);
+create index if not exists subscriptions_subject on subscriptions (subject_json);
 create table if not exists artifacts (
   number integer primary key autoincrement,
   value text not null
@@ -510,10 +519,40 @@ export class Store implements HygieneMemory {
       // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
       // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
       const kind = notice ?? message.kind;
-      if (kind !== 'progress' && kind !== 'role') {
+      if (!isHeldDelivery({ kind }) && kind !== 'role') {
         for (const d of deliveries) this.#bindProgress(message.id, d.session, seq);
       }
     });
+  }
+
+  subscriptions(subscriberId: string): Subscription[] {
+    return (this.#db.prepare('select * from subscriptions where subscriber_id = ? order by rowid').all(subscriberId) as Row[])
+      .map(row => ({ id: row.id as string, subject: JSON.parse(row.subject_json as string), events: JSON.parse(row.events_json as string), digest: 'turn' }));
+  }
+
+  addSubscription(subscriberId: string, subscription: Subscription): Subscription {
+    return this.#transaction(() => {
+      const existing = this.subscriptions(subscriberId).find(s => JSON.stringify(s.subject) === JSON.stringify(subscription.subject) && JSON.stringify(s.events) === JSON.stringify(subscription.events));
+      if (existing) return existing;
+      this.#db.prepare('insert into subscriptions (id, subscriber_id, subject_json, events_json) values (?, ?, ?, ?)')
+        .run(subscription.id, subscriberId, JSON.stringify(subscription.subject), JSON.stringify(subscription.events));
+      return subscription;
+    });
+  }
+
+  removeSubscription(subscriberId: string, id: string): boolean {
+    return this.#db.prepare('delete from subscriptions where id = ? and subscriber_id = ?').run(id, subscriberId).changes > 0;
+  }
+
+  eventSubscribers(subject: SubscriptionSubject, event: string): string[] {
+    return (this.#db.prepare('select distinct subscriber_id from subscriptions where subject_json = ? and exists (select 1 from json_each(events_json) where value = ?)')
+      .all(JSON.stringify(subject), event) as Row[]).map(row => row.subscriber_id as string);
+  }
+
+  renameSubscriptionSubject(from: string, to: string): void {
+    // Converging subjects keep both subscription ids, so each remains removable by its owner.
+    this.#db.prepare('update subscriptions set subject_json = ? where subject_json = ?')
+      .run(JSON.stringify({ session: to }), JSON.stringify({ session: from }));
   }
 
   /** One stored message by its hub id, or null. */
@@ -533,7 +572,7 @@ export class Store implements HygieneMemory {
     const deliver: Message[] = [];
     for (const row of rows) {
       const message = toMessage(row);
-      if (message.kind !== 'progress') deliver.push(this.deliveryMessage(message.id, session)!);
+      if (!isHeldDelivery(message)) deliver.push(this.deliveryMessage(message.id, session)!);
     }
     return { deliver, dropped };
   }
@@ -595,7 +634,7 @@ export class Store implements HygieneMemory {
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
   uninjected(session: string): Message[] {
     const rows = this.#db
-      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') != 'progress' order by m.seq")
+      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') not in ('progress', 'event') order by m.seq")
       .all(session) as Row[];
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
   }
@@ -623,7 +662,7 @@ export class Store implements HygieneMemory {
   #bindProgress(messageId: string, session: string, seq: number): void {
     this.#db.prepare(`update deliveries set digest_id = ?
       where session = ? and state = 'queued' and digest_id is null and message_id in
-      (select id from messages where notice = 'progress' and seq < ?)`).run(messageId, session, seq);
+      (select id from messages where notice in ('progress', 'event') and seq < ?)`).run(messageId, session, seq);
   }
 
   /**
@@ -634,7 +673,7 @@ export class Store implements HygieneMemory {
     return this.#transaction(() => {
       // Only newly acquired ordinary deliveries: a duplicate already held by this recipient keeps its fixed batch.
       const acquired = this.#db.prepare(`select m.id, m.seq from deliveries d join messages m on m.id = d.message_id
-        where d.session = ? and d.state = 'queued' and d.digest_id is null and coalesce(m.notice, '') not in ('progress', 'role')
+        where d.session = ? and d.state = 'queued' and d.digest_id is null and coalesce(m.notice, '') not in ('progress', 'event', 'role')
         and not exists (select 1 from deliveries existing where existing.session = ? and existing.message_id = d.message_id)
         order by m.seq`).all(`@${role}`, session) as Row[];
       const r = this.#moveQueuedTo(`@${role}`, session);

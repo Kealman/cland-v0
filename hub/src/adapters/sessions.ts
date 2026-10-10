@@ -99,6 +99,7 @@ export class Sessions {
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
+    for (const p of this.#table.all()) this.#core.rememberProcess(this.view(p));
     this.#unprocess = this.#table.subscribe((p) => this.#core.publishProcess(this.view(p)));
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough

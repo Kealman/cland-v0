@@ -14,6 +14,7 @@
 //                       only acks; otherwise the spoke delivers into the session as a Claude Code channel event
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_HEARTBEAT_MS, CLAND_HUB_REQUEST_TIMEOUT_MS,
 //   CLAND_HUB_WELCOME_TIMEOUT_MS   timings, for tests
+import { subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -53,6 +54,27 @@ const TOOLS = [
       },
       required: ['text'],
     },
+  },
+  {
+    name: 'subscribe',
+    description: "Receive hub events about a session or item in your next-turn digest. Returns a durable caller-owned subscription; repeated identical requests return the same id.",
+    inputSchema: { type: 'object', properties: {
+      subject: { type: 'object', oneOf: [
+        { properties: { session: { type: 'string' } }, required: ['session'], additionalProperties: false },
+        { properties: { item: { type: 'string' } }, required: ['item'], additionalProperties: false },
+      ] },
+      events: { type: 'array', items: { type: 'string', enum: ['session.state', 'task'] }, minItems: 1 },
+    }, required: ['subject', 'events'] },
+  },
+  {
+    name: 'unsubscribe',
+    description: 'Remove one of your subscriptions. Stops future events; already recorded deliveries remain queued for the next turn.',
+    inputSchema: { type: 'object', properties: { subscription: { type: 'string' } }, required: ['subscription'] },
+  },
+  {
+    name: 'subscriptions',
+    description: 'List your durable event subscriptions.',
+    inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'topic.create',
@@ -252,6 +274,20 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     if (!hub) return text({ ok: false, error: notConfigured }, true);
     try {
       switch (req.params.name) {
+        case 'subscribe': {
+          const input = subscriptionInput(args.subject, args.events);
+          const value = await hub.request({ type: 'event.subscribe', subject: input.subject, events: input.events }) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'unsubscribe': {
+          if (typeof args.subscription !== 'string') throw new Error('unsubscribe needs a subscription id');
+          const value = await hub.request({ type: 'event.unsubscribe', subscription: args.subscription }) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'subscriptions': {
+          const value = await hub.request({ type: 'event.subscriptions' }) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         case 'merge': {
           if (typeof args.item !== 'string') throw new Error('merge needs an item id');
           const value = await hub.request({ type: 'merge', item: args.item }, 60_000) as Record<string, unknown>;

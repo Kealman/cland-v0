@@ -84,7 +84,9 @@ export type ItemView = IndexedItem & {
 export type ItemSummary = IndexedItem & { claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
-export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[] };
+export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[] };
+
+const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by]);
 
 export type CreateInput = {
   title: string;
@@ -200,6 +202,7 @@ export class Tracker {
   readonly #sessionIds = new Map<string, string>();
   readonly #adoptions = new Map<string, string>();
   #identityOf: (id: string) => string = id => id;
+  readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
   constructor(options: { levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
@@ -367,12 +370,31 @@ export class Tracker {
     const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#fresh.annotate(id, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     const shown = item ? JSON.stringify([item.verdictBase, item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
+    const previous = this.#announced.get(id);
+    const events: string[] = [];
+    if (previous && item) {
+      if (previous.status !== item.status) events.push(`status changed ${previous.status ?? 'none'} → ${item.status ?? 'none'}`);
+      if (item.claim && (!previous.claim || !this.sameSession(previous.claim.sessionId, item.claim.sessionId))) events.push(`claimed by ${item.claim.session}`);
+      const remaining = new Map<string, number>();
+      for (const verdict of previous.verdicts) {
+        const key = verdictIdentity(verdict);
+        remaining.set(key, (remaining.get(key) ?? 0) + 1);
+      }
+      for (const verdict of item.verdicts) {
+        const key = verdictIdentity(verdict), count = remaining.get(key) ?? 0;
+        if (count) remaining.set(key, count - 1);
+        else events.push(`verdict posted ${verdict.verdict} ${verdict.result} · ${verdict.run}`);
+      }
+      if (previous.state !== 'closed' && item.state === 'closed') events.push('closed');
+    }
+    if (item) this.#announced.set(id, item);
+    else this.#announced.delete(id);
     if (item) this.#shown.set(id, shown);
     else this.#shown.delete(id);
     if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
-        listener({ id, item, ...(siblings ? { siblings } : {}) });
+        listener({ id, item, ...(siblings ? { siblings } : {}), ...(events.length ? { events } : {}) });
       } catch (err) {
         this.#log({ event: 'task-change-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
       }
@@ -398,6 +420,8 @@ export class Tracker {
   /** Bring the index level with the folder, then watch it. */
   start(): void {
     this.rescan();
+    // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
+    for (const item of this.list()) this.#announced.set(item.id, item);
     this.#watcher = watchFolder(
       this.#dir,
       {

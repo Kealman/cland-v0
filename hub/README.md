@@ -989,3 +989,47 @@ Promotion reserves its artifact across asynchronous I/O, rechecks permission and
 After opening its sockets, a new hub sweeps this project’s harness servers whose session is exited, stopped or offline, or whose process-table row is missing. Ownership requires a verified OS cwd under this project or descent from a PID/start-time-verified wrapper with a project cwd. When a process row exists, its recorded PID and start time must match; an unknown start time or reused PID is preserved even when socket or log hints match. A recorded launch, project-specific Codex socket/log or OpenCode `serve.log` identifies candidates but never proves ownership alone. This also covers a Codex socket placed under the temp directory because the project path is too long. Verified running roots and their descendant trees are preserved for resume. Pending launch and resume reservations also protect servers before their process-table rows are published; the sweep rechecks these protections immediately before every signal. A PID/start-time-verified lock under `.cland/run/orphan-sweep.lock` serializes startup and doctor sweeps per project; a contender reports “sweep busy”. Within one sweep, workers atomically claim each process they capture, and ancestor candidates settle before queued descendants are reassessed. Cleanup runs in parallel in the background with a shared 12-second deadline, so it cannot delay socket readiness. Startup points to `cland doctor`, which reports the PIDs ended since the latest hub start from the journal (`orphan-ended`). Ambiguous candidates are reported as `orphan-preserved` and left alive. Sweep diagnostics also reach stderr.
 
 `cland doctor [dir]` reports orphan servers, names their recorded session and status, and recommends `cland doctor --fix`. The fix ends verified orphan harness servers while preserving running sessions and unverifiable identities. An unpublished server is preserved while another live hub holds the project lock, because doctor cannot see that hub’s in-flight launch reservations; stop that hub before retrying cleanup. Doctor also reports cland hub daemons whose project directories were deleted, using their OS cwd and open project files to prove ownership, and `--fix` ends those daemons. Doctor tests scope deleted-project discovery to their fixture root with `CLAND_TEST_ORPHAN_ROOT`, so parallel fixtures cannot end each other’s hubs. If the OS cannot supply ownership evidence, inspect the candidate manually. On Linux the sweep reads `/proc`; on macOS it uses bounded asynchronous `lsof` calls. Every session start-time probe and termination probe uses asynchronous `ps`, keeping process inspection off the hub’s synchronous request path.
+
+### Event subscriptions
+
+A session calls `subscribe({ subject: { session: "impl-3" }, events: ["session.state"] })`
+or `subscribe({ subject: { item: "T-58" }, events: ["task"] })`. It gets a subscription
+with an `id`, `subject`, `events` and `digest: "turn"`. Repeating the same request returns
+the same id. `subscriptions()` lists only the caller's subscriptions;
+`unsubscribe({ subscription: "<id>" })` removes one of its subscriptions. These tools
+are available to all four default roles. Existing projects can grant `subscribe`,
+`unsubscribe` and `subscriptions` in each role's `permissions.tools` list.
+
+The CLI uses the same subscriptions and the session identity of a launched shell:
+
+```sh
+cland subscribe session impl-3 --event session.state
+cland subscribe item T-58 --event task
+cland subscriptions --json
+cland unsubscribe <subscription-id>
+```
+
+From the human's shell, add `--as <session>` to act as a known session. CLI calls are
+checked against that session's hub-held permissions. A session can subscribe to a
+session name before it launches. A rename moves session subjects to the new name;
+subscriptions belong to the subscriber's stable session id, so its own rename keeps
+them. Item subjects must name existing items. Session subjects support `session.state`;
+item subjects support `task`.
+
+Session events are idle, busy, waiting for human, waiting for approval, launched,
+stopped and died. Task events are status changed, claimed, verdict posted and closed.
+Each is a one-line delivery from `hub`, for example
+`event · session.state · impl-3 died · T-58`. Only the hub emits kind `event`;
+a session's `send` cannot use it.
+
+Events remain queued without starting a turn. They join progress notes, in recorded
+order, in the ordinary recipient-specific digest with the next turn-starting delivery.
+Subscriptions and queued events survive a hub restart. Events use the same delivery
+stages, acknowledgement, injection, immutable retry batches, TTL, retention and
+message-deletion rules as progress. Unsubscribe stops future matching events when
+it returns; events already recorded remain queued or bound to their existing digest.
+The UI's connection-scoped `subscribe` stream frame is unchanged: session tools use
+`event.subscribe`, `event.unsubscribe` and `event.subscriptions` frames.
+
+Other subjects and event families, immediate steering, coalescing, digest caps,
+subscription lifetimes, and default lead subscriptions are subsequent slices.

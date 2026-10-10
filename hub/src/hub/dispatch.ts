@@ -9,6 +9,9 @@
 // Every spoke tool call passes the permission table here (spec 4.4, `roles/permissions.ts`), by the role the hub
 // holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
 // in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
+import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
+import { randomUUID } from 'node:crypto';
+import type { SubscriptionRequest } from '../protocol.ts';
 import { readFile, stat } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
@@ -330,7 +333,7 @@ export class Dispatcher {
   #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
     // listing the launched sessions goes with launching them
-    const tool = type === 'session.list' ? 'session.launch' : type === 'artifact.list' ? 'history' : type;
+    const tool = type.startsWith('event.') ? type.slice(6) : type === 'session.list' ? 'session.launch' : type === 'artifact.list' ? 'history' : type;
     if (!KNOWN_TOOLS.includes(tool)) return null;
     const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
     const tracker = this.#options.tracker;
@@ -672,6 +675,30 @@ export class Dispatcher {
       refuse('bad-hello', 'first frame must be a hello');
     };
 
+    const subscriptionRequest = (frame: SubscriptionRequest, caller: Caller | null): void => {
+      try {
+        if (!caller || caller.sessionId === UNKNOWN_SESSION) throw new Error('subscriptions require a known session; use --as <session> from the human CLI');
+        let value: unknown;
+        switch (frame.type) {
+          case 'event.subscribe': {
+            const input = subscriptionInput(frame.subject, frame.events);
+            const subject = input.subject;
+            if ('item' in subject && !this.#options.tracker?.list().some(item => item.id === subject.item)) throw new Error(`no item ${subject.item}`);
+            value = { subscription: core.store.addSubscription(caller.sessionId, { id: randomUUID(), ...input }) };
+            break;
+          }
+          case 'event.unsubscribe':
+            if (typeof frame.subscription !== 'string' || !frame.subscription) throw new Error('unsubscribe needs a subscription id');
+            value = { removed: core.store.removeSubscription(caller.sessionId, frame.subscription) };
+            break;
+          case 'event.subscriptions':
+            value = { subscriptions: core.store.subscriptions(caller.sessionId) };
+        }
+        if (frame.type !== 'event.subscriptions') this.#guard.changed();
+        peer.send({ type: 'result', id: frame.id, ok: true, value });
+      } catch (err) { peer.send(Dispatcher.#failure(frame.id, err)); }
+    };
+
     const spokeRequest = (frame: Record<string, unknown>, me: string) => {
       if (!isSpokeRequest(frame)) {
         const id = typeof frame.id === 'string' ? frame.id : '?';
@@ -944,6 +971,7 @@ export class Dispatcher {
           if (isTaskRequest(frame)) {
             return task(frame, sessionActor(connection, UNKNOWN_SESSION), () => connection && core.isCurrent(connection) ? connection : null);
           }
+          if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, connection);
           if (isSessionRequest(frame) && SPOKE_SESSION_REQUESTS.has(frame.type)) return session(frame);
           // the session's name as it is now: another of its spokes may have renamed it
           if (frame.type === 'send' && frame.artifacts !== undefined) return attachedSend(frame, () => connection && core.isCurrent(connection) ? connection : null);
@@ -983,6 +1011,7 @@ export class Dispatcher {
           if (bad !== null) return peer.send({ type: 'result', id: String(frame.id), ok: false, error: bad });
           return task(frame, 'client');
         }
+        if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.promote') return promote(frame as ArtifactPromote, caller);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {

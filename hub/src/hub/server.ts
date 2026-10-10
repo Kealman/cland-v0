@@ -65,6 +65,7 @@ const bearerMatches = (header: string | undefined, secret: string): boolean => {
 export function createHubBase(options: HubBaseOptions): HubBase {
   const core = new HubCore({ ...options, ...(options.tracker ? { items: trackerItems(options.tracker) } : {}) });
   // closing a unit of work closes its topic (spec 4.5)
+  const unwatchEvents = options.tracker?.onChange(change => core.publishTask(change));
   const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));
   // `task.link` and `task.create` with a topic bind through the topics (one each side); items closed while no hub ran
   const unbindTopics = options.tracker?.bindTopicsThrough(core.topicBinding());
@@ -107,6 +108,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
       dispatcher.close();
       clearInterval(pruneTimer);
       await cleanup;
+      unwatchEvents?.();
       unwatchItems?.();
       unbindTopics?.();
       unwatchVerdicts?.();
