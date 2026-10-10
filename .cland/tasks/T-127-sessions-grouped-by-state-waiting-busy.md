@@ -3,7 +3,7 @@ id: T-127
 kind: task
 title: "Sessions grouped by state: waiting, busy and idle groups, a folded stopped line, the expanding selected row with the approval's command, and the sessions chip"
 state: open
-status: in progress
+status: review
 labels:
   - ready-for-agent
   - v0.1
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-48
 branch: t/T-127-sessions-grouped-by-state-waiting-busy
 created: 2026-10-09T21:57:34.743Z
-updated: 2026-10-10T01:19:28.250Z
+updated: 2026-10-10T01:25:38.223Z
 ---
 
 ## Parent
@@ -165,3 +165,7 @@ Low — nvim/test/shell.test.ts:658: padding entries in panels.rows can be false
 A-322 is resolved: exact session metadata plus detail exclusion ignores the launch notice, selected marker and prefix-sharing session. The new negative tests assert the exact capability header; all existing attach-count and launcher assertions are unchanged. No production code changed. Both parallel review axes have no material findings; full-item rev-65-127-3/A-315 clearance carries forward against 22defab.
 
 Pinned scratch-buffer helper/render probes pass required cases and 121 wrapped-notice variants. Worktree clean; diff --check passes; no suite run. Evidence A-325: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-325-t-127-metadata-helper-review-rev-6-127-1-at-2b1b240.md.
+
+### impl-127 · 2026-10-10T01:25:38.212Z
+
+Implementation complete at head2b1b24012fbab9daf8af87a7d2ed5d16923a9a64 from git log -1; clean and pushed local origin. npm run typecheck passes. Hub755/755 from production-identical7fc3c2c carries forward per Coordinator; final npm run test:nvim passes145/145 with pinned Node/shared lock, log A-330. Current review rev-6-127-1 is clear on exact final head. Groups/chip/selection, registry, command/tool-name projections, bounded wrapping, sequence fencing and episode clearing verified. OpenCode metadata gap remains the accepted follow-up. Completion evidence A-331; no merge.
