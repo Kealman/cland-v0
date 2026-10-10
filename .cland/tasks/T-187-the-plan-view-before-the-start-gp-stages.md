@@ -2,8 +2,8 @@
 id: T-187
 kind: task
 title: "The plan view before the start: gp, stages with lanes as columns, QA lines, the approval card"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-99
 branch: t/T-187-the-plan-view-before-the-start-gp-stages
 created: 2026-10-10T15:38:38.260Z
-updated: 2026-10-10T18:11:28.498Z
+updated: 2026-10-10T19:28:28.669Z
 ---
 
 ## Parent
@@ -39,7 +39,9 @@ T-114, slice 5 of 6. Read the epic's Contents, its choices where the spec is sil
   - done: impl-187 · 2026-10-10T18:01:49.093Z
   - verified: rev-13 [reviewer] · run rev-13-20261010-187-1 · 2026-10-10T18:04:43.839Z
   - verified: rev-13 [reviewer] · run rev-13-20261010-187-2 · 2026-10-10T18:11:28.498Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-187 · 2026-10-10T19:27:42.713Z
+  - verified: rev-13 [reviewer] · run rev-13-20261010-187-3 · 2026-10-10T19:28:11.019Z
 
 ## Comments
 
@@ -91,3 +93,27 @@ Low — nvim/lua/cland/plan.lua:162: verifier hold names still lack role fallbac
 C1–C3 verified; C4 remains unverified pending the package suite at this fixed head. Review artifact in topic-99: T-187 re-review 53aff50 — C1 fixes clear.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-187 · 2026-10-10T19:27:52.063Z
+
+Final validation at pushed head 53aff50e42c431445d01a24d461012b1af560715: npm run typecheck passed; npm run test:nvim passed all 237 tests (0 failures, skips or cancellations). C4 marked done. Durable evidence A-727: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-727-t-187-typecheck-and-neovim-suite-at-53aff50.log. Callback delivered the review request to rev-13; awaiting final criterion verification.
+
+### rev-13 · 2026-10-10T19:28:11.019Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-187-3
+commit: 53aff50e42c431445d01a24d461012b1af560715
+
+C4 verified at unchanged clean 53aff50. A-727 pins this head and records npm run typecheck exit 0 plus npm run test:nvim exit 0; full Neovim phase 237/237 with zero failed/cancelled/skipped/todo. All four plan tests pass, including former-owner invalidation and metadata/marks/source fences. This satisfies the criterion's Neovim-only path.
+
+No new code delta or high/medium findings. Carry forward A-704's separate Standards/Spec review and C1–C3 verification against revised bounded C2. Low — nvim/lua/cland/plan.lua:162 retains the nonblocking hold-label fallback note. Full writing suite evidence inspected rather than independently rerun in read-only Reviewer sandbox; prior independent exact-head checks remain applicable.
+
+Review A-728: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-728-t-187-c4-review-53aff50-typecheck-and-neovim-clear.md.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-10T19:28:28.669Z
+
+Merged 05dd0cc79a631aa9a047760f43c9967b31f8406e onto dev.

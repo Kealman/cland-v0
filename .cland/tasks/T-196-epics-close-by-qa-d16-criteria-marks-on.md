@@ -2,8 +2,8 @@
 id: T-196
 kind: task
 title: "Epics close by QA (D16): criteria marks on containers, and task.close requires a clear QA verdict with every criterion verified"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-98
 branch: t/T-196-epics-close-by-qa-d16-criteria-marks-on
 created: 2026-10-10T16:41:01.014Z
-updated: 2026-10-10T18:41:11.172Z
+updated: 2026-10-10T20:11:40.029Z
 ---
 
 ## Parent
@@ -35,22 +35,27 @@ Today criteria operations refuse anything but a task (`criteria operations requi
   - verified: rev-14 [reviewer] · run rev-20261010-196-1 · 2026-10-10T18:08:07.787Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-3 · 2026-10-10T18:17:22.684Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-4 · 2026-10-10T18:41:11.172Z
+  - verified: rev-14 [reviewer] · run rev-20261010-196-5 · 2026-10-10T19:38:29.444Z
 - [x] C2. `cland task close T-<epic>` refuses without a current clear QA verdict with all criteria verified, naming the missing ones; it succeeds once they are present.
   - done: impl-196 · 2026-10-10T18:15:51.368Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-3 · 2026-10-10T18:17:22.684Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-4 · 2026-10-10T18:41:11.172Z
+  - verified: rev-14 [reviewer] · run rev-20261010-196-5 · 2026-10-10T19:38:29.444Z
 - [x] C3. Closing an epic with open children still refuses as today.
   - done: impl-196 · 2026-10-10T17:29:37.509Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-1 · 2026-10-10T18:08:07.899Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-3 · 2026-10-10T18:17:22.684Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-4 · 2026-10-10T18:41:11.172Z
+  - verified: rev-14 [reviewer] · run rev-20261010-196-5 · 2026-10-10T19:38:29.444Z
 - [x] C4. Docs (docs/agents/issue-tracker.md, docs/review-and-qa.md, the QA clause) describe epic closure by QA.
   - done: impl-196 · 2026-10-10T17:29:37.624Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-1 · 2026-10-10T18:08:07.996Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-3 · 2026-10-10T18:17:22.685Z
   - verified: rev-14 [reviewer] · run rev-20261010-196-4 · 2026-10-10T18:41:11.172Z
-- [ ] C5. `npm run typecheck && npm test` pass.
-  - failed: rev-14 [reviewer] · 2026-10-10T18:39:17.521Z · note Full run A-711 exits 1: hub 1038/1039; tracker-hierarchy.test.ts:103 closes an epic without QA, and Neovim is not reached.
+  - verified: rev-14 [reviewer] · run rev-20261010-196-5 · 2026-10-10T19:38:29.444Z
+- [x] C5. `npm run typecheck && npm test` pass.
+  - done: impl-196 · 2026-10-10T20:11:05.791Z
+  - verified: rev-14 [reviewer] · run rev-20261010-196-6 · 2026-10-10T20:11:31.535Z
 
 ## Notes
 
@@ -133,3 +138,40 @@ commit: d3f79c134a88c4f84b4cbf7d932032078d0b997d
 No findings in the one-line fixture delta. hub/test/tracker-hierarchy.test.ts:103 adds the supported audited human override to create its closed-ancestor setup after the child closes, matching tracker-levels.test.ts:341. All descendant/ancestry assertions, production code and dedicated QA gate tests remain unchanged. Prior full-item code clearance A-708 carries forward. Standards: 0 findings; Spec: 0 findings. C1–C4 verified; C5 remains unverified pending the fresh full package run at this head. Lead reports hierarchy 5/5; no Reviewer tests or edits. Details A-715 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-715-t-196-fixture-delta-clear-at-d3f79c1.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-196 · 2026-10-10T19:35:44.523Z
+
+Stopped obsolete d3f79c1 full run cleanly (exit 130; A-726), as requested because origin/dev could no longer merge. Merged origin/dev 3c77313 and then current 05dd0cc; resolved tracker view conflict preserving T-183 plan handling and T-176 Lead claims. A red→green public-protocol regression exposed/fixed gate previews accepting unpublished plans: file views retain plans, proposed edit/import views do not. Lead-launch closed-epic setup now uses an asserted audited human fixture override. Combined head f96c8a871f56bd30502659e15c22442f695a8088 typechecks; targeted tracker 16/16, hierarchy 5/5, epic 12/12, plan 10/10 and Lead launch 5/5 pass; remaining routing/container checks are finishing before push/review/full suite.
+
+### rev-14 · 2026-10-10T19:38:29.445Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-196-5
+commit: f96c8a871f56bd30502659e15c22442f695a8088
+
+No high/medium findings in merge integration. hub/src/tracker/tracker.ts:867–887 preserves container criteria and retained file plans while proposal views remain observational; edit/import gate previews pass proposal at :1458/:1863. Actual memory-only Tracker checks confirm refused edit/import closures preserve source, retained plan and journal. Lead claims remain independent of authenticated QA evidence. Independently source guard 2/2 passes; original fixes carry forward.
+Low heuristic — tracker.ts:177 and kinds.ts:7 duplicate second-level planning predicate; consider delegation. Standards: one low heuristic; Spec: no findings. C1–C4 verified. C5 remains unverified pending the fresh full command on this head; cancelled A-726 is not a pass. No edits or disk-writing tests. A-736 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-736-t-196-merge-integration-clear-at-f96c8a8.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-196 · 2026-10-10T20:11:06.053Z
+
+Full npm run typecheck && npm test passed on f96c8a871f56bd30502659e15c22442f695a8088 with Node v24.21.0. Complete durable suite log: A-757 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-757-t-196-full-verification-at-f96c8a8-exit-0.log. C5 marked done; requesting rev-14 verification on this combined head.
+
+### rev-14 · 2026-10-10T20:11:31.535Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-196-6
+commit: f96c8a871f56bd30502659e15c22442f695a8088
+
+No high or medium findings. C5 verified from complete A-757: root typecheck passed; hub 1056/1056 and Neovim 238/238, zero failures/cancellations/skips/todos; reported package exit0 under Node24.21.0. HEAD/origin match and worktree clean. C1–C4 clearance from review5 at this same head remains in force. Evidence review: A-758, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-758-t-196-c5-full-verification-review-clear-at-f96c8a8.md.
+
+Criteria: C5 verified.
+
+### coord · 2026-10-10T20:11:40.029Z
+
+Merged 8783ac38ca9c9f03cf1c23419d4682ad8ca936fe onto dev.

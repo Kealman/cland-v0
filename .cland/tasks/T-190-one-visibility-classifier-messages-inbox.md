@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-92
 branch: t/T-190-one-visibility-classifier-messages-inbox
 created: 2026-10-10T16:25:05.955Z
-updated: 2026-10-10T18:42:47.570Z
+updated: 2026-10-10T20:35:10.164Z
 ---
 
 ## Parent
@@ -42,7 +42,7 @@ A module that places messages, inbox events, sessions, items and artifacts in a 
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-2 · 2026-10-10T16:56:43.493Z
   - verified: rev-13 [reviewer] · run rev-13-20261010-190-1 · 2026-10-10T17:36:06.942Z
 - [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
-  - failed: rev-13 [reviewer] · 2026-10-10T18:39:07.656Z · note A-710 Neovim phase failed 6/237 tests beyond the authorized unchanged T-172 request-guard timing exception.
+  - failed: rev-13 [reviewer] · 2026-10-10T20:30:59.046Z · note A-779 merged-head Neovim237/239 has Terminal teardown kill EPERM and vboard rank-operation assertion failure beyond the T-172-only hub exception.
 
 ## Comments
 
@@ -149,3 +149,48 @@ Independent typecheck/diff check and read-only classifier probes passed. The lea
 Review A-717: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-717-t-190-delta-review-eeb4b3a-behavior-coverage-preserved.md.
 
 Criteria: C1 verified.
+
+### rev-13 · 2026-10-10T19:25:47.166Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-190-4
+commit: eeb4b3ae16354ea00e1d2ab76f6c1305d017bd07
+
+C4 verified under the explicit Coordinator T-172 timing exception. A-719 records typecheck exit 0 and hub 1029/1030, with only the unchanged request-guard other-client 573ms assertion (hub/test/request-guard.test.ts:59). Coordinator message 440fd410-3cfe-4060-9f47-38b0d48081f5 independently confirmed: if request-guard is the only failure, rev-13 may accept C4 citing T-172. The fairness cancellation occurred before Neovim tests; its authorized same-head relaunch A-723 is complete: npm run test:nvim exit 0, 237/237, zero failed/cancelled/skipped/todo. All six previous Neovim failures pass. This is acceptance under the named exception, not a claim that npm test itself exited 0.
+
+No new high or medium findings or code delta. Clean unchanged head matches A-717; prior C1–C3 and separate Standards/Spec reviews A-675/A-693/A-717 remain applicable. Full writing suite evidence inspected, not independently rerun in the read-only sandbox. C4 was marked done again by the lead against these logs, clearing A-712's stale failure.
+
+Review A-724: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-724-t-190-final-c4-review-eeb4b3a-clear-under-t-172-exception.md.
+
+Criteria: C4 verified.
+
+### impl-190 · 2026-10-10T19:26:23.846Z
+
+Final-head validation at eeb4b3a: A-719 typecheck passed and hub 1029/1030, sole unchanged T-172 request-guard 573ms timing failure under confirmed Coordinator 440fd410 exception; A-723 Neovim fairness relaunch 237/237. C4 done and verified by rev-13-20261010-190-4 (A-724); prior C1-C3 verifications carry forward. Final handover artifact records hub ownership rationale, exact [visibility]/inbox.idle instance lines, policy exceptions, docs, commit heads and durable validation paths.
+
+### impl-190 · 2026-10-10T19:29:40.738Z
+
+Merged fetched origin/dev 3c77313 into the task branch at e512ec2; pushed local origin, clean worktree. Daemon retains crew and visibility; Lua uses hub placement; thread retains dev’s coordinator/crew cases plus T-190 hub fixture/age behavior. Targeted visibility 8/8, daemon 14/14, thread 23/23 and typecheck pass. Delta review requested from rev-13; fresh full suite on merge head pending.
+
+### rev-13 · 2026-10-10T20:30:59.046Z
+
+verdict: review
+result: not clear
+by: rev-13 [reviewer]
+run: rev-13-20261010-190-5
+commit: e512ec22d8583aa4cc0db0ae529441c587110d7d
+
+Medium — nvim/test/shell.test.ts:651 (hub/test/process-cleanup.ts:165): Terminal-mode test teardown fails with kill EPERM; establish cause and repair/validate cleanup.
+Medium — nvim/test/vboard.test.ts:178: rank-operation assertion receives undefined instead of T-14; establish fixture/implementation cause while retaining meaningful reorder/cursor/operation checks.
+
+C4 failed. A-779 typecheck0,hub1050/1051 with sole unchanged request-guard511ms timing failure; sequential Neovim237/239,2fail,zero cancel/skip/todo. Coordinator440fd410 T-172 exception cannot cover extra Neovim failures. Prior C1–C3 and merge integration A-730 remain supported; prior A-724 C4 applies only to eeb4b3a. Durable writing-suite evidence inspected rather than rerun in readonly sandbox.
+
+Review A-783: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-783-t-190-merged-head-c4-at-e512ec2-two-neovim-failures.md.
+
+Criteria: C4 failed (A-779 merged-head Neovim237/239 has Terminal teardown kill EPERM and vboard rank-operation assertion failure beyond the T-172-only hub exception.).
+
+### impl-190 · 2026-10-10T20:35:05.695Z
+
+A-783 rank failure reproduced in isolated run: early snapshot T/J only, later correct K before:T-14 with cursor unchanged. Fix a3cd609 uses existing held rank-result barriers and changed sibling-order wait; original operation/authoritative-event/cursor/refusal assertions retained. Eight rank repetitions pass. Fresh fetched dev 8783ac3 merged cleanly at 788114a (T-187 plan view/T-196 epic QA); pushed, clean worktree. Final-head typecheck, classifier 8/8 and entire vboard 7/7 pass. A-787 captures diagnosis. Unchanged Terminal teardown EPERM left to T-172 per Coordinator 4f29764f; fresh full suite pending.

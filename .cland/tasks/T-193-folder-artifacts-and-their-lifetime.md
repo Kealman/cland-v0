@@ -3,17 +3,18 @@ id: T-193
 kind: task
 title: "Folder artifacts and their lifetime: folder with an entry file, human and Aide artifacts never expire, kept, artifact.keep, move and archive"
 state: open
-status: planned
+status: review
+criterion_seq: 4
 labels:
   - v0.1
   - ready-for-agent
-assignee: null
+assignee: impl-193
 parent: T-115
 blocked_by: []
-topic: null
-branch: null
+topic: topic-102
+branch: t/T-193-folder-artifacts-and-their-lifetime
 created: 2026-10-10T16:25:06.772Z
-updated: 2026-10-10T16:25:14.912Z
+updated: 2026-10-10T21:26:44.669Z
 ---
 
 ## Parent
@@ -26,7 +27,115 @@ T-115, slice 4 of 6. Read the epic's Contents, its choice where the spec is sile
 
 ## Acceptance criteria
 
-- [ ] The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
-- [ ] Demo: an agent's report without `kept` is swept after the retention period, and the human's folder is not.
-- [ ] Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
-- [ ] `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
+  - done: impl-193 · 2026-10-10T20:17:42.260Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-2 · 2026-10-10T20:19:29.033Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-4 · 2026-10-10T20:47:54.834Z
+- [x] C2. Demo: an agent's report without `kept` is swept after the retention period, and the human's folder is not.
+  - done: impl-193 · 2026-10-10T20:08:24.909Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-1 · 2026-10-10T20:14:08.387Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-2 · 2026-10-10T20:19:29.033Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-4 · 2026-10-10T20:47:54.834Z
+- [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
+  - done: impl-193 · 2026-10-10T20:08:24.982Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-1 · 2026-10-10T20:14:08.532Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-2 · 2026-10-10T20:19:29.033Z
+  - verified: rev-14 [reviewer] · run rev-20261010-193-4 · 2026-10-10T20:47:54.834Z
+- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - failed: rev-14 [reviewer] · 2026-10-10T20:46:54.409Z · note Typecheck passes, but npm test exits 1: hub 1063/1067 with four stale tool-inventory assertion failures; Neovim does not run.
+
+## Comments
+
+### impl-193 · 2026-10-10T19:49:06.595Z
+
+Claimed. Implementing folder artifacts and lifetime/keep/move/archive through the pre-agreed real hub frame protocol seam from T-115. CLI/browser remain later slices. No role clause changes planned.
+
+### impl-193 · 2026-10-10T20:07:57.532Z
+
+Implementation at 4d3c131. Protocol tests cover folder entry/defaults/listing, human/Aide immutable lifetime, kept retention, explicit archive, protected-owner refusals, absorbed aliases/history/queued deliveries, and attachment protection. Filesystem/SQLite boundary faults verify folder rollback/recovery and move housekeeping. Headless workbench verifies folder entry and moved chips plus unsaved draft saves after move; fake harnesses receive folder/moved launch briefs. Self-review standards clear; spec clear except pending kept→watch integration after T-190 lands. No role clause text changed; tool grants added in .cland/roles.toml.
+
+### impl-193 · 2026-10-10T20:08:58.945Z
+
+Coordinator scope split: kept→watch is T-205, blocked by T-190 and T-193; T-193 implements kept retention only. Review scope at 4d3c131 excludes the watch classifier integration. C1–C3 implementation is complete; C4 will be marked by the proved persistent full-suite reporter after a clean passing run. No T-193 QA brief supplied; requesting review from rev-14 as directed.
+
+### rev-14 · 2026-10-10T20:14:08.639Z
+
+verdict: review
+result: not clear
+by: rev-14 [reviewer]
+run: rev-20261010-193-1
+commit: 4d3c131f0b7c936b6edd68d7e3023cfe8098c2e6
+
+High — hub/src/hub/artifact-lifecycle.ts:167,213,206; hub/src/hub/dispatch.ts:618: human/Aide source can be absorbed into an agent folder, whose expiry/agent authorization ignores protected contents. Actual Store/Lifecycle memory-FS reproduction deletes the human's bytes after topic close and sweep. Protect absorption or refuse incompatible destinations.
+Medium — nvim/lua/cland/artifacts.lua:70,37,137: reconnect ordinary list excludes moved aliases; a cached draft moved offline keeps its deleted standalone path, so save recreates the old source instead of updating its folder. Resolve/rebind cached ids on reconnect preserving unsaved edits.
+
+C1 failed; C2/C3 verified separately this run; C4 full-suite evidence pending. Standards clear. Kept-to-watch is excluded by tracked T-205 scope split. Both axes and reproduction source: A-763, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-763-t-193-review-protected-absorption-and-draft-reconnect-gaps.md.
+
+Criteria: C1 failed (Human/Aide source absorbed into agent folder can be auto-deleted; draft moved while disconnected retains obsolete buffer path after reconnect.).
+
+### impl-193 · 2026-10-10T20:17:42.497Z
+
+Replacement 55a04db addresses rev-20261010-193-1: protected human/Aide→agent folder moves refused pre-I/O, actual lifetime regression; open cached moved ids resolved on reconnect, real headless disconnect/move/reconnect/save regression. Both focused files passed (14 tests) and typecheck passed; two-axis self-review clear. Merged origin/dev 8783ac3 without conflict, clean and pushed. C4 awaits replacement full suite; first waiting run cancelled with runner SIGINT per fairness directive. T-205 excluded; docs corrected to reflect split.
+
+### rev-14 · 2026-10-10T20:19:29.033Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-193-2
+commit: 55a04dba4623d75dbcf01f1b166b96f3f2bb3ccc
+
+No high or medium findings remain. Protected human/Aide files are refused into agent folders before I/O; compatible protected absorption retains lifetime. Reconnect resolves missing cached ids and rebinds the existing buffer preserving unsaved text. Protocol/headless regressions and independent memory/Lua checks establish both fixes. Clean T-196 dev merge integration inspected; kept-to-watch remains T-205.
+C1–C3 verified. C4 replacement full-package evidence remains pending. Both review axes and reproduction source: A-770, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-770-t-193-re-review-clear-at-55a04db-c4-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-193 · 2026-10-10T20:46:51.840Z
+
+A-789 found four deterministic inventory assertion failures (hub 1063/1067, typecheck pass, Neovim not reached). Corrected only DOCUMENTED_TOOLS and aideTools expected lists at ded6d27. Surface3/3, resilience11/11 and Aide defaults/init2/2 pass. Fetched/merged origin/dev8783ac3 already up to date; clean and pushed. Production behavior unchanged from clear55a04db. Requesting review and final full suite retry at ded6d27.
+
+### rev-14 · 2026-10-10T20:46:54.410Z
+
+verdict: review
+result: not clear
+by: rev-14 [reviewer]
+run: rev-20261010-193-3
+commit: 55a04dba4623d75dbcf01f1b166b96f3f2bb3ccc
+
+Medium — hub/test/aide.test.ts:10: Expected Aide inventory omits new keep/move/archive grants, failing exact assertion at :17 and blocking C4.
+Medium — hub/test/harness.ts:26: DOCUMENTED_TOOLS omits archive/keep/list/move, failing resilience.test.ts:42, :104 and surface.test.ts:15 and blocking C4.
+A-789: typecheck exit 0; hub 1067 total, 1063 pass, 4 fail, zero cancelled/skipped/todo; npm test exit 1, Neovim not reached. Update independent expected inventories, preserving exact permission/surface assertions, then supply complete final-head verification. C1–C3 prior clearance remains intact. Pinned source reviewed; uncommitted repairs excluded. Evidence: A-791 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-791-t-193-c4-not-clear-at-55a04db-stale-tool-inventories.md
+
+Criteria: C4 failed (Typecheck passes, but npm test exits 1: hub 1063/1067 with four stale tool-inventory assertion failures; Neovim does not run.).
+
+### rev-14 · 2026-10-10T20:47:54.834Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-193-4
+commit: ded6d278acdfc79ecbdb1c8ea8a007ae0cfa3b30
+
+No high or medium findings in the replacement delta. Both static expected tool inventories now include precisely the authorized new artifact tools; independent exact permission/count/name assertions remain intact. Standards and Spec axes clear. Production/docs unchanged from A-770; C1–C3 reverified through the two-list delta. C4 remains unverified until a complete final-head full package run passes; prior failed mark is not cleared by this code review. Evidence: A-792 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-792-t-193-inventory-re-review-clear-at-ded6d27-c4-pending.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-14 · 2026-10-10T20:56:39.872Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-193-5
+commit: ded6d278acdfc79ecbdb1c8ea8a007ae0cfa3b30
+
+No new code findings. Existing clear review rev-20261010-193-4 and its C1–C3 verified marks remain applicable. A-793 confirms typecheck exit 0, followed only by lock waiting then npm test exit 130; neither test phase starts. C4 remains unverified, and its earlier failed mark is not cleared by this interrupted retry. No regression established by this evidence. Cancellation review: A-800 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-800-t-193-cancelled-validation-at-ded6d27-c4-still-unverified.md
+
+### rev-14 · 2026-10-10T21:26:44.669Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-193-6
+commit: ded6d278acdfc79ecbdb1c8ea8a007ae0cfa3b30
+
+No new code findings; A-792 clearance and C1–C3 verified marks remain applicable. A-804 confirms typecheck exit 0, then only lock waiting followed by npm test exit 130; neither hub nor Neovim tests start. C4 remains unverified, with no regression established and no criterion marks changed. Evidence: A-807 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-807-t-193-a-804-validation-incomplete-unchanged-code-clearance.md

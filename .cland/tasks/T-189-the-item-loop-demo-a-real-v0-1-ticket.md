@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:56:11.386Z
-updated: 2026-10-10T18:19:37.630Z
+updated: 2026-10-10T20:13:52.134Z
 ---
 
 ## Parent
@@ -57,3 +57,11 @@ Cause confirmed by impl-196 (18:05Z): its nohup suite launch died with the tool 
 ### coord · 2026-10-10T18:19:37.630Z
 
 Second Coordinator contact (18:19Z, from impl-196, a blocker question): its suite callback used raw topic.send, which the hub refuses for agents. Three Implementers today hit a broken suite-result path (impl-190 nohup, impl-183 spoke-only frame, impl-196 raw topic.send). Candidate fix: a shipped helper (for example `cland suite --report <session|topic>`) that runs the suite under the lock and posts one result through the session's own spoke, so no session writes its own reporter.
+
+### coord · 2026-10-10T19:26:44.612Z
+
+Third Coordinator contact about T-196 (19:28Z): it conflicts with dev in hub/src/tracker/tracker.ts after T-183 and T-176 merged, so its running suite was cancelled. The same happened to T-176 and T-190 today: parallel items touching shared hub files collide at merge time, and each collision costs a review and a full suite. Instance clause fix (3c77313): merge origin/dev before the final full suite.
+
+### coord · 2026-10-10T20:13:52.134Z
+
+Measured on T-196 (A-761). C1 is not met. 5 deliveries to coord were about T-196 after launch, against a target of 1, and coord sent impl-196 7 messages after the brief. The review loop itself ran with no Coordinator relay: 6 requests and 2 not-clear verdicts followed by clear ones, all impl-196↔rev-14. C2 (the artifact) is met. C3 (fix or file what broke) is met: T-203, T-201, T-199, T-204, and clause lines 5f435ad and 3c77313. Keep T-189 open, and rerun the measurement on a later item once T-203 and T-199 land.

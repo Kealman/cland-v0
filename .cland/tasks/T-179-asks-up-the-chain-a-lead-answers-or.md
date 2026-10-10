@@ -3,7 +3,7 @@ id: T-179
 kind: task
 title: "Asks up the chain: a lead answers or forwards an ask one level up; only the root's lead asks the human"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:38:36.263Z
-updated: 2026-10-10T15:38:36.263Z
+updated: 2026-10-10T19:48:16.996Z
 ---
 
 ## Parent

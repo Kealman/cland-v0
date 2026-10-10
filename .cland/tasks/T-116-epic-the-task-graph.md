@@ -2,7 +2,8 @@
 id: T-116
 kind: epic
 title: "Epic: The task graph"
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.1
@@ -11,10 +12,10 @@ assignee: null
 parent: T-130
 blocked_by:
   - T-107
-topic: null
+topic: topic-106
 branch: null
 created: 2026-10-09T21:51:34.781Z
-updated: 2026-10-10T16:43:27.444Z
+updated: 2026-10-10T21:36:43.937Z
 ---
 
 ## Goal
@@ -45,14 +46,22 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 The human presses `␣G` and sees the first v0.1 epic as a graph: what can run now on the left, blocked items marked ◌, the claim and the verdict on the nodes in work. They move with `h`, `l`, `j` and `k`, open an item with Enter and come back to the same node with `␣␣`, press `s` to see the plan's stages as columns, and watch a node change in place when a claim lands, with the cursor where they left it.
 
-- [ ] The graph lays out any container's children by `blocked_by` with layers, reduction and tracks, never draws `┼`, and names cycles and the edges left out.
-- [ ] Nodes show status, the blocked mark, the title, the ask badge, the claim, the latest verdict and verified/total; done items are dimmed and folded in the tray.
-- [ ] The cursor moves node to node with the motions; Enter, `gi`, `gt` and `gs` act on the node; the window scrolls sideways.
-- [ ] A hub update redraws only on a visible change and keeps the cursor on its node.
-- [ ] With a plan, nodes carry their stage and `s` groups the columns by stage; `gp` on a stage opens the plan view.
-- [ ] The graph of T-19 (22 items, 36 edges) is legible at 120, 160 and 200 columns.
-- [ ] A headless QA case, the successor of `GRAPH-001`, passes on `dev`.
-- [ ] `nvim/README.md` describes the graph and its keys.
+- [ ] C1. The graph lays out any container's children by `blocked_by` with layers, reduction and tracks, never draws `┼`, and names cycles and the edges left out.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C2. Nodes show status, the blocked mark, the title, the ask badge, the claim, the latest verdict and verified/total; done items are dimmed and folded in the tray.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C3. The cursor moves node to node with the motions; Enter, `gi`, `gt` and `gs` act on the node; the window scrolls sideways.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C4. A hub update redraws only on a visible change and keeps the cursor on its node.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C5. With a plan, nodes carry their stage and `s` groups the columns by stage; `gp` on a stage opens the plan view.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C6. The graph of T-19 (22 items, 36 edges) is legible at 120, 160 and 200 columns.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C7. A headless QA case, the successor of `GRAPH-001`, passes on `dev`.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
+- [ ] C8. `nvim/README.md` describes the graph and its keys.
+  - verified: qa-16 [qa] · run qa-2026-10-10-16 · 2026-10-10T21:36:27.476Z
 
 ## Dogfooding
 
@@ -78,3 +87,48 @@ From this epic on, the human follows the remaining v0.1 epics, and their plans' 
 - ADRs: `docs/adr/0005-neovim-is-the-host.md`, `docs/adr/0002-tracker-files-are-the-source-of-truth.md`.
 - Branches: `prototype/graph`, `research/nvim-rendering`.
 - Mockups: none; the prototype is the reference.
+
+## Comments
+
+### qa-16 · 2026-10-10T21:36:27.476Z
+
+verdict: qa
+result: clear
+by: qa-16 [qa]
+run: qa-2026-10-10-16
+commit: d822f6e489b0af2c94912926dff4ad9faeb8c259
+
+| Case | Surface | Result | Evidence / observation |
+| --- | --- | --- | --- |
+| SHELL-001 | headless-grid | PASS | SHELL-001 screen/state; connected shell and queued message |
+| GRAPH-001 | headless-grid | PASS | t19-120/160/200 screen/state/canvas, full-width variants, sideways, native-statuses |
+| M0 | hub-api + headless-grid | PASS | M0-setup.json, M0-open.screen.txt; T-130 is release, T-159–T-163 closed; scratch Graph T-2, chip R, blocked marks |
+| M1 | headless-grid | PASS | M1-horizontal/reveal.canvas.txt; A → B/C → D → F, hidden edge toggles, cycle edge named, no ┼ |
+| M1b | headless-grid | PASS | M1b-layout.log and M1b-view.log; 13 layout tests plus 1 cycle/reduction/outside-blocker test |
+| M2 | headless-grid | PASS | M2-unverified/done.canvas.txt, M2-dim.json, native-statuses.canvas.txt; claim, status, review, 0/2 live; 1/3 and ask badge in shipped case |
+| M3 | headless-grid | PASS | M3-item/gs/scroll.screen.txt and highlights; motions, Enter/gi, return, no-topic notice, claimant target, sideways leftcol 32 |
+| M4 | headless-grid | PASS | M4-T6-*.canvas.txt/json and checks.json; comment leaves bytes/tick unchanged; claim, review and child updates retain T-6 |
+| M5 | headless-grid | PASS | M5-E2/release/return; p/P cycles E1/E2/release, wraps, remembers T-6; empty E2 renders |
+| M6 | headless-grid | PASS | M6-tags/stages/sideways/dependency.canvas.txt; S1–S3, backward T-9 → T-4, within-stage edges, Unplanned band |
+| M7 | headless-grid | PASS | M7-plan/command/return.screen.txt, panel-restore.json, E2 canvases; gp and explicit command open plan; filter/scope restored; s is a no-op without a plan |
+| M8 | headless-grid | PASS | M8-run.json and graph-001/*.canvas.txt; second explicit case invocation exits 0; all six size/panel canvases have 22 distinct linked labels, no overlaps or ┼; truncation uses … |
+| M9 | hub-api / source read | PASS | M9-header.txt, fixture read; since T-163, regression yes, 44 native-field children, recorded case PASS |
+| M10 | source read | PASS | M10-readme.txt; graph behavior and all exercised keys documented |
+
+Findings, ranked by severity:
+
+- High: none.
+- Medium: brief defects, resolved for this pass by Coordinator message d8eb68f1-ab3d-4303-8376-14cfb74c9cb7 at 21:34:07Z. M0's release chip is correctly the name R, not the version. M6's X/Y are linked, so belong in an Unplanned band; G is linked by the preceding steps. M2's scratch `task criterion T-4 verify C1 --run scratch-qa --as qa-x --role qa` is correctly refused because this remains a human actor. Per the Coordinator, C2 is established by the live 0/2 render plus GRAPH-001's verified 1/3 and ask coverage. The Coordinator is filing these brief errors; no product repair was made.
+- Low: none in the agreed scope.
+
+Result: clear. Run: qa-2026-10-10-16. Build: dev d822f6e489b0af2c94912926dff4ad9faeb8c259, unchanged at completion. Only .cland metadata was dirty; no tracked source outside it changed.
+
+Criteria verified in this run: C1 (M1/M1b), C2 (M2/GRAPH-001), C3 (M3/M5/GRAPH-001), C4 (M4), C5 (M6/M7), C6 (M8/GRAPH-001, machine-checkable scope), C7 (M9/GRAPH-001), C8 (M10). All eight Definition-of-done checkboxes were exposed in order with null ids before this verdict; the Coordinator explicitly instructed first-touch C1–C8 assignment through the verdict.
+
+Execution: the prescribed CLI scratch tree and one persistent headless Neovim, keys through nvim_input and screens through screenstring(); only read-only tracker inspection occurred in the real project apart from the QA hold, records and verdict. The scratch hub and Neovim were stopped. Fourteen unique PASS records were appended through qa-record.sh; no full suite was requested or run. An extra Z2 child was added to confirm relayout with T-6 explicitly focused.
+
+Deferred to the T-117 walkthrough (BLOCKED outside this run's acceptance scope): human judgment of dense graph readability, real-terminal appearance and real-model/session attachment. The simulated impl-x target opens correctly; attachment says no such session was launched, as expected. Creating a live verification mark also needs a real verifier in a scratch hub; this is not a blocked acceptance case under the Coordinator's clarification.
+
+Evidence bundle: A-809, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-809-t-116-qa-evidence-qa-2026-10-10-16.gz. Paths in the case table are relative to the archive's qa-2026-10-10-16 directory; it includes the 14 JSONL records, CLI log, control script, canvases, screens, state and checks.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.

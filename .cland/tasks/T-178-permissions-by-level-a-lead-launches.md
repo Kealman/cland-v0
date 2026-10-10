@@ -3,7 +3,7 @@ id: T-178
 kind: task
 title: "Permissions by level: a Lead launches, stops, requests review and merges inside its subtree; refusals name the level"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:38:36.029Z
-updated: 2026-10-10T15:38:36.029Z
+updated: 2026-10-10T19:48:16.728Z
 ---
 
 ## Parent

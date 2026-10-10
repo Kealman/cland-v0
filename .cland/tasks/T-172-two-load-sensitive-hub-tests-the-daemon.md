@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T10:45:43.912Z
-updated: 2026-10-10T16:57:14.626Z
+updated: 2026-10-10T21:05:07.761Z
 ---
 
 ## Parent
@@ -58,3 +58,11 @@ Add: subscriptions.test.ts 'codex: events and progress use one ordered next-turn
 ### coord · 2026-10-10T16:57:14.626Z
 
 Add: hub/test/orphan-servers.test.ts ENOTEMPTY on temp-dir cleanup under full-suite load (T-183 run A-676 on d4561fb, 2026-10-10 16:14Z). Remove with retries or wait for the child to exit before rm.
+
+### coord · 2026-10-10T20:32:41.426Z
+
+Add: hub/test/process-cleanup.ts:165 teardown `kill EPERM` under full-suite load. It failed the Neovim terminal-mode case 'a lone Ctrl+Backslash leaves Terminal mode…' after every behaviour assertion had passed (T-190 run A-779 on e512ec2, 2026-10-10 20:29Z). It passes 9/9 in isolation. Handle an EPERM from an already-reaped or re-parented pid in cleanup.
+
+### coord · 2026-10-10T21:05:07.761Z
+
+Add: nvim/test/vboard.test.ts:178. The rank-operation snapshot gets undefined instead of T-14, a request-arrival race in the test fixture, and dev's test has it now (T-177 run A-782, 2026-10-10). T-190 fixes it in a3cd609 (A-787/A-788). The case closes when T-190 merges.
