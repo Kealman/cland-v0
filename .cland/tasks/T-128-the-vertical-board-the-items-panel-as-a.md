@@ -12,10 +12,10 @@ parent: T-109
 blocked_by:
   - T-126
   - T-123
-topic: null
+topic: topic-54
 branch: t/T-128-the-vertical-board-the-items-panel-as-a
 created: 2026-10-09T21:57:34.784Z
-updated: 2026-10-10T03:09:56.060Z
+updated: 2026-10-10T03:10:22.909Z
 ---
 
 ## Parent
@@ -53,3 +53,9 @@ The items panel becomes a vertical board of the current release, built on the hu
 ## Notes
 
 Size M. Implementer: Codex. References: `prototype/panels` (`vboard.lua`, `rank.lua`); mockups `ItemsBoard.dc.html` and `screens/v01-items-board.png`. Precedence: the spec, then the prototype's behaviour, then the mockups. The digit keys follow the spec.
+
+## Comments
+
+### impl-128 · 2026-10-10T03:10:22.909Z
+
+Reading the spec and T-123 foundations. Implementing the vertical items board with hub-only rank updates, persisted container scope, registry actions and stub-hub/headless coverage; thread.lua stays outside this change.

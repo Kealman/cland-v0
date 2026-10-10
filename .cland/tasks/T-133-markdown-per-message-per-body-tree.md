@@ -3,7 +3,7 @@ id: T-133
 kind: task
 title: "Markdown per message: per-body tree-sitter parse with cached conceal spans, plain fallback, verdict colours, blue item ids, 80-column safe"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
-updated: 2026-10-10T03:09:15.983Z
+updated: 2026-10-10T03:10:52.252Z
 ---
 
 ## Parent
