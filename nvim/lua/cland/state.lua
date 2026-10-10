@@ -294,6 +294,7 @@ end
 
 --- The human answered ask `id`: its row goes at once (the hub's `inbox` event confirms it).
 function M.answered(id)
+  require('cland.attention').answered(id)
   local asks = M.S.inbox.asks
   for i, a in ipairs(asks) do
     if a.id == id then

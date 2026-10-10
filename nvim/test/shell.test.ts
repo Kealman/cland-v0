@@ -157,6 +157,185 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
 const topBar = (s: string) => s.split('\n')[0] ?? '';
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
 
+test('agent traffic stays quiet while an unread now-layer message raises the existing top-bar count', { skip }, async t => {
+  const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), topic('topic-count', 'Count item', 'open', { item: 'T-12' })]; });
+  await c.waitScreen(s => topBar(s).includes('✓ needs you 0'), 'zero now-layer messages');
+  const event = (id: string, to: string[], extra: Record<string, unknown> = {}) => ({ type: 'message', topic: { id: 'topic-count', title: 'Count item', item: 'T-12' }, message: { id, from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', to, text: id, ts: ts(10), ...extra } });
+  await c.control({ emits: Array.from({ length: 20 }, (_, i) => event(`background-${i}`, ['coord-1'])) });
+  await c.lua("assert(vim.wait(5000, function() return require('cland.state').topic('topic-count').unread == 20 end))");
+  assert.match((await c.screen())[0] ?? '', /✓ needs you 0/);
+  const before = (await c.control({ requests: true })).requests;
+  await c.control({ emit: event('human-directed', ['human']) });
+  const screen = await c.waitScreen(s => /▲ needs you {2}1 /.test(topBar(s)), 'one unread now-layer message');
+  assert.match(topBar(screen), /sessions/);
+  const after = (await c.control({ requests: true })).requests;
+  assert.deepEqual(after, before, 'count changes from the message frame, without a polling request');
+  await c.control({ emit: event('human-directed', ['human']) });
+  await c.lua('vim.wait(100)');
+  assert.match((await c.screen())[0] ?? '', /▲ needs you {2}1 /, 'replayed id counts once');
+  await c.input('<Esc>:Cland view thread topic-count<CR>');
+  await c.waitScreen(s => topBar(s).includes('✓ needs you 0'), 'reading the topic clears its messages');
+});
+
+test('an ask counts once across its message and inbox frames, and stays counted when read', { skip }, async t => {
+  const c = await startShell(t, withInbox);
+  await c.waitScreen(s => /needs you {2}3 /.test(topBar(s)), 'existing ask, approval and waiting topic');
+  const message = { id: 'ask-new', from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', to: ['human'], text: 'New ask?', ts: ts(10), topic: 'topic-1', ask: { state: 'open', options: ['yes'], free: true } };
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-1', title: 'Spoke identity' }, message } });
+  await c.waitScreen(s => /needs you {2}4 /.test(topBar(s)), 'ask message alone raises count');
+  const inbox = (await c.lua<Record<string, unknown>>("return require('cland.state').S.inbox"));
+  const asks = [...inbox.asks as Record<string, unknown>[], { id: 'ask-new', topic: { id: 'topic-1', title: 'Spoke identity' }, question: 'New ask?', options: ['yes'], from: 'coord-1', ts: ts(10) }];
+  await c.control({ emits: [
+    { type: 'inbox', inbox: { ...inbox, asks, needsYou: 4 } },
+    { type: 'message', topic: { id: 'topic-1', title: 'Spoke identity' }, message },
+  ] });
+  await c.lua("assert(vim.wait(5000, function() return #require('cland.state').S.inbox.asks == 2 end))");
+  assert.match((await c.screen())[0] ?? '', /needs you {2}4 /, 'message and inbox identity are one ask');
+  await c.input('<Esc>:Cland view thread topic-1<CR>');
+  await c.waitScreen(s => topBar(s).includes('│ Spoke identity'), 'read the topic');
+  assert.match((await c.screen())[0] ?? '', /needs you {2}4 /, 'reading leaves open asks, approvals and waiting topics');
+  await c.control({ emits: [
+    { type: 'ask', topic: 'topic-1', ask: 'ask-new', card: { ...message.ask, state: 'answered' } },
+    { type: 'inbox', inbox: { ...inbox, needsYou: 3 } },
+  ] });
+  await c.waitScreen(s => /needs you {2}3 /.test(topBar(s)), 'answered ask leaves count');
+});
+
+test('cold and reconnected top-bar counts classify unread history, preserving live frames during a held snapshot', { skip }, async t => {
+  const addressed = (id: string, extra: Record<string, unknown> = {}) => ({ id, from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', to: ['human'], text: id, ts: ts(1), topic: 'topic-count', ...extra });
+  const history = [
+    addressed('already-read'),
+    addressed('background', { to: ['coord-1'] }),
+    addressed('watch', { fromRole: 'reviewer', text: 'review clear T-12' }),
+    addressed('incoming'),
+    addressed('outgoing', { fromKind: 'human', from: 'human', to: ['coord-1'] }),
+  ];
+  const c = await startShell(t, s => {
+    s.inbox = {};
+    s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), topic('topic-count', 'Count item', 'open', { unread: 3, lastMessageAt: ts(1) })];
+    s.messages = { ...s.messages, 'topic-count': history };
+  });
+  await c.waitScreen(s => /needs you {2}1 /.test(topBar(s)), 'one unread now-layer history message');
+  await c.control({ set: { holdSnapshots: ['topic.history'] } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'topic.history' });
+  const live = addressed('live', { ts: ts(2) });
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-count', title: 'Count item' }, message: live } });
+  await c.waitScreen(s => /needs you {2}2 /.test(topBar(s)), 'live message before held history');
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-count', title: 'Count item' }, message: history[0] } });
+  await c.control({ releaseSnapshots: ['topic.history'] });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.snapshots) == nil end))");
+  await c.waitScreen(s => /needs you {2}2 /.test(topBar(s)), 'one unread history message plus one live message');
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-count', title: 'Count item' }, message: history[3] } });
+  await c.lua('vim.wait(100)');
+  assert.match((await c.screen())[0] ?? '', /needs you {2}2 /, 'history and live frame identity deduplicates');
+  await c.control({ emit: { type: 'message', topic: { id: 'topic-count', title: 'Count item' }, message: history[0] } });
+  await c.lua('vim.wait(100)');
+  assert.match((await c.screen())[0] ?? '', /needs you {2}2 /, 'replaying already-read history cannot raise the count');
+  await c.reconnect(s => {
+    s.holdSnapshots = [];
+    s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), topic('topic-count', 'Count item', 'open', { unread: 1, lastMessageAt: ts(3) })];
+    s.messages = { ...s.messages, 'topic-count': [addressed('fresh', { ts: ts(3) })] };
+  });
+  await c.waitScreen(s => /needs you {2}1 /.test(topBar(s)), 'reconnect replaces stale unread projection');
+});
+
+test('reading while unread history is held prevents its late answer from restoring the top-bar count', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.inbox = {};
+    s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), topic('topic-count', 'Count item', 'open', { unread: 1 })];
+    s.messages = { ...s.messages, 'topic-count': [{ id: 'unread', from: 'impl-1', fromKind: 'agent', to: ['human'], text: 'Read me', ts: ts(1) }] };
+  });
+  await c.waitScreen(s => /needs you {2}1 /.test(topBar(s)), 'initial unread count');
+  await c.control({ set: { holdSnapshots: ['topic.history'] } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'topic.history' });
+  await c.input('<Esc>:Cland view thread topic-count<CR>');
+  await c.waitScreen(s => topBar(s).includes('✓ needs you 0'), 'opening reads the topic while snapshot is held');
+  await c.control({ releaseSnapshots: ['topic.history'] });
+  const s = await c.waitScreen(s => s.includes('Read me'), 'late history renders');
+  assert.match(topBar(s), /✓ needs you 0/, 'late history cannot resurrect read messages');
+});
+
+test('a partial topic read from another client removes only its read messages from the top-bar count', { skip }, async t => {
+  const bound = topic('topic-count', 'Count item', 'open');
+  const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), bound]; });
+  const message = (id: string, to: string[]) => ({ type: 'message', topic: { id: bound.id }, message: { id, from: 'impl-1', fromKind: 'agent', to, text: id, ts: ts(1) } });
+  await c.control({ emits: [message('first', ['human']), message('background', ['coord-1']), message('last', ['human'])] });
+  await c.waitScreen(s => /needs you {2}2 /.test(topBar(s)), 'two now messages, one background');
+  await c.control({ emit: { type: 'topic', topic: { ...bound, unread: 2 } } });
+  await c.waitScreen(s => /needs you {2}1 /.test(topBar(s)), 'first message read elsewhere, last still unread');
+  await c.control({ emit: { type: 'topic', topic: { ...bound, unread: 1 } } });
+  await c.lua("assert(vim.wait(5000, function() return require('cland.state').topic('topic-count').unread == 1 end))");
+  assert.match((await c.screen())[0] ?? '', /needs you {2}1 /, 'reading background leaves the last now message');
+});
+
+test('same-connection history refresh preserves live unread messages outside its loaded window', { skip }, async t => {
+  const bound = topic('topic-count', 'Count item', 'open');
+  const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), bound]; });
+  const messages = Array.from({ length: 201 }, (_, i) => ({ id: `live-${i}`, from: 'impl-1', fromKind: 'agent', to: ['human'], text: `live-${i}`, ts: ts(1) }));
+  await c.control({ emits: messages.map(message => ({ type: 'message', topic: { id: bound.id }, message })) });
+  await c.waitScreen(s => /needs you {2}201 /.test(topBar(s)), 'all 201 live messages counted');
+  await c.control({ set: {
+    topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), { ...bound, unread: 201 }],
+    messages: { general: baseScenario('').messages?.general ?? [], 'topic-count': messages.slice(1) },
+  } });
+  await c.lua("require('cland').refresh(); assert(vim.wait(5000, function() return next(require('cland').client.snapshots) == nil end))");
+  assert.match((await c.screen())[0] ?? '', /needs you {2}201 /, 'refresh is not a read or live-message eviction');
+});
+
+test('a history retry at the 2048-event cap preserves every live unread message and replay identity', { skip }, async t => {
+  const bound = topic('topic-count', 'Count item', 'open');
+  const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), bound]; });
+  const initial = { id: 'initial', from: 'impl-1', fromKind: 'agent', to: ['human'], text: 'initial', ts: ts(1) };
+  await c.control({ emit: { type: 'message', topic: { id: bound.id }, message: initial } });
+  await c.waitScreen(s => /needs you {2}1 /.test(topBar(s)), 'one message known before the first attempt');
+  await c.control({ set: {
+    holdSnapshots: ['topic.history'],
+    topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), { ...bound, unread: 1 }],
+    messages: { general: baseScenario('').messages?.general ?? [], 'topic-count': [initial] },
+  } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'topic.history' });
+  const messages = Array.from({ length: 2049 }, (_, i) => ({ id: `overflow-${i}`, from: 'impl-1', fromKind: 'agent', to: [i === 2048 ? 'coord-1' : 'human'], text: `overflow-${i}`, ts: ts(2) }));
+  await c.control({ set: {
+    topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), { ...bound, unread: 2050 }],
+    messages: { general: baseScenario('').messages?.general ?? [], 'topic-count': messages.slice(-200) },
+  }, emits: messages.map(message => ({ type: 'message', topic: { id: bound.id }, message })) });
+  await c.waitScreen(s => /needs you {2}2049 /.test(topBar(s)), 'all live messages counted before retry answers');
+  await c.control({ waitSnapshot: 'topic.history', snapshotCount: 2 });
+  await c.control({ releaseSnapshots: ['topic.history'], set: { holdSnapshots: [] } });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.snapshots) == nil end))");
+  assert.match((await c.screen())[0] ?? '', /needs you {2}2049 /, 'retry cannot evict known unread ids beyond its 200-message window');
+  await c.control({ emit: { type: 'message', topic: { id: bound.id }, message: messages[0] } });
+  await c.lua('vim.wait(100)');
+  assert.match((await c.screen())[0] ?? '', /needs you {2}2049 /, 'replaying a counted id neither loses it nor counts it twice');
+  await c.control({ emit: { type: 'topic', topic: { ...bound, unread: 1 } } });
+  await c.waitScreen(s => topBar(s).includes('✓ needs you 0'), 'partial read leaves only the newest background message');
+  await c.control({ emit: { type: 'message', topic: { id: bound.id }, message: messages[0] } });
+  await c.lua('vim.wait(100)');
+  assert.match((await c.screen())[0] ?? '', /✓ needs you 0/, 'a read id stays read when replayed after retry');
+});
+
+test('a partial read while the first unread history is pending seeds its remaining suffix', { skip }, async t => {
+  const bound = topic('topic-count', 'Count item', 'open');
+  const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), bound]; });
+  const messages = ['first', 'second', 'third'].map(id => ({ id, from: 'impl-1', fromKind: 'agent', to: ['human'], text: id, ts: ts(1) }));
+  await c.control({ set: {
+    holdSnapshots: ['topic.history'],
+    topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), { ...bound, unread: 3 }],
+    messages: { general: baseScenario('').messages?.general ?? [], 'topic-count': messages },
+  } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'topic.history' });
+  await c.control({ emit: { type: 'topic', topic: { ...bound, unread: 2 } } });
+  await c.lua("assert(vim.wait(5000, function() return require('cland.state').topic('topic-count').unread == 2 end))");
+  await c.control({ set: { holdSnapshots: [], topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), { ...bound, unread: 2 }] } });
+  await c.control({ releaseSnapshots: ['topic.history'] });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.snapshots) == nil end))");
+  await c.waitScreen(s => /needs you {2}2 /.test(topBar(s)), 'first history contributes only its unread suffix');
+});
+
 test('the workbench opens on General: top bar with project, view, Coordinator chip, needs you and sessions; sessions panel on the right', { skip }, async (t) => {
   const c = await startShell(t);
   const s = await c.waitScreen((x) => topBar(x).includes('busy') && x.includes('SESSIONS'), 'the top bar and the sessions panel');
@@ -1170,7 +1349,7 @@ test('configured levels choose the lowest semver release; the board folds closed
   await c.input('za');
   await c.waitScreen(s => !s.includes('T-9 T-8 › Folded done task'), 'closed component folds');
   await c.input('2/unscheduled (<CR>za');
-  screen = await c.waitScreen(s => s.includes('in work · 2'), 'current work plus unscheduled');
+  screen = await c.waitScreen(s => idsOf(itemRows(s)).includes('T-13'), 'current work plus unscheduled');
   assert.deepEqual(idsOf(itemRows(screen)), ['T-10', 'T-13']);
   await c.input('4');
   screen = await c.waitScreen(s => s.includes('done · 1') && s.includes('Folded done task'), 'current done tasks including closed parents');

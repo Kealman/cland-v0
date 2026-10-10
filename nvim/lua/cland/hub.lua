@@ -136,12 +136,15 @@ local snapshot_events = {
   ['session.list'] = { ['session.process'] = true, ['session.state'] = true, ['session.role'] = true, ['session.usage'] = true },
   ['hub.status'] = { presence = true, ['session.state'] = true, ['session.role'] = true, ['role.vacant'] = true, ['role.filled'] = true, inbox = true },
   ['artifact.list'] = { artifact = true, message = true },
-  ['topic.history'] = { ask = true, delivery = true },
+  ['topic.history'] = { ask = true, delivery = true, message = true, topic = true },
 }
 
 local function relevant(request, event)
   if not (snapshot_events[request.type] or {})[event.type] then return false end
-  if request.type == 'topic.history' then return event.topic == request.topic end
+  if request.type == 'topic.history' then
+    local id = type(event.topic) == 'table' and event.topic.id or event.topic
+    return id == request.topic
+  end
   if event.type == 'message' then
     local m = event.message or {}
     if request.type == 'topic.list' then return m.fromKind ~= 'human' end

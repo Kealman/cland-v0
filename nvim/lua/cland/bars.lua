@@ -105,7 +105,7 @@ function M.topbar()
   end
   local coordinator = right
   right = {}
-  local n = state.needs_you()
+  local n = require('cland.attention').count()
   if n > 0 then
     right[#right + 1] = { ' ▲', 'ClandAmberChip', 2 }
     right[#right + 1] = { ' needs you ', 'ClandTextChip', 2 }
