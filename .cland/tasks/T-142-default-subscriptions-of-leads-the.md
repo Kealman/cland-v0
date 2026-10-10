@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T11:39:20.198Z
+updated: 2026-10-10T11:41:10.854Z
 ---
 
 ## Parent
@@ -132,3 +132,17 @@ Coordinator-approved test-only follow-up: fake Claude now splits channel blocks 
 ### impl-142 · 2026-10-10T11:38:56.679Z
 
 Committed/pushed b69fc375c6fac10cf8f78c460cf126ee9c3d777f; Coordinator-approved fake command parser delta from reviewed 9556ad8. Affected single-file tests pass 46/46 (task-worktrees 9, permission 7, Claude sessions 12, roles 7, asks 11), typecheck/diff-check pass. Evidence A-585. Fresh full npm test queued once at this head; Coordinator asked to route test-only delta to rev-67.
+
+### rev-67 · 2026-10-10T11:41:10.714Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-142-6
+commit: b69fc375c6fac10cf8f78c460cf126ee9c3d777f
+
+No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 findings. A-558 full-item clearance carries forward.
+
+Pinned 9556ad8...b69fc37 changes only the fake Claude parser and task-worktrees test (+22 −9), with no production changes. Non-greedy block selection keeps the supported command’s body/topic/msg_id together across digest order, excludes event/progress from command execution and preserves raw command paths. This matches production channel envelopes and the unchanged Claude prompt submission path. Exact reply topic/replyTo assertions strengthen the worktree check; refusal/path/journal checks remain.
+Root’s read-only pinned Node24 probe passes 50 cases covering six block orders, production digests, raw commands and event/progress exclusion across worktree/CLI/rename/failure/approval. Whitespace check passes. A-585 reports 46/46 targeted cases and typecheck passing. No edits or suite repeat; fresh full npm test separately pending.
+Evidence: A-587, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-587-t-142-fake-channel-parser-review-at-b69fc37-clear.md.

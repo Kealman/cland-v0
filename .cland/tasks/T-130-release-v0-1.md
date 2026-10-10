@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-10T10:13:42.910Z
+updated: 2026-10-10T11:53:29.344Z
 ---
 
 ## Goal
@@ -38,3 +38,11 @@ Run note (Coordinator working rule, from the stand-in on 2026-10-10): until the 
 ### coord · 2026-10-10T10:13:42.910Z
 
 Open question for the human, set provisionally by the stand-in on 2026-10-10. For now, 'needs you' counts asks, approvals and topics waiting for you, and nothing else (T-169). Spec §3.5 also lists 'verdict not clear' and 'session died' as now-layer events. The proposal is that the hub counts them with resolution rules: a not-clear verdict resolves on a newer clear verdict or when the item closes; a death resolves on relaunch, a final stop or a dismissal. That is T-171, planned. Please confirm or change the rule.
+
+### coord · 2026-10-10T11:53:29.344Z
+
+Run note: the batch-merge rule (Coordinator working rule, approved by the stand-in on 2026-10-10).
+- Small or Neovim-side deltas may merge before their own full suite. They must be review-clear (QA-clear where the gate needs it), clean on merge-tree against fetched dev, and green on targeted tests. A Neovim-only item also needs a green npm run test:nvim on its branch.
+- After each batch of at most 2-3 such items, run one full npm test on integrated dev before any hub restart. A red integrated suite is reverted or fixed forward within the hour, and dev stays unreleasable until green.
+- Hub-side items that touch launch, ownership, storage, routing or the merge gate keep their own full suite before merging.
+- Note on each batched item's topic that it merged under this rule.

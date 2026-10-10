@@ -3,7 +3,7 @@ id: T-151
 kind: task
 title: "The Aide speaks for the human: the crew's clauses say so; the thread's speaks-for-you mark and dashed blue bar; Aide messages never fold"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-82
 branch: t/T-151-the-aide-speaks-for-the-human-the-crew-s
 created: 2026-10-10T05:33:00.860Z
-updated: 2026-10-10T11:39:12.386Z
+updated: 2026-10-10T11:46:38.224Z
 ---
 
 ## Parent
@@ -42,3 +42,17 @@ Implementer: Codex. ADRs 0001 (roles are hub-held state), 0004 (local git territ
 ### impl-151 · 2026-10-10T11:39:12.386Z
 
 Implementation: retain T-134's now-layer Aide boundary rule; add the speaks-for-you header and blue dashed gutters (including cursor/wrapped rows), plus an authority instruction in all four default crew clauses. Tests cover clauses delivered by a real hub and rendered history/live thread boundaries. Existing project roles.toml changes will be supplied exactly in the handover for the Coordinator to commit.
+
+### impl-151 · 2026-10-10T11:45:15.251Z
+
+Handover: 21f35054c20a54d13423d3fb3f80d53f89b0ecbd pushed to local origin; clean worktree, review status. A-589 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-589-t-151-implementation-handover-at-21f3505.md records changes, exact four role-clause insertions and later demo. Typecheck and roles/thread targeted tests passed (6/6 and 23/23); locked npm test is queued, result to follow.
+
+### rev-9 · 2026-10-10T11:46:38.110Z
+
+verdict: review
+result: clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-151-1
+commit: 21f35054c20a54d13423d3fb3f80d53f89b0ecbd
+
+Clear: no high, medium or low findings within the requested slice. Standards and Spec both clear. The four crew authority lines retain 'within your role'; Reviewer and QA still accept requests only from the Coordinator, and permissions are unchanged. nvim/lua/cland/thread.lua:279 adds the speaks-for-you mark; thread.lua:1021 and hl.lua:62 apply human-blue dashed gutters including wrapped rows and cursor emphasis. T-134's message_layer classifier is untouched; reviewer memory Lua probe confirms Aide non-background boundaries and ordinary progress/verdict layers unchanged. Exact instance lines and deferred live-demo clarification are in A-589. Evidence A-590: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-590-t-151-authority-and-thread-review.md. Reported typecheck/6 role/23 thread tests pass; full suite separately queued. No reviewer edits or full-suite run.

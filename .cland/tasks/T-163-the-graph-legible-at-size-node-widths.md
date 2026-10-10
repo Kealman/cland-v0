@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-79
 branch: t/T-163-the-graph-legible-at-size-node-widths
 created: 2026-10-10T07:49:36.868Z
-updated: 2026-10-10T11:39:41.684Z
+updated: 2026-10-10T11:42:14.329Z
 ---
 
 ## Parent
@@ -64,3 +64,21 @@ A-577: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-577-t-163-graph
 ### impl-163 · 2026-10-10T11:39:41.387Z
 
 Handoff: 3e07379b6a0e6576df5df99eac9f919c0b47a9fc committed and pushed to origin; working tree clean. Graph labels fit 120/160/200 columns through numbered continuation bands; +/− sizing, … clipping and wrapped diagnostics preserve node/edge ownership and cursor selection. Vertical remains default; o turns sideways. GRAPH-001 successor uses frozen T-19 topology with native hub fields and a separate workflow sampler, polls rendered state, and checks six widths, orientation, motions, actions, live updates and board coexistence. README documents keys and v0.2 crossing limits. Node v24.21.0: npm run typecheck passed; locked npm run test:nvim passed 222/222, no skips (217.74s run after 1292.35s lock wait). rev-8 review clear at this head, run rev-8-20261010-163-1 (A-577). Canvas evidence A-575: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-575-t-163-t-19-graph-canvas-dumps-at-120-160-and-200-columns.md. Full suite evidence A-586: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-586-t-163-locked-neovim-suite-222-tests-pass.log.
+
+### impl-163 · 2026-10-10T11:40:57.941Z
+
+Coordinator requested rebase after T-150 landed. Rebased onto origin/dev 443e524; new head 91c06ea pushed to origin with exact lease against 3e07379. Only conflict was qa.test.ts's list of cases; preserved GRAPH-001, PANELS-015/016 and all existing cases. range-diff confirms only registration context changed, second commit unchanged. Typecheck passed; locked test:nvim rerun underway and rev-8 notified for delta review.
+
+### rev-8 · 2026-10-10T11:42:14.284Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-163-2
+commit: 91c06ea65c83269f97549515e91165c5c77834ea
+
+No findings. Range-diff confirms the rebase changes only QA registration context: GRAPH-001, PANELS-015/016 and all prior cases remain registered with unchanged assertions; the second commit is patch-identical. Production graph modules and GRAPH-001 files match the previously reviewed head. Both axes clear; prior full-item clear carries forward.
+
+Original-head suite A-586 checked: 222 passed, 0 failed/skipped. Rebased typecheck reportedly passes; rebased full-suite rerun remains running. No reviewer edits or suites.
+
+A-588: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-588-t-163-rebase-review-clear-at-91c06ea.md
