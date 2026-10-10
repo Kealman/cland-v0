@@ -58,6 +58,11 @@ export const TASK_TOOLS = [
     inputSchema: { type: 'object', properties: { id: itemId, parent: nullableStr, blocked_by: { ...strs, description: 'Blockers to add' }, unblock: { ...strs, description: 'Blockers to remove' }, topic: nullableStr, branch: nullableStr }, required: ['id'] },
   },
   {
+    name: 'task.rank',
+    description: 'Move a task or a container below the top level among its siblings. Exactly one of top, before or after. Returns the item, changed ids and ordered sibling ids.',
+    inputSchema: { type: 'object', properties: { id: itemId, top: { type: 'boolean' }, before: itemId, after: itemId }, required: ['id'] },
+  },
+  {
     name: 'task.claim',
     description: 'Claim an item as yours while you work on it (the live hold stays in the hub; an Implementer claim writes in progress to task status), or release it. A claim another session holds is refused unless `force`.',
     inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' }, force: { type: 'boolean' } }, required: ['id'] },

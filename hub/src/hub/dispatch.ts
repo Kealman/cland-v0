@@ -870,8 +870,8 @@ export class Dispatcher {
                 if (peer.isOpen()) peer.send(event);
               });
               // the tracker's index changes reach the UI as `task` events (the items panel, the board)
-              const fromTracker = this.#options.tracker?.onChange(({ id, item }) => {
-                if (peer.isOpen()) peer.send({ type: 'task', id, item });
+              const fromTracker = this.#options.tracker?.onChange(({ id, item, siblings }) => {
+                if (peer.isOpen()) peer.send({ type: 'task', id, item, ...(siblings ? { siblings } : {}) });
               });
               unsubscribe = () => {
                 fromCore();

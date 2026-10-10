@@ -22,7 +22,7 @@ import { cleanupProcesses, ownDirectory, ownProcess, recordedProcess, rememberPr
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
 /** The tools the spoke serves — the one list every surface assertion reads. */
-export const DOCUMENTED_TOOLS = ['artifact.create', 'ask', 'history', 'merge', 'rename', 'resolve', 'role.handover', 'role.state', 'send', 'session.launch', 'status', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.edit', 'task.hold', 'task.link', 'task.list', 'task.view', 'topic.create', 'who'] as const;
+export const DOCUMENTED_TOOLS = ['artifact.create', 'ask', 'history', 'merge', 'rename', 'resolve', 'role.handover', 'role.state', 'send', 'session.launch', 'status', 'task.claim', 'task.close', 'task.comment', 'task.create', 'task.edit', 'task.hold', 'task.link', 'task.list', 'task.rank', 'task.view', 'topic.create', 'who'] as const;
 
 export const ChannelEvent = z.object({
   method: z.literal('notifications/claude/channel'),

@@ -191,7 +191,7 @@ export type HubEvent =
   | { type: 'role.filled'; role: 'coordinator'; session: string; ts: string }
   /** The tracker's index changed (a hub write, a hand edit the watcher read, a removed file, a claim): the item as
    *  `task.list` shows it, or null when its file is gone. */
-  | { type: 'task'; id: string; item: ItemSummary | null };
+  | { type: 'task'; id: string; item: ItemSummary | null; siblings?: string[] };
 
 /** A role's clause as the hub delivers it to the holder (spec 4.4): on assignment and on every reconnect.
  *  `role` null: the session's role was revoked. */

@@ -1,6 +1,7 @@
 // The tracker's index and claims: tables of their own in the hub's SQLite file, through a connection of
 // their own. The index is derived from the files and rebuilt from them at every start; claims are hub
 // state (a session's live hold on an item) and are never written to a file.
+import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type VerdictKind, type VerdictResult } from './item.ts';
@@ -99,6 +100,7 @@ export type IndexedItem = {
   title: string;
   state: State;
   status?: Status;
+  rank: number;
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -148,6 +150,7 @@ export class TrackerIndex {
     // Additive columns for databases created by earlier hub versions.
     const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
     if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
+    if (!itemColumns.has('rank')) this.#db.exec('alter table tracker_items add column rank integer');
     if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
@@ -180,10 +183,10 @@ export class TrackerIndex {
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
       this.#db
         .prepare(
-          `insert into tracker_items (id, n, file, kind, version, title, state, status, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into tracker_items (id, n, file, kind, version, title, state, status, rank, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
+        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
@@ -268,14 +271,14 @@ export class TrackerIndex {
       where.push('(select v.result from tracker_verdicts v where v.item_id = i.id and v.verdict = ? order by v.seq desc limit 1) = ?');
       args.push(filter.verdict.verdict, filter.verdict.result);
     }
-    const rows = this.#db.prepare(`select i.* from tracker_items i ${where.length ? `where ${where.join(' and ')}` : ''} order by i.n`).all(...args) as Row[];
-    return rows.map((r) => this.#hydrate(r));
+    const rows = this.#db.prepare(`select i.* from tracker_items i ${where.length ? `where ${where.join(' and ')}` : ''}`).all(...args) as Row[];
+    return rows.map((r) => this.#hydrate(r)).sort(compareRank);
   }
 
   /** Direct children only; hand-edit warnings need no unrelated labels or blockers. */
   children(id: string): IndexedItem[] {
-    const rows = this.#db.prepare('select i.* from tracker_items i where parent = ? order by i.n').all(id) as Row[];
-    return rows.map(row => this.#hydrate(row));
+    const rows = this.#db.prepare('select i.* from tracker_items i where parent = ?').all(id) as Row[];
+    return rows.map(row => this.#hydrate(row)).sort(compareRank);
   }
 
   get(id: string): IndexedItem | null {
@@ -288,6 +291,7 @@ export class TrackerIndex {
     return {
       id,
       kind: r.kind as Kind,
+      rank: effectiveRank({ id, rank: r.rank as number | null }),
       ...(r.version !== null ? { version: r.version as string } : {}),
       title: r.title as string,
       state: r.state as State,

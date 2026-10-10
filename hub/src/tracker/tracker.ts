@@ -5,6 +5,7 @@
 // rename completes before indexing, notification and the returned result. Hand edits are last-writer-wins.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
+import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
 import { createHash } from 'node:crypto';
@@ -27,6 +28,7 @@ import {
   serializeItem,
   STATES,
   statusRefusal,
+  rankable,
   VERDICT_KINDS,
   versionRefusal,
   parentingRefusal,
@@ -82,7 +84,7 @@ export type ItemView = IndexedItem & {
 export type ItemSummary = IndexedItem & { claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
-export type ItemChange = { id: string; item: ItemSummary | null };
+export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[] };
 
 export type CreateInput = {
   title: string;
@@ -360,7 +362,7 @@ export class Tracker {
    * The `task` event for `id`. `ifMoved`: only when its freshness changed from what was last announced and none of
    * it is still being computed (that announces itself once known), so a tip read does not flood the UI.
    */
-  #announce(id: string, ifMoved: boolean): void {
+  #announce(id: string, ifMoved: boolean, siblings?: string[]): void {
     const indexed = this.#index.get(id);
     const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#fresh.annotate(id, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     const shown = item ? JSON.stringify([item.verdictBase, item.verdicts.map((v) => v.current ?? null)]) : '';
@@ -370,7 +372,7 @@ export class Tracker {
     if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
-        listener({ id, item });
+        listener({ id, item, ...(siblings ? { siblings } : {}) });
       } catch (err) {
         this.#log({ event: 'task-change-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
       }
@@ -716,6 +718,7 @@ export class Tracker {
       ...indexed,
       verdictBase: this.#fresh.base(),
       ...item.fm,
+      rank: effectiveRank(item.fm),
       file,
       path: join(TASKS_REL, file),
       ancestry: this.#ancestry(item),
@@ -1131,6 +1134,7 @@ export class Tracker {
           }
         }
         if (input.state === 'closed') closing = { id: fm.id, kinds: [previousKind, fm.kind] };
+        if (!rankable(fm.kind, this.levels)) delete fm.rank;
         if (fm.kind !== 'task') delete fm.status;
         else this.#normalizeStatus(item);
         if (input.state !== undefined) {
@@ -1218,6 +1222,105 @@ export class Tracker {
         return view;
       });
     }, resumed);
+  }
+
+  /** Ranking holds the same queue as all other tracker writes. Disk ranks are checked again after
+   * every temporary-write await; an external move refuses rather than committing a stale plan. */
+  rank(actor: Actor, rawId: string, input: { top?: boolean; before?: string; after?: string }, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ item: ItemView; changed: string[]; siblings: string[] }> {
+    return this.#serial(async () => {
+      if (input.top !== undefined && typeof input.top !== 'boolean') throw new TrackerError('top must be a boolean');
+      for (const key of ['before', 'after'] as const) if (input[key] !== undefined && typeof input[key] !== 'string') throw new TrackerError(`${key} must be an item id`);
+      if (Number(input.top === true) + Number(input.before !== undefined) + Number(input.after !== undefined) !== 1) throw new TrackerError('rank needs exactly one of top, before or after');
+      const id = this.#require(rawId).id;
+      // Drain all reads, index external edits and only then capture a plan.
+      await this.#rescanAsync(resumed);
+      let records = await resumed(() => this.#rankRecords(resumed));
+      const changed: string[] = [];
+      // Planning, fingerprinting and the first dispatch have no await between them.
+      const prepared = resumed(() => {
+        const plan = (() => {
+          authorize();
+          const item = records.find(row => row.id === id);
+          if (!item) throw new TrackerError(`no item ${id}`);
+          if (!rankable(item.kind, this.levels)) throw new TrackerError('rank belongs only to tasks and containers below the top level');
+          const siblings = records.filter(row => row.parent === item.parent).sort(compareRank);
+          const rest = siblings.filter(row => row.id !== id);
+          let slot = 0;
+          const reference = input.before ?? input.after;
+          if (reference !== undefined) {
+            const target = records.find(row => row.id === normalizeId(reference));
+            if (!target) throw new TrackerError(`no item ${reference}`);
+            if (target.id === id) throw new TrackerError('an item cannot be ranked relative to itself');
+            if (target.parent !== item.parent) throw new TrackerError('rank target must have the same parent');
+            slot = rest.findIndex(row => row.id === target.id) + (input.after !== undefined ? 1 : 0);
+          }
+          const order = rest.map(row => row.id);
+          order.splice(slot, 0, id);
+          if (order.every((value, index) => value === siblings[index]?.id)) return { changes: new Map<string, number>(), order, parent: item.parent };
+          const changes = rankChanges(rest, item, slot, new Set(siblings.filter(row => rankable(row.kind, this.levels)).map(row => row.id)));
+          return { changes, order, parent: item.parent };
+        })();
+        const fingerprint = (rows: typeof records): string => JSON.stringify(rows.filter(row => row.parent === plan.parent || row.id === id).sort(compareRank));
+        const state = { expected: fingerprint(records) };
+        // Neighbors first, moved item last; a failed batch reports its committed prefix.
+        const writes = [...plan.changes].sort(([a], [b]) => Number(a === id) - Number(b === id));
+        const dispatch = (index: number): Promise<ItemView> => {
+          const write = writes[index];
+          if (!write) return this.#readRankView(id, resumed);
+          const [writingId, rank] = write;
+          return this.#mutate(writingId, actor, 'rank', item => { item.fm.rank = rank; }, resumed, undefined,
+            () => {
+              authorize();
+              if (fingerprint(records) !== state.expected) throw new TrackerError('siblings changed while ranking; retry with their current order');
+            }, () => { changed.push(writingId); }, async () => { records = await this.#rankRecords(resumed); }).then(() => resumed(() => {
+              // The update and the next native dispatch are one continuous stretch too.
+              records.find(row => row.id === writingId)!.rank = rank;
+              state.expected = fingerprint(records);
+              return dispatch(index + 1);
+            }));
+        };
+        return { plan, state, fingerprint, pending: dispatch(0) };
+      });
+      try {
+        const item = await prepared.pending;
+        records = await resumed(() => this.#rankRecords(resumed));
+        return resumed(() => {
+          authorize();
+          if (prepared.fingerprint(records) !== prepared.state.expected) throw new TrackerError('siblings changed while ranking; retry with their current order');
+          if (changed.length) this.#announce(id, false, prepared.plan.order);
+          return { item, changed, siblings: prepared.plan.order };
+        });
+      } catch (err) {
+        return resumed(() => {
+          const error = err instanceof Error ? err : new TrackerError(String(err));
+          error.message += `; rank writes committed: ${changed.join(', ') || 'none'}`;
+          throw error;
+        });
+      }
+    }, resumed);
+  }
+
+  /** Reads remain inside rank's admission (calling viewAsync here would queue behind ourselves). */
+  async #readRankView(id: string, resumed: Resumed): Promise<ItemView> {
+    const { file } = this.#require(id);
+    const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+    return resumed(() => this.#viewOf(id, file, parseItem(text, file, this.levels)));
+  }
+
+  async #rankRecords(resumed: Resumed): Promise<Array<{ id: string; kind: Kind; parent: string | null; rank: number; file: string }>> {
+    const names = await this.#files.readdir(this.#dir);
+    const settled = await resumed(() => Promise.allSettled(names.filter(name => fileNumber(name) !== null).map(async file => {
+      const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+      return resumed(() => {
+        const fm = parseItem(text, file, this.levels).fm;
+        return { id: fm.id, kind: fm.kind, parent: fm.parent, rank: effectiveRank(fm), file };
+      });
+    })));
+    return resumed(() => {
+      const failed = settled.find(result => result.status === 'rejected');
+      if (failed?.status === 'rejected') throw new TrackerError(`cannot read sibling ranks: ${String(failed.reason)}`);
+      return settled.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+    });
   }
 
   /** The hub's own write of an item's `topic` field (a binding it already made: `topic.create` with an item). */

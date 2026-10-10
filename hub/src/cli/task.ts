@@ -19,6 +19,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
   task hold <id> [--release] (Reviewer or QA verification beside the claim)
+  task rank <id> <--top | --before T-n | --after T-n>
   task claim <id> [--release] [--force]
                   claiming an open task in a project with a territory makes (or reuses) its branch
                   t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
@@ -46,6 +47,7 @@ const OPTIONS = {
   close: { ...COMMON, comment: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
   hold: { ...COMMON, release: { type: 'boolean' } },
+  rank: { ...COMMON, top: { type: 'boolean' }, before: { type: 'string' }, after: { type: 'string' } },
   claim: { ...COMMON, release: { type: 'boolean' }, force: { type: 'boolean' } },
 } as const satisfies Record<string, ParseArgsConfig['options']>;
 
@@ -132,6 +134,8 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       }) as { type: string };
     case 'hold':
       return { type: 'task.hold', item: needId(), release: v.release === true };
+    case 'rank':
+      return defined({ type: 'task.rank', item: needId(), top: v.top, before: v.before, after: v.after }) as { type: string };
     case 'claim':
       return { type: 'task.claim', item: needId(), release: v.release === true, force: v.force === true };
   }
@@ -148,6 +152,7 @@ function viewText(i: ItemView): string {
     ...(i.version !== undefined ? [`  version   ${i.version}`] : []),
     `  state     ${i.state}`,
     ...(i.status !== undefined ? [`  status    ${i.status}`] : []),
+    `  rank      ${i.rank}`,
     `  labels    ${i.labels.length ? i.labels.join(', ') : '-'}`,
     `  assignee  ${i.assignee ?? '-'}`,
     `  claim     ${claimText(i.claim)}`,

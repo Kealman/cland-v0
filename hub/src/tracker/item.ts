@@ -24,6 +24,8 @@ export type Frontmatter = {
   state: State;
   /** Task workflow status; other kinds have none. */
   status?: Status;
+  /** Explicit sibling rank; absent means the numeric id times ten. */
+  rank?: number;
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -122,6 +124,9 @@ export function versionRefusal(kind: Kind, version: unknown, levels: readonly st
   return typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version) ? null : 'version must be semver without the v (for example 0.1.0)';
 }
 
+/** Tasks and containers below the configured top level are ranked among siblings. */
+export const rankable = (kind: Kind, levels: readonly string[]): boolean => kind === 'task' || levels.slice(1).includes(kind);
+
 export function statusRefusal(kind: Kind, status: unknown): string | null {
   if (kind !== 'task') return 'status belongs only to a task';
   return STATUSES.includes(status as Status) ? null : `status must be one of ${STATUSES.join(', ')}`;
@@ -187,6 +192,11 @@ export function parseItem(text: string, fileName?: string, levels: readonly stri
     const refusal = statusRefusal(kind, r.status);
     if (refusal) throw new ItemParseError(refusal);
     fm.status = r.status as Status;
+  }
+  if (r.rank !== undefined && r.rank !== null) {
+    if (!rankable(kind, levels)) throw new ItemParseError('rank belongs only to tasks and containers below the top level');
+    if (!Number.isSafeInteger(r.rank)) throw new ItemParseError('rank must be a safe integer');
+    fm.rank = r.rank as number;
   }
   const github = githubOf(r.github);
   if (github) fm.github = github;
@@ -268,6 +278,7 @@ export function serializeItem(item: Item): string {
     title: fm.title,
     state: fm.state,
     ...(fm.status !== undefined ? { status: fm.status } : {}),
+    ...(fm.rank !== undefined ? { rank: fm.rank } : {}),
     labels: fm.labels,
     assignee: fm.assignee,
     parent: fm.parent,
