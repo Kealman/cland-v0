@@ -45,6 +45,7 @@ export type TaskRequest =
     }
   | { type: 'task.close'; id: string; item: string; comment?: string; as?: ActorField }
   | { type: 'task.link'; id: string; item: string; parent?: string | null; blocked_by?: string[]; unblock?: string[]; topic?: string | null; branch?: string | null; as?: ActorField }
+  | { type: 'task.hold'; id: string; item: string; release?: boolean; as?: ActorField }
   | { type: 'task.claim'; id: string; item: string; release?: boolean; force?: boolean; as?: ActorField }
   | (ImportRequest & { as?: ActorField });
 
@@ -54,7 +55,7 @@ export type TaskRequest =
  *  (`$CLAND_SESSION_*`), not a name the human gave with `--as`: one the hub does not know is then a roleless session. */
 export type ActorField = { name: string; role?: string | null; sessionId?: string; shell?: boolean };
 
-export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.claim', 'task.import'] as const;
+export const TASK_REQUEST_TYPES = ['task.create', 'task.view', 'task.list', 'task.comment', 'task.edit', 'task.close', 'task.link', 'task.claim', 'task.hold', 'task.import'] as const;
 
 export function isTaskRequest(f: Record<string, unknown>): f is TaskRequest {
   return typeof f.id === 'string' && (TASK_REQUEST_TYPES as readonly unknown[]).includes(f.type);
@@ -131,6 +132,11 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       const { type: _t, id: _i, as: _a, item: _item, ...input } = frame;
       return { item: await tracker.link(actor, needItem(f), input, resumed, authorize) };
     }
+    case 'task.hold':
+      return tracker.hold(actor, needItem(f), frame.release === true, resumed, () => {
+        const now = currentActor?.();
+        if (now && (now.id !== actor.id || now.name !== actor.name || now.role !== actor.role)) throw new TrackerError('verifier changed while taking its hold; retry');
+      });
     case 'task.claim':
       return tracker.claim(actor, needItem(f), { release: frame.release === true, force: frame.force === true }, resumed, () => {
         const now = currentActor?.();

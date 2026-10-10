@@ -65,6 +65,14 @@ create table if not exists tracker_claims (
   claimed_at text not null,
   session_id text
 );
+create table if not exists tracker_holds (
+  item_id text not null,
+  session_id text not null,
+  session text not null,
+  role text not null,
+  held_at text not null,
+  primary key (item_id, session_id)
+);
 create table if not exists tracker_meta (
   key text primary key,
   value text not null
@@ -113,6 +121,8 @@ export type IndexMeta = { file: string; hash: string; source: Source; indexedAt:
 
 /** A claim: who holds it by identity (`sessionId`, stable across renames) and by the name it had then (`session`). */
 export type Claim = { session: string; sessionId: string; role: string | null; claimedAt: string };
+
+export type VerifierHold = { session: string; sessionId: string; role: 'reviewer' | 'qa'; heldAt: string };
 
 export type ListFilter = {
   /** Descendants only, excluding the named root; combined with all other filters. */
@@ -343,6 +353,57 @@ export class TrackerIndex {
   mergeReceipt(id: string): MergeReceipt | null {
     const row = this.#db.prepare('select * from tracker_merges where item_id = ?').get(id) as Row | undefined;
     return row ? { branch: row.branch as string, tip: row.tip as string, base: row.base as string, commit: row.commit_sha as string, ...(row.override_reason === null ? {} : { override: row.override_reason as string }), ...(row.checkout_recovery === null ? {} : { checkout: JSON.parse(row.checkout_recovery as string) as CheckoutRecovery }) } : null;
+  }
+
+  holdsOf(id: string): VerifierHold[] {
+    const rows = this.#db.prepare('select * from tracker_holds where item_id = ? order by held_at, session_id').all(id) as Row[];
+    return rows.map(r => ({ session: r.session as string, sessionId: r.session_id as string,
+      role: r.role as VerifierHold['role'], heldAt: r.held_at as string }));
+  }
+
+  setHold(id: string, sessionId: string, hold: VerifierHold | null): void {
+    if (!hold) this.#db.prepare('delete from tracker_holds where item_id = ? and session_id = ?').run(id, sessionId);
+    else this.#db.prepare('insert into tracker_holds (item_id, session_id, session, role, held_at) values (?, ?, ?, ?, ?) on conflict (item_id, session_id) do update set session = excluded.session, role = excluded.role')
+      .run(id, sessionId, hold.session, hold.role, hold.heldAt);
+  }
+
+  releaseHolds(sessionId: string): string[] {
+    const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ?').all(sessionId) as Row[];
+    this.#db.prepare('delete from tracker_holds where session_id = ?').run(sessionId);
+    return rows.map(r => r.item_id as string);
+  }
+
+  /** Durable provisional identities are the startup reconciliation source, including failed adoptions. */
+  provisionalSessions(): string[] {
+    const rows = this.#db.prepare(`select coalesce(session_id, 'name:' || session) as session_id from tracker_claims where coalesce(session_id, 'name:' || session) like 'name:%'
+      union select session_id from tracker_holds where session_id like 'name:%'
+      union select session_id from tracker_written_verdicts where session_id like 'name:%'`).all() as Row[];
+    return rows.map(row => row.session_id as string);
+  }
+
+  /** A name known before hello and its session id identify the same holder, for claims, holds and verdict provenance. */
+  adoptSession(name: string, sessionId: string): string[] {
+    return this.#tx(() => {
+      const alias = `name:${name}`;
+      const changed = new Set<string>();
+      for (const [id, claim] of this.claims()) if (claim.sessionId === alias) {
+        this.setClaim(id, { ...claim, sessionId });
+        changed.add(id);
+      }
+      const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ?').all(alias) as Row[];
+      for (const row of rows) {
+        const id = row.item_id as string;
+        const hold = this.holdsOf(id).find(h => h.sessionId === alias)!;
+        this.setHold(id, sessionId, { ...hold, sessionId });
+        this.setHold(id, alias, null);
+        changed.add(id);
+      }
+      // Provenance is another durable use of the same writer identity. Preserve the role at write time.
+      const verdicts = this.#db.prepare('select distinct item_id from tracker_written_verdicts where session_id = ?').all(alias) as Row[];
+      this.#db.prepare('update tracker_written_verdicts set session_id = ? where session_id = ?').run(sessionId, alias);
+      for (const row of verdicts) changed.add(row.item_id as string);
+      return [...changed];
+    });
   }
 
   // ---------------------------------------------------------------- claims

@@ -39,6 +39,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'task.close',
   'task.link',
   'task.claim',
+  'task.hold',
   'task.import',
   'session.launch',
   // from the session's shell only (the `cland` CLI, T-49): the spoke has no such tools
@@ -95,8 +96,8 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
   implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'artifact.create', ...READS],
-  reviewer: ['send:agents', 'task.comment:verdict', 'artifact.create', ...READS],
-  qa: ['send:agents', 'task.comment:verdict', 'artifact.create', ...READS],
+  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'artifact.create', ...READS],
+  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'artifact.create', ...READS],
 };
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */
@@ -159,6 +160,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
       return { ok: false, permission: 'task.edit:review', reason: 'only the Coordinator sets any status; an Implementer may set only review on its claimed item, without other edits' };
     }
   }
+  if (tool === 'task.hold' && role !== 'reviewer' && role !== 'qa') return { ok: false, permission: tool, reason: 'only Reviewer and QA take verifier holds' };
   const list = grants ?? [];
   const has = (g: string) => list.includes(g);
   if (has(tool)) return { ok: true };

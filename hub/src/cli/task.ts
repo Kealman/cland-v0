@@ -18,6 +18,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t]
   task link <id> [--parent T-n|none] [--blocked-by T-n]… [--unblock T-n]… [--topic t|none] [--branch b|none]
+  task hold <id> [--release] (Reviewer or QA verification beside the claim)
   task claim <id> [--release] [--force]
                   claiming an open task in a project with a territory makes (or reuses) its branch
                   t/T-<n>-<slug> and its worktree .cland/worktrees/T-<n>
@@ -44,6 +45,7 @@ const OPTIONS = {
   edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
+  hold: { ...COMMON, release: { type: 'boolean' } },
   claim: { ...COMMON, release: { type: 'boolean' }, force: { type: 'boolean' } },
 } as const satisfies Record<string, ParseArgsConfig['options']>;
 
@@ -128,6 +130,8 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         topic: clearable(v.topic as string | undefined),
         branch: clearable(v.branch as string | undefined),
       }) as { type: string };
+    case 'hold':
+      return { type: 'task.hold', item: needId(), release: v.release === true };
     case 'claim':
       return { type: 'task.claim', item: needId(), release: v.release === true, force: v.force === true };
   }
@@ -151,6 +155,7 @@ function viewText(i: ItemView): string {
     `  blocked   ${i.blocked_by.length ? i.blocked_by.join(', ') : '-'}`,
     `  topic     ${i.topic ?? '-'}`,
     `  branch    ${i.branch ?? '-'}`,
+    ...i.holds.map(h => `  hold ${h.session} (${h.role}) since ${h.heldAt}`),
     `  verdict base ${i.verdictBase ?? '-'}`,
     `  created   ${i.created}`,
     `  updated   ${i.updated}`,
@@ -196,6 +201,8 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
   switch (sub) {
     case 'list':
       return listText(value.items as ItemSummary[]);
+    case 'hold':
+      return `${String(value.id)} holds: ${JSON.stringify(value.holds)}\n`;
     case 'claim': {
       const claim = value.claim as Claim | null;
       const worktree = value.worktree as { path: string; branch: string; createdWorktree: boolean } | null | undefined;

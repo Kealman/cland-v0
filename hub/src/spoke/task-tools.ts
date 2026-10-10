@@ -12,6 +12,8 @@ const KIND = { type: 'string', description: 'Configured container kind, task, qu
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [
+  { name: 'task.hold', description: 'Take a Reviewer or QA verifier hold beside the Implementer claim, setting review or qa, or release your hold. Verdicts and session stop release it.',
+    inputSchema: { type: 'object', properties: { id: itemId, release: { type: 'boolean' } }, required: ['id'] } },
   {
     name: 'task.create',
     description: "Create an item in the project's tracker (a Markdown file in .cland/tasks/, id T-<n>). Returns the item.",

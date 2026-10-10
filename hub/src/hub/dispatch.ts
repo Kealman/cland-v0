@@ -134,11 +134,22 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     // what a read shows changed: no earlier answer is replayed
-    options.core.subscribe(() => this.#guard.changed());
+    options.core.subscribe(event => {
+      this.#guard.changed();
+      if (event.type === 'session.process' && event.process.status !== 'running') options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
+    });
     options.tracker?.onChange(() => this.#guard.changed());
+    options.tracker?.useSessionIdentity(id => {
+      if (!id.startsWith('name:')) return id;
+      const actual = options.core.store.sessionIdOf(id.slice(5));
+      return actual && actual !== UNKNOWN_SESSION ? actual : id;
+    });
     // a role moved to a name with no session yet: its claims follow at that session's hello; and what a hub that
     // died between a move's commit and its claims left pending is finished now
-    options.core.onSessionHello((name, sessionId) => this.#settleClaims({ name, sessionId }));
+    options.core.onSessionHello((name, sessionId) => {
+      options.tracker?.adoptSession(name, sessionId);
+      this.#settleClaims({ name, sessionId });
+    });
     this.#settleClaims();
   }
 
@@ -154,6 +165,12 @@ export class Dispatcher {
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+    this.#options.tracker?.reconcileSessionIdentities();
+    // A crash can follow the durable process-row update but precede queued hold cleanup.
+    // Reconcile only known process identities; direct and unknown sessions retain their work.
+    for (const process of sessions?.list() ?? []) if (process.status !== 'running') {
+      this.#options.tracker?.releaseHolds(process.sessionId, process.name);
+    }
     // the inbox's approvals are the launched sessions waiting for approval, with their attach commands (#33)
     this.#options.core.inbox.useProcesses(sessions ? () => sessions.list() : null);
   }
@@ -323,7 +340,7 @@ export class Dispatcher {
       const view = tracker.list().find(value => value.id === normalizeId(item));
       if (!view) return undefined; // no such item: the tool says so itself
       const actor = sessionActor(connection, UNKNOWN_SESSION);
-      if (view.claim?.sessionId === actor.id) return true;
+      if (view.claim && tracker.sameSession(view.claim.sessionId, actor.id)) return true;
       if (view.assignee === null) return false;
       // the assignee as the hub bound it, by session id: a rename, or another session taking the name, moves nothing
       const store = this.#options.core.store;
@@ -342,7 +359,10 @@ export class Dispatcher {
       ...(tool === 'task.edit' ? {
         status: frame.status,
         statusOnly: Object.keys(frame).every(key => ['type', 'id', 'item', 'as', 'status'].includes(key)),
-        claimed: () => item !== null && tracker?.list().find(value => value.id === normalizeId(item))?.claim?.sessionId === sessionActor(connection, UNKNOWN_SESSION).id,
+        claimed: () => {
+          const claim = item !== null ? tracker?.list().find(value => value.id === normalizeId(item))?.claim : null;
+          return !!claim && !!tracker?.sameSession(claim.sessionId, sessionActor(connection, UNKNOWN_SESSION).id);
+        },
       } : {}),
       ...(tool === 'send' ? { toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too

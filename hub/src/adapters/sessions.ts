@@ -393,6 +393,7 @@ export class Sessions {
         try {
           const current = this.#table.bySessionId(p.sessionId) ?? p;
           this.#table.update(current.name, { status: 'stopped' });
+          if (process.env.CLAND_TEST_CRASH_AT === 'stop-recorded') process.kill(process.pid, 'SIGKILL');
           this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
           this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
           this.#vacate(current, 'its session was stopped');

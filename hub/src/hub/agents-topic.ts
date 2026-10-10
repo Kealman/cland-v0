@@ -18,7 +18,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal'] as const;
+export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -33,6 +33,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return { kind: 'refusal', text: `${String(entry.file)}: hand edit retained with invalid parenting: ${String(entry.error)}`, detail: { file: entry.file } };
     case 'config-unreadable':
       return { kind: 'refusal', text: `${String(entry.file)}: config refused: ${String(entry.error)}; keeping the defaults`, detail: { file: entry.file } };
+    case 'task-ready-paused':
+      return { kind: 'ready-paused', text: `${String(entry.id)}: ready check paused after ${String(entry.attempts)} failed attempts: ${String(entry.error)}. The next item or branch event retries it.`, detail: { item: entry.id, error: entry.error, attempts: entry.attempts } };
     case 'turn-failed':
       return session ? { kind: 'turn-failed', text: str(entry.text) ?? `${label(session)}: its turn failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session } } : null;
     case 'harness-redelivered':

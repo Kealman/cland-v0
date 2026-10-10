@@ -4,7 +4,7 @@ import type { LogFn } from '../log.ts';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MergeError } from '../merge.ts';
-import type { IndexedVerdict } from '../tracker/index-db.ts';
+import { gateVerdicts } from '../tracker/gate-verdicts.ts';
 import { normalizeId } from '../tracker/item.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
@@ -42,23 +42,8 @@ export class TaskMerges {
     });
   }
 
-  #verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
-    const all = view.verdicts.filter((v) => v.verdict === kind);
-    const v = all.filter((v) => v.source === 'hub').at(-1);
-    if (!v) throw new MergeError(all.length ? `${kind}-provenance` : `${kind}-missing`, `${view.id}: no hub-written ${kind} verdict`);
-    const role = kind === 'review' ? 'reviewer' : 'qa';
-    if (v.writer?.role !== role || v.writer.sessionId === 'human' || v.writer.sessionId.startsWith('cli:')) throw new MergeError(`${kind}-role`, `${view.id}: the ${kind} writer did not hold ${role}`);
-    if (view.claim?.sessionId === v.writer.sessionId) throw new MergeError(`${kind}-claimant`, `${view.id}: its claiming session cannot supply ${kind}`);
-    if (v.result !== 'clear') throw new MergeError(`${kind}-not-clear`, `${view.id}: ${kind} is not clear`);
-    // mergeViewAsync annotates the latest hub verdict even when a later file-only header exists.
-    const current = v.current;
-    if (current !== true) throw new MergeError(current === undefined ? `${kind}-pending` : `${kind}-stale`, `${view.id}: ${kind} is ${current === undefined ? 'still checking freshness; try again' : 'stale'}`);
-    return v;
-  }
-
   #message(view: ItemView, override?: string): string {
-    const review = override === undefined ? this.#verdict(view, 'review') : null;
-    const qa = override === undefined && view.labels.includes('qa-required') ? this.#verdict(view, 'qa') : null;
+    const { review, qa } = override === undefined ? gateVerdicts(view) : { review: null, qa: null };
     return `${view.title} (${view.id})\n\nItem: ${view.id}${review ? `\nReviewed-by: ${review.author} (${review.run})` : ''}${qa ? `\nQA-by: ${qa.author} (${qa.run})` : ''}`;
   }
 

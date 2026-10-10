@@ -255,17 +255,17 @@ export class Freshness {
         const next = this.#wants.entries().next();
         if (next.done) return;
         const [key, want] = next.value;
-        let value: boolean | null;
+        let value: boolean;
         try {
           value = await this.#compute(want);
         } catch (err) {
           this.#fail('compute', err);
-          value = null;
+          value = false;
         }
         // a tip that moved meanwhile dropped the wait: its answer is for nobody
         if (this.#wants.get(key) !== want) continue;
         this.#wants.delete(key);
-        if (value === null || this.#stopped) continue;
+        if (this.#stopped) continue;
         this.#results.set(key, value);
         this.#settled([...want.ids]);
       }

@@ -13,7 +13,7 @@ import files, { type FileHandle } from 'node:fs/promises';
 import type { Resumed } from '../hub/budget.ts';
 const untimed: Resumed = work => work();
 import { join } from 'node:path';
-import { commentKey, TrackerIndex, type Claim, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
+import { commentKey, TrackerIndex, type Claim, type VerifierHold, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
 import {
   COMMENTS_HEADING,
   fileNameOf,
@@ -43,6 +43,7 @@ import {
 } from './item.ts';
 import type { LogFn } from '../log.ts';
 import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
+import { gateVerdicts } from './gate-verdicts.ts';
 import { MergeError } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
 import { Freshness, pending, type TipSchedule } from './freshness.ts';
@@ -72,12 +73,13 @@ export type ItemView = IndexedItem & {
   comments: Comment[];
   verdicts: IndexedVerdict[];
   claim: Claim | null;
+  holds: VerifierHold[];
   /** The GitHub issue the item was imported from, when it was. */
   github?: GithubRef;
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & { claim: Claim | null; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ItemSummary = IndexedItem & { claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null };
@@ -186,6 +188,16 @@ export class Tracker {
   /** Verdict freshness, computed off the request path; the reads only look it up. */
   readonly #fresh: Freshness;
   /** Each item's freshness as last announced: an answer that arrives later is announced only when it differs. */
+  readonly #revisions = new Map<string, number>();
+  readonly #readyChecks = new Set<string>();
+  readonly #readyAgain = new Set<string>();
+  readonly #readyRetries = new Map<string, NodeJS.Timeout>();
+  readonly #retryCounts = new Map<string, number>();
+  readonly #readyErrors = new Map<string, string>();
+  readonly #retryDelays = new Map<string, number>();
+  readonly #sessionIds = new Map<string, string>();
+  readonly #adoptions = new Map<string, string>();
+  #identityOf: (id: string) => string = id => id;
   readonly #shown = new Map<string, string>();
 
   constructor(options: { levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
@@ -206,7 +218,7 @@ export class Tracker {
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
-      settled: (ids) => ids.forEach((id) => this.#announce(id, true)),
+      settled: (ids) => ids.forEach((id) => { this.#announce(id, true); this.#scheduleReady(id); }),
       tipsMoved: () => this.#tipsMoved(),
     });
   }
@@ -248,13 +260,100 @@ export class Tracker {
 
   /** The index changed for `id`: the `task` event, and a fresh look at the branch tips (a verdict may need one). */
   #changed(id: string): void {
+    this.#revisions.set(id, (this.#revisions.get(id) ?? 0) + 1);
     this.#fresh.poke();
     this.#announce(id, false);
+    this.#scheduleReady(id);
   }
 
   /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
   #tipsMoved(): void {
-    for (const item of this.list()) if (item.verdicts.length) this.#announce(item.id, true);
+    for (const item of this.list()) if (item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
+  }
+
+  /** Freshness, verdicts and branch changes converge on one queued workflow check. */
+  #scheduleReady(id: string, retry = false): void {
+    if (!retry) { this.#retryCounts.delete(id); this.#readyErrors.delete(id); }
+    const indexed = this.#index.get(id);
+    if (this.#readyRetries.has(id)) return;
+    if (this.#readyChecks.has(id)) { this.#readyAgain.add(id); return; }
+    if (this.#stopping || indexed?.kind !== 'task' || indexed.state !== 'open'
+      || (!indexed.branch && !this.#index.verdicts().get(id)?.length) || (!this.#index.verdicts().get(id)?.length && indexed.status !== 'ready')) return;
+    this.#readyChecks.add(id);
+    this.#runBackground(() => this.#serial(async () => {
+      try { await this.#checkReady(id); }
+      catch (err) { this.#watchResumed(() => {
+        this.#readyErrors.set(id, err instanceof Error ? err.message : String(err));
+        this.#readyAgain.add(id);
+      }); throw err; }
+      finally { this.#watchResumed(() => {
+        this.#readyChecks.delete(id);
+        if (!this.#readyAgain.delete(id)) { this.#retryDelays.delete(id); this.#retryCounts.delete(id); this.#readyErrors.delete(id); return; }
+        if (this.#stopping) return;
+        const attempts = (this.#retryCounts.get(id) ?? 0) + 1;
+        this.#retryCounts.set(id, attempts);
+        if (attempts >= 10) {
+          this.#log({ event: 'task-ready-paused', id, attempts, error: this.#readyErrors.get(id) ?? 'readiness evidence kept changing' });
+          this.#retryDelays.delete(id);
+          return;
+        }
+        const delay = Math.min((this.#retryDelays.get(id) ?? 25) * 2, 1000);
+        this.#retryDelays.set(id, delay);
+        const timer = setTimeout(() => this.#watchResumed(() => {
+          this.#readyRetries.delete(id);
+          this.#scheduleReady(id, true);
+        }), delay);
+        timer.unref();
+        this.#readyRetries.set(id, timer);
+      }); }
+    }, this.#watchResumed));
+  }
+
+  #readyStatus(view: ItemView): Status | null {
+    if (view.kind !== 'task' || view.state !== 'open') return null;
+    try {
+      if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
+      gateVerdicts(this.#mergeViewOf(view));
+      return 'ready';
+    } catch (err) {
+      if (!(err instanceof MergeError)) throw err;
+      // An unchanged rebase may be awaiting its patch-id; keep the last settled status until known.
+      if (err.code.endsWith('-pending')) return null;
+      return view.status === 'ready' ? 'in progress' : null;
+    }
+  }
+
+  async #checkReady(id: string): Promise<void> {
+    const resumed = this.#watchResumed;
+    const { file, revision } = resumed(() => ({ ...this.#require(id), revision: this.#revisions.get(id) }));
+    const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+    const checking = resumed(() => {
+      const current = this.#viewOf(id, file, parseItem(text, file, this.levels));
+      const desired = this.#readyStatus(current);
+      if (!desired || current.status === desired) return;
+      return this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'ready', item => {
+        const now = this.#viewOf(id, file, item);
+        if (this.#readyStatus(now) !== desired) throw new ReadyChanged();
+        this.#setStatus(item, desired);
+      }, resumed, undefined, undefined, undefined, async () => {
+        // Native writes may yield for seconds. Re-read Git and file evidence just before rename;
+        // a verdict, hand edit or commit observed after preparation invalidates that preparation.
+        const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        await this.#fresh.refresh(resumed);
+        const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        resumed(() => {
+          const now = this.#viewOf(id, file, parseItem(afterGit, file, this.levels));
+          if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || this.#readyStatus(now) !== desired) throw new ReadyChanged();
+        });
+      });
+    });
+    try { await checking; }
+    catch (err) { resumed(() => {
+      if (!(err instanceof ReadyChanged)) throw err;
+      this.#readyErrors.set(id, 'readiness evidence changed during the check');
+      this.#readyAgain.add(id);
+      // Re-read on the next queue admission. Watcher/index events also converge on this check.
+    }); }
   }
 
   /**
@@ -263,7 +362,7 @@ export class Tracker {
    */
   #announce(id: string, ifMoved: boolean): void {
     const indexed = this.#index.get(id);
-    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), verdicts: this.#fresh.annotate(id, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#fresh.annotate(id, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     const shown = item ? JSON.stringify([item.verdictBase, item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
     if (item) this.#shown.set(id, shown);
@@ -351,6 +450,8 @@ export class Tracker {
     this.#watcher = null;
     for (const t of this.#pending.values()) clearTimeout(t);
     this.#pending.clear();
+    for (const retry of this.#readyRetries.values()) clearTimeout(retry);
+    this.#readyRetries.clear();
     if (this.#rescanTimer) clearTimeout(this.#rescanTimer);
     this.#stopping = (async () => {
       await Promise.allSettled([...this.#background]);
@@ -621,7 +722,7 @@ export class Tracker {
       body: item.body,
       comments: item.comments,
       verdicts: this.#fresh.annotate(id, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
-      claim: this.#index.claimOf(id),
+      claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),
     };
   }
 
@@ -654,9 +755,11 @@ export class Tracker {
   #mergeViewOf(view: ItemView): ItemView {
     const evidence = this.#index.mergeVerdicts(view.id, view.comments.flatMap(c => c.verdict ? [{ key: commentKey(c), verdict: { ...c.verdict, author: c.author, at: c.at } }] : []));
     if (evidence.missing) throw new MergeError('verdict-missing', `${view.id}: hub verdict run ${evidence.missing.run}, commit ${evidence.missing.commit ?? 'none'}, is missing or altered in the item file`);
-    const hub = evidence.verdicts.map(({ current: _current, ...v }) => v);
+    const hub = evidence.verdicts.map(({ current: _current, ...v }) => ({ ...v,
+      ...(v.writer ? { writer: { ...v.writer, sessionId: this.#identityOf(v.writer.sessionId) } } : {}),
+    }));
     const annotated = this.#fresh.annotate(view.id, view.branch, hub);
-    return { ...view, verdicts: [...view.verdicts.filter(v => v.source === 'file'), ...annotated] };
+    return { ...view, claim: view.claim ? { ...view.claim, sessionId: this.#identityOf(view.claim.sessionId) } : null, verdicts: [...view.verdicts.filter(v => v.source === 'file'), ...annotated] };
   }
 
   recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
@@ -695,7 +798,7 @@ export class Tracker {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
-    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, verdictBase: base, verdicts: this.#fresh.annotate(i.id, i.branch, verdicts.get(i.id) ?? []) }));
+    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#fresh.annotate(i.id, i.branch, verdicts.get(i.id) ?? []) }));
   }
 
   // ---------------------------------------------------------------- writing
@@ -715,7 +818,7 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, refresh?: () => Promise<void>): Promise<Item> {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>): Promise<Item> {
     this.#normalizeStatus(item);
     const text = serializeItem(item);
     const written = parseItem(text, name, this.levels);
@@ -727,11 +830,11 @@ export class Tracker {
       // not survival of power loss. A process crash before rename leaves the previous item intact.
       if (this.#writePauseMs > 0) await new Promise<void>(done => setTimeout(done, this.#writePauseMs));
       const before = read ? await this.#files.readFile(path, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
-      if (refresh) await resumed(refresh);
+      if (beforeRename) await resumed(beforeRename);
       await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
       const replaced = read ? await readWhole(read.fd, resumed).then(text => resumed(() => hashOf(text)), () => null) : null;
       return resumed(() => {
-        this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter);
+        this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
         committed?.();
         this.#changed(written.fm.id);
         if (read && (before !== read.hash || replaced !== read.hash)) {
@@ -748,7 +851,7 @@ export class Tracker {
   }
 
   /** Called only with the tracker queue held: always read the latest committed file. */
-  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, refresh?: () => Promise<void>): Promise<ItemView> {
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;
@@ -770,7 +873,7 @@ export class Tracker {
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         change(item);
         item.fm.updated = this.#now().toISOString();
-        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, refresh);
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename);
       });
       result = { written };
     } catch (error) { result = { error }; }
@@ -862,6 +965,7 @@ export class Tracker {
   }
 
   #comment(actor: Actor, rawId: string, text: string, verdict: VerdictInput | undefined, resumed: Resumed, currentActor?: () => Actor): Promise<ItemView> {
+    this.#ensureSession(actor);
     const body = (text ?? '').trim();
     if (!body && !verdict) throw new TrackerError('a comment needs text');
     checkText(body, 'comment');
@@ -879,10 +983,12 @@ export class Tracker {
     // Git resolution belongs to this admitted operation; later writes and views wait behind it.
     const write = () => {
       const writer = currentActor ? currentActor() : actor;
+      this.#ensureSession(writer);
       if (v) v.by = formatVerdictBy(writer.name, writer.role);
       if (tip?.sha) this.#fresh.noteTip(tip.branch, tip.sha);
       return this.#writeComment(writer, rawId, body, v, tip, resumed, currentActor ? () => {
         const now = currentActor();
+        this.#ensureSession(now);
         if (now.id !== writer.id || now.name !== writer.name || now.role !== writer.role) throw new TrackerError('comment writer changed while the item was being written; nothing was written, retry');
       } : undefined);
     };
@@ -912,7 +1018,7 @@ export class Tracker {
       }
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body, ...(v ? { verdict: v } : {}) });
       if (v?.result === 'not clear') this.#setStatus(item, 'in progress');
-    }, resumed, actor, beforeCommit);
+    }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(normalizeId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined);
     return resumed(() => {
       // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
       // as one (its header lines), so every verdict on record is a notification
@@ -1084,8 +1190,9 @@ export class Tracker {
   }
 
   #releaseOnClose(id: string): void {
+    for (const hold of this.#index.holdsOf(id)) this.#index.setHold(id, hold.sessionId, null);
     const claim = this.#index.claimOf(id);
-    if (!claim) return;
+    if (!claim) { this.#changed(id); return; }
     this.#index.setClaim(id, null);
     this.#log({ event: 'task-released', id, session: claim.session, reason: 'closed' });
     this.#changed(id);
@@ -1242,6 +1349,84 @@ export class Tracker {
     };
   }
 
+  /** The hub's authoritative mapping also compares gate evidence before durable adoption succeeds. */
+  useSessionIdentity(identityOf: (id: string) => string): void {
+    this.#identityOf = identityOf;
+    this.reconcileSessionIdentities();
+  }
+
+  /** Indexed ownership checks use the same authoritative identity as the gate. */
+  sameSession(left: string, right: string): boolean { return this.#identityOf(left) === this.#identityOf(right); }
+
+  /** Rebuild fences from durable rows before work is admitted, even without a new spoke hello. */
+  reconcileSessionIdentities(): void {
+    for (const alias of this.#index.provisionalSessions()) {
+      const actual = this.#identityOf(alias);
+      if (actual !== alias) this.adoptSession(alias.slice(5), actual);
+    }
+  }
+
+  /** Failed adoption fences work until the same queued transaction succeeds. */
+  adoptSession(name: string, sessionId: string): void {
+    if (sessionId === `name:${name}` || sessionId === 'unknown') return;
+    this.#adoptions.set(sessionId, name);
+    this.#runBackground(() => this.#serial(() => this.#adopt(sessionId), this.#watchResumed));
+  }
+
+  #adopt(sessionId: string): void {
+    const name = this.#adoptions.get(sessionId);
+    if (!name) return;
+    let changed: string[];
+    try { changed = this.#index.adoptSession(name, sessionId); }
+    catch (err) { throw new TrackerError(`session identity adoption failed for ${name}: ${err instanceof Error ? err.message : String(err)}; retry`); }
+    // Publication follows the SQLite commit: a partial failure never changes the working identity.
+    this.#sessionIds.set(`name:${name}`, sessionId);
+    this.#adoptions.delete(sessionId);
+    for (const id of changed) this.#changed(id);
+  }
+
+  #ensureSession(actor: Actor): void {
+    const pending = this.#adoptions.has(actor.id) ? actor.id
+      : [...this.#adoptions].find(([, name]) => actor.id === `name:${name}`)?.[0];
+    if (pending) this.#adopt(pending);
+  }
+
+  #sessionId(id: string): string { return this.#sessionIds.get(id) ?? id; }
+
+  /** Stop/death releases verification work; the Implementer's claim remains independent. */
+  releaseHolds(sessionId: string, name?: string): void {
+    this.#runBackground(() => this.#serial(() => {
+      const released = new Set(this.#index.releaseHolds(this.#sessionId(sessionId)));
+      // A role-known session before its first hello is identified by name, as claims are.
+      if (name) for (const id of this.#index.releaseHolds(`name:${name}`)) released.add(id);
+      for (const id of released) this.#changed(id);
+    }, this.#watchResumed));
+  }
+
+  hold(actor: Actor, rawId: string, release = false, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ id: string; holds: VerifierHold[] }> {
+    return this.#serial(async () => {
+      const { id } = this.#require(rawId);
+      const check = () => {
+        this.#ensureSession(actor);
+        authorize();
+        if (actor.role !== 'reviewer' && actor.role !== 'qa') throw new TrackerError('only Reviewer and QA sessions take verifier holds');
+        if (actor.id === 'human' || actor.id.startsWith('cli:')) throw new TrackerError('a verifier hold needs a hub session');
+        if (!release && this.#index.get(id)?.state !== 'open') throw new TrackerError(`${id} is closed`);
+      };
+      check();
+      if (release) {
+        this.#index.setHold(id, this.#sessionId(actor.id), null);
+        this.#changed(id);
+      } else {
+        const hold: VerifierHold = { session: actor.name, sessionId: this.#sessionId(actor.id), role: actor.role as VerifierHold['role'],
+          heldAt: this.#index.holdsOf(id).find(h => h.sessionId === this.#sessionId(actor.id))?.heldAt ?? this.#now().toISOString() };
+        await this.#mutate(id, actor, 'hold', item => this.#setStatus(item, hold.role === 'reviewer' ? 'review' : 'qa'), resumed, undefined, check,
+          () => this.#index.setHold(id, this.#sessionId(actor.id), { ...hold, sessionId: this.#sessionId(actor.id) }));
+      }
+      return resumed(() => ({ id, holds: this.#index.holdsOf(id) }));
+    }, resumed);
+  }
+
   /** The live claim is an index fact, read without opening the item file. */
   claimOf(rawId: string): Claim | null { return this.#index.claimOf(this.#require(rawId).id); }
 
@@ -1251,9 +1436,10 @@ export class Tracker {
       authorize();
       const { id } = this.#require(rawId);
       const check = () => {
+        this.#ensureSession(actor);
         authorize();
         const held = this.#index.claimOf(id);
-        if (held && held.sessionId !== actor.id && !options.force) {
+        if (held && held.sessionId !== this.#sessionId(actor.id) && !options.force) {
           throw new TrackerError(`${id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''} since ${held.claimedAt}; force takes it over`);
         }
         return held;
@@ -1267,18 +1453,18 @@ export class Tracker {
         }
         return { id, claim: null };
       }
-      if (held?.sessionId === actor.id && held.session === actor.name && held.role === actor.role) return { id, claim: held };
-      const claim: Claim = { session: actor.name, sessionId: actor.id, role: actor.role,
-        claimedAt: held?.sessionId === actor.id ? held.claimedAt : this.#now().toISOString() };
+      if (held?.sessionId === this.#sessionId(actor.id) && held.session === actor.name && held.role === actor.role) return { id, claim: held };
+      const claim: Claim = { session: actor.name, sessionId: this.#sessionId(actor.id), role: actor.role,
+        claimedAt: held?.sessionId === this.#sessionId(actor.id) ? held.claimedAt : this.#now().toISOString() };
       const persist = actor.role === 'implementer' && this.#index.get(id)?.kind === 'task';
       if (persist) {
-        await this.#mutate(id, actor, 'claim', item => this.#setStatus(item, 'in progress'), resumed, undefined, () => { check(); }, () => this.#index.setClaim(id, claim));
+        await this.#mutate(id, actor, 'claim', item => this.#setStatus(item, 'in progress'), resumed, undefined, () => { check(); }, () => this.#index.setClaim(id, { ...claim, sessionId: this.#sessionId(actor.id) }));
       }
       return resumed(() => {
-        if (!persist) { this.#index.setClaim(id, claim); this.#changed(id); }
-        this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: actor.id, role: actor.role,
-          ...(held && held.sessionId !== actor.id ? { took: held.session } : {}) });
-        return { id, claim };
+        if (!persist) { this.#index.setClaim(id, { ...claim, sessionId: this.#sessionId(actor.id) }); this.#changed(id); }
+        this.#log({ event: 'task-claimed', id, session: actor.name, sessionId: this.#sessionId(actor.id), role: actor.role,
+          ...(held && held.sessionId !== this.#sessionId(actor.id) ? { took: held.session } : {}) });
+        return { id, claim: this.#index.claimOf(id) };
       });
     }, resumed);
   }
@@ -1302,6 +1488,8 @@ async function readWhole(fd: FileHandle, resumed: Resumed): Promise<string> {
     return next();
   });
 }
+
+class ReadyChanged extends Error {}
 
 const uniq = (xs: string[]): string[] => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
 
