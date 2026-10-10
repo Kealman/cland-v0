@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
-updated: 2026-10-10T03:43:05.717Z
+updated: 2026-10-10T03:56:13.359Z
 ---
 
 ## Parent
@@ -146,3 +146,29 @@ Evidence A-391: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-391-t-
 ### impl-133 · 2026-10-10T03:43:05.679Z
 
 Final validation on clean, locally published head 7f011884fcb12c41c32a4c4e83ed57c61179616a (copied from git log -1): locked npm run test:nvim passed166/166, no skips, including THREAD-001..004, ragged-table property and full incremental/conceal/highlight/link-metadata differential. nvm v24.21.0 first on PATH. Runtime134.18s after643.53s lock wait; peak1m load8.00. Warm200 rewrite/redraw18.942ms/0 parses; append+eviction0.665ms; cold95.242ms/200 parses. Typecheck passed. Final log A-399 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-399-t-133-final-locked-neovim-suite-on-7f01188-166-passed.log. Implementation and two-axis review A-394; rev-66 full-item review clear A-391. Coordinator's evidence plan carries baseline814/815 hub tests from A-385; sole verifier-hold rename timing failure belongs to T-145, no hub code changed. Four T-86 width breakages have80-column QA; fifth foldtext clipping is deferred to T-134 by Coordinator. Ready for handover, no merge.
+
+### rev-66 · 2026-10-10T03:46:42.557Z
+
+verdict: review
+result: clear
+by: rev-66 [reviewer]
+run: rev-66-133-5
+commit: 36502665b5f5d248563635321c97cfe865e1e157
+
+High: 0. Medium: 0. Low: 0. Full-item clear at rebased 3650266; A-391 carries forward.
+
+nvim/test/qa.test.ts:93 registers PANELS-005..014 and THREAD-001..004 exactly once each; :96 retains PASS and :97 exit-zero checks. Pinned-source assertions confirm all 14 unique entries.
+
+nvim/README.md preserves the new base's complete Items section, selected open container preference and persisted-container test notes; the Markdown-per-message paragraph and thread-test notes match the cleared head exactly. Nothing in either requested section was lost.
+
+Seven Markdown production/test/QA support files are byte-identical to 7f01188; all three follow-up commits are patch-identical in range-diff. Unaffected full-item parser/cache/fallback/fences, verdict/gi, ragged-table preservation, references/autolinks, incremental differential, resize and accepted cost/fold scope remain clear. Standards: 0. Spec: 0. No suite or edits.
+
+Evidence A-402: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-402-t-133-full-item-rebase-review-clear-at-3650266.md.
+
+### impl-133 · 2026-10-10T03:47:14.968Z
+
+Coordinator requested rebase after merge-conflict. Rebased once onto origin/dev ec05dc33d9ccae70364a285f74ee35ef59ee3ff0; committed clean head copied from git log -1: 36502665b5f5d248563635321c97cfe865e1e157. Both sides retained: persisted-container README wording plus Markdown notes, PANELS-005..014 plus THREAD-001..004. Range-diff A-401 shows only those two conflict-context resolutions; all three follow-up commits patch-identical. Both local review axes clear; typecheck passes. Final locked test:nvim queued with nvm v24.21.0 first on PATH.
+
+### impl-133 · 2026-10-10T03:56:13.310Z
+
+Rebase validation complete on clean, locally published head 36502665b5f5d248563635321c97cfe865e1e157 (copied from git log -1). Single rebase onto origin/dev ec05dc3 preserves both README sides and all QA registrations; seven T-133 production/test/support files remain byte-identical to the cleared 7f01188 head. Rebase range-diff A-401; rev-66 full-item review clear A-402. Locked npm run test:nvim passed 178/178 with zero skips, including PANELS-011..014 and THREAD-001..004. Typecheck passed; nvm v24.21.0 first on PATH. Suite runtime137.17s after503.86s lock wait, peak load7.62. Warm200 rewrite/redraw18.244ms/0 parses; append+eviction0.877ms; cold167.882ms/200 parses. Evidence A-405: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-405-t-133-rebased-locked-neovim-suite-on-3650266-178-passed.log; typecheck A-406: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-406-t-133-rebased-typecheck-on-3650266.log. Ready for Coordinator handover; no merge.

@@ -3,7 +3,7 @@ id: T-139
 kind: task
 title: "Subscriptions to sessions and items: subscribe, unsubscribe and subscriptions with session.state and task events, delivered as one-line hub deliveries at the next turn"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-55
 branch: t/T-139-subscriptions-to-sessions-and-items
 created: 2026-10-10T01:52:18.322Z
-updated: 2026-10-10T03:42:50.988Z
+updated: 2026-10-10T03:54:48.762Z
 ---
 
 ## Parent
@@ -70,3 +70,23 @@ Standards clear. Read-only pinned production/in-memory probes confirmed both los
 ### impl-139 · 2026-10-10T03:42:22.837Z
 
 Addressed all three rev-66 findings from A-395: startup baseline for every indexed item, canonical claim ownership, and launched on every transition into running. Four regressions reproduced failures before the fix and pass afterward; typecheck and diff checks pass. New head copied from git log -1: 647c81227d273227f63e45258cde26236ce9f410, committed and pushed to local origin. The earlier queued root invocation was cancelled before acquiring the lock; awaiting delta review before the final suite.
+
+### rev-66 · 2026-10-10T03:44:39.269Z
+
+verdict: review
+result: clear
+by: rev-66 [reviewer]
+run: rev-66-139-2
+commit: 647c81227d273227f63e45258cde26236ce9f410
+
+Clear — no high or medium findings remain; this verdict covers the full item at 647c812.
+
+All A-395 findings resolved: hub/src/tracker/tracker.ts:424 seeds unchanged cached items at startup; :377 compares canonical claim ownership; hub/src/hub/core.ts:281 recognizes actual transitions into running while keeping duplicate and seeded-restart publication silent.
+
+Reran focused read-only A-395 probes: first post-restart status change emitted once, adoption stayed silent while real new ownership emitted, verdict repetition stayed silent, close emitted status and closed, stopped/exited relaunches emitted launched once. Production Core/Store held delivery, independent digests, synchronous unsubscribe and batch TTL passed. Standards and unchanged full-item checks carry forward. No suite run.
+
+Two-axis review and probe limits: A-400, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-400-t-139-full-item-clear-review-at-647c812.md.
+
+### impl-139 · 2026-10-10T03:54:48.762Z
+
+Final root suite on 647c812: hub 851/852 pass; all 14 subscription cases pass. Existing Claude forced-stop case refused an unverifiable process identity; nvim was skipped by root's early exit. Per Coordinator, isolated forced-stop case passes 3/3 on 647c812 and 3/3 on pinned dev 8b2349d, with timing/load evidence in A-404; full log is A-403. Baseline diagnostic worktree removed. Locked nvim package suite is now running to complete the remaining phase. No stop-path or timing-threshold changes.
