@@ -3,17 +3,17 @@ id: T-131
 kind: task
 title: CLI commands that need no database still import node:sqlite; its ExperimentalWarning pollutes exact stderr
 state: open
-status: backlog
+status: in progress
 labels:
   - tech-debt
   - ready-for-agent
 assignee: null
 parent: T-19
 blocked_by: []
-topic: null
-branch: null
+topic: topic-63
+branch: t/T-131-cli-commands-that-need-no-database-still
 created: 2026-10-10T00:25:36.040Z
-updated: 2026-10-10T00:58:18.042Z
+updated: 2026-10-10T06:09:46.671Z
 ---
 
 ## Parent
@@ -36,3 +36,13 @@ Three static import chains are known: `hub.ts`→daemon, `doctor.ts`→orphans a
 ## Notes
 
 Size S. Not a v0.1 prerequisite; `tech-debt`.
+
+## Comments
+
+### impl-131 · 2026-10-10T06:07:32.728Z
+
+Implementation started. Agreed regression seam: the CLI entry point’s import graph must exclude node:sqlite for database-free commands; retain asks-cli’s exact stderr contracts. Scope limited to CLI dispatch/imports, avoiding sessions.ts (T-141).
+
+### impl-131 · 2026-10-10T06:09:46.671Z
+
+Red/green evidence: node --test hub/test/cli-imports.test.ts initially reported SQLite reached through orphans.ts, hub/store.ts, tracker/index-db.ts and adapters/processes.ts. After deferring daemon/orphans/provision, the guard still caught doctor/project.ts → adapters/claude-code.ts → adapters/processes.ts. Deferring checkProject too makes all 28 database-free invocations pass. The runtime resolver guard includes a SQLite positive control and sees static/dynamic imports without relying on warnings.
