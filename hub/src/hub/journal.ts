@@ -26,6 +26,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'hub-started',
   'hub-stopped',
   'config-loaded',
+  'config-unreadable',
   // messages (metadata only) and their deliveries
   'send',
   'send-refused',
@@ -69,6 +70,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'topic-status',
   // the tracker
   'task-written',
+  'task-unreadable',
+  'task-parenting-warning',
   'task-claimed',
   'task-released',
   'task-conflict',

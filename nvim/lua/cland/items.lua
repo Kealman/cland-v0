@@ -315,10 +315,15 @@ local function right_of(it, container)
   return out
 end
 
+--- Fixed leaves are the only non-containers; maps sit outside the configured ladder.
+function M.is_container(it)
+  return it.kind ~= 'task' and it.kind ~= 'question' and it.kind ~= 'spec'
+end
+
 local function row(c, it, depth)
   local g, ghl = M.glyph(it)
   local kids = #M.children(it.id) > 0
-  local container = kids or it.kind == 'release' or it.kind == 'epic' or it.kind == 'map'
+  local container = kids or M.is_container(it)
   local title_hl = it.state == 'closed' and 'ClandDim' or (container and 'ClandBold' or nil)
   c:add(
     { { ' ' .. ('  '):rep(depth) }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { ' ' .. (it.title or ''), title_hl } },

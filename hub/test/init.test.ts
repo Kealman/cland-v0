@@ -16,6 +16,23 @@ const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_SKILLS = join(REPO, '.agents', 'skills');
 const VERSION = (JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
+test('init writes tracker levels and update preserves a changed or empty ladder', async t => {
+  const root = await tempProject(t);
+  await gitRepo(root);
+  await run(root, 'init');
+  const path = join(root, '.cland/config.toml');
+  const initial = await readFile(path, 'utf8');
+  assert.match(initial, /\[tracker\]\nlevels = \["release","epic"\]/);
+  for (const levels of ['["initiative", "feature"]', '[]']) {
+    await writeFile(path, initial.replace(/levels = \[[^\n]*\]/, `levels = ${levels}`));
+    await run(root, 'update');
+    const changed = await readFile(path, 'utf8');
+    assert.match(changed, new RegExp(`\\[tracker\\]\\nlevels = ${levels.replace(/ /g, '').replace(/[\[\]]/g, '\\$&')}`));
+    await run(root, 'update');
+    assert.equal(await readFile(path, 'utf8'), changed, 'a second update is idempotent');
+  }
+});
+
 type Change = { path: string; action: string; note?: string };
 
 const sh = (cwd: string, command: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> =>

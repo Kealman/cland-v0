@@ -2,6 +2,7 @@
 // `cland init` writes it with the defaults; `cland update` rewrites it to the current template, keeping the values
 // it finds (so a threshold the human changed survives an update). A file without the mark is the human's and left
 // alone. The hub reads the thresholds at start; a missing or unreadable file means the built-in defaults.
+import { DEFAULT_LEVELS, configuredLevels } from '../tracker/kinds.ts';
 import { basename } from 'node:path';
 import { parse } from 'smol-toml';
 import { LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
@@ -11,6 +12,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
+  tracker: { levels: string[] };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
   hygiene: { rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
@@ -20,6 +22,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
+  tracker: { levels: [...DEFAULT_LEVELS] },
   artifacts: { retentionDays: 30 },
   keys: { layouts: [] },
   hygiene: { rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
@@ -34,6 +37,10 @@ export function renderConfig(c: ProjectConfig): string {
 
 [project]
 name = ${JSON.stringify(c.name)}
+
+# Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
+[tracker]
+levels = ${JSON.stringify(c.tracker.levels)}
 
 # Keyboard layouts for Neovim Normal-mode letters (currently: ru). Ctrl focus chords use English.
 [keys]
@@ -65,6 +72,8 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const c = defaultConfig(fallbackName);
   const project = (doc.project ?? {}) as Record<string, unknown>;
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
+  const tracker = (doc.tracker ?? {}) as Record<string, unknown>;
+  if (tracker.levels !== undefined) c.tracker.levels = configuredLevels(tracker.levels);
   const keys = (doc.keys ?? {}) as Record<string, unknown>;
   if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];
   const a = (doc.artifacts ?? {}) as Record<string, unknown>;
@@ -84,12 +93,13 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
 }
 
 /** What the hub runs with: the file's values, or null (the built-in defaults) when it is missing or unreadable. */
-export function readProjectConfig(path: string, root: string): ProjectConfig | null {
+export function readProjectConfig(path: string, root: string, refused: (error: string) => void = () => {}): ProjectConfig | null {
   const text = readText(path);
   if (text === null) return null;
   try {
     return parseConfig(text, basename(root));
-  } catch {
+  } catch (err) {
+    refused(err instanceof Error ? err.message : String(err));
     return null;
   }
 }

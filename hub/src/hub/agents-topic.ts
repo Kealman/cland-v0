@@ -27,6 +27,12 @@ const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? 
 export function lifecycleNotice(entry: LogEntry, label: (name: string) => string): TopicNotice | null {
   const session = str(entry.session);
   switch (entry.event) {
+    case 'task-unreadable':
+      return { kind: 'refusal', text: `${String(entry.file)}: refused at index: ${String(entry.error)}`, detail: { file: entry.file } };
+    case 'task-parenting-warning':
+      return { kind: 'refusal', text: `${String(entry.file)}: hand edit retained with invalid parenting: ${String(entry.error)}`, detail: { file: entry.file } };
+    case 'config-unreadable':
+      return { kind: 'refusal', text: `${String(entry.file)}: config refused: ${String(entry.error)}; keeping the defaults`, detail: { file: entry.file } };
     case 'turn-failed':
       return session ? { kind: 'turn-failed', text: str(entry.text) ?? `${label(session)}: its turn failed: ${str(entry.error) ?? 'unknown error'}`, detail: { session } } : null;
     case 'harness-redelivered':
@@ -118,30 +124,31 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
  */
 export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: HubCore) => void } {
   let core: HubCore | null = null;
+  const startup: Array<{ notice: TopicNotice; log: LogFn }> = [];
+  const record = (target: HubCore, notice: TopicNotice, log: LogFn) => {
+    // The domain write finishes before the record is written, including startup index transactions.
+    queueMicrotask(() => {
+      if (target.store.message(notice.id as string) !== null) return;
+      try { target.noticeInTopic(AGENTS.id, notice); }
+      catch (err) { log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) }); }
+    });
+  };
   return {
     attach: (c) => {
       core = c;
+      for (const { notice, log } of startup.splice(0)) record(c, notice, log);
     },
     tap: (log) => (entry) => {
-      const notice = core ? lifecycleNotice(entry, (name) => (core as HubCore).label(name)) : null;
-      if (!core || !notice) {
+      const notice = lifecycleNotice(entry, name => core?.label(name) ?? name);
+      if (!notice) {
         log(entry);
         return;
       }
       // the journal line carries the notice's id: a notice lost to a crash is found and recorded at the next start
       notice.id = randomUUID();
       log({ ...entry, agentsNotice: notice.id });
-      const target = core;
-      // after the logging call returns: the event's own write (a tracker transaction on another connection to the
-      // same file, a core method half-way through) is complete before the record is written
-      queueMicrotask(() => {
-        if (target.store.message(notice.id as string) !== null) return;
-        try {
-          target.noticeInTopic(AGENTS.id, notice);
-        } catch (err) {
-          log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) });
-        }
-      });
+      if (core) record(core, notice, log);
+      else startup.push({ notice, log });
     },
   };
 }

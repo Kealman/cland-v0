@@ -51,6 +51,28 @@ const leftOf = (text: string): string =>
     .join('\n');
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
 
+test('configured containers with no children show container counts in the panel and stay outside board cards', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
+  for (const [id, kind] of [['T-1', 'initiative'], ['T-2', 'feature'], ['T-3', 'task'], ['T-4', 'question'], ['T-5', 'spec'], ['T-6', 'map']]) {
+    await writeFile(join(root, `.cland/tasks/${id}-${kind}.md`), itemFile(id!, kind!, { kind: kind! }));
+  }
+  await startDaemon(t, root);
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('General'), 'the workbench');
+  await c.input('<Esc><Space>i');
+  const panel = await c.waitScreen(s => /T-2 feature +0\/0/.test(s), 'the configured empty container');
+  assert.match(panel, /T-1 initiative +0\/0/);
+  assert.match(panel, /T-6 map +0\/0/);
+  await c.input('<Space>b');
+  const screen = await c.waitScreen(s => s.includes('T-3') && s.includes('T-4') && s.includes('T-5'), 'leaf board cards');
+  // The panel may still be open, so inspect the board's public column result as well.
+  const cards = await c.lua<string[]>('local out = {}; for _, col in pairs(require("cland.board").columns()) do for _, it in ipairs(col) do out[#out+1] = it.id end end; table.sort(out); return out');
+  assert.deepEqual(cards, ['T-3', 'T-4', 'T-5']);
+  assert.ok(screen.includes('feature'), 'the empty container remains visible in the items panel');
+});
+
 test('against a real hub: the tree, the map grouping, the item view and the board from hand-written item files; a hand edit shows within a second; e edits the file and a save re-indexes', { skip }, async (t) => {
   const root = await tempProject(t);
   const tasks = join(root, '.cland', 'tasks');

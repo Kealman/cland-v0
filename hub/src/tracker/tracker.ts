@@ -5,6 +5,7 @@
 // rename completes before indexing, notification and the returned result. Hand edits are last-writer-wins.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
+import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
@@ -19,7 +20,7 @@ import {
   fileNumber,
   formatVerdictBy,
   ItemParseError,
-  KINDS,
+  UnknownKindError,
   normalizeId,
   parseItem,
   RESULTS,
@@ -57,6 +58,8 @@ export const CONCURRENT_MS = 2000;
  * stable across renames, or `human` / `cli:<name>` for the CLI; `name` and `role` are what files show.
  */
 export type Actor = { id: string; name: string; role: string | null };
+
+type Child = Pick<IndexedItem, 'id' | 'kind' | 'title' | 'state' | 'file'>;
 
 export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
@@ -150,6 +153,8 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink'> & {
 };
 
 export class Tracker {
+  readonly levels: readonly string[];
+  get kinds(): string[] { return kindsFor(this.levels); }
   readonly #files: TrackerFiles;
   #queue: Promise<unknown> = Promise.resolve();
   readonly #root: string;
@@ -183,7 +188,8 @@ export class Tracker {
   /** Each item's freshness as last announced: an answer that arrives later is announced only when it differs. */
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writePauseMs?: number; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
     this.#files = options.files ?? files;
     this.#watchResumed = options.watchResumed ?? untimed;
     this.#root = options.root;
@@ -399,8 +405,9 @@ export class Tracker {
     let text: string;
     try {
       text = readFileSync(path, 'utf8');
-    } catch {
-      this.#dropFile(name);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') this.#dropFile(name);
+      else this.#indexFailure(name, err);
       return;
     }
     const id = normalizeId(`T-${fileNumber(name)}`);
@@ -412,16 +419,16 @@ export class Tracker {
     const hash = hashOf(text);
     const knownId = this.#index.idOfFile(name);
     const known = knownId ? this.#index.metaOf(knownId) : null;
+    let item: Item;
+    try {
+      item = parseItem(text, name, this.levels);
+    } catch (err) {
+      this.#indexFailure(name, err);
+      return;
+    }
     if (known && known.hash === hash) {
       const indexed = this.#index.get(knownId!);
       if (indexed?.kind !== 'task' || indexed.status !== undefined) return;
-    }
-    let item: Item;
-    try {
-      item = parseItem(text, name);
-    } catch (err) {
-      this.#log({ event: 'task-unreadable', file: name, error: err instanceof Error ? err.message : String(err) });
-      return;
     }
     const id = item.fm.id;
     // the id moved out of this file (someone rewrote it by hand): the old row goes
@@ -429,7 +436,12 @@ export class Tracker {
       this.#index.remove(knownId);
       this.#changed(knownId);
     }
-    const statusBasis = this.#index.get(id);
+    const prior = this.#index.get(id);
+    if (prior && prior.kind !== item.fm.kind) {
+      try { this.#checkKindChange(prior.kind, item.fm.kind, this.#index.children(id)); }
+      catch (err) { this.#log({ event: 'task-parenting-warning', file: name, error: err instanceof Error ? err.message : String(err) }); }
+    }
+    const statusBasis = prior;
     const migrated = this.#normalizeStatus(item, statusBasis);
     if (migrated && resumed) {
       const wasOpen = this.#index.get(id)?.state === 'open';
@@ -447,7 +459,7 @@ export class Tracker {
     if (previous?.source === 'hub' && now - previous.indexedAt < CONCURRENT_MS) {
       this.#log({ event: 'task-conflict', id, file: name, winner: 'hand', note: `a hand edit replaced the hub's write of ${new Date(previous.indexedAt).toISOString()}; last writer wins` });
     }
-    const wasOpen = this.#index.get(id)?.state === 'open';
+    const wasOpen = prior?.state === 'open';
     this.#index.put(item, { file: name, hash, source: 'hand', indexedAt: now });
     if (migrated) {
       // Bootstrap indexes synchronously before the hub serves requests. Its migrations still write through
@@ -516,13 +528,13 @@ export class Tracker {
     catch (err) {
       return resumed(() => {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') this.#dropFile(name);
-        else this.#log({ event: 'task-unreadable', file: name, error: String(err) });
+        else this.#indexFailure(name, err);
       });
     }
     return resumed(() => {
       let id: string;
-      try { id = parseItem(text, name).fm.id; }
-      catch (err) { this.#log({ event: 'task-unreadable', file: name, error: String(err) }); return; }
+      try { id = parseItem(text, name, this.levels).fm.id; }
+      catch (err) { this.#indexFailure(name, err); return; }
       const previous = this.#index.metaOf(id);
       if (!previous || previous.file === name) return this.#indexFile(name, text, false, resumed);
       return this.#files.stat(join(this.#dir, previous.file)).then(() => true, () => false)
@@ -536,6 +548,12 @@ export class Tracker {
     this.#index.remove(id);
     this.#log({ event: 'task-removed', id, file: name });
     this.#changed(id);
+  }
+
+  #indexFailure(name: string, err: unknown): void {
+    const error = err instanceof Error ? err.message : String(err);
+    if (err instanceof UnknownKindError) this.#dropFile(name);
+    this.#log({ event: 'task-unreadable', file: name, error });
   }
 
   // ---------------------------------------------------------------- reading
@@ -555,7 +573,7 @@ export class Tracker {
     // the file is the truth; the index's row is only how it was found
     let item: Item;
     try {
-      item = parseItem(readFileSync(join(this.#dir, file), 'utf8'), file);
+      item = parseItem(readFileSync(join(this.#dir, file), 'utf8'), file, this.levels);
     } catch (err) {
       throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -581,7 +599,7 @@ export class Tracker {
       }
       return resumed(() => {
         let view: ItemView;
-        try { view = this.#viewOf(id, file, parseItem(text, file)); }
+        try { view = this.#viewOf(id, file, parseItem(text, file, this.levels)); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); }
         // Evidence and claims are read after the file await, within the same tracker admission.
         return evidence ? this.#mergeViewOf(view) : view;
@@ -651,11 +669,16 @@ export class Tracker {
       try {
         const id = this.#require(rawId).id;
         checkText(comment, 'comment');
+        let closing!: { id: string; kind: Kind };
+        let children: Child[] = [];
         await this.#mutate(id, actor, 'close', item => {
+          closing = { id: item.fm.id, kind: item.fm.kind };
           item.fm.state = 'closed';
           this.#setStatus(item, 'done');
           if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
-        }, resumed);
+        }, resumed, undefined, () => this.#checkClose(closing.id, closing.kind, children), undefined, async () => {
+          if (this.levels.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
+        });
         return resumed(() => {
           step = 'release';
           this.#releaseOnClose(id);
@@ -692,10 +715,10 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void): Promise<Item> {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, refresh?: () => Promise<void>): Promise<Item> {
     this.#normalizeStatus(item);
     const text = serializeItem(item);
-    const written = parseItem(text, name);
+    const written = parseItem(text, name, this.levels);
     const path = join(this.#dir, name);
     const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
     try {
@@ -704,6 +727,7 @@ export class Tracker {
       // not survival of power loss. A process crash before rename leaves the previous item intact.
       if (this.#writePauseMs > 0) await new Promise<void>(done => setTimeout(done, this.#writePauseMs));
       const before = read ? await this.#files.readFile(path, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
+      if (refresh) await resumed(refresh);
       await resumed(() => { beforeCommit?.(); return this.#files.rename(tmp, path); });
       const replaced = read ? await readWhole(read.fd, resumed).then(text => resumed(() => hashOf(text)), () => null) : null;
       return resumed(() => {
@@ -724,7 +748,7 @@ export class Tracker {
   }
 
   /** Called only with the tracker queue held: always read the latest committed file. */
-  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void): Promise<ItemView> {
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, refresh?: () => Promise<void>): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;
@@ -741,12 +765,12 @@ export class Tracker {
       const written = await resumed(() => {
         const meta = this.#index.metaOf(id);
         let item: Item;
-        try { item = parseItem(text, file); }
+        try { item = parseItem(text, file, this.levels); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         change(item);
         item.fm.updated = this.#now().toISOString();
-        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed);
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, refresh);
       });
       result = { written };
     } catch (error) { result = { error }; }
@@ -772,7 +796,7 @@ export class Tracker {
     if (parent === null) return;
     const indexed = this.#index.get(parent);
     if (!indexed) throw new TrackerError(`parent: no item ${parent}`);
-    const refusal = parentingRefusal(kind, indexed.kind);
+    const refusal = parentingRefusal(kind, indexed.kind, this.levels);
     if (refusal) throw new TrackerError(`${refusal} (parent ${parent})`);
   }
 
@@ -784,9 +808,9 @@ export class Tracker {
     const title = input.title?.trim();
     if (!title) throw new TrackerError('an item needs a title');
     const kind = input.kind ?? 'task';
-    if (!KINDS.includes(kind)) throw new TrackerError(`unknown kind "${kind}" (one of ${KINDS.join(', ')})`);
+    if (!this.kinds.includes(kind)) throw new TrackerError(`unknown kind "${kind}" (one of ${this.kinds.join(', ')})`);
     if (input.version !== undefined) {
-      const refusal = versionRefusal(kind, input.version);
+      const refusal = versionRefusal(kind, input.version, this.levels);
       if (refusal) throw new TrackerError(refusal);
     }
     checkText(input.body ?? '', 'body');
@@ -817,7 +841,7 @@ export class Tracker {
           created: now,
           updated: now,
         },
-        body: kind === 'release' ? withReleaseNotes(input.body ?? '') : input.body?.trim() ?? '',
+        body: kind === this.levels[0] ? withReleaseNotes(input.body ?? '') : input.body?.trim() ?? '',
         comments: [],
       };
       const written = await this.#write(name, item, resumed, undefined, undefined, () => { authorize(); this.#checkTopic(id, topic); });
@@ -935,37 +959,72 @@ export class Tracker {
     item.fm.state = status === 'done' ? 'closed' : 'open';
   }
 
+  /** One directory pass after the final write await: disk parents, not lagging index rows, own discovery. */
+  async #scanChildren(id: string, resumed: Resumed): Promise<Child[]> {
+    const names = await this.#files.readdir(this.#dir);
+    const settled = await resumed(() => Promise.allSettled(names.filter(name => fileNumber(name) !== null).map(async file => {
+      try {
+        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        return resumed(() => ({ ...parseItem(text, file, this.levels).fm, file }));
+      } catch (err) {
+        return resumed(() => { throw new TrackerError(`${join(TASKS_REL, file)} cannot be read (${err instanceof Error ? err.message : String(err)})`); });
+      }
+    })));
+    return resumed(() => {
+      const failures = settled.filter(result => result.status === 'rejected');
+      if (failures.length) throw new TrackerError(`${id}: cannot validate children: ${failures.map(result => result.reason instanceof Error ? result.reason.message : String(result.reason)).join('; ')}; fix their files first`);
+      return settled.flatMap(result => result.status === 'fulfilled' && result.value.parent === id ? [result.value] : []);
+    });
+  }
+
+  /** Every hub kind change preserves the children's parenting rule, including closed children. */
+  #checkKindChange(previous: Kind | undefined, next: Kind, children: readonly Child[]): void {
+    if (previous === undefined || previous === next) return;
+    for (const child of children) {
+      const refusal = parentingRefusal(child.kind, next, this.levels);
+      if (refusal) throw new TrackerError(`${refusal} (child ${child.id})`);
+    }
+  }
+
+  #checkClose(id: string, kind: Kind, children: readonly Child[]): void {
+    if (!this.levels.includes(kind)) return;
+    const open = children.filter(child => child.state === 'open');
+    if (open.length) throw new TrackerError(`${id}: cannot close ${kindWithArticle(kind)} with open children: ${open.map(child => `${child.id} ${child.title} (${join(TASKS_REL, child.file)})`).join(', ')}; close or move them first`);
+  }
+
   edit(actor: Actor, rawId: string, input: EditInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
     return this.#serial(async () => {
-      if (input.kind !== undefined && !KINDS.includes(input.kind)) throw new TrackerError(`unknown kind "${input.kind}" (one of ${KINDS.join(', ')})`);
+      if (input.kind !== undefined && !this.kinds.includes(input.kind)) throw new TrackerError(`unknown kind "${input.kind}" (one of ${this.kinds.join(', ')})`);
       if (input.state !== undefined && !STATES.includes(input.state)) throw new TrackerError(`unknown state "${input.state}" (open or closed)`);
       if (input.title !== undefined && !input.title.trim()) throw new TrackerError('the title cannot be empty');
       if (input.body !== undefined) checkText(input.body, 'body');
+      let closing: { id: string; kinds: Kind[] } | undefined;
+      let changingKind: { id: string; previous: Kind; next: Kind } | undefined;
+      let children: Child[] = [];
       const view = await this.#mutate(rawId, actor, 'edit', (item) => {
         const fm = item.fm;
+        const previousKind = fm.kind;
         if (input.title !== undefined) fm.title = input.title.trim();
         if (input.body !== undefined) item.body = input.body.trim();
         if (input.kind !== undefined && input.kind !== fm.kind) {
           this.#checkParent(input.kind, fm.parent);
-          for (const child of this.#index.list().filter(child => child.parent === fm.id)) {
-            const refusal = parentingRefusal(child.kind, input.kind);
-            if (refusal) throw new TrackerError(`${refusal} (child ${child.id})`);
-          }
+          changingKind = { id: fm.id, previous: fm.kind, next: input.kind };
           if (fm.version !== undefined && input.version !== null) {
-            const refusal = versionRefusal(input.kind, fm.version);
+            const refusal = versionRefusal(input.kind, fm.version, this.levels);
             if (refusal) throw new TrackerError(refusal);
           }
           fm.kind = input.kind;
-          if (fm.kind === 'release') item.body = withReleaseNotes(item.body);
+          if (fm.kind === this.levels[0]) item.body = withReleaseNotes(item.body);
         }
         if (input.version !== undefined) {
           if (input.version === null) delete fm.version;
           else {
-            const refusal = versionRefusal(fm.kind, input.version);
+            const refusal = versionRefusal(fm.kind, input.version, this.levels);
             if (refusal) throw new TrackerError(refusal);
             fm.version = input.version;
           }
         }
+        if (input.state === 'closed') closing = { id: fm.id, kinds: [previousKind, fm.kind] };
         if (fm.kind !== 'task') delete fm.status;
         else this.#normalizeStatus(item);
         if (input.state !== undefined) {
@@ -984,7 +1043,14 @@ export class Tracker {
         if (input.add_labels) fm.labels = uniq([...fm.labels, ...input.add_labels]);
         if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
         if (input.assignee !== undefined) fm.assignee = input.assignee || null;
-      }, resumed, undefined, authorize);
+      }, resumed, undefined, () => {
+        authorize();
+        if (closing) for (const kind of closing.kinds) this.#checkClose(closing.id, kind, children);
+        if (changingKind) this.#checkKindChange(changingKind.previous, changingKind.next, children);
+      }, undefined, async () => {
+        const id = changingKind?.id ?? (closing?.kinds.some(kind => this.levels.includes(kind)) ? closing.id : undefined);
+        if (id) children = await this.#scanChildren(id, resumed);
+      });
       return resumed(() => {
         if (view.state === 'closed') {
           this.#releaseOnClose(view.id);
@@ -999,11 +1065,16 @@ export class Tracker {
     return this.#serial(async () => {
       const body = comment?.trim() ?? '';
       checkText(body, 'comment');
+      let closing!: { id: string; kind: Kind };
+      let children: Child[] = [];
       const view = await this.#mutate(rawId, actor, 'close', (item) => {
+        closing = { id: item.fm.id, kind: item.fm.kind };
         item.fm.state = 'closed';
         this.#setStatus(item, 'done');
         if (body) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: body });
-      }, resumed, undefined, authorize);
+      }, resumed, undefined, () => { authorize(); this.#checkClose(closing.id, closing.kind, children); }, undefined, async () => {
+        if (this.levels.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
+      });
       return resumed(() => {
         this.#releaseOnClose(view.id);
         this.#closed(view.id);
@@ -1061,7 +1132,7 @@ export class Tracker {
     for (const file of this.#itemFiles()) {
       try {
         const text = readFileSync(join(this.#dir, file), 'utf8');
-        out.push({ file, text, item: parseItem(text, file) });
+        out.push({ file, text, item: parseItem(text, file, this.levels) });
       } catch {
         /* gone or unreadable: the watcher reports it */
       }
@@ -1078,7 +1149,7 @@ export class Tracker {
     const found = await resumed(() => Promise.all(names.filter(n => fileNumber(n) !== null).map(async file => {
       try {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        return resumed(() => ({ file, text, item: parseItem(text, file) }));
+        return resumed(() => ({ file, text, item: parseItem(text, file, this.levels) }));
       } catch { return null; } // unreadable files are reported by the watcher
     })));
     return resumed(() => found.filter(item => item !== null));
@@ -1119,12 +1190,27 @@ export class Tracker {
 
   async #writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed, authorize: () => void): Promise<'created' | 'updated' | 'unchanged'> {
     const file = existing?.file ?? fileNameOf(item.fm.id, item.fm.title);
+    const previous = existing ? parseItem(existing.text, file, this.levels).fm : null;
+    const closing = previous?.state === 'open' && item.fm.state === 'closed';
+    const changingKind = previous !== null && previous.kind !== item.fm.kind;
+    let children: Child[] = [];
+    const refresh = async () => {
+      if (changingKind || closing && previous && [previous.kind, item.fm.kind].some(kind => this.levels.includes(kind))) children = await this.#scanChildren(item.fm.id, resumed);
+    };
+    const check = () => {
+      authorize();
+      if (closing && previous) {
+        this.#checkClose(item.fm.id, previous.kind, children);
+        this.#checkClose(item.fm.id, item.fm.kind, children);
+      }
+      this.#checkKindChange(previous?.kind, item.fm.kind, children);
+    };
     const prepare = (): Promise<'created' | 'updated' | 'unchanged'> => {
       authorize();
       this.#normalizeStatus(item);
       if (existing && serializeItem(item) === existing.text) return Promise.resolve('unchanged');
       item.fm.updated = this.#now().toISOString();
-      return this.#write(file, item, resumed, undefined, undefined, authorize).then(() => resumed(() => {
+      return this.#write(file, item, resumed, undefined, undefined, check, undefined, refresh).then(() => resumed(() => {
         this.#log({ event: 'task-written', id: item.fm.id, file, op, by: actor.name });
         return existing ? 'updated' : 'created';
       }));

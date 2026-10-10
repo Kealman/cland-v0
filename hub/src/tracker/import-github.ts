@@ -1,6 +1,7 @@
 // The hub's side of `cland task import-github` (spec 6, tracker bootstrap): a batch of GitHub issues, already
 // fetched by the CLI, becomes items. An issue is found again by the `github` reference its item carries, so a
 // re-run updates in place; an item whose text would not change is not written at all.
+import { DEFAULT_LEVELS } from './kinds.ts';
 import { COMMENTS_HEADING, type Comment, type Item, type Kind } from './item.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { TrackerError, type Actor, type Tracker } from './tracker.ts';
@@ -32,9 +33,10 @@ export type ImportOutcome = {
   unresolved: IssueRef[];
 };
 
-/** `epic` → epic, `wayfinder:map` → map, `wayfinder:task` → task, any other `wayfinder:*` → question, else task (the kinds the own-tracker template gives them). */
-export function kindOfLabels(labels: string[]): Kind {
-  if (labels.includes('epic')) return 'epic';
+/** A configured container label becomes that kind, `wayfinder:map` → map, `wayfinder:task` → task, any other `wayfinder:*` → question, else task (the kinds the own-tracker template gives them). */
+export function kindOfLabels(labels: string[], levels: readonly string[] = DEFAULT_LEVELS): Kind {
+  const container = levels.find(level => labels.includes(level));
+  if (container) return container;
   if (labels.includes('wayfinder:map')) return 'map';
   if (labels.some((l) => l.startsWith('wayfinder:') && l !== 'wayfinder:task')) return 'question';
   return 'task';
@@ -69,7 +71,7 @@ const refText = (r: IssueRef, repo: string): string => (r.repo.toLowerCase() ===
 export function mergeIssue(
   existing: Item | null,
   issue: ImportedIssue,
-  ctx: { id: string; repo: string; resolve: (r: IssueRef) => string | null },
+  ctx: { levels?: readonly string[]; id: string; repo: string; resolve: (r: IssueRef) => string | null },
 ): { item: Item; commentsAdded: number; unresolved: IssueRef[] } {
   const unresolved: IssueRef[] = [];
   const ref = (r: IssueRef): string => {
@@ -91,7 +93,7 @@ export function mergeIssue(
   const item: Item = {
     fm: {
       id: ctx.id,
-      kind: kindOfLabels(labels),
+      kind: kindOfLabels(labels, ctx.levels),
       title: issue.title.trim(),
       state: issue.state,
       labels,
@@ -164,7 +166,7 @@ export function importIssues(tracker: Tracker, actor: Actor, req: ImportRequest,
           if (!issue) return Promise.resolve({ repo: req.repo, results });
           const existing = byKey.get(key({ repo: req.repo, number: issue.number })) ?? null;
           const id = ids.get(key({ repo: req.repo, number: issue.number }))!;
-          const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve });
+          const { item, commentsAdded, unresolved } = mergeIssue(existing?.item ?? null, issue, { id, repo: req.repo, resolve, levels: tracker.levels });
           return batch.writeItem(actor, 'import', item, existing, resumed, authorize).then(outcome => resumed(() => next({ number: issue.number, id, outcome, comments_added: commentsAdded, unresolved })));
         };
         return next();

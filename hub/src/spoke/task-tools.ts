@@ -1,6 +1,6 @@
 // The spoke's `task.*` tools: the tracker's requests as MCP tools. Arguments name the item `id`; the frame
 // carries it as `item` (a frame's `id` is the request's). The hub validates; the spoke only reshapes.
-import { KINDS, STATUSES } from '../tracker/item.ts';
+import { STATUSES } from '../tracker/item.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { DistributiveOmit } from './hub-client.ts';
 
@@ -8,7 +8,7 @@ const str = { type: 'string' } as const;
 const strs = { type: 'array', items: { type: 'string' } } as const;
 const nullableStr = { type: ['string', 'null'] } as const;
 const itemId = { type: 'string', description: 'The item id, T-<n>' } as const;
-const KIND = { type: 'string', enum: KINDS } as const;
+const KIND = { type: 'string', description: 'Configured container kind, task, question, spec or map; the hub validates it' } as const;
 const STATE = { type: 'string', enum: ['open', 'closed'] } as const;
 
 export const TASK_TOOLS = [

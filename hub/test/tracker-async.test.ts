@@ -519,3 +519,50 @@ test('partial read handling and dispatch of the next read count as one resumed c
   await tracker.comment(human, item.id, 'measured', undefined, guard.resumer('task.comment', 'timing'));
   assert.deepEqual(records.filter(r => r.event === 'slow-request').map(r => [r.tool, r.phase, r.ms]), [['task.comment', 'resumed', 300]]);
 });
+
+test('a failed child scan drains slow reads before admitting the next tracker write', async t => {
+  const root = await tempProject(t);
+  const slowEntered = deferred();
+  const failingEntered = deferred();
+  const release = deferred();
+  let armed = false;
+  let slowFinished = false;
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: {
+    ...files,
+    readFile: async (...args) => {
+      if (armed && String(args[0]).endsWith('T-2-slow.md')) {
+        slowEntered.resolve();
+        await release.promise;
+        slowFinished = true;
+      }
+      if (armed && (String(args[0]).endsWith('T-3-failing.md') || String(args[0]).endsWith('T-4-other-failure.md'))) {
+        failingEntered.resolve();
+        throw new Error('scan read failed');
+      }
+      return files.readFile(...args);
+    },
+  } });
+  t.after(() => { release.resolve(); return tracker.stop(); });
+  await tracker.create(human, { title: 'Container', kind: 'epic' });
+  await tracker.create(human, { title: 'Slow' });
+  await tracker.create(human, { title: 'Failing' });
+  await tracker.create(human, { title: 'Other failure' });
+  armed = true;
+  let closeSettled = false;
+  const closing = tracker.close(human, 'T-1').then(() => null, error => error).then(result => { closeSettled = true; return result; });
+  await Promise.all([slowEntered.promise, failingEntered.promise]);
+  let nextDone = false;
+  const next = tracker.comment(human, 'T-1', 'after refusal').then(() => { nextDone = true; });
+  await new Promise(done => setTimeout(done, 100));
+  assert.equal(closeSettled, false, 'refusal must wait for the outstanding scan read');
+  assert.equal(nextDone, false, 'the next queued write cannot overtake unfinished scan work');
+  armed = false;
+  release.resolve();
+  const refusal = String(await closing);
+  assert.match(refusal, /T-3-failing\.md.*scan read failed/);
+  assert.match(refusal, /T-4-other-failure\.md.*scan read failed/);
+  await next;
+  assert.equal(slowFinished, true);
+  assert.equal(tracker.view('T-1').state, 'open');
+  assert.equal(tracker.view('T-1').comments[0]?.text, 'after refusal');
+});

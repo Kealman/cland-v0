@@ -414,3 +414,5 @@ human's demo. With tmux defaults Shift+Enter arrives as plain Enter; Alt+Enter i
 the newline fallback. `extended-keys on` with `extended-keys-format csi-u` preserves
 Shift+Enter. The Shift+Enter, paste-tab, scrollback and attach-only workarounds
 from ADR 0005 remain in place.
+
+Container kinds follow `[tracker] levels` from `.cland/config.toml`. The items panel treats each configured container (including an empty one) as a container; the board displays the fixed leaf kinds `task`, `question` and `spec`, with maps outside it.

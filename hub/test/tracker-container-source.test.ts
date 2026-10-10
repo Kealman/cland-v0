@@ -1,0 +1,196 @@
+// T-119 source guard: compiler-resolved Kind and default-level literal types survive bindings.
+// Compare both operand types for equality, switch cases and includes/has (receiver element types).
+// In-place array/Set/Map constructions also expose their literals even when inference widens them.
+// Default declaration and the one-off migration are the only exemptions. Operational release
+// vocabulary has no Kind type and remains allowed. Mutable variable/object widening to string/string[], any,
+// unknown and cast erasure lose literal or Kind types; those residuals remain review matters.
+// Epic has no operational meaning and its literals are always forbidden outside the exemptions.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
+import ts from 'typescript';
+import { DEFAULT_LEVELS } from '../src/tracker/kinds.ts';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const config = ts.readConfigFile(join(root, 'hub/tsconfig.json'), ts.sys.readFile);
+assert.equal(config.error, undefined);
+const options = ts.parseJsonConfigFileContent(config.config, ts.sys, join(root, 'hub')).options;
+
+function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeChecker): string[] {
+  // Already-run repository-specific T-118 migration; its fixed kinds are its purpose.
+  if (rel === 'hub/bin/migrate-v01-release.ts') return [];
+  const failures: string[] = [];
+  const contains = (type: ts.Type, match: (type: ts.Type) => boolean, seen = new Set<ts.Type>()): boolean => {
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown) || seen.has(type)) return false;
+    seen.add(type);
+    if (match(type)) return true;
+    if (type.isUnionOrIntersection() && type.types.some(part => contains(part, match, seen))) return true;
+    if (type.aliasTypeArguments?.some(part => contains(part, match, seen))) return true;
+    return Boolean(type.flags & ts.TypeFlags.Object) && Boolean((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference)
+      && checker.getTypeArguments(type as ts.TypeReference).some(part => contains(part, match, seen));
+  };
+  const hasKind = (type: ts.Type): boolean => contains(type, part => part.aliasSymbol?.getName() === 'Kind');
+  const hasLevel = (type: ts.Type): boolean => contains(type, part => part.isStringLiteral() && DEFAULT_LEVELS.includes(part.value));
+  const literal = (node: ts.Node): node is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
+    (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && DEFAULT_LEVELS.includes(node.text);
+  const defaults = (node: ts.Node): boolean => {
+    if (rel !== 'hub/src/tracker/kinds.ts') return false;
+    for (let parent = node.parent; parent && parent !== source; parent = parent.parent) {
+      if (ts.isVariableDeclaration(parent) && parent.name.getText(source) === 'DEFAULT_LEVELS') return true;
+    }
+    return false;
+  };
+  const flagged = new Set<ts.Node>();
+  const flag = (node: ts.Node): void => {
+    if (defaults(node) || flagged.has(node)) return;
+    flagged.add(node);
+    failures.push(`${rel}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`);
+  };
+  const inlineLevel = (node: ts.Expression): boolean => {
+    if (ts.isParenthesizedExpression(node)) return inlineLevel(node.expression);
+    if (!ts.isArrayLiteralExpression(node) && !(ts.isNewExpression(node) && ts.isIdentifier(node.expression) && ['Set', 'Map'].includes(node.expression.text))) return false;
+    const containsLiteral = (part: ts.Node): boolean => literal(part) || Boolean(ts.forEachChild(part, containsLiteral));
+    return containsLiteral(node);
+  };
+  const compare = (left: ts.Expression, right: ts.Expression): void => {
+    const leftType = checker.getTypeAtLocation(left);
+    const rightType = checker.getTypeAtLocation(right);
+    if (hasKind(leftType) && (hasLevel(rightType) || inlineLevel(right))) flag(right);
+    if (hasKind(rightType) && (hasLevel(leftType) || inlineLevel(left))) flag(left);
+  };
+  const visit = (node: ts.Node): void => {
+    if (literal(node)) {
+      const contextual = checker.getContextualType(node);
+      if (node.text === 'epic' || contextual && hasKind(contextual)) flag(node);
+    }
+    if (ts.isBinaryExpression(node) && [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsToken].includes(node.operatorToken.kind)) {
+      compare(node.left, node.right);
+    }
+    if (ts.isSwitchStatement(node) && hasKind(checker.getTypeAtLocation(node.expression))) {
+      for (const clause of node.caseBlock.clauses) if (ts.isCaseClause(clause)) compare(node.expression, clause.expression);
+    }
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+      && ['includes', 'has'].includes(node.expression.name.text)) {
+      for (const argument of node.arguments) compare(node.expression.expression, argument);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return failures;
+}
+
+async function productionFiles(dir: string): Promise<string[]> {
+  const found: string[] = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) found.push(...await productionFiles(path));
+    else if (path.endsWith('.ts') || path.endsWith('.lua')) found.push(path);
+  }
+  return found;
+}
+
+test('container names occur only in defaults, never in compiler-typed Kind operations', async () => {
+  const files = (await Promise.all(['hub/src', 'hub/bin', 'nvim/lua'].map(dir => productionFiles(join(root, dir))))).flat();
+  const program = ts.createProgram(files.filter(path => path.endsWith('.ts')), options);
+  const checker = program.getTypeChecker();
+  const failures: string[] = [];
+  for (const path of files) {
+    const rel = relative(root, path);
+    if (path.endsWith('.lua')) {
+      for (const match of (await readFile(path, 'utf8')).matchAll(/["']([^"']*)["']/g)) if (DEFAULT_LEVELS.includes(match[1]!)) failures.push(rel);
+    } else {
+      const source = program.getSourceFile(path);
+      assert.ok(source, path);
+      failures.push(...containerLiterals(rel, source, checker));
+    }
+  }
+  assert.deepEqual(failures, [], 'container kind literals must come from [tracker] levels');
+});
+
+test('compiler guard follows aliases and inference while preserving operational release vocabulary', () => {
+  const rejected = [
+    "new Map([['release', true]]).has(kind);",
+    "new Set(['release']).has(kind);",
+    "['release'].includes(kind);",
+    "kind === ('release');",
+    "const literal = 'release'; kind === literal;",
+    "const container = { values: ['release'] as const }; container.values.includes(kind);",
+    "const container = { values: new Set(['release'] as const) }; container.values.has(kind);",
+    "new Map([['release', true]] as const).has(kind);",
+
+    "kind == 'release';",
+    "kind != 'release';",
+    "(['release'] as const).includes(kind);",
+    "new Set(['release'] as const).has(kind);",
+    "new Map([['release', true]] as const).has(kind);",
+    "const values = ['release'] as const; values.includes(kind);",
+    "const values = new Set(['release'] as const); const alias = values; alias.has(kind);",
+
+    "const container = item.kind === 'release';",
+    "const LIFECYCLE_KINDS = items.filter(item => item.kind === 'release');",
+    "const clearPublicationReceipt = (kind: Kind) => kind === 'release';",
+    "const value = kind; value === 'release';",
+    "const {kind: value} = item; value !== 'release';",
+    "const value = item.kind; switch (value) { case 'release': break; }",
+    "const values = [kind]; values.includes('release');",
+    "const values = new Set([kind]); values.has('release');",
+    "const payload: { kind: Kind } = { kind: 'release' };",
+    "function choose(labels: string[]): Kind { if (labels.includes('release')) return 'release'; return 'task'; }",
+    "const entries: Kind[] = ['release'];",
+    "item.kind = 'release';",
+    "const name = 'epic';",
+  ];
+  const allowed = [
+    "const values = ['release']; values.includes(kind);",
+    "const values = new Set(['release']); values.has(kind);",
+    "const values = new Map([['release', true]]); values.has(kind);",
+
+    "const container = { values: ['release'] }; container.values.includes(kind);",
+    "let literal = 'release'; kind === literal;",
+
+    "frame.type == 'release';",
+    "frame.type != 'release';",
+    "['release'].includes(frame.type);",
+    "new Set(['release']).has(frame.type);",
+    "new Map([['release', true]]).has(frame.type);",
+
+    "frame.type === 'release';",
+    "type ReleaseRequest = { type: 'release' };",
+    "switch (command) { case 'release': break; }",
+    "const PERMISSIONS = ['release'];",
+    "const LIFECYCLE_KINDS = ['release'];",
+    "const clearPublicationReceipt = (kind: 'release' | 'sync') => kind === 'release';",
+    "const value: any = kind; value === 'release';",
+    "const value = kind as string; value === 'release';",
+  ];
+  const samples = [...rejected, ...allowed,
+    "export const DEFAULT_LEVELS = ['release', 'epic'];",
+    "function isContainer(kind: Kind) { return kind === 'epic'; }",
+  ];
+  const texts = new Map(samples.map((text, index) => [join(root, `hub/src/__guard_case_${index}.ts`),
+    `import type { Kind } from './tracker/item.ts';
+     declare const kind: Kind; declare const item: {kind: Kind}; declare const items: {kind: Kind}[];
+     declare const frame: {type: 'release' | 'sync'}; declare const command: string;
+     ${text}`]));
+  const host = ts.createCompilerHost(options);
+  const original = host.getSourceFile.bind(host);
+  host.getSourceFile = (path, languageVersion, onError, shouldCreateNewSourceFile) => {
+    const text = texts.get(path);
+    return text === undefined ? original(path, languageVersion, onError, shouldCreateNewSourceFile)
+      : ts.createSourceFile(path, text, languageVersion, true);
+  };
+  const program = ts.createProgram([...texts.keys()], options, host);
+  const checker = program.getTypeChecker();
+  const checked = [...texts.keys()].map((path, index) => {
+    const source = program.getSourceFile(path);
+    assert.ok(source);
+    const rel = index >= rejected.length + allowed.length ? 'hub/src/tracker/kinds.ts' : 'hub/src/hub/dispatch.ts';
+    return containerLiterals(rel, source, checker);
+  });
+  rejected.forEach((text, index) => assert.ok(checked[index]!.length > 0, text));
+  allowed.forEach((text, index) => assert.deepEqual(checked[index + rejected.length], [], text));
+  assert.deepEqual(checked.at(-2), [], 'only DEFAULT_LEVELS is exempt');
+  assert.ok(checked.at(-1)!.length > 0, 'helpers in the defaults file stay protected');
+});

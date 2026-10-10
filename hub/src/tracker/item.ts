@@ -2,9 +2,9 @@
 // item's text as the body, comments under `## Comments`, verdicts as comments with a structured header.
 // Pure: text in, text out; nothing here touches the disk.
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-
-export const KINDS = ['release', 'epic', 'spec', 'task', 'question', 'map'] as const;
-export type Kind = (typeof KINDS)[number];
+import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
+// Keep Kind visible to the compiler after inference/destructuring; every configured string remains assignable.
+export type Kind = string & {};
 export const STATES = ['open', 'closed'] as const;
 export type State = (typeof STATES)[number];
 export const STATUSES = ['backlog', 'planned', 'in progress', 'review', 'qa', 'ready', 'done'] as const;
@@ -100,17 +100,16 @@ export function parseVerdictFilter(raw: string): { verdict: VerdictKind; result:
   return { verdict: k as VerdictKind, result: result as VerdictResult };
 }
 
-/** Default ladder for this slice; maps sit outside it and hold wayfinder questions/tasks. */
-export const LEVELS = ['release', 'epic'] as const;
-export function parentingRefusal(child: Kind, parent: Kind): string | null {
-  const level = (LEVELS as readonly Kind[]).indexOf(child);
-  const allowed = level >= 0 ? level > 0 && parent === LEVELS[level - 1]
+/** Configured ladder; maps sit outside it and hold wayfinder questions/tasks. */
+export function parentingRefusal(child: Kind, parent: Kind, levels: readonly string[] = DEFAULT_LEVELS): string | null {
+  const level = levels.indexOf(child);
+  const allowed = level >= 0 ? level > 0 && parent === levels[level - 1]
     : child === 'map' ? false
-    : (LEVELS as readonly Kind[]).includes(parent) || parent === 'map' && (child === 'question' || child === 'task');
-  return allowed ? null : `parenting rule: ${child} cannot be under ${parent}; release has no parent, epic takes release, leaves take release or epic, and map takes question or task`;
+    : levels.includes(parent) || parent === 'map' && (child === 'question' || child === 'task');
+  return allowed ? null : `parenting rule: ${kindWithArticle(child)} cannot be under ${kindWithArticle(parent)}; containers take the preceding level (${levels.join(' › ') || 'none'}), leaves take any container, and map takes question or task`;
 }
 
-/** A release starts with a Notes section, preserving text the author already prepared. */
+/** The top-level container starts with a Notes section, preserving text the author already prepared. */
 export function withReleaseNotes(body: string): string {
   const text = body.replace(/\r\n/g, '\n').trim();
   return /^## Notes[ \t]*$/m.test(text) ? text : [text, '## Notes'].filter(Boolean).join('\n\n');
@@ -118,8 +117,8 @@ export function withReleaseNotes(body: string): string {
 
 // SemVer 2.0: core and numeric prerelease identifiers have no leading zero; build identifiers may.
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-export function versionRefusal(kind: Kind, version: unknown): string | null {
-  if (kind !== 'release') return 'version belongs only to a release item';
+export function versionRefusal(kind: Kind, version: unknown, levels: readonly string[] = DEFAULT_LEVELS): string | null {
+  if (kind !== levels[0]) return `version belongs only to ${kindWithArticle(levels[0] ?? 'top-level container')} item`;
   return typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version) ? null : 'version must be semver without the v (for example 0.1.0)';
 }
 
@@ -131,6 +130,7 @@ export function statusRefusal(kind: Kind, status: unknown): string | null {
 // ------------------------------------------------------------------ reading
 
 export class ItemParseError extends Error {}
+export class UnknownKindError extends ItemParseError {}
 
 const str = (v: unknown): string | null => (v === null || v === undefined || v === '' ? null : String(v));
 const list = (v: unknown): string[] => (v === null || v === undefined ? [] : Array.isArray(v) ? v.map(String).filter(Boolean) : [String(v)]);
@@ -144,7 +144,7 @@ const ref = (v: unknown): string | null => {
  * label is a list of one, `12` is `T-12`. Only a file with no frontmatter, unparsable YAML, an unknown
  * kind, state or status, status on a non-task, an invalid release version, or no id at all (neither in the frontmatter nor in `fileName`) is refused.
  */
-export function parseItem(text: string, fileName?: string): Item {
+export function parseItem(text: string, fileName?: string, levels: readonly string[] = DEFAULT_LEVELS): Item {
   const src = text.replace(/\r\n/g, '\n');
   const m = /^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(src);
   if (!m) throw new ItemParseError('no YAML frontmatter (the file must start with a --- line)');
@@ -160,7 +160,8 @@ export function parseItem(text: string, fileName?: string): Item {
   const id = ref(r.id) ?? (fromName !== null ? `T-${fromName}` : null);
   if (id === null || normalizeId(id) === null) throw new ItemParseError(`no item id (frontmatter id: ${JSON.stringify(r.id ?? null)})`);
   const kind = (str(r.kind) ?? 'task') as Kind;
-  if (!KINDS.includes(kind)) throw new ItemParseError(`unknown kind "${kind}" (one of ${KINDS.join(', ')})`);
+  const kinds = kindsFor(levels);
+  if (!kinds.includes(kind)) throw new UnknownKindError(`unknown kind "${kind}" (one of ${kinds.join(', ')})`);
   const state = (str(r.state) ?? 'open') as State;
   if (!STATES.includes(state)) throw new ItemParseError(`unknown state "${state}" (open or closed)`);
   const fm: Frontmatter = {
@@ -178,7 +179,7 @@ export function parseItem(text: string, fileName?: string): Item {
     updated: str(r.updated) ?? '',
   };
   if (r.version !== undefined && r.version !== null) {
-    const refusal = versionRefusal(kind, r.version);
+    const refusal = versionRefusal(kind, r.version, levels);
     if (refusal) throw new ItemParseError(refusal);
     fm.version = r.version as string;
   }

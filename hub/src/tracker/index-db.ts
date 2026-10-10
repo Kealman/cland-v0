@@ -262,6 +262,12 @@ export class TrackerIndex {
     return rows.map((r) => this.#hydrate(r));
   }
 
+  /** Direct children only; hand-edit warnings need no unrelated labels or blockers. */
+  children(id: string): IndexedItem[] {
+    const rows = this.#db.prepare('select i.* from tracker_items i where parent = ? order by i.n').all(id) as Row[];
+    return rows.map(row => this.#hydrate(row));
+  }
+
   get(id: string): IndexedItem | null {
     const r = this.#db.prepare('select * from tracker_items where id = ?').get(id) as Row | undefined;
     return r ? this.#hydrate(r) : null;

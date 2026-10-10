@@ -4,6 +4,7 @@
 // decides which items get a worktree, writes the branch into the item and records what it made in the journal
 // (`task-worktree`, an Agents notice through the log's tap). Its Git commands are awaited, never synchronous, and
 // run one operation at a time (`#serial`): the territory lock refuses a second holder rather than waiting for it.
+import { kindWithArticle } from '../tracker/kinds.ts';
 import { realpath, stat } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import type { LogFn } from '../log.ts';
@@ -93,7 +94,7 @@ export class TaskWorktrees {
 
   /** Why an item gets no worktree, or null when it does: an open task, in a project with a territory. */
   async #ineligible(view: ItemView): Promise<string | null> {
-    if (view.kind !== 'task') return `${view.id} is ${view.kind === 'epic' ? 'an' : 'a'} ${view.kind}: only a task gets a branch and a worktree`;
+    if (view.kind !== 'task') return `${view.id} is ${kindWithArticle(view.kind)}: only a task gets a branch and a worktree`;
     if (view.state !== 'open') return `${view.id} is closed: no worktree`;
     if (!(await hasTerritory(this.root))) return 'the project has no territory (cland init makes one): no branch or worktree';
     return null;

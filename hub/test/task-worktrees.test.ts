@@ -87,6 +87,19 @@ test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktr
   assert.equal(json<Claimed>(await cland(root, 'task', 'claim', 'T-2', '--json')).worktree?.branch, 't/T-2-short');
 });
 
+test('configured container worktree refusals choose an article from the kind', async t => {
+  const root = await project(t);
+  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
+  await startDaemon(t, root);
+  for (const [kind, article, id] of [['initiative', 'an', 'T-1'], ['feature', 'a', 'T-2']]) {
+    ok(await cland(root, 'task', 'create', `Planning ${kind}`, '--kind', kind!));
+    const result = json<Claimed>(await cland(root, 'task', 'claim', id!, '--json'));
+    assert.equal(result.worktree, null);
+    assert.equal(result.reason, `${id} is ${article} ${kind}: only a task gets a branch and a worktree`);
+  }
+  assert.equal(existsSync(join(root, '.cland/worktrees')), false);
+});
+
 test('a release, epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why', async (t) => {
   const root = await project(t);
   await startDaemon(t, root);

@@ -1,6 +1,6 @@
 // The tracker's requests: the same frames from a spoke (WebSocket, the `task.*` tools) and from the CLI
 // (Unix socket). Field names follow the item's frontmatter (`blocked_by`), so a frame reads like the file.
-import { KINDS, parseVerdictFilter, STATES, type Kind, type State, type Status } from './item.ts';
+import { parseVerdictFilter, STATES, type Kind, type State, type Status } from './item.ts';
 import type { HubFrame } from '../protocol.ts';
 import { nameRefusal, ROLE_NAMES } from '../names.ts';
 import type { Connection } from '../hub/core.ts';
@@ -82,7 +82,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
   for (const k of ['title', 'body', 'text', 'comment', 'under']) optStr(f, k);
   for (const k of ['assignee', 'parent', 'topic', 'branch', 'version']) optNullableStr(f, k);
   for (const k of ['labels', 'add_labels', 'remove_labels', 'blocked_by', 'unblock']) optList(f, k);
-  if (f.kind !== undefined && !KINDS.includes(f.kind as Kind)) throw new TrackerError(`unknown kind "${String(f.kind)}" (one of ${KINDS.join(', ')})`);
+  if (f.kind !== undefined && !tracker.kinds.includes(f.kind as Kind)) throw new TrackerError(`unknown kind "${String(f.kind)}" (one of ${tracker.kinds.join(', ')})`);
   if (f.state !== undefined && !STATES.includes(f.state as State)) throw new TrackerError(`unknown state "${String(f.state)}" (open or closed)`);
   switch (frame.type) {
     case 'task.create': {

@@ -99,7 +99,10 @@ test('under selects descendants before other filters; CLI and MCP views return t
     { title: 'Unscheduled', kind: 'epic' },
     { title: 'Outside', parent: 'T-6', labels: ['hub'] },
   ]) assert.equal((await ui.request({ type: 'task.create', ...frame })).ok, true);
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-4' })).ok, true);
   assert.equal((await ui.request({ type: 'task.close', item: 'T-2' })).ok, true);
+  // Reopening a leaf leaves its closed ancestor readable and included in subtree queries.
+  assert.equal((await ui.request({ type: 'task.edit', item: 'T-4', state: 'open' })).ok, true);
   const ids = async (filter: Record<string, unknown>) => {
     const r = await ui.request({ type: 'task.list', ...filter });
     assert.equal(r.ok, true, r.error);

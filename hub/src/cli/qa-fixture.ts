@@ -3,8 +3,10 @@
 // `{ dir, project, items, roles, config }`. The item files come from the tracker's own writer, so a fixture
 // item reads back as it was given; every path stays inside `dir`, the run's directory.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { defaultConfig, parseConfig } from '../init/config.ts';
+import { kindsFor } from '../tracker/kinds.ts';
 import { join, resolve, sep } from 'node:path';
-import { fileNameOf, KINDS, parseItem, serializeItem, STATES, type Comment, type Item, type Kind, type State } from '../tracker/item.ts';
+import { fileNameOf, parseItem, serializeItem, STATES, type Comment, type Item, type Kind, type State } from '../tracker/item.ts';
 
 /** The time a fixture item or comment carries when the case gives none: every run shows the same. */
 export const FIXTURE_STAMP = '2026-01-01T00:00:00.000Z';
@@ -17,11 +19,12 @@ export type Fixture = { dir: string; project: string; items?: FixtureItem[]; rol
 const text = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const texts = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 
-function itemOf(raw: FixtureItem): Item {
+function itemOf(raw: FixtureItem, levels: readonly string[]): Item {
   const id = String(raw.id);
   if (!ITEM_ID.test(id)) throw new Error(`the fixture's item id ${JSON.stringify(raw.id)} is not T-<n>`);
   const kind = (text(raw.kind) ?? 'task') as Kind;
-  if (!KINDS.includes(kind)) throw new Error(`${id}: unknown kind "${kind}" (one of ${KINDS.join(', ')})`);
+  const kinds = kindsFor(levels);
+  if (!kinds.includes(kind)) throw new Error(`${id}: unknown kind "${kind}" (one of ${kinds.join(', ')})`);
   const state = (text(raw.state) ?? 'open') as State;
   if (!STATES.includes(state)) throw new Error(`${id}: unknown state "${state}" (open or closed)`);
   const comments: Comment[] = (Array.isArray(raw.comments) ? (raw.comments as Array<Record<string, unknown>>) : []).map((c) => ({
@@ -57,13 +60,14 @@ export function writeFixture(fixture: Fixture): string {
   // a fixture is new: whatever stands at its path is not written over
   if (existsSync(root)) throw new Error(`the fixture project ${root} already exists`);
   const tasks = join(root, '.cland', 'tasks');
+  const levels = (fixture.config === undefined ? defaultConfig(fixture.project) : parseConfig(fixture.config, fixture.project)).tracker.levels;
   const files = (fixture.items ?? []).map((raw) => {
-    const item = itemOf(raw);
+    const item = itemOf(raw, levels);
     const name = fileNameOf(item.fm.id, item.fm.title);
     const path = join(tasks, name);
     if (!path.startsWith(tasks + sep)) throw new Error(`${item.fm.id}: its file ${name} would leave the fixture`);
     const content = serializeItem(item);
-    parseItem(content, name);
+    parseItem(content, name, levels);
     return { path, content };
   });
   mkdirSync(tasks, { recursive: true });
