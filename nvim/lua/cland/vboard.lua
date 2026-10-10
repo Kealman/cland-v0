@@ -80,7 +80,7 @@ function M.compose()
   return out
 end
 
---- Replace this function when hub criteria marks arrive (T-112). Count only the acceptance section.
+--- Count checkboxes only in the acceptance section.
 function M.verified(body)
   local active, checked, total, fenced = false, 0, 0, false
   for line in ((body or '') .. '\n'):gmatch('(.-)\n') do
@@ -97,10 +97,9 @@ function M.verified(body)
   return checked, total
 end
 
+--- Replace this source when hub criteria marks arrive (T-112).
 function M.fraction(it)
-  local view = require('cland.item_view')
-  local d = view.detail[it.id]
-  if not d or view.stale[it.id] or d.seen ~= it.updated then view.fetch(it.id) end
+  local d = require('cland.item_view').get(it.id)
   return M.verified(d and d.body)
 end
 
@@ -225,7 +224,12 @@ function M.render(c)
       if #b.leaves > 0 then fold(c, 'leaves', 'questions and specs', b.leaves, f) end
       for _, container in ipairs(vim.list_extend(vim.list_extend({}, b.closed), b.other)) do
         local list = {}
-        for _, it in ipairs(items.ordered()) do if M.under(it, container.id) then list[#list + 1] = it end end
+        for _, it in ipairs(items.ordered()) do
+          -- Descendants whose parents reach no open container belong only to unscheduled.
+          if M.under(it, container.id) and (it.id == container.id or items.open_container_of(it)) then
+            list[#list + 1] = it
+          end
+        end
         fold(c, container.id, container.title, list, f)
       end
     end

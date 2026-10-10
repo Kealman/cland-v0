@@ -43,6 +43,42 @@ async function start(t: TestContext, scenario = fixture) {
   });
 }
 const panel = (c: Awaited<ReturnType<typeof start>>) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false)");
+test('archived descendants appear once when archive and unscheduled folds are open', { skip }, async t => {
+  const c = await start(t, { items: [
+    { id: 'T-1', kind: 'release', title: 'Current release', version: '0.1.0', state: 'open' },
+    { id: 'T-2', kind: 'release', title: 'Archived release', version: '0.0.1', state: 'closed' },
+    task(3, 'done', 'T-2'),
+  ] });
+  assert.deepEqual(await c.lua(`local out={}; for _,it in ipairs(require('cland.items').ordered()) do out[#out+1]=it.id end; return out`), ['T-1', 'T-2', 'T-3']);
+  assert.deepEqual(await c.lua(`local out={}; for _,it in ipairs(require('cland.vboard').compose().unscheduled) do out[#out+1]=it.id end; return out`), ['T-3']);
+  await c.input('zR');
+  const rows = await c.lua<string[]>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]=info.item end end; return out`);
+  for (const id of ['T-1', 'T-2', 'T-3']) {
+    assert.equal(rows.filter(row => row === id).length, 1, `${id} appears exactly once`);
+  }
+});
+test('background descendants use unscheduled only when no open container is reached', { skip }, async t => {
+  const scenario: Scenario = { items: [
+    { id: 'T-1', kind: 'release', title: 'Current release', version: '0.1.0', state: 'open' },
+    { id: 'T-2', kind: 'release', title: 'Archived release', version: '0.0.1', state: 'closed' },
+    task(3, 'planned', 'T-2'),
+    { id: 'T-4', kind: 'epic', title: 'Closed current epic', parent: 'T-1', state: 'closed' },
+    task(5, 'done', 'T-4'),
+    { id: 'T-6', kind: 'epic', title: 'Closed archived epic', parent: 'T-2', state: 'closed' },
+    task(7, 'done', 'T-6'),
+    { id: 'T-8', kind: 'epic', title: 'Open archived epic', parent: 'T-2', state: 'open' },
+    task(9, 'planned', 'T-8'),
+  ] };
+  const c = await start(t, scenario);
+  await c.input('zR');
+  const rows = await c.lua<Array<{ item: string; list?: string }>>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]={item=info.item,list=info.list} end end; return out`);
+  for (const it of scenario.items!) {
+    assert.equal(rows.filter(row => row.item === it.id).length, 1, `${it.id} appears exactly once`);
+  }
+  assert.deepEqual(rows.filter(row => row.list === 'unscheduled').map(row => row.item), ['T-3', 'T-6', 'T-7']);
+  assert.deepEqual(rows.filter(row => row.list === 'T-2').map(row => row.item), ['T-2', 'T-8', 'T-9']);
+  assert.deepEqual(rows.filter(row => row.list === 'T-4').map(row => row.item), ['T-4', 'T-5']);
+});
 test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria and folded background groups', { skip }, async t => {
   const c = await start(t);
   await c.waitScreen(s => s.includes('board · 7 in work · 1 done'), 'board summary');

@@ -117,6 +117,13 @@ function M.invalidate(id)
   M.stale[id] = true
 end
 
+--- Read the cached whole item; refresh missing/stale details asynchronously, keeping the last value.
+function M.get(id)
+  local it, d = state.item(id), M.detail[id]
+  if it and (not d or M.stale[id] or d.seen ~= it.updated) then M.fetch(id) end
+  return d
+end
+
 local function field(label, value, group)
   return { label = label, value = value, group = group }
 end
@@ -407,11 +414,7 @@ end
 --- Draw item `id`'s view (in whatever window shows it); fetch the whole item when it is missing or stale.
 function M.render(id)
   local b = M.buf(id)
-  local it = state.item(id)
-  local d = M.detail[id]
-  if it and (not d or M.stale[id] or d.seen ~= it.updated) then
-    M.fetch(id)
-  end
+  M.get(id)
   local win = vim.fn.bufwinid(b)
   local width = api.nvim_win_get_width(win ~= -1 and win or require('cland.layout').centre())
   local lines, marks = M.compose(id, width - 1)
