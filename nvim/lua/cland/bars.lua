@@ -80,6 +80,10 @@ function M.topbar()
     { '│ ', 'ClandFaintBar' },
     { views().title(S.ui.view), 'ClandTextBar' },
   }
+  local release = require('cland.items').current_release()
+  if release then
+    table.insert(left, 3, { ' ' .. release.title .. ' ', 'ClandTextChip' })
+  end
   local right = {}
   local coord = state.coordinator()
   if coord then

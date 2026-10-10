@@ -599,6 +599,7 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 
 | Request | Result `value` |
 | --- | --- |
+| `{"type":"hub.status","id":…}` | Hub state, including `keys: {layouts}` for keyboard layouts and `tracker: {levels}` for loaded container levels, ordered top-down. The UI reads the current values on connect/refresh; no config push event is added. Missing/unreadable config reports the levels in use by the running tracker. |
 | `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then those waiting for the human, then by latest activity; a topic with no message last |
 | `{"type":"topic.history","id":…,"topic":"general","limit":50}` | `{"topic":Topic,"messages":[TopicMessage…]}`, oldest first, at most 200 |
 | `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"],"replyTo":"<message id>"}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator); in Agents only a reply is accepted, and it addresses the sender of `replyTo` |

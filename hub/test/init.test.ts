@@ -296,11 +296,12 @@ test('a hub started in an initialised project has General and Agents, serves the
   await gitRepo(root);
   await run(root, 'init');
   const configPath = join(root, '.cland', 'config.toml');
-  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('max_text_bytes = 8192', 'max_text_bytes = 4096').replace('layouts = []', 'layouts = ["ru"]'));
+  await writeFile(configPath, (await readFile(configPath, 'utf8')).replace('max_text_bytes = 8192', 'max_text_bytes = 4096').replace('layouts = []', 'layouts = ["ru"]').replace(/levels = \[[^\n]+\]/, 'levels = ["initiative", "feature"]'));
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const statusReply = await ui.request({ type: 'hub.status' });
   assert.deepEqual((statusReply.value as { keys: { layouts: string[] } }).keys, { layouts: ['ru'] });
+  assert.deepEqual((statusReply.value as { tracker: { levels: string[] } }).tracker, { levels: ['initiative', 'feature'] });
   const topics = (await ui.request({ type: 'topic.list' })).value as { topics: Array<{ id: string; title: string }> };
   assert.deepEqual(
     topics.topics.map((x) => [x.id, x.title]),

@@ -1,10 +1,8 @@
--- The board (spec section 5, Main.dc.html and Steady.dc.html, #36): a centre view (␣b) of six columns,
--- backlog · planned · in progress · review · qa · done, with a card per unit of work (epics and maps are
--- containers, not cards): the id with the verdict marks, the title, the claiming session or the assignee, and
--- the ask badge. The column is derived (items.column), never stored. ↵ or gi on a card opens its item view.
+-- Seven hub status columns, scoped to open parents in the current release.
 local api = vim.api
 local state = require('cland.state')
 local items = require('cland.items')
+local bars = require('cland.bars')
 
 local M = { cells = {} }
 local ns = api.nvim_create_namespace('cland.board')
@@ -13,32 +11,79 @@ local function sw(s)
   return api.nvim_strwidth(s or '')
 end
 
-local function fit(s, n)
-  if n <= 0 then
-    return ''
+--- Every ancestor must remain open; a closed intermediate container removes its cards too.
+local function open_parents(it)
+  local seen = {}
+  local parent = items.present(it.parent) and state.item(it.parent) or nil
+  while parent and not seen[parent.id] do
+    seen[parent.id] = true
+    if parent.state ~= 'open' then return false end
+    parent = items.present(parent.parent) and state.item(parent.parent) or nil
   end
-  if sw(s) <= n then
-    return s .. (' '):rep(n - sw(s))
-  end
-  local out = vim.fn.strcharpart(s, 0, math.max(0, n - 1))
-  while sw(out) > n - 1 do
-    out = vim.fn.strcharpart(out, 0, vim.fn.strchars(out) - 1)
-  end
-  return out .. '…' .. (' '):rep(math.max(0, n - 1 - sw(out)))
+  return true
 end
 
---- The cards of each column, ordered by id.
-function M.columns()
-  local cols = {}
-  for _, c in ipairs(items.COLUMNS) do
-    cols[c[1]] = {}
-  end
+function M.parents()
+  local out = {}
+  local current = items.current_release()
   for _, it in ipairs(items.all()) do
-    if not items.is_container(it) then
-      table.insert(cols[items.column(it)], it)
+    if current and it.id ~= current.id and items.is_container(it) and items.in_release(it)
+      and it.state == 'open' and open_parents(it) then out[#out + 1] = it end
+  end
+  return out
+end
+
+local function parent_filter()
+  local id = state.S.ui.board_parent
+  for _, it in ipairs(M.parents()) do if it.id == id then return id end end
+  state.S.ui.board_parent = nil
+end
+
+local function under(it, id)
+  if not id then return true end
+  local seen = {}
+  while it and not seen[it.id] do
+    if it.id == id then return true end
+    seen[it.id] = true
+    it = items.present(it.parent) and state.item(it.parent) or nil
+  end
+  return false
+end
+
+function M.cycle_parent(step)
+  local parents, current = M.parents(), parent_filter()
+  local index = 0
+  for i, it in ipairs(parents) do if it.id == current then index = i end end
+  index = (index + step) % (#parents + 1)
+  state.S.ui.board_parent = index > 0 and parents[index].id or nil
+  state.changed()
+end
+
+function M.columns()
+  local cols, parent = {}, parent_filter()
+  for _, c in ipairs(items.COLUMNS) do cols[c[1]] = {} end
+  for _, it in ipairs(items.all()) do
+    if it.kind == 'task' and cols[it.status] and items.in_release(it) and open_parents(it) and under(it, parent) then
+      table.insert(cols[it.status], it)
     end
   end
   return cols
+end
+
+local function header(width)
+  local release, selected = items.current_release(), parent_filter()
+  local chunks = { { ' ' .. (release and release.title or 'No current release') .. ' · parents: ', 'ClandDim' },
+    { 'all', selected == nil and 'ClandTabOn' or 'ClandTab' } }
+  for _, it in ipairs(M.parents()) do
+    chunks[#chunks + 1] = { ' · ' .. it.id .. ' ' .. it.title, it.id == selected and 'ClandTabOn' or 'ClandTab' }
+  end
+  local lines, marks, col = {}, {}, 0
+  for _, chunk in ipairs(bars.fit(chunks, width)) do
+    lines[#lines + 1] = chunk[1]
+    marks[#marks + 1] = { 0, col, { end_col = col + #chunk[1], hl_group = chunk[2] } }
+    col = col + #chunk[1]
+  end
+  return table.concat(lines), marks
 end
 
 --- A card's lines as {text, hl} chunk lists, `w` columns wide.
@@ -113,26 +158,19 @@ function M.compose(width)
   for _, rows in ipairs(grid) do
     height = math.max(height, #rows)
   end
-  local lines, marks, cells = { '' }, {}, { {} }
+  local title, marks = header(width)
+  local lines, cells = { title }, { {} }
   for r = 1, height do
     local parts, col, row_cells = { ' ' }, 1, {}
     for i, rows in ipairs(grid) do
       local cell = rows[r] or { {} }
       local start = col
       local used = 0
-      for _, ch in ipairs(cell[1]) do
+      for _, ch in ipairs(bars.fit(cell[1], cw)) do
         local text = ch[1]
-        if used + sw(text) > cw then
-          text = fit(text, cw - used):gsub('%s+$', '')
-        end
-        if #text > 0 then
-          parts[#parts + 1] = text
-          if ch[2] then
-            marks[#marks + 1] = { r, col, { end_col = col + #text, hl_group = ch[2] } }
-          end
-          col = col + #text
-          used = used + sw(text)
-        end
+        parts[#parts + 1] = text
+        if ch[2] then marks[#marks + 1] = { r, col, { end_col = col + #text, hl_group = ch[2] } } end
+        col, used = col + #text, used + sw(text)
       end
       local pad = (' '):rep(math.max(0, cw - used))
       parts[#parts + 1] = pad
@@ -150,7 +188,7 @@ function M.compose(width)
     cells[#cells + 1] = row_cells
   end
   lines[#lines + 1] = ''
-  lines[#lines + 1] = ' ↵ or gi open the card · gt topic · gs session · ␣b back'
+  lines[#lines + 1] = ' p/P parent · ↵ or gi open the card · gt topic · gs session · ␣b back'
   marks[#marks + 1] = { #lines - 1, 0, { end_col = #lines[#lines], hl_group = 'ClandFaint' } }
   return lines, marks, cells
 end
@@ -185,6 +223,8 @@ function M.buf()
   pcall(api.nvim_buf_set_name, b, 'cland://board')
   vim.b[b].cland_role = 'board'
   M.b = b
+  require('cland.actions').map('n', 'p', function() M.cycle_parent(1) end, { buffer = b, nowait = true, silent = true })
+  require('cland.actions').map('n', 'P', function() M.cycle_parent(-1) end, { buffer = b, nowait = true, silent = true })
   require('cland.actions').map('n', '<CR>', open, { buffer = b, nowait = true, silent = true, desc = 'cland: open the card' })
   require('cland.actions').map('n', '<2-LeftMouse>', open, { buffer = b, silent = true })
   return b
@@ -197,7 +237,7 @@ function M.render()
   local lines, marks, cells = M.compose(width - 1)
   M.cells = cells
   if win ~= -1 then
-    vim.wo[win].wrap = false
+    api.nvim_set_option_value('wrap', false, { scope = 'local', win = win })
   end
   vim.bo[b].modifiable = true
   api.nvim_buf_set_lines(b, 0, -1, false, lines)

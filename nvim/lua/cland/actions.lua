@@ -59,7 +59,8 @@ group('topics', {{'n','New topic'}, {'c','Close selected topic'}, {'r','Resolve 
 for i, title in ipairs({'All items','Items in work','Items needing you','Done items','Map items'}) do
   add('items', tostring(i), title)
 end
-group('items', {{'f','Next items filter'}, {'F','Previous items filter'}})
+group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
+  {'za','Toggle item tree fold'}, {'zo','Open item tree fold'}, {'zc','Close item tree fold'}})
 group('inbox', {{'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end
@@ -72,7 +73,7 @@ group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'}})
-group('board', {{'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
+group('board', {{'p','Next board parent'}, {'P','Previous board parent'}, {'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
 group('artifact', {{'<leader>ps','Send prompt draft'}, {'<leader>pa','Attach prompt draft'},
   {'q','Previous centre view'}, {'R','Render Mermaid in browser'}})
 group('artifacts', {{'<CR>','Open selected artifact'}, {'q','Previous centre view'}, {'p','Promote selected artifact to repository'}})

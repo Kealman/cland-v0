@@ -131,6 +131,7 @@ local refresh_sessions = single_flight(function(done)
     if not err and value then
       state.S.presence = value.sessions or {}
       require('cland.keys').layouts(value.keys and value.keys.layouts or {})
+      state.S.tracker = type(value.tracker) == 'table' and value.tracker or { levels = {} }
       if value.coordinator == vim.NIL then
         state.S.hub_coordinator = { name = nil }
       elseif type(value.coordinator) == 'string' then
@@ -170,6 +171,7 @@ local refresh_items = single_flight(function(done)
       state.S.items_note = 'items: ' .. tostring(err)
     else
       state.S.items, state.S.items_note = value and value.items or {}, nil
+      state.S.sibling_orders = {}
       for _, event in ipairs(events) do
         if event.type == 'task' then require('cland.items').apply_event(event) end
       end

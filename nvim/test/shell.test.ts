@@ -57,8 +57,8 @@ function baseScenario(keylog: string): Scenario {
     processes: [proc('coord-1', 'coordinator', 'busy'), proc('impl-1', 'implementer', 'waiting for human', 'sonnet')],
     adapters: { 'claude-code': CAPS },
     items: [
-      { id: 'T-12', kind: 'task', title: 'Hub daemon and spoke hello', state: 'open', labels: [], assignee: null, parent: null, blocked_by: [], topic: null, branch: null, created: ts(0), updated: ts(0), file: '.cland/tasks/T-12-hub.md', claim: { session: 'impl-1', sessionId: 'impl-1-id', role: 'implementer', claimedAt: ts(1) } },
-      { id: 'T-13', kind: 'task', title: 'Codex adapter', state: 'open', labels: [], assignee: null, parent: null, blocked_by: [], topic: null, branch: null, created: ts(0), updated: ts(0), file: '.cland/tasks/T-13-codex.md', claim: null },
+      { id: 'T-12', kind: 'task', title: 'Hub daemon and spoke hello', status: 'in progress', state: 'open', labels: [], assignee: null, parent: null, blocked_by: [], topic: null, branch: null, created: ts(0), updated: ts(0), file: '.cland/tasks/T-12-hub.md', claim: { session: 'impl-1', sessionId: 'impl-1-id', role: 'implementer', claimedAt: ts(1) } },
+      { id: 'T-13', kind: 'task', title: 'Codex adapter', status: 'backlog', state: 'open', labels: [], assignee: null, parent: null, blocked_by: [], topic: null, branch: null, created: ts(0), updated: ts(0), file: '.cland/tasks/T-13-codex.md', claim: null },
     ],
     attach: {
       'coord-1': `${JSON.stringify(process.execPath)} ${JSON.stringify(KEYLOG)} ${JSON.stringify(keylog)}`,
@@ -1032,6 +1032,7 @@ const item = (id: string, kind: string, title: string, extra: Record<string, unk
   id,
   kind,
   title,
+  ...(kind === 'task' ? {status: 'backlog'} : {}),
   state: 'open',
   labels: [],
   assignee: null,
@@ -1053,6 +1054,7 @@ const verdict = (kind: string, result: string, run: string, min: number) => ({ v
  *  verdicts), a map with a decided, a frontier, a blocked and an assigned child, an item past review, one assigned
  *  to the human, and the base T-12 (claimed by impl-1) and T-13. */
 function withItems(s: Scenario): void {
+  s.tracker = { levels: ['epic'] };
   s.processes = [...(s.processes ?? []), proc('impl-2', 'implementer', 'busy')];
   s.attach = { ...(s.attach ?? {}), 'impl-2': `printf 'attached impl-2\\n'; sleep 600` };
   s.topics = [
@@ -1065,9 +1067,10 @@ function withItems(s: Scenario): void {
   s.inbox = { asks: [openAsk('a-2', 'Tree or flat list?'), openAsk('a-3', 'Show closed items?')], approvals: [], waiting: [], notifications: [] };
   s.items = [
     item('T-1', 'epic', 'Workbench shell'),
-    item('T-2', 'task', 'Items panel', { parent: 'T-1', claim: claimBy('impl-2'), topic: 'topic-2', branch: 't/2-items-panel', labels: ['ui', 'slice-1'] }),
+    item('T-2', 'task', 'Items panel', { parent: 'T-1', status: 'in progress', claim: claimBy('impl-2'), topic: 'topic-2', branch: 't/2-items-panel', labels: ['ui', 'slice-1'] }),
     item('T-3', 'task', 'Board view', {
       parent: 'T-1',
+      status: 'review',
       blocked_by: ['T-4'],
       body: '## Goal\n\nSix columns derived from the item.\n\n- backlog\n- done',
       verdicts: [verdict('review', 'clear', 'r-1', 3), verdict('review', 'not clear', 'r-2', 5)],
@@ -1076,15 +1079,15 @@ function withItems(s: Scenario): void {
         { author: 'rev-1', at: ts(5), text: 'The qa column is missing.', verdict: verdict('review', 'not clear', 'r-2', 5) },
       ],
     }),
-    item('T-4', 'task', 'Item view', { parent: 'T-1', state: 'closed', verdicts: [verdict('review', 'clear', 'r-3', 4), verdict('qa', 'clear', 'q-1', 6)] }),
+    item('T-4', 'task', 'Item view', { parent: 'T-1', status: 'done', state: 'closed', verdicts: [verdict('review', 'clear', 'r-3', 4), verdict('qa', 'clear', 'q-1', 6)] }),
     item('T-5', 'map', 'Slice 2 map'),
     item('T-6', 'question', 'Which store', { parent: 'T-5', state: 'closed' }),
     item('T-7', 'question', 'Transport', { parent: 'T-5' }),
     item('T-8', 'question', 'Auth scheme', { parent: 'T-5', blocked_by: ['T-7'] }),
     item('T-9', 'question', 'CRDT spike', { parent: 'T-5', assignee: 'sub-1' }),
-    item('T-10', 'task', 'Review passed', { verdicts: [verdict('review', 'clear', 'r-4', 7)] }),
-    item('T-11', 'task', 'For the human', { assignee: 'human' }),
-    ...(baseScenario('').items ?? []),
+    item('T-10', 'task', 'Review passed', { parent: 'T-1', status: 'qa', verdicts: [verdict('review', 'clear', 'r-4', 7)] }),
+    item('T-11', 'task', 'For the human', { parent: 'T-1', status: 'planned', assignee: 'human' }),
+    ...(baseScenario('').items ?? []).map(it => ({...it, parent: 'T-1'})),
   ];
 }
 
@@ -1101,9 +1104,112 @@ const leftOf = (text: string): string =>
 const itemRows = (s: string): string[] =>
   leftOf(s)
     .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => /^[○●◐◑◆◌] T-\d+ /.test(l) || /^[A-Z][A-Z -]+ · \d+$/.test(l));
-const idsOf = (rows: string[]): string[] => rows.map((r) => r.split(' ')[1] ?? '');
+    .map((l) => l.trim().replace(/^[▾▸] /, ''))
+    .filter((l) => /^[○●◐◑◆◌◉] T-\d+ /.test(l) || /^(DECIDED|FRONTIER|IN WORK BY SUB-AGENTS|BLOCKED) · \d+$/.test(l));
+const idsOf = (rows: string[]): string[] => rows.flatMap(r => r.match(/T-\d+/)?.[0] ?? []);
+
+test('T-80: in work follows explicit status events, including unclaimed review and QA', { skip }, async t => {
+  const task = item('T-80', 'task', 'Awaiting review', { status: 'planned', parent: 'T-1' });
+  const c = await startShell(t, s => { s.items = [
+    item('T-100', 'release', 'Current release', { version: '0.1.0' }),
+    item('T-1', 'epic', 'Panels', { parent: 'T-100' }), task,
+  ]; });
+  await c.input('<Esc><Space>i2');
+  await c.waitScreen(s => /ITEMS +in work · 1/.test(s) && s.includes('T-80 Awaiting review'), 'planned in work');
+  for (const status of ['in progress', 'review', 'qa', 'ready', 'done', 'backlog']) {
+    await c.control({ emit: { type: 'task', id: task.id, item: { ...task, status, state: status === 'done' ? 'closed' : 'open' } } });
+    const active = !['done', 'backlog'].includes(status);
+    await c.waitScreen(s => s.includes(`in work · ${active ? 1 : 0}`) && s.includes('T-80 Awaiting review') === active, `${status} from a task event`);
+  }
+});
+
+test('the client agrees with the shared rank fixture and applies the final siblings event', { skip }, async t => {
+  const fixture = JSON.parse(await readFile(new URL('../../hub/test/fixtures/rank-order.json', import.meta.url), 'utf8')) as { items: Array<{ id: string; rank?: number }>; order: string[] };
+  const rows = fixture.items.map(it => item(it.id, 'task', `Ranked ${it.id}`, { ...it, status: 'planned' }));
+  const c = await startShell(t, s => { s.items = rows; });
+  await c.input('<Esc><Space>i');
+  await c.waitScreen(s => s.includes('Ranked T-11'), 'rank fixture');
+  assert.deepEqual(idsOf(itemRows((await c.screen()).join('\n'))), fixture.order);
+  const order = ['T-11', 'T-3', 'T-4', 'T-1', 'T-2', 'T-10'];
+  await c.control({ emit: { type: 'task', id: 'T-11', item: rows.find(it => it.id === 'T-11'), siblings: order } });
+  await c.waitScreen(s => JSON.stringify(idsOf(itemRows(s))) === JSON.stringify(order), 'final sibling order');
+});
+
+test('configured levels choose the lowest semver release; the tree folds closed levels and keeps unscheduled last', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.tracker = { levels: ['initiative', 'feature', 'component'] };
+    s.items = [
+      item('T-1', 'initiative', 'Later', { version: '1.10.0' }),
+      item('T-2', 'initiative', 'Stable', { version: '1.2.0' }),
+      item('T-3', 'initiative', 'Current beta two', { version: '1.2.0-beta.2+build' }),
+      item('T-4', 'initiative', 'Beta ten', { version: '1.2.0-beta.10' }),
+      item('T-5', 'initiative', 'Unversioned'),
+      item('T-6', 'initiative', 'Archived', { version: '0.1.0', state: 'closed' }),
+      item('T-7', 'feature', 'Open feature', { parent: 'T-3' }),
+      item('T-8', 'component', 'Closed component', { parent: 'T-7', state: 'closed' }),
+      item('T-9', 'task', 'Folded done task', { parent: 'T-8', status: 'done', state: 'closed' }),
+      item('T-10', 'task', 'Current work', { parent: 'T-7', status: 'review', rank: -10 }),
+      item('T-11', 'task', 'Future work', { parent: 'T-1', status: 'planned' }),
+      item('T-12', 'task', 'Archived task', { parent: 'T-6', status: 'done', state: 'closed' }),
+      item('T-13', 'task', 'Loose work', { status: 'qa' }),
+    ];
+  });
+  await c.input('<Esc><Space>i');
+  let screen = await c.waitScreen(s => s.includes('Current beta two') && s.includes('T-10 Current work'), 'current configured release');
+  assert.match(topBar(screen), /Current beta two/);
+  assert.match(leftOf(screen), /▾ ○ T-3 Current beta two/);
+  assert.match(leftOf(screen), /▸ ● T-8 Closed component/);
+  assert.doesNotMatch(leftOf(screen), /Folded done task|Future work|Archived task/);
+  assert.ok(leftOf(screen).indexOf('UNSCHEDULED') > leftOf(screen).indexOf('T-5 Unversioned'));
+  await c.input('/T-8 Closed<CR>za');
+  await c.waitScreen(s => s.includes('T-9 Folded done task'), 'closed component unfolds');
+  await c.input('za');
+  await c.waitScreen(s => !s.includes('T-9 Folded done task'), 'closed component folds');
+  await c.input('2');
+  screen = await c.waitScreen(s => s.includes('in work · 2'), 'current work plus unscheduled');
+  assert.deepEqual(idsOf(itemRows(screen)), ['T-10', 'T-13']);
+  await c.input('4');
+  screen = await c.waitScreen(s => s.includes('done · 1') && s.includes('Folded done task'), 'current done tasks including closed parents');
+  assert.deepEqual(idsOf(itemRows(screen)), ['T-9']);
+  await c.control({ emit: { type: 'task', id: 'T-3', item: item('T-3', 'initiative', 'Current beta two', { version: '1.2.0-beta.2', state: 'closed' }) } });
+  await c.waitScreen(s => topBar(s).includes('Beta ten') && s.includes('done · 0'), 'scope changes on task event');
+});
+
+test('the board reads all seven statuses, scopes open parents, and filters its header by parent', { skip }, async t => {
+  const statuses = ['backlog', 'planned', 'in progress', 'review', 'qa', 'ready', 'done'];
+  const tasks = statuses.map((status, i) => item(`T-${i + 10}`, 'task', `Card ${status}`, { parent: 'T-2', status, state: status === 'done' ? 'closed' : 'open' }));
+  const other = item('T-30', 'task', 'Other parent card', { parent: 'T-3', status: 'planned' });
+  const c = await startShell(t, s => { s.items = [
+    item('T-1', 'release', 'Current release', { version: '0.1.0' }),
+    item('T-2', 'epic', 'Panels', { parent: 'T-1' }),
+    item('T-3', 'epic', 'Tracker', { parent: 'T-1' }),
+    item('T-4', 'epic', 'Closed epic', { parent: 'T-1', state: 'closed' }),
+    item('T-5', 'release', 'Future release', { version: '0.2.0' }),
+    ...tasks, other,
+    item('T-31', 'task', 'Closed epic card', { parent: 'T-4', status: 'done', state: 'closed' }),
+    item('T-32', 'task', 'Future card', { parent: 'T-5', status: 'planned' }),
+    item('T-33', 'task', 'Unscheduled card', { status: 'review' }),
+  ]; });
+  await c.input('<Esc><Space>s<Space>b');
+  const screen = await c.waitScreen(s => s.includes('READY') && s.includes('Card ready'), 'seven status columns');
+  assert.deepEqual(boardOf(screen).header, statuses.map(s => s.toUpperCase()));
+  assert.deepEqual(boardOf(screen).ids, [['T-10'], ['T-11', 'T-30'], ['T-12'], ['T-13'], ['T-14'], ['T-15'], ['T-16']]);
+  assert.match(screen, /parents: all.*T-2 Panels.*T-3 Tracker/);
+  await c.input('p');
+  await c.waitScreen(s => !s.includes('T-30') && s.includes('T-13'), 'Panels parent filter');
+  await c.input('p');
+  await c.waitScreen(s => s.includes('T-30') && !s.includes('T-13'), 'Tracker parent filter');
+  await c.control({ emit: { type: 'task', id: 'T-3', item: item('T-3', 'epic', 'Tracker', { parent: 'T-1', state: 'closed' }) } });
+  await c.waitScreen(s => !s.includes('T-30') && s.includes('T-13'), 'closed parent leaves and invalid filter resets');
+  for (const status of statuses.slice(1)) {
+    const moving = { ...tasks[0], status, state: status === 'done' ? 'closed' : 'open' };
+    await c.control({ emit: { type: 'task', id: moving.id, item: moving } });
+    await c.waitScreen(s => boardOf(s).ids[statuses.indexOf(status)]?.includes('T-10') === true, `${status} column from task event`);
+  }
+  await c.control({ emit: { type: 'task', id: 'T-10', item: { ...tasks[0], status: 'done', state: 'closed' }, siblings: ['T-16', 'T-10', 'T-11', 'T-12', 'T-13', 'T-14', 'T-15'] } });
+  await c.waitScreen(s => JSON.stringify(boardOf(s).ids[6]) === JSON.stringify(['T-16', 'T-10']), 'final sibling order in the board');
+  assert.equal(await c.lua('return #require("cland.actions").audit()'), 0);
+});
 
 test('the items panel: a tree of epics and maps with status glyphs, the claim right-aligned and the ask badge; filters 1–5 and f; the map grouping', { skip }, async (t) => {
   const c = await startShell(t, withItems);
@@ -1113,27 +1219,27 @@ test('the items panel: a tree of epics and maps with status glyphs, the claim ri
   assert.match(leftOf(s), /1 all 2 work 3 you 4 done 5 map/);
   const panel = leftOf(s);
   // the tree: children under their parent, indented, ordered by id; orphans at the root
-  assert.match(panel, /^ ○ T-1 Workbench shell +1\/3 $/m, 'an epic with its progress');
+  assert.match(panel, /^ ▾ ○ T-1 Workbench shell +1\/7 $/m, 'an epic with its progress');
   assert.match(panel, /^ {3}◆ T-2 Items panel +impl-2 {2}2 {2}$/m, 'claimed, with the ask badge counting the two open asks in its topic: needs you');
   assert.match(panel, /^ {3}◆ T-3 Board view +$/m, 'a not-clear review verdict: needs you');
   assert.match(panel, /^ {3}● T-4 Item view +$/m, 'closed');
-  assert.match(panel, /^ ○ T-5 Slice 2 map +1\/4 $/m);
+  assert.match(panel, /^ ▾ ○ T-5 Slice 2 map +1\/4 $/m);
   assert.match(panel, /^ {3}◌ T-8 Auth scheme +$/m, 'an open blocker');
   assert.match(panel, /^ {3}◑ T-9 CRDT spike +sub-1 $/m, 'assigned');
-  assert.match(panel, /^ ◐ T-12 Hub daemon and spo… impl-1 $/m, 'claimed, the session right-aligned');
-  assert.deepEqual(idsOf(itemRows(s)), ['T-1', 'T-2', 'T-3', 'T-4', 'T-5', 'T-6', 'T-7', 'T-8', 'T-9', 'T-10', 'T-11', 'T-12', 'T-13']);
+  assert.match(panel, /^ {3}◐ T-12 Hub daemon and s… impl-1 $/m, 'claimed, the session right-aligned');
+  assert.deepEqual(idsOf(itemRows(s)), ['T-1', 'T-2', 'T-3', 'T-4', 'T-10', 'T-11', 'T-12', 'T-13', 'T-5', 'T-6', 'T-7', 'T-8', 'T-9']);
 
   const rowsOf = async (key: string, header: string) => {
     await c.input(key);
     const x = await c.waitScreen((y) => y.includes(` ITEMS`) && new RegExp(`${header} │`).test(y.split('\n')[1] ?? ''), `the ${header} filter`);
     return itemRows(x);
   };
-  // 2: in work (claimed or assigned, open)
-  assert.deepEqual(idsOf(await rowsOf('2', 'in work · 4')), ['T-2', 'T-9', 'T-11', 'T-12']);
+  // 2: in work reads the explicit task status
+  assert.deepEqual(idsOf(await rowsOf('2', 'in work · 5')), ['T-2', 'T-3', 'T-10', 'T-11', 'T-12']);
   // 3: needs you
   assert.deepEqual(idsOf(await rowsOf('3', 'needs you · 2')), ['T-2', 'T-3']);
   // 4: done
-  assert.deepEqual(idsOf(await rowsOf('4', 'done · 2')), ['T-4', 'T-6']);
+  assert.deepEqual(idsOf(await rowsOf('4', 'done · 1')), ['T-4']);
   // 5: the map, grouped under headers, ordered by id
   assert.deepEqual(
     (await rowsOf('5', 'map · 1 map')).map((r) => r.replace(/\s+/g, ' ')),
@@ -1217,9 +1323,9 @@ test('the item view: the title line, the fields column beside the body, the verd
   let s = await c.waitScreen((x) => x.includes('COMMENTS · 2'), 'the item view of T-3 with its comments');
   const rows = s.split('\n');
   const at = (re: RegExp) => rows.findIndex((r) => re.test(r));
-  assert.match(s, /^ ◆ T-3 · open · needs you · task +$/m, 'the title line: id and state');
+  assert.match(s, /^ ◉ T-3 · open · review · task +$/m, 'the title line: id and state');
   // the fields column, right of the body, row by row
-  assert.match(s, /^ Board view +│ state {6}◆ open · needs you +$/m);
+  assert.match(s, /^ Board view +│ state {6}◉ open · review +$/m);
   assert.match(s, /^ \.cland\/tasks\/T-3-board-view\.md · updated .+│ kind {7}task · no labels +$/m);
   assert.match(s, /│ parent {5}T-1 Workbench shell +$/m);
   assert.match(s, /│ assignee {3}— +$/m);
@@ -1261,8 +1367,8 @@ function boardOf(screen: string): { header: string[]; ids: string[][]; text: str
   const rows = screen.split('\n');
   const at = rows.findIndex((r) => r.includes('BACKLOG'));
   const cols = (r: string) => r.split('│').map((x) => x.trim());
-  const ids: string[][] = [[], [], [], [], [], []];
-  const text: string[][] = [[], [], [], [], [], []];
+  const ids: string[][] = [[], [], [], [], [], [], []];
+  const text: string[][] = [[], [], [], [], [], [], []];
   for (const r of rows.slice(at + 1)) {
     if (!r.includes('│')) break;
     cols(r).forEach((cell, i) => {
@@ -1274,26 +1380,25 @@ function boardOf(screen: string): { header: string[]; ids: string[][]; text: str
   return { header: at < 0 ? [] : cols(rows[at] ?? ''), ids, text };
 }
 
-test('the board: backlog, planned, in progress, review, qa and done derived from state, claims, labels and verdicts; ↵ opens a card', { skip }, async (t) => {
+test('the board: explicit task statuses and badges; ↵ opens a card', { skip }, async (t) => {
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>s');
   await c.waitScreen((x) => !x.includes('SESSIONS'), 'no right panel');
   await c.input('<Space>b');
   const s = await c.waitScreen((x) => x.includes('BACKLOG') && statusLine(x).includes('Board'), 'the board');
   const { header, ids, text } = boardOf(s);
-  assert.deepEqual(header, ['BACKLOG', 'PLANNED', 'IN PROGRESS', 'REVIEW', 'QA', 'DONE']);
-  assert.deepEqual(text.map((col) => col[0]?.split(' ')[0]), ['3', '2', '2', '1', '1', '2'], 'the counts under the names');
-  assert.deepEqual(ids, [['T-7', 'T-8', 'T-13'], ['T-9', 'T-11'], ['T-2', 'T-12'], ['T-3'], ['T-10'], ['T-4', 'T-6']]);
+  assert.deepEqual(header, ['BACKLOG', 'PLANNED', 'IN PROGRESS', 'REVIEW', 'QA', 'READY', 'DONE']);
+  assert.deepEqual(text.map((col) => col[0]?.split(' ')[0]), ['1', '1', '2', '1', '1', '0', '1'], 'the counts under the names');
+  assert.deepEqual(ids, [['T-13'], ['T-11'], ['T-2', 'T-12'], ['T-3'], ['T-10'], [], ['T-4']]);
   // the marks: the ask, the claim, the assignee, a blocker, the verdicts
   assert.ok(text[2]?.includes('T-2 ? ask') && text[2]?.includes('impl-2') && text[2]?.includes('impl-1'), text[2]?.join(' | '));
-  assert.ok(text[1]?.includes('for sub-1') && text[1]?.includes('for human'), text[1]?.join(' | '));
-  assert.ok(text[0]?.includes('◌ by T-7'), text[0]?.join(' | '));
+  assert.ok(text[1]?.includes('for human'), text[1]?.join(' | '));
   assert.ok(text[3]?.includes('✗ review'), text[3]?.join(' | '));
   assert.ok(text[4]?.includes('✓ review'), text[4]?.join(' | '));
-  assert.ok(text[5]?.includes('✓ review') && text[5]?.includes('✓ qa'), text[5]?.join(' | '));
-  // a label moves a card: `review` on a claimed item
-  await c.control({ emit: { type: 'task', id: 'T-12', item: { ...(baseScenario('').items?.[0] ?? {}), labels: ['review'], verdicts: [] } } });
-  await c.waitScreen((x) => JSON.stringify(boardOf(x).ids) === JSON.stringify([['T-7', 'T-8', 'T-13'], ['T-9', 'T-11'], ['T-2'], ['T-3', 'T-12'], ['T-10'], ['T-4', 'T-6']]), 'T-12 in the review column under T-3');
+  assert.ok(text[6]?.includes('✓ review') && text[6]?.includes('✓ qa'), text[6]?.join(' | '));
+  // the hub's status moves a card despite a retained Implementer claim
+  await c.control({ emit: { type: 'task', id: 'T-12', item: { ...(baseScenario('').items?.[0] ?? {}), parent: 'T-1', status: 'review', labels: [], verdicts: [] } } });
+  await c.waitScreen((x) => JSON.stringify(boardOf(x).ids) === JSON.stringify([['T-13'], ['T-11'], ['T-2'], ['T-3', 'T-12'], ['T-10'], [], ['T-4']]), 'T-12 in the review column under T-3');
   // ↵ on a card opens its item view
   await c.input('gg/T-10<CR><CR>');
   await c.waitScreen((x) => statusLine(x).includes('T-10 · item'), 'the item view of T-10');
@@ -1548,7 +1653,7 @@ test('the tree follows task events: a claim, a new item, a removed file', { skip
   await c.control({ emit: { type: 'task', id: 'T-14', item: item('T-14', 'task', 'Born by hand', { parent: 'T-1' }) } });
   await c.waitScreen((x) => /^ {3}○ T-14 Born by hand +$/m.test(leftOf(x)) && / ITEMS +all · 14 │/.test(x), 'T-14 under T-1');
   const rows = idsOf(itemRows(await c.screen().then((l) => l.join('\n'))));
-  assert.deepEqual(rows.slice(0, 5), ['T-1', 'T-2', 'T-3', 'T-4', 'T-14'], 'a new child joins its parent, ordered by id');
+  assert.deepEqual(rows.slice(0, 9), ['T-1', 'T-2', 'T-3', 'T-4', 'T-10', 'T-11', 'T-12', 'T-13', 'T-14'], 'a new child joins its parent, ordered by rank then id');
   await c.control({ emit: { type: 'task', id: 'T-13', item: null } });
   await c.waitScreen((x) => !x.includes('T-13 Codex') && / ITEMS +all · 13 │/.test(x), 'T-13 gone');
 });
@@ -1557,14 +1662,14 @@ test("the picker's items kind searches ids, titles and claims; Enter opens the i
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>p#');
   let s = await c.waitScreen((x) => x.includes('ITEMS ·'), 'the items kind');
-  assert.match(s, /◆ T-2 Items panel {2}impl-2 .*needs you · claim impl-2/);
-  assert.match(s, /○ T-13 Codex adapter .*open/);
+  assert.match(s, /◆ T-2 Items panel {2}impl-2 .*in progress · claim impl-2/);
+  assert.match(s, /○ T-13 Codex adapter .*backlog/);
   await c.input('impl-1');
   s = await c.waitScreen((x) => /◐ T-12 Hub daemon/.test(x) && !/T-2 Items panel/.test(x), 'by claim');
   await c.input('<C-u>#Board view');
   s = await c.waitScreen((x) => /◆ T-3 Board view/.test(x) && !/T-12 Hub daemon/.test(x), 'by title');
   await c.input('<C-u>#T-11');
-  await c.waitScreen((x) => /◑ T-11 For the human/.test(x.split('\n').find((l) => /[○●◐◑◆◌] T-\d/.test(l)) ?? ''), 'by id, T-11 first');
+  await c.waitScreen((x) => /○ T-11 For the human/.test(x.split('\n').find((l) => /[○●◐◑◆◌] T-\d/.test(l)) ?? ''), 'by id, T-11 first');
   await c.input('<CR>');
   await c.waitScreen((x) => statusLine(x).includes('T-11 · item'), 'the item view of T-11');
 });

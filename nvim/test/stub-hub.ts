@@ -22,7 +22,7 @@ import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { readProjectConfig } from '../../hub/src/init/config.ts';
+import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
   topics?: Array<Record<string, unknown>>;
@@ -38,6 +38,7 @@ export type Scenario = {
   coordinator?: string | null;
   /** `role.list`'s roles; absent, the four default roles with their launch defaults. */
   roles?: Array<Record<string, unknown>>;
+  tracker?: { levels: string[] };
   /** How `session.launch` answers: absent, it adds an idle running process; a string refuses with it. */
   launchError?: string;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
@@ -235,8 +236,10 @@ function answer(f: Frame) {
     }
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
-    case 'hub.status':
-      return ok(f.id, { keys: readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.keys ?? { layouts: [] }, sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+    case 'hub.status': {
+      const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
+      return ok(f.id, { keys: config.keys, tracker: scenario.tracker ?? config.tracker, sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+    }
     case 'inbox.list':
       return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');
     case 'topic.answer':

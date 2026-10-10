@@ -30,7 +30,7 @@ const FIXTURE: Record<string, string> = {
   'T-3-board-view.md': itemFile(
     'T-3',
     'Board view',
-    { parent: 'T-1' },
+    { parent: 'T-1', status: 'review' },
     `Six columns derived from the item.\n\n## Comments\n\n### impl-1 · 2026-10-08T10:02:00.000Z\n\nReady for review.\n\n${verdictComment('rev-1', 'reviewer', 'review', 'not clear', 'r-2', 5, 'The qa column is missing.')}`,
   ),
   'T-4-item-view.md': itemFile('T-4', 'Item view', { parent: 'T-1', state: 'closed' }, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-3', 4, 'Fine.')}\n${verdictComment('qa-1', 'qa', 'qa', 'clear', 'q-1', 6, 'Checked.')}`),
@@ -38,7 +38,7 @@ const FIXTURE: Record<string, string> = {
   'T-6-which-store.md': itemFile('T-6', 'Which store', { kind: 'question', parent: 'T-5', state: 'closed' }),
   'T-7-transport.md': itemFile('T-7', 'Transport', { kind: 'question', parent: 'T-5' }),
   'T-8-auth-scheme.md': itemFile('T-8', 'Auth scheme', { kind: 'question', parent: 'T-5', blocked_by: '[T-7]' }),
-  'T-9-review-passed.md': itemFile('T-9', 'Review passed', {}, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-4', 7, 'Good.')}`),
+  'T-9-review-passed.md': itemFile('T-9', 'Review passed', {parent: 'T-1', status: 'qa'}, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-4', 7, 'Good.')}`),
 };
 
 const leftOf = (text: string): string =>
@@ -56,20 +56,20 @@ test('configured containers with no children show container counts in the panel 
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
   for (const [id, kind] of [['T-1', 'initiative'], ['T-2', 'feature'], ['T-3', 'task'], ['T-4', 'question'], ['T-5', 'spec'], ['T-6', 'map']]) {
-    await writeFile(join(root, `.cland/tasks/${id}-${kind}.md`), itemFile(id!, kind!, { kind: kind! }));
+    await writeFile(join(root, `.cland/tasks/${id}-${kind}.md`), itemFile(id!, kind!, { kind: kind!, ...(['task', 'question', 'spec'].includes(kind!) ? {parent: 'T-1'} : {}) }));
   }
   await startDaemon(t, root);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   const panel = await c.waitScreen(s => /T-2 feature +0\/0/.test(s), 'the configured empty container');
-  assert.match(panel, /T-1 initiative +0\/0/);
+  assert.match(panel, /T-1 initiative +0\/3/);
   assert.match(panel, /T-6 map +0\/0/);
   await c.input('<Space>b');
-  const screen = await c.waitScreen(s => s.includes('T-3') && s.includes('T-4') && s.includes('T-5'), 'leaf board cards');
+  const screen = await c.waitScreen(s => s.includes('BACKLOG') && s.includes('T-3'), 'task board card');
   // The panel may still be open, so inspect the board's public column result as well.
   const cards = await c.lua<string[]>('local out = {}; for _, col in pairs(require("cland.board").columns()) do for _, it in ipairs(col) do out[#out+1] = it.id end end; table.sort(out); return out');
-  assert.deepEqual(cards, ['T-3', 'T-4', 'T-5']);
+  assert.deepEqual(cards, ['T-3']);
   assert.ok(screen.includes('feature'), 'the empty container remains visible in the items panel');
 });
 
@@ -77,6 +77,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   const root = await tempProject(t);
   const tasks = join(root, '.cland', 'tasks');
   await mkdir(tasks, { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["epic"]\n');
   for (const [name, text] of Object.entries(FIXTURE)) await writeFile(join(tasks, name), text);
   await startDaemon(t, root);
   const claimed = await cland(root, 'task', 'claim', 'T-2', '--as', 'impl-1', '--role', 'implementer');
@@ -87,7 +88,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.input('<Esc><Space>i');
   let s = await c.waitScreen((x) => x.includes('T-9 Review passed') && /T-2 Items panel +impl-1/.test(x), 'the items panel with the claim');
   const panel = leftOf(s);
-  assert.match(panel, /^ ○ T-1 Workbench shell +1\/3 $/m);
+  assert.match(panel, /^ ▾ ○ T-1 Workbench shell +1\/4 $/m);
   assert.match(panel, /^ {3}◐ T-2 Items panel +impl-1 $/m);
   assert.match(panel, /^ {3}◆ T-3 Board view +$/m, 'a not-clear review: needs you');
   assert.match(panel, /^ {3}● T-4 Item view +$/m);
@@ -98,7 +99,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   s = await c.waitScreen((x) => x.includes('DECIDED · 1'), 'the map filter');
   const map = leftOf(s)
     .split('\n')
-    .map((l) => l.trim().replace(/\s+/g, ' '))
+    .map((l) => l.trim().replace(/^[▾▸] /, '').replace(/\s+/g, ' '))
     .filter((l) => /^[○●◐◑◆◌] T-\d+ |^[A-Z][A-Z -]+ · \d+$/.test(l));
   assert.deepEqual(map, ['○ T-5 Slice 2 map 1/3', 'DECIDED · 1', '● T-6 Which store', 'FRONTIER · 1', '○ T-7 Transport', 'IN WORK BY SUB-AGENTS · 0', 'BLOCKED · 1', '◌ T-8 Auth scheme']);
   await c.input('1');
@@ -106,7 +107,7 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   // the item view: the file through task.view
   await c.input(':Cland view item T-3<CR>');
   s = await c.waitScreen((x) => x.includes('COMMENTS · 2'), 'the item view of T-3');
-  assert.match(s, /◆ T-3 · open · needs you · task/);
+  assert.match(s, /◉ T-3 · open · review · task/);
   assert.match(s, /parent {5}T-1 Workbench shell/);
   assert.match(s, /Six columns derived from the item\./);
   assert.match(s, /✗ review not clear · by rev-1 \[Reviewer\] · run r-2/);
@@ -118,16 +119,16 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   s = await c.waitScreen((x) => x.includes('BACKLOG') && statusLine(x).includes('Board'), 'the board');
   const rows = s.split('\n');
   const at = rows.findIndex((r) => r.includes('BACKLOG'));
-  const ids: string[][] = [[], [], [], [], [], []];
+  const ids: string[][] = [[], [], [], [], [], [], []];
   for (const r of rows.slice(at + 1)) {
     const cells = r.split('│').slice(1);
-    if (cells.length < 6) break;
-    cells.slice(0, 6).forEach((cell, i) => {
+    if (cells.length < 7) break;
+    cells.slice(0, 7).forEach((cell, i) => {
       const m = /^\s*(T-\d+)/.exec(cell);
       if (m) ids[i]?.push(m[1] ?? '');
     });
   }
-  assert.deepEqual(ids, [['T-7', 'T-8'], [], ['T-2'], ['T-3'], ['T-9'], ['T-4', 'T-6']]);
+  assert.deepEqual(ids, [[], [], ['T-2'], ['T-3'], ['T-9'], [], ['T-4']]);
 
   // a file written by hand shows in the panel within a second
   await c.input('<Space>b');

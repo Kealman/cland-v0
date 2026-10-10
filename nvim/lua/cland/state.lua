@@ -20,6 +20,8 @@ function M.reset(opts)
     roles = {}, -- role.list's roles: {role, label, exclusive, launch = {harness, model, effort}, holders}
     sessions_note = nil, -- { text, group }: the last launch or stop outcome, shown atop the sessions panel
     items = {}, -- task.list summaries
+    tracker = { levels = {} }, -- hub.status's loaded container ladder; unknown until the hub answers
+    sibling_orders = {}, -- final task rank events, keyed by parent (empty string for roots)
     items_note = nil, -- why the items panel is empty
     inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {} }, -- inbox.list and `inbox` events (#33)
     needs_you = nil, -- the hub's "needs you" count (hub.status, `inbox` events); nil until it said
@@ -32,6 +34,8 @@ function M.reset(opts)
       preset = nil,
       sizes = vim.empty_dict(), -- manual left/right widths and dock height; absent means use the formula
       items_filter = 'all',
+      items_folds = {}, -- per-item tree folds; absent uses the level/state default
+      board_parent = nil, -- optional open container within the current release
       current_release = nil, -- reserved for the human's pick (T-128)
       sessions_sel = nil, -- the cursor-selected session, expanded in the panel
       sessions_stopped_folded = true,

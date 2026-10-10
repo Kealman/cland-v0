@@ -137,6 +137,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
           root,
           startedAt: startedAt.toISOString(),
           keys: config?.keys ?? { layouts: [] },
+          tracker: config?.tracker ?? { levels: [...tracker.levels] },
           uptimeMs: Date.now() - startedAt.getTime(),
           harnesses: adapters?.sessions.list() ?? [],
         }),
