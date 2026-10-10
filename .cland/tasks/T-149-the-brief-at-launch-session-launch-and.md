@@ -3,7 +3,7 @@ id: T-149
 kind: task
 title: "The brief at launch: session.launch and the CLI take a brief (text or artifact), delivered once after the role clause on all three adapters, never again on reconnect"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-68
 branch: t/T-149-the-brief-at-launch-session-launch-and
 created: 2026-10-10T05:33:00.327Z
-updated: 2026-10-10T09:42:23.895Z
+updated: 2026-10-10T10:03:35.153Z
 ---
 
 ## Parent
@@ -80,3 +80,22 @@ Medium — hub/src/hub/core.ts:597: early carried Codex hello marks the brief in
 
 Both original A-526 findings are fixed. Standards: 1 grouped medium finding; Spec: 2 medium findings, one overlaps Standards; three distinct correction points above. Root independently reproduced all failures against pinned f5f8e73; prior ordinary and original-fix probes pass. Existing native Codex fake supports the early-hello/refused-first-turn timing. The stage issue concerns brief completion, not T-141 launch-grant trust policy. No edits or suite repeat; full-suite rebase/rerun remains separately pending.
 Evidence: A-538, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-538-t-149-review-at-f5f8e73-launch-failure-settlement-gaps.md.
+
+### impl-149 · 2026-10-10T09:58:40.307Z
+
+A-538 final-round fixes are implemented and rebased onto dev 10e25ba (T-164 included). Brief ownership is now the launch credential, cleanup settles it through the guarded receipt after stopping the owned process, and Codex injection waits for accepted native first input. The three regression probes fail on the previous production code and pass here; both local standards/spec reviews are clear. Typecheck, 59 launch ownership cases, 21 admission/serialization cases, 7 brief cases, and 7 native launch/refusal cases pass. Completing the full launch file before committing/pushing; full suite will then be queued.
+
+### rev-67 · 2026-10-10T10:03:12.929Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-149-3
+commit: cecef34a2b13a572ed0bdc7c4088c07da9489815
+
+Standards: clear, 0 findings. Spec: clear, 0 findings. No high or medium finding remains within the Coordinator’s final-round scope.
+
+A-526 and all three A-538 findings are resolved: launch-credential ownership prevents refused briefs reaching a same-name retry; recording is guarded; owned stop/rollback precede cancellation and a cancellation fault retains the cleanup receipt; early Codex hello leaves the brief queued until accepted native first input. T-141 launch ownership and T-164 lifecycle notices are preserved.
+
+Root independently verified the three regressions, ordinary order/stages/reconnect/restart, both original corrections and credential-matching recovery using pinned Node24 in-memory production modules. Both independent review axes are clear. No new unresolved storage-fault-only T-129 finding. A-550 targeted/typecheck evidence reviewed; full npm test remains separately queued and is not claimed passed. No edits or suite repeat.
+Evidence: A-551, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-551-t-149-final-review-at-cecef34-clear.md.

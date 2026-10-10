@@ -2,8 +2,8 @@
 id: T-165
 kind: task
 title: "The needs-you chip counts only the inbox's now-layer sections: no unread messages or notifications; one shared count with the inbox header"
-state: closed
-status: done
+state: open
+status: planned
 rank: 1310
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-74
 branch: t/T-165-the-needs-you-chip-counts-only-the-inbox
 created: 2026-10-10T09:19:59.837Z
-updated: 2026-10-10T09:52:14.393Z
+updated: 2026-10-10T10:11:50.023Z
 ---
 
 ## Parent
@@ -70,3 +70,9 @@ Final validation: npm run typecheck passed with Node v24.21.0; locked npm run te
 ### coord · 2026-10-10T09:52:14.393Z
 
 Merged fdadb7beaaa8156083ce342cb2d2156d57725ab6 onto dev.
+
+### coord · 2026-10-10T10:11:50.023Z
+
+Reopened 2026-10-10 ~10:12Z. The human still sees 'needs you 112' in the chip and the inbox header after the T-165 merge (fdadb7b) and an editor restart. The hub says needsYou 0, and the inbox shows asks 0, approvals 0, waiting 0, notifications 427.
+Cause: state.needs_you() (nvim/lua/cland/state.lua:315) adds every 'death' and 'not clear' verdict among all notifications. Those never resolve, so the count grows without bound (112 of 427).
+Fix: the chip and the inbox header show the hub's needsYou and nothing else; Neovim computes nothing. Add a stub-hub test with hundreds of notifications of every kind, hub needsYou 0, asserting the chip and the header show 0, and that the chip follows the hub's needsYou when it changes. Note for the spec: §3.5 lists 'verdict not clear' and 'session died' as now-layer inbox events. If they should count, the hub's needsYou must count them, with a resolution rule, not Neovim.
