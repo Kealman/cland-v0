@@ -309,6 +309,7 @@ end
 function M.winbar(win)
   local buf = api.nvim_win_get_buf(win)
   local role = vim.b[buf].cland_role
+  if role == 'graph' then return require('cland.graph').winbar(win) end
   if role == 'items' then
     return head(win, 'ITEMS', { { require('cland.items').summary(), 'ClandDimBar' } })
   elseif role == 'sessions' then

@@ -75,8 +75,8 @@ function M.context()
     return { session = vim.b[buf].cland_session, here = 'session' }
   elseif role == 'item' then
     return { item = vim.b[buf].cland_item, here = 'item' }
-  elseif role == 'board' then
-    local id = require('cland.board').item_at()
+  elseif role == 'board' or role == 'graph' then
+    local id = require('cland.' .. role).item_at()
     if id then
       return { item = id }
     end

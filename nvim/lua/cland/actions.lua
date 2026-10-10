@@ -81,7 +81,10 @@ add('composer', 'q', 'Cancel reply')
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'}})
 group('board', {{'p','Next board parent'}, {'P','Previous board parent'}, {'<CR>','Open item card'}, {'<2-LeftMouse>','Open item card with mouse'}})
 group('graph', {{'p','Next graph parent'}, {'P','Previous graph parent'}, {'d','Toggle done tray nodes'},
-  {'o','Turn graph sideways or vertical'}, {'r','Toggle implied blocking edges'}})
+  {'o','Turn graph sideways or vertical'}, {'r','Toggle implied blocking edges'},
+  {'h','Previous node to the left'}, {'l','Next node to the right'}, {'j','Next node below'}, {'k','Previous node above'},
+  {'^','First node in band or first layer'}, {'$','Last node in band or last layer'},
+  {'gg','First graph layer or buffer start'}, {'G','Last graph layer or buffer end'}, {'<CR>','Open graph node item'}})
 group('artifact', {{'<leader>ps','Send prompt draft'}, {'<leader>pa','Attach prompt draft'},
   {'q','Previous centre view'}, {'R','Render Mermaid in browser'}})
 group('artifacts', {{'<CR>','Open selected artifact'}, {'q','Previous centre view'}, {'p','Promote selected artifact to repository'}})
