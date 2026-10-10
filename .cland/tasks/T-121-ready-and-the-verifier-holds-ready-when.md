@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-47
 branch: t/T-121-ready-and-the-verifier-holds-ready-when
 created: 2026-10-09T21:56:37.696Z
-updated: 2026-10-10T00:18:47.694Z
+updated: 2026-10-10T00:55:27.547Z
 ---
 
 ## Parent
@@ -55,3 +55,53 @@ Shared evaluator in tracker/gate-verdicts.ts now serves merge and ready. Existin
 ### impl-121 · 2026-10-10T00:18:47.694Z
 
 Fix round covers pre-hello claim/hold identity adoption, one readiness continuation timing scope, bounded delayed retries with a ten-attempt pause/Agents notice and event-driven restart, and startup reconciliation of known stopped process holds. Regressions demonstrate the prior timing/retry failures and the prior crash/restart hold leak; release without a verdict preserves review/QA status as agreed.
+
+### rev-6 · 2026-10-10T00:26:57.161Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-121-1
+commit: 9c28896d3b6a5eafe166826c4ecace28e6621fb8
+
+High — hub/src/tracker/tracker.ts:1263: adoption publishes the alias mapping before SQLite commits. If adoption fails, a new verdict uses rev-id while its Implementer claim remains name:rev; gate-verdicts.ts:13 accepts the self-review and ready is written. A pinned SQLite :memory: probe injecting one SQLITE_BUSY confirms this. Fence unresolved adoption and preserve authoritative claimant/writer identity comparison. Coordinator accepted the finding and requested the fix.
+
+No other high or medium findings remain across the full 7e3797d..9c28896 range. Standards are clear. A-283 timing/hold identity, A-284 lost edit and A-287 crash recovery are resolved. Normal hold verdict/release, edited-evidence refusal and pre-hello self-review refusal probes pass. Typecheck and diff check pass; no suite run.
+
+Default Reviewer/QA Work clauses are at hub/src/roles/default-roles.ts:106/:132 (grants :122/:149). Project activation points are .cland/roles.toml:100/:126 (grants :116/:143), still the existing pre-T-121 clauses pending Coordinator activation.
+
+Full evidence A-300: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-300-t-121-full-review-rev-6-121-1-at-9c28896.md. Exact fault probe A-299.
+
+### impl-121 · 2026-10-10T00:29:32.690Z
+
+A-299 partial-failure fix committed at b1e7e2f44512be0fd0f5e83c4648f3e6387efab4. Alias publication now follows atomic adoption commit; failed adoption fences and retries before verdict/claim/hold admission. Shared gate/ready evidence compares authoritative hub identities. SQLITE_BUSY rollback/fence/retry regression passes with no ready event and continued self-review refusal; typecheck passes. Full suite queued on this head behind Coordinator's T-119 suite.
+
+### rev-6 · 2026-10-10T00:33:35.230Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-121-2
+commit: b1e7e2f44512be0fd0f5e83c4648f3e6387efab4
+
+Medium — hub/src/tracker/tracker.ts:1289: pending adoption is memory-only; after failed adoption and restart, a stored-real-ID CLI actor can successfully release/write a verdict while its durable name:rev hold remains, and its own claim release is refused. Recover adoption from durable mapping or reconcile it at admission, before a new hello.
+
+The prior High is resolved: alias publication follows commit, failed adoption fences verdict/hold/claim work, retry is atomic, and the authoritative gate keeps self-review refused. No other High/Medium remains. Standards clear; Spec not clear. Hub typecheck and diff --check pass; no suite run. Reproductions: A-302 (.cland/artifacts/A-302-t-121-b1e7e2f-adoption-failure-and-restart-probe.md). Full review: A-303 (.cland/artifacts/A-303-t-121-full-review-rev-6-121-2-at-b1e7e2f.md).
+
+### rev-6 · 2026-10-10T00:40:28.412Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-121-3
+commit: 29dd607ca9ae666a3d0d6b2514b845b25edb313f
+
+No High, Medium or Low findings remain across 7e3797d..29dd607. Standards clear; Spec clear.
+
+A-299 self-review safety, A-302 restart recovery and legacy NULL claim recovery are resolved: persistent SQLite failure fences verdict/hold/claim work; successful retry atomically adopts durable identities and restores both hold release paths and own claim release. Authoritative ownership comparison refuses a different session ID with a matching display name; self-review remains review-claimant.
+
+Hub typecheck and diff --check pass; pinned restart, persistent-failure and isolated legacy memory probes pass. No suite run. Evidence: A-307 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-307-t-121-d2d4b69-restart-recovery-review-evidence.md), and A-310 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-310-t-121-full-review-rev-6-121-3-at-29dd607.md). Default Reviewer/QA clauses: hub/src/roles/default-roles.ts:106/:132, grants :122/:149; project activation locations .cland/roles.toml:100/:126, grants :116/:143.
+
+### impl-121 · 2026-10-10T00:55:27.547Z
+
+Cancelled the queued full suite on 29dd607 before lock acquisition, at Coordinator request. Awaiting T-119 landing; will rebase once onto origin/dev and run adoption, gate, ready and levels regressions before queuing the final suite.

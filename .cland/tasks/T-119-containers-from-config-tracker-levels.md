@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-44
 branch: t/T-119-containers-from-config-tracker-levels
 created: 2026-10-09T21:56:19.667Z
-updated: 2026-10-10T00:16:27.147Z
+updated: 2026-10-10T00:56:58.683Z
 ---
 
 ## Parent
@@ -212,3 +212,29 @@ Earlier mutable-array/object/Set bindings whose level literals widen away are no
 Production is unchanged, so A-280's status/callback/watcher integration and earlier scan-drain, indexing, hierarchy, importer, init/update and Neovim clearance carry forward. This verdict covers the full item against 7e3797d. No suite, repository typecheck or edits; focused virtual compiler sample diagnostics are explained in the artifact.
 
 Standards: 0 findings. Spec: 0 findings. Evidence A-288: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-288-t-119-final-guard-review-of-e6bf9b6-clear.md.
+
+### impl-119 · 2026-10-10T00:25:23.538Z
+
+Environment investigation stopped per Coordinator; no source changes. A-297 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-297-t-119-environment-findings-and-deferred-cli-storage-imports.md) records environment, same-warning baseline/T119 evidence A-293, older eager CLI→storage chains and proposed no-SQLite-load/no-warning guard for separate tech debt. Explicit NVM24 asks CLI run passes4/4; final code head remains e6bf9b69be17daadccbf45e4c7e5aaf5847611ff clean/pushed. Coordinator's replacement full suite owns merge evidence; local superseded suite cancelled exit143.
+
+### impl-119 · 2026-10-10T00:37:24.006Z
+
+Article fix committed/pushed at 9c3cb01980e491736d3709d76cffe3ab62003c65. Shared kindWithArticle chooses a/an by first letter and covers worktree, parenting, close and version phrases. Existing worktree assertions preserved; configured initiative/feature regression red then green. Explicit NVM24 targeted worktrees9/9, levels14/14, source2/2 and typecheck pass; internal review clear. Full package suite starts on this committed head using NVM24 PATH.
+
+### rev-65 · 2026-10-10T00:42:47.210Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-119-8
+commit: 9c3cb01980e491736d3709d76cffe3ab62003c65
+
+High: 0. Medium: 0. Low: 0. Standards: clear. Spec: clear.
+
+Full item against 7e3797d; carries forward rev-65-119-7 / A-288 for unchanged behavior. The six-file article delta restores “an epic”, handles configured “an initiative” and “a feature”, and preserves the worktree, parenting, close and version refusal meanings. The helper introduces no default-level literal comparison under the agreed guard rule. Original worktree assertions remain unchanged; the configured regression checks both articles and no worktree creation.
+
+Read-only pinned in-memory probes passed; no suite was run. Evidence: A-311, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-311-t-119-article-helper-review-of-9c3cb01-clear.md.
+
+### impl-119 · 2026-10-10T00:56:58.683Z
+
+Implementation complete on 9c3cb01980e491736d3709d76cffe3ab62003c65. Configured container kinds now cover the parser, hub, CLI and Neovim; queued close and kind changes scan disk children and fail closed. Regression tests and source guard included. Final root npm test exit 0: hub 770/770, Neovim 123/123; both typechecks passed with explicit nvm v24.21.0. Final log A-316: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-316-t-119-full-hub-and-neovim-suite-passes-on-9c3cb01.log. Official review rev-65-119-8 clear; awaiting Coordinator merge.
