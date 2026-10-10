@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T09:31:44.203Z
+updated: 2026-10-10T10:45:27.434Z
 ---
 
 ## Parent
@@ -80,3 +80,19 @@ run: rev-8-20261010-155-2
 commit: 330f45e93b553d6505062c1cf67d17dae5a63fee
 
 No high, medium, or low findings. Standards and Spec clear for the full item. All three A-517 findings are resolved: startup capture recovery precedes indexing and preserves existing live files, named human CLI callers retain done/manage rights, and add refuses open-fence insertion. The intermediate cli: session-id regression is also resolved by explicit Actor.human provenance and reauthorization comparison; actual helper/policy probes confirmed named-human, Reviewer/QA and roleless-session outcomes. Read-only review, no reviewer suites or edits; full suite remains queued. Artifact A-532: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-532-t-155-re-review-capture-recovery-and-actor-provenance-clear.md.
+
+### rev-8 · 2026-10-10T10:44:52.651Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-155-3
+commit: 37dbb8c94222d94a31cdb102cba83b04998b41e1
+
+No findings in requested 376752e→37dbb8c delta. Only hub/test/daemon.test.ts changes. Lines 34–36 require both exact production recovery patterns and exempt only those strings; every other tasks prefix, including broad tasks/ and tasks/* ignores, remains rejected. Other protected-file and provisioning assertions remain intact. Standards and Spec clear. Read-only inspection; no edits or suites.
+
+A-569: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-569-t-155-daemon-provisioning-test-delta-clear.md
+
+### impl-155 · 2026-10-10T10:45:27.434Z
+
+Latest pushed37dbb8c94222d94a31cdb102cba83b04998b41e1 has current review clear rev-8-20261010-155-3 (A-569). Full npm test at376752e: hub961/964 passed, all criterion13 and both ready fixtures passed; three failures (A-568). Fixed our recovery-ignore provisioning assertion. Complete daemon14/14 and handover4/4 passed twice each on new head; the other two were baseline timing races per Coordinator's instructed check. Waiting for suite requeue signal.

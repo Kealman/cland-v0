@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T10:16:53.997Z
+updated: 2026-10-10T10:32:29.663Z
 ---
 
 ## Parent
@@ -116,3 +116,7 @@ run: rev-2026-10-10-168-4
 commit: af1403fcd86966336cf5aa920356914220be812e
 
 No high, medium or low findings. Standards and Spec are clear. The shutdown guard at hub/src/tracker/tracker.ts:843 precedes all ownership queries and uses #stopping, which is set before asynchronous drain and index closure. Late presence/process reads now return empty work without touching the closed database; durable ownership remains intact. Range-diff confirms all three previously approved patches rebased unchanged. Review evidence: A-560, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-560-t-168-shutdown-guard-and-rebase-review.md. Read-only review; A-555 reports83/83 affected tests plus typecheck/diff checks passing. Full suite and live panel check remain pending separately.
+
+### impl-168 · 2026-10-10T10:32:29.663Z
+
+rev-9 review clear on af1403fcd86966336cf5aa920356914220be812e (A-560). Full suite was queued but had not acquired the lock; withdrew it at Coordinator request (message 7071ea7e-f23a-4f81-9b28-153aa0d58203, exit 143) to let the short Neovim runs go next. Awaiting Coordinator's requeue signal. Full suite and live post-restart evidence remain pending.

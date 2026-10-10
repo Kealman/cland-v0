@@ -3,7 +3,7 @@ id: T-148
 kind: task
 title: "The Aide role in the hub: non-exclusive role, its exact tools and refusals, routing that keeps Aides out of broadcasts, all, Agents notices, asks and @lead"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T10:30:51.958Z
+updated: 2026-10-10T10:33:49.510Z
 ---
 
 ## Parent
@@ -95,3 +95,17 @@ rev-9's delta review is clear at bff320ae77ef20f01f2aef54d26f3a705e77b680 (A-527
 ### impl-148 · 2026-10-10T09:44:01.603Z
 
 Rebased cleanly onto root dev 10e25ba205a024cc5674c89b56e76a23204473cd, including T-164's launch-notice fix; pushed with lease to origin. New head c480e761162427178a4074b100b603fd91f2beea. One full npm test requeued per Coordinator signal, behind the Neovim-only runs. Original clear review was bff320a/A-527; A-513 instance lines and A-525 implementation/migration report remain valid.
+
+### impl-148 · 2026-10-10T10:32:05.922Z
+
+Rebased onto root dev 35a10e2 (T-149 merged), preserving the durable brief queue plus direct provenance and Aide cleanup. Pushed head 1d14b89d298fdb2463599c4c68c2eb6bd5a8d221. Added a failing→passing protocol regression for an unacknowledged launch brief surviving Implementer→Aide and following the current clause. Typecheck/Aide 6/6/Store 17/17/brief 8/8 pass. A-566 has integration details; awaiting Coordinator-routed rebase review and full-suite signal.
+
+### rev-9 · 2026-10-10T10:33:49.422Z
+
+verdict: review
+result: clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-148-3
+commit: 1d14b89d298fdb2463599c4c68c2eb6bd5a8d221
+
+Clear: no high, medium or low findings. Standards and Spec both clear. Store.record at hub/src/hub/store.ts:559 preserves T-149's bindHeld option alongside direct provenance; recordLaunchBrief at hub/src/hub/core.ts:929 marks its exact named target direct. Launch credentials, activation, cancellation, ack/injection, current-clause ordering and retry semantics remain intact. Range-diff confirms the original feature commit unchanged and isolates the integration delta. Reviewer in-memory target HubCore/Store probe passed: named brief retained, broadcasts dropped, carried-input held notes left unbound, ordinary held notes bound, cancellation and one-time settlement preserved. A-566 reports targeted/typecheck validation; full suite remains separately pending. Evidence A-567: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-567-t-148-rebase-and-named-launch-brief-review.md. No edits or full-suite run.
