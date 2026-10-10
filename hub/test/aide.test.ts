@@ -76,7 +76,9 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
   assert.equal(opened.ok, true);
   await call('send', { topic: opened.topic.id, text: 'The human may read this topic.' });
   await call('send', { to: ['coord'], text: 'Aide named send' });
-  await coord.waitForEvent(e => e.params.content === 'Aide named send');
+  const named = await coord.waitForEvent(e => e.params.meta?.from === 'aide-1' && e.params.content.includes('Aide named send'));
+  assert.match(named.params.content, /(?:^|\n)Aide named send(?:\n|$)/);
+  assert.match(named.params.content, /event · task · T-1 status changed backlog → planned/);
   await call('history', { topic: opened.topic.id });
   await call('status', { text: 'Planning with the human' });
   for (const topic of [opened.topic.id, 'general', 'agents']) {
@@ -178,7 +180,8 @@ test('retained subscriptions cannot deliver Agents events to an Aide, and lead s
   assert.equal((await aide.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
   await coord.call('send', { to: [`lead ${item.id}`], text: 'claimed lead barrier' });
   const claimed = await aide.waitForEvent(e => e.params.content.includes('claimed lead barrier'));
-  assert.doesNotMatch(claimed.params.content, /event · task/);
+  assert.match(claimed.params.content, /event · task · T-1 status changed backlog → in progress/);
+  assert.doesNotMatch(claimed.params.content, /status changed planned → backlog/);
   assert.equal((await aide.call<{ ok: boolean }>('task.claim', { id: item.id, release: true })).ok, true);
   const human = await ui.request({ type: 'topic.send', topic: 'general', to: [`lead ${item.id}`], text: 'released lead' });
   assert.deepEqual((human.value as { message: Message }).message.to, ['coord']);

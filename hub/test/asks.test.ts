@@ -1,12 +1,11 @@
 // Asks and the inbox (spec 4.5 and 5, #33): only the Coordinator asks; an open ask keeps its topic waiting for the
 // human and is listed in the inbox; the human's answer carries `answer_to`, reaches the asker and clears the wait;
-// `resolve` withdraws, closing cancels; approvals follow the sessions' states; notifications come from verdicts,
-// role changes and deaths, and are dismissed; "needs you" is asks + approvals + waiting topics. A real hub
+// `resolve` withdraws, closing cancels; approvals follow the sessions' states; role notifications are dismissed; "needs you" is asks + approvals + waiting topics. A real hub
 // (in-process, or the daemon where the tracker and the adapters are needed), scripted spokes over MCP, a UI client
 // speaking the frames; nothing inside either side is reached into.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, connectWsUi, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { connectUi, connectWsUi, sleep, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 import type { Hub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
 
@@ -236,7 +235,7 @@ test('closing the topic cancels its open asks; a topic left waiting without an a
   assert.equal((await topicOf(ui, topic.id)).status, 'closed', 'the note does not reopen it');
 });
 
-test('on a project: closing the item cancels the ask; a verdict and a role change are notifications, dismissed one by one or all; asks are not dismissable', async (t) => {
+test('on a project: closing the item cancels the ask; verdicts stay in the background and role changes are dismissed one by one or all; asks are not dismissable', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
@@ -258,21 +257,17 @@ test('on a project: closing the item cancels the ask; a verdict and a role chang
   await coord.waitForEvent((e) => String(e.params.content).includes('was cancelled: T-1 was closed'));
   assert.equal((await topicOf(ui, topic.id)).status, 'closed');
 
-  // a verdict comment, then a role change: two notifications (the coordinator's assignment came first)
+  // Verdicts stay in the background; role changes remain dismissable inbox notifications.
   mark = ui.frames.length;
   await ok(ui, { type: 'task.comment', item, text: 'Two findings.', verdict: { verdict: 'review', result: 'not clear', run: 'r-1' }, as: { name: 'rev-1', role: 'reviewer' } });
-  let listed = await inboxEvent(ui, (i) => i.notifications.some((n) => n.kind === 'verdict'), mark);
-  const verdict = listed.notifications.find((n) => n.kind === 'verdict') as Notification;
-  assert.equal(verdict.text, 'T-1 review not clear · rev-1 · run r-1');
-  assert.equal(verdict.item, 'T-1');
-  assert.equal(verdict.result, 'not clear');
+  assert.equal((await inbox(ui)).notifications.some(n => n.kind === 'verdict'), false);
+  let listed: Inbox;
   await ok(ui, { type: 'role.set', session: 'rev-1', role: 'reviewer' });
   listed = await inboxEvent(ui, (i) => i.notifications.some((n) => n.kind === 'role' && n.session === 'rev-1'), mark);
   assert.deepEqual(
     listed.notifications.map((n) => [n.kind, n.text]),
     [
       ['role', 'coord is Coordinator: assigned'],
-      ['verdict', 'T-1 review not clear · rev-1 · run r-1'],
       ['role', 'rev-1 is Reviewer: assigned'],
     ],
   );
@@ -283,7 +278,7 @@ test('on a project: closing the item cancels the ask; a verdict and a role chang
   assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: b.ask })).error), /asks and approvals are not dismissed/);
   const first = listed.notifications[0] as Notification;
   const after = await ok<Inbox>(ui, { type: 'inbox.dismiss', notification: first.id });
-  assert.deepEqual(after.notifications.map((n) => n.kind), ['verdict', 'role']);
+  assert.deepEqual(after.notifications.map((n) => n.kind), ['role']);
   assert.equal(after.asks.length, 1);
   mark = ui.frames.length;
   const none = await ok<Inbox>(ui, { type: 'inbox.dismiss_all' });
@@ -326,10 +321,10 @@ test('a session entering waiting for approval is an approval within one event, w
   await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'tool-done', at: Date.now(), payload: {} });
   const gone = await inboxEvent(ui, (i) => i.approvals.length === 0, mark);
   assert.equal(gone.needsYou, 1);
-  // a session idle past the threshold (CLAND_IDLE_NOTIFY_MS here; [inbox] idle_minutes in .cland/config.toml) is noted
+  // Long idle remains in the background (CLAND_IDLE_NOTIFY_MS here; [inbox] idle_minutes in config).
   await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'turn-end', at: Date.now(), payload: {} });
-  const idle = await eventually('the idle notification', async () => (await inbox(ui)).notifications.find((n) => n.kind === 'idle' && n.session === 'impl-1'));
-  assert.equal(idle.text, 'impl-1 [Implementer] idle 1 min');
+  await sleep(500);
+  assert.equal((await inbox(ui)).notifications.some(n => n.kind === 'idle'), false);
 });
 
 test('a launched session that renamed itself is one approval, with its attach command (review of #33)', async (t) => {
@@ -394,19 +389,15 @@ test('deleting a topic with an open ask refreshes the subscribed inbox (review o
   assert.equal(refreshed.needsYou, 0);
 });
 
-test('a verdict written as text (no structured argument) is a notification like any verdict (review of #33)', async (t) => {
+test('a verdict written as text stays out of the inbox', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   await ok(ui, { type: 'task.create', title: 'Textual verdict' });
-  const mark = ui.frames.length;
   await ok(ui, { type: 'task.comment', item: 'T-1', text: 'verdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-7\n\nAll green.', as: { name: 'qa-1', role: 'qa' } });
-  const listed = await inboxEvent(ui, (i) => i.notifications.some((n) => n.kind === 'verdict'), mark);
-  const verdict = listed.notifications.find((n) => n.kind === 'verdict') as Notification;
-  assert.equal(verdict.text, 'T-1 qa clear · qa-1 · run q-7');
-  assert.equal(verdict.result, 'clear');
+  assert.equal((await inbox(ui)).notifications.some(n => n.kind === 'verdict'), false);
   // a plain comment is no notification
   await ok(ui, { type: 'task.comment', item: 'T-1', text: 'Just a note.', as: { name: 'qa-1', role: 'qa' } });
-  assert.equal((await inbox(ui)).notifications.filter((n) => n.kind === 'verdict').length, 1);
+  assert.equal((await inbox(ui)).notifications.filter((n) => n.kind === 'verdict').length, 0);
 });

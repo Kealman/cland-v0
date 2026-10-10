@@ -10,6 +10,7 @@ import { Store } from '../src/hub/store.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { agentsRecord } from '../src/hub/agents-topic.ts';
 import { fixedRoles } from '../src/roles/config.ts';
+import type { Subscription } from '../src/protocol.ts';
 import type { LogFn } from '../src/log.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { connectSocket, connectUi, eventually, spawnSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
@@ -78,7 +79,7 @@ async function pendingAlias(t: TestContext, log?: LogFn) {
     const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [`lead ${item}`], text: 'Still for the original claimant' });
     assert.equal(sent.ok, true, sent.error);
     assert.deepEqual((sent.value as { message: { to: string[] } }).message.to, ['renamed']);
-    await owner.waitForEvent(e => e.params.content === 'Still for the original claimant');
+    await owner.waitForEvent(e => e.params.content.includes('Still for the original claimant'));
   };
   return { closeHub, closeSessions, root, edge, tracker, table, watched, ui, owner, item, hub, sessions, hello, openHello, launch, remainsOwner, starts };
 }
@@ -182,6 +183,8 @@ for (const cleanup of ['stopped', 'refused'] as const) {
     await started;
     const made = await f.ui.request({ type: 'task.create', title: 'Claim during spawn', assignee: 'target' });
     const item = (made.value as { item: { id: string } }).item.id;
+    // No status transition at claim: this name-conflict scenario starts with work already in progress.
+    assert.equal((await f.ui.request({ type: 'task.edit', item, status: 'in progress' })).ok, true);
     assert.equal((await f.ui.request({ type: 'task.claim', item, as: { name: 'target' } })).ok, true);
     assert.equal((await f.owner.call<{ ok: boolean }>('rename', { name: 'target' })).ok, true);
     assert.equal((await f.owner.call<{ ok: boolean }>('rename', { name: 'renamed' })).ok, true);
@@ -205,7 +208,7 @@ for (const cleanup of ['stopped', 'refused'] as const) {
     const report = await f.ui.request({ type: 'topic.send', topic: 'general', to: [`lead ${item}`], text: 'The claim created during spawn still leads to its owner' });
     assert.equal(report.ok, true, report.error);
     assert.deepEqual((report.value as { message: { to: string[] } }).message.to, ['renamed']);
-    await f.owner.waitForEvent(e => e.params.content === 'The claim created during spawn still leads to its owner');
+    await f.owner.waitForEvent(e => e.params.content.includes('The claim created during spawn still leads to its owner'));
     await f.remainsOwner();
   });
 }
@@ -309,7 +312,7 @@ test('a named launch conflict stops only the spawned identity and preserves the 
   assert.deepEqual(stopped, ['launched:target']);
   const presence = await f.owner.call<{ sessions: Array<{ name: string; role: string; sessionId: string }> }>('who');
   assert.deepEqual(presence.sessions.map(({ name, role, sessionId }) => ({ name, role, sessionId })), [{ name: 'target', role: 'implementer', sessionId: 'owner-id' }]);
-  assert.equal((await f.owner.call<{ subscriptions: unknown[] }>('subscriptions')).subscriptions.length, 1, 'an unpublished conflict cannot close the name owner’s subscriptions');
+  assert.equal((await f.owner.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter(s => !s.default).length, 1, 'an unpublished conflict cannot close the name owner’s subscriptions');
   assert.equal((await f.owner.call<{ ok: boolean }>('task.comment', { id: f.item, text: 'Original owner remains fenced.' })).ok, false);
   const listed = await f.ui.request({ type: 'session.list' });
   assert.equal((listed.value as { processes: Array<{ name: string }> }).processes.some(p => p.name === 'target'), false);
@@ -874,11 +877,11 @@ test('a published launch with failed watching sends its terminal fact and ends e
   ]);
   const listing = await f.ui.request({ type: 'event.subscriptions', as: { name: 'renamed' } });
   assert.equal(listing.ok, true, listing.error);
-  assert.deepEqual((listing.value as { subscriptions: Array<{ subject: unknown }> }).subscriptions.map(s => s.subject), [{ role: 'implementer' }]);
+  assert.deepEqual((listing.value as { subscriptions: Subscription[] }).subscriptions.filter(s => !s.default).map(s => s.subject), [{ role: 'implementer' }]);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'implementer' })).ok, true);
   const owned = await f.ui.request({ type: 'event.subscriptions', as: { name: 'target' } });
   assert.equal(owned.ok, true, owned.error);
-  assert.deepEqual((owned.value as { subscriptions: unknown[] }).subscriptions, []);
+  assert.deepEqual((owned.value as { subscriptions: Subscription[] }).subscriptions.filter(s => !s.default), []);
   const listed = await f.ui.request({ type: 'session.list' });
   assert.deepEqual((listed.value as { processes: unknown[]; pendingStops: unknown[] }).processes, []);
   assert.deepEqual((listed.value as { pendingStops: unknown[] }).pendingStops, []);
@@ -920,7 +923,7 @@ test('role changes on a quarantined launch are refused until verified cleanup co
     { type: 'role.clear', session: 'target' },
     { type: 'role.set', session: 'target', role: 'reviewer', move: true },
   ]) refused.push(await f.ui.request(frame));
-  const waiting = (await f.owner.call<{ subscriptions: unknown[] }>('subscriptions')).subscriptions.length;
+  const waiting = (await f.owner.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter(s => !s.default).length;
   finishStop();
   assert.equal((await launching).ok, false);
   for (const result of refused) {
@@ -928,7 +931,7 @@ test('role changes on a quarantined launch are refused until verified cleanup co
     assert.match(result.error!, /pending launch.*target/);
   }
   assert.equal(waiting, 1, 'quarantine must not publish a terminal fact while stop is unverified');
-  assert.deepEqual((await f.owner.call<{ subscriptions: unknown[] }>('subscriptions')).subscriptions, []);
+  assert.deepEqual((await f.owner.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter(s => !s.default), []);
   const presence = await f.owner.call<{ sessions: Array<{ name: string; role: string | null }> }>('who');
   assert.equal(presence.sessions.find(s => s.name === 'target')?.role, null);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' })).ok, true);
@@ -1125,7 +1128,7 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
   assert.equal(f.table.get('target')?.status, 'stopped');
   assert.equal(f.table.pendingStops()[0]?.published, true);
   const before = await f.ui.request({ type: 'event.subscriptions', as: { name: 'renamed' } });
-  assert.equal((before.value as { subscriptions: unknown[] }).subscriptions.length, 2, 'failed terminal checkpoint rolls back subscription closure');
+  assert.equal((before.value as { subscriptions: Subscription[] }).subscriptions.filter(s => !s.default).length, 2, 'failed terminal checkpoint rolls back subscription closure');
   client.close();
   await client.closed;
   fault = false;
@@ -1144,11 +1147,11 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
   assert.deepEqual(digest.params.content.match(/event · session.state · target (launched|stopped)/g), [
     'event · session.state · target launched', 'event · session.state · target stopped',
   ]);
-  assert.deepEqual((await owner.call<{ subscriptions: Array<{ subject: unknown }> }>('subscriptions')).subscriptions.map(s => s.subject), [{ role: 'implementer' }]);
+  assert.deepEqual((await owner.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter(s => !s.default).map(s => s.subject), [{ role: 'implementer' }]);
   assert.equal((await r.ui.request({ type: 'role.set', session: 'target', role: 'implementer' })).ok, true);
   const owned = await r.ui.request({ type: 'event.subscriptions', as: { name: 'target' } });
   assert.equal(owned.ok, true, owned.error);
-  assert.deepEqual((owned.value as { subscriptions: unknown[] }).subscriptions, []);
+  assert.deepEqual((owned.value as { subscriptions: Subscription[] }).subscriptions.filter(s => !s.default), []);
   const listed = await r.ui.request({ type: 'session.list' });
   assert.deepEqual((listed.value as { processes: unknown[] }).processes, []);
   assert.deepEqual((listed.value as { pendingStops: unknown[] }).pendingStops, []);

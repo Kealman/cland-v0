@@ -719,7 +719,12 @@ export class Sessions {
 
   /** After all adapters/callbacks are installed, reconcile terminal rows and interrupted launch reservations. */
   releaseInterruptedLaunches(): void {
-    for (const p of this.#table.all()) if (!this.#pendingStops.has(p.sessionId)) this.#core.rememberProcess(this.view(p));
+    const processes = this.#table.all().filter(p => !this.#pendingStops.has(p.sessionId)).map(p => this.view(p));
+    // Recovery must know every lead's durable status before routing any verifier's final event.
+    for (const process of processes) this.#core.seedProcess(process);
+    // A verified stop is authoritative even while its published row awaits cleanup.
+    for (const entry of this.#pendingStops.values()) if (entry.published && entry.stages.stopped) this.#core.seedProcess(this.view({ ...entry.process, status: 'stopped' }));
+    for (const process of processes) this.#core.rememberProcess(process);
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }
 

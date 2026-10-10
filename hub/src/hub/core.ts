@@ -41,7 +41,7 @@ import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
 import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
-import type { ItemChange, TopicBinding } from '../tracker/tracker.ts';
+import type { ItemChange, ItemSummary, TopicBinding } from '../tracker/tracker.ts';
 import { sessionActor } from '../tracker/requests.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
@@ -72,7 +72,9 @@ export const HUMAN = 'human';
 export const DEFAULT_HUMAN_ADDRESSEE = 'coordinator';
 export const TOPIC_HISTORY_LIMIT = 200;
 
-type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean };
+type DefaultItem = Pick<ItemSummary, 'id' | 'state' | 'parent' | 'claim'>;
+
+type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' };
 
 export type Connection = {
   name: string;
@@ -139,7 +141,7 @@ export type CoreOptions = {
   items?: TopicItems;
   /** Indexed session work, without file I/O; absent on a hub without a tracker. */
   sessionHolds?: (sessionId: string) => SessionHold[];
-  /** How long a session stays idle before the inbox notes it, ms (default 30 min; 0: never). */
+  /** How long a session stays idle before subscriptions report it, ms (default 30 min; 0: never). */
   idleNotifyMs?: number;
 };
 
@@ -196,6 +198,8 @@ export class HubCore {
   #publishedPresence = '[]';
   #items: TopicItems | null;
   readonly #sessionHolds: (sessionId: string) => SessionHold[];
+  /** The last indexed ownership survives a watcher removal until its final fan-out. */
+  readonly #defaultItems = new Map<string, DefaultItem>();
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
   readonly #publishedTopics = new Map<string, string>();
   readonly #topicStatuses = new Map<string, TopicStatus>();
@@ -212,6 +216,7 @@ export class HubCore {
     this.#roles = options.roles ?? null;
     this.#items = options.items ?? null;
     this.#sessionHolds = options.sessionHolds ?? (() => []);
+    for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(item.id, item);
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -253,6 +258,7 @@ export class HubCore {
       presence: () => this.presence(),
       stateOf: (id) => this.sessionState(id),
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
+      idle: (session, minutes) => this.publishEvent({ session }, 'session.state', `${session} idle ${minutes} min`, { lifecycle: 'long idle' }),
     });
     // the inbox hears every event first: what changes a section, what is a notification
     this.#listeners.add((e) => this.inbox.observe(e));
@@ -294,11 +300,16 @@ export class HubCore {
     this.#store.afterCommit(publish, error => this.#log({ event: 'publication-failed', error: error instanceof Error ? error.message : String(error) }));
   }
 
+  /** Seed ownership facts without publishing or advancing terminal checkpoints. */
+  seedProcess(process: HarnessProcessView): void {
+    this.#processStatus.set(process.sessionId, process.status);
+    this.#processItems.set(process.sessionId, process.item);
+  }
+
   /** Seed active rows; recover a committed stop whose publication was interrupted by a hub crash. */
   rememberProcess(process: HarnessProcessView): void {
     if (process.status !== 'running') { this.publishProcess(process); return; }
-    this.#processStatus.set(process.sessionId, process.status);
-    this.#processItems.set(process.sessionId, process.item);
+    this.seedProcess(process);
     this.#store.setMeta(`subscription-terminal:${process.sessionId}`, '');
   }
 
@@ -317,10 +328,10 @@ export class HubCore {
   /** Adapter-owned process facts go through the same subscription as the core's events. */
   publishProcess(process: HarnessProcessView): void {
     const previous = this.#processStatus.get(process.sessionId);
-    this.#processStatus.set(process.sessionId, process.status);
-    this.#processItems.set(process.sessionId, process.item);
+    this.seedProcess(process);
     const context = { role: process.role, item: process.item };
-    const suffix = process.item ? ` · ${process.item}` : '';
+    const items = process.item ? [process.item] : this.#sessionItems(process.sessionId);
+    const suffix = items.map(item => ` · ${item}`).join('');
     const checkpoint = `subscription-terminal:${process.sessionId}`;
     if (process.status === 'running') {
       this.#store.setMeta(checkpoint, '');
@@ -332,7 +343,7 @@ export class HubCore {
         // The checkpoint covers cleanup as well as fan-out. A role/model/rename update
         // on an already-terminal row must preserve subscriptions created for its next launch.
         if (this.#store.meta(checkpoint) === signature) return;
-        this.#terminalEvent({ session: process.name }, 'session.state', `${process.name} ${process.status === 'stopped' ? 'stopped' : 'died'}${suffix}`, context,
+        this.#terminalEvent({ session: process.name }, 'session.state', `${process.name} ${process.status === 'stopped' ? 'stopped' : 'died'}${suffix}`, { ...context, lifecycle: process.status === 'stopped' ? 'stopped' : 'died' },
           { subscriberId: process.sessionId });
         this.#store.setMeta(checkpoint, signature);
       });
@@ -347,8 +358,10 @@ export class HubCore {
   publishTask(change: ItemChange): void {
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
+      this.#defaultItems.delete(change.id);
       return;
     }
+    if (change.item.state !== 'closed') this.#defaultItems.set(change.id, change.item);
     // Reparenting ends membership in departed ancestor subtrees, not those ancestor subscriptions.
     const current = this.#items?.ancestry?.(change.id) ?? [change.id];
     const departed = change.previousAncestry?.filter(id => !current.includes(id)) ?? [];
@@ -358,12 +371,69 @@ export class HubCore {
     }
     for (const text of change.events ?? []) {
       if (text === 'closed') this.#terminalEvent({ item: change.id }, 'task', `${change.id} closed`);
-      else this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`);
+      else this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`, text.startsWith('status changed ') ? { taskChange: 'status' } : text.startsWith('verdict posted ') ? { taskChange: 'verdict' } : {});
     }
+    if (change.item.state === 'closed') this.#defaultItems.delete(change.id);
   }
 
   /** Immediate events still use the ordinary delivery queue and the adapter's ordinary injection. */
   eventSteering(canSteer: (sessionId: string) => boolean): void { this.#canSteerEvents = canSteer; }
+
+  #sessionItems(sessionId: string): string[] {
+    return (this.#items?.list?.() ?? []).filter(i => i.state !== 'closed' && [i.claim, ...i.holds].some(h => h && this.sessionIdentity(h.sessionId) === sessionId)).map(i => i.id);
+  }
+
+  /** A default can belong to a role-known lead whose first hello has not arrived yet. */
+  subscriptionOwner(subscription: OwnedSubscription): string | null {
+    return subscription.default ? this.#leadName(subscription.subscriberId) : this.#store.nameOfSession(subscription.subscriberId);
+  }
+
+  #leadName(sessionId: string): string | null {
+    const id = this.sessionIdentity(sessionId);
+    return id.startsWith('name:') ? id.slice(5) : this.connectionOf(id)?.name ?? this.#store.nameOfSession(id);
+  }
+
+  #defaultCoordinator(): string | null {
+    // Store-and-forward includes a disconnected root lead, especially before spokes reconnect on restart.
+    return this.coordinator() ?? this.#store.sessionsWithRole(COORDINATOR, this.#now().getTime() - this.#queueTtlMs)
+      .find(name => {
+        const status = this.#processStatus.get(this.#store.sessionIdOf(name) ?? '');
+        return status !== 'stopped' && status !== 'exited';
+      }) ?? null;
+  }
+
+  #defaultOwner(item: string, items: Map<string, DefaultItem>, excluded?: string): string | null {
+    const seen = new Set<string>();
+    for (let node = items.get(item); node && !seen.has(node.id); node = node.parent ? items.get(node.parent) : undefined) {
+      seen.add(node.id);
+      const claim = node.claim?.role === 'implementer' || node.claim?.role === 'aide' ? node.claim : null;
+      const id = claim ? this.sessionIdentity(claim.sessionId) : null;
+      if (!id || id === excluded || id === UNKNOWN_SESSION || !this.#leadName(id)) continue;
+      const status = this.#processStatus.get(id);
+      if (status !== 'stopped' && status !== 'exited') return id;
+    }
+    const coordinator = this.#defaultCoordinator();
+    return coordinator ? this.sessionIdentity(`name:${coordinator}`) : null;
+  }
+
+  #defaultItemSet(includeItem?: string): Map<string, DefaultItem> {
+    const items = new Map<string, DefaultItem>((this.#items?.list?.() ?? []).filter(item => item.state !== 'closed').map(item => [item.id, item]));
+    const removed = includeItem && this.#defaultItems.get(includeItem);
+    if (removed && !items.has(removed.id)) items.set(removed.id, removed);
+    return items;
+  }
+
+  /** Defaults are current ownership, not stored requests: claims and role handovers take effect without an await. */
+  subscriptions(includeItem?: string): OwnedSubscription[] {
+    const defaults: OwnedSubscription[] = [];
+    const items = this.#defaultItemSet(includeItem);
+    for (const item of items.values()) {
+      const subscriberId = this.#defaultOwner(item.id, items);
+      if (!subscriberId) continue;
+      defaults.push({ id: `default:${subscriberId}:${item.id}`, subscriberId, subject: { item: item.id }, events: ['task', 'session.state'], digest: 'turn', default: true });
+    }
+    return [...this.#store.allSubscriptions(), ...defaults];
+  }
 
   #eventMatches(s: OwnedSubscription, subject: SubscriptionSubject, context: EventContext): boolean {
     if (JSON.stringify(s.subject) === JSON.stringify(subject)) return true;
@@ -379,14 +449,37 @@ export class HubCore {
     const session = 'session' in subject ? subject.session : null;
     const facts = { ...(session ? { role: this.#store.roleOf(session), item: this.#processItems.get(this.#store.sessionIdOf(session) ?? '') ?? null } : {}), ...context };
     const recipients = new Map<string, 'turn' | 'now'>();
-    for (const s of selected ?? this.#store.allSubscriptions()) {
+    // Claim-derived defaults address the item's lead, including an Aide; explicit requests stay crew-only.
+    const defaultRecipients = new Set<string>();
+    const memberships = session ? this.#sessionItems(this.#store.sessionIdOf(session) ?? '') : [];
+    for (const s of selected ?? this.subscriptions('item' in subject ? subject.item : undefined)) {
+      if (s.default && event === 'task' && !facts.taskChange && !facts.final) continue;
+      if (s.default && event === 'session.state') {
+        if (!facts.lifecycle) continue;
+        // A lead's own death or long idle belongs one level up; an approval still reaches its lead.
+        if (session === this.subscriptionOwner(s) && facts.lifecycle !== 'waiting for approval') continue;
+      }
       const finalSubject = context.final && (JSON.stringify(s.subject) === JSON.stringify(subject) || ('item' in subject && 'subtree' in s.subject && s.subject.subtree === subject.item));
       if (!s.events.includes(event) && !finalSubject) continue;
-      if (!selected && !this.#eventMatches(s, subject, facts)) continue;
-      const name = this.#store.nameOfSession(s.subscriberId);
-      if (!name || this.#store.roleOf(name) === 'aide') continue;
+      if (!selected && !this.#eventMatches(s, subject, facts) && !memberships.some(item => this.#eventMatches(s, subject, { ...facts, item }))) continue;
+      const name = this.subscriptionOwner(s);
+      if (!name || (!s.default && this.#store.roleOf(name) === 'aide')) continue;
+      if (s.default) defaultRecipients.add(name);
       const mode = s.digest === 'now' && this.#canSteerEvents(s.subscriberId) ? 'now' : 'turn';
       if (recipients.get(name) !== 'now') recipients.set(name, mode);
+    }
+    if (session && (facts.lifecycle === 'long idle' || facts.lifecycle === 'died' || facts.lifecycle === 'stopped')) {
+      const sessionId = this.sessionIdentity(`name:${session}`);
+      const items = this.#defaultItemSet();
+      for (const item of items.values()) {
+        if (!item.claim || (item.claim.role !== 'implementer' && item.claim.role !== 'aide') || this.sessionIdentity(item.claim.sessionId) !== sessionId) continue;
+        const owner = this.#defaultOwner(item.id, items, sessionId);
+        const name = owner ? this.#leadName(owner) : null;
+        if (name && name !== session) {
+          defaultRecipients.add(name);
+          if (!recipients.has(name)) recipients.set(name, 'turn');
+        }
+      }
     }
     const body = this.#hygiene.boundedText(`event · ${event} · ${text.replace(/[\r\n\u2028\u2029]+/g, ' ')}`);
     const key = JSON.stringify([subject, event, body, context.final ?? false]);
@@ -399,7 +492,7 @@ export class HubCore {
           continue;
         }
         this.#dropExpired(name);
-        const coalesced = digest === 'turn' && this.#store.coalesceEvent(name, subject, key, now);
+        const coalesced = digest === 'turn' && this.#store.coalesceEvent(name, subject, key, now, defaultRecipients.has(name));
         if (coalesced) {
           this.#afterCommit(() => this.#log({ event: 'event-delivery', id: coalesced.id, subject, kind: event, to: [name], count: coalesced.count, coalesced: true }));
           continue;
@@ -408,7 +501,7 @@ export class HubCore {
       }
       // All modes and recipient counts join the same commit before any observer can bind a digest.
       for (const [digest, to] of groups) {
-        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.final ? { final: true } : {}) } });
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.final ? { final: true } : {}) } }, defaultRecipients);
         if (!message) continue;
         this.#afterCommit(() => this.#emitMessage(message));
         for (const name of to) this.#afterCommit(() => { this.#send(message, name); });
@@ -473,9 +566,8 @@ export class HubCore {
     if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
     const claim = found.claim;
     if (claim?.role === 'implementer' || claim?.role === 'aide') {
-      const id = this.sessionIdentity(claim.sessionId);
       // A real identity follows renames; a provisional identity can name only its unadopted session.
-      const name = id.startsWith('name:') ? id.slice(5) : this.connectionOf(id)?.name ?? this.#store.nameOfSession(id);
+      const name = this.#leadName(claim.sessionId);
       if (name && name !== HUMAN) return name;
     }
     return null;
@@ -801,7 +893,7 @@ export class HubCore {
     if (command !== undefined) this.#approvalCommands.set(sessionId, command);
     else this.#approvalCommands.delete(sessionId);
     this.#log({ event: 'session-state', session: name, state, source });
-    if (changed && state !== 'unknown') this.publishEvent({ session: name }, 'session.state', `${name} ${state}`);
+    if (changed && state !== 'unknown') this.publishEvent({ session: name }, 'session.state', `${name} ${state}`, state === 'waiting for approval' ? { lifecycle: state } : {});
     this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString(), ...(command !== undefined ? { approvalCommand: command } : {}) });
     return true;
   }
@@ -889,7 +981,7 @@ export class HubCore {
   }
 
   /** A topic notice written to the store (inside a caller's transaction, when there is one), not yet published. */
-  #recordNotice(topicId: string, notice: TopicNotice): Message | null {
+  #recordNotice(topicId: string, notice: TopicNotice, direct: ReadonlySet<string> = new Set()): Message | null {
     const topic = this.#store.topic(topicId);
     if (!topic) return null;
     // a notice with an id of its own is recorded once: a replay finds the stored one
@@ -897,7 +989,7 @@ export class HubCore {
       const stored = this.#store.message(notice.id);
       if (stored !== null) return stored;
     }
-    const to = [...new Set(notice.to ?? [])].filter(name => this.#store.roleOf(name) !== 'aide');
+    const to = [...new Set(notice.to ?? [])].filter(name => direct.has(name) || this.#store.roleOf(name) !== 'aide');
     const message: Message = {
       id: notice.id ?? randomUUID(),
       from: 'hub',
@@ -913,7 +1005,7 @@ export class HubCore {
     };
     this.#record(
       message,
-      to.map((session) => ({ session, state: 'queued' as const })),
+      to.map((session) => ({ session, state: 'queued' as const, ...(direct.has(session) ? { direct: true } : {}) })),
       this.#now().getTime(),
     );
     this.#store.touchTopic(topic.id, message.ts);

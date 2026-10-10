@@ -26,16 +26,16 @@ test('Reviewer reports resolve to the item claimant; unclaimed reports resolve t
   const sent = await rev.call<{ ok: boolean; outcomes: Array<{ to: string; outcome: string }> }>('send', { to: [`@lead ${item.id}`], text });
   assert.equal(sent.ok, true, JSON.stringify(sent));
   assert.deepEqual(sent.outcomes, [{ to: `lead ${item.id}`, outcome: 'delivered' }]);
-  const delivered = await impl.waitForEvent(e => e.params.content === text);
+  const delivered = await impl.waitForEvent(e => e.params.content.includes(text));
   assert.equal(delivered.params.meta?.to, 'impl');
-  assert.equal(coord.events.some(e => e.params.content === text), false);
+  assert.equal(coord.events.some(e => e.params.content.includes(text)), false);
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.deepEqual((history.value as { messages: Message[] }).messages.find(m => m.text === text)?.to, ['impl']);
 
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id, release: true })).ok, true);
   const fallback = `review clear ${item.id}`;
   await rev.call('send', { to: [`lead ${item.id}`], text: fallback });
-  await coord.waitForEvent(e => e.params.content === fallback);
+  await coord.waitForEvent(e => e.params.content.includes(fallback));
   const after = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.deepEqual((after.value as { messages: Message[] }).messages.find(m => m.text === fallback)?.to, ['coord']);
 });
@@ -89,7 +89,7 @@ test('a human claim falls back to Coordinator and item addressing preserves ordi
   const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [`lead ${item.id}`], text: 'the human claim is not an agent target' });
   assert.equal(sent.ok, true, sent.error);
   assert.deepEqual((sent.value as { message: Message }).message.to, ['coord']);
-  await coord.waitForEvent(e => e.params.content === 'the human claim is not an agent target');
+  await coord.waitForEvent(e => e.params.content.includes('the human claim is not an agent target'));
 });
 
 for (const change of ['claim', 'identity', 'close'] as const) {
@@ -148,7 +148,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
       assert.equal(recorded, undefined);
     } else {
       assert.deepEqual(recorded?.to, [change === 'claim' ? 'second' : 'first']);
-      await recipient.waitForEvent(e => e.params.content === text);
+      await recipient.waitForEvent(e => e.params.content.includes(text));
     }
   });
 }
@@ -195,7 +195,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     const sent = await rev.call<{ ok: boolean; outcomes: Array<{ outcome: string }> }>('send', { to: [`@lead ${item.id}`], text });
     assert.equal(sent.ok, true, JSON.stringify(sent));
     assert.equal(sent.outcomes[0]?.outcome, 'delivered');
-    await impl.waitForEvent(e => e.params.content === text);
+    await impl.waitForEvent(e => e.params.content.includes(text));
     const history = await ui.request({ type: 'topic.history', topic: 'agents' });
     assert.deepEqual((history.value as { messages: Message[] }).messages.find(m => m.text === text)?.to, ['renamed']);
     const fenced = await impl.call<{ ok: boolean; error: string }>('task.claim', { id: item.id, release: true });
@@ -221,7 +221,7 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     assert.match(stillFenced.error, /adoption deliberately failed/);
     assert.equal((await impl.call<{ ok: boolean }>('rename', { name: 'impl' })).ok, false);
     await rev.call('send', { to: [`@lead ${item.id}`], text: 'after restart before retry' });
-    await impl.waitForEvent(e => e.params.content === 'after restart before retry');
+    await impl.waitForEvent(e => e.params.content.includes('after restart before retry'));
     blocked = false;
     cleanupBlocked = cleanup === 'interrupted';
     const retried = await impl.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, text: 'Retry adoption.' });
@@ -245,10 +245,10 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     const after = await ui.request({ type: 'task.view', item: item.id });
     assert.equal((after.value as { item: { claim: { sessionId: string } } }).item.claim.sessionId, 'impl-real');
     assert.equal((await rev.call<{ ok: boolean }>('send', { to: [`@lead ${item.id}`], text: 'after successful adoption' })).ok, true);
-    await impl.waitForEvent(e => e.params.content === 'after successful adoption');
+    await impl.waitForEvent(e => e.params.content.includes('after successful adoption'));
     assert.equal((await impl.call<{ ok: boolean }>('rename', { name: 'impl' })).ok, true, 'completed adoption releases the preserved alias');
     await rev.call('send', { to: [`@lead ${item.id}`], text: 'after the name is available again' });
-    await impl.waitForEvent(e => e.params.content === 'after the name is available again');
+    await impl.waitForEvent(e => e.params.content.includes('after the name is available again'));
     assert.equal((await impl.call<{ ok: boolean }>('rename', { name: 'final' })).ok, true);
     assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
     const another = await ui.request({ type: 'task.create', title: 'Recycled provisional name', assignee: 'impl' });
@@ -260,8 +260,8 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     t.after(() => recycled.close());
     await recycled.waitForPresence(['impl', 'final', 'rev']);
     await rev.call('send', { to: [`lead ${second.id}`], text: 'for the new claimant' });
-    await recycled.waitForEvent(e => e.params.content === 'for the new claimant');
-    assert.equal(impl.events.some(e => e.params.content === 'for the new claimant'), false);
+    await recycled.waitForEvent(e => e.params.content.includes('for the new claimant'));
+    assert.equal(impl.events.some(e => e.params.content.includes('for the new claimant')), false);
   });
 }
 

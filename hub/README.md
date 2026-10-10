@@ -101,7 +101,7 @@ The readiness bound is below the harness tool-call deadlines: [Codex defaults to
 
 The Implementer holding an item's claim leads that item. Send a report to `@lead T-n` with `send {to: ["lead T-n"], text: "…"}`; human topic messages may mention `@lead T-n` in their text. The hub resolves this address from committed tracker facts immediately before recording: to the claimant's authoritative session identity, or to the Coordinator for an unclaimed open item. The recorded addressee is the resolved session; a later claim change cannot move its queued report or progress note, including across a restart. Unknown and closed items are refused with an error naming the item and telling the sender to address `coordinator` instead. A human's claim does not become an agent addressee. Ordinary agent-send permissions still apply.
 
-Reviewer and QA default clauses report to `@lead T-n`. Item events and verdict events reach their lead through explicit subscriptions on the existing event delivery path; default lead subscriptions come with T-142. A message with no item keeps its existing Coordinator route. While durable identity adoption has failed, a renamed claimant's provisional alias is preserved across restart, reserves its old name, and retains the task-write fence until adoption succeeds; completing adoption removes the alias.
+Reviewer and QA default clauses report to `@lead T-n`. Item events and verdict events reach their lead through default subscriptions on the existing event delivery path; explicit subscriptions widen that coverage. A message with no item keeps its existing Coordinator route. While durable identity adoption has failed, a renamed claimant's provisional alias is preserved across restart, reserves its old name, and retains the task-write fence until adoption succeeds; completing adoption removes the alias.
 
 Every name allocation follows one reservation invariant: a different identity cannot take a live session's name or a durable alias, whether through generated hello, explicit hello, rename or launch. A pending alias stays reserved until adoption succeeds, even for its owner. Generated names also avoid all retained traffic; explicit hello, rename and launch keep their existing rules for reconnects and reuse of settled historic names.
 
@@ -190,7 +190,7 @@ Aides work for the human alone and may run concurrently. The default crew clause
 
 When the human tells an Aide to take a task, `task.claim` returns its branch and worktree and moves the status to `in progress`. The Aide works in that path; a claim does not change a running harness's cwd. It becomes the item's lead, so human `@lead T-n` mentions and verifier reports addressed to `lead T-n` reach it. Commit and push the task branch to the local territory (`origin`), then set status `review` and report to the Coordinator by session name. Independent review and any required QA pass through the same merge gate; the Aide claimant cannot supply its own verdict, even after changing roles. Only the Coordinator or the human merges. Launch with `--item` remains restricted to an Implementer and keeps its existing claim ownership rules.
 
-When a session becomes an Aide, pending broadcasts and subscription notices from its previous role are dropped, including digest members. Deliveries addressed by name (or its claimed-item lead) survive; named progress bound to a discarded broadcast waits for the next direct delivery. Addressing provenance is recorded per delivery. Rows written before that provenance existed cannot establish a direct address and are dropped on an Aide transition, apart from the role clause.
+When a session becomes an Aide, pending broadcasts and explicit subscription notices from its previous role are dropped, including digest members. Deliveries addressed by name (or its claimed-item lead, including default events) survive; named progress bound to a discarded broadcast waits for the next direct delivery. Addressing provenance is recorded per delivery. Rows written before that provenance existed cannot establish a direct address and are dropped on an Aide transition, apart from the role clause.
 
 ### `.cland/roles.toml`
 
@@ -1080,7 +1080,7 @@ or `subscribe({ subject: { item: "T-58" }, events: ["task"] })`. It gets a subsc
 with an `id`, `subject`, `events` and `digest: "turn"`. Repeating the same request returns
 the same id. `subscriptions()` lists only the caller's subscriptions;
 `unsubscribe({ subscription: "<id>" })` removes one of its subscriptions. These tools
-are available to the four crew roles (Coordinator, Implementer, Reviewer and QA). Aides cannot subscribe; retained subscriptions from a previous role do not deliver events while the session is an Aide. Existing projects can grant `subscribe`,
+are available to the four crew roles (Coordinator, Implementer, Reviewer and QA). Aides cannot subscribe; retained explicit subscriptions from a previous role do not deliver events while the session is an Aide. An Aide claimant receives its item's default subscriptions as direct lead deliveries. Existing projects can grant `subscribe`,
 `unsubscribe` and `subscriptions` in each role's `permissions.tools` list.
 
 The CLI uses the same subscriptions and the session identity of a launched shell:
@@ -1165,4 +1165,27 @@ it so closure is reported. Events consume no message or pair-loop allowance.
 The human's `cland hub subscriptions` lists all session owners and subscriptions;
 sessions keep caller-only `subscriptions`. Subscriptions create no inbox entries.
 The journal records event ids, subjects, kinds, recipients, counts and limiting,
-never bodies. Default lead subscriptions are the next slice.
+never bodies.
+
+Default subscriptions are derived from the current item claims. The Coordinator covers
+open items without an active Implementer or Aide lead in their ancestry; each lead
+covers its claimed items and their descendants, excluding subtrees with their own
+active lead. Ownership walks up to the nearest active lead using stable session
+identities; anonymous hellos retain distinct provisional name identities. Both subscription listings include these rows with `default: true`, a stable
+`default:<session-id>:<item-id>` id, `events: ["task", "session.state"]` and `digest: "turn"`.
+They follow claims, handovers, renames and reconnects; `unsubscribe` removes only
+explicit requests. Closing an item delivers its final event and removes its default.
+
+Default task events cover status changes, verdicts and final close/removal events;
+claim events require explicit subscriptions. Default session events cover death/stop, waiting for approval and idle beyond
+`[inbox] idle_minutes` (30 minutes by default, zero disables idle events). Launched
+item membership and current claims or Reviewer/QA holds identify which items a
+session works on, including pooled verifiers. A lead's own death/stop or long idle
+reaches the next active lead up the item tree, falling back to the Coordinator; a
+disconnected lead still receives queued events. A verified stop ends ownership even
+when its durable cleanup receipt remains pending. Ordinary
+busy/idle, launch and waiting-for-human transitions require explicit subscriptions.
+Explicit requests can also widen the event types or request `digest: "now"`; an
+overlap still delivers an occurrence once per recipient. Verdicts, deaths and long
+idle create no inbox notifications. Harness approval prompts remain in the inbox
+because they require the human to answer.

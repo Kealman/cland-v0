@@ -7,7 +7,7 @@ import { cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connect
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
-type Subscription = { id: string; subject: { item: string } | { session: string }; events: string[]; digest: string };
+type Subscription = { id: string; subject: { item: string } | { session: string }; events: string[]; digest: string; default?: true };
 
 test('caller-owned subscriptions hold task status events in the ordinary next-turn digest', async t => {
   const root = await tempProject(t);
@@ -18,18 +18,19 @@ test('caller-owned subscriptions hold task status events in the ordinary next-tu
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Subscription target' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Subscription target', assignee: 'impl' });
+  await impl.call('task.claim', { id: item.id });
   const subscribed = await coord.call<{ ok: boolean; subscription: Subscription }>('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal(subscribed.ok, true, JSON.stringify(subscribed));
   assert.deepEqual(subscribed.subscription.subject, { item: item.id });
   assert.equal(subscribed.subscription.digest, 'turn');
-  assert.deepEqual((await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
+  assert.deepEqual((await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), []);
   const duplicate = await coord.call<{ subscription: Subscription }>('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal(duplicate.subscription.id, subscribed.subscription.id);
   const mark = coord.events.length;
   assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: item.id, status: 'planned' })).ok, true);
-  const queued = await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event');
-  assert.equal((queued.message as Message).text, `event · task · ${item.id} status changed backlog → planned`);
+  const queued = await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).to.includes('coord'));
+  assert.equal((queued.message as Message).text, `event · task · ${item.id} status changed in progress → planned`);
   assert.equal((queued.message as Message & { stage: string }).stage, 'queued');
   await sleep(100);
   assert.equal(coord.events.length, mark, 'an event cannot start a turn');
@@ -46,16 +47,16 @@ test('caller-owned subscriptions hold task status events in the ordinary next-tu
   await socket.closed;
   await impl.call('send', { to: ['coord'], text: 'next turn' });
   const delivery = await coord.waitForEvent(e => e.params.meta?.from === 'impl' && e.params.content.includes('next turn'));
-  assert.match(delivery.params.content, /event · task · T-\d+ status changed backlog → planned[\s\S]*next turn/);
+  assert.match(delivery.params.content, /event · task · T-\d+ status changed in progress → planned[\s\S]*next turn/);
   const removedByOther = await impl.call<{ removed: boolean }>('unsubscribe', { subscription: subscribed.subscription.id });
   assert.equal(removedByOther.removed, false);
   assert.equal((await coord.call<{ removed: boolean }>('unsubscribe', { subscription: subscribed.subscription.id })).removed, true);
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
-  const count = ui.frames.filter(f => f.type === 'message' && (f.message as Message).kind === 'event').length;
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), []);
+  const count = ui.frames.filter(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).to.includes('coord')).length;
   await coord.call('task.edit', { id: item.id, status: 'review' });
   await impl.call('send', { to: ['coord'], text: 'after unsubscribe' });
   await coord.waitForEvent(e => e.params.content === 'after unsubscribe');
-  assert.equal(ui.frames.filter(f => f.type === 'message' && (f.message as Message).kind === 'event').length, count);
+  assert.equal(ui.frames.filter(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).to.includes('coord')).length, count);
 });
 
 test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued event for its next turn', async t => {
@@ -67,12 +68,13 @@ test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued e
   const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Durable subscription' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Durable subscription', assignee: 'impl' });
+  await impl.call('task.claim', { id: item.id });
   const created = await cland(root, 'subscribe', 'item', item.id, '--event', 'task', '--as', 'coord', '--json');
   assert.equal(created.code, 0, created.stderr);
   const { subscription } = JSON.parse(created.stdout) as { subscription: Subscription };
   await coord.call('task.edit', { id: item.id, status: 'planned' });
-  await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event');
+  await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).to.includes('coord'));
   ui.close();
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   ({ discovery } = await startDaemon(t, root));
@@ -80,20 +82,25 @@ test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued e
   await coord.waitForPresence(['coord', 'impl']);
   const listing = await cland(root, 'subscriptions', '--as', 'coord', '--json');
   assert.equal(listing.code, 0, listing.stderr);
-  assert.deepEqual(JSON.parse(listing.stdout).subscriptions, [subscription]);
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, [subscription]);
+  assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default), [subscription]);
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), [subscription]);
   const removed = await cland(root, 'unsubscribe', subscription.id, '--as', 'coord', '--json');
   assert.equal(removed.code, 0, removed.stderr);
   assert.equal(JSON.parse(removed.stdout).removed, true);
   await coord.call('task.edit', { id: item.id, status: 'review' });
   await impl.call('send', { to: ['coord'], text: 'release durable event' });
   const received = await coord.waitForEvent(e => e.params.meta?.from === 'impl' && e.params.content.includes('release durable event'));
-  assert.match(received.params.content, /status changed backlog → planned/);
+  assert.match(received.params.content, /status changed in progress → planned/);
   assert.doesNotMatch(received.params.content, /status changed planned → review/);
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-  const events = (history.value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.kind === 'event');
+  const events = (history.value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.kind === 'event' && m.to.includes('coord'));
   assert.equal(events.length, 1);
-  assert.equal(events[0]?.stage, 'delivered');
+  await coord.call('send', { to: ['impl'], text: 'release the lead digest' });
+  await impl.waitForEvent(e => e.params.content.includes('release the lead digest'));
+  await eventually('both recipients delivered', async () => {
+    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+    return (history.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.id === events[0]?.id)?.stage === 'delivered' || undefined;
+  });
 });
 
 test('an unchanged cached item emits its first committed status change after restart', async t => {
@@ -307,7 +314,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
         await idle();
         const listing = await clandWithEnv(root, env, 'subscriptions', '--as', 'coord', '--json');
         assert.equal(listing.code, 0, listing.stderr);
-        assert.deepEqual(JSON.parse(listing.stdout).subscriptions, [JSON.parse(subscribed.stdout).subscription]);
+        assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default), [JSON.parse(subscribed.stdout).subscription]);
         assert.equal((await inputLog()).includes(eventText), false, 'restart role clauses leave events held');
       }
       const report = `${prefix} report releases events`;
@@ -374,23 +381,24 @@ test('subscribe and unsubscribe racing an awaited task write take effect before 
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
+  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  t.after(async () => { await coord.close(); await rev.close(); });
+  await coord.waitForPresence(['coord', 'rev']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Racing subscription' });
   for (const subscribing of [true, false]) {
     await gate.arm();
     const editing = ui.request({ type: 'task.edit', item: item.id, status: subscribing ? 'planned' : 'review' });
     await gate.entered();
-    if (subscribing) await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
+    if (subscribing) await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
     else {
-      const { subscriptions } = await coord.call<{ subscriptions: Subscription[] }>('subscriptions');
-      assert.equal((await coord.call<{ removed: boolean }>('unsubscribe', { subscription: subscriptions[0]!.id })).removed, true);
+      const { subscriptions } = await rev.call<{ subscriptions: Subscription[] }>('subscriptions');
+      assert.equal((await rev.call<{ removed: boolean }>('unsubscribe', { subscription: subscriptions[0]!.id })).removed, true);
     }
     await gate.release();
     assert.equal((await editing).ok, true);
   }
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-  assert.deepEqual((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event').map(m => m.text), [`event · task · ${item.id} status changed backlog → planned`]);
+  assert.deepEqual((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.to.includes('rev')).map(m => m.text), [`event · task · ${item.id} status changed backlog → planned`]);
 });
 
 test('renames preserve subscription ownership and each converging subject id', async t => {
@@ -404,8 +412,8 @@ test('renames preserve subscription ownership and each converging subject id', a
   for (const session of ['coord', 'renamed']) subscriptions.push((await rev.call<{ subscription: Subscription }>('subscribe', { subject: { session }, events: ['session.state'] })).subscription);
   const own = (await coord.call<{ subscription: Subscription }>('subscribe', { subject: { session: 'rev' }, events: ['session.state'] })).subscription;
   assert.equal((await coord.call<{ ok: boolean }>('rename', { name: 'renamed' })).ok, true);
-  assert.deepEqual((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, subscriptions.map(s => ({ ...s, subject: { session: 'renamed' } })));
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, [own]);
+  assert.deepEqual((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), subscriptions.map(s => ({ ...s, subject: { session: 'renamed' } })));
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), [own]);
   for (const { id } of subscriptions) assert.equal((await rev.call<{ removed: boolean }>('unsubscribe', { subscription: id })).removed, true);
 });
 
@@ -428,7 +436,7 @@ test('invalid subjects and events are refused at the frame and MCP boundaries; C
   const impostor = await clandWithEnv(root, { CLAND_SESSION_NAME: 'made-up', CLAND_SESSION_ID: 'not-known', CLAND_ROLE: 'coordinator' }, 'subscribe', 'session', 'impl', '--event', 'session.state', '--as', 'coord', '--json');
   assert.equal(impostor.code, 1);
   assert.match(impostor.stderr, /forbidden/);
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), []);
 });
 
 test('a terminal session role update preserves a subscription created for its next launch', async t => {
@@ -445,7 +453,7 @@ test('a terminal session role update preserves a subscription created for its ne
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
   const subscribed = await coord.call<{ subscription: Subscription }>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'qa' })).ok, true);
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, [subscribed.subscription], 'a metadata update is not another terminal occurrence');
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), [subscribed.subscription], 'a metadata update is not another terminal occurrence');
   assert.equal((await ui.request({ type: 'session.resume', session: 'impl', relaunch: true })).ok, true);
   await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl launched');
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });

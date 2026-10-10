@@ -35,7 +35,7 @@ export type SubscriptionSubject = { session: string } | { item: string } | { top
 export type SubscriptionEvent = 'session.state' | 'task' | 'topic' | 'usage' | 'artifact';
 export type UsageThreshold = { cost: number } | { tokens: number };
 export type OwnedSubscription = Subscription & { subscriberId: string };
-export type Subscription = { id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest: 'turn' | 'now'; threshold?: UsageThreshold };
+export type Subscription = { id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest: 'turn' | 'now'; threshold?: UsageThreshold; default?: true };
 export type SubscriptionRequest = (
   | { type: 'event.subscribe'; id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest?: 'turn' | 'now'; threshold?: UsageThreshold }
   | { type: 'event.unsubscribe'; id: string; subscription: string }

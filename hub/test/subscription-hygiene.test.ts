@@ -124,10 +124,10 @@ test('topic and artifact events match item subtrees, and a closed topic sends it
   await coord.call('artifact.create', { kind: 'note', title: 'Outside evidence', topic: extra, content: 'body', status: 'shared' });
   await coord.call('ask', { topic, question: 'Waiting fact', options: ['One'] });
   await ui.request({ type: 'topic.close', topic });
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, [], 'even artifact-only topic subscriptions end with a final topic event');
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), [], 'even artifact-only topic subscriptions end with a final topic event');
   const listing = await cland(root, 'hub', 'subscriptions', '--json');
   assert.equal(listing.code, 0, listing.stderr);
-  const rows = JSON.parse(listing.stdout).subscriptions;
+  const rows = JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].subscriber, 'rev');
   const denied = await clandWithEnv(root, { CLAND_SESSION_NAME: 'coord', CLAND_SESSION_ID: 'coord-id', CLAND_ROLE: 'coordinator' }, 'hub', 'subscriptions', '--json');
@@ -160,7 +160,7 @@ test('events have their own durable limit, preserve final events, and consume no
   await coord.waitForPresence(['coord', 'rev']);
   for (const status of ['planned', 'review']) await coord.call('task.edit', { id: item, status });
   await coord.call('task.close', { id: item });
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), []);
   for (const text of ['allowed one', 'allowed two']) assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['rev'], text })).ok, true);
   assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['rev'], text: 'too many' })).ok, false);
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord release limited events' });
@@ -236,7 +236,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     await watcher.call('subscribe', { subject: { role: 'coordinator' }, events: ['session.state'] });
     assert.equal((await ui.request({ type: 'session.stop', session: 'coord' })).ok, true);
     const listing = await cland(root, 'hub', 'subscriptions', '--json');
-    const rows = JSON.parse(listing.stdout).subscriptions;
+    const rows = JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default);
     assert.equal(rows.length, 1);
     assert.deepEqual(rows[0].subject, { role: 'coordinator' });
     await ui.request({ type: 'topic.send', topic: 'general', text: '@watcher final subject delivery' });
@@ -286,14 +286,14 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
   assert.equal((await usageEvents()).length, 2, 'one crossing per token/cost threshold despite overlapping subjects');
   await signal({ input_tokens: 1, cost: 0.1 });
   assert.equal((await usageEvents()).length, 2, 'updates above the threshold do not repeat the event');
-  const subscriptions = (await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions;
+  const subscriptions = (await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default);
   ui.close();
   assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
   ({ discovery } = await startDaemon(t, root, fake.env));
   ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await coord.waitForPresence(['coord', 'worker']);
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, subscriptions);
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), subscriptions);
   await signal({ input_tokens: 1000001, cost: 3.1 });
   assert.equal((await usageEvents()).length, 2, 'restart remembers the already crossed thresholds');
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord threshold digest' });
@@ -325,7 +325,7 @@ test('the cap retains final subject events and leaves mixed progress uncapped', 
     assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['rev'], text: `progress-${i}`, kind: 'progress' })).ok, true);
   }
   await ui.request({ type: 'topic.close', topic });
-  assert.deepEqual((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
+  assert.deepEqual((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), []);
   await ui.request({ type: 'topic.send', topic: 'general', text: '@rev cap with final fact' });
   const delivered = await rev.waitForEvent(e => e.params.content.includes('cap with final fact'));
   assert.equal(delivered.params.content.match(/event · (artifact|topic) ·/g)?.length, 10);
@@ -364,7 +364,7 @@ test('subtree subjects include sessions working on descendant items and survive 
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');
   await ui.request({ type: 'session.signal', session: 'worker', launch: p.sessionId, event: 'permission', payload: { tool_name: 'Bash' }, at: Date.now() });
   assert.equal((await ui.request({ type: 'session.stop', session: 'worker' })).ok, true);
-  assert.equal((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.length, 1);
+  assert.equal((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default).length, 1);
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord descendant lifecycle' });
   const delivered = await coord.waitForEvent(e => e.params.content.includes('descendant lifecycle'));
   assert.match(delivered.params.content, new RegExp(`worker launched · ${child}`));
@@ -381,8 +381,8 @@ test('deleting a subscribed topic records its final fact and ends only that exac
   await coord.call('subscribe', { subject: { topic }, events: ['artifact'] });
   await rev.call('subscribe', { subject: { subtree: parent }, events: ['topic'] });
   assert.equal((await ui.request({ type: 'topic.delete', topic })).ok, true);
-  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
-  assert.equal((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.length, 1);
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), []);
+  assert.equal((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default).length, 1);
   for (const spoke of [coord, rev]) {
     await ui.request({ type: 'topic.send', topic: 'general', text: `@${spoke === coord ? 'coord' : 'rev'} deleted subject` });
     const delivered = await spoke.waitForEvent(e => e.params.content.includes('deleted subject'));
@@ -400,8 +400,8 @@ test('removed and reparented descendants notify former ancestor subtrees without
   await coord.call('subscribe', { subject: { item: removed.id }, events: ['artifact'] });
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: moved, parent: elsewhere })).ok, true);
   await unlink(join(root, removed.path)); // real watcher removal, after the tracker has lost the indexed descendant
-  await eventually('removed subject subscriptions end', async () => (await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.length === 0 || undefined);
-  assert.equal((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.length, 1);
+  await eventually('removed subject subscriptions end', async () => (await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default).length === 0 || undefined);
+  assert.equal((await rev.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default).length, 1);
   await ui.request({ type: 'topic.send', topic: 'general', text: '@rev departed descendants' });
   const tree = await rev.waitForEvent(e => e.params.content.includes('departed descendants'));
   assert.match(tree.params.content, new RegExp(`event · task · ${moved} left subtree`));
@@ -444,7 +444,7 @@ test('restart reconciles a committed stop once and retains role and ancestor sub
     ui = await connectUi(t, discovery);
     const listing = await clandWithEnv(root, fake.env, 'hub', 'subscriptions', '--json');
     assert.equal(listing.code, 0, listing.stderr);
-    assert.deepEqual(JSON.parse(listing.stdout).subscriptions.map((s: Subscription) => s.subject), [{ role: 'implementer' }, { subtree: parent }]);
+    assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default).map((s: Subscription) => s.subject), [{ role: 'implementer' }, { subtree: parent }]);
     const history = await ui.request({ type: 'topic.history', topic: 'agents' });
     const final = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.text.includes('worker stopped'));
     assert.equal(final.length, 2, 'one turn group and one now group, without replay on the second restart');

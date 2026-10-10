@@ -78,7 +78,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   assert.equal((await a.call<Result>('task.claim', { id: 'T-1' })).ok, true);
   const asked = await ui.request({ type: 'topic.send', topic: 'general', text: 'When do we release?' });
   assert.equal(asked.ok, true, asked.error);
-  await a.waitForEvent((e) => e.params.content === 'When do we release?');
+  await a.waitForEvent((e) => e.params.content.includes('When do we release?'));
   // the Agents topic: a message to the Coordinator that A answered is not waiting
   assert.equal((await b.call<Result>('send', { to: ['coordinator'], text: 'T-2 is blocked' })).ok, true);
   assert.equal((await a.call<Result>('send', { to: ['next'], text: 'Noted.' })).ok, true);
@@ -131,7 +131,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   await ui.waitFor((f) => f.type === 'task' && f.id === 'T-1' && (f as { item?: { claim?: { session?: string } } }).item?.claim?.session === 'next');
 
   // the audit log: the call, its addressee, the note only as its length
-  const record = (await audits(root)).find((r) => r.tool === 'role.handover');
+  const record = await eventually('handover audit recorded', async () => (await audits(root)).find(r => r.tool === 'role.handover'));
   assert.deepEqual([record?.session, record?.role, record?.outcome, record?.args.to, record?.args.noteChars], ['coord', 'coordinator', 'ok', 'next', NOTE_MD.length]);
 
   // A's next tool call as Coordinator is refused
@@ -166,7 +166,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   const answered = await ui.request({ type: 'topic.answer', ask: question.ask, option: 1 });
   assert.equal(answered.ok, true, answered.error);
   const answer = await b.waitForEvent((e) => e.params.meta?.answer_to === question.ask, 15_000);
-  assert.equal(answer.params.content, 'yes');
+  assert.ok(answer.params.content === 'yes' || answer.params.content.includes('\nyes\n'));
   // task view shows B's claim; B's history on the waiting topic has the human's question
   const view = await b.call<Result & { item: { claim: { session: string; sessionId: string } | null } }>('task.view', { id: 'T-1' });
   assert.deepEqual([view.item.claim?.session, view.item.claim?.sessionId], ['next', 'sess-next']);

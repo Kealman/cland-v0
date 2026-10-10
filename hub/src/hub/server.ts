@@ -74,9 +74,8 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   // `task.link` and `task.create` with a topic bind through the topics (one each side); items closed while no hub ran
   const unbindTopics = options.tracker?.bindTopicsThrough(core.topicBinding());
   core.reconcileBindings();
-  // a verdict comment is an inbox notification (#33)
+  // Verdict reports remain readable in their topic; subscribed events cover lead delivery.
   const unwatchVerdicts = options.tracker?.onVerdict((id, author, v, report) => {
-    core.inbox.verdict({ item: id, author, verdict: v.verdict, result: v.result, run: v.run });
     if (report) core.noticeInTopic(report.topic ?? 'agents', {
       kind: 'report', text: `${id} ${v.verdict} ${v.result} · ${v.by} · run ${v.run}${report.text ? `\n\n${report.text}` : ''}`,
       detail: { item: id, session: author, verdict: v.verdict, result: v.result, run: v.run },

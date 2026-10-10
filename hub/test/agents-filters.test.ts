@@ -38,12 +38,14 @@ test('Agents item history searches before the latest window and includes claims,
   assert.equal(latest.messages.length, 200);
   assert.ok(latest.messages.every((m) => m.text.startsWith('unrelated')));
   const filtered = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', limit: 200 });
-  assert.deepEqual(filtered.messages.map((m) => m.kind), ['claim', 'release', 'agent-message']);
-  assert.equal(filtered.messages[2]?.detail?.topic, topic.id);
+  assert.deepEqual(filtered.messages.map((m) => m.kind), ['event', 'claim', 'release', 'agent-message']);
+  assert.equal(filtered.messages[0]?.text, 'event · task · T-1 status changed backlog → in progress');
+  assert.deepEqual(filtered.messages[0]?.to, ['alpha']);
+  assert.equal(filtered.messages[3]?.detail?.topic, topic.id);
   const spokeItem = await beta.call<{ messages: Array<{ msg_id: string }> }>('history', { topic: 'agents', item: 'T-1' });
   assert.deepEqual(spokeItem.messages.map((m) => m.msg_id), filtered.messages.map((m) => m.id));
   const limited = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', limit: 1 });
-  assert.deepEqual(limited.messages.map((m) => m.id), [filtered.messages[2]?.id]);
+  assert.deepEqual(limited.messages.map((m) => m.id), [filtered.messages[3]?.id]);
   const none = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-2' });
   assert.deepEqual(none.messages, []);
 });
@@ -72,10 +74,12 @@ test('session filters match sender, addressees and notice facts exactly; spoke i
   await alpha.call('send', { topic: topic.id, to: ['beta'], text: 'in bound topic' });
 
   const session = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', session: 'alpha', limit: 200 });
-  assert.deepEqual(session.messages.map((m) => m.kind), ['role-assign', 'claim', 'report', 'report', 'agent-message']);
+  assert.deepEqual(session.messages.map((m) => m.kind), ['role-assign', 'event', 'claim', 'report', 'report', 'agent-message']);
   assert.deepEqual(session.messages.filter(m => m.kind === 'report').map(m => m.text), ['sent by alpha', 'addressed to alpha']);
   const both = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', session: 'alpha' });
-  assert.deepEqual(both.messages.map((m) => m.kind), ['claim', 'agent-message']);
+  assert.deepEqual(both.messages.map((m) => m.kind), ['event', 'claim', 'agent-message']);
+  assert.equal(both.messages[0]?.text, 'event · task · T-1 status changed backlog → in progress');
+  assert.deepEqual(both.messages[0]?.to, ['alpha']);
   const recipient = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', session: 'beta' });
   assert.deepEqual(recipient.messages.map((m) => m.kind), ['agent-message']);
   const none = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', item: 'T-1', session: 'alpha-2' });

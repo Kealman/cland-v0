@@ -4,8 +4,7 @@
 //   asks           the open asks, oldest first (the `asks` table)
 //   approvals      sessions in `waiting for approval`: the harness's own prompt, answered in the attached session
 //   waiting        topics `waiting for human` that carry no open ask
-//   notifications  dismissable: verdict comments on items, role changes, session deaths, sessions idle longer
-//                  than the configured threshold; stored with a `dismissed` flag. Fed by the hub's own events
+//   notifications  dismissable: role changes and failed or uncertain turns; stored with a `dismissed` flag. Fed by the hub's own events
 //                  (`session.role`, `session.state`), the tracker's verdicts, and for a handover its one `handover`
 //                  notice in Agents (#31, #34) rather than its two `session.role` events.
 //
@@ -19,7 +18,7 @@ import type { LogFn } from '../log.ts';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { Store } from './store.ts';
 
-/** A session idle longer than this is worth a notification, unless the project's config says otherwise. */
+/** A session idle longer than this is worth a background event, unless the project's config says otherwise. */
 export const IDLE_NOTIFY_MS = 30 * 60 * 1000;
 
 /**
@@ -58,11 +57,11 @@ export type InboxPort = {
   presence: () => Presence[];
   /** A session's state by its session id. */
   stateOf: (sessionId: string) => SessionState;
-  /** How long an idle session waits before it is a notification, ms; 0 or less: never. */
+  /** How long an idle session waits before it is an event, ms; 0 or less: never. */
   idleNotifyMs: number;
+  /** Long idle is a background event for subscribed sessions, never an inbox notification. */
+  idle: (session: string, minutes: number) => void;
 };
-
-export type VerdictNote = { item: string; author: string; verdict: string; result: string; run?: string };
 
 export class InboxBoard {
   readonly #port: InboxPort;
@@ -134,12 +133,6 @@ export class InboxBoard {
     this.#notify('delivery-uncertain', `${label}: a message may or may not have reached its harness (${why}); it is not sent again on its own: \`cland session retry ${session} ${messageId}\` sends it again`, { session });
   }
 
-  /** A verdict comment on an item (the tracker's): a notification. */
-  verdict(v: VerdictNote): void {
-    const text = `${v.item} ${v.verdict} ${v.result} · ${v.author}${v.run ? ` · run ${v.run}` : ''}`;
-    this.#notify('verdict', text, { item: v.item, session: v.author, result: v.result });
-  }
-
   #sessionState(e: Extract<HubEvent, { type: 'session.state' }>): void {
     if (e.state === 'waiting for approval') {
       if (!this.#since.has(e.sessionId)) this.#since.set(e.sessionId, e.ts);
@@ -154,11 +147,6 @@ export class InboxBoard {
       t.unref();
       this.#idle.set(e.sessionId, t);
     }
-    // a harness that died (the process watch): its row says so, its role is vacant
-    if (e.source === 'process' && e.state === 'unknown') {
-      const role = this.#port.store.roleOf(e.session);
-      this.#notify('death', `${withRole(e.session, role)} died: its harness exited${role ? `; the ${ROLE_LABELS[role] ?? role} role it held is vacant` : ''}`, { session: e.session });
-    }
   }
 
   #idleFor(session: string, sessionId: string): void {
@@ -167,7 +155,8 @@ export class InboxBoard {
     try {
       if (this.#port.stateOf(sessionId) !== 'idle') return;
       const minutes = Math.max(1, Math.round(this.#port.idleNotifyMs / 60_000));
-      this.#notify('idle', `${withRole(session, this.#port.store.roleOf(session))} idle ${minutes} min`, { session });
+      const name = this.#port.store.nameOfSession(sessionId) ?? session;
+      this.#port.idle(name, minutes);
     } catch (err) {
       this.#port.log({ event: 'inbox-failed', error: err instanceof Error ? err.message : String(err) });
     }

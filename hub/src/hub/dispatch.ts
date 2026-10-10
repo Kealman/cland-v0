@@ -711,7 +711,7 @@ export class Dispatcher {
             value = { removed: core.store.removeSubscription(caller.sessionId, frame.subscription) };
             break;
           case 'event.subscriptions':
-            value = { subscriptions: core.store.subscriptions(caller.sessionId) };
+            value = { subscriptions: core.subscriptions().filter(s => s.subscriberId === caller.sessionId).map(({ subscriberId: _, ...s }) => s) };
         }
         if (frame.type !== 'event.subscriptions') this.#guard.changed();
         peer.send({ type: 'result', id: frame.id, ok: true, value });
@@ -939,7 +939,7 @@ export class Dispatcher {
       }
       switch (frame.type) {
         case 'hub.subscriptions':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.store.allSubscriptions().map(s => ({ ...s, subscriber: core.store.nameOfSession(s.subscriberId) })) } });
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
           break;
         case 'hub.status': {
           const status = (): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });

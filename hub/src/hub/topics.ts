@@ -5,7 +5,7 @@ import type { TopicStatus } from '../protocol.ts';
 import { parseTags } from '../address.ts';
 import { ROLE_NAMES } from '../names.ts';
 import type { Resumed } from './budget.ts';
-import type { Tracker } from '../tracker/tracker.ts';
+import type { Tracker, ItemSummary } from '../tracker/tracker.ts';
 import type { Claim } from '../tracker/index-db.ts';
 
 /**
@@ -69,6 +69,7 @@ export function vacancyWarning(roles: string[]): string | undefined {
  * The tracker as a topic's binding sees it. A hub with no project has none, and refuses a binding.
  */
 export type TopicItems = {
+  list?: () => ItemSummary[];
   ancestry?: (item: string) => string[];
   /** Current indexed ownership, without file I/O: resolution and recording must not yield. */
   lead: (item: string) => { state: string; claim: Claim | null } | null;
@@ -84,6 +85,7 @@ export type TopicItems = {
 export function trackerItems(tracker: Tracker): TopicItems {
   const hub = { id: 'hub', name: 'hub', role: null };
   return {
+    list: () => tracker.list(),
     ancestry: (item) => {
       const parents = new Map(tracker.list().map(i => [i.id, i.parent]));
       const path: string[] = [];

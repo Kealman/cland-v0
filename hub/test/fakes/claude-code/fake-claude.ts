@@ -409,16 +409,26 @@ async function runSession(id: string): Promise<number> {
     await dispatch('turn.start', { text: next.text, turnId }, () => ({ turnId }));
     next.started();
     await new Promise((r) => setTimeout(r, turnMs));
-    const body = /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(next.text)?.[1] ?? next.text;
-    if (body.includes('fail this turn')) {
+    const channels = [...next.text.matchAll(/<channel ([^>]*)>\n([\s\S]*?)\n<\/channel>/g)];
+    const command = channels.find((channel) => {
+      if (/\bkind="(?:event|progress)"/.test(channel[1] ?? '')) return false;
+      const text = (channel[2] ?? '').trim();
+      return /^(?:@\S+\s+)*(?:worktree\s+\S+|cland\s+.+)$/.test(text)
+        || /^rename to \S+$/.test(text)
+        || text.includes('fail this turn')
+        || text.includes('needs approval');
+    });
+    const body = command?.[2] ?? /<channel [^>]*>\n([\s\S]*)\n<\/channel>/.exec(next.text)?.[1] ?? next.text;
+    const actionable = command !== undefined || channels.length === 0;
+    if (actionable && body.includes('fail this turn')) {
       setStatus('idle');
       await runHooks('StopFailure', { error: 'server_error', error_details: 'Upstream request failed: Endpoint is unavailable\nupstream details' });
       await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
       continue;
     }
-    const rename = /^rename to (\S+)$/.exec(body.trim());
+    const rename = actionable ? /^rename to (\S+)$/.exec(body.trim()) : null;
     if (rename) await callTool('rename', { name: rename[1] });
-    if (body.includes('needs approval')) {
+    if (actionable && body.includes('needs approval')) {
       await callTool('status', { text: 'idle' });
       setStatus('waiting', 'permission prompt');
       await runHooks('PermissionRequest', { tool_name: body.includes('needs approval for Edit') ? 'Edit' : 'Bash', tool_input: { command: 'touch approved', content: 'PRIVATE-TOOL-INPUT' } });
@@ -427,9 +437,10 @@ async function runSession(id: string): Promise<number> {
       await runHooks('PostToolUse', { tool_name: 'Bash' });
       await new Promise((r) => setTimeout(r, turnMs));
     }
-    const topic = /\btopic="([^"]+)"/.exec(next.text)?.[1];
-    const msgId = /\bmsg_id="([^"]+)"/.exec(next.text)?.[1];
-    const wanted = /^(?:@\S+\s+)*worktree\s+(\S+)$/.exec(body.trim());
+    const envelope = command?.[1] ?? next.text;
+    const topic = /\btopic="([^"]+)"/.exec(envelope)?.[1];
+    const msgId = /\bmsg_id="([^"]+)"/.exec(envelope)?.[1];
+    const wanted = actionable ? /^(?:@\S+\s+)*worktree\s+(\S+)$/.exec(body.trim()) : null;
     if (wanted) {
       const ran = await createWorktree(wanted[1] as string);
       log(ran);
@@ -439,7 +450,7 @@ async function runSession(id: string): Promise<number> {
       await dispatch('turn.complete', { turnId, answer: ran, durationMs: Date.now() - started, isAborted: false, reason: 'answer' }, (e) => ({ text: e.answer }));
       continue;
     }
-    const cli = /^(?:@\S+\s+)*cland\s+(.+)$/.exec(body.trim());
+    const cli = actionable ? /^(?:@\S+\s+)*cland\s+(.+)$/.exec(body.trim()) : null;
     if (cli) {
       const argv = (cli[1] as string).split(/\s+/);
       const ran = await new Promise<string>((resolve) => {

@@ -73,7 +73,7 @@ async function request(coord: Session, kind: 'review' | 'qa', to: string, item: 
 }
 
 const reportFrom = (coord: Session, from: string, prefix: string) =>
-  coord.waitForEvent((e: ChannelEvent) => e.params.meta?.from === from && e.params.content.startsWith(prefix), 20_000);
+  coord.waitForEvent((e: ChannelEvent) => e.params.meta?.from === from && e.params.content.includes(prefix), 20_000);
 
 test('the Reviewer and QA clauses in the roles.toml defaults say how a request arrives, how the verdict is recorded and reported, and the /codex:rescue fallback', () => {
   const roles = parseRoles(DEFAULT_ROLES_TOML);
@@ -122,7 +122,8 @@ test('a review request from the Coordinator reaches the Codex session holding Re
   // review: addressed to the role, as the Coordinator would; the report comes back to the Coordinator
   await request(coord, 'review', 'reviewer', 'T-1', 'Check that `cland task list --state open` lists the item.');
   const reviewReport = await reportFrom(coord, 'rev', 'review ');
-  assert.equal(reviewReport.params.content, 'review clear T-1 (run rev-run-1)');
+  assert.match(reviewReport.params.content, /(?:^|\n)review clear T-1 \(run rev-run-1\)(?:\n|$)/);
+  assert.match(reviewReport.params.content, /event · task · T-1 verdict posted review clear · rev-run-1/);
   assert.equal(reviewReport.params.meta?.from_role, 'reviewer');
   let item = (await view(root, 'T-1')).item;
   assert.deepEqual(item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]), [['review', 'clear', 'rev [reviewer]', 'rev-run-1']]);
@@ -133,7 +134,8 @@ test('a review request from the Coordinator reaches the Codex session holding Re
   // QA: addressed by name this time
   await request(coord, 'qa', 'qa-1', 'T-1', 'Check the CLI and that a headless Neovim shows General.');
   const qaReport = await reportFrom(coord, 'qa-1', 'qa ');
-  assert.equal(qaReport.params.content, 'qa not clear T-1 (run qa-run-1)');
+  assert.match(qaReport.params.content, /(?:^|\n)qa not clear T-1 \(run qa-run-1\)(?:\n|$)/);
+  assert.match(qaReport.params.content, /event · task · T-1 verdict posted qa not clear · qa-run-1/);
   item = (await view(root, 'T-1')).item;
   assert.deepEqual(item.verdicts.map((v) => [v.verdict, v.result, v.by]), [['review', 'clear', 'rev [reviewer]'], ['qa', 'not clear', 'qa-1 [qa]']]);
   assert.deepEqual(await listed(root, 'qa=not clear'), ['T-1']);

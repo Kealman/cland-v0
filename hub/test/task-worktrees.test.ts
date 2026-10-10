@@ -187,8 +187,10 @@ test('cland session launch --item starts the Implementer in the worktree with th
   // the session's Claude Code has the WorktreeCreate hook; a worktree of its own is refused, naming its own
   const context = JSON.parse(await readFile(join(fake.home, 'jobs', `${session?.id}.context.json`), 'utf8')) as { hooks: Record<string, string[]> };
   assert.equal(context.hooks.WorktreeCreate?.length, 1);
-  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: '@impl-1 worktree side-quest' })).ok, true);
+  const command = await ui.request({ type: 'topic.send', topic: 'general', text: '@impl-1 worktree side-quest' });
+  assert.equal(command.ok, true);
   const answer = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'impl-1' && (f.message as { text: string }).text.startsWith('worktree side-quest: '), 30_000);
+  assert.deepEqual([(answer.topic as { id: string }).id, (answer.message as { replyTo?: string }).replyTo], ['general', (command.value as { message: { id: string } }).message.id]);
   const text = (answer.message as { text: string }).text;
   assert.match(text, /^worktree side-quest: refused \(exit 2\): cland: impl-1 works in its own task worktree /);
   assert.ok(text.includes(path), text);
