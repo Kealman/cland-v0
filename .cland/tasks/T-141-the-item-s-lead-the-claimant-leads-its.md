@@ -3,7 +3,7 @@ id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: open
-status: review
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T07:00:01.159Z
+updated: 2026-10-10T07:08:54.433Z
 ---
 
 ## Parent
@@ -234,3 +234,23 @@ Evidence, matrix and both runnable probes: A-478, /Users/evgeniyivanov/Projects/
 ### impl-141 · 2026-10-10T06:59:31.534Z
 
 A-478 correction committed and rebased onto origin/dev ed63217. Head from git log -1: 066b7e912ec728a5476f4361fb54cbc5238896be; pushed to local origin. A-484 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-484-t-141-a-478-correction-at-066b7e9.md) records credential-keyed/id-only ownership, all proven identities with per-id rollback checkpoints, immediate receipt freeze and accepted first-hello binding. Both A-478 probes and the additional restart/deferred-stop/late-first-hello regressions pass; complete protocol file 39/39, native launch controls 3/3, early grant/carry controls 2/2, hub+Neovim typecheck and both self-review axes clear. Independent matrix and full root suite pending; worktree clean.
+
+### rev-67 · 2026-10-10T07:08:54.433Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-7
+commit: 066b7e912ec728a5476f4361fb54cbc5238896be
+
+Medium — hub/src/adapters/sessions.ts:155: stale first-role binding overwrites a later post-acceptance human Reviewer grant with Implementer. A successful correct-token join also bypasses binding consumption and enables the same overwrite on reconnect. README:229 makes human assignment authoritative; :672 allows mutation after acceptance.
+
+Medium — hub/src/adapters/sessions.ts:126: credential resolver adds an existing foreign id before Core validates/join-checks it (core.ts:490); credentialed join of other/foreign-id with target's token fences that pre-existing owner and spawn rejection revokes its stored/live role. Preserve join provenance before registering ownership. This is an accepted protocol mismatch control; bundled adapters normally generate matching id/name.
+
+Medium — hub/src/adapters/sessions.ts:494: Store identity commits before table.put (:495); unpublished insertion failure restores prior role but drops prior-id's name and retains failed new-id. An unchanged real prior-id claim's lead route changes target→Coordinator. Stage/restore the owned identity publication on unpublished failure with foreign-owner guards.
+
+Medium — hub/src/adapters/sessions.ts:312: unpublished failed launch skips subscriber cleanup. Credentialed early hello and returned process both new-id; table.put fails before commit; verified stop/settlement clear role and receipt but leave subscriber-owned subscription. End proven subscriber records after death independently of published/exact-subject cleanup (§3.9).
+
+High0/medium4/low0. Standards one medium (foreign join); Spec four mediums; overlap counted once. Complete A473 matrix and all remaining findings in one round. Root/Spec independently reproduce all four; Standards reproduces join. A478 findings fixed; anonymous proof/restart, deferred-stop freeze, PID await, quarantine mutators, terminal/row/role checkpoint retries, PID reuse/unreadable and later-grant controls pass. Range-diff nine prior commits unchanged; full-item base ed63217. No suites run.
+
+Evidence, complete matrix and four runnable probes: A-487, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-487-t-141-full-matrix-review-at-066b7e9-grants-joins-and-unpublished-identity-cleanu.md.

@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T22:17:07.427Z
-updated: 2026-10-10T00:58:18.035Z
+updated: 2026-10-10T07:09:28.996Z
 ---
 
 ## Parent
@@ -40,3 +40,12 @@ T-79 keeps a failed spawn's files and recovery state while the child's exit is u
 ## Notes
 
 Size M; triage first. tech-debt: it does not block v0.1.
+
+## Comments
+
+### coord · 2026-10-10T07:09:28.996Z
+
+Moved from T-141's review (rev-67-141-7, A-487, runnable probes inside), Coordinator scope decision 2026-10-10:
+- Finding 3 (sessions.ts:494): rememberLaunchIdentity commits the returned id into the Store before table.put. If the row insert fails before commit, cleanup doesn't restore the prior offline identity: the prior role lands under the failed new id, the prior id loses its name, and @lead routing for an unchanged claim falls to the Coordinator. Stage identity publication with acceptance, or restore the owned identity change on unpublished failure.
+- Finding 4 (sessions.ts:312): subscriber cleanup depends on published=true. A credentialed early subscriber whose launch fails before the row commits keeps its subscription after verified cleanup. End proven subscriber-owned records after verified death even without a published row.
+Both are reached only through injected Store/row write faults.
