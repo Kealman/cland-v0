@@ -1060,12 +1060,14 @@ node hub/bin/cland.ts --version
 ### Tests
 
 Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
-`npm test --workspace hub`, or `npm run test:nvim`. The hub phase takes
-`/tmp/cland-suite.lock`; the Neovim phase queues once for joint admission to
+`npm test --workspace hub`, or `npm run test:nvim`. A hub-only run takes
+`/tmp/cland-suite.lock`; a Neovim-only run queues once for joint admission to
 `/tmp/cland-suite.lock` and `/tmp/cland-suite-nvim.lock`. Every phase takes the machine lock, so
-hub and Neovim runs serialize across projects and worktrees. `npm test` releases
-all phase locks after cleanup before queueing for the next phase. A Neovim
-waiter holds neither lock until both are free under their recovery guards, so
+hub and Neovim runs serialize across projects and worktrees. `npm test` queues
+once for joint admission to both locks before hub starts, and keeps them through
+Neovim; each phase cleans up its processes and temporary root before the next
+starts. Neovim-only and full-run waiters hold neither lock until both are free
+under their recovery guards, so
 live legacy Neovim-first waiters can drain without an opposite-order cycle.
 See [agent test notes](../docs/agents/tests.md). A second run prints the holder's
 pid, start time, worktree and its own queue position. Atomic PID/start-time

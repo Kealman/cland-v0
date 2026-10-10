@@ -16,9 +16,13 @@ async function fixture(t: TestContext) {
   return dir;
 }
 const lockPath = (dir: string, mode?: 'hub' | 'nvim') => join(dir, mode === 'hub' ? 'cland-suite.lock' : mode === 'nvim' ? 'cland-suite-nvim.lock' : 'lock');
-function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all') {
+function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all', stopWhenQueued = false) {
   const options = { cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } };
-  const code = `import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lockPath(dir))} })`};`;
+  // Pause at the queue diagnostic boundary, after every recovery guard is released.
+  // An external SIGSTOP immediately after ticket publication can strand a .break guard.
+  const stop = stopWhenQueued ? `const write = process.stderr.write.bind(process.stderr);
+process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args); if (String(chunk).includes('waiting for the suite lock')) { process.stderr.write = write; process.kill(process.pid, 'SIGSTOP'); } return result; };` : '';
+  const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lockPath(dir))} })`};`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
@@ -237,20 +241,19 @@ test('a Neovim suite waits while a hub suite holds the machine lock', async t =>
   assert.equal(await readFile(nvimMarker, 'utf8'), 'ready');
 });
 
-test('all cleans its hub root before joint Neovim admission and uses a fresh root per phase', async t => {
+test('all waits for joint admission then cleans its hub root and uses a fresh root per phase', async t => {
   const dir = await fixture(t);
   const journal = join(dir, 'journal');
-  // An ownerless Neovim lock keeps the phase queued without a machine lease.
+  // An ownerless Neovim lock keeps the whole run queued without a machine lease.
   await mkdir(lockPath(dir, 'nvim'));
   const file = join(dir, 'phases.mjs');
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; import { appendFile, readFile } from 'node:fs/promises'; test('phase', async () => { const previous = await readFile(${JSON.stringify(journal)}, 'utf8').catch(() => ''); const phase = previous ? 'nvim' : 'hub'; const owner = JSON.parse(await readFile(${JSON.stringify(dir)} + '/cland-suite' + (phase === 'nvim' ? '-nvim' : '') + '.lock.owner', 'utf8')); assert.equal(owner.runner.pid, process.ppid); assert.equal(owner.root, process.env.TMPDIR); if (previous) { assert.equal(existsSync(previous.trim()), false); const machine = JSON.parse(await readFile(${JSON.stringify(`${lockPath(dir, 'hub')}.owner`)}, 'utf8')); assert.equal(machine.runner.pid, process.ppid); assert.equal(machine.root, process.env.TMPDIR); } await appendFile(${JSON.stringify(journal)}, process.env.TMPDIR + '\\n'); });`);
   const all = run(t, dir, file, 'all');
   await until(() => all.output().includes('waiting for the suite lock')).catch(error => { throw new Error(String(error) + '\n' + all.output()); });
   const { existsSync } = await import('node:fs');
-  const hubRoot = (await readFile(journal, 'utf8')).trim();
+  assert.equal(await readFile(journal, 'utf8').catch(() => null), null, 'hub cannot start before joint admission');
   assert.equal(existsSync(lockPath(dir, 'hub')), false);
-  assert.equal(existsSync(hubRoot), false);
-  // New phases remain behind the queued Neovim phase.
+  // New invocations remain behind the queued full run.
   const pass = join(dir, 'pass.mjs');
   await writeFile(pass, `import test from 'node:test'; test('fixture', () => {});`);
   const hub = run(t, dir, pass, 'hub');
@@ -493,7 +496,9 @@ test('tickets register before guard polling so an earlier contended waiter canno
   const release = join(dir, 'release-guard');
   const journal = join(dir, 'journal');
   const lockModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
-  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFile, access } from 'node:fs/promises'; const guard = acquireLock(${JSON.stringify(machine + '.reaper')}); await writeFile(${JSON.stringify(guardReady)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); guard.release();`], { stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFile, access } from 'node:fs/promises'; const guard = acquireLock(${JSON.stringify(machine + '.reaper')}); await writeFile(${JSON.stringify(guardReady)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); guard.release();`], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let guardError = '';
+  child.stderr.on('data', data => { guardError += String(data); });
   const done = new Promise<number | null>(resolve => child.once('close', resolve));
   const { ownProcess } = await import('./process-cleanup.ts');
   ownProcess(t, child.pid);
@@ -502,16 +507,16 @@ test('tickets register before guard polling so an earlier contended waiter canno
   for (const name of ['A', 'B', 'C']) {
     const file = join(dir, name + '.mjs');
     await writeFile(file, `import test from 'node:test'; import { appendFile } from 'node:fs/promises'; test('phase', async () => { await appendFile(${JSON.stringify(journal)}, ${JSON.stringify(name + '\n')}); });`);
-    const waiter = run(t, dir, file, 'hub');
+    const waiter = run(t, dir, file, 'hub', name === 'A');
     waiters.push(waiter);
     // The admission guard stays occupied through all three registrations.
     await until(async () => (await readdir(machine + '.queue').catch(() => [])).filter(name => name.endsWith('.json')).length === waiters.length);
-    if (name === 'A') waiter.child.kill('SIGSTOP');
+    if (name === 'A') await until(() => waiter.output().includes('waiting for the suite lock'));
   }
   const [a, b, c] = waiters;
   assert.ok(a && b && c);
   await writeFile(release, 'go');
-  assert.equal(await done, 0);
+  assert.equal(await done, 0, guardError);
   await delay(700);
   assert.equal(await readFile(journal, 'utf8').catch(() => ''), '');
   assert.equal(b.child.exitCode, null);
@@ -521,68 +526,143 @@ test('tickets register before guard polling so an earlier contended waiter canno
   assert.equal(await readFile(journal, 'utf8'), 'A\nB\nC\n');
 });
 
-test('joint admission leaves the machine free for a live legacy Neovim-first waiter to drain', async t => {
+for (const mode of ['nvim', 'all'] as const) {
+  test(`${mode} joint admission leaves the machine free for a live legacy Neovim-first waiter to drain`, async t => {
+    const dir = await fixture(t);
+    const machine = lockPath(dir, 'hub');
+    const nvim = lockPath(dir, 'nvim');
+    const holding = join(dir, 'holding');
+    const release = join(dir, 'release');
+    const oldReserved = join(dir, 'old-reserved');
+    const oldMachine = join(dir, 'old-machine');
+    const resumeOld = join(dir, 'resume-old');
+    const journal = join(dir, 'journal');
+    const held = join(dir, 'held.mjs');
+    await writeFile(held, `import test from 'node:test'; import { writeFile, access } from 'node:fs/promises'; test('holder', async () => { await writeFile(${JSON.stringify(holding)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); });`);
+    const holder = run(t, dir, held, 'hub');
+    await until(async () => await readFile(holding, 'utf8').catch(() => '') === 'ready');
+    // V175's live protocol: acquire/release each recovery guard independently,
+    // retaining the Neovim ownership directory while polling for the machine.
+    const lockModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
+    const legacyCode = `import { acquireLock, HubLocked, processStarted } from ${JSON.stringify(lockModule)};
+  import { mkdir, readFile, writeFile, access, rm, appendFile } from 'node:fs/promises';
+  const owner = { pid: process.pid, started: processStarted(process.pid), since: new Date().toISOString(), token: 'legacy-fixture', worktree: ${JSON.stringify(dir)} };
+  async function acquire(dir) {
+    for (;;) {
+      let guard;
+      try {
+        guard = acquireLock(dir + '.reaper');
+        const previous = await readFile(dir + '.owner', 'utf8').catch(() => null);
+        if (!previous) { await writeFile(dir + '.owner', JSON.stringify(owner)); await mkdir(dir); await writeFile(dir + '/holder.json', JSON.stringify(owner)); return; }
+      } catch (error) { if (!(error instanceof HubLocked)) throw error; }
+      finally { guard?.release(); }
+      await new Promise(r => setTimeout(r, 25));
+    }
+  }
+  await acquire(${JSON.stringify(nvim)});
+  await writeFile(${JSON.stringify(oldReserved)}, 'ready');
+  while (!await access(${JSON.stringify(resumeOld)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25));
+  await acquire(${JSON.stringify(machine)});
+  await writeFile(${JSON.stringify(oldMachine)}, 'ready');
+  await appendFile(${JSON.stringify(journal)}, 'old\\n');
+  for (const dir of ${JSON.stringify([machine, nvim])}) { await rm(dir, { recursive: true }); await rm(dir + '.owner'); }
+  `;
+    const old = spawn(process.execPath, ['--input-type=module', '-e', legacyCode], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const { ownProcess } = await import('./process-cleanup.ts');
+    ownProcess(t, old.pid);
+    let oldOutput = '';
+    old.stdout.on('data', data => { oldOutput += String(data); });
+    old.stderr.on('data', data => { oldOutput += String(data); });
+    const oldDone = new Promise<number | null>(resolve => old.once('close', resolve));
+    await until(async () => await readFile(oldReserved, 'utf8').catch(() => '') === 'ready');
+    const file = join(dir, 'new.mjs');
+    await writeFile(file, `import test from 'node:test'; import { appendFile } from 'node:fs/promises'; test('new phase', async () => { await appendFile(${JSON.stringify(journal)}, 'new\\n'); });`);
+    const next = run(t, dir, file, mode);
+    await until(() => next.output().includes('waiting for the suite lock'));
+    await writeFile(release, 'go');
+    assert.equal(await holder.done, 0, holder.output());
+    // Let the new poller observe the free machine before allowing old to retry.
+    await delay(700);
+    const { existsSync } = await import('node:fs');
+    assert.equal(existsSync(machine), false, 'new must not hold machine while old owns Neovim');
+    assert.equal(next.child.exitCode, null);
+    await writeFile(resumeOld, 'go');
+    assert.equal(await oldDone, 0, oldOutput);
+    assert.equal(await readFile(oldMachine, 'utf8'), 'ready');
+    assert.equal(await next.done, 0, next.output());
+    assert.equal(await readFile(journal, 'utf8'), mode === 'all' ? 'old\nnew\nnew\n' : 'old\nnew\n');
+  });
+}
+
+test('three queued all runs keep both phases back to back and preserve waiter order', async t => {
   const dir = await fixture(t);
   const machine = lockPath(dir, 'hub');
-  const nvim = lockPath(dir, 'nvim');
-  const holding = join(dir, 'holding');
-  const release = join(dir, 'release');
-  const oldReserved = join(dir, 'old-reserved');
-  const oldMachine = join(dir, 'old-machine');
-  const resumeOld = join(dir, 'resume-old');
   const journal = join(dir, 'journal');
-  const held = join(dir, 'held.mjs');
-  await writeFile(held, `import test from 'node:test'; import { writeFile, access } from 'node:fs/promises'; test('holder', async () => { await writeFile(${JSON.stringify(holding)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); });`);
-  const holder = run(t, dir, held, 'hub');
-  await until(async () => await readFile(holding, 'utf8').catch(() => '') === 'ready');
-  // V175's live protocol: acquire/release each recovery guard independently,
-  // retaining the Neovim ownership directory while polling for the machine.
-  const lockModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
-  const legacyCode = `import { acquireLock, HubLocked, processStarted } from ${JSON.stringify(lockModule)};
-import { mkdir, readFile, writeFile, access, rm, appendFile } from 'node:fs/promises';
-const owner = { pid: process.pid, started: processStarted(process.pid), since: new Date().toISOString(), token: 'legacy-fixture', worktree: ${JSON.stringify(dir)} };
-async function acquire(dir) {
-  for (;;) {
-    let guard;
-    try {
-      guard = acquireLock(dir + '.reaper');
-      const previous = await readFile(dir + '.owner', 'utf8').catch(() => null);
-      if (!previous) { await writeFile(dir + '.owner', JSON.stringify(owner)); await mkdir(dir); await writeFile(dir + '/holder.json', JSON.stringify(owner)); return; }
-    } catch (error) { if (!(error instanceof HubLocked)) throw error; }
-    finally { guard?.release(); }
-    await new Promise(r => setTimeout(r, 25));
+  // Keep admission closed until every invocation has published its ticket.
+  await mkdir(machine);
+  const waiters = [];
+  for (const name of ['A', 'B', 'C']) {
+    const file = join(dir, name + '.mjs');
+    await writeFile(file, `import test from 'node:test'; import { appendFile, readFile, writeFile } from 'node:fs/promises'; test('phase', async () => {
+const phase = await readFile(${JSON.stringify(join(dir, name + '-phase'))}, 'utf8').catch(() => 'hub');
+await appendFile(${JSON.stringify(journal)}, ${JSON.stringify(name + ':')} + phase + '\\n');
+await writeFile(${JSON.stringify(join(dir, name + '-phase'))}, 'nvim');
+});`);
+    const waiter = run(t, dir, file, 'all');
+    waiters.push(waiter);
+    await until(async () => (await readdir(machine + '.queue').catch(() => [])).filter(name => name.endsWith('.json')).length === waiters.length);
   }
-}
-await acquire(${JSON.stringify(nvim)});
-await writeFile(${JSON.stringify(oldReserved)}, 'ready');
-while (!await access(${JSON.stringify(resumeOld)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25));
-await acquire(${JSON.stringify(machine)});
-await writeFile(${JSON.stringify(oldMachine)}, 'ready');
-await appendFile(${JSON.stringify(journal)}, 'old\\n');
-for (const dir of ${JSON.stringify([machine, nvim])}) { await rm(dir, { recursive: true }); await rm(dir + '.owner'); }
-`;
-  const old = spawn(process.execPath, ['--input-type=module', '-e', legacyCode], { stdio: ['ignore', 'pipe', 'pipe'] });
-  const { ownProcess } = await import('./process-cleanup.ts');
-  ownProcess(t, old.pid);
-  let oldOutput = '';
-  old.stdout.on('data', data => { oldOutput += String(data); });
-  old.stderr.on('data', data => { oldOutput += String(data); });
-  const oldDone = new Promise<number | null>(resolve => old.once('close', resolve));
-  await until(async () => await readFile(oldReserved, 'utf8').catch(() => '') === 'ready');
-  const file = join(dir, 'new.mjs');
-  await writeFile(file, `import test from 'node:test'; import { appendFile } from 'node:fs/promises'; test('new phase', async () => { await appendFile(${JSON.stringify(journal)}, 'new\\n'); });`);
-  const next = run(t, dir, file, 'nvim');
-  await until(() => next.output().includes('waiting for the suite lock'));
-  await writeFile(release, 'go');
-  assert.equal(await holder.done, 0, holder.output());
-  // Let the new poller observe the free machine before allowing old to retry.
-  await delay(700);
-  const { existsSync } = await import('node:fs');
-  assert.equal(existsSync(machine), false, 'new must not hold machine while old owns Neovim');
-  assert.equal(next.child.exitCode, null);
-  await writeFile(resumeOld, 'go');
-  assert.equal(await oldDone, 0, oldOutput);
-  assert.equal(await readFile(oldMachine, 'utf8'), 'ready');
-  assert.equal(await next.done, 0, next.output());
-  assert.equal(await readFile(journal, 'utf8'), 'old\nnew\n');
+  await rm(machine, { recursive: true });
+  for (const waiter of waiters) assert.equal(await waiter.done, 0, waiter.output());
+  assert.equal(await readFile(journal, 'utf8'), 'A:hub\nA:nvim\nB:hub\nB:nvim\nC:hub\nC:nvim\n');
+  assert.deepEqual(await readdir(machine + '.queue'), []);
 });
+
+for (const boundary of ['before root removal', 'after next root creation'] as const) {
+  test(`a full run killed ${boundary} between phases recovers both locks, its root and its ticket`, async t => {
+    const dir = await fixture(t);
+    const machine = lockPath(dir, 'hub');
+    const nvim = lockPath(dir, 'nvim');
+    const marker = join(dir, 'between-phases.json');
+    const file = join(dir, 'pass.mjs');
+    await writeFile(file, `import test from 'node:test'; test('phase', () => {});`);
+    // Crash at a real root boundary, after hub exits and before Neovim spawns.
+    const code = `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
+  const rm = fs.rm; const mkdir = fs.mkdir;
+  async function crash(root) {
+    const owner = await fs.readFile(${JSON.stringify(machine + '.owner')}, 'utf8').then(JSON.parse, () => null);
+    if (owner?.root === root) {
+      await fs.writeFile(${JSON.stringify(marker)}, JSON.stringify(owner));
+      process.kill(process.pid, 'SIGKILL');
+    }
+  };
+  fs.rm = async (...args) => {
+    if (${JSON.stringify(boundary)} === 'before root removal') await crash(args[0]);
+    return rm(...args);
+  };
+  fs.mkdir = async (...args) => {
+    const result = await mkdir(...args);
+    if (${JSON.stringify(boundary)} === 'after next root creation' && String(args[0]).endsWith('-1')) await crash(args[0]);
+    return result;
+  };
+  syncBuiltinESMExports();
+  const { runPackageSuite } = await import(${JSON.stringify(runner)});
+  await runPackageSuite('all', [${JSON.stringify(file)}], ${JSON.stringify({ cwd: dir, lockDirs: { hub: machine, nvim } })});`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+    const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+    const { ownProcess } = await import('./process-cleanup.ts');
+    ownProcess(t, child.pid);
+    await exited;
+    assert.equal(child.signalCode, 'SIGKILL');
+    const owner = JSON.parse(await readFile(marker, 'utf8')) as { root: string; token: string };
+    t.after(() => rm(owner.root, { recursive: true, force: true }));
+    for (const lock of [machine, nvim]) assert.equal(JSON.parse(await readFile(lock + '.owner', 'utf8')).token, owner.token);
+    assert.deepEqual(await readdir(machine + '.queue'), [], 'admitted run has no lingering ticket');
+    await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; test('old phase root gone', () => assert.equal(existsSync(${JSON.stringify(owner.root)}), false));`);
+    const successor = run(t, dir, file, 'all');
+    assert.equal(await successor.done, 0, successor.output());
+    const { existsSync } = await import('node:fs');
+    for (const path of [owner.root, ...[machine, nvim].flatMap(lock => [lock, lock + '.owner'])]) assert.equal(existsSync(path), false, path);
+    assert.deepEqual(await readdir(machine + '.queue'), []);
+  });
+}

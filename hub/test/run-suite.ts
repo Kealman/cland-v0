@@ -1,4 +1,4 @@
-// One machine queue admits each phase; Neovim acquires both locks together when free.
+// One machine ticket admits an invocation; full runs retain both locks across phases.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -9,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
 
-type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; device?: number; inode?: number; runner?: ProcessIdentity };
+type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity };
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
-type Lease = { publishRunner: (identity: ProcessIdentity) => Promise<void>; publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
+type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
   try {
@@ -37,7 +37,7 @@ async function sweep(holder: Holder): Promise<void> {
   const ownedRoot = async () => {
     if (!holder.root) return undefined;
     const info = await stat(holder.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-    const plannedRoot = join(await realpath('/tmp'), `cland-suite-${holder.token}`);
+    const plannedRoot = join(await realpath('/tmp'), `cland-suite-${holder.token}${holder.phase === undefined ? '' : `-${holder.phase}`}`);
     const identityMatches = holder.device === undefined && holder.inode === undefined ? holder.root === plannedRoot : info?.dev === holder.device && info?.ino === holder.inode;
     if (info && !identityMatches) throw new Error('suite root identity changed; refusing cleanup');
     return info ? holder.root : undefined;
@@ -135,14 +135,7 @@ async function acquire(dirs: string[], interrupted: () => boolean, holder: Holde
               pending.created = true;
               await publish(metadataPath, holder);
               leases.push({
-                publishRunner: async identity => {
-                  holder.runner = identity;
-                  await publish(ownerPath, holder);
-                  await publish(metadataPath, holder);
-                },
-                publishRoot: async root => {
-                  const rootInfo = await stat(root);
-                  holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
+                publish: async () => {
                   await publish(ownerPath, holder);
                   await publish(metadataPath, holder);
                 },
@@ -233,10 +226,26 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     const rootInfo = await stat(root);
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
-    for (const lease of leases) await lease.publishRoot(root);
+    for (const lease of leases) await lease.publish();
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     for (const [index, args] of suites.entries()) {
       if (interruption.signal) break;
+      if (index > 0) {
+        // Remove the previous phase's processes and root without giving up admission.
+        await sweep(holder);
+        if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+        holder.phase = index;
+        root = join(await realpath('/tmp'), `cland-suite-${holder.token}-${index}`);
+        holder.root = root;
+        delete holder.device; delete holder.inode; delete holder.runner;
+        // Publish the planned root before recreating it, covering death in this gap.
+        for (const lease of leases) await lease.publish();
+        await mkdir(root, { mode: 0o700 });
+        const info = await stat(root);
+        holder.device = info.dev; holder.inode = info.ino;
+        for (const lease of leases) await lease.publish();
+        if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+      }
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
       delete env.NODE_TEST_CONTEXT;
       const gate = join(root, `start-${index}`);
@@ -260,7 +269,7 @@ process.chdir(cwd);`);
       activeIdentity = captureProcess(active.pid);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
       holder.runner = activeIdentity;
-      for (const lease of leases) await lease.publishRunner(activeIdentity);
+      for (const lease of leases) await lease.publish();
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
@@ -291,26 +300,24 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
   const locks = options.lockDirs ?? { hub: '/tmp/cland-suite.lock', nvim: '/tmp/cland-suite-nvim.lock' };
   const phases: Array<'hub' | 'nvim'> = mode === 'all' ? ['hub', 'nvim'] : [mode === 'hub' ? 'hub' : 'nvim'];
+  const suites = phases.map(phase => {
+    const targets = phase === 'hub' ? ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'] : ['nvim/test/**/*.test.ts'];
+    return ['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)];
+  });
+  // Reserve both locks jointly before a full run starts. Taking Neovim later
+  // while holding machine would deadlock a live legacy Neovim-first waiter.
+  // A single ticket/lease spans both phases; single-phase admission is unchanged.
+  const lockDirs = mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
   const interruption: Interruption = { signal: null };
-  // Keep the first signal latched across final cleanup and gaps between phase handlers.
+  // Keep the first signal latched through final cleanup, after runSuite evaluates its return.
   const handlers = (['SIGINT', 'SIGTERM'] as const).map(signal => {
     const handler = () => { interruption.signal ??= signal; };
     process.on(signal, handler);
     return { signal, handler };
   });
   try {
-    for (const phase of phases) {
-      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-      const targets = phase === 'hub' ? ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'] : ['nvim/test/**/*.test.ts'];
-      // Release and sweep the previous phase before waiting for the next phase's lock.
-      // One machine ticket covers all required locks; neither is held while waiting.
-      const lockDirs = phase === 'nvim' ? [locks.hub, locks.nvim] : [locks.hub];
-      const code = await runSuite([['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)]], { cwd, lockDirs, interruption });
-      // A signal during runSuite's finally must override its already evaluated return.
-      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-      if (code !== 0) return code;
-    }
-    return 0;
+    const code = await runSuite(suites, { cwd, lockDirs, interruption });
+    return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
   } finally {
     for (const { signal, handler } of handlers) process.off(signal, handler);
   }
