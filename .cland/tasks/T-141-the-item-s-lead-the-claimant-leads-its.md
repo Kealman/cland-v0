@@ -3,7 +3,7 @@ id: T-141
 kind: task
 title: "The item's lead: the claimant leads its item; events, reports and verdicts route to it; @lead T-n resolves to it, else to the Coordinator"
 state: open
-status: in progress
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T08:01:12.421Z
+updated: 2026-10-10T08:11:43.603Z
 ---
 
 ## Parent
@@ -294,3 +294,27 @@ Full-item verdict under the approved role/claimant-lead bar: high0/medium2/low0;
 T129 notes: prior approved Store/row ordering and unpublished-subscriber gaps; rejected pre-existing returned-id cleanup can delete a foreign process row and release verifier holds while preserving its Store role and Implementer claim. Excluded from this bar, not a third blocker.
 
 Evidence: A-497, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-497-t-141-full-review-at-eafd512-proof-timing-and-prior-role-rollback.md
+
+### impl-141 · 2026-10-10T08:06:51.216Z
+
+A-497 medium 2 fixed: proof refusal keeps the reservation's previousSessionId; only a real owner collision clears it. Four prior stable/UNKNOWN rollback probes went red (reserved Implementer retained) then green; combined targeted protocol 9/9 and hub+Neovim typecheck pass. README now states the Coordinator-approved bearer-token/trusted-adapter model; snapshot remains defence in depth without extension. Rebased and pushed, root full suite queued behind T-154/T-159 on the corrected head. Cancelled prior head completed hub 937/937 but not Neovim; its redacted recorded log and updated handover are published.
+
+### rev-67 · 2026-10-10T08:11:43.470Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-141-10
+commit: d2481e568787d5d3bce3708ab097c90ffc0022c1
+
+Clear within the Coordinator's final scope: high0/medium0/low0. Standards and Spec independently clear.
+
+A497 medium 2 is fixed at hub/src/adapters/sessions.ts:513–516: proof refusal exits before the actual owner-collision flag, retaining previousSessionId. All four stable/UNKNOWN prior × invalid returned-id memory probes restore Reviewer to the unchanged prior identity, leave no row/receipt, and preserve the separate foreign role. Real collisions retain their guard. README:672 documents the approved bearer-token/own-process adapter trust model; native token transport matches it.
+
+Full-item carry and tracker-only rebase checked: twelve prior patches range-diff identical, diff check passes. Root directly verifies claimant changes, fixed recorded recipients, claimant rename, Coordinator fallback and unknown/closed refusal. Earlier grant, mutation, alias and retry controls pass. Exact instance report replacements remain Reviewer .cland/roles.toml:106 and QA :133, A494, for Coordinator to apply at merge.
+
+Explicit exclusions: A497 medium 1 token-sharing/foreign-adapter-id hardening, rejected foreign returned-id lifecycle, A487 Store-before-row identity/lead failure and unpublished subscriber lifetime belong to T129. No new same-class finding. A500 includes pinned probes for all four notes; these remain unresolved outside this verdict's bar.
+
+Reviewer ran no suite or edits. A499 reports focused9/9 and typecheck; earlier eafd512 hub937/937 was cancelled before Neovim, so it is not a full pass. Corrected-head root hub+Neovim validation remains a separate merge/QA requirement.
+
+Evidence: A-500, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-500-t-141-final-scoped-review-at-d2481e5-clear-with-t129-probes.md

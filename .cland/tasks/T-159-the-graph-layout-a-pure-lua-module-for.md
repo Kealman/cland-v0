@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-66
 branch: t/T-159-the-graph-layout-a-pure-lua-module-for
 created: 2026-10-10T07:49:36.464Z
-updated: 2026-10-10T07:56:33.511Z
+updated: 2026-10-10T08:29:43.945Z
 ---
 
 ## Parent
@@ -54,3 +54,23 @@ Implementation started from dev 5b21963. Reading the prototype layout and resear
 ### impl-159 · 2026-10-10T07:56:33.511Z
 
 Pure module and 11 unit cases are implemented. Unicode widths are supplied by the caller; wide characters map both cells to their first byte, combining marks stay with their base, and clipping/trimmed highlight ranges stay within emitted lines. Typecheck and isolated cases pass. Demo A-495: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-495-t-159-t-19-headless-layout-vertical-and-sideways.md; T-19 has 22 linked items/36 edges, 4 hidden, 10 layers, 4 canvas crossings in both orientations and no ambiguous joins. Locked test:nvim is waiting for the active suite.
+
+### impl-159 · 2026-10-10T08:22:13.103Z
+
+Final head 37e8756e06ad6cf09f0ecf4c22bb4ce988bf85ce is committed and pushed to local origin; worktree clean. npm run typecheck passed on Node v24.21.0. Locked npm run test:nvim passed: 212/212 tests, no skips or failures (159.47s running, 1491.83s waiting for the package lock). The 11 pure Lua cases cover cycles/self-loops, reduction/reveal, longest-path layers/dummies, sweeps/swaps, positions, distinct tracks/crossings, sibling tray/outside edges, Unicode display/byte columns, both orientations, dense graphs and T-19. Public entry points: from_items(children, opts) builds the graph/tray; render(layout, opts) returns a canvas and geometry, defaulting to vertical. Labels and Unicode measurement are caller callbacks; low-level rows/draw/draw_v/canvas remain available for the view. Reproducible demo runner: nvim/test/graph-layout-demo.lua. Demo A-495 remains valid: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-495-t-159-t-19-headless-layout-vertical-and-sideways.md.
+
+### rev-67 · 2026-10-10T08:29:43.945Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-159-1
+commit: 37e8756e06ad6cf09f0ecf4c22bb4ce988bf85ce
+
+Medium — nvim/lua/cland/graph_layout.lua:703 (call :744): tab width is calculated with only the preceding glyph, omitting the actual canvas column, then emitted verbatim. Native cv:put(0,3,{{"ab\tZ","label"}}) reports used10/total13 but emits a 9-display-column line; bytecol[0][8] points to the tab byte instead of Z. Interior tabs are valid tracker title text (tracker.ts:941/1143 only trim). Normalize tabs at the canvas boundary or expand with current-column-aware measurement, and pin offset/tab-stop byte maps. Violates T159's display-column canvas requirement; independently reproduced by Spec and root.
+
+Low — possible Duplicated Code, nvim/lua/cland/graph_layout.lua:892 and :978: both orientations repeat source-block construction and farthest-target sorting; a shared position-map helper would prevent future ordering fixes diverging. Fowler judgement, not a documented violation or blocker.
+
+High0/medium1/low1. Standards: no blockers, one low heuristic. Spec: one medium. Cycle reporting, reduction/reveal, furthest-blocker layers, dummies, ordering, own tracks/no ambiguous joins, tray, both orientations and purity match the ticket/prototype. All 11 cases and T19 demo A495 checked; independent native DAG probe checked368 renders with no ambiguous joins/┼. Diff check passes. Typecheck/test:nvim212/212 are reported by Implementer/Coordinator; Reviewer did not repeat a suite or edit files.
+
+Evidence/probe: A-504, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-504-t-159-review-at-37e8756-tabbed-canvas-display-columns.md

@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T22:17:07.427Z
-updated: 2026-10-10T08:01:52.807Z
+updated: 2026-10-10T08:11:51.073Z
 ---
 
 ## Parent
@@ -57,3 +57,7 @@ Hardening notes from T-141's review rev-67-141-9 (A-497, Medium 1), out of T-141
 - an adapter returning an identity first connected after admission is accepted (sessions.ts:505);
 - an anonymous credentialed hello selects such an id during the PID await.
 In each case, a later spawn or watch failure clears that identity's role. A-497 has the root probes. Also from A-497: foreign process-row and verifier-hold cleanup notes.
+
+### coord · 2026-10-10T08:11:51.073Z
+
+T-141's final review (rev-67-141-10, A-500) cleared at d2481e5. A-500 lists the unresolved launch-identity classes left for T-129, each with a probe pinned to that head. Start from them together with A-487 (findings 3 and 4) and A-497 (Medium 1).
