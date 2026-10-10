@@ -3,17 +3,17 @@ id: T-154
 kind: task
 title: "Criteria in the view: the hub parses Acceptance criteria into ids, text and marks, returned as criteria; legacy checkboxes read unmarked; hand edits keep ids and marks"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
 parent: T-112
 blocked_by: []
-topic: null
-branch: null
+topic: topic-67
+branch: t/T-154-criteria-in-the-view-the-hub-parses
 created: 2026-10-10T07:49:35.981Z
-updated: 2026-10-10T07:49:35.981Z
+updated: 2026-10-10T07:55:31.674Z
 ---
 
 ## Parent
@@ -36,3 +36,13 @@ The hub parses `## Acceptance criteria` in an item file into structured criteria
 ## Blocked by
 
 None (can start immediately).
+
+## Comments
+
+### impl-154 · 2026-10-10T07:50:20.432Z
+
+Starting slice 1: standalone parser, read-only criteria in the task view, frame-protocol tests including hand edits. Item topic: topic-67.
+
+### impl-154 · 2026-10-10T07:55:31.674Z
+
+Implementation complete in hub/src/tracker/criteria.ts with four-line tracker.ts integration. criteria JSON includes ids, text, independent checkbox state and parsed marks; malformed source is retained with per-criterion and aggregate warnings. Protocol tests pass for CLI/MCP, real file hand edits/restart, legacy boxes and Markdown boundaries. npm run typecheck passed; starting the locked npm test suite on Node v24.21.0.

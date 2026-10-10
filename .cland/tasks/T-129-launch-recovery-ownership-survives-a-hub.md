@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T22:17:07.427Z
-updated: 2026-10-10T07:09:28.996Z
+updated: 2026-10-10T08:01:52.807Z
 ---
 
 ## Parent
@@ -49,3 +49,11 @@ Moved from T-141's review (rev-67-141-7, A-487, runnable probes inside), Coordin
 - Finding 3 (sessions.ts:494): rememberLaunchIdentity commits the returned id into the Store before table.put. If the row insert fails before commit, cleanup doesn't restore the prior offline identity: the prior role lands under the failed new id, the prior id loses its name, and @lead routing for an unchanged claim falls to the Coordinator. Stage identity publication with acceptance, or restore the owned identity change on unpublished failure.
 - Finding 4 (sessions.ts:312): subscriber cleanup depends on published=true. A credentialed early subscriber whose launch fails before the row commits keeps its subscription after verified cleanup. End proven subscriber-owned records after verified death even without a published row.
 Both are reached only through injected Store/row write faults.
+
+### coord · 2026-10-10T08:01:52.807Z
+
+Hardening notes from T-141's review rev-67-141-9 (A-497, Medium 1), out of T-141's trust model by Coordinator decision 2026-10-10. T-141's model: the launch token is a bearer secret held only by the spawned process, and the adapter reports its own process's identity. Defence-in-depth gaps beyond that model:
+- a session first connected after launch admission, which then presents the launch token through hello, is adopted (sessions.ts:137, core.ts:496);
+- an adapter returning an identity first connected after admission is accepted (sessions.ts:505);
+- an anonymous credentialed hello selects such an id during the PID await.
+In each case, a later spawn or watch failure clears that identity's role. A-497 has the root probes. Also from A-497: foreign process-row and verifier-hold cleanup notes.

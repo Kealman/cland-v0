@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T07:31:54.315Z
+updated: 2026-10-10T08:01:12.421Z
 ---
 
 ## Parent
@@ -272,3 +272,25 @@ Medium — hub/src/hub/core.ts:496 (proof insertion: hub/src/adapters/sessions.t
 One full-item verdict under the approved role-integrity/claimant-lead bar; duplicate finding counted once. A487 stale first-grant and foreign live-join cases now pass; adjacent identity, grant, mutation and recovery controls pass as detailed in A-491. Range-diff confirms the ten prior T-141 patches are unchanged; lead checks carry forward. A487 injected acceptance-ordering and unpublished subscriber gaps remain T-129 notes, explicitly excluded by the Coordinator. No suites or edits performed by Reviewer.
 
 Evidence: A-491, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-491-t-141-full-scoped-review-at-7fcf37c-same-name-offline-foreign-ownership.md
+
+### impl-141 · 2026-10-10T07:53:17.840Z
+
+A-491 corrected with launch-start identity snapshots and a shared resolved-candidate guard: pre-existing/UNKNOWN ids cannot enter credential proof or rollback ownership, including adapter-return/PID-await paths. Combined correction also updates the three stale root tests. Protocol 51/51, targeted stale tests and root typecheck pass; rebased to latest dev (tracker-only delta), pushed locally, root hub+Neovim suite running. Self-review has no remaining in-scope findings. Exact instance role old→new lines are in the handover artifact; Coordinator applies them at merge.
+
+### rev-67 · 2026-10-10T08:01:12.421Z
+
+verdict: review
+result: not clear
+by: rev-67 [reviewer]
+run: rev-67-141-9
+commit: eafd512e6ed85ad7597f3deea32faef032804de5
+
+Medium — hub/src/adapters/sessions.ts:41 (snapshot :422): a foreign identity first connecting while spawn awaits is absent from existingIds and can become launch proof. A same-name offline credential reconnect becomes fenced and spawn rejection clears its stored/live Implementer role. Adapter-return and anonymous PID-await candidates share the gap; root reproduces all three forms. Validate current authoritative provenance before admitting new proof (README:672).
+
+Medium — hub/src/adapters/sessions.ts:514 (receipt :538): invalid-proof refusal is treated as an intervening owner conflict, discarding previousSessionId. An offline target/prior-id Reviewer launching as Implementer, with UNKNOWN or pre-existing adapter return, is correctly refused but completed empty-proof cleanup leaves Implementer on its unchanged prior identity. Preserve guarded prior-role rollback when no intervening owner took the name (README:228).
+
+Full-item verdict under the approved role/claimant-lead bar: high0/medium2/low0; both axes independently reproduce both, duplicates counted once. Exact A491 pre-admission case and earlier stale-grant/live-join cases now pass. Related grant, identity, mutator and recovery controls pass; eleven prior commits are range-diff identical and lead checks carry forward. Instance report replacements remain Reviewer line106/QA line133 for Coordinator to apply. No Reviewer suites or edits; external root suite runs separately.
+
+T129 notes: prior approved Store/row ordering and unpublished-subscriber gaps; rejected pre-existing returned-id cleanup can delete a foreign process row and release verifier holds while preserving its Store role and Implementer claim. Excluded from this bar, not a third blocker.
+
+Evidence: A-497, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-497-t-141-full-review-at-eafd512-proof-timing-and-prior-role-rollback.md
