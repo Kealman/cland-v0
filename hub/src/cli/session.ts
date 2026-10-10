@@ -6,8 +6,8 @@ import { withRole } from '../names.ts';
 
 export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--harness claude-code|opencode|codex] [--effort e] [--cwd dir | --item T-<n>] [--brief text|A-<n>]
                   launch a harness session through the hub; a role's launch defaults
-                  (.cland/roles.toml) fill the harness, model and effort not given; --item (an
-                  Implementer's) starts it in the item's task worktree and gives it the item's claim;
+                  (.cland/roles.toml) fill the harness, model and effort not given; --item starts an
+                  Implementer in its task worktree, or a Lead on an open epic/release at the root, with its claim;
                   --brief delivers text or an artifact's content once after the role clause
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session

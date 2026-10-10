@@ -179,7 +179,7 @@ function M.sessions()
   return out
 end
 
-M.ROLE_LABELS = { aide = 'Aide', coordinator = 'Coordinator', implementer = 'Implementer', reviewer = 'Reviewer', qa = 'QA' }
+M.ROLE_LABELS = { aide = 'Aide', coordinator = 'Coordinator', lead = 'Lead', implementer = 'Implementer', reviewer = 'Reviewer', qa = 'QA' }
 
 --- A session as it is shown everywhere (spec 4.4): the hub's `label` (`rev-1 [Reviewer]`), else built the same way.
 function M.label(name, role, label)

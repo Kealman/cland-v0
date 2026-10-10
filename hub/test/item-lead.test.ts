@@ -313,7 +313,7 @@ test('human @lead mentions reach the claimant, with explicit errors for closed, 
   assert.deepEqual((human.value as { message: Message }).message.to, ['impl']);
   await impl.waitForEvent(e => e.params.content.includes('please explain the review'));
   assert.equal((await impl.call<{ ok: boolean }>('send', { topic: 'general', text: 'The human addressed me.' })).ok, true);
-  for (const to of ['lead T-999', 'lead', 'lead T-bad']) {
+  for (const to of ['lead T-999', 'lead T-0', 'lead T-bad']) {
     const refused = await coord.call<{ ok: boolean; error: string }>('send', { to: [to], text: 'late report' });
     assert.equal(refused.ok, false);
     assert.match(refused.error, /coordinator instead/);

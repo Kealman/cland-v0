@@ -33,7 +33,7 @@ import {
   type TopicRef,
   type TopicStatus,
 } from '../protocol.ts';
-import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole } from '../names.ts';
+import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole, isNodeLeadRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
 import { clauseText, revokedText } from '../roles/clause.ts';
 import { isRoleRecord, noteText, renderNote, type PendingClaims, type RoleRecord } from '../roles/note.ts';
@@ -411,7 +411,7 @@ export class HubCore {
     const seen = new Set<string>();
     for (let node = items.get(item); node && !seen.has(node.id); node = node.parent ? items.get(node.parent) : undefined) {
       seen.add(node.id);
-      const claim = node.claim?.role === 'implementer' || node.claim?.role === 'aide' ? node.claim : null;
+      const claim = isNodeLeadRole(node.claim?.role) ? node.claim : null;
       const id = claim ? this.sessionIdentity(claim.sessionId) : null;
       if (!id || id === excluded || id === UNKNOWN_SESSION || !this.#leadName(id)) continue;
       const status = this.#processStatus.get(id);
@@ -486,7 +486,7 @@ export class HubCore {
       const sessionId = this.sessionIdentity(`name:${session}`);
       const items = this.#defaultItemSet();
       for (const item of items.values()) {
-        if (!item.claim || (item.claim.role !== 'implementer' && item.claim.role !== 'aide') || this.sessionIdentity(item.claim.sessionId) !== sessionId) continue;
+        if (!item.claim || !isNodeLeadRole(item.claim.role) || this.sessionIdentity(item.claim.sessionId) !== sessionId) continue;
         const owner = this.#defaultOwner(item.id, items, sessionId);
         const name = owner ? this.#leadName(owner) : null;
         if (name && name !== session) {
@@ -579,7 +579,7 @@ export class HubCore {
     if (!found) throw new Error(`no item ${item}: address coordinator instead`);
     if (found.state === 'closed') throw new Error(`${item} is closed: address coordinator instead`);
     const claim = found.claim;
-    if (claim?.role === 'implementer' || claim?.role === 'aide') {
+    if (claim && isNodeLeadRole(claim.role)) {
       // A real identity follows renames; a provisional identity can name only its unadopted session.
       const name = this.#leadName(claim.sessionId);
       if (name && name !== HUMAN) return name;
@@ -1656,7 +1656,7 @@ export class HubCore {
     const tagOf = new Map<string, string[]>(); // tag → the session names it resolved to
     for (const tag of HubCore.#normalized(tags)) {
       const lead = /^lead\s+(T-[1-9]\d*)$/.exec(tag);
-      if (/^lead(?:\s|$)/.test(tag) && !lead) throw new Error(`invalid item lead address "${tag}": use @lead T-<n>, or address coordinator instead`);
+      if (/^lead\s/.test(tag) && !lead) throw new Error(`invalid item lead address "${tag}": use @lead T-<n>, or address coordinator instead`);
       const claimant = lead ? this.#itemLead(lead[1]!) : null;
       const target = lead ? this.coordinator() ?? COORDINATOR : tag;
       const r = claimant ? { kind: 'session' as const, name: claimant } : resolveTag(target, ctx);

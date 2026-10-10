@@ -271,7 +271,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
-      const worktree = p.item ? p.cwd : null;
+      const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
       // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
       // spoke and the hub keep cland's id, and the harness's own is recorded as `harnessSessionId`
       const args = [

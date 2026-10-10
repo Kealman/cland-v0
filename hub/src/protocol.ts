@@ -575,7 +575,7 @@ export type HarnessProcessView = {
   label?: string;
   model: string | null;
   cwd: string;
-  /** The item whose task worktree the session was launched in (`session.launch` with an item), else null. */
+  /** The Lead’s epic or release, or the item whose task worktree the session was launched in (`session.launch` with an item), else null. */
   item: string | null;
   /** Live claims and verifier holds, independent of the launch directory's item. */
   holds?: SessionHold[];

@@ -28,7 +28,7 @@ import { systemProcesses } from '../system-processes.ts';
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
-/** `item`: the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
+/** `item`: the Lead’s node, or the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
 export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
 /** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
@@ -418,6 +418,7 @@ export class Sessions {
     const role = request.role ?? this.#core.store.roleOf(request.name);
     const effectiveRequest = { ...request, role };
     if (role !== null && !ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
+    if (role === 'lead' && !request.item) throw new Error('a Lead launch needs `item` naming an open configured container');
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     const reserved = this.#core.nameReservation(request.name);

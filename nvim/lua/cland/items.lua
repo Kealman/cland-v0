@@ -71,6 +71,11 @@ function M.claim(it)
   return (type(c) == 'table' and present(c.session)) and c or nil
 end
 
+function M.lead_label(it)
+  local c = M.claim(it)
+  return c and c.role == 'lead' and state.label(c.session, c.role) or nil
+end
+
 --- The latest verdict of `kind` (review | qa), or nil: `verdicts` is in file order, the latest last.
 function M.latest(it, kind)
   local list = type(it.verdicts) == 'table' and it.verdicts or {}
@@ -404,6 +409,10 @@ local function right_of(it, container)
     local done = 0
     for _, k in ipairs(kids) do
       done = done + (k.state == 'closed' and 1 or 0)
+    end
+    local lead = M.lead_label(it)
+    if lead then
+      out[#out + 1] = { lead .. ' ', 'ClandTeal' }
     end
     out[#out + 1] = { done .. '/' .. #kids, 'ClandDim' }
   else

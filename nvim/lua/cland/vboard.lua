@@ -101,7 +101,7 @@ function M.who(it)
   end
   if it.status == 'review' then return { { 'for Reviewer', 'ClandDim' } } end
   if it.status == 'ready' then return items.marks(it) end
-  if c then return { { c.session, 'ClandTeal' } } end
+  if c then return { { items.lead_label(it) or c.session, 'ClandTeal' } } end
   if last then return { verdict_mark(last) } end
   if items.present(it.assignee) then return { { it.assignee, 'ClandDim' } } end
   return {}
@@ -173,7 +173,10 @@ function M.render(c)
   if b.scope then
     local kids, done = items.children(b.scope.id), 0
     for _, it in ipairs(kids) do if it.state == 'closed' then done = done + 1 end end
-    c:add({ { ' ' .. b.scope.id .. ' ' .. b.scope.title, 'ClandBold' } }, { { done .. '/' .. #kids, 'ClandDim' } }, { item = b.scope.id })
+    local right, lead = {}, items.lead_label(b.scope)
+    if lead then right[#right + 1] = { lead .. ' ', 'ClandTeal' } end
+    right[#right + 1] = { done .. '/' .. #kids, 'ClandDim' }
+    c:add({ { ' ' .. b.scope.id .. ' ' .. b.scope.title, 'ClandBold' } }, right, { item = b.scope.id })
   else c:add({ { ' no open container: unscheduled', 'ClandDim' } }) end
   if f == 'you' then
     local any = false

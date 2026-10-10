@@ -486,4 +486,6 @@ T-123's stub-hub tests in `test/shell.test.ts` cover all status transitions, T-8
 
 T-128's `test/vboard.test.ts` uses one all-status fixture for the vertical panel and centre columns: status/epic ordering, glyph colors, marks, criteria fractions, folds and shared epic tabs. It also probes result-only and refused rank requests, authoritative final siblings, cursor following, cold-restart scope persistence, same-timestamp body edits and Unicode fitting at narrow widths. `PANELS-013` and `PANELS-014` succeed the prototype's `PANELS-001`–`PANELS-004` with hub rank events and configured-container scope persistence; both run through `test/qa.test.ts`.
 
+A configured container with a Lead claim shows its session and `[Lead]` on the container row beside its child count. The item fields show the same claim, and the sessions panel lists the Lead with its node. `@lead T-n` in a topic addresses that node’s claimant; `@lead` addresses the Lead role.
+
 The sessions header shows the hub's effective crew staffing summary, for example `impl per item · rev pool 2 · qa 1 · leads: epic`. It refreshes immediately after `cland crew set reviewer.size 2` or a valid hand edit of `.cland/crew.toml`. Invalid edits retain the last good summary, with a refusal recorded in Agents. Staffing is edited through the file or CLI.

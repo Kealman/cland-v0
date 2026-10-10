@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { cland, clandWithEnv, fakeClaude, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 
 const nvim = await nvimOrSkip();
@@ -50,6 +50,28 @@ const leftOf = (text: string): string =>
     })
     .join('\n');
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
+
+test('the epic row, item fields and sessions panel show its launched Lead', { skip }, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["epic"]\n');
+  await startDaemon(t, root, fake.env);
+  const created = await cland(root, 'task', 'create', 'Led epic', '--kind', 'epic');
+  assert.equal(created.code, 0, created.stderr);
+  const launched = await clandWithEnv(root, fake.env, 'session', 'launch', 'lead-1', '--role', 'lead', '--item', 'T-1', '--harness', 'claude-code');
+  assert.equal(launched.code, 0, launched.stderr);
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('General'), 'the workbench');
+  await c.input('<Esc><Space>i');
+  await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,85)");
+  const panel = await c.waitScreen(s => /T-1 Led epic.*lead-1 \[Lead\].*0\/0/.test(s), 'the epic Lead badge');
+  assert.match(panel, /lead-1 \[Lead\]/);
+  await c.input(':Cland view item T-1<CR>');
+  await c.waitScreen(s => /claim.*lead-1 \[Lead\]/.test(s), 'the item claim fields');
+  await c.input('<Esc><Space>s');
+  await c.waitScreen(s => s.includes('lead-1 [Lead]') && s.includes('T-1'), 'the Lead session and its epic');
+});
 
 test('configured containers with no children show container counts in the panel and stay outside board cards', { skip }, async t => {
   const root = await tempProject(t);

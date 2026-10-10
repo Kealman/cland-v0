@@ -1913,6 +1913,13 @@ export class Tracker {
         this.#ensureSession(actor);
         authorize();
         const held = this.#index.claimOf(id);
+        if (!options.release && actor.role === 'lead') {
+          const item = this.#index.get(id);
+          if (item?.state !== 'open' || !this.levels.includes(item.kind)) throw new TrackerError('a Lead needs an open configured container');
+          const other = this.list().find(item => item.id !== id && item.claim && this.sameSession(item.claim.sessionId, actor.id));
+          if (other) throw new TrackerError(`a Lead holds one node: ${actor.name} already claims ${other.id}`);
+          if (held && !this.sameSession(held.sessionId, actor.id) && held.role === 'lead') throw new TrackerError(`${id} is claimed by ${held.session} (lead): release it first`);
+        }
         if (held && held.sessionId !== this.#sessionId(actor.id) && !options.force) {
           throw new TrackerError(`${id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''} since ${held.claimedAt}; force takes it over`);
         }

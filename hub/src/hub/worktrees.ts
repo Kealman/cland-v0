@@ -146,18 +146,21 @@ export class TaskWorktrees {
   }
 
   /**
-   * `session.launch` with an item: an Implementer's alone. The worktree is made first (a failure refuses the launch),
+   * `session.launch` with an item: an Implementer, or a Lead on an open configured container. The task worktree is made first (a failure refuses the launch),
    * the session starts in it, and the item's claim is the session's, taken over from the Coordinator's or the
    * human's; another session's claim refuses the launch. So does one another session took while the harness started:
    * the session just launched is stopped, the claim left with its holder. An item that gets no worktree launches at
-   * the project root.
+   * the project root; a Lead records its node in process.item without a task worktree.
    */
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
-    if (request.role !== 'implementer') throw new Error('`item` is for an Implementer (--role implementer); a Reviewer or QA session stands in a worktree with cwd');
+    if (request.role !== 'implementer' && request.role !== 'lead') throw new Error('`item` is for an Implementer (--role implementer) or Lead (--role lead); a Reviewer or QA session stands in a worktree with cwd');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = await this.#tracker.viewAsync(request.item, resumed);
+    if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.levels.includes(view.kind))) {
+      throw new Error('a Lead needs an open configured container');
+    }
     // a claim the launch may take over: none, the Coordinator's, the human's, or one under the new session's name
-    const yields = (held: Claim | null): boolean => !held || held.session === request.name || held.role === 'coordinator' || held.sessionId === 'human';
+    const yields = (held: Claim | null): boolean => !held || (request.role !== 'lead' && held.session === request.name) || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
     if (!yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
     const token = Symbol(request.name);
@@ -172,6 +175,7 @@ export class TaskWorktrees {
       this.#launching.set(view.id, token);
       try {
         const now = await this.#tracker.viewAsync(view.id, resumed);
+        if (request.role === 'lead' && (now.state !== 'open' || !this.#tracker.levels.includes(now.kind))) throw new Error('a Lead needs an open configured container');
         const reason = await this.#ineligible(now);
         let worktree: TaskWorktree | null = null;
         if (reason === null) {
@@ -207,7 +211,7 @@ export class TaskWorktrees {
     authorize?: () => void,
   ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
-    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : {}) }, resumed, authorize);
+    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : request.role === 'lead' ? { cwd: this.root, item: id } : {}) }, resumed, authorize);
     // Claim admission and its final status write both recheck the hold and the launch grant.
     let lost: Claim | null = null;
     let taken: { claim: Claim | null };

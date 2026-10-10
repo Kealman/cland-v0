@@ -6,10 +6,15 @@ export const NAME_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;
  * The roles a session can hold (spec 4.4). A role is a tag (`@reviewer`), so its name is never a session's.
  * Roles are hub-held state (ADR 0001): their definitions are in `.cland/roles.toml` (`src/roles/`).
  */
-export const ROLE_NAMES: readonly string[] = ['coordinator', 'implementer', 'reviewer', 'qa', 'aide'];
+export const ROLE_NAMES: readonly string[] = ['coordinator', 'implementer', 'reviewer', 'qa', 'aide', 'lead'];
 
 /** How a role is written next to a name. */
-export const ROLE_LABELS: Readonly<Record<string, string>> = { coordinator: 'Coordinator', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', aide: 'Aide' };
+export const ROLE_LABELS: Readonly<Record<string, string>> = { coordinator: 'Coordinator', lead: 'Lead', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA', aide: 'Aide' };
+
+/** Roles whose item claims identify the lead of that node. The Coordinator leads the project root. */
+export function isNodeLeadRole(role: string | null | undefined): boolean {
+  return role === 'implementer' || role === 'aide' || role === 'lead';
+}
 
 /** A session as it is shown everywhere: `rev-1 [Reviewer]`, or the bare name when it holds no role. */
 export function withRole(name: string, role: string | null | undefined): string {

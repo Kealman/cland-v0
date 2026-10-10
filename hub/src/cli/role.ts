@@ -4,7 +4,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { RoleHolder, RoleList } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordinator, implementer, reviewer, qa) to a session,
+export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordinator, lead, implementer, reviewer, qa, aide) to a session,
                   live or not yet connected; the session gets the role's clause
                   --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,
                                       Waiting on); the Coordinator moves from its holder, who is told to stop

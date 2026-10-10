@@ -59,13 +59,13 @@ function M.setup()
   set('ClandItalic', { italic = true })
   set('ClandStrike', { strikethrough = true })
   set('ClandQuote', { fg = P.dim })
-  for role, colour in pairs({ Human = P.blue, Aide = P.blue, Coordinator = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Hub = P.faint, Other = P.dim }) do
+  for role, colour in pairs({ Human = P.blue, Aide = P.blue, Coordinator = P.teal, Lead = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Hub = P.faint, Other = P.dim }) do
     set('ClandRole' .. role, { fg = colour })
   end
   set('ClandMine', { bg = P.mine })
   set('ClandAsk', { bg = '#211c12' })
   set('ClandWatch', { fg = P.dim })
-  for name, colour in pairs({ Coordinator = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Other = P.dim }) do
+  for name, colour in pairs({ Coordinator = P.teal, Lead = P.teal, Implementer = P.violet, Reviewer = P.pink, Qa = P.sky, Other = P.dim }) do
     local function soften(hex)
       local out = '#'
       for i = 2, 6, 2 do
@@ -131,7 +131,7 @@ M.SESSION = {
   stopped = { '×', 'ClandRed', 'stopped' },
 }
 
-M.ROLE = { aide = 'ClandRoleAide', coordinator = 'ClandRoleCoordinator', implementer = 'ClandRoleImplementer', reviewer = 'ClandRoleReviewer', qa = 'ClandRoleQa' }
+M.ROLE = { aide = 'ClandRoleAide', coordinator = 'ClandRoleCoordinator', lead = 'ClandRoleLead', implementer = 'ClandRoleImplementer', reviewer = 'ClandRoleReviewer', qa = 'ClandRoleQa' }
 
 function M.role_group(from_kind, role)
   if from_kind == 'human' then return 'ClandRoleHuman' end

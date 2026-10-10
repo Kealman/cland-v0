@@ -375,6 +375,7 @@ export class Dispatcher {
       ...(tool === 'task.plan' ? { planOp: frame.op } : {}),
       item,
       own,
+      ...(type === 'session.launch' ? { launchRole: typeof frame.role === 'string' ? frame.role : typeof frame.name === 'string' ? this.#options.core.store.roleOf(frame.name) : null } : {}),
       ...(tool === 'task.edit' || tool === 'task.criterion' ? {
         criterionOp: frame.op,
         status: frame.status,
@@ -613,14 +614,20 @@ export class Dispatcher {
     };
     const session = (frame: Parameters<typeof answerSession>[1]) => {
       const original = kind === 'spoke' ? connection : this.#asSession(frame);
+      // Item admission needs the effective role before preparing a worktree. Keep the original
+      // frame for permission checks, and recheck an inferred assignment across launch awaits.
+      const inferred = frame.type === 'session.launch' && frame.item !== undefined && frame.role === undefined;
+      const inferredRole = inferred ? core.store.roleOf(frame.name) : null;
+      const launchFrame = inferred && inferredRole !== null ? { ...frame, role: inferredRole } : frame;
       const authorize = () => {
         const current = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
         if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
         if (current && !this.#permitted(current, frame, peer, false)) throw new ToolForbidden(current.role, frame.type, 'permission changed during roles refresh');
+        if (inferred && core.store.roleOf(frame.name) !== inferredRole) throw new Error(`session "${frame.name}" changed role while launching; retry the launch`);
       };
       void answerSession(
         this.#sessions,
-        frame,
+        launchFrame,
         { send: (f) => peer.send(f), isOpen: () => peer.isOpen(), onClose: (fn) => onClose.push(fn) },
         this.#worktrees ?? undefined,
         (write) => this.#guard.measure(frame.type, kind === 'spoke' ? (name ?? '?') : client, write, 'resumed'),

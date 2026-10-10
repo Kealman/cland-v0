@@ -970,3 +970,25 @@ test('repeated dropped recoveries stop with a visible failure after two attempts
   assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 2);
   assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id).length, 1);
 });
+
+
+test('a codex Lead receives its epic claim, role clause and direct node address', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeCodex(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const created = await ui.request({ type: 'task.create', title: 'Led epic', kind: 'epic' });
+  assert.equal(created.ok, true, created.error);
+  const id = (created.value as { item: { id: string } }).item.id;
+  const launched = await launch(ui, 'lead-1', { role: 'lead', item: id });
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', text: `@lead ${id} explain the epic` });
+  assert.equal(sent.ok, true, sent.error);
+  const log = await eventually('Lead clause and node message reach the native harness', async () => {
+    const log = await fake.log(launched.pid!);
+    return log.includes('you hold the role Lead') && log.includes('explain the epic') ? log : undefined;
+  });
+  assert.match(log, /you hold the role Lead/);
+  const viewed = await ui.request({ type: 'task.view', item: id });
+  assert.equal(viewed.ok, true, viewed.error);
+  assert.equal((viewed.value as { item: { claim: { session: string } } }).item.claim.session, 'lead-1');
+});

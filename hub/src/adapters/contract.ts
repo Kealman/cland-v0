@@ -40,7 +40,7 @@ export type HarnessProcess = {
   harnessSessionId: string | null;
   startedAt: string;
   status: 'running' | 'exited' | 'stopped';
-  /** The item whose task worktree the session was launched in (`session.launch` with an item; its cwd is that
+  /** The Lead’s epic or release, or the item whose task worktree the session was launched in (`session.launch` with an item; its cwd is that
    *  worktree), else null. */
   item?: string | null;
   /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is

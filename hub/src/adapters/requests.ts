@@ -3,7 +3,7 @@
 //
 //   session.launch  {name, role?, model?, harness?, cwd?, effort?, item?, brief?} → {process}   the human, and a spoke whose role grants it; a role's
 //                                                              launch defaults (roles.toml) fill what is not given; with `item`
-//                                                              (an Implementer's): {process, claim, worktree, reason?}, in the
+//                                                              (an Implementer's task or a Lead's epic/release): {process, claim, worktree, reason?}, in the
 //                                                              item's worktree (`src/hub/worktrees.ts`)
 //   session.list    {}                                         → {processes, adapters: {<harness>: capabilities}, coordinator}
 //   session.attach  {session}                                  → {command}
