@@ -6,6 +6,7 @@
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
+import { parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
 import { createHash } from 'node:crypto';
@@ -72,6 +73,8 @@ export type ItemView = IndexedItem & {
   /** The integration branch used for patch-id comparisons, or null when neither exists. */
   verdictBase: string | null;
   body: string;
+  criteria: Criterion[];
+  criteriaWarnings: CriterionWarning[];
   comments: Comment[];
   verdicts: IndexedVerdict[];
   claim: Claim | null;
@@ -750,6 +753,7 @@ export class Tracker {
       path: join(TASKS_REL, file),
       ancestry: this.#ancestry(item),
       body: item.body,
+      ...parseCriteria(item.body),
       comments: item.comments,
       verdicts: this.#fresh.annotate(id, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),

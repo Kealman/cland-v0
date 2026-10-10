@@ -831,6 +831,55 @@ Looks right.
 
 A comment is headed `### <author> · <ISO time>`; one whose first lines are `verdict:` (`review` | `qa`), `result:` (`clear` | `not clear`), `by:` (`<session> [<role>]`) and `run:` is a verdict. Its optional `commit:` pins the Git commit covered by that run; older verdicts without it still parse.
 
+`cland task view T-n --json`, MCP `task.view` and the socket's `task.view` return
+`item.criteria`, read from the body's `## Acceptance criteria` section. A missing or
+empty section returns `[]`. Each criterion has `id` (`C1`, `C2`, etc., or `null` for
+a legacy criterion), `text`, `checked`, `marks` and `malformedMarks`. The checkbox
+state is kept independently: a checked legacy criterion has `checked: true` and
+`marks: []`. Wrapped text is joined with newlines; fenced examples and nested
+supporting checklists do not create criteria.
+
+Mark sub-items are indented two spaces below the criterion, in file order:
+
+```markdown
+## Acceptance criteria
+- [x] C1. The clause arrives again on reconnect
+  - done: impl-57 · 2026-10-09T10:00Z
+  - verified: qa-12 [QA] · run q-0117 · 2026-10-09T11:00Z
+- [ ] C2. A reconnect keeps the clause
+  - failed: rev-3 [Reviewer] · 2026-10-09T12:00Z · note Reconnect lost the clause
+```
+
+The first criterion's JSON is:
+
+```json
+{
+  "id": "C1",
+  "text": "The clause arrives again on reconnect",
+  "checked": true,
+  "marks": [
+    { "kind": "done", "by": "impl-57", "at": "2026-10-09T10:00Z" },
+    { "kind": "verified", "by": "qa-12 [QA]", "run": "q-0117", "at": "2026-10-09T11:00Z" }
+  ],
+  "malformedMarks": []
+}
+```
+
+Failed marks carry `kind: "failed"`, `by`, `at` and `note`. Times retain their
+original ISO spelling, with minutes, optional seconds/fractions, and a `Z` or
+numeric timezone. `by` retains the file's session name and optional `[Role]`;
+these marks are parsed file claims, not authenticated verdict evidence. Valid
+marks remain visible even beside malformed ones. Each malformed mark is returned
+verbatim as `{line, text, reason}` in its criterion's `malformedMarks` and in
+`item.criteriaWarnings`; warnings also report orphan mark lines that belong to
+no criterion. `line` is one-based within `item.body`. All warnings are an empty
+list for valid sections. Spaces or tabs after a mark's bullet are accepted;
+tab-indented marks and unrecognized indented list sub-items (including supporting
+checklists, empty bullets and ordered items) are reported verbatim. Hand edits
+are re-indexed and survive restart, preserving
+the ids, text and marks in the file. This slice only reads the section: views do
+not assign ids, rewrite marks or change checkboxes.
+
 - **Task status (T-120).** Tasks carry explicit frontmatter `status`: `backlog` at creation, `planned`, `in progress`, `review`, `qa`, `ready` or `done`; containers, questions, specs and maps have none. The hub writes and indexes it on the tracker's single queue and carries it in view, list and the existing `task` event. A new Implementer claim or a not-clear verdict sets `in progress`; a merge or close sets `done`; a reopen without an explicit status sets `backlog`. Done tasks are closed and all other statuses are open. Migration on index persists `done` for closed tasks and `in progress` for open claimed tasks, otherwise `backlog`. Hand edits are re-indexed, including close/reopen edits to state.
 - **Manual status.** The Coordinator and the human use `cland task edit T-n --status <status>` or MCP `task.edit`'s `status` to choose any status. `done` closes the task and releases the claim; choosing another status reopens it at that status. The Implementer hands over with `task.edit {id, status: "review"}` on its own live claimed item, with no other edits. The permission table checks this right again after file I/O; assignment alone is insufficient. Other sessions cannot set status, even under a whole-tool `task.edit` grant. An explicit state and status in the same edit must agree. Verifier holds and clear, current verdicts also move status as described below.
 - **Release planning (T-118).** Kind `release` adds optional frontmatter `version`, semver without the `v` (for example `0.1.0`, including prerelease/build suffixes). Create it with `cland task create "v0.1" --kind release --version 0.1.0`; omit the version until planned and set it with `task edit --version` (`none` clears it). The first configured level owns version and Notes, even when renamed. Other kinds cannot carry a version; malformed versions are refused. Its body holds the goal and `## Notes`, which creation and kind conversion add if missing. The version is indexed, returned in view/list/events and preserved through writes and restarts. Releasing from an item is a later slice.
@@ -857,7 +906,7 @@ A comment is headed `### <author> · <ISO time>`; one whose first lines are `ver
 | Command | Tool | What it does |
 | --- | --- | --- |
 | `cland task create <title> [--kind] [--version] [--body \| --body-file] [--label]… [--assignee] [--parent] [--blocked-by]… [--topic] [--branch]` | `task.create` | Writes a new item file. |
-| `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, comments, verdicts and the claim. |
+| `cland task view <id>` | `task.view` | Frontmatter, file path, ancestry, body, criteria and their warnings, comments, verdicts and the claim. |
 | `cland task list [--under T-n] [--state] [--label]… [--kind] [--assignee] [--verdict review=clear]` | `task.list` | Queries the index. Each item carries its claim and its verdicts in file order (the latest last). |
 | `cland task comment <id> <text> [--verdict review\|qa --result clear\|"not clear" --run <id> [--commit <sha>]]` | `task.comment` | Appends a comment, or a verdict. |
 | `cland task edit <id> [--version] [--title] [--body] [--kind] [--state] [--status] [--label]… [--add-label]… [--remove-label]… [--assignee]` | `task.edit` | Changes fields; `none` clears the assignee. |
