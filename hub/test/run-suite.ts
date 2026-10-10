@@ -1,4 +1,4 @@
-// All package suite entry points share this machine lock and temporary process boundary.
+// Package phases use separate hub/Neovim locks and the same temporary process boundary.
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -10,6 +10,7 @@ import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type Proc
 import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
 
 type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; device?: number; inode?: number; runner?: ProcessIdentity };
+type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 type Lease = { publishRunner: (identity: ProcessIdentity) => Promise<void>; publishRoot: (root: string) => Promise<void>; release: () => Promise<void> };
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
@@ -111,7 +112,7 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
     } finally { guard?.release(); }
     const age = Math.max(0, Date.now() - (info?.mtimeMs ?? Date.now()));
     const line = previous ? `waiting for the suite lock held by pid ${previous.pid} since ${previous.since ?? previous.started}${readableStart(previous.started) ? '' : ' (holder from an older version; process start time unavailable)'}` :
-      `waiting for the suite lock; age ${Math.floor(age / 1000)}s; no owner recorded (a manual lock); if no suite is running, remove it with \`rmdir /tmp/cland-suite.lock\``;
+      `waiting for the suite lock; age ${Math.floor(age / 1000)}s; no owner recorded (a manual lock); if no suite is running, remove it with \`rmdir ${dir}\``;
     if ((line !== last && previous !== null) || Date.now() - lastPrinted >= 60_000 || !lastPrinted) {
       process.stderr.write(`${line}\n`); last = line; lastPrinted = Date.now();
       if (!previous && age >= 15 * 60_000) process.stderr.write('WARNING: ownerless manual suite lock is over 15 minutes old and cannot recover automatically; verify no suite is running before removing it.\n');
@@ -121,14 +122,14 @@ async function acquire(dir: string, interrupted: () => boolean, holder: Holder):
   throw new Error('suite interrupted while waiting for the lock');
 }
 
-export async function runSuite(suites: string[][], options: { lockDir?: string; cwd?: string } = {}): Promise<number> {
-  let interrupted: NodeJS.Signals | null = null;
+export async function runSuite(suites: string[][], options: { lockDir?: string; cwd?: string; interruption?: Interruption } = {}): Promise<number> {
+  const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
   const runId = randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
-      interrupted = signal;
+      interruption.signal ??= signal;
       if (activeIdentity) void cleanupProcesses(undefined, [activeIdentity], () => {}, runId, [activeIdentity]).catch(error => process.stderr.write(String(error) + '\n'));
     };
     process.on(signal, handler);
@@ -144,22 +145,22 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let peak = loadavg()[0]!;
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
   try {
-    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
-    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') lease = await acquire(options.lockDir ?? '/tmp/cland-suite.lock', () => interrupted !== null, holder);
-    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+    if (process.env.CLAND_TEST_SKIP_LOCK !== '1') lease = await acquire(options.lockDir ?? '/tmp/cland-suite.lock', () => interruption.signal !== null, holder);
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     started = Date.now();
     peak = loadavg()[0]!;
     // The unique planned path was durably published with the initial lock, before mkdir.
     root = holder.root!;
     await mkdir(root, { mode: 0o700 });
-    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     const rootInfo = await stat(root);
-    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
     await lease?.publishRoot(root);
-    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     for (const [index, args] of suites.entries()) {
-      if (interrupted) break;
+      if (interruption.signal) break;
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
       delete env.NODE_TEST_CONTEXT;
       const gate = join(root, `start-${index}`);
@@ -168,7 +169,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
 const cwd = ${JSON.stringify(resolve(options.cwd ?? process.cwd()))};
 while (!await access(${JSON.stringify(gate)}).then(() => true, () => false)) await setTimeout(25);
 process.chdir(cwd);`);
-      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const cwd = resolve(options.cwd ?? process.cwd());
       // Node resolves test targets before imports; keep them absolute while spawning in the owned root.
       const absoluteArgs = args.map((arg, index) => {
@@ -176,7 +177,7 @@ process.chdir(cwd);`);
         const path = resolve(cwd, arg);
         return existsSync(path) || arg.includes('*') ? path : arg;
       });
-      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       active = spawn(process.execPath, ['--import', bootstrap, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
@@ -184,18 +185,18 @@ process.chdir(cwd);`);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
       holder.runner = activeIdentity;
       await lease?.publishRunner(activeIdentity);
-      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       await writeFile(gate, 'ready');
-      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const code = await done;
       await cleanupProcesses(root, [...captureRunProcesses(holder.token), activeIdentity], (line) => process.stderr.write(`${line}\n`), holder.token, [activeIdentity]);
       active = undefined; activeIdentity = null;
-      if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
     }
-    return interrupted ? (interrupted === 'SIGINT' ? 130 : 143) : 0;
+    return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : 0;
   } catch (error) {
-    if (interrupted) return interrupted === 'SIGINT' ? 130 : 143;
+    if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     throw error;
   } finally {
     clearInterval(sample);
@@ -209,12 +210,34 @@ process.chdir(cwd);`);
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const mode = process.argv[2] ?? 'all';
-  const repo = fileURLToPath(new URL('../../', import.meta.url));
-  const extra = process.argv.slice(3);
-  const hub = ['--test', '--test-concurrency=4', ...(extra.length ? extra : ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'])];
-  const nvim = ['--test', '--test-concurrency=4', ...(extra.length ? extra : ['nvim/test/**/*.test.ts'])];
+export async function runPackageSuite(mode: string, extra: string[] = [], options: { cwd?: string; lockDirs?: { hub: string; nvim: string } } = {}): Promise<number> {
   if (!['all', 'hub', 'nvim'].includes(mode)) throw new Error(`unknown suite: ${mode}`);
-  process.exitCode = await runSuite(mode === 'all' ? [hub, nvim] : [mode === 'hub' ? hub : nvim], { cwd: repo });
+  const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
+  const locks = options.lockDirs ?? { hub: '/tmp/cland-suite.lock', nvim: '/tmp/cland-suite-nvim.lock' };
+  const phases: Array<'hub' | 'nvim'> = mode === 'all' ? ['hub', 'nvim'] : [mode === 'hub' ? 'hub' : 'nvim'];
+  const interruption: Interruption = { signal: null };
+  // Keep the first signal latched across final cleanup and gaps between phase handlers.
+  const handlers = (['SIGINT', 'SIGTERM'] as const).map(signal => {
+    const handler = () => { interruption.signal ??= signal; };
+    process.on(signal, handler);
+    return { signal, handler };
+  });
+  try {
+    for (const phase of phases) {
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+      const targets = phase === 'hub' ? ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'] : ['nvim/test/**/*.test.ts'];
+      // Release and sweep the previous phase before waiting for the next phase's lock.
+      const code = await runSuite([['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)]], { cwd, lockDir: locks[phase], interruption });
+      // A signal during runSuite's finally must override its already evaluated return.
+      if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+      if (code !== 0) return code;
+    }
+    return 0;
+  } finally {
+    for (const { signal, handler } of handlers) process.off(signal, handler);
+  }
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  process.exitCode = await runPackageSuite(process.argv[2] ?? 'all', process.argv.slice(3));
 }

@@ -966,8 +966,11 @@ node hub/bin/cland.ts --version
 ### Tests
 
 Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
-`npm test --workspace hub`, or `npm run test:nvim`. These entry points take
-`/tmp/cland-suite.lock` before spawning tests; a second run prints the holder's
+`npm test --workspace hub`, or `npm run test:nvim`. The hub phase takes
+`/tmp/cland-suite.lock`; the Neovim phase takes `/tmp/cland-suite-nvim.lock`.
+`npm test` releases the hub lock after cleanup before taking the Neovim lock.
+Hub and Neovim runs can overlap; two runs of the same phase serialize.
+See [agent test notes](../docs/agents/tests.md). A second run prints the holder's
 pid and start time and waits. Automatic runs publish a PID/start-time sidecar
 before creating the directory. After a one-second grace period, a dead holder
 (including a reused PID) is reclaimed: its verified processes exit and its run
@@ -979,7 +982,8 @@ preserved until its PID exits; the waiter identifies it as an older version.
 An empty lock from the manual `mkdir` convention has no recorded owner and is
 never reclaimed by age. Once a minute the waiter prints its age and recovery
 guidance, with a warning after 15 minutes. If no suite is running, remove an
-abandoned manual lock with `rmdir /tmp/cland-suite.lock`.
+abandoned manual lock with the `rmdir` command printed by the waiter, naming
+either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
 The suites run at concurrency 4. Targeted single-file runs are free:
