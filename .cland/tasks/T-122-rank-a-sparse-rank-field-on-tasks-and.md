@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-49
 branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
-updated: 2026-10-10T00:58:29.414Z
+updated: 2026-10-10T01:06:54.165Z
 ---
 
 ## Parent
@@ -43,3 +43,7 @@ Size S. Implementer: Codex. Rank writes ride the tracker's single queue (T-77). 
 ### impl-122 · 2026-10-10T00:58:29.414Z
 
 Implementing rank through the existing hub protocol/CLI seam prescribed by T-107, including dense minimal renumbering, parent refusal, shared ordering and queue checks. Post-restart high migration will use the hub only.
+
+### impl-122 · 2026-10-10T01:06:54.165Z
+
+Sparse, dense and configured-level moves now pass targeted protocol/CLI tests; sibling rank/parent changes and revoked grants at a held native write refuse stale plans. Added shared rank-order fixture and idempotent CLI high migration. Live high labels currently belong to closed T-67 (parent T-20) and T-68 (parent T-19); migration remains pending merge/restart.

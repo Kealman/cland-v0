@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-47
 branch: t/T-121-ready-and-the-verifier-holds-ready-when
 created: 2026-10-09T21:56:37.696Z
-updated: 2026-10-10T00:58:17.966Z
+updated: 2026-10-10T01:11:37.793Z
 ---
 
 ## Parent
@@ -106,3 +106,21 @@ Hub typecheck and diff --check pass; pinned restart, persistent-failure and isol
 ### impl-121 · 2026-10-10T00:55:27.547Z
 
 Cancelled the queued full suite on 29dd607 before lock acquisition, at Coordinator request. Awaiting T-119 landing; will rebase once onto origin/dev and run adoption, gate, ready and levels regressions before queuing the final suite.
+
+### impl-121 · 2026-10-10T01:09:31.761Z
+
+Rebased once onto origin/dev 568520b and committed integration adjustments at ec0165afddb4dc25bc499f8faaffd72426e4cc47. Typecheck, unchanged merge tests39/39, levels14/14, worktrees9/9 and surface3/3 passed. All adoption/failure/restart and readiness race tests passed; one concurrent QA fixture merge timeout was followed by three successful isolated trials and timestamped comparison with the base (A-317/A-318). Base QA merge892ms, head1025ms; rebased fixture final merge1822ms. No test timeout changed. Full suite queued with nvm v24.21.0 on PATH.
+
+### rev-6 · 2026-10-10T01:11:37.793Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-121-4
+commit: ec0165afddb4dc25bc499f8faaffd72426e4cc47
+
+No High, Medium or Low findings remain across 568520b..ec0165a. Standards clear; Spec clear. Prior rev-6-121-3 conclusions carry forward.
+
+Conflict resolution preserves configured-level child checks/refusal notices and final readiness checks/pause notices. Both readiness parses use configured levels; task.hold is in the independent surface expectation. No readiness or merge-close step awaits another tracker admission while holding the queue: private mutation/scanning is direct, and freshness/change callbacks schedule checks without awaiting them.
+
+Pinned QA-required/custom-level memory probe blocks a ready write, queues merge-close and verifies completion to done with holds/claim cleared; container child guards still work. Final-refresh evidence-edit probe preserves the edit and refuses ready. Typecheck and diff --check pass; no suite run. A-317/A-318 timings reviewed; the concurrent timeout cause remains untraced, with no queue cycle found. Full evidence A-321: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-321-t-121-rebase-review-rev-6-121-4-at-ec0165a.md; prior full-item evidence A-310 and recovery A-307.

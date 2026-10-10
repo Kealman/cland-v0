@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-48
 branch: t/T-127-sessions-grouped-by-state-waiting-busy
 created: 2026-10-09T21:57:34.743Z
-updated: 2026-10-10T00:58:18.024Z
+updated: 2026-10-10T01:19:28.250Z
 ---
 
 ## Parent
@@ -121,3 +121,47 @@ A-313 is resolved: accepted resume/relaunch snapshots clear completed approval m
 All A-313 probes rerun on this head: narrow confirmation/notice rendering and budgets 0/1/2 terminate and fit; groups/counts, selection, folds, command-only projection and core metadata checks pass. Claude Code has no local command cache. Earlier unchanged full-item checks carry forward from A-309/A-313. Covers the full item against 22defab; no suite or edits.
 
 Evidence A-315: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-315-t-127-full-item-review-of-7fc3c2c-clear.md.
+
+### impl-127 · 2026-10-10T01:10:22.050Z
+
+Root npm test on7fc3c2c completed: hub755/755, Neovim142/143. Sole failure was test navigation: onSessionRow only matched an unselected leading space, so its second search missed the selected ▎ row before C-v. Updated helper to search literal session name and role label with no leading-marker assumption; assertions unchanged, targeted3/3 pass. Committed head e3202256422e664155416086d31b079faf3a58be from git log -1, pushed local origin. Per Coordinator, hub result carries forward for this one-line test-only delta; queued npm run test:nvim with pinned nvm v24.21.0. Full prior log is A-319.
+
+### rev-65 · 2026-10-10T01:12:22.370Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-127-4
+commit: e3202256422e664155416086d31b079faf3a58be
+
+High: 0. Medium: 1. Low: 0.
+
+Medium — nvim/test/shell.test.ts:651: the unanchored literal search matches the existing launch notice “launched rev-2 [Reviewer] …” above the session row, so the launcher caller at :665 can select that notice and time out waiting for selected details. Actual pinned Nvim rendering/search selects notice row 1 with no session metadata. It also matches other-impl-1 when asked for impl-1. The trailing delimiter excludes longer proper prefixes but supplies no left/row boundary. Anchor the row structure while accepting both selected/unselected markers, or use exact session row metadata.
+
+No assertion was changed, including attach counts. Full-item production clearance from rev-65-127-3/A-315 carries forward against 22defab; this delta is one test-only line. No suite or edits. Standards: 0 findings. Spec: 1 medium.
+
+Evidence A-322: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-322-t-127-review-of-e320225-row-search-matches-launch-notice.md.
+
+### impl-127 · 2026-10-10T01:14:19.750Z
+
+Cancelled queued e320225 test:nvim (exit143, no tests ran) on A-322. Added both real UI negative cases; the old literal helper failed on the launch notice and selected other-impl-1 when asked for impl-1. Replacing it with exact session lookup in the existing panel buffer row metadata, excluding detail rows. Original attach-count assertions remain unchanged.
+
+### impl-127 · 2026-10-10T01:15:35.590Z
+
+A-322 fixed at committed head2b1b24012fbab9daf8af87a7d2ed5d16923a9a64 from git log -1, pushed local origin. Helper now uses exact session row metadata with no text/marker search and excludes detail rows. Both launch-notice and prefix-sharing-name negative cases failed with the old helper and now verify the correct capability table header; targeted6/6 and typecheck pass. Existing attach-count assertions unchanged. test:nvim queued with pinned Node; hub755/755 carries forward per Coordinator. Evidence A-323.
+
+### rev-6 · 2026-10-10T01:19:28.250Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-127-1
+commit: 2b1b24012fbab9daf8af87a7d2ed5d16923a9a64
+
+High: 0. Medium: 0. Low: 1.
+
+Low — nvim/test/shell.test.ts:658: padding entries in panels.rows can be false; an absent exact name raises a boolean-index error before the intended no-session-row diagnostic. Guard the metadata type before reading row.session. This still refuses selection and does not select a wrong row.
+
+A-322 is resolved: exact session metadata plus detail exclusion ignores the launch notice, selected marker and prefix-sharing session. The new negative tests assert the exact capability header; all existing attach-count and launcher assertions are unchanged. No production code changed. Both parallel review axes have no material findings; full-item rev-65-127-3/A-315 clearance carries forward against 22defab.
+
+Pinned scratch-buffer helper/render probes pass required cases and 121 wrapped-notice variants. Worktree clean; diff --check passes; no suite run. Evidence A-325: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-325-t-127-metadata-helper-review-rev-6-127-1-at-2b1b240.md.
