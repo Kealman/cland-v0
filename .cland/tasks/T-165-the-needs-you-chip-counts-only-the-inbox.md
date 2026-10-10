@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-74
 branch: t/T-165-the-needs-you-chip-counts-only-the-inbox
 created: 2026-10-10T09:19:59.837Z
-updated: 2026-10-10T09:21:23.656Z
+updated: 2026-10-10T09:26:25.113Z
 ---
 
 ## Parent
@@ -46,3 +46,7 @@ High priority: a trust issue for the human. Size S.
 ### impl-165 · 2026-10-10T09:21:23.656Z
 
 Confirmed separate count paths: topbar reads attention.count(), inbox header reads state.needs_you(). The regression seam is the real headless Neovim shell driven by stub-hub message/inbox frames, as requested. Shared UI count will include asks, approvals, waiting topics, death and not-clear verdict rows; ordinary notifications/messages stay quiet.
+
+### impl-165 · 2026-10-10T09:26:25.113Z
+
+Candidate fd5f4c4 removes the independent unread attention projection. The regression first reproduced the exact 98-vs-empty mismatch, then passed through asks, approvals, waiting topics, not-clear verdict/death, ordinary notifications/messages and resolutions. Startup/refresh/reconnect with unread history also remains zero. THREAD-009/010 and typecheck pass. Standards self-review: no findings. Spec self-review: stale README count paragraph fixed; no remaining findings. Locked full Neovim suite is queued behind another suite.

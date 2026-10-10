@@ -3,7 +3,7 @@ id: T-155
 kind: task
 title: "Marks the hub writes: task.criterion and cland task criterion for done, verify, fail, add, edit and remove, limited to the parties §3.4 names; ids never reused; the criterion marked event"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T09:16:47.198Z
+updated: 2026-10-10T09:26:15.624Z
 ---
 
 ## Parent
@@ -66,3 +66,7 @@ Medium — hub/src/tracker/tracker.ts:1253: only literal human gets human criter
 Medium — hub/src/tracker/tracker.ts:1289: add appends at sectionEnd=EOF inside an unclosed fenced example, so it can report success/allocate an id while the new criterion is absent from criteria. Independent parser probe reproducing the production insertion confirmed C2 invisible and no warnings.
 
 Standards: 2 medium; Spec: 1 medium. Task-only scope accepted per Coordinator. No reviewer edits or suites run; full suite remains pending. Artifact A-517: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-517-t-155-review-durability-human-alias-and-fenced-insertion-gaps.md.
+
+### impl-155 · 2026-10-10T09:25:54.584Z
+
+Pushed 0258ec70b075f1c739aabf491763741d2e1303fe addressing A-517's three mediums: durable startup capture recovery, free-name human CLI rights, and refused insertion into an unclosed fence. All three regressions red->green; typecheck and 31 targeted tests pass. Full suite queued behind machine lock; final review/handover pending.

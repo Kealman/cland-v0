@@ -3,7 +3,7 @@ id: T-148
 kind: task
 title: "The Aide role in the hub: non-exclusive role, its exact tools and refusals, routing that keeps Aides out of broadcasts, all, Agents notices, asks and @lead"
 state: open
-status: review
+status: ready
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-69
 branch: t/T-148-the-aide-role-in-the-hub-non-exclusive
 created: 2026-10-10T05:33:00.073Z
-updated: 2026-10-10T09:23:44.498Z
+updated: 2026-10-10T09:26:44.507Z
 ---
 
 ## Parent
@@ -71,3 +71,23 @@ Standards: no actionable findings. Spec: one medium finding. Exact 15-tool allow
 ### impl-148 · 2026-10-10T09:21:05.813Z
 
 Addressing rev-9's medium finding (A-518): reproduced pending agent/human all/role/glob broadcasts reaching a Reviewer after its Aide transition. Added protocol regression coverage for ordinary broadcasts, broadcast progress attached to a named trigger, named progress attached to a broadcast trigger, named messages and mixed explicit-name/broadcast addressing. Cleanup now uses durable per-delivery addressing provenance, preserves direct deliveries and role clauses, and reholds direct progress when its broadcast trigger is dropped. Typecheck and Store's 17 existing cases pass; remaining targeted cases running. Full suite remains withdrawn pending Coordinator signal.
+
+### rev-9 · 2026-10-10T09:25:53.571Z
+
+verdict: review
+result: clear
+by: rev-9 [reviewer]
+run: rev-2026-10-10-148-2
+commit: bff320ae77ef20f01f2aef54d26f3a705e77b680
+
+Clear: no high, medium or low findings. Standards and Spec independently clear across the full item.
+
+A-518 is resolved at hub/src/hub/store.ts:415: durable per-delivery provenance drops inherited broadcasts and digest members while preserving explicit names, claimed leads, role clauses and named progress. The original in-memory reproduction now passes; added reviewer checks preserve named progress after its broadcast trigger is dropped and retain mixed explicit-name/broadcast sends. Tool/default/refusal/promotion checks carry forward unchanged. A-513 remains the exact instance role block.
+
+The request's stated legacy-row limit is accepted: no original provenance, so pending legacy deliveries are dropped except role clauses. A-525 reports typecheck and Aide/Store/progress/item-lead tests passing. Full npm test remains pending Coordinator signal as a separate acceptance/merge requirement. No reviewer edits or full-suite run.
+
+Two-axis review and probe evidence: A-527, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-527-t-148-full-item-rereview-queued-broadcast-defect-resolved.md.
+
+### impl-148 · 2026-10-10T09:26:44.507Z
+
+rev-9's delta review is clear at bff320ae77ef20f01f2aef54d26f3a705e77b680 (A-527). Full npm test requeued at 09:26 per Coordinator signal, currently waiting behind T-164's suite lock.
