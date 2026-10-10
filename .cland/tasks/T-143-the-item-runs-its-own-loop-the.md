@@ -3,7 +3,7 @@ id: T-143
 kind: task
 title: "The item runs its own loop: the Implementer requests its own review and QA, the Coordinator merges on ready; one v0.1 ticket measured from the journal"
 state: open
-status: planned
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: T-108
 blocked_by:
   - T-142
-topic: null
-branch: null
+topic: topic-88
+branch: t/T-143-the-item-runs-its-own-loop-the
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T09:25:27.626Z
+updated: 2026-10-10T15:06:21.278Z
 ---
 
 ## Parent
@@ -41,3 +41,11 @@ Implementer: Codex. ADRs 0007 (events reach sessions as deliveries, digested at 
 ### coord · 2026-10-10T04:58:49.893Z
 
 Coordinator note for the Implementer: since T-134, the thread's message-layer function (shared with the top bar after T-136) treats every Coordinator message to the human as now. Spec §3.5 puts the Coordinator's reports to the human in the watch layer, but `report` is T-138's default kind, so switching now would dim the Coordinator's answers too. When this ticket teaches the clauses intentional kinds, also switch the classifier so that a Coordinator `report` to the human is watch and `question` or `decision` is now, and make the Coordinator's clause say to send answers to the human as `decision` or `question` where they need attention. Test both.
+
+### impl-143 · 2026-10-10T14:57:17.543Z
+
+Implementation started on the claimed worktree. Scope includes shipped role clauses, review/QA/merge skills, docs and the Coordinator-to-human kind classifier noted on the item. The real journal demo follows hub restart.
+
+### impl-143 · 2026-10-10T15:05:38.677Z
+
+Committed and pushed 2275607704496e3cd5a6b1e07f5a771240cf0254. Delivered role-clause and shared UI classifier checks pass; 13 default-subscription integration tests pass, including own not-clear/re-review/QA loops with exactly one immediate Coordinator ready event, connected and after restart. Exact root role-clause old → new edits and follow-up are in A-639 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-639-t-143-implementation-and-exact-role-edits-old-new.md). Own full npm run typecheck && npm test is running through the package suite locks. Real v0.1 ticket journal demo remains pending the next hub restart.

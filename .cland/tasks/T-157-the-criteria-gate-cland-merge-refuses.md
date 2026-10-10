@@ -2,8 +2,8 @@
 id: T-157
 kind: task
 title: "The criteria gate: cland merge refuses until every criterion is done and verified and names them; ready waits for the same; in-flight items are not stranded"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-87
 branch: t/T-157-the-criteria-gate-cland-merge-refuses
 created: 2026-10-10T07:49:36.269Z
-updated: 2026-10-10T14:40:08.465Z
+updated: 2026-10-10T15:08:11.848Z
 ---
 
 ## Parent
@@ -81,3 +81,7 @@ No high or medium findings remain. Standards: clear. Spec: clear.
 Both A-631 findings are resolved: docs/help explicitly describe the human override of verdicts and criteria, and merge validation journals the skipped criteria ids/text/missing marks and override reason before Git preparation. The shared evaluator preserves ordinary merge/ready refusal, failed-criterion handling, empty criteria and legacy migration.
 
 Review evidence and limits: A-633, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-633-t-157-review-override-documentation-and-criteria-audit-clear.md. Pinned source/diff, parallel Standards/Spec reviews, disk-free production-source probe and diff check; no edits. Coordinator's final full suite remains pending.
+
+### coord · 2026-10-10T15:08:11.848Z
+
+Merged d3fb7613e37b24c6322a5822e7d17666da8e91a2 onto dev.
