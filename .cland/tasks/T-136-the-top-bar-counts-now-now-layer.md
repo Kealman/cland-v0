@@ -2,8 +2,8 @@
 id: T-136
 kind: task
 title: "The top bar counts now: now-layer messages and asks only, through the message-layer rule"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-60
 branch: t/T-136-the-top-bar-counts-now-now-layer
 created: 2026-10-10T01:20:47.341Z
-updated: 2026-10-10T05:55:20.822Z
+updated: 2026-10-10T06:04:39.085Z
 ---
 
 ## Parent
@@ -87,3 +87,29 @@ run: rev-8-20261010-136-3
 commit: 5eede6b7004f7746c66d92fa17a0b952f6f5e33e
 
 No high, medium or low findings. Test-only one-line delta waits for T-13 in the actual rendered item rows; the exact following ['T-10','T-13'] assertion is unchanged, preserving membership/count/order. A-453's missing-T-13 failure matches the synchronization race. Full-item production review A-445 carries forward; Standards and Spec clear. git diff --check passed; no suite run. A-457: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-457-t-136-review-rev-8-136-3-board-row-wait-clear.md.
+
+### impl-136 · 2026-10-10T05:58:24.130Z
+
+Final head copied from git log -1: 5eede6b7004f7746c66d92fa17a0b952f6f5e33e. npm run test:nvim passed 193/193, exit 0; durable log A-458: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-458-t-136-neovim-validation-193-of-193-at-5eede6b.log. Hub 852/852 at 10748b6 carries forward per Coordinator after the one-line test-only board wait fix. Typecheck and diff check pass; worktree clean. Current review rev-8-20261010-136-3 is clear on this exact head. Overflow regression preserves 2049 live now messages through the real 2048-cap retry, replay dedup and partial/full reads. THREAD-009/010 cover 120/80 columns. Cold/reconnect latest-200 loaded-window limit remains documented. Ready for Coordinator handover; no merge performed.
+
+### impl-136 · 2026-10-10T06:00:19.282Z
+
+Rebased onto fetched root dev 7445403989d1c144243894537f9a052e37089a8e (T-135 landed). New head from git log -1: 4d96743686a4b418ba8310b007da072892b9cd8a. Only QA list conflicted; kept THREAD-007/008 and 009/010. Thread/README auto-merge inspected, T-135 ask/chip/kind/watch rendering retained and classification remains a single shared module. Typecheck and diff check pass; locked test:nvim running. Evidence A-460: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-460-t-136-rebase-onto-t-135-at-4d96743.md. Hub 852 carries forward per Coordinator.
+
+### rev-8 · 2026-10-10T06:01:55.829Z
+
+verdict: review
+result: clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-136-4
+commit: 4d96743686a4b418ba8310b007da072892b9cd8a
+
+No high, medium or low findings for the full item. Rebase retains THREAD-007/008 and THREAD-009/010 in qa.test.ts:93 and their case/support files. Against landed T-135, thread.lua changes only local verdict/layer definitions to shared aliases; asks/chips/kinds/watch presentation remains intact. Sole classifier definition is in message_layer.lua and both thread/attention import it. Range-diff follow-ups2–5 unchanged; first commit only adjusted T-135 context and QA union. Attention/classifier identical to prior clear head, so prior retry/read/replay evidence carries. Standards and Spec clear; git diff --check passed; no suite run. A-463: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-463-t-136-review-rev-8-136-4-rebase-onto-t-135-clear.md.
+
+### impl-136 · 2026-10-10T06:04:26.027Z
+
+Rebase validation complete at 4d96743686a4b418ba8310b007da072892b9cd8a (head copied from git log -1), onto 7445403989d1c144243894537f9a052e37089a8e. Locked npm run test:nvim passed 198/198, exit 0, including THREAD-007/008 and THREAD-009/010. Typecheck and diff check pass; clean worktree and territory branch published. Durable complete log A-465: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-465-t-136-rebased-neovim-validation-198-of-198-at-4d96743.log. Hub 852/852 carries forward per Coordinator. Rebase delta evidence A-460; no merge performed.
+
+### coord · 2026-10-10T06:04:39.085Z
+
+Merged 91c1872d68a8e5e995993d5ae4593f77e2dbc870 onto dev.

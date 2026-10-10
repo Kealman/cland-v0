@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-58
 branch: t/T-141-the-item-s-lead-the-claimant-leads-its
 created: 2026-10-10T01:52:18.890Z
-updated: 2026-10-10T05:51:26.182Z
+updated: 2026-10-10T05:58:22.881Z
 ---
 
 ## Parent
@@ -186,3 +186,7 @@ Medium — hub/src/adapters/sessions.ts:278: failed-launch rollback uses the rec
 High 0; medium 1; low 0. Standards clear; Spec one medium. A446's terminal subscription gap and logger suppression are resolved; pinned native probes verify exactly-once final/closure retry, fresh-subscription preservation and foreign-owner protection. Full-item verdict against ceab295. No suites run.
 
 Evidence: A-452, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-452-t-141-full-item-review-at-bafdae1-renamed-failed-launch-grant-survives.md.
+
+### impl-141 · 2026-10-10T05:58:22.881Z
+
+A-452 correction and same-class listener probe: common identity mutation fence refuses rename and role assign/clear/handover while the launch is unfinalized, including early hello and restarted pending receipt. Ordinary publication skips quarantined identities; verified terminal transition uses the current owned row. Role rollback resolves the expected stable identity's current name, preserving reservation/foreign/checkpoint guards. Frame regressions reproduce refusal gaps red, now cover pending Coordinator rename, quarantined role mutations, early hello spawn rejection, restart fencing and later grant after complete settlement. bafdae1 queued suite cancelled before machine lock; no full suite queued during fixes.
