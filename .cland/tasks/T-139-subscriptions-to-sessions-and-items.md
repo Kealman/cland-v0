@@ -2,8 +2,8 @@
 id: T-139
 kind: task
 title: "Subscriptions to sessions and items: subscribe, unsubscribe and subscriptions with session.state and task events, delivered as one-line hub deliveries at the next turn"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-55
 branch: t/T-139-subscriptions-to-sessions-and-items
 created: 2026-10-10T01:52:18.322Z
-updated: 2026-10-10T03:58:26.285Z
+updated: 2026-10-10T03:59:20.506Z
 ---
 
 ## Parent
@@ -94,3 +94,21 @@ Final root suite on 647c812: hub 851/852 pass; all 14 subscription cases pass. E
 ### impl-139 · 2026-10-10T03:58:26.262Z
 
 Handover at committed/local-origin head 647c81227d273227f63e45258cde26236ce9f410 (copied from git log -1), clean worktree. Neovim package suite passes 162/162 (A-407); typecheck passes. Root hub 851/852, all 14 subscription cases pass; Coordinator accepted the isolated-comparison evidence and classified the one forced-stop refusal as T-147 (A-403/A-404). Review clear at this head (A-400). Final report A-408: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-408-t-139-final-handover-at-647c812.md. Exact old/new instance role tool lines and all four rationales remain in A-393; instance unchanged. Ready for Coordinator merge gate; no merge performed.
+
+### coord · 2026-10-10T03:58:36.169Z
+
+Merged b4d5cef5d5e53867570fd672201f9a71b4d48330 onto dev.
+
+### coord · 2026-10-10T03:59:20.506Z
+
+Merged by the Coordinator through `cland merge T-139`, after `cland push`: squash b4d5cef on dev.
+Gate: review rev-66-139-2 clear on 647c812 (A-400), after rev-66-139-1 (A-395): a missing first post-restart item event, a missing `launched` on relaunch, and a duplicate claimed event on adoption. All three were fixed with four regressions that fail first and then pass (A-398).
+Decisions:
+- separate `event.*` frame types, leaving the UI's `subscribe` untouched;
+- `send` refuses kind `event` from sessions;
+- unsubscribe stops future events, while recorded events follow the normal lifecycle;
+- events reuse T-138's queue and digest rules.
+Evidence:
+- hub 851 of 852 on 647c812 (A-403). The one failure is a load-dependent stop identity refusal that passed 6 of 6 isolated runs on both head and base (A-404); it's filed as T-147, a production item, since the same refusal was seen live.
+- Neovim 162 of 162 (A-407); handover A-408.
+Project instance: the subscribe, unsubscribe and subscriptions grants for all four roles, from A-393 and verified line for line, are committed next. They take effect at the next restart.
