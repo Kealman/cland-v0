@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-81
 branch: t/T-152-an-aide-takes-an-item-its-claim-gives-it
 created: 2026-10-10T05:33:01.124Z
-updated: 2026-10-10T14:06:04.758Z
+updated: 2026-10-10T14:07:21.650Z
 ---
 
 ## Parent

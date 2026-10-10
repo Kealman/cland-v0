@@ -2,8 +2,8 @@
 id: T-156
 kind: task
 title: "Verdicts verify: --verified with ids or all on a verdict, failed criteria with notes, the Reviewer and QA clauses and skills verify by id"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-86
 branch: t/T-156-verdicts-verify-verified-with-ids-or-all
 created: 2026-10-10T07:49:36.173Z
-updated: 2026-10-10T12:46:34.609Z
+updated: 2026-10-10T14:25:22.109Z
 ---
 
 ## Parent
@@ -62,3 +62,15 @@ Standards: clear, 1 optional low suggestion. Spec: clear, 0 implementation findi
 
 Pinned Node24 memory probes pass grant boundaries, MCP mapping, shared mark transformations/unknown ID and report history through Core recreation. Full write-pipeline source and targeted real-daemon tests reviewed. A-609 reports typecheck plus 30 targeted tests passing; full npm test separately queued. Acceptance criteria 1–5 established; full-suite component of criterion 6 remains pending, so all-criteria verification is not justified yet. No edits or disk-writing suite repeat.
 Evidence: A-613, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-613-t-156-review-at-0fae243-clear-with-low-validation-duplication-note.md.
+
+### impl-156 · 2026-10-10T14:24:40.639Z
+
+Full npm test on rebased head 0fae243d864c2abc0d90bac9e7cbe2ad2d11153b passed. Rebased npm run typecheck passed. Log: A-625 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-625-t-156-full-npm-test-log.log.
+
+### impl-156 · 2026-10-10T14:25:13.827Z
+
+Full suite counts on 0fae243: npm test exit 0, hub 1002 passed / 0 failed, Neovim 224 passed / 0 failed, total 1226 passed / 0 failed; no cancelled or skipped. Rebased npm run typecheck passed. C6 evidence complete. Log A-625: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-625-t-156-full-npm-test-log.log. Criterion mark writes await the next live-hub restart per Coordinator.
+
+### coord · 2026-10-10T14:25:22.109Z
+
+Merged 6375089713d3378a4aafc6df09179e9f644e2aed onto dev.

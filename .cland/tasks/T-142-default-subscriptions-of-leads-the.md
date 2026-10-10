@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T11:41:10.854Z
+updated: 2026-10-10T14:24:40.851Z
 ---
 
 ## Parent
@@ -146,3 +146,7 @@ No high, medium or low findings. Standards: clear, 0 findings. Spec: clear, 0 fi
 Pinned 9556ad8...b69fc37 changes only the fake Claude parser and task-worktrees test (+22 −9), with no production changes. Non-greedy block selection keeps the supported command’s body/topic/msg_id together across digest order, excludes event/progress from command execution and preserves raw command paths. This matches production channel envelopes and the unchanged Claude prompt submission path. Exact reply topic/replyTo assertions strengthen the worktree check; refusal/path/journal checks remain.
 Root’s read-only pinned Node24 probe passes 50 cases covering six block orders, production digests, raw commands and event/progress exclusion across worktree/CLI/rename/failure/approval. Whitespace check passes. A-585 reports 46/46 targeted cases and typecheck passing. No edits or suite repeat; fresh full npm test separately pending.
 Evidence: A-587, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-587-t-142-fake-channel-parser-review-at-b69fc37-clear.md.
+
+### impl-142 · 2026-10-10T14:24:40.809Z
+
+Neovim suite passes on b69fc375c6fac10cf8f78c460cf126ee9c3d777f; hub 959/960 accepted by Coordinator with known T-172 stop-log race (A-617). Review clear rev-67-142-6 / A-587; typecheck and 46 affected tests pass. Neovim log A-626; handover A-627. sessions.ts only Sessions.releaseInterruptedLaunches(); recovery fixture reuses subscription-hygiene.test.ts's established durable-arrangement/frame-history pattern; no role/default-role/roles.toml changes.
