@@ -1,0 +1,41 @@
+# Project staffing policy; role definitions and harness defaults live in roles.toml.
+leads = []
+
+[crew.coordinator]
+policy = "singleton"
+size = 1
+keep_context = false
+stop_after = "never"
+subagents = true
+
+[crew.lead]
+policy = "per-item"
+keep_context = false
+stop_after = "never"
+subagents = true
+
+[crew.implementer]
+policy = "per-item"
+keep_context = false
+stop_after = "merge"
+subagents = false
+
+[crew.reviewer]
+policy = "pool"
+size = 1
+keep_context = true
+stop_after = "never"
+subagents = false
+
+[crew.qa]
+policy = "singleton"
+size = 1
+keep_context = false
+stop_after = "never"
+subagents = false
+
+[crew.aide]
+policy = "per-item"
+keep_context = false
+stop_after = "never"
+subagents = false
