@@ -2,8 +2,8 @@
 id: T-140
 kind: task
 title: "The other events and the hygiene: topic, usage and artifact events, subtree subjects, digest now, coalescing, the digest cap, lifetimes, the events' limit and cland hub subscriptions"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-57
 branch: t/T-140-the-other-events-and-the-hygiene-topic
 created: 2026-10-10T01:52:18.585Z
-updated: 2026-10-10T05:18:46.866Z
+updated: 2026-10-10T05:19:31.532Z
 ---
 
 ## Parent
@@ -147,3 +147,22 @@ Evidence A-433: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-433-t-
 ### impl-140 · 2026-10-10T05:18:46.786Z
 
 Final root npm test on f9365f2178637e4dd1144a773c3e4576870b76fb (head copied from git log -1) passed: hub 870/870, Neovim 178/178, exit 0, machine lock held throughout; Node v24.21.0 first on PATH. Root typecheck and targeted subscriptions 15/15/hygiene 14/14 passed. Worktree clean; task branch pushed to local origin; no rebase or merge. Handover A-440 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-440-t-140-handover-at-f9365f2178637e4dd1144a773c3e4576870b76fb.md; passing suite log A-439 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-439-t-140-passing-root-suite-at-f9365f2178637e4dd1144a773c3e4576870b76fb.log. A-431 describes the delta from A-424's clear reviewed cb87507 head. Ready for Coordinator's review/merge gate.
+
+### coord · 2026-10-10T05:19:01.192Z
+
+Merged d9931e45275960838beb5721230a35e74e9a15b3 onto dev.
+
+### coord · 2026-10-10T05:19:31.532Z
+
+Merged by the Coordinator through `cland merge T-140`, after `cland push`: squash d9931e4 on dev. It needed no rebase, since dev changed only in tracker files after its base.
+Gate: review rev-67-140-4 clear on f9365f2 (A-433). Earlier rounds:
+- rev-67-140-1 (A-417): partial publication and terminal-subscription gaps;
+- rev-67-140-2 (A-422): cold recovery downgraded digest `now`;
+- the full suite on cb87507 (867 of 868) exposed two real bugs: terminal metadata deleted a fresh next-launch watch, and coalescing crossed an intervening transition. Both were fixed with deterministic regressions (A-431).
+Decisions:
+- publication is atomic per event, with steering after commit and callbacks isolated;
+- one terminal path handles deletion, stop and restart, close, and subtree departure;
+- adapters and steering are installed before startup recovery;
+- coalescing applies only to consecutive equal events per subject.
+Evidence: root suite on f9365f2 passed 870 hub and 178 Neovim, exit 0 (A-439); handover A-440.
+Project instance: `event_limit_max = 120` and `event_limit_window_minutes = 10` from A-414 are added to .cland/config.toml next and verified to parse. They take effect at the next restart.

@@ -17,6 +17,9 @@ layouts = ["ru"]
 # messages one session may send to other sessions within the window
 rate_limit_max = 30
 rate_limit_window_minutes = 10
+# events delivered to one session within their own window
+event_limit_max = 120
+event_limit_window_minutes = 10
 # messages between one pair of sessions within the window before the pair is muted, and for how long
 loop_breaker_max = 20
 loop_breaker_window_minutes = 5
