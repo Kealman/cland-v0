@@ -2,8 +2,8 @@
 id: T-160
 kind: task
 title: "The graph view: ␣G and :Cland graph, the release's open containers as parents with p and P, nodes on the hub's status, claims, verdicts and criteria, the tray"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-72
 branch: t/T-160-the-graph-view-g-and-cland-graph-the
 created: 2026-10-10T07:49:36.565Z
-updated: 2026-10-10T09:52:47.364Z
+updated: 2026-10-10T10:48:56.078Z
 ---
 
 ## Parent
@@ -71,3 +71,11 @@ run: rev-8-20261010-160-2
 commit: 76697e9ac295f030e3dd334e38689f5f275e6e38
 
 No high, medium, or low findings. Standards and Spec clear; prior full-item review carries forward. Delta is exactly three added rendered-state waits in nvim/test/graph.test.ts, with no deletions or production changes. All assertions remain unchanged, including exact vertical rendering restoration. waitScreen polls the actual screen and fails on timeout. No reviewer suites or edits; full test:nvim retry remains pending per task comments. Artifact A-548: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-548-t-160-re-review-rendered-state-waits-clear.md.
+
+### impl-160 · 2026-10-10T10:48:42.864Z
+
+Final head 76697e9ac295f030e3dd334e38689f5f275e6e38 pushed to origin. Full locked npm run test:nvim passes 220/220; typecheck passes. Thread performance passes full run at 1.224 ms; all six graph cases pass. Exact-head formal review clear rev-8-20261010-160-2 (A-548). Final validation artifact A-570: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-570-t-160-final-validation-and-handoff.md. Handing over for Coordinator merge gate.
+
+### coord · 2026-10-10T10:48:56.078Z
+
+Merged cbb571420753444cf4ef2435548e6e3dede6cfba onto dev.
