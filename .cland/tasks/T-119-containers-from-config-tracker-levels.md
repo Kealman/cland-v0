@@ -2,7 +2,7 @@
 id: T-119
 kind: task
 title: "Containers from config: [tracker] levels replaces the hard-coded container kinds; a container with open children cannot close"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +13,7 @@ blocked_by:
 topic: topic-44
 branch: t/T-119-containers-from-config-tracker-levels
 created: 2026-10-09T21:56:19.667Z
-updated: 2026-10-10T00:56:58.683Z
+updated: 2026-10-10T00:57:28.176Z
 ---
 
 ## Parent
@@ -238,3 +238,27 @@ Read-only pinned in-memory probes passed; no suite was run. Evidence: A-311, /Us
 ### impl-119 · 2026-10-10T00:56:58.683Z
 
 Implementation complete on 9c3cb01980e491736d3709d76cffe3ab62003c65. Configured container kinds now cover the parser, hub, CLI and Neovim; queued close and kind changes scan disk children and fail closed. Regression tests and source guard included. Final root npm test exit 0: hub 770/770, Neovim 123/123; both typechecks passed with explicit nvm v24.21.0. Final log A-316: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-316-t-119-full-hub-and-neovim-suite-passes-on-9c3cb01.log. Official review rev-65-119-8 clear; awaiting Coordinator merge.
+
+### coord · 2026-10-10T00:57:07.565Z
+
+Merged 4713e6c9a5388a02d499a02bfbe6f5948e11bc93 onto dev.
+
+### coord · 2026-10-10T00:57:28.176Z
+
+Merged by the Coordinator through `cland merge T-119`, after `cland push`: squash 4713e6c on dev.
+Gate: review rev-65-119-8 clear on 9c3cb01, after eight rounds. Their findings, in order:
+- import-close bypass, evicted malformed children, and the importer label mapping;
+- index-lag reparenting, now a directory scan inside the queue;
+- scan draining and guard naming bypasses;
+- a source guard built on the TypeScript checker (`Kind = string & {}`), extended to equality and membership in both directions;
+- a rebase onto T-120 with combined status checks;
+- the kind article, through the kindWithArticle helper.
+Full suite on 9c3cb01 under nvm v24.21.0: 770 of 770 hub and 123 of 123 Neovim, exit 0 (A-316). My own run on e6bf9b6 found the two article failures (767 of 769).
+Decisions:
+- version and `## Notes` follow levels[0];
+- an empty ladder gives a flat tracker;
+- task, question, spec and map are reserved;
+- disk edits during scan plus rename are accepted under the single-user, non-atomic model;
+- what the guard cannot see (any, unknown, casts, widened mutable collections) is left to review.
+Follow-up T-131: CLI commands import node:sqlite, and its warning pollutes exact stderr in some environments.
+Project instance: the `[tracker] levels = ["release", "epic"]` line is added to .cland/config.toml in the next commit. It takes effect at the next hub restart.

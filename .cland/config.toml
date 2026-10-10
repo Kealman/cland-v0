@@ -4,6 +4,10 @@
 [project]
 name = "v0"
 
+# Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
+[tracker]
+levels = ["release", "epic"]
+
 # Keyboard layouts for Neovim Normal-mode letters (currently: ru). Ctrl focus chords use English.
 [keys]
 layouts = ["ru"]
