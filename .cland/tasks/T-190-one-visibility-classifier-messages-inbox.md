@@ -4,6 +4,7 @@ kind: task
 title: "One visibility classifier: messages, inbox events, sessions, items and artifacts placed by the default table, [visibility] overrides; thread, top bar and palette move onto it"
 state: open
 status: in progress
+criterion_seq: 4
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-92
 branch: t/T-190-one-visibility-classifier-messages-inbox
 created: 2026-10-10T16:25:05.955Z
-updated: 2026-10-10T16:26:50.169Z
+updated: 2026-10-10T16:40:37.787Z
 ---
 
 ## Parent
@@ -26,10 +27,13 @@ A module that places messages, inbox events, sessions, items and artifacts in a 
 
 ## Acceptance criteria
 
-- [ ] The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
-- [ ] Demo: a project's `[visibility]` raises long idles to now, and the top bar counts them.
-- [ ] Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
-- [ ] `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
+  - done: impl-190 · 2026-10-10T16:40:37.543Z
+- [x] C2. Demo: a project's `[visibility]` raises long idles to now, and the top bar counts them.
+  - done: impl-190 · 2026-10-10T16:40:37.670Z
+- [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
+  - done: impl-190 · 2026-10-10T16:40:37.787Z
+- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
 
 ## Comments
 
