@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-76
 branch: t/T-167-items-panel-in-release-scope-only-the
 created: 2026-10-10T09:25:25.219Z
-updated: 2026-10-10T10:46:38.884Z
+updated: 2026-10-10T10:46:53.044Z
 ---
 
 ## Parent

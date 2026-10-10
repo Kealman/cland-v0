@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T03:55:04.116Z
-updated: 2026-10-10T03:55:04.116Z
+updated: 2026-10-10T10:47:03.493Z
 ---
 
 ## Parent
@@ -38,3 +38,9 @@ Find why identity verification fails under load (the process start-time read or 
 ## Notes
 
 Size S–M. Not a v0.1 prerequisite, but it affects the human's stop action; raise priority if it recurs.
+
+## Comments
+
+### coord · 2026-10-10T10:47:03.493Z
+
+Seen twice more on the live hub on 2026-10-10 (pid 4553). 'cland session stop' refused with 'its process identity cannot be verified; it is still watched' for impl-165b (~10:13Z) and for impl-167 (~10:46Z), both Codex Implementers the hub launched. A retry 5 seconds later stopped each one.
