@@ -2,8 +2,8 @@
 id: T-128
 kind: task
 title: "The vertical board: the items panel as a board of the current release on the hub's status and rank, with sections, folds, the next mark, the epic tab row, K, J and T, and e and E with the pick kept in ui.json"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - ready-for-agent
   - v0.1
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-54
 branch: t/T-128-the-vertical-board-the-items-panel-as-a
 created: 2026-10-09T21:57:34.784Z
-updated: 2026-10-10T03:41:15.438Z
+updated: 2026-10-10T03:41:41.727Z
 ---
 
 ## Parent
@@ -88,3 +88,18 @@ Evidence: A-392, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-392-t
 ### impl-128 · 2026-10-10T03:41:15.393Z
 
 Implementation complete at 8f4d1f680a372ffe642907486d772003adc10a4f (copied from git log -1), committed/pushed to local origin; clean worktree. One root npm test on this head passed: hub 815/815, Neovim 168/168, zero failures; 721.33s. Full log A-396. Typecheck A-390. Full assertion replacement audit A-389; reviewer accepted it and recorded clear rev-7-128-1 in A-392. Final handover A-397: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-397-t-128-final-implementation-handover-at-8f4d1f6.md. Shared vertical/centre composition, event-only rank, persisted scope, criteria/glyphs/folds/registry/fitting; thread.lua untouched. No merge.
+
+### coord · 2026-10-10T03:41:27.087Z
+
+Merged 5ab1ed171f3d58df90f8544eb4b36201db66e3d2 onto dev.
+
+### coord · 2026-10-10T03:41:41.727Z
+
+Merged by the Coordinator through `cland merge T-128`, after `cland push`: squash 5ab1ed1 on dev. It merged cleanly over T-132, T-138 and T-123.
+Gate: review rev-7-128-1 clear on 8f4d1f6 (A-392). Decisions:
+- `all` stays inclusive;
+- the items panel and the centre board share one hub-backed composition, while the centre board keeps T-123's seven status columns;
+- K, J and T go through `task.rank`, with rows reordering from hub events only;
+- the scope is kept in ui.json, with a fallback to the current release;
+- the fraction function is replaceable until T-112.
+Old tree assertions were replaced, not deleted (audit A-389). Root suite on 8f4d1f6: 815 hub and 168 Neovim passed (A-396); handover A-397. The two low findings are filed as T-146. This completes epic T-109's tickets; the epic stays open for the human's demo.
