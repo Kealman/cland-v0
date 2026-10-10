@@ -3,7 +3,7 @@ id: T-143
 kind: task
 title: "The item runs its own loop: the Implementer requests its own review and QA, the Coordinator merges on ready; one v0.1 ticket measured from the journal"
 state: open
-status: review
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-88
 branch: t/T-143-the-item-runs-its-own-loop-the
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T15:06:21.278Z
+updated: 2026-10-10T15:36:44.482Z
 ---
 
 ## Parent
@@ -49,3 +49,31 @@ Implementation started on the claimed worktree. Scope includes shipped role clau
 ### impl-143 · 2026-10-10T15:05:38.677Z
 
 Committed and pushed 2275607704496e3cd5a6b1e07f5a771240cf0254. Delivered role-clause and shared UI classifier checks pass; 13 default-subscription integration tests pass, including own not-clear/re-review/QA loops with exactly one immediate Coordinator ready event, connected and after restart. Exact root role-clause old → new edits and follow-up are in A-639 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-639-t-143-implementation-and-exact-role-edits-old-new.md). Own full npm run typecheck && npm test is running through the package suite locks. Real v0.1 ticket journal demo remains pending the next hub restart.
+
+### rev-67 · 2026-10-10T15:11:46.427Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-143-1
+commit: 2275607704496e3cd5a6b1e07f5a771240cf0254
+
+Implementation clear; no high or medium findings on either Standards or Spec. A-641 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-641-t-143-implementation-review-at-2275607-clear-demo-unverified.md) records independent pinned queue, overlap, disconnected/recreated Core, T-142 compatibility and shared classifier checks.
+
+UNVERIFIED: the first criterion, a real v0.1 ticket claim → ready with own not-clear/re-review, one Coordinator delivery and T-82 journal measurement, is deferred until the integrated suite and hub restart under Coordinator message fea39e68. Full npm run typecheck && npm test evidence also remains pending. Default clauses/exact project edits in A-639 and skills/docs were reviewed. task.view currently exposes null legacy criterion ids; no criteria marks or verified: all claimed. This verdict covers implementation as requested; the demonstration needs a follow-up verdict verifying its stable id before ready/merge.
+
+### impl-143 · 2026-10-10T15:27:21.118Z
+
+Own full run at 2275607 completed: typecheck exit 0; hub 1022 tests / 1018 pass / 4 fail / 0 skipped; Neovim did not run after hub failure. Durable log A-642 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-642-t-143-full-typecheck-and-suite-result.txt). The result notification failed on unsupported socket request send; reported via session MCP after Coordinator requested inspection. All failures were stale clause expectations. Fixed them in test-only follow-up 1c2c7c577d6b8fe88783f394d364171e4bae231d, pushed to origin. Affected targeted checks pass: item-lead 10, surface 3, review-qa clause 1, all 0 skipped. Re-review requested; waiting for Coordinator's full-suite slot. Demo and criteria marking await restart; no full-suite criterion completion is claimed.
+
+### rev-67 · 2026-10-10T15:29:08.883Z
+
+verdict: review
+result: clear
+by: rev-67 [reviewer]
+run: rev-67-143-2
+commit: 1c2c7c577d6b8fe88783f394d364171e4bae231d
+
+Implementation/test-only delta clear, no high or medium findings. Exactly three test files change (+10/-6); production clearance in A-641 carries forward. Role waits now require role metadata and literal lead address, while real routing/exclusion/fallback assertions remain intact. Clause tests explicitly pin Implementer review/QA, unclaimed Coordinator fallback, blocked escalation and report kind. Two actual extracted pure clause checks pass; seven in-memory contract mutations are rejected; diff --check passes. Evidence A-643 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-643-t-143-test-only-follow-up-at-1c2c7c5-clear-criteria-pending.md).
+
+UNVERIFIED: real v0.1 journal demonstration and completed npm run typecheck && npm test. A-642’s prior run is typecheck pass, hub 1018/1022 with four stale clause assertions, Neovim not run. Current targeted passes address them but do not establish the full-suite criterion. task.view still has null criterion ids; no marks claimed. As Coordinator directed, restart and stable-id follow-up verification are required before merge.
