@@ -3,7 +3,7 @@ id: T-122
 kind: task
 title: "Rank: a sparse rank field on tasks and epics, cland task rank, lists sorted by rank then id, the Coordinator's next-item rule; the high label retires"
 state: open
-status: in progress
+status: review
 labels:
   - ready-for-agent
   - v0.1
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-49
 branch: t/T-122-rank-a-sparse-rank-field-on-tasks-and
 created: 2026-10-09T21:56:37.730Z
-updated: 2026-10-10T01:21:34.779Z
+updated: 2026-10-10T01:50:02.867Z
 ---
 
 ## Parent
@@ -69,3 +69,43 @@ Medium — hub/bin/migrate-high-rank.ts:26–29: multiple high siblings are proc
 Actual pinned mutation probes pass dense neighbor-first writes, body/comment preservation, final-only siblings events, rank/parent/grant race refusals with temp cleanup, and scan draining. Shared comparator/fixture, resolved id×10 ranks, configured rankable kinds and next-item clause are otherwise clear. Migration/config remain post-merge Coordinator follow-ups; exact roles.toml clause and tools-array changes are in A-326. No suite or edits.
 
 Full item against 568520b. Standards: 2 medium. Spec: 2 medium. Evidence A-326: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-326-t-122-full-review-of-2a37178-ranking-and-migration-findings.md. Combined fix head is pending.
+
+### impl-122 · 2026-10-10T01:27:55.698Z
+
+Rebased once onto origin/dev after T-121 landed; task.hold and task.rank surfaces coexist. Head c7b17456cee33306b08f78b7e657024ff9a15c4f from git log -1. Rebase checks: rank 16/16, levels 14/14, ready 23/23, root typecheck passed. Both internal rebase-delta reviews clear. Root suite queued under the machine lock. A-327 records exact instance roles.toml old/new lines and the post-merge, post-restart high-label migration command.
+
+### rev-65 · 2026-10-10T01:29:00.634Z
+
+verdict: review
+result: not clear
+by: rev-65 [reviewer]
+run: rev-65-122-2
+commit: c7b17456cee33306b08f78b7e657024ff9a15c4f
+
+High: 0. Medium: 1. Low: 0.
+
+Medium — hub/src/tracker/tracker.ts:1238 (also :1261, :1264, :1267, :1272): planning, fingerprinting, write setup and dispatch split one post-await continuation into separate resumed measurements; post-write update and next dispatch split likewise. Their combined cost can exceed the request budget without being recorded. Actual pinned rank + RequestGuard with simulated 150 ms planning and 150 ms fingerprinting logs zero slow requests for a continuous 300 ms stretch. Consolidate each continuation into one scope through its next I/O dispatch (A-96/README).
+
+The three other baseline findings are resolved: exact A-324 500-neighbor cost is now about 0.2 ms; the 500-total tie changes the proven minimum of 249 neighbors and preserves the moved rank; migration refuses multiple labelled siblings in all states before writing and retries failed label removal without another rank write. Actual pinned mutation/race/read-drain probes pass on c7b1745. Rank and readiness share the queue without a reentrant wait; hold/rank rebase resolutions preserve both surfaces. No suite or edits.
+
+Full item against 0da2b6e, including the 5915e13 fixes. Standards: 1 medium. Spec: 0 findings. Evidence A-332: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-332-t-122-full-review-of-c7b1745-residual-split-request-timing.md.
+
+### rev-65 · 2026-10-10T01:35:52.353Z
+
+verdict: review
+result: clear
+by: rev-65 [reviewer]
+run: rev-65-122-3
+commit: a8c3e2a060f4de82a710f25a32728a9a31da9ef7
+
+High: 0. Medium: 0. Low: 0.
+
+A-332 timing finding resolved at hub/src/tracker/tracker.ts:1240/:1275: planning through first dispatch and each post-write update through next dispatch share continuous resumed scopes. Exact A-332 probe and the post-write/next-dispatch probe each record one simulated 300 ms slow request here; c7b1745 records none. No remaining split adjacent callbacks found on the reviewed rank path.
+
+Actual pinned dense writes, rank/parent/grant race refusals and read draining pass. Later-dispatch failure preserves the committed neighbor, preserves the moved file, reports the exact committed prefix and emits no final siblings event. Full-item conclusions from A-332 remain clear: shared ordering, configured kinds, linear planner/minimum 249-neighbor tie, moved-rank preservation, singleton migration and rank/ready queue integration. Coordinator instance configuration/restart/migration follow-ups remain as documented in A-326/A-327. No suite or edits.
+
+Full item against 0da2b6e. Standards: 0 findings. Spec: 0 findings. Evidence A-334: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-334-t-122-full-review-of-a8c3e2a-clear.md.
+
+### impl-122 · 2026-10-10T01:50:02.853Z
+
+Final head a8c3e2a060f4de82a710f25a32728a9a31da9ef7 committed and pushed to local origin; worktree clean. Root typecheck passed. One complete root npm test on this head passed: hub 811/811 and Neovim 139/139, zero failures. Timing regressions verify a single300 ms resumed slow request for each continuous150+150 ms stretch. Final internal Standards/Spec reviews clear. A-340 holds the full-suite log; A-341 holds final implementation locations, exact instance role-line changes and migration command. Instance configuration and live high migration remain Coordinator steps after merge and hub restart.

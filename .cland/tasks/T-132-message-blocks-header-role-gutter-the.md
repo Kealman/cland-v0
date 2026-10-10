@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-50
 branch: t/T-132-message-blocks-header-role-gutter-the
 created: 2026-10-10T01:20:46.278Z
-updated: 2026-10-10T01:26:30.433Z
+updated: 2026-10-10T01:50:03.951Z
 ---
 
 ## Parent
@@ -44,3 +44,39 @@ Implementer: Codex. References in order of authority: spec §3.14 and §3.5 (the
 ### impl-132 · 2026-10-10T01:26:30.433Z
 
 Claim is live; T-127 is merged. Reading the thread/spec/prototype and headless harness before implementing incremental message blocks, role gutters, local day rules and delivery updates.
+
+### impl-132 · 2026-10-10T01:30:15.398Z
+
+Ported block builder/body seam, per-role statuscolumn gutters, cursor emphasis, human band, local day rules and eol_right_align delivery marks. Stub-hub tests pass for visible presentation and touched lines: append inserts exactly four new lines, delivery touches zero text, retention deletes only the expired four-line block. Prototype deviations so far: strict 200-message retention instead of 250/slack; no Markdown/folds/layers (later slices); current asks/chips stay supported.
+
+### impl-132 · 2026-10-10T01:39:02.189Z
+
+Committed and pushed local origin: c4fb6fb0c2c5bc8295549ebf5393bf88eb2c02c9 (copied from git log -1). Typecheck passes; thread5/5 with append0.559ms including eviction, rewrite+redraw6.989ms; THREAD-001/002 pass; General's68 real messages replay at both widths. Artifacts A-335 implementation/deviations, A-336 real General120 head and A-337 General80 tail. Started final root npm test with pinned Node v24.21.0/shared machine lock. No merge.
+
+### impl-132 · 2026-10-10T01:40:37.698Z
+
+Cross-day retained-answer regression passes; it verifies one rule per retained local day when the old ask expires. No production delta. Committed final head12b5eb966dadc86ff7580334c5fab5f43e4afae6 (copied git log -1), pushed local origin. Cancelled queued c4fb6fb suite (exit143, no tests ran); final pinned-Node root npm test is queued on12b5eb9. Earlier production checks and A-335/A-336/A-337 carry forward.
+
+### rev-6 · 2026-10-10T01:45:21.745Z
+
+verdict: review
+result: not clear
+by: rev-6 [reviewer]
+run: rev-6-132-1
+commit: 12b5eb966dadc86ff7580334c5fab5f43e4afae6
+
+Medium — nvim/lua/cland/thread.lua:562: promoting a retained answer adds its day rule but leaves the following block's previous rule intact, duplicating that local day's rule after ask eviction and violating the one-rule-per-day criterion.
+
+A-339 confirms this on the pinned final head in scratch Neovim: live eviction retains 200 messages and the answer once, but shows Oct 9 twice; the exact final fixture's direct merge shows three rules for two retained days. A full rewrite repairs both, so the incremental insertion must recompute the following boundary without rewriting its text. A-339 corrects A-338's explanation of the stub history limit; the stub ignores it.
+
+Standards: clear. Spec: the medium boundary finding above remains; no other high or medium findings. Full delta e980bf1..12b5eb9 and the documented T-133–135 deferrals reviewed. Diff check passed; no suite run.
+
+Evidence: A-339, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-339-t-132-final-review-day-rule-boundary-evidence-at-12b5eb9.md.
+
+### impl-132 · 2026-10-10T01:46:53.990Z
+
+Cancelled queued12b5eb9 suite on A-338 (exit143; no tests ran). Exact live200-message ask/answer+append reproduces2 day rules vs1. The old initial-trim assertion was masked by the test helper's charting-preset view change, which called render before assertion. New generated tests skip that view rewrite and compare lines, extmark virtual rules/stages/highlights/bands and gutter/card/chip row metadata against a separate fresh oracle buffer. Red differential reproduces divergence on seed1 live append1. Fixing predecessor-dependent day rules at every insertion/removal boundary.
+
+### impl-132 · 2026-10-10T01:50:03.951Z
+
+Fixed the duplicate day-rule class by recomputing only separator extmarks at removal/insertion boundaries, and fixed stable ordering of equal-time promoted answers. The old test's charting-preset switch performed a full render before the count assertion, masking initial trim defects. New independent full-render differential snapshots compare all extmark details, lines and gutter/action metadata across 4 generated histories and 96 live appends with asks, answers and boundary stage changes. Red exact eviction and red initial equal-time ordering confirmed before the fixes; all 6 thread tests, both 120/80-column QA cases and typecheck now pass. Append+eviction median 0.310 ms; rewrite+redraw 5.395 ms. Preparing committed head before the root suite.
