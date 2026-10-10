@@ -2,7 +2,7 @@
 id: T-107
 kind: epic
 title: "Epic: v0.1 release and status"
-state: open
+state: closed
 labels:
   - epic
   - v0.1
@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: T-130
 blocked_by: []
-topic: null
+topic: topic-93
 branch: null
 created: 2026-10-09T21:51:33.080Z
-updated: 2026-10-10T16:43:37.538Z
+updated: 2026-10-10T16:50:33.768Z
 ---
 
 ## Goal
@@ -91,3 +91,49 @@ From the first ticket on, every v0.1 epic and every ticket `/to-tickets` cuts fr
 ### coord · 2026-10-09T21:58:31.890Z
 
 Tickets cut with /to-tickets on 2026-10-09 at 21:57Z, following the epic's tracer-bullet order: T-118 (release item; no blockers), T-119 (levels; T-118), T-120 (status; T-118), T-121 (ready and verifier holds; T-120), T-122 (rank; T-118), T-123 (surfaces; T-119, T-121, T-122). The human's stand-in approved them as filed at 21:59Z. Across lanes, T-128 (T-109's vertical board) is blocked by T-123. T-118 started with impl-118. The migration that creates the v0.1 release runs after T-118 merges and the hub restarts.
+
+### qa-15 · 2026-10-10T16:48:24.077Z
+
+verdict: qa
+result: not clear
+by: qa-15 [qa]
+run: qa-2026-10-10-15-107-d
+commit: d6190c3c35c08ee7bf2acf4321d5753cc02bb6ef
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| SHELL-001, ITEMS-001, PANELS-011, PANELS-012 | headless-grid | PASS | .cland/qa/T-107/qa-2026-10-10-15-107/ |
+| M1–M7, M9, M11, M12 | hub-api | PASS | .cland/qa/T-107/qa-2026-10-10-15-107-c/M<n>.txt |
+| M10 | headless-grid | PASS | .cland/qa/T-107/qa-2026-10-10-15-107-c/M10.txt and M10-*.screen.txt |
+| M8 | hub-api | INCONCLUSIVE | .cland/qa/T-107/qa-2026-10-10-15-107-d/M8.txt |
+
+Medium — M8 (brief defect): a changed patch withdrew ready; `cland merge T-7` refused its stale review. The brief expects successful merge without obtaining a fresh review. Supplementary execution with a fresh reviewer verdict at the new SHA merged and reached done. The gate worked correctly; the literal demo is not clear until its omitted prerequisite is resolved.
+
+verified: C1,C2,C3,C5,C6,C8
+failed: none established as product defects; C4,C7 remain unverified for literal M8.
+deferred to the T-117 walkthrough: none.
+
+Build: d6190c3c35c08ee7bf2acf4321d5753cc02bb6ef. The root dev source was clean outside live .cland metadata. Catalogue cases ran on isolated fixtures; manual writes ran only in scratch projects. The earlier -b/-c manual attempts include driver/setup errors (TOML spacing, missing assignment, release title, and an insufficient 700ms readiness wait); their later evidence supersedes them. No product code was fixed. This verdict combines the original catalogue pass, final -c manual pass, and the -d M8 continuation.
+
+### qa-15 · 2026-10-10T16:50:29.037Z
+
+verdict: qa
+result: clear
+by: qa-15 [qa]
+run: qa-2026-10-10-15-107-e
+commit: e3b702eb343f138b63754d4f36e527aa687661d3
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| SHELL-001, ITEMS-001, PANELS-011, PANELS-012 | headless-grid | PASS (carried forward) | .cland/qa/T-107/qa-2026-10-10-15-107/ |
+| M1–M7, M9, M11, M12 | hub-api | PASS (carried forward) | .cland/qa/T-107/qa-2026-10-10-15-107-c/M<n>.txt |
+| M10 | headless-grid | PASS (carried forward) | .cland/qa/T-107/qa-2026-10-10-15-107-c/M10.txt and M10-*.screen.txt |
+| M8 | hub-api | PASS | .cland/qa/T-107/qa-2026-10-10-15-107-e/M8.txt |
+
+No unresolved findings. The corrected M8 created an independently claimed scratch task and a changed branch patch. Its initial current review set ready; the changed patch withdrew ready; merge refused stale review; a fresh review on the new SHA enabled merge and status done. The prior PANELS-012 pass covers done leaving the in-work filter.
+
+verified: C1,C2,C3,C4,C5,C6,C7,C8
+failed: none
+deferred to the T-117 walkthrough: none.
+
+Commit: e3b702eb343f138b63754d4f36e527aa687661d3. Only qa/briefs/T-107.md changed from the prior d6190c3 build; the Coordinator explicitly requested carrying forward the passing checks cited by verdict qa-2026-10-10-15-107-d and rerunning only M8. Root source was clean outside live .cland metadata. Original catalogue and manual evidence remain durable in the paths above. All writes for the demonstration were confined to scratch projects.

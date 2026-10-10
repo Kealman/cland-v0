@@ -3,7 +3,7 @@ id: T-189
 kind: task
 title: "The item-loop demo: a real v0.1 ticket from claim to ready with one Coordinator delivery, measured from the journal"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:56:11.386Z
-updated: 2026-10-10T15:56:11.386Z
+updated: 2026-10-10T17:03:11.835Z
 ---
 
 ## Parent

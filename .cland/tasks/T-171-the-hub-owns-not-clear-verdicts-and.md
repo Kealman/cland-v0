@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T10:13:42.333Z
-updated: 2026-10-10T16:40:29.397Z
+updated: 2026-10-10T16:59:13.531Z
 ---
 
 ## Parent
@@ -40,3 +40,13 @@ Until this lands, `needsYou` is asks + approvals + waiting topics only (T-169). 
 ## Notes
 
 Size M. Blocked by T-169. Awaiting the human's confirmation of the rule (the question is on T-130).
+
+## Comments
+
+### coord · 2026-10-10T16:45:30.416Z
+
+From T-190 self-review: T-134 keeps agent-to-agent verdict messages at watch (clear) and now (not clear), which diverges from spec §3.5 (agent-to-agent is background; agents raise only by addressing the human or asking). T-190 preserves the T-134 behaviour unchanged; T-171 decides the verdict-message level with the rest of the noise policy (under D16 the human acts on no individual verdict).
+
+### coord · 2026-10-10T16:59:13.531Z
+
+Candidate kind from T-198 (stand-in decision 2026-10-10): unread human-addressed messages in needsYou, resolved when read or answered. Settle with the human's open T-130 question on verdicts and deaths; nothing in v0.1 depends on it.

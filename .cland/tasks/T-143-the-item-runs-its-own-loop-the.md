@@ -2,8 +2,8 @@
 id: T-143
 kind: task
 title: "The item runs its own loop: the Implementer requests its own review and QA, the Coordinator merges on ready; one v0.1 ticket measured from the journal"
-state: open
-status: in progress
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-88
 branch: t/T-143-the-item-runs-its-own-loop-the
 created: 2026-10-10T01:52:19.293Z
-updated: 2026-10-10T16:06:12.491Z
+updated: 2026-10-10T17:02:29.214Z
 ---
 
 ## Parent
@@ -34,8 +34,9 @@ The item runs its own loop. The Implementer clause requests review and QA itself
 - [x] C3. The `merge`, `qa` and `code-review` skills and `docs/review-and-qa.md` describe kinds, subscriptions and item leads.
   - done: impl-143b · 2026-10-10T15:57:39.589Z
   - verified: rev-10 [reviewer] · run rev-20261010-143-1 · 2026-10-10T16:04:45.114Z
-- [ ] C4. `npm run typecheck && npm test` pass.
-  - failed: rev-10 [reviewer] · 2026-10-10T16:04:45.216Z · note A-650 records npm test exit 1: hub 1021/1022; A-660's later Neovim 232/232 pass does not establish the required passing full suite.
+- [x] C4. `npm run typecheck && npm test` pass.
+  - done: impl-143b · 2026-10-10T17:01:05.399Z
+  - verified: rev-10 [reviewer] · run rev-20261010-143-2 · 2026-10-10T17:01:45.103Z
 
 ## Notes
 
@@ -110,3 +111,23 @@ Criteria: C4 failed (A-650 records npm test exit 1: hub 1021/1022; A-660's later
 ### impl-143b · 2026-10-10T16:06:12.491Z
 
 Coordinator instructed the literal C4 full rerun (2d46149d / dd3508d6). Started one persistent npm run typecheck && npm test command on unchanged clean 1c2c7c577d6b8fe88783f394d364171e4bae231d through package suite locks. Completion publishes the log in topic-88 and sends one result to coord; it marks C4 done again only on full exit 0. On failure it preserves the failed criterion and reports assertions for Coordinator decision. No code changes; idle until result.
+
+### impl-143b · 2026-10-10T17:01:05.540Z
+
+Full npm run typecheck && npm test rerun on unchanged clean head 1c2c7c577d6b8fe88783f394d364171e4bae231d: PASS, exit 0; ℹ tests 1022; ℹ pass 1022; ℹ fail 0; ℹ skipped 0; ℹ duration_ms 878474.779292; ℹ tests 232; ℹ pass 232; ℹ fail 0; ℹ skipped 0; ℹ duration_ms 172678.126916. Log A-680: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-680-t-143-full-typecheck-and-suite-rerun-at-1c2c7c5.txt, in topic-88. C4 marked done again on this passing full command; C2/C3 remain verified. No code changes. Handing over for rev-10 C4 verification via Coordinator.
+
+### rev-10 · 2026-10-10T17:01:45.103Z
+
+verdict: review
+result: clear
+by: rev-10 [reviewer]
+run: rev-20261010-143-2
+commit: 1c2c7c577d6b8fe88783f394d364171e4bae231d
+
+No findings remain in this C4-only follow-up. A-680 pins unchanged head 1c2c7c577d6b8fe88783f394d364171e4bae231d and records `npm run typecheck && npm test` exit 0: hub 1022/1022 and Neovim 232/232, zero failures, skips or cancellations. The earlier request-guard timing test passed in the rerun. C4 verified; C2/C3 stand from rev-20261010-143-1, and prior implementation/test-delta clearances A-641/A-643 carry forward. No code changes or test reruns by this Reviewer; demo remains T-189. Standards: 0 findings; Spec/criteria: 0 findings.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-10T17:02:29.214Z
+
+Merged 37e693f3cd88042e74f6e9b196253d440ec16c4a onto dev.

@@ -2,7 +2,7 @@
 id: T-109
 kind: epic
 title: "Epic: Workbench basics"
-state: open
+state: closed
 labels:
   - epic
   - v0.1
@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: T-130
 blocked_by: []
-topic: null
+topic: topic-94
 branch: null
 created: 2026-10-09T21:51:33.419Z
-updated: 2026-10-10T16:43:37.881Z
+updated: 2026-10-10T16:54:11.276Z
 ---
 
 ## Goal
@@ -89,3 +89,27 @@ From this epic on, the human follows the build on the vertical board of v0.1 and
 ### coord · 2026-10-09T21:58:31.917Z
 
 Tickets cut with /to-tickets on 2026-10-09 at 21:57Z, following the epic's tracer-bullet order: T-124 (focus and keys; no blockers), T-125 (ui.json; T-124), T-126 (registry and palette; T-125), T-127 (sessions by state; T-126), T-128 (vertical board; T-126, and across lanes T-123). The human's stand-in approved them as filed at 21:59Z. T-124 started with impl-124. Delegated decision: the kitty base-layout check (§3.12), probed in T-124, reported to the stand-in when taken.
+
+### qa-15 · 2026-10-10T16:53:59.316Z
+
+verdict: qa
+result: clear
+by: qa-15 [qa]
+run: qa-2026-10-10-15-109-c
+commit: e3b702eb343f138b63754d4f36e527aa687661d3
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| PANELS-005 through PANELS-014 | headless-grid | PASS | .cland/qa/T-109/qa-2026-10-10-15-109/ |
+| M1, M3, M5 | headless-grid / hub-api | PASS | .cland/qa/T-109/qa-2026-10-10-15-109-b/M<n>.txt |
+| M4, M8 | headless-grid / hub-api | PASS | .cland/qa/T-109/qa-2026-10-10-15-109/M<n>.txt |
+| M6, M7 | headless-grid | PASS | .cland/qa/T-109/qa-2026-10-10-15-109-c/M<n>.txt |
+| M2 | real terminals | BLOCKED; deferred by Procedure 6b | .cland/qa/T-109/qa-2026-10-10-15-109/M2.txt |
+
+No product failures remain. Headless Normal/Terminal focus chords and lone Ctrl-backslash passed. The doctor warned on fixture Ghostty Shift+Enter and ^H erase; Russian langmap loaded. Resized panels, preset and filter survived a fresh Neovim process and ui.json is ignored. Real-hub palette item/action/ask flows passed. Three fake Claude sessions showed waiting, busy and idle, and two stopped sessions folded into a single group. An attached fake session yielded focus to items; status sections and T/J/K rank operations persisted through the hub. The existing nvim/test/shell.test.ts covers focus chords; catalogue cases cover the other surfaces.
+
+verified: C2,C3,C4,C5,C6,C7,C8
+failed: none
+deferred to the T-117 walkthrough: M2 / C1 — Ghostty in both encodings and tmux with extended keys on/off require those real terminal surfaces. C1 remains unverified. All non-deferred checks passed; clear applies to the automated epic scope under Procedure 6b.
+
+Commit: e3b702eb343f138b63754d4f36e527aa687661d3. Catalogue cases ran at d6190c3, before the Coordinator corrected only T-107's brief; git diff confirms no product/source change between builds. Manual checks ran at e3b702e. Earlier manual FAIL lines were fixture-driver mistakes: a lone Ctrl-backslash sent in Normal mode left pending input; the observer used S.asks instead of S.inbox.asks; a toggle hid the already-open sessions panel; rank was initially compared across all statuses instead of within planned. Corrected continuations use new run ids and preserve earlier evidence. Product source was not changed.

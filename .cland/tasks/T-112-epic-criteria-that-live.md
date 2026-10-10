@@ -2,7 +2,7 @@
 id: T-112
 kind: epic
 title: "Epic: Criteria that live"
-state: open
+state: closed
 labels:
   - epic
   - v0.1
@@ -11,10 +11,10 @@ assignee: null
 parent: T-130
 blocked_by:
   - T-107
-topic: null
+topic: topic-97
 branch: null
 created: 2026-10-09T21:51:33.968Z
-updated: 2026-10-10T16:43:26.890Z
+updated: 2026-10-10T17:09:55.398Z
 ---
 
 ## Goal
@@ -80,3 +80,52 @@ From this epic on, the build's tickets carry structured criteria, Reviewers and 
 - ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0001-roles-are-hub-held-state.md`.
 - Branches: `prototype/panels`, `prototype/graph` (the checkbox stand-ins).
 - Mockups: `docs/design/main-screen/Thread.dc.html`, `ItemsBoard.dc.html`, `Item.dc.html`.
+
+## Comments
+
+### qa-15 · 2026-10-10T17:09:41.987Z
+
+verdict: qa
+result: clear
+by: qa-15 [qa]
+run: qa-2026-10-10-15-112-c
+commit: fb12e904d95c0abe7e3aa14dc26503cbb3bee196
+
+| Case | Surface | Result | Observation / evidence |
+| --- | --- | --- | --- |
+| ITEMS-001 | headless-grid | PASS | Item smoke. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112/ITEMS-001.screen.txt) |
+| ITEMS-002 | headless-grid | PASS | 80/120-column glyphs, refresh and green fractions. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112/ITEMS-002.screen.txt) |
+| M1 | hub-api | PASS | Legacy null IDs; first write assigns IDs; hand edit preserves exact done mark; fourth criterion gets C4 on touch. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-c/M1.txt) |
+| M2 | headless-grid | PASS | Four unmarked criteria display ○ and 0/4. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M2.txt) |
+| M3 | hub-api | PASS | Claimant done accepted; Implementer verify and Reviewer done refused. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M3.txt) |
+| M4 | hub-api | PASS | Reviewer --verified all accepted; C99 refused; ● and 4/4. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M4.txt) |
+| M5 | hub-api | PASS | QA failure clears done and verification; in progress; ✗ and note. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M5.txt) |
+| M6 | hub-api | PASS | Merge refused naming C3; ready absent. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M6.txt) |
+| M7 | hub-api | PASS | Done and fresh verification restore ready; merge succeeds. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M7.txt) |
+| M8 | hub-api | PASS | Removed C2 not reused; C5 survives restart; next allocation C6. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M8.txt) |
+| M9 | headless-grid | PASS | Item glyphs and panel/board 0/4, 4/4, 3/4, 4/4 captured. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M9.txt) |
+| M10 | hub-api | PASS | Subscriber receives criterion marked done/verified per C1–C4, plus C3 failed. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M10.txt) |
+| M11 | hub-api | PASS | Four required docs describe criteria and marks. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-112/qa-2026-10-10-15-112-b/M11.txt) |
+
+No outstanding high, medium, or low findings.
+
+Resolved low-severity brief defect: original M1 expected legacy reads to allocate IDs. The command `task view T-1 --json` returned four `id:null` values after a hand edit, as documented. Coordinator corrected the brief in T-200 at fb12e90; corrected M1 passed. The original failing record remains in qa-2026-10-10-15-112/M1.txt.
+
+Execution: catalogue cases ran through `CLAND="$PWD/hub/bin/cland.ts" sh .agents/skills/qa/qa-record.sh run T-112 qa-2026-10-10-15-112 ITEMS-001` and ITEMS-002. Manual lifecycle ran with `QA_SUFFIX=-b QA_ONLY=M2,M3,M4,M5,M6,M7,M8,M9,M10,M11 node .cland/qa/epic-demo-qa15/t112.mjs`; corrected M1 with `QA_SUFFIX=-c node .cland/qa/epic-demo-qa15/t112-m1.mjs`. Every case has a qa-record line. Scratch hubs used actual assigned fixture roles, a local territory branch and a real headless Neovim driven through nvim_input with screenstring captures; no model session was required. Scratch hubs stopped after completion.
+
+The initial manual driver left its task unscheduled inside a collapsed UI fold, causing panel waits to fail. Those records remain; the fresh -b lifecycle places its task under an open release/epic, and all M2–M11 checks pass. No product change was made.
+
+Build: qa-2026-10-10-15-112-c M1 ran at fb12e904d95c0abe7e3aa14dc26503cbb3bee196. Catalogue and -b passes ran at 21a57ac4b75ae0560cf20ff39f99a1bf000cbb83. The only difference is the M1 brief correction; product code is identical. Root branch was dev, with tracked modifications confined to .cland/ as the brief permits. Carry-forward follows Coordinator's request in topic-97.
+
+Criteria map: C1 M1; C2 M2/M3/M5; C3 M4; C4 M5/M6/M7; C5 M8; C6 ITEMS-002/M9; C7 M10; C8 M11. Epic criteria marks are textual under brief 6a pending T-196.
+
+verified: C1,C2,C3,C4,C5,C6,C7,C8
+failed: none
+deferred to the T-117 walkthrough: none
+
+verdict: qa
+result: clear
+run: qa-2026-10-10-15-112-c
+commit: fb12e904d95c0abe7e3aa14dc26503cbb3bee196
+
+Full report artifact: A-686, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-686-t-112-qa-clear-criteria-lifecycle-and-corrected-legacy-id-check.md

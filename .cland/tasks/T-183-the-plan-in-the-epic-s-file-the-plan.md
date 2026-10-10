@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-90
 branch: t/T-183-the-plan-in-the-epic-s-file-the-plan
 created: 2026-10-10T15:38:37.301Z
-updated: 2026-10-10T16:00:56.113Z
+updated: 2026-10-10T17:04:31.628Z
 ---
 
 ## Parent
@@ -30,14 +30,17 @@ The `## Plan` YAML block and its validation; `task.plan set` and `show`, `cland 
 - [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
   - done: impl-183 · 2026-10-10T15:59:08.845Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-2 · 2026-10-10T16:00:56.113Z
+  - verified: rev-11 [reviewer] · run rev-20261010-183-3 · 2026-10-10T17:04:31.628Z
 - [x] C2. Demo: `cland task plan set T-<epic> --file plan.yaml` writes a two-stage plan, and a broken one is refused with the reason.
   - done: impl-183 · 2026-10-10T15:49:51.222Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-1 · 2026-10-10T15:55:34.403Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-2 · 2026-10-10T16:00:56.113Z
+  - verified: rev-11 [reviewer] · run rev-20261010-183-3 · 2026-10-10T17:04:31.628Z
 - [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
   - done: impl-183 · 2026-10-10T15:49:51.289Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-1 · 2026-10-10T15:55:34.542Z
   - verified: rev-11 [reviewer] · run rev-20261010-183-2 · 2026-10-10T16:00:56.113Z
+  - verified: rev-11 [reviewer] · run rev-20261010-183-3 · 2026-10-10T17:04:31.628Z
 - [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
 
 ## Comments
@@ -71,5 +74,21 @@ run: rev-20261010-183-2
 commit: d4561fb9f2ca01b65523ec6dca8e114d47419e2b
 
 No remaining high or medium findings. A-652 is resolved: hub/src/tracker/tracker.ts:770 retains epic candidates and retries them after child indexing, while :869 accepts and journals the exact valid plan before returning it. The same read-only reproduction now journals C1→C2 and retains C2 after a broken save; the real-protocol regression checks journal acceptance before a plan read. Standards: no findings. Spec: no findings. C1–C3 verified for this full-item verdict. Typecheck passed independently; C4 remains unverified pending the queued full suite.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-183 · 2026-10-10T17:01:51.917Z
+
+Committed configured-levels fix as 0b5aa971fbb8e553d5e1706a920d46b1f9f40ec9 and pushed origin. Plan ownership follows tracker.levels[1]; custom milestone/initiative integration regression passes. Targeted plan tests 9/9, source guard 2/2 and typecheck pass. Full suite queued through the dummy-proven completion reporter; orphan-server cleanup race remains T-172.
+
+### rev-11 · 2026-10-10T17:04:31.628Z
+
+verdict: review
+result: clear
+by: rev-11 [reviewer]
+run: rev-20261010-183-3
+commit: 0b5aa971fbb8e553d5e1706a920d46b1f9f40ec9
+
+No supported high or medium findings. Standards: no findings. Spec: accept the documented levels[1] convention; §3.1 allows leaves under any container and the existing [release, epic, feature] example at hub/README.md:915 places a level below the epic, so the spec does not mandate lowest-level ownership. With [release, milestone, epic], milestone is the second semantic role; kind names are configurable, not reserved. Arbitrary deeper-ladder role mapping is underspecified in §3.10, so this is an interpretation. All set/show/validation/candidate guards use the same predicate; renamed-level protocol regression covers retention. Actual predicate checks and typecheck passed independently. Prior unchanged behavior and A-652 resolution carry forward from A-659. C1–C3 verified; C4 waits for full-suite evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified.

@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.340Z
-updated: 2026-10-10T16:43:27.177Z
+updated: 2026-10-10T17:04:49.044Z
 ---
 
 ## Goal
@@ -83,3 +83,9 @@ Once `plan-epic` lands, the rest of this epic, "Visibility and artifacts", "The 
 - ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0006-the-hierarchy-is-the-item-tree.md`, `docs/adr/0001-roles-are-hub-held-state.md`.
 - Branches: `prototype/graph` (stages).
 - Mockups: `docs/design/main-screen/PlanBefore.dc.html`, `PlanMidway.dc.html`.
+
+## Comments
+
+### coord · 2026-10-10T17:04:49.044Z
+
+Spec gap from T-183's review (rev-11, A-685): with a custom ladder, which level owns a plan? T-183 pins it to tracker.levels[1] (the level under the top), so ['release','epic','feature'] plans on epic, as hub/README.md's example expects. §3.10 says only 'the epic's item file'; it should name the rule. Settle when §3.10 is next amended; no v0.1 project uses a deeper ladder.

@@ -23,7 +23,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.973Z
-updated: 2026-10-10T16:43:27.589Z
+updated: 2026-10-10T17:03:43.026Z
 ---
 
 ## Goal
@@ -88,3 +88,13 @@ v0.1 ships from its own release item. The next release starts as a release item 
 - GLOSSARY: Release, Territory, Item.
 - ADRs: `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0001-roles-are-hub-held-state.md`.
 - Branches: `research/git-engines`, `research/qa-astra`.
+
+## Comments
+
+### coord · 2026-10-10T16:54:24.008Z
+
+Deferred to the acceptance walkthrough (D16): T-109 C1, the real Ghostty and tmux key-encoding matrix (brief M2), BLOCKED in qa-2026-10-10-15-109-c because it needs real terminals.
+
+### coord · 2026-10-10T17:03:43.026Z
+
+Deferred to the acceptance walkthrough (D16): T-111 M7, the Coordinator following through on an Aide's decision with a real model (qa-2026-10-10-15-111-c; the decision delivery itself passed).

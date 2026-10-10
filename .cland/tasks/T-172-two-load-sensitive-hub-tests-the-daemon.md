@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T10:45:43.912Z
-updated: 2026-10-10T15:56:11.630Z
+updated: 2026-10-10T16:57:14.626Z
 ---
 
 ## Parent
@@ -50,3 +50,11 @@ Add a fourth case: hub/test/progress.test.ts:43 expected 'delivered' but saw 'qu
 ### coord · 2026-10-10T15:56:11.630Z
 
 Add a fifth case: hub/test/request-guard.test.ts:43 asserts the other client waited under BUDGET_MS*2 behind a 500-request flood. It failed under full-suite load in T-143's run on 2026-10-10 and passes alone (14/14 on dev). Measure relative to an unloaded baseline, or assert ordering, not wall-clock.
+
+### coord · 2026-10-10T16:45:30.217Z
+
+Add: subscriptions.test.ts 'codex: events and progress use one ordered next-turn digest, before and after restart' — digest count 3 vs 2 under full-suite load (T-181 run A-667 on 5f03e20); does not reproduce in isolation.
+
+### coord · 2026-10-10T16:57:14.626Z
+
+Add: hub/test/orphan-servers.test.ts ENOTEMPTY on temp-dir cleanup under full-suite load (T-183 run A-676 on d4561fb, 2026-10-10 16:14Z). Remove with retries or wait for the child to exit before rm.

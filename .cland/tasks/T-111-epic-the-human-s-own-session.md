@@ -2,7 +2,7 @@
 id: T-111
 kind: epic
 title: "Epic: The human's own session"
-state: open
+state: closed
 labels:
   - epic
   - v0.1
@@ -12,10 +12,10 @@ parent: T-130
 blocked_by:
   - T-109
   - T-108
-topic: null
+topic: topic-96
 branch: null
 created: 2026-10-09T21:51:33.788Z
-updated: 2026-10-10T16:43:26.741Z
+updated: 2026-10-10T17:03:42.283Z
 ---
 
 ## Goal
@@ -85,3 +85,29 @@ From this epic on, the human plans through an Aide: the remaining epics' tickets
 - ADRs: `docs/adr/0001-roles-are-hub-held-state.md`, `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - Branches: `prototype/panels`, `research/harness-surfaces`.
 - Mockups: `docs/design/main-screen/SessionsPanel.dc.html`, `Palette.dc.html`, `Thread.dc.html`.
+
+## Comments
+
+### qa-15 · 2026-10-10T17:03:03.513Z
+
+verdict: qa
+result: clear
+by: qa-15 [qa]
+run: qa-2026-10-10-15-111-c
+commit: dec872c95e30612b09afb3647c0ad0e6b7c10354
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| PANELS-015, PANELS-016 | headless-grid | PASS | .cland/qa/T-111/qa-2026-10-10-15-111/ |
+| M1–M3, M6, M8 | hub-api | PASS | .cland/qa/T-111/qa-2026-10-10-15-111/M<n>.txt |
+| M4 | hub-api / native fake adapters | PASS | .cland/qa/T-111/qa-2026-10-10-15-111-b/M4.txt and M4-*.log |
+| M5 | headless-grid | PASS | .cland/qa/T-111/qa-2026-10-10-15-111-c/M5.txt and M5-*.screen.txt |
+| M7 | hub-api | delivery/actions PASS; model behavior BLOCKED and deferred | .cland/qa/T-111/qa-2026-10-10-15-111/M7.txt |
+
+No product findings. The initialized Aide is non-exclusive; its permissions match §3.3 plus criteria management from §3.4, and crew clauses recognize its authority. Named delivery arrived while all/role broadcasts and asks did not. Every forbidden crew operation named the Aide rule; permitted tracker/named-send actions worked. Text and artifact briefs reached each of Claude Code, Codex and OpenCode exactly once, after the clause in the first native input, and were not repeated after hub restart/reconnect. Space-A, sessions a, and the palette launched real fake-backed Aides using role defaults/root, attached them and displayed them under YOURS. An Aide claim provided its branch/worktree; the human's merge of that work refused a missing review (the Aide's own merge permission is separately denied by M3).
+
+verified: C1,C2,C3,C4,C5,C6,C7,C8
+failed: none
+deferred to the T-117 walkthrough: M7 — whether a real Coordinator model follows the Aide's decision. Two creates, third-item edit, and receipt with from_role=aide all passed. This behavioral check is explicitly outside criteria and does not block the automated scope under Procedure 6b.
+
+Commit: dec872c95e30612b09afb3647c0ad0e6b7c10354. Catalogue cases ran at e3b702e; only T-110 brief/tracker documentation changed before manual checks at dec872c. Product source unchanged and clean outside live .cland metadata. Initial M4 awaited a clause on an additional spoke joining an already connected session; corrected continuation exercises actual hub restart/reconnect. Initial M5 matched the previous attachment too early; the corrected check waits for the specific new Aide before continuing. Earlier driver evidence is retained; no product fixes.

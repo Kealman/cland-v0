@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-89
 branch: t/T-181-the-crew-file-cland-crew-toml-validated
 created: 2026-10-10T15:38:36.819Z
-updated: 2026-10-10T15:56:06.353Z
+updated: 2026-10-10T16:46:21.277Z
 ---
 
 ## Parent
@@ -30,14 +30,17 @@ T-113, slice 6 of 7. Read the epic's Contents, its choices where the spec is sil
 - [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
   - done: impl-181 · 2026-10-10T15:54:27.063Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-2 · 2026-10-10T15:56:06.353Z
+  - verified: rev-10 [reviewer] · run rev-20261010-181-3 · 2026-10-10T16:46:21.277Z
 - [x] C2. Demo: `cland crew set reviewer.size 2` and the header reads "rev pool 2".
   - done: impl-181 · 2026-10-10T15:48:01.901Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-1 · 2026-10-10T15:51:52.004Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-2 · 2026-10-10T15:56:06.353Z
+  - verified: rev-10 [reviewer] · run rev-20261010-181-3 · 2026-10-10T16:46:21.277Z
 - [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
   - done: impl-181 · 2026-10-10T15:48:02.149Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-1 · 2026-10-10T15:51:52.128Z
   - verified: rev-10 [reviewer] · run rev-20261010-181-2 · 2026-10-10T15:56:06.353Z
+  - verified: rev-10 [reviewer] · run rev-20261010-181-3 · 2026-10-10T16:46:21.277Z
 - [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
 
 ## Comments
@@ -71,5 +74,21 @@ run: rev-20261010-181-2
 commit: 5f03e2011740f4634d788172e9f37f079e60b08e
 
 No high, medium or low findings remain. A-648's medium issue at hub/src/crew.ts:23 is resolved by isPlainTable at root/crew/role boundaries. Independently verified rejection of 12 date/time/array cases and acceptance of valid ordinary/inline/per-group tables plus defaults round trip. Reviewed A-649 red/green protocol regression evidence for refusal notices and last-good size retention. Standards: no findings. Spec: no findings; unchanged full-item checks from run 1 carry forward. C1/C2/C3 verified; C4 remains unverified pending the fresh full suite for this head.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-181 · 2026-10-10T16:44:46.512Z
+
+Full package run A-667 found 3 crew integration failures and one Codex digest count mismatch. Fixed committed-file/update inventories and reused tracker DEFAULT_LEVELS in parseCrew. All affected targeted checks pass; unchanged Codex digest case also passes in isolation. Head 1240a4d pushed; full package rerun started as one persistent command. C4 remains pending.
+
+### rev-10 · 2026-10-10T16:46:21.277Z
+
+verdict: review
+result: clear
+by: rev-10 [reviewer]
+run: rev-20261010-181-3
+commit: 1240a4d93a0fc1acfc8a012cc975f9331f28f548
+
+No findings in the three-line follow-up. hub/src/crew.ts now shares tracker DEFAULT_LEVELS while actual custom levels remain supplied by CrewFile; daemon committed-file inventory includes crew.toml; update rewrite inventory excludes the preserved staffing file. Independent read-only parser checks and A-668 targeted evidence support the fixes. Prior full-item clearance A-654 carries forward. Standards: 0 findings; Spec: 0 findings. C1/C2/C3 verified; C4 remains unverified pending the fresh full suite on 1240a4d (A-667's earlier run failed).
 
 Criteria: C1 verified, C2 verified, C3 verified.
