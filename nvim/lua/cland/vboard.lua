@@ -52,7 +52,7 @@ end
 
 function M.compose()
   local scope, parent = items.scope(), M.parent_filter()
-  local out = { scope = scope, columns = {}, unscheduled = {}, other = {}, closed = {}, done = 0, work = 0, leaves = {} }
+  local out = { scope = scope, columns = {}, unscheduled = {}, other = {}, closed = {}, groups = {}, done = 0, work = 0, leaves = {} }
   for _, s in ipairs(items.COLUMNS) do out.columns[s[1]] = {} end
   for _, it in ipairs(items.ordered()) do
     if scope and it.id == scope.id then
@@ -72,6 +72,17 @@ function M.compose()
       -- A map stays outside the ladder; its rows belong in the unscheduled fold too.
       out.unscheduled[#out.unscheduled + 1] = it
     end
+  end
+  for _, container in ipairs(vim.list_extend(vim.list_extend({}, out.closed), out.other)) do
+    local list = {}
+    for _, it in ipairs(items.ordered()) do
+      -- The scope has its header; descendants with no open container use unscheduled.
+      if (not scope or it.id ~= scope.id) and M.under(it, container.id)
+        and (it.id == container.id or items.open_container_of(it)) then
+        list[#list + 1] = it
+      end
+    end
+    out.groups[container.id] = list
   end
   -- Mark the next task before presentation filters, so narrowing never invents another priority.
   for _, it in ipairs(out.columns.planned) do
@@ -223,14 +234,7 @@ function M.render(c)
       fold(c, 'backlog', 'backlog', b.columns.backlog, f)
       if #b.leaves > 0 then fold(c, 'leaves', 'questions and specs', b.leaves, f) end
       for _, container in ipairs(vim.list_extend(vim.list_extend({}, b.closed), b.other)) do
-        local list = {}
-        for _, it in ipairs(items.ordered()) do
-          -- Descendants whose parents reach no open container belong only to unscheduled.
-          if M.under(it, container.id) and (it.id == container.id or items.open_container_of(it)) then
-            list[#list + 1] = it
-          end
-        end
-        fold(c, container.id, container.title, list, f)
+        fold(c, container.id, container.title, b.groups[container.id], f)
       end
     end
     fold(c, 'unscheduled', 'unscheduled', b.unscheduled, f)

@@ -79,6 +79,30 @@ test('background descendants use unscheduled only when no open container is reac
   assert.deepEqual(rows.filter(row => row.list === 'T-2').map(row => row.item), ['T-2', 'T-8', 'T-9']);
   assert.deepEqual(rows.filter(row => row.list === 'T-4').map(row => row.item), ['T-4', 'T-5']);
 });
+test('a scope under an archived release appears only in its header with both folds open', { skip }, async t => {
+  const scenario: Scenario = { items: [
+    { id: 'T-1', kind: 'release', title: 'Current release', version: '0.1.0', state: 'open' },
+    { id: 'T-2', kind: 'release', title: 'Archived release', version: '0.0.1', state: 'closed' },
+    task(3, 'done', 'T-2'),
+    { id: 'T-8', kind: 'epic', title: 'Open archived epic', parent: 'T-2', state: 'open' },
+    task(9, 'planned', 'T-8'),
+  ] };
+  const c = await start(t, scenario);
+  await c.input('ezR');
+  await c.waitScreen(s => s.includes('▾ T-2 Archived release') && s.includes('▾ unscheduled'), 'both folds open');
+  assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-8');
+  const renderedRows = () => c.lua<Array<{ item: string; list?: string }>>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]={item=info.item,list=info.list} end end; return out`);
+  const rows = await renderedRows();
+  for (const it of scenario.items!) {
+    assert.equal(rows.filter(row => row.item === it.id).length, 1, `${it.id} appears exactly once`);
+  }
+  assert.deepEqual(rows.filter(row => row.item === 'T-8'), [{ item: 'T-8' }], 'scope has only its header');
+  assert.deepEqual(rows.filter(row => row.list === 'T-2').map(row => row.item), ['T-2', 'T-9']);
+  assert.deepEqual(rows.filter(row => row.list === 'unscheduled').map(row => row.item), ['T-3']);
+  await c.input('E');
+  assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-1');
+  assert.deepEqual((await renderedRows()).filter(row => row.item === 'T-8'), [{ item: 'T-8', list: 'T-2' }], 'former scope returns to its archive group');
+});
 test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria and folded background groups', { skip }, async t => {
   const c = await start(t);
   await c.waitScreen(s => s.includes('board · 7 in work · 1 done'), 'board summary');
