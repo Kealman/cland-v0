@@ -38,6 +38,13 @@ function M.current_topic()
       return info.topic
     end
   end
+  -- A palette object may be focused in a split while the centre shows another topic.
+  -- Resolve thread/composer/list/artifact actions from that buffer before the centre fallback.
+  if vim.b[buf].cland_topic then return vim.b[buf].cland_topic end
+  if vim.b[buf].cland_artifact then
+    local a = require('cland.artifacts').get(vim.b[buf].cland_artifact)
+    if a then return a.topic end
+  end
   local v = state.S.ui.view
   if v.kind == 'log' then return 'agents' end
   if v.kind == 'artifact' then

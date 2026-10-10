@@ -185,8 +185,8 @@ function M.buf()
   pcall(api.nvim_buf_set_name, b, 'cland://board')
   vim.b[b].cland_role = 'board'
   M.b = b
-  vim.keymap.set('n', '<CR>', open, { buffer = b, nowait = true, silent = true, desc = 'cland: open the card' })
-  vim.keymap.set('n', '<2-LeftMouse>', open, { buffer = b, silent = true })
+  require('cland.actions').map('n', '<CR>', open, { buffer = b, nowait = true, silent = true, desc = 'cland: open the card' })
+  require('cland.actions').map('n', '<2-LeftMouse>', open, { buffer = b, silent = true })
   return b
 end
 

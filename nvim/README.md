@@ -1,6 +1,6 @@
 # nvim
 
-The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. The session launcher and the sessions panel are #28; the items panel, the item view and the board are #36. The Agents log is #34, the inbox and the ask cards #33. Shared artifacts open from topic chips, per-topic lists and the picker.
+The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. The session launcher and the sessions panel are #28; the items panel, the item view and the board are #36. The Agents log is #34, the inbox and the ask cards #33. Shared artifacts open from topic chips, per-topic lists and the palette.
 
 ## Starting it
 
@@ -29,10 +29,10 @@ The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that or
  MODE  <the centre view's context> │ hub: connected │ sessions: 1 busy · 0 waiting · 1 idle      key hints
 ```
 
-- **The top bar** is the tabline: the project, the centre view's title, the Coordinator chip (the live session holding the role and its state; a red "no coordinator" when none). Sessions show as `name [Role]` everywhere (the panel, the picker, the session view's title and header, a thread message's header, an ask's asker in the inbox, a verdict's `by`), from the hub's `label` or the role's label, never the role's key. The hub's word wins: `coordinator` in `hub.status`, and the `role.vacant` and `role.filled` events (#29), which change the chip at once, the "needs you" count (the hub's `needsYou`: open asks, approvals and topics waiting without an ask) and the live sessions with the waiting and down counts. The chips are clickable.
+- **The top bar** is the tabline: the project, the centre view's title, the Coordinator chip (the live session holding the role and its state; a red "no coordinator" when none). Sessions show as `name [Role]` everywhere (the panel, the palette, the session view's title and header, a thread message's header, an ask's asker in the inbox, a verdict's `by`), from the hub's `label` or the role's label, never the role's key. The hub's word wins: `coordinator` in `hub.status`, and the `role.vacant` and `role.filled` events (#29), which change the chip at once, the "needs you" count (the hub's `needsYou`: open asks, approvals and topics waiting without an ask) and the live sessions with the waiting and down counts. The chips are clickable.
 - **The status line** (global) shows the centre view's context, hub state (`connected`, `reconnecting`, `starting`, …), active preset, sessions by state, the latest notice and focused key hints. One display-cell budget gives space first to the answer hint, then the notice, then the context (with an ellipsis when truncated), then session counts. Counts also remain in the top bar. cland's notices go there, never to the message area: `vim.notify` is replaced.
 - **The centre** shows one view at a time: a topic thread with its composer, a session terminal, the item view, the board, the Agents log, or the inbox full width. `␣␣` returns to the previous one.
-- **The Agents log** (#34) is how Agents is read: `␣L`, `:Cland view log`, or Agents from the topics panel or the picker (never a thread with a composer: Agents is read-only). One row per entry, oldest first: the local time, then `sender [Role] → addressee [Role]` and the text for a message (further lines indented below it), or a kind glyph and the text for a lifecycle notice: `▶` session start, `■` stop, `✖` death, `◆` role assigned, `◇` revoked, `⇄` handover, `⚑` claim, `⚐` release, `⊘` mute (red), `⊙` unmute, `⛔` a refused tool call. It loads `topic.history` on every connect and adds a row on each `message` event for `agents`. `r` on a message opens a composer under the log, titled `↩ reply to <sender [Role]>`: what is sent there goes to Agents with `replyTo`, which the hub resolves to that sender; once the hub accepts it the composer closes. `r` on a notice says it has no sender to answer.
+- **The Agents log** (#34) is how Agents is read: `␣L`, `:Cland view log`, or Agents from the topics panel or the palette (never a thread with a composer: Agents is read-only). One row per entry, oldest first: the local time, then `sender [Role] → addressee [Role]` and the text for a message (further lines indented below it), or a kind glyph and the text for a lifecycle notice: `▶` session start, `■` stop, `✖` death, `◆` role assigned, `◇` revoked, `⇄` handover, `⚑` claim, `⚐` release, `⊘` mute (red), `⊙` unmute, `⛔` a refused tool call. It loads `topic.history` on every connect and adds a row on each `message` event for `agents`. `r` on a message opens a composer under the log, titled `↩ reply to <sender [Role]>`: what is sent there goes to Agents with `replyTo`, which the hub resolves to that sender; once the hub accepts it the composer closes. `r` on a notice says it has no sender to answer.
   - **Filters** (T-56): `f` asks for an item id or session name, with `Tab` completion from both. The header shows `AGENTS · T-12` or `AGENTS · impl-12`. It fetches the latest 200 matches from the hub's whole retained record, including older entries outside the unfiltered window, and admits only matching live entries. Item filters match notice details naming the item or its bound topic; session filters match the sender, addressees or session-bearing notice facts (`session`, `from`, `to`, `by`, `pair`), excluding metadata such as the harness or mute rule. Names match exactly, and message text is not searched. `F` clears the filter and reloads the unfiltered history. `L` in an item view or on a sessions-panel row opens Agents filtered to that item or session. Changing the filter closes any reply composer.
 
 - **Panels.** Items on the left (below). On the right one of: the inbox (below), sessions (name, role, harness, model, the state with `(heuristic)` when the adapter's capability table says so, the claimed item) and topics (below). Topics can also dock above the right panel. Opening the workbench shows General with the sessions panel.
@@ -48,7 +48,7 @@ The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that or
 - **Items** (spec 5, #36), from `task.list` and the `task` event; nothing is stored, every status is derived (`lua/cland/items.lua`).
   - **The panel** (`␣i`) is a tree: each item under its `parent`, orphans at the root, ordered by id. An epic or a map shows its children's progress (`1/3`). A row: the status glyph, the id, the title, then right-aligned the claiming session (else the assignee) and the ask badge (amber, the number of open asks in the item's bound topic, from the inbox, #33). The glyphs: `●` closed (green), `◆` needs you (amber: an open ask, or the latest review or QA verdict not clear), `◐` claimed, `◑` assigned, `◌` an open blocker, `○` open. The header names the filter and its count.
   - **Filters**, `1`–`5` or `f` / `F` to cycle: **all** (the tree); **in work** (open, and claimed or assigned); **needs you**; **done** (closed); **map**, the wayfinder grouping of each map item's children under headers, ordered by id: *decided* (closed), *frontier* (open, no assignee, no claim, no open blocker), *in work by sub-agents* (claimed or assigned), *blocked* (an open blocker). A blocker the tracker does not know counts as open.
-  - **The item view** (`↵` on a row or a card, `gi`, the picker, `:Cland view item T-<n>`): a title line with the id and the state; the title, the file and the body as Markdown text; the verdicts, the latest of each kind on top (`✗ review not clear · by rev-1 [Reviewer] · run r-2 · <time>`), the earlier ones below; the comments. The fields column sits beside them when the centre is at least 90 columns wide, above them otherwise: state, kind and labels, parent, assignee, claim, topic (`no topic yet` when unbound), branch, blocked by (each blocker's state), blocks (the items whose `blocked_by` names it), cost (from the claiming session's reported usage, `—` when unknown), file. The body and comments come from `task.view`, fetched again whenever the item changes, on every `task` event for it and after every reconnect (an edit while away may keep `updated`); a failed fetch is never current, and what was shown stays with a `not current` line. An indentation keeps at most half the width. `e` opens the item's file in a normal buffer in the centre (`:edit`); the hub's watcher re-indexes it on `:w`.
+  - **The item view** (`↵` on a row or a card, `gi`, the palette, `:Cland view item T-<n>`): a title line with the id and the state; the title, the file and the body as Markdown text; the verdicts, the latest of each kind on top (`✗ review not clear · by rev-1 [Reviewer] · run r-2 · <time>`), the earlier ones below; the comments. The fields column sits beside them when the centre is at least 90 columns wide, above them otherwise: state, kind and labels, parent, assignee, claim, topic (`no topic yet` when unbound), branch, blocked by (each blocker's state), blocks (the items whose `blocked_by` names it), cost (from the claiming session's reported usage, `—` when unknown), file. The body and comments come from `task.view`, fetched again whenever the item changes, on every `task` event for it and after every reconnect (an edit while away may keep `updated`); a failed fetch is never current, and what was shown stays with a `not current` line. An indentation keeps at most half the width. `e` opens the item's file in a normal buffer in the centre (`:edit`); the hub's watcher re-indexes it on `:w`.
   - **The board** (`␣b`): six columns of cards, one card per item that is not an epic or a map: the id with the ask mark, the title, the claiming session (or `for <assignee>`), an open blocker, the verdict marks (`✓ review`, `✗ qa`). `↵` or `gi` opens the card's item.
   - **The board's rule.** A card's column is derived from the item's state, claim, assignee, labels and latest verdicts, never stored; the first match wins: closed → **done**; the latest review verdict `clear`, or the label `qa` → **qa**; the latest review verdict `not clear`, or the label `review` → **review**; claimed → **in progress**; assigned → **planned**; else → **backlog** (open, no assignee, no claim, no verdict).
 - **Hub data** comes from the `message`, `delivery`, `topic`, `ask`, `inbox`, `presence`, `session.process`, `session.usage`, `session.state`, `session.role`, `role.vacant`, `role.filled` and `task` events. On each connect the shell reads `topic.list`, `task.list`, `session.list`, `hub.status`, `role.list` and a shared `inbox.list` once. Presence snapshots keep connected spokes current; process rows carry launches, renames and exits; usage snapshots update token and cost totals at most once per second per session. There is no refresh timer. Only a launch or stop made by this workbench refreshes its sessions and presence again; role and unknown-session events do not request lists. The shell and topic views share the inbox snapshot, kept by `inbox` events. An item view asks `task.view` for its body and comments. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
@@ -63,7 +63,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣n` `␣s` `␣t` | anywhere | Inbox, sessions or topics in the right panel. Pressing the active key hides the panel. |
 | `␣T` | anywhere | Topics docked above the right panel, which shows the inbox (the Watch layout). Again: undock. |
 | `␣N` `␣b` `␣L` | anywhere | The inbox full width, the board, the Agents log in the centre. Again: back. |
-| `␣a` | anywhere | The picker on artifacts; Enter opens, Tab switches kind. |
+| `␣a` | anywhere | The palette on `~` artifacts; Enter opens, Tab switches kind. |
 | `f` `F` | Agents log | Filter by an item id or session name (Tab completes both); clear the filter. |
 | `L` | item view / sessions panel | Open Agents filtered to this item / the row’s session. |
 | `r` | Agents log | Reply to the sender of the message under the cursor: a composer opens under the log (Enter sends, `q` in Normal mode cancels). |
@@ -79,13 +79,73 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `d` `D` | inbox | Dismiss the notification under the cursor; dismiss them all. Asks and approvals are not dismissed: `d` on them only says so in the status line. |
 | `␣␣` | anywhere | The previous centre view; twice returns, like `CTRL-^`. |
 | `gi` `gt` `gs` | any panel or view | The item, topic or session of the reference under the cursor (`T-12`, a topic's title, a session's name), else of the row (a board card too), else of the centre view. A session's item is the one it claims, an item's session the one claiming it, a topic's item the one it is bound to (and an item's topic its bound topic), a topic's session its Coordinator. `gs` shows the session in Normal mode. |
-| `␣p` | anywhere | The picker over items, topics and sessions: type to filter (fuzzy; items by id, title and claiming session; topics by title, needs you first, each with its binding, warning, status and unread count), `Tab` and `S-Tab` switch the kind, `↵` opens (an item its view, a session attaches in Terminal mode), `Esc` closes. It opens on the kind used last. Sessions waiting for the human come first; the filter matches the name, the role and the harness. |
+| `␣p` | anywhere | The palette over actions and objects together. Prefixes: `>` actions, `#` items, `@` sessions, `~` artifacts, `/` topics. Enter runs or opens; `C-v` opens an object in a split; Tab changes kind; Esc closes. |
 | `↵` | panels, board | Open the row in the centre: a session attaches in Terminal mode, a topic opens its thread, an item (or a board card) its view. |
 | `␣l` | anywhere | The session launcher (above). |
 | `l` `C-v` `x` `c` | sessions panel | Launch a session; attach the row's session in a vertical split beside the centre (Terminal mode; the centre view stays); stop it, after a line in the panel asks (`y` stops through `session.stop`, `n` or `Esc` keeps it); its adapter's capability table in a float (each state signal and optional capability as `reliable`, `heuristic` or `none`; `q` closes). |
 | `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. `@reviewer`, `@qa`, … or `@<session>` in the text addresses them instead of the Coordinator. |
 | `C-h` `C-j` `C-k` `C-l` | every mode | Focus left, down, up or right; entering a composer or terminal resumes typing. Use the English layout for these chords. |
 | `C-\` (also `C-\ C-n`) | session terminal | Leave Terminal mode immediately; Esc still goes to the harness. |
+
+### Palette and action registry (T-126)
+
+`␣p` always starts with an empty query. Results stay grouped in the order **actions,
+items, sessions, artifacts, topics**, and the cursor starts on the highest-scoring
+match across the groups. Matching uses Neovim's built-in `matchfuzzypos`: actions by
+title and `:Cland` command, items by id/title/claim, sessions by name/role/harness,
+artifacts by id/kind/title and topics by title. With no query, object builders keep
+their panel order (waiting sessions first, current-topic artifacts first). Matches
+are blue. Closed items, stopped sessions and closed topics are dimmed by the single
+`palette.dim(kind, object)` function, to be replaced by T-115's visibility layers.
+
+Type `>`, `#`, `@`, `~` or `/` to narrow to one kind; `␣a` starts with `~`. Tab
+cycles all → actions → items → sessions → artifacts → topics → all, rewriting the
+prefix and preserving the search text; Shift+Tab goes backwards. Up/Down or
+Ctrl+n/p move between matches. Enter runs an action or opens an object. Ctrl+v
+opens an item, session, text artifact or topic thread beside the centre. Threads
+share their card buffer; a free answer still opens the centre composer. Browser
+artifacts use the system opener. Object splits follow hub changes; session splits
+retain the existing restart behavior. Esc closes and restores focus in Normal
+mode. Ctrl chords require the English layout; Normal-mode letters use the existing
+`keys.layouts`/`langmap` configuration.
+
+Every action displays its key and a local key's scope, or **no key**. Local actions
+use the matching visible buffer and its selected row; panel actions can open their
+panel first. Object-specific actions ask for the appropriate view when none is
+visible. Each open ask option is its own action and calls `ask_card.answer`, the
+same `topic.answer` path as the inbox; accepted/withdrawn options disappear with
+inbox updates. Free-answer actions use the same armed composer as the inbox.
+Insert and Terminal actions resume their mapped mode before sending keys. Topic
+actions use the focused view's topic, including a palette split.
+
+`lua/cland/actions.lua` owns the declarations and `:Cland` dispatch/completion.
+All shipped mappings call `actions.map`, which checks the declared key, scope and
+mode before installing it and supplies the declared title. `actions.audit()` checks
+actual global and buffer mappings for missing keys or disagreeing titles. The
+headless test also rejects mapping calls outside this adapter.
+
+For a later view, register its actions once when its module is loaded:
+
+```lua
+local actions = require('cland.actions')
+actions.register({
+  id = 'plan.open', title = 'Open epic plan', scope = 'item',
+  keys = {{lhs = 'gp', modes = 'n'}},
+})
+-- When constructing the view's buffer, after setting vim.b[buf].cland_role = 'item':
+actions.map('n', 'gp', function() open_plan(item_id) end, {buffer = buf})
+-- Or register an action without a key:
+actions.register({id = 'plan.refresh', title = 'Refresh plan', run = refresh_plan})
+-- Optional :Cland command; mapped_id shares an existing action's key metadata.
+actions.command('view plan', 'Open plan view', function(args) open_plan(args[1]) end)
+```
+
+The public API is `register(spec)`, `map(modes, lhs, rhs, opts)`,
+`command(path, title, run, mapped_id?)`, `run(id, args?)`, `all()` and `audit()`.
+Ids and scope/key pairs are unique. A scope is `vim.b.cland_role` or `global`;
+`rhs` and mapping options follow `vim.keymap.set`. `all()` returns title, key,
+command and a callable `run`, including the live ask options. A newly keyed scope
+needs a visible view, or a panel/view opener in the registry's context resolver.
 
 ### Commands
 
@@ -239,7 +299,9 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 | `lua/cland/board.lua` | The board: six derived columns of cards; `↵` opens the card under the cursor. |
 | `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. The panel's stop (`session.stop` after the confirmation line) and the capability table float. |
 | `lua/cland/launcher.lua` | The session launcher form: the fields, the role's launch defaults, `session.launch` and its refusals. |
-| `lua/cland/picker.lua` | The floating picker over items, topics and sessions. |
+| `lua/cland/picker.lua` | Object entry builders and compatibility calls into the palette. |
+| `lua/cland/palette.lua` | The floating fuzzy search, prefixes, grouping, selection and split opening. |
+| `lua/cland/actions.lua` | Action declarations, checked keymaps, command dispatch/completion and live ask answers. |
 | `lua/cland/agents_log.lua` | The Agents log: the rows (time, `sender [Role] → addressee`, kind glyphs), kept current by `message` events, item/session filters with `f`/`F`/`L`, and `r`'s reply composer. |
 | `lua/cland/inbox.lua` | The inbox: its sections (asks, approvals, waiting, notifications) in the right panel and full width, `1`–`9`, `i`, `↵`, `d` and `D` on its rows. |
 | `lua/cland/ask_card.lua` | An ask as a card (the question, the numbered options, its state) and the `1`–`9` and `i` keys on a buffer's ask rows, shared by the thread and the inbox. |
@@ -262,8 +324,9 @@ Every test starts the real client headless as `nvim --clean -u nvim/init.lua --h
 
 - `test/client.test.ts` runs against a real hub (`cland hub start`) in a temporary project and connects real spokes over MCP: sending, delivery stages, Shift+Enter in the composer, the stdio transport, a clean configuration, autostart (also over a stale `hub.json`), following a hub restart.
 - `test/items.test.ts` runs against a real hub with item files written by hand (and a claim through `cland task claim`): the tree, the map grouping, the item view and the board; a hand-written file shows in the panel within a second; `e` opens the file and a save re-indexes it.
-- `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the picker, `gi`/`gt`/`gs`, the presets, the topics panel (groups, pinning, unread badges, the warning glyph, Enter, `n`/`c`/`r` and `:Cland topic`), the picker's topics kind, the thread header with the status and the binding, an event while typing, a burst of events without a hit-enter prompt (and four writes of 50 waves of every event kind, malformed ones among them, with Insert mode, the typed text and an empty message area kept), a coordinator `null` after a reconnect, an item view and an ask card made current again after a reconnect (also an ask older than the history the reconnect reads, closed through `inbox.list`), an attach client that ended attached again, a deeply indented list, multi-line asks, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, a real `:restart` re-attaching the session terminal and a `C-v` split, the sessions (#28): the launcher's frame with typed values and role defaults, the item line sending `item` without the directory, refusals in the form and the panel, the roleless warning, `C-v`, `x` with its confirmation line and `session.stop`, `c`, `unknown` from an event and from a dead process, the picker's order and filters, and the items (#36) over a fixture set: the tree, each filter and the map grouping, the item view's fields column, verdicts and comments, the board's columns and a label moving a card, `gi`/`gt`/`gs` between items, topics and sessions both ways (a topic event binding an item followed), `task` events, and the picker's items kind, and the inbox and asks (#33): the sections in order with the top bar's count, `2` on an ask row, `i` arming the composer for a free answer, `d` and `D`, the ask card in the thread answered with `2`, the inbox full width.
+- `test/shell.test.ts` runs against `test/stub-hub.ts`, a stub hub on stdio with scripted topics, sessions (states, capability tables, attach commands) and items, which emits events on command through a control socket: the top bar, every panel key, the session view and `␣␣`, the palette, `gi`/`gt`/`gs`, the presets, the topics panel (groups, pinning, unread badges, the warning glyph, Enter, `n`/`c`/`r` and `:Cland topic`), the palette's topics kind, the thread header with the status and the binding, an event while typing, a burst of events without a hit-enter prompt (and four writes of 50 waves of every event kind, malformed ones among them, with Insert mode, the typed text and an empty message area kept), a coordinator `null` after a reconnect, an item view and an ask card made current again after a reconnect (also an ask older than the history the reconnect reads, closed through `inbox.list`), an attach client that ended attached again, a deeply indented list, multi-line asks, Shift+Enter and a tabbed paste reaching a session (`test/fakes/keylog.ts` logs the bytes its tty reads), refused sends, a real `:restart` re-attaching the session terminal and a `C-v` split, the sessions (#28): the launcher's frame with typed values and role defaults, the item line sending `item` without the directory, refusals in the form and the panel, the roleless warning, `C-v`, `x` with its confirmation line and `session.stop`, `c`, `unknown` from an event and from a dead process, the palette's order and filters, and the items (#36) over a fixture set: the tree, each filter and the map grouping, the item view's fields column, verdicts and comments, the board's columns and a label moving a card, `gi`/`gt`/`gs` between items, topics and sessions both ways (a topic event binding an item followed), `task` events, and the palette's items kind, and the inbox and asks (#33): the sections in order with the top bar's count, `2` on an ask row, `i` arming the composer for a free answer, `d` and `D`, the ask card in the thread answered with `2`, the inbox full width.
 - `test/sessions.test.ts` runs against a real hub with the three fake harnesses of `hub/test/fakes` first on the PATH: Claude Code, Codex and OpenCode sessions launched from the launcher, each in the panel with the model chosen and a live state, attached with Enter (each fake's attach client prints its own line in the terminal), a killed one `unknown · died` with `harness-exited` in the hub's log, and `x` `y` stopping one (`session-stopped`), and the Agents log (#34): rows with `sender [Role]`, kind glyphs, an event adding a row, `␣L`, `:Cland view log`, `r` preparing a reply with `replyTo`.
+- `test/palette.test.ts` covers action execution and keys, keymap drift, prefixes/group order/best match, Tab/Esc, object splits, hub ask answers, dimming and blue matches, and display-cell fitting. Shipped `PANELS-007` and `PANELS-008` exercise palette opening and answering through the headless QA runner.
 - `test/ui.test.ts` checks manual resizing across view/preset switches and fresh Neovim processes against the stub hub, custom panel sets, filters, the reserved release pick, corrupt input, debouncing, and killing the writer before rename. Shipped `PANELS-005` and `PANELS-006` continue the prototype panel cases with persistence and failure checks.
 - `test/qa.test.ts` runs `cland --headless --qa` as a process: the exit code, the JSON line and the dump files for each result (the shipped cases and the ones in `test/qa-cases/`), the state snapshot against a stub scenario, `:Cland qa dump`, `--timeout`, and the three `sandbox-exec` profiles above (skipped with the reason where `sandbox-exec` is missing); a run started inside a live project with a user configuration planted leaves both alone and leaves no process.
 - `test/agents-filters.test.ts` runs headless Neovim against a real hub: item/session completion, history and live filters (including bound-topic notices and a metadata collision), clearing, and `L` from an item view or session row.
@@ -278,14 +341,14 @@ Topic messages with artifacts show a chip such as `▣ A-3 diagram · Merge flow
 
 HTML, SVG, PNG, PDF and other common images open through the system opener (`open` on macOS, `xdg-open` elsewhere). `CLAND_OPENER` can name a replacement executable; it receives the absolute file path as its single argument, including for Mermaid previews. Tests use this to record opening without launching a browser.
 
-The thread header counts the topic's artifacts. Press `ga` in the thread for its artifact list, with id, kind, title, creator, status and time; Enter opens the selected row and `q` returns. The Agents log also counts artifacts and supports Enter on a chip and `ga` for its list. `:Cland view artifacts <topic>` opens that list directly. `␣a` opens the floating picker on its artifacts kind; Tab cycles between items, topics, sessions and artifacts. Artifacts from the current topic appear first. Type an id, kind or title to filter, then Enter to open.
+The thread header counts the topic's artifacts. Press `ga` in the thread for its artifact list, with id, kind, title, creator, status and time; Enter opens the selected row and `q` returns. The Agents log also counts artifacts and supports Enter on a chip and `ga` for its list. `:Cland view artifacts <topic>` opens that list directly. `␣a` opens the palette with `~`; Tab cycles to topics, all kinds, actions, items, sessions and artifacts. Artifacts from the current topic appear first. Type an id, kind or title to filter, then Enter to open.
 
 
 ## Prompt drafts
 
-In a thread, `:Cland prompt [title]` (for example `:Cland prompt Brief for T-12`) or `␣P` next to `␣c` opens an empty prompt artifact in the centre as a normal editable Markdown buffer. `:w` saves its durable `.cland/artifacts/A-<n>-<slug>.md` file. Drafts appear with status `draft` in `ga` and the artifacts picker, where Enter reopens the saved buffer. Incoming hub events update metadata while preserving draft text, cursor and unsaved edits.
+In a thread, `:Cland prompt [title]` (for example `:Cland prompt Brief for T-12`) or `␣P` next to `␣c` opens an empty prompt artifact in the centre as a normal editable Markdown buffer. `:w` saves its durable `.cland/artifacts/A-<n>-<slug>.md` file. Drafts appear with status `draft` in `ga` and the artifacts palette, where Enter reopens the saved buffer. Incoming hub events update metadata while preserving draft text, cursor and unsaved edits.
 
-`:Cland prompt send` saves and sends the draft's text when it fits the hub's configured byte cap, with the usual queued/delivered/injected stages. Larger drafts send a one-line message with the artifact attached. `:Cland prompt attach` always attaches it. Buffer keys `␣ps` and `␣pa` do the same. A successful post marks the artifact `sent`; refusal keeps the draft available for correction. The file is reserved when the draft opens, so it is available in the picker even before its first save. `q` returns to the thread; attached messages show their text and an opening chip for each artifact.
+`:Cland prompt send` saves and sends the draft's text when it fits the hub's configured byte cap, with the usual queued/delivered/injected stages. Larger drafts send a one-line message with the artifact attached. `:Cland prompt attach` always attaches it. Buffer keys `␣ps` and `␣pa` do the same. A successful post marks the artifact `sent`; refusal keeps the draft available for correction. The file is reserved when the draft opens, so it is available in the palette even before its first save. `q` returns to the thread; attached messages show their text and an opening chip for each artifact.
 
 ## Focus and keyboard layouts
 

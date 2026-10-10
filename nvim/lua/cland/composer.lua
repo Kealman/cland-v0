@@ -27,7 +27,7 @@ function M.new(opts)
   vim.fn.prompt_setcallback(buf, function(text)
     self:_submit(text)
   end)
-  vim.keymap.set('i', '<M-CR>', '<S-CR>', { buffer = buf, desc = 'cland: newline in the message' })
+  require('cland.actions').map('i', '<M-CR>', '<S-CR>', { buffer = buf, desc = 'cland: newline in the message' })
   api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'InsertEnter', 'InsertLeave' }, {
     buffer = buf,
     callback = function()

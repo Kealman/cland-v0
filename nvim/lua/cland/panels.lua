@@ -369,7 +369,7 @@ function M.session_keys(b)
     end
   end
   local function map(lhs, fn, desc)
-    vim.keymap.set('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
+    require('cland.actions').map('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
   end
   local sessions = require('cland.sessions')
   map('l', function()
@@ -399,10 +399,10 @@ function M.buf(kind, slot)
   pcall(api.nvim_buf_set_name, b, 'cland://' .. kind .. (slot and ('-' .. slot) or ''))
   vim.b[b].cland_role = kind
   M.bufs[k] = b
-  vim.keymap.set('n', '<CR>', function()
+  require('cland.actions').map('n', '<CR>', function()
     open_row(b)
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: open in the centre' })
-  vim.keymap.set('n', '<2-LeftMouse>', function()
+  require('cland.actions').map('n', '<2-LeftMouse>', function()
     open_row(b)
   end, { buffer = b, silent = true })
   if kind == 'items' then
@@ -414,7 +414,7 @@ function M.buf(kind, slot)
   elseif kind == 'topics' then
     local views = require('cland.views')
     local function topic_key(lhs, fn, desc)
-      vim.keymap.set('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
+      require('cland.actions').map('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
     end
     topic_key('n', views.prompt_topic, 'new topic')
     topic_key('c', function()

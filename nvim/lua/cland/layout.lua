@@ -417,6 +417,21 @@ function M.show_split(view, opts)
   return w
 end
 
+--- A palette object in a split beside the centre. Threads share their existing card buffer;
+--- free answers still use the centre composer. These splits are not session attach clients.
+function M.show_split_view(view)
+  local views = require('cland.views')
+  local buf = view.kind == 'thread' and (view.id == 'agents' and require('cland.agents_log').buffer() or views.topic(view.id).thread.buf) or views.placeholder(view)
+  local win = api.nvim_open_win(buf, true, {split='right', win=M.centre()})
+  M.win.object_splits = M.win.object_splits or {}
+  M.win.object_splits[win] = view
+  centre_opts(win, view.kind)
+  M.fix()
+  if view.kind == 'thread' and view.id ~= 'agents' then views.topic(view.id).thread:render(); views.mark_read(view.id) end
+  state.changed()
+  return win
+end
+
 --- The sessions shown in C-v splits now, in window order: what `:restart` restores as splits.
 function M.split_sessions()
   local out = {}
@@ -529,6 +544,8 @@ function M.on_win_closed(win)
     M.win.centre = nil
   elseif M.win.splits and M.win.splits[win] then
     M.win.splits[win] = nil
+  elseif M.win.object_splits and M.win.object_splits[win] then
+    M.win.object_splits[win] = nil
   else
     if redistributed then M.fix() end
     closing[win] = nil
@@ -565,11 +582,20 @@ function M.render()
   if valid(c) and ui.view.kind ~= 'thread' and ui.view.kind ~= 'session' then
     require('cland.views').render_placeholder(ui.view)
   end
+  for win, view in pairs(M.win.object_splits or {}) do
+    if valid(win) then
+      if view.kind == 'thread' and view.id ~= 'agents' then
+        require('cland.views').topic(view.id).thread:render()
+      else
+        require('cland.views').render_placeholder(view.id == 'agents' and {kind='log'} or view)
+      end
+    end
+  end
 end
 
 -- Flush a pending human resize before a layout operation; pending closes exclude redistribution.
 -- Programmatic changes then establish the new automatic baseline.
-for _, name in ipairs({ 'centre', 'open_left', 'open_right', 'open_dock', 'fix', 'toggle_left', 'right_panel', 'toggle_dock', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'preset', 'build' }) do
+for _, name in ipairs({ 'centre', 'open_left', 'open_right', 'open_dock', 'fix', 'toggle_left', 'right_panel', 'toggle_dock', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'show_split_view', 'preset', 'build' }) do
   local operation = M[name]
   M[name] = function(...)
     if changing then return operation(...) end

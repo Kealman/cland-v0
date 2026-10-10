@@ -64,7 +64,7 @@ function M.setup()
   set('ClandTab', { fg = P.dim, bg = P.panel })
   set('ClandTabOn', { fg = P.bluel, bg = P.keyon, bold = true })
   set('ClandPickSel', { bg = P.sel, bold = true })
-  set('ClandPickMatch', { fg = P.amber, bold = true })
+  set('ClandPickMatch', { fg = P.blue, bold = true })
 
   set('ClandHead', { fg = P.dim, bg = P.bar, bold = true })
   set('ClandHeadFocus', { fg = P.bluel, bg = P.bar, bold = true })

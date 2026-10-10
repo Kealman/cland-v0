@@ -33,11 +33,11 @@ function M.setup()
     local lhs = '<C-' .. direction .. '>'
     local command = "<Cmd>lua require('cland.keys').focus('" .. direction .. "')<CR>"
     local opts = { silent = true, nowait = true, desc = 'cland: focus ' .. direction }
-    vim.keymap.set('n', lhs, command, opts)
-    vim.keymap.set({ 'i', 's', 't', 'x', 'o' }, lhs, '<C-\\><C-n>' .. command, opts)
-    vim.keymap.set('c', lhs, '<C-c>' .. command, opts)
+    require('cland.actions').map('n', lhs, command, opts)
+    require('cland.actions').map({ 'i', 's', 't', 'x', 'o' }, lhs, '<C-\\><C-n>' .. command, opts)
+    require('cland.actions').map('c', lhs, '<C-c>' .. command, opts)
   end
-  vim.keymap.set('t', '<C-\\>', '<C-\\><C-n>', { silent = true, nowait = true, desc = 'cland: leave Terminal mode' })
+  require('cland.actions').map('t', '<C-\\>', '<C-\\><C-n>', { silent = true, nowait = true, desc = 'cland: leave Terminal mode' })
 end
 
 return M

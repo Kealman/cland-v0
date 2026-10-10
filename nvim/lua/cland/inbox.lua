@@ -170,7 +170,7 @@ end
 --- The inbox's keys on `buf` (the panel's buffer or the full-width one).
 function M.keys(buf)
   local function map(lhs, fn, desc)
-    vim.keymap.set('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
+    require('cland.actions').map('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
   end
   map('<CR>', function()
     M.open(buf)

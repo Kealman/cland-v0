@@ -277,13 +277,14 @@ M.HELP = {
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣N inbox full width · ␣␣ the previous centre view',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
-  'Pick      ␣p items · topics · sessions (Tab switches the kind, type to filter, ↵ opens, Esc closes)',
-  '          ␣a artifacts picker · ga topic artifacts · ↵ open chip · R render Mermaid',
+  'Palette   ␣p actions · items · sessions · artifacts · topics (type to filter; ↵ runs or opens)',
+  '          > actions · # items · @ sessions · ~ artifacts · / topics; Tab kind · C-v split · Esc close',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · ␣P drafts a prompt · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
   '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode · C-h/j/k/l focus · C-\\ leaves (C-\\ C-n too)',
+  'Artifacts ␣a on ~ · ga topic artifacts · ↵ open chip · R render Mermaid',
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
   'Presets   :Cland preset charting | watch | steady (examples, never modes)',
@@ -299,6 +300,7 @@ function M.help()
   end, M.HELP)
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
+  vim.b[buf].cland_role = 'help'
   local width = 0
   for _, l in ipairs(lines) do
     width = math.max(width, api.nvim_strwidth(l) + 2)
@@ -310,7 +312,7 @@ function M.help()
   })
   vim.wo[win].winbar = ''
   for _, k in ipairs({ 'q', '<Esc>' }) do
-    vim.keymap.set('n', k, function()
+    require('cland.actions').map('n', k, function()
       pcall(api.nvim_win_close, win, true)
     end, { buffer = buf, nowait = true })
   end
@@ -320,9 +322,9 @@ local function keymaps()
   require('cland.keys').setup()
   local layout = require('cland.layout')
   local motions = require('cland.motions')
-  local picker = require('cland.picker')
+  local palette = require('cland.palette')
   local function map(lhs, rhs, desc)
-    vim.keymap.set('n', lhs, rhs, { desc = 'cland: ' .. desc, silent = true })
+    require('cland.actions').map('n', lhs, rhs, { desc = 'cland: ' .. desc, silent = true })
   end
   map('<leader>i', layout.toggle_left, 'items panel')
   map('<leader>n', function()
@@ -343,7 +345,7 @@ local function keymaps()
   end, 'board')
   -- ␣a is the artifacts picker; the Agents log is ␣L
   map('<leader>a', function()
-    require('cland.picker').open({ kind = 'artifacts' })
+    require('cland.palette').open({ query = '~' })
   end, 'artifacts picker')
   map('<leader>L', function()
     layout.toggle_view({ kind = 'log' })
@@ -357,7 +359,7 @@ local function keymaps()
   end, 'composer')
   map('<leader>P', function() require('cland.artifacts').prompt() end, 'draft prompt')
   map('<leader>p', function()
-    picker.open()
+    palette.open()
   end, 'picker')
   map('<leader>l', function()
     require('cland.launcher').open()
@@ -379,76 +381,9 @@ local function keymaps()
 end
 
 local function commands()
-  local layout = require('cland.layout')
-  api.nvim_create_user_command('Cland', function(o)
-    local sub, a = o.fargs[1], o.fargs[2]
-    if sub == 'preset' then
-      layout.preset(a)
-    elseif sub == 'view' and a then
-      local id = o.fargs[3]
-      if a == 'thread' and not id then
-        id = 'general'
-      end
-      layout.show({ kind = a, id = id }, { insert = a == 'session' })
-    elseif sub == 'panel' and a then
-      if a == 'items' then
-        layout.toggle_left()
-      elseif a == 'dock' then
-        layout.toggle_dock()
-      else
-        layout.right_panel(a)
-      end
-    elseif sub == 'topic' then
-      local views = require('cland.views')
-      if a == 'new' then
-        views.create_topic(table.concat(vim.list_slice(o.fargs, 3), ' '))
-      elseif a == 'close' then
-        views.close_topic(o.fargs[3])
-      elseif a == 'resolve' then
-        views.resolve_topic(o.fargs[3])
-      else
-        state.say(':Cland topic new <title> | close [id] | resolve [id]', 'ClandRedBar')
-      end
-    elseif sub == 'prompt' then
-      local artifacts = require('cland.artifacts')
-      if a == 'send' or a == 'attach' then artifacts.send_prompt(a == 'attach')
-      else artifacts.prompt(table.concat(vim.list_slice(o.fargs, 2), ' ')) end
-    elseif sub == 'refresh' then
-      M.refresh()
-    elseif sub == 'launch' then
-      require('cland.launcher').open({ name = a })
-    elseif sub == 'qa' and a == 'dump' and o.fargs[3] then
-      local ok, files = pcall(require('cland.qa').dump, o.fargs[3])
-      state.say(ok and ('qa dump: ' .. table.concat(files, ' · ')) or ('qa dump failed: ' .. tostring(files)), ok and 'ClandDimBar' or 'ClandRedBar')
-    elseif sub == 'help' or not sub then
-      M.help()
-    else
-      state.say(':Cland preset <name> | view <kind> [id] | panel <kind> | launch [name] | topic new|close|resolve | prompt [title]|send|attach | qa dump <path> | refresh | help', 'ClandRedBar')
-    end
-  end, {
-    nargs = '*',
-    complete = function(_, line)
-      local words = vim.split(line, '%s+', { trimempty = true })
-      if #words <= 1 or (#words == 2 and not line:match('%s$')) then
-        return { 'preset', 'view', 'panel', 'launch', 'topic', 'prompt', 'qa', 'refresh', 'help' }
-      end
-      local sub = words[2]
-      if sub == 'preset' then
-        return { 'charting', 'watch', 'steady' }
-      elseif sub == 'view' then
-        return { 'thread', 'session', 'item', 'board', 'log', 'inbox', 'artifacts', 'artifact' }
-      elseif sub == 'panel' then
-        return { 'items', 'inbox', 'sessions', 'topics', 'dock' }
-      elseif sub == 'topic' then
-        return { 'new', 'close', 'resolve' }
-      elseif sub == 'prompt' then
-        return { 'send', 'attach' }
-      elseif sub == 'qa' then
-        return { 'dump' }
-      end
-      return {}
-    end,
-  })
+  local actions = require('cland.actions')
+  api.nvim_create_user_command('Cland', function(o) actions.dispatch(o.fargs) end,
+    {nargs='*', complete=actions.complete})
 end
 
 local function autocmds()

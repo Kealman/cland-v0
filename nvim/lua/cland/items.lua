@@ -414,7 +414,7 @@ end
 --- The panel's keys (its buffer): the filters.
 function M.keys(buf)
   local function map(lhs, fn, desc)
-    vim.keymap.set('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
+    require('cland.actions').map('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
   end
   for i, f in ipairs(M.FILTERS) do
     map(tostring(i), function()

@@ -231,7 +231,7 @@ function M.ask_stop(name)
   local b = require('cland.panels').bufs.sessions
   if b and api.nvim_buf_is_valid(b) then
     local function map(lhs, yes)
-      vim.keymap.set('n', lhs, function()
+      require('cland.actions').map('n', lhs, function()
         M.resolve_stop(yes)
       end, { buffer = b, nowait = true, silent = true, desc = yes and 'cland: stop it' or 'cland: keep it' })
     end
@@ -310,7 +310,7 @@ function M.show_capabilities(name)
   })
   vim.wo[win].winbar = ''
   for _, k in ipairs({ 'q', '<Esc>', 'c' }) do
-    vim.keymap.set('n', k, function()
+    require('cland.actions').map('n', k, function()
       pcall(api.nvim_win_close, win, true)
     end, { buffer = buf, nowait = true })
   end

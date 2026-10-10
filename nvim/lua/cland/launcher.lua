@@ -309,7 +309,7 @@ function M.open(opts)
   M.cur = f
   sync(f)
   local function map(lhs, fn)
-    vim.keymap.set({ 'i', 'n' }, lhs, fn, { buffer = f.buf, nowait = true })
+    require('cland.actions').map({ 'i', 'n' }, lhs, fn, { buffer = f.buf, nowait = true })
   end
   map('<CR>', function()
     submit(f)
@@ -336,11 +336,11 @@ function M.open(opts)
   map('<C-c>', M.close)
   -- the fields are fixed: no line is added or joined
   for _, lhs in ipairs({ '<BS>', '<C-w>', '<C-u>' }) do
-    vim.keymap.set('i', lhs, function()
+    require('cland.actions').map('i', lhs, function()
       return api.nvim_win_get_cursor(0)[2] > 0 and lhs or ''
     end, { buffer = f.buf, expr = true, replace_keycodes = true })
   end
-  vim.keymap.set('i', '<Del>', function()
+  require('cland.actions').map('i', '<Del>', function()
     local line = api.nvim_get_current_line()
     return api.nvim_win_get_cursor(0)[2] < #line and '<Del>' or ''
   end, { buffer = f.buf, expr = true, replace_keycodes = true })

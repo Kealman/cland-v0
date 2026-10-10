@@ -91,7 +91,7 @@ end
 --- or nil. Off an ask, `1`–`9` stay counts and `i` calls `otherwise` (when given) or says what it is for.
 function M.keys(buf, ask_at, otherwise)
   for n = 1, 9 do
-    vim.keymap.set('n', tostring(n), function()
+    require('cland.actions').map('n', tostring(n), function()
       local a = ask_at(api.nvim_win_get_cursor(0)[1])
       if a then
         vim.schedule(function()
@@ -102,7 +102,7 @@ function M.keys(buf, ask_at, otherwise)
       return tostring(n)
     end, { buffer = buf, expr = true, nowait = true, silent = true, desc = 'cland: answer the ask with option ' .. n })
   end
-  vim.keymap.set('n', 'i', function()
+  require('cland.actions').map('n', 'i', function()
     local a = ask_at(api.nvim_win_get_cursor(0)[1])
     if a then
       return M.free(a)

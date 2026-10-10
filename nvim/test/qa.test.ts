@@ -90,7 +90,7 @@ function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: 
   });
 }
 
-for (const name of ['PANELS-005', 'PANELS-006']) {
+for (const name of ['PANELS-005', 'PANELS-006', 'PANELS-007', 'PANELS-008']) {
   test(`${name} passes through the headless stub-hub QA runner`, { skip }, async (t) => {
     const run = await qa(t, [`${SHIPPED}${name}.lua`]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));

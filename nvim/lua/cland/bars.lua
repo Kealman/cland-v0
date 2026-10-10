@@ -57,6 +57,8 @@ local function fit(chunks, cells)
   return out
 end
 
+M.fit = fit
+
 local function views()
   return require('cland.views')
 end
@@ -213,7 +215,7 @@ function M.status()
   elseif role == 'inbox' or role == 'inbox_full' then
     hint = '1-9 answer · i free answer · ↵ open · d dismiss · D all'
   else
-    hint = '␣i ␣s ␣t ␣n panels · ␣p pick · ␣␣ back · gi gt gs'
+    hint = '␣i ␣s ␣t ␣n panels · ␣p palette · ␣␣ back · gi gt gs'
   end
   -- Allocate once in priority order, independently of the segments' visual order.
   local remaining = math.max(0, vim.o.columns - 1)
@@ -316,7 +318,9 @@ function M.winbar(win)
     return head(win, s.label, { { g .. ' ' .. require('cland.panels').session_meta(s), ghl .. 'Bar' }, { s.item and (' · ' .. s.item) or '', 'ClandDimBar' } })
   elseif role == 'log' then
     return head(win, 'AGENTS' .. require('cland.agents_log').filter_label(), { { #require('cland.artifacts').all('agents') .. ' artifacts · ga  ', 'ClandBlueBar' }, { 'f filter · F clear · r reply', 'ClandDimBar' } })
-  elseif role == 'item' or role == 'board' or role == 'inbox_full' then
+  elseif role == 'item' then
+    return head(win, views().title({kind='item', id=vim.b[buf].cland_item}):upper(), { { '␣␣ back', 'ClandDimBar' } })
+  elseif role == 'board' or role == 'inbox_full' then
     return head(win, views().title(state.S.ui.view):upper(), { { '␣␣ back', 'ClandDimBar' } })
   end
   return ''

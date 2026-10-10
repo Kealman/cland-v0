@@ -395,10 +395,10 @@ function M.buf(id)
   vim.b[b].cland_role = 'item'
   vim.b[b].cland_item = id
   M.bufs[id] = b
-  vim.keymap.set('n', 'e', function()
+  require('cland.actions').map('n', 'e', function()
     M.edit(id)
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: edit the item file' })
-  vim.keymap.set('n', 'L', function()
+  require('cland.actions').map('n', 'L', function()
     require('cland.agents_log').open({ item = id })
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: Agents log for this item' })
   return b

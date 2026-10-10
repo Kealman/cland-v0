@@ -270,27 +270,25 @@ test('Enter on a session attaches it in the centre in Terminal mode; ␣␣ retu
   assert.equal(s.match(/keylog ready/g)?.length, 1);
 });
 
-test('the picker: ␣p opens on topics, typing narrows, Tab switches to sessions, Enter opens', { skip }, async (t) => {
+test('the palette: prefixes narrow topics, Tab from items reaches sessions and Enter opens', { skip }, async (t) => {
   const c = await startShell(t);
-  await c.input('<Esc><Space>p');
-  let s = await c.waitScreen((x) => x.includes('pick ›') && x.includes('↵ open thread'), 'the picker on topics');
+  await c.input('<Esc><Space>p/');
+  let s = await c.waitScreen(x => x.includes('palette ›') && x.includes('TOPICS ·'), 'topics prefix');
   assert.match(s, /● General/);
   assert.match(s, /≡ Agents/);
   await c.input('age');
-  s = await c.waitScreen((x) => !/● General/.test(x) && /≡ Agents/.test(x), 'only Agents');
-  await c.input('<Tab>');
-  s = await c.waitScreen((x) => x.includes('↵ attach in centre'), 'the sessions kind');
-  await c.input('<C-u>impl');
-  s = await c.waitScreen((x) => /impl-1 \[Implementer\]  Claude Code/.test(x) && !/coord-1 \[Coordinator\]  Claude Code/.test(x), 'only impl-1');
+  s = await c.waitScreen(x => !/● General/.test(x) && /≡ Agents/.test(x), 'only Agents');
+  await c.input('<Esc><Space>p#<Tab>');
+  await c.waitScreen(x => x.includes('SESSIONS ·'), 'Tab from items to sessions');
+  await c.input('impl');
+  s = await c.waitScreen(x => /impl-1 \[Implementer\]  Claude Code/.test(x) && !/coord-1 \[Coordinator\]  Claude Code/.test(x), 'only impl-1');
   await c.input('<CR>');
-  s = await c.waitScreen((x) => x.includes('attached impl-1') && statusLine(x).includes('TERMINAL  impl-1 · session'), 'impl-1 attached, Terminal mode');
-  assert.doesNotMatch(s, /pick ›/, 'the picker closed');
-  // Enter on a topic opens its thread
+  s = await c.waitScreen(x => x.includes('attached impl-1') && statusLine(x).includes('TERMINAL  impl-1 · session'), 'impl-1 attached, Terminal mode');
+  assert.doesNotMatch(s, /palette ›/, 'the palette closed');
   await c.input('<C-\\><C-n>');
-  await c.waitScreen((x) => statusLine(x).includes('NORMAL  impl-1'), 'Normal mode in the terminal');
-  // the picker opens on the kind used last (sessions); S-Tab goes back to topics (items · topics · sessions)
-  await c.input('<Space>p<S-Tab>Agents<CR>');
-  s = await c.waitScreen((x) => statusLine(x).includes('Agents log') && centreOf(x).includes('T-12 claimed.'), 'the Agents log (#34)');
+  await c.waitScreen(x => statusLine(x).includes('NORMAL  impl-1'), 'Normal mode in terminal');
+  await c.input('<Space>p/Agents<CR>');
+  await c.waitScreen(x => statusLine(x).includes('Agents log') && centreOf(x).includes('T-12 claimed.'), 'Agents log');
 });
 
 test('gi, gt and gs on a reference under the cursor in the thread', { skip }, async (t) => {
@@ -822,17 +820,17 @@ test("the picker's sessions kind: waiting ones first, filters by name, role and 
     s.adapters = { ...s.adapters, codex: { ...CAPS, states: { ...CAPS.states, 'waiting for human': 'reliable' } } };
     s.attach = { ...s.attach, 'rev-1': `printf 'attached rev-1\\n'; sleep 600` };
   });
-  await c.input('<Esc><Space>p<Tab>');
-  let s = await c.waitScreen((x) => x.includes('↵ attach in centre') && x.includes('rev-1 [Reviewer]  Codex'), 'the sessions kind');
+  await c.input('<Esc><Space>p@');
+  let s = await c.waitScreen((x) => x.includes('SESSIONS ·') && x.includes('rev-1 [Reviewer]  Codex'), 'the sessions kind');
   const at = (re: RegExp) => s.split('\n').findIndex((l) => re.test(l));
   assert.ok(at(/impl-1 \[Implementer\]  Claude Code/) < at(/coord-1 \[Coordinator\]  Claude Code/), 'the waiting session first');
   assert.ok(at(/coord-1 \[Coordinator\]  Claude Code/) < at(/rev-1 \[Reviewer\]  Codex/), 'busy before idle');
   assert.match(s, /sonnet · waiting for human \(heuristic\)/);
   await c.input('codex');
   s = await c.waitScreen((x) => /rev-1 \[Reviewer\]  Codex/.test(x) && !/impl-1 \[Implementer\]  Claude/.test(x) && !/coord-1 \[Coordinator\]  Claude/.test(x), 'only the Codex session');
-  await c.input('<C-u>Implementer');
+  await c.input('<C-u>@Implementer');
   s = await c.waitScreen((x) => /impl-1 \[Implementer\]  Claude/.test(x) && !/rev-1 \[Reviewer\]  Codex/.test(x) && !/coord-1 \[Coordinator\]  Claude/.test(x), 'only the implementer');
-  await c.input('<C-u>rev<CR>');
+  await c.input('<C-u>@rev<CR>');
   await c.waitScreen((x) => x.includes('attached rev-1') && statusLine(x).includes('TERMINAL  rev-1 · session'), 'rev-1 attached');
 });
 
@@ -969,8 +967,8 @@ test('the thread header shows the status, the binding and the warning; a topic e
 
 test("the picker's topics kind lists needs you first, with the binding, the warning and the unread count, and filters by title", { skip }, async (t) => {
   const c = await startShell(t, withTopics);
-  await c.input('<Esc><Space>p');
-  let s = await c.waitScreen((x) => x.includes('pick ›') && x.includes('↵ open thread'), 'the picker on topics');
+  await c.input('<Esc><Space>p/');
+  let s = await c.waitScreen((x) => x.includes('palette ›') && x.includes('TOPICS ·'), 'the picker on topics');
   const first = s.indexOf('● Spoke reconnect: flaky');
   assert.ok(first >= 0 && first < s.indexOf('● General') && s.indexOf('● General') < s.indexOf('○ cland task CLI'), `needs you first:\n${s}`);
   assert.match(s, /● Spoke reconnect: flaky .*needs you · 2 unread/);
@@ -1505,15 +1503,15 @@ test('the tree follows task events: a claim, a new item, a removed file', { skip
 
 test("the picker's items kind searches ids, titles and claims; Enter opens the item view", { skip }, async (t) => {
   const c = await startShell(t, withItems);
-  await c.input('<Esc><Space>p<S-Tab>');
-  let s = await c.waitScreen((x) => x.includes('↵ open the item view'), 'the items kind');
+  await c.input('<Esc><Space>p#');
+  let s = await c.waitScreen((x) => x.includes('ITEMS ·'), 'the items kind');
   assert.match(s, /◆ T-2 Items panel {2}impl-2 .*needs you · claim impl-2/);
   assert.match(s, /○ T-13 Codex adapter .*open/);
   await c.input('impl-1');
   s = await c.waitScreen((x) => /◐ T-12 Hub daemon/.test(x) && !/T-2 Items panel/.test(x), 'by claim');
-  await c.input('<C-u>Board view');
+  await c.input('<C-u>#Board view');
   s = await c.waitScreen((x) => /◆ T-3 Board view/.test(x) && !/T-12 Hub daemon/.test(x), 'by title');
-  await c.input('<C-u>T-11');
+  await c.input('<C-u>#T-11');
   await c.waitScreen((x) => /◑ T-11 For the human/.test(x.split('\n').find((l) => /[○●◐◑◆◌] T-\d/.test(l)) ?? ''), 'by id, T-11 first');
   await c.input('<CR>');
   await c.waitScreen((x) => statusLine(x).includes('T-11 · item'), 'the item view of T-11');
@@ -1569,7 +1567,7 @@ test('the Agents log (␣L, :Cland view log) lists messages with sender [Role] �
   const c = await startShell(t, withAgentsLog);
   // ␣a opens the artifacts kind of the picker; Escape returns to General.
   await c.input('<Esc><Space>a');
-  await c.waitScreen((x) => x.includes('pick ›') && x.includes('artifacts'), 'the artifacts picker');
+  await c.waitScreen((x) => x.includes('palette ›') && x.includes('artifacts'), 'the artifacts picker');
   await c.input('<Esc>');
   assert.match(topBar((await c.screen()).join('\n')), /│ General/);
   await c.input('<Space>L');

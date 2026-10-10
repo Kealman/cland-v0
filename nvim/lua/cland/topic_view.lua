@@ -113,11 +113,11 @@ function M.new(client, topic)
   end, function()
     require('cland.layout').show({ kind = 'thread', id = topic.id }, { insert = true })
   end)
-  vim.keymap.set('n', '<CR>', function()
+  require('cland.actions').map('n', '<CR>', function()
     local a = (view.thread.artifact_rows or {})[vim.api.nvim_win_get_cursor(0)[1]]
     if a then require('cland.artifacts').open(a) end
   end, { buffer = view.thread.buf, desc = 'open artifact' })
-  vim.keymap.set('n', 'ga', function()
+  require('cland.actions').map('n', 'ga', function()
     require('cland.layout').show({ kind = 'artifacts', id = topic.id }, { insert = false })
   end, { buffer = view.thread.buf, desc = 'topic artifacts' })
   return view

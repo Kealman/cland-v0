@@ -77,18 +77,18 @@ function M.buffer()
   pcall(api.nvim_buf_set_name, b, 'cland://log')
   vim.b[b].cland_role = 'log'
   vim.b[b].cland_topic = M.TOPIC
-  vim.keymap.set('n', 'r', function()
+  require('cland.actions').map('n', 'r', function()
     M.reply_at(api.nvim_win_get_cursor(0)[1])
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: reply to the sender of this message' })
-  vim.keymap.set('n', '<CR>', function()
+  require('cland.actions').map('n', '<CR>', function()
     local a = (M.artifact_rows or {})[api.nvim_win_get_cursor(0)[1]]
     if a then require('cland.artifacts').open(a) end
   end, { buffer = b, desc = 'cland: open artifact' })
-  vim.keymap.set('n', 'ga', function()
+  require('cland.actions').map('n', 'ga', function()
     require('cland.layout').show({ kind = 'artifacts', id = M.TOPIC }, { insert = false })
   end, { buffer = b, desc = 'cland: topic artifacts' })
-  vim.keymap.set('n', 'f', M.prompt_filter, { buffer = b, nowait = true, silent = true, desc = 'cland: filter Agents by item or session' })
-  vim.keymap.set('n', 'F', function()
+  require('cland.actions').map('n', 'f', M.prompt_filter, { buffer = b, nowait = true, silent = true, desc = 'cland: filter Agents by item or session' })
+  require('cland.actions').map('n', 'F', function()
     M.set_filter({})
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: clear the Agents filter' })
   M.buf = b
@@ -377,6 +377,8 @@ function M.reply_at(row)
       end)
     end,
   })
+  -- The composer has its own draft id, but topic actions target the actual Agents topic.
+  vim.b[reply.composer.buf].cland_topic = M.TOPIC
   vim.b[reply.composer.buf].cland_reply_to = m.id
   vim.b[reply.composer.buf].cland_reply_sender = m.from
   -- in the shell's composer slot under the centre: the layout sizes it, and any change of view closes it
@@ -393,7 +395,7 @@ function M.reply_at(row)
   wo.signcolumn = 'no'
   wo.winhighlight = 'Normal:ClandComposer,NormalNC:ClandComposer,EndOfBuffer:ClandComposerEob'
   wo.winbar = ' ↩ reply to ' .. target .. ' · Enter sends · Esc then q cancels'
-  vim.keymap.set('n', 'q', M.close_reply, { buffer = reply.composer.buf, nowait = true, silent = true, desc = 'cland: cancel the reply' })
+  require('cland.actions').map('n', 'q', M.close_reply, { buffer = reply.composer.buf, nowait = true, silent = true, desc = 'cland: cancel the reply' })
   layout.win.composer = win
   reply.win = win
   M.reply = reply

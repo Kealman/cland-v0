@@ -12,7 +12,7 @@ vim.opt.runtimepath:prepend(here)
 
 -- Shift+Enter reaches a harness as plain Enter unless the harness enables the kitty keyboard mode:
 -- terminal mode sends the kitty CSI-u sequence for it instead.
-vim.keymap.set('t', '<S-CR>', function()
+require('cland.actions').map('t', '<S-CR>', function()
   local job = vim.b.terminal_job_id
   if job then
     vim.api.nvim_chan_send(job, '\27[13;2u')

@@ -83,14 +83,17 @@ function M.preview(a)
 end
 
 local browser_ext = { html = true, htm = true, svg = true, png = true, pdf = true, jpg = true, jpeg = true, gif = true, webp = true }
+function M.external(a)
+  local ext = a.path:match('%.([^%.]+)$') or ''
+  return browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft')
+end
 function M.open(value)
   local a = type(value) == 'table' and (M.get(value.id) or value) or M.get(value)
   if not a then return state.say('no such artifact', 'ClandRedBar') end
   a = M.get(a.id) or a
   if a.fileDeleted then return state.say('artifact: file deleted', 'ClandRedBar') end
   upsert(a)
-  local ext = a.path:match('%.([^%.]+)$') or ''
-  if browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft') then return browser(a.path) end
+  if M.external(a) then return browser(a.path) end
   require('cland.layout').show({ kind = 'artifact', id = a.id }, { insert = false })
 end
 
@@ -125,12 +128,12 @@ function M.buffer(id)
   vim.b[b].cland_artifact = id
   if a and not draft then pcall(api.nvim_buf_set_name, b, a.path) end
   if draft then
-    vim.keymap.set('n', '<leader>ps', function() M.send_prompt(false) end, { buffer = b, desc = 'send prompt' })
-    vim.keymap.set('n', '<leader>pa', function() M.send_prompt(true) end, { buffer = b, desc = 'attach prompt' })
+    require('cland.actions').map('n', '<leader>ps', function() M.send_prompt(false) end, { buffer = b, desc = 'send prompt' })
+    require('cland.actions').map('n', '<leader>pa', function() M.send_prompt(true) end, { buffer = b, desc = 'attach prompt' })
   end
-  vim.keymap.set('n', 'q', require('cland.layout').back, { buffer = b })
+  require('cland.actions').map('n', 'q', require('cland.layout').back, { buffer = b })
   if vim.bo[b].filetype == 'mermaid' then
-    vim.keymap.set('n', 'R', function() M.preview(a) end, { buffer = b, desc = 'render Mermaid in browser' })
+    require('cland.actions').map('n', 'R', function() M.preview(a) end, { buffer = b, desc = 'render Mermaid in browser' })
   end
   return b
 end
@@ -176,12 +179,12 @@ function M.list_buffer(topic)
     vim.bo[b].bufhidden = 'hide'
     vim.b[b].cland_role = 'artifacts'
     vim.b[b].cland_topic = topic
-    vim.keymap.set('n', '<CR>', function()
+    require('cland.actions').map('n', '<CR>', function()
       local a = M.all(topic)[api.nvim_win_get_cursor(0)[1]]
       if a then M.open(a) end
     end, { buffer = b })
-    vim.keymap.set('n', 'q', require('cland.layout').back, { buffer = b })
-    vim.keymap.set('n', 'p', function()
+    require('cland.actions').map('n', 'q', require('cland.layout').back, { buffer = b })
+    require('cland.actions').map('n', 'p', function()
       local a = M.all(topic)[api.nvim_win_get_cursor(0)[1]]
       if not a then return end
       if a.fileDeleted or a.promoted then return state.say(M.mark(a), 'ClandRedBar') end

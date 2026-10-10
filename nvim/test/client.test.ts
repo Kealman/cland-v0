@@ -117,7 +117,7 @@ test('nothing loads from the user configuration: every sourced script is the bun
   assert.equal(await c.lua('return vim.o.termpastefilter'), 'BS,ESC,DEL');
   assert.equal(await c.lua('return vim.o.scrollback'), 10000);
   assert.equal(await c.lua('return vim.o.cmdheight'), 1);
-  assert.equal(await c.lua("return vim.fn.maparg('<S-CR>', 't', false, true).desc"), 'cland: Shift+Enter to the terminal job as CSI-u (ESC[13;2u)');
+  assert.equal(await c.lua("return vim.fn.maparg('<S-CR>', 't', false, true).desc"), 'cland: Send Shift+Enter to harness');
 });
 
 test('with no hub running, the client starts the project hub and connects to it', { skip }, async (t) => {

@@ -60,9 +60,9 @@ test('artifact chip opens Mermaid source read-only and the browser renderer, top
   await c.input('gg<CR>');
   await c.waitScreen((s) => s.includes('graph TD'), 'source from list');
   await c.input('<Space>a');
-  await c.waitScreen((s) => s.includes('pick ›') && s.includes('A-1 diagram · Merge flow'), 'artifacts picker');
+  await c.waitScreen((s) => s.includes('palette ›') && s.includes('A-1 diagram · Merge flow'), 'artifacts picker');
   await c.input('<CR>');
-  await c.waitScreen((s) => s.includes('graph TD') && !s.includes('pick ›'), 'source from picker');
+  await c.waitScreen((s) => s.includes('graph TD') && !s.includes('palette ›'), 'source from picker');
   const page = await cland(root, 'artifact', 'create', '--kind', 'page', '--title', 'Preview', '--content', '<h1>Preview</h1>', '--topic', 'general', '--json');
   const p = JSON.parse(page.stdout).artifact;
   await c.input('<Space>a');
@@ -122,7 +122,7 @@ test('p in a topic artifact list promotes it and updates the list and picker mar
   await c.waitScreen(s => s.includes('promoted: docs/keep.md'), 'promoted list mark');
   assert.equal(await readFile(join(root, 'docs/keep.md'), 'utf8'), '# Keep');
   await c.input('<Space>a');
-  await c.waitScreen(s => s.includes('pick ›') && s.includes('promoted: docs/keep.md'), 'promoted picker mark');
+  await c.waitScreen(s => s.includes('palette ›') && s.includes('promoted: docs/keep.md'), 'promoted picker mark');
 });
 
 test('topic lists follow archive events and lists and pickers mark retained entries whose files were deleted', { skip }, async (t) => {
@@ -144,7 +144,7 @@ test('topic lists follow archive events and lists and pickers mark retained entr
   await startDaemon(t, root);
   await c.waitScreen(s => s.includes(a.id) && s.includes('file deleted'), 'deleted list mark after restart');
   await c.input('<Space>a');
-  await c.waitScreen(s => s.includes('pick ›') && s.includes('file deleted'), 'deleted picker mark');
+  await c.waitScreen(s => s.includes('palette ›') && s.includes('file deleted'), 'deleted picker mark');
   await c.input('<CR>');
   await c.waitScreen(s => s.includes('artifact: file deleted'), 'deleted entry cannot open');
 });
