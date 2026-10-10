@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.527Z
-updated: 2026-10-09T23:02:38.636Z
+updated: 2026-10-10T16:43:27.313Z
 ---
 
 ## Goal
@@ -41,6 +41,8 @@ Choice where the spec is silent: the `[visibility]` table is keyed by surface an
 6. **The Artifacts browser.** The centre view with its sections and keys, editing in place, attaching to the composer with `s`. Demo: the human creates a folder "v0.2 notes" in the browser, adds two files, and attaches it to a message with `s`.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human starts the day. The inbox shows an ask and a not-clear verdict on top, the clear verdicts under watch, and no agent bookkeeping; the sessions panel folds the stopped sessions; the items panel shows the release's work with backlog and done folded. They mute a noisy item topic and pin a Reviewer. In the Artifacts browser they create a folder "v0.2 notes", add files over two days and attach it to a message with `s`. An agent's report artifact disappears after the retention period unless it was kept; the human's folder never does.
 

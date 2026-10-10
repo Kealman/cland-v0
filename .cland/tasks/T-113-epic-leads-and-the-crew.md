@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.152Z
-updated: 2026-10-09T23:02:38.360Z
+updated: 2026-10-10T16:43:27.039Z
 ---
 
 ## Goal
@@ -45,6 +45,8 @@ Choices where the spec is silent:
 7. **Launches follow the crew.** Caps and singletons enforced by `session.launch`; an idle pool member returned for a `keep_context` pool; `per-item` sessions stopped after their merge; `subagents` in the role clauses; the Coordinator's clause launches Leads for the levels in `leads`. Demo: a review request while a Reviewer is idle reuses it; a third Reviewer launch with `size = 2` is refused.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human agrees with the Coordinator to set `leads = ["epic"]`. The Coordinator launches `lead-1` on a v0.1 epic. `lead-1` launches one Implementer per item, each stopping after its merge; it requests reviews from the Reviewer pool, which reuses an idle member; it merges its epic's items. An Implementer's question reaches `lead-1`, which answers it; another goes up to the Coordinator, which asks the human. A Reviewer launch beyond the pool's size is refused. The journal shows that the Coordinator received the epic's events, not its items'.
 

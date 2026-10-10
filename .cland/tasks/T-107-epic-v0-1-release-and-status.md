@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.080Z
-updated: 2026-10-09T23:02:37.331Z
+updated: 2026-10-10T16:43:37.538Z
 ---
 
 ## Goal
@@ -48,6 +48,8 @@ Decided on 2026-10-09 (with T-98): a Reviewer or QA does not claim; it takes a v
 6. **The surfaces read status.** The items panel's filters in status terms, its tree folded by level with the unscheduled group last, the current release named in the top bar; the board's columns are the statuses, scoped to the open parents of the current release with a parent filter in its header. Demo: the board shows v0.1's tasks moving between columns as claims and verdicts land, and T-80 closes.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human starts cland on the cland repository. The top bar names release v0.1, and the board shows only v0.1's tasks, in status columns, with a parent filter naming its epics. An Implementer claims the top-ranked planned task and its card moves to in progress; the Implementer hands it over and it moves to review; a not-clear verdict sends it back to in progress, and the clear verdicts the gate needs move it to ready; `cland merge` moves it to done and out of the "in work" filter. `cland task rank` puts another task on top, and the Coordinator takes it next. Closing the release item while its epics are open is refused.
 

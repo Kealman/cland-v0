@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.608Z
-updated: 2026-10-09T23:02:37.759Z
+updated: 2026-10-10T16:43:26.607Z
 ---
 
 ## Goal
@@ -46,6 +46,8 @@ Choice where the spec is silent:
 5. **The top bar counts now.** The top bar's count takes now-layer messages and asks only. Demo: a burst of agent-to-agent messages in an item topic leaves the top bar unchanged; a message addressed to the human raises it.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human opens General and an item topic with real history. The Coordinator's messages carry its gutter colour, an Implementer's violet, a Reviewer's pink; Markdown renders; a rule marks each day; a run of four agent-to-agent messages shows as one line that `za` opens; a not-clear verdict's first line is red; an ask's card takes a digit. At 80 columns the thread still reads. A burst of agent traffic leaves the top bar's count unchanged, and a message addressed to the human raises it.
 

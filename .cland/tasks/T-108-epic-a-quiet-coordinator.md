@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.253Z
-updated: 2026-10-09T23:02:37.472Z
+updated: 2026-10-10T16:43:26.341Z
 ---
 
 ## Goal
@@ -52,6 +52,8 @@ Choices where the spec is silent:
 6. **The item runs its own loop.** The Implementer clause requests review and QA itself and reports blocked; the Coordinator clause merges on the `ready` event and stops relaying; the `merge`, `qa` and `code-review` skills follow. Demo: a real v0.1 ticket goes from claim to ready with one delivery about it at the Coordinator, then one merge.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The Coordinator launches an Implementer for a real v0.1 ticket. The Implementer marks its progress notes, which start none of the Coordinator's turns; it sends `review request T-n` to the Reviewer itself; the not-clear verdict and the re-review pass between those two sessions; when the gate's verdicts are clear the hub sets `ready`, the Coordinator receives that one event, and it merges. On another ticket the human stops the Reviewer mid-review: the item's lead hears of it at its next turn, not only through the Agents log. The analysis script of T-82 (`docs/research/coordinator-load/analyse.py` on `research/coordinator-load`), run on the journal, counts the Coordinator's deliveries for the item and the turns progress notes started.
 

@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.788Z
-updated: 2026-10-09T23:02:37.970Z
+updated: 2026-10-10T16:43:26.741Z
 ---
 
 ## Goal
@@ -47,6 +47,8 @@ Choices where the spec is silent:
 5. **An Aide takes an item.** An Aide's claim gives it the item's branch and worktree, and its work goes through review and the merge gate like an Implementer's. Demo: the human tells `aide-1` to take a small ticket; it claims, works in the worktree, and a Reviewer reviews it.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human presses `␣A`, types a brief ("help me plan the v0.2 notes") and gets `aide-1` under "yours", attached in the centre. The Aide creates two items, edits a third, and messages the Coordinator by name with a decision that the Coordinator follows; a message to every role and a pending ask never reach it, and its attempt to launch a session is refused. An Implementer launched with a brief starts on it before any other message reaches it.
 

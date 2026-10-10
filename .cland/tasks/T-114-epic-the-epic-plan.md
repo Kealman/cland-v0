@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.340Z
-updated: 2026-10-09T23:02:38.498Z
+updated: 2026-10-10T16:43:27.177Z
 ---
 
 ## Goal
@@ -46,6 +46,8 @@ Choices where the spec is silent:
 6. **The plan view mid-way.** Closed stages' marks and QA runs, the stage in work with its sessions, dimmed planned stages, change marks until the human opens the view, the right column, and the "S2" tag on the items panel's rows. Demo: a lead moves an item between stages; the view marks the move in the watch colour with its reason until the human looks.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 Before an epic starts, its Lead or the Coordinator runs `plan-epic`. The human opens `gp` on the epic and sees its stages, lanes and QA policy; in a scratch project with `approval = "human"` they approve it with `a`, and only then do the first stage's sessions launch, one per lane. Mid-way, the items of an after-stage stage merge on review alone and one QA run on `dev` closes the stage; the gate refuses an item of a per-item stage that has no QA verdict; a plan change shows in the watch colour until the human opens the view.
 

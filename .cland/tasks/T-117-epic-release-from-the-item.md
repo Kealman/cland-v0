@@ -23,7 +23,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.973Z
-updated: 2026-10-09T23:02:38.916Z
+updated: 2026-10-10T16:43:27.589Z
 ---
 
 ## Goal
@@ -53,6 +53,8 @@ Choices where the spec is silent:
 5. **v0.1.0.** The item's Notes are written with the human (or an Aide for them); the Coordinator runs `cland release --item` from its own shell after the human approves; GitHub's `main` carries the tag `v0.1.0`; the item closes with the tag comment. Demo: `v0.1.0` on GitHub and the v0.1 release folded as closed in the items panel.
 
 ## Definition of done
+
+The acceptance pass below is the human's, and the only human acceptance of v0.1: the version, the notes and one walkthrough on v0.1 (decision D16). Before it, QA replays the other ten epics' demos on `dev` as their own paragraphs say, through the `cland` CLI and a headless workbench, and each of those epics is closed on a clear verdict with its checkboxes verified by id; QA also runs this epic's `cland release --item --dry-run` and the checks that need no human, and records a clear verdict on this epic for them, leaving the approval of the version, the notes and the walkthrough, and the release itself, to the human.
 
 The Coordinator runs `cland release --item T-<v0.1> --dry-run`: it shows `v0.1.0`, the Notes the human approved, the ten other epics with their one-line deliverables, and the commit subjects. After the human's approval it runs the release: `main` moves to `dev`, is tagged `v0.1.0` and pushed to GitHub; the hub comments the tag on the release item and closes it; the items panel folds v0.1 as a closed release.
 

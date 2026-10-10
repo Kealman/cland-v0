@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.781Z
-updated: 2026-10-09T23:02:38.776Z
+updated: 2026-10-10T16:43:27.444Z
 ---
 
 ## Goal
@@ -40,6 +40,8 @@ Decided on 2026-10-09 (T-98): the graph is an experimental extra view on `␣G` 
 5. **Legible at size, and the board decision.** Node widths, 120 to 200 columns, the `GRAPH-001` case rebuilt on the hub's fields, and T-98's decision on `␣b` applied: the board stays beside the graph, or the graph takes its key. Demo: T-19 at 120 columns scrolls sideways and stays legible.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human presses `␣G` and sees the first v0.1 epic as a graph: what can run now on the left, blocked items marked ◌, the claim and the verdict on the nodes in work. They move with `h`, `l`, `j` and `k`, open an item with Enter and come back to the same node with `␣␣`, press `s` to see the plan's stages as columns, and watch a node change in place when a claim lands, with the cursor where they left it.
 

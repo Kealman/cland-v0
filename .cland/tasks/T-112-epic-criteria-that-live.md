@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.968Z
-updated: 2026-10-09T23:02:38.219Z
+updated: 2026-10-10T16:43:26.890Z
 ---
 
 ## Goal
@@ -43,6 +43,8 @@ Choices where the spec is silent:
 5. **Criteria on screen.** The item view's glyphs and marks; verified/total on the vertical board's rows and the board's cards, replacing the checkbox count; add, edit and remove from the item view for the human; a verdict's criteria in the thread. Demo: the board row reads 3/4, then 4/4 in green.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human opens a v0.1 ticket's item view: four criteria, all ○. The Implementer marks them done (◐); the Reviewer's clear verdict with `--verified all` turns them ●, and the board row shows 4/4 in green. QA then fails C3 with a note: the task returns to in progress and C3 shows ✗ with the note. `cland merge` refuses and names C3; after the fix and a new verification the merge goes through.
 

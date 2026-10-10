@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T21:51:33.419Z
-updated: 2026-10-09T23:02:37.614Z
+updated: 2026-10-10T16:43:37.881Z
 ---
 
 ## Goal
@@ -45,6 +45,8 @@ The spec and the prototype disagree on the digit keys: §3.11 keeps the v0 filte
 5. **The vertical board.** The items panel as a vertical board of the current release on the hub's status and rank: sections, folds, rows, glyphs, the "next" mark, the epic tab row, the v0 filters on `1` to `5` and `f`, `K`, `J` and `T` through `cland task rank`, and `e` and `E` with the pick kept in `ui.json`. Demo: `T` on a planned task makes it the "next" row; `e` scopes the board to another container and the choice survives a restart.
 
 ## Definition of done
+
+QA runs the demo below on `dev`, playing the human's part through the `cland` CLI and a headless workbench (one `nvim --headless` process, keys by `nvim_input`, the screen read with `screenstring()`), and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. The human does not run this demo: the human accepts only the release (T-117), decision D16.
 
 The human attaches a session in the centre, leaves it with `C-h` for the items panel, and sees v0.1's in-progress, review, qa, ready and planned sections; `T` on a planned task gives it the "next" mark. `␣p` and a few letters run any action or open any item, session, artifact or topic, with each action's key shown. The sessions panel shows who is waiting, busy and idle, with the stopped sessions folded into one line. The human resizes the panels, restarts Neovim, and gets the same layout, filters and scope back.
 
