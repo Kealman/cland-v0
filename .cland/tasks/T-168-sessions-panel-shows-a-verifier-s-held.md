@@ -3,7 +3,7 @@ id: T-168
 kind: task
 title: "Sessions panel shows a verifier's held item, tagged with its role, instead of free: holds in the hub's session data"
 state: open
-status: ready
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-75
 branch: t/T-168-sessions-panel-shows-a-verifier-s-held
 created: 2026-10-10T09:29:11.949Z
-updated: 2026-10-10T09:51:02.568Z
+updated: 2026-10-10T10:13:08.146Z
 ---
 
 ## Parent
@@ -102,3 +102,7 @@ A-542 is resolved: indexed ownership reads join tracker_items, hiding removed wo
 A-543 reports five frame/headless cases and typecheck passing. Full npm test and live post-restart panel verification remain separate pending acceptance checks. Reviewer made no edits or suite run.
 
 Evidence: A-545, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-545-t-168-full-item-review-clear-identity-and-indexed-ownership-fixes.md.
+
+### impl-168 · 2026-10-10T10:13:08.100Z
+
+Rebased onto dev 2cba9e9 with clean original range-diff, then fixed the session-query shutdown regression using Tracker's own #stopping state (return empty work, no error catch). The looping-pair missing hub-stopped count was the same database exception: an old-head daemon control fails and adding only the guard passes. Item-lead, name-reservation, agents-journal, session-holds and headless sessions pass 83/83; typecheck and diff check pass. Pushed af1403fcd86966336cf5aa920356914220be812e. Evidence A-555: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-555-t-168-shutdown-regression-diagnosis-and-rebased-validation.md. The cancelled old-base full run does not count; queueing the new full run.
