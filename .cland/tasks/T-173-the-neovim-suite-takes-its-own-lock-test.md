@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-83
 branch: t/T-173-the-neovim-suite-takes-its-own-lock-test
 created: 2026-10-10T12:06:34.443Z
-updated: 2026-10-10T12:24:45.064Z
+updated: 2026-10-10T12:28:46.160Z
 ---
 
 ## Parent

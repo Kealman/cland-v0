@@ -3,7 +3,7 @@ id: T-175
 kind: task
 title: "Fix forward T-173: the Neovim suite must not run beside a hub suite (load 28, 14 shell timeouts)"
 state: open
-status: backlog
+status: in progress
 labels:
   - tech-debt
   - ready-for-agent
@@ -12,9 +12,9 @@ assignee: null
 parent: T-19
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-175-fix-forward-t-173-the-neovim-suite-must
 created: 2026-10-10T12:28:36.106Z
-updated: 2026-10-10T12:28:36.106Z
+updated: 2026-10-10T12:28:38.974Z
 ---
 
 ## Parent
