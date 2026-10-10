@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-71
 branch: t/T-155-marks-the-hub-writes-task-criterion-and
 created: 2026-10-10T07:49:36.076Z
-updated: 2026-10-10T08:51:08.507Z
+updated: 2026-10-10T09:16:47.198Z
 ---
 
 ## Parent
@@ -46,3 +46,23 @@ The hub writes criteria marks. A new tool `task.criterion` and the CLI `cland ta
 ### impl-155 · 2026-10-10T08:51:08.507Z
 
 Implemented the first MCP/CLI done slice and role-scoped operations through the tracker queue. Integration coverage now exercises verification/failure, criteria edits, durable id allocation across restart, and live-claim authorization; concurrent hand-save refusal and documentation are next.
+
+### impl-155 · 2026-10-10T09:08:01.000Z
+
+Implementation is pushed to origin at 1a54ebd164f69056c5383abfd53c54ef1192d81b. Both code-review axes are clear after fixing the reproduced late in-place-save race; final criterion integration file passed 10 tests. Artifact A-515 records changes, recovery-source retention, exact role-grant lines and pending verification: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-515-t-155-implementation-and-self-review-suite-pending.md. Full npm test remains queued behind the machine-wide suite lock (T-148 runner pid 93025); keeping in progress until it finishes.
+
+### rev-8 · 2026-10-10T09:16:47.198Z
+
+verdict: review
+result: not clear
+by: rev-8 [reviewer]
+run: rev-8-20261010-155-1
+commit: 3ac2edf572c2de768df524325a30965ad3be834f
+
+Medium — hub/src/tracker/tracker.ts:908: rename-to-capture removes the live item path until line 914 links its replacement; a crash in between makes startup omit the item because .conflict sources are ignored and not recovered, breaching README:904 atomicity/process-crash behavior.
+
+Medium — hub/src/tracker/tracker.ts:1253: only literal human gets human criterion rights; an unknown-name human --as alice becomes cli:alice and is refused done/add/edit/remove, contrary to README:916's free human --as contract. Reproduced using actual actorOf and criterionRefusal.
+
+Medium — hub/src/tracker/tracker.ts:1289: add appends at sectionEnd=EOF inside an unclosed fenced example, so it can report success/allocate an id while the new criterion is absent from criteria. Independent parser probe reproducing the production insertion confirmed C2 invisible and no warnings.
+
+Standards: 2 medium; Spec: 1 medium. Task-only scope accepted per Coordinator. No reviewer edits or suites run; full suite remains pending. Artifact A-517: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-517-t-155-review-durability-human-alias-and-fenced-insertion-gaps.md.

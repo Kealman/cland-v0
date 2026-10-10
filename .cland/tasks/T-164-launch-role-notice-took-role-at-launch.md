@@ -3,17 +3,17 @@ id: T-164
 kind: task
 title: "Launch role notice: 'took <Role> at launch' goes missing when spawn acceptance and the first hello race (T-141 regression)"
 state: open
-status: backlog
+status: review
 labels:
   - v0.1
   - ready-for-agent
 assignee: null
 parent: T-108
 blocked_by: []
-topic: null
-branch: null
+topic: topic-73
+branch: t/T-164-launch-role-notice-took-role-at-launch
 created: 2026-10-10T08:59:53.666Z
-updated: 2026-10-10T08:59:53.666Z
+updated: 2026-10-10T09:18:41.918Z
 ---
 
 ## Parent
@@ -38,3 +38,17 @@ Assertion seen: `role-assign ~ /^coord-1 took Coordinator at launch/` against no
 ## Notes
 
 Size S. A v0.1 regression; it goes before the next hub restart if it is quick.
+
+## Comments
+
+### impl-164 · 2026-10-10T09:02:28.505Z
+
+Reproduced the lifecycle failure with `node --test --test-name-pattern='lifecycle events land' hub/test/agents-journal.test.ts`: Coordinator start/stop/revoke notices exist, but its launch assignment is missing. Added gated socket-frame coverage: hello-first passes on baseline; acceptance-first fails deterministically (zero launch-role notices before hello). The notice currently comes from a role-clause reason, while acceptance retires the first grant. Decoupling the lifecycle notice from clause delivery will preserve the T-141 grant rules and avoid carried-clause duplicates.
+
+### impl-164 · 2026-10-10T09:06:12.135Z
+
+Fix is in core.ts, sessions.ts and agents-topic.ts: the role grant now logs its own lifecycle event; acceptance logs it only when the credentialed first hello has not consumed the grant and the launch role is unchanged. Clause delivery no longer creates new assignment notices, while legacy journal entries remain replayable. Added the event to journal.ts and a daemon assertion that its single journal record carries the matching Agents notice id. Typecheck passed before that journal addition; rerunning it now. All 69 name-reservation/item-lead tests passed, including four deterministic hello/acceptance orderings with ordinary/carried clauses, joins and reconnects.
+
+### impl-164 · 2026-10-10T09:18:23.934Z
+
+Committed and pushed 86835a4a31aecb5c03c1cc67ba14d4a65fa5eaeb to origin. Final typecheck passed; all 69 name-reservation/item-lead tests passed; agents-journal passed 20 consecutive isolated whole-file runs (8 tests per run), with exactly-one notice and matching journal-id assertions. Evidence: A-519 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-519-t-164-20-isolated-agents-journal-runs.log. Full npm test is not queued: Coordinator ordered T-164 to wait for its turn after T-149, T-142 and T-160; handing over for concurrent review with that check pending.

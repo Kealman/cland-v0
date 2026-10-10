@@ -3,7 +3,7 @@ id: T-142
 kind: task
 title: "Default subscriptions of leads: the Coordinator holds the tree less claimed items, an item's lead its item; death and long idle reach the node's lead or the next one up"
 state: open
-status: in progress
+status: review
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-70
 branch: t/T-142-default-subscriptions-of-leads-the
 created: 2026-10-10T01:52:19.101Z
-updated: 2026-10-10T08:53:29.697Z
+updated: 2026-10-10T09:12:28.493Z
 ---
 
 ## Parent
@@ -47,3 +47,7 @@ Implementing default lead subscriptions at the existing hub protocol seam. Scope
 ### impl-142 · 2026-10-10T08:53:29.697Z
 
 Implemented and committed 0355a59: dynamic default subscriptions follow claims (including before first hello), pooled verifier holds, and offline Coordinator recovery; terminal events retain the existing atomic fan-out/checkpoint. Targeted ownership/lifecycle/long-idle/restart tests and typecheck pass. Full npm test and two-axis local review are running; no role/clause changes.
+
+### impl-142 · 2026-10-10T09:01:34.938Z
+
+Local Spec review found and reproduced two gaps: removed items lost final default events, and terminal recovery could send an older pooled Reviewer death to its already-dead lead. Both are fixed with regression coverage. Coordinator authorized an isolated Sessions.releaseInterruptedLaunches() startup seed plus HubCore.seedProcess(), and the existing subscription-hygiene crash-fixture arrangement (durable status setup, frame-history-only assertions). Existing item-lead tests now accept report digests; all ten pass.
