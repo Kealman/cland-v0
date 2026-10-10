@@ -4,18 +4,18 @@ kind: task
 title: "No git in the hub's request handlers: verdict freshness computed off the request path, a per-request time budget, and no UI polling floods"
 state: closed
 status: done
+rank: 520
 labels:
   - ready-for-agent
   - slice-2
   - hub
-  - high
 assignee: impl-67
 parent: T-20
 blocked_by: []
 topic: topic-18
 branch: t/T-67-task-list-freshness-cache
 created: 2026-10-09T10:19:03.465Z
-updated: 2026-10-10T00:58:17.733Z
+updated: 2026-10-10T02:17:25.312Z
 ---
 
 ## Parent

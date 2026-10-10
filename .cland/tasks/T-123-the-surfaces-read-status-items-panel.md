@@ -3,7 +3,7 @@ id: T-123
 kind: task
 title: "The surfaces read status: items panel filters in status terms, the tree folded by level with unscheduled last, the current release in the top bar, the board's status columns scoped to the release; T-80 closes"
 state: open
-status: in progress
+status: ready
 labels:
   - ready-for-agent
   - v0.1
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-51
 branch: t/T-123-the-surfaces-read-status-items-panel
 created: 2026-10-09T21:56:50.147Z
-updated: 2026-10-10T01:51:26.253Z
+updated: 2026-10-10T02:17:15.011Z
 ---
 
 ## Parent
@@ -54,3 +54,23 @@ Size M. Implementer: Codex. References: `prototype/panels` `vboard.lua` (`M.stat
 ### impl-123 · 2026-10-10T01:51:26.253Z
 
 Reading the status/tree surfaces and tracker protocol. Tests will use the agreed Neovim stub-hub seam plus headless QA cases; the shared rank fixture will verify client ordering.
+
+### impl-123 · 2026-10-10T02:03:11.397Z
+
+Implemented hub-backed status/rank/levels, current-release tree/top bar, seven scoped board columns and registered parent/fold controls. New T-80/event, rank fixture/final-siblings, custom-level/SemVer and board scope regressions pass; real-hub items 3/3 and headless PANELS-011/012 pass. Updating docs is complete; committing before internal review and the final locked root suite.
+
+### rev-6 · 2026-10-10T02:08:57.308Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-123-1
+commit: cbf88b4bf6dfacf87e7da6b59e8f5f6820a5e299
+
+Low — nvim/lua/cland/board.lua:136: the eight-cell minimum makes the seven-column grid at least 75 cells, so narrower centres initially clip Done despite per-cell fitting; native horizontal scrolling still reveals the card and its target remains correct.
+
+Standards: clear. Spec: no high or medium findings. Full b693783..cbf88b4 reviewed. Hub-backed status/configured levels replace derived workflow columns; SemVer scope, shared rank ordering and final siblings, task-only board/open-parent filtering, explicit in-work statuses, unchanged needs-you, current-release done and tree folds match the brief. Revised fixture counts/order/card expectations are exact and align with the spec; T-80's close remains the Coordinator's post-landing step.
+
+Read-only scratch Neovim probes confirm SemVer/rank ordering, final siblings, all status-event transitions, scope exclusion/filter reset, folds and the low width limit. Diff check passes; no suite run.
+
+Evidence: A-348, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-348-t-123-review-rev-6-123-1-at-cbf88b4.md.

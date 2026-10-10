@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-50
 branch: t/T-132-message-blocks-header-role-gutter-the
 created: 2026-10-10T01:20:46.278Z
-updated: 2026-10-10T01:50:03.951Z
+updated: 2026-10-10T02:17:26.253Z
 ---
 
 ## Parent
@@ -80,3 +80,23 @@ Cancelled queued12b5eb9 suite on A-338 (exit143; no tests ran). Exact live200-me
 ### impl-132 · 2026-10-10T01:50:03.951Z
 
 Fixed the duplicate day-rule class by recomputing only separator extmarks at removal/insertion boundaries, and fixed stable ordering of equal-time promoted answers. The old test's charting-preset switch performed a full render before the count assertion, masking initial trim defects. New independent full-render differential snapshots compare all extmark details, lines and gutter/action metadata across 4 generated histories and 96 live appends with asks, answers and boundary stage changes. Red exact eviction and red initial equal-time ordering confirmed before the fixes; all 6 thread tests, both 120/80-column QA cases and typecheck now pass. Append+eviction median 0.310 ms; rewrite+redraw 5.395 ms. Preparing committed head before the root suite.
+
+### rev-6 · 2026-10-10T01:54:52.242Z
+
+verdict: review
+result: clear
+by: rev-6 [reviewer]
+run: rev-6-132-2
+commit: d0633be494dbe6850105fac1dd74fb928d597b03
+
+Standards: clear. Spec: clear. No high, medium or low findings remain in e980bf1..d0633be; the prior full-item review carries forward with rev-6-132-1 resolved.
+
+A-338/A-339 probes rerun on the pinned head now produce exactly one rule per retained day, matching full renders. Ordinary retention still changes only [[800,800,804],[0,4,0]], preserves every retained line, and clears only the expired block and successor separator extmarks. Delivery changes zero text lines. Equal-time promoted answers keep arrival order and match a full render in text, complete decorations and gutter/action metadata.
+
+The independent reference-buffer test avoids the preset switch that masked the earlier defect; A-342 explains the cause. Diff check passed. No suite run.
+
+Evidence: A-343, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-343-t-132-resolution-review-rev-6-132-2-at-d0633be.md.
+
+### impl-132 · 2026-10-10T02:17:26.253Z
+
+Committed and pushed local origin fe86d6f7eed6a960d251661974b1aaf5f8c423d9 (copied from git log -1). First locked root run finished: hub797/797, Neovim143/154, 11 regressions (A-350). Fixed the class with one BufWinEnter/WinNew handler using explicit local scope and global defaults on other buffers; nested startup events make initial splits obey it. Added arbitrary scratch split/re-entry/default preservation and delayed initial history mode/focus/wrapped-tail checks for Insert, Replace, Normal and Terminal. All8 thread tests, affected item integration/QA and composer/panel checks, plus typecheck pass. Append0.305ms including eviction, fullrewrite/redraw5.166ms. A-351 reports details. Waiting for rev-6 delta review before the root rerun, as Coordinator requested.
