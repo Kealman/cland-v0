@@ -74,7 +74,7 @@ const DEFAULT_ROLES = [
   { role: 'reviewer', label: 'Reviewer', exclusive: false, skills: [], launch: { harness: 'codex', model: 'gpt-6.1-sol', effort: 'high' }, holders: [] },
   { role: 'qa', label: 'QA', exclusive: false, skills: [], launch: { harness: 'codex', model: 'gpt-6-astra', effort: 'high' }, holders: [] },
 ];
-const LABELS: Record<string, string> = { coordinator: 'Coordinator', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA' };
+const LABELS: Record<string, string> = { aide: 'Aide', coordinator: 'Coordinator', implementer: 'Implementer', reviewer: 'Reviewer', qa: 'QA' };
 
 /** What `session.launch` adds to the process list: a running idle session, the frame's values as given. */
 function launched(f: Frame): Record<string, unknown> {

@@ -257,7 +257,7 @@ local function session_row(c, s, group)
   end
 end
 
-local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · x stop · za stopped' }
+local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · za stopped' }
 
 local function render_sessions(c)
   local list = state.sessions()
@@ -273,7 +273,7 @@ local function render_sessions(c)
   end
   if #list == 0 then
     c:add({ { ' No sessions yet.', 'ClandDim' } })
-    c:add({ { ' l (or ␣l) launches one.', 'ClandFaint' } })
+    c:add({ { ' l launches · a (or ␣A) for an Aide.', 'ClandFaint' } })
     return SESSIONS_FOOTER
   end
   local groups = { stopped = {} }
@@ -283,10 +283,12 @@ local function render_sessions(c)
   end
   for _, g in ipairs(state.SESSION_GROUPS) do
     local rows = groups[g[1]]
-    local group = #rows == 0 and 'ClandFaint' or (g[1] == 'waiting' and 'ClandAmber' or 'ClandSection')
-    c:add({ { ' ' .. g[2]:upper() .. ' · ' .. #rows, group } }, nil, { group = g[1] })
-    for _, s in ipairs(rows) do
-      session_row(c, s, g[1])
+    if g[1] ~= 'yours' or #rows > 0 then
+      local group = #rows == 0 and 'ClandFaint' or (g[1] == 'waiting' and 'ClandAmber' or 'ClandSection')
+      c:add({ { ' ' .. g[2]:upper() .. ' · ' .. #rows, group } }, nil, { group = g[1] })
+      for _, s in ipairs(rows) do
+        session_row(c, s, g[1])
+      end
     end
   end
   c:add({})
@@ -478,6 +480,9 @@ function M.session_keys(b)
   map('l', function()
     require('cland.launcher').open()
   end, 'launch a session')
+  map('a', function()
+    require('cland.launcher').aide()
+  end, 'launch an Aide')
   map('<C-v>', on_row(function(name)
     require('cland.layout').show_split({ kind = 'session', id = name })
   end), 'attach in a vertical split')

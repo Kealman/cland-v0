@@ -174,7 +174,7 @@ function M.sessions()
   return out
 end
 
-M.ROLE_LABELS = { coordinator = 'Coordinator', implementer = 'Implementer', reviewer = 'Reviewer', qa = 'QA' }
+M.ROLE_LABELS = { aide = 'Aide', coordinator = 'Coordinator', implementer = 'Implementer', reviewer = 'Reviewer', qa = 'QA' }
 
 --- A session as it is shown everywhere (spec 4.4): the hub's `label` (`rev-1 [Reviewer]`), else built the same way.
 function M.label(name, role, label)
@@ -251,14 +251,18 @@ function M.session_now(s)
   return s.live
 end
 
--- T-111 can prepend its Aides group here without changing the renderer.
-M.SESSION_GROUPS = { { 'waiting', 'waiting' }, { 'busy', 'busy' }, { 'idle', 'idle' } }
+M.SESSION_GROUPS = { { 'yours', 'yours' }, { 'waiting', 'waiting' }, { 'busy', 'busy' }, { 'idle', 'idle' } }
 
-function M.session_group(s)
+local function state_group(s)
   if not s.live then return 'stopped' end
   if s.state:match('^waiting') then return 'waiting' end
   if s.state == 'busy' then return 'busy' end
   return 'idle' -- the hub cannot classify unknown more precisely
+end
+
+function M.session_group(s)
+  if s.live and s.role == 'aide' then return 'yours' end
+  return state_group(s)
 end
 
 function M.counts()
@@ -268,7 +272,7 @@ function M.counts()
     if M.session_now(s) then c.now = c.now + 1 end
     if s.live then
       c.live = c.live + 1
-      local group = M.session_group(s)
+      local group = state_group(s)
       c[group] = c[group] + 1
     else
       c.down = c.down + 1

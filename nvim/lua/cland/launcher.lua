@@ -1,5 +1,5 @@
 -- The session launcher (spec 4.3, 4.4; #28): a floating form, `␣l` anywhere or `l` in the sessions panel.
--- One line per field (name, role, harness, model, working directory, effort, item), the labels drawn as inline
+-- One line per field (name, role, harness, model, working directory, effort, item, brief), the labels drawn as inline
 -- virtual text so the lines hold only the values. Choosing a role fills the harness, the model and the
 -- effort from its launch defaults (`role.list`, i.e. roles.toml); changing the harness away from the role's
 -- clears the model and effort that were meant for the other one. Enter submits `session.launch`; what the
@@ -17,12 +17,13 @@ local ns = api.nvim_create_namespace('cland.launcher')
 
 M.FIELDS = {
   { key = 'name', label = 'name', hint = 'a-z 0-9 -' },
-  { key = 'role', label = 'role', hint = 'coordinator · implementer · reviewer · qa · C-n' },
+  { key = 'role', label = 'role', hint = 'aide · coordinator · implementer · reviewer · qa · C-n' },
   { key = 'harness', label = 'harness', hint = 'claude-code · codex · opencode · C-n' },
   { key = 'model', label = 'model', hint = "empty: the harness's default" },
   { key = 'cwd', label = 'directory', hint = '' },
   { key = 'effort', label = 'effort', hint = "empty: the harness's default" },
   { key = 'item', label = 'item', hint = "T-<n>: an Implementer in the item's worktree" },
+  { key = 'brief', label = 'brief', hint = 'optional first message · text or A-<n>' },
 }
 M.HARNESSES = { 'claude-code', 'codex', 'opencode' }
 local LABEL_W = 11
@@ -41,7 +42,7 @@ local function role_choices()
     out[#out + 1] = def.role
   end
   if #out == 0 then
-    out = { 'coordinator', 'implementer', 'reviewer', 'qa' }
+    out = { 'aide', 'coordinator', 'implementer', 'reviewer', 'qa' }
   end
   out[#out + 1] = ''
   return out
@@ -187,6 +188,9 @@ function M.frame(v)
     local def = state.role_def(v.role)
     frame.role = def and def.role or v.role
   end
+  if v.brief and v.brief ~= '' then
+    frame.brief = v.brief
+  end
   return frame
 end
 
@@ -250,6 +254,9 @@ local function submit(f)
     pcall(require('cland').refresh_sessions)
     if M.cur == f then
       M.close()
+      if frame.role == 'aide' and p.name then
+        require('cland.layout').show({ kind = 'session', id = p.name }, { insert = true })
+      end
     end
   end)
 end
@@ -287,7 +294,16 @@ local function cycle(f, d)
   draw(f)
 end
 
---- opts: name (prefilled), role (prefilled; its defaults follow), item (prefilled).
+--- Open the Aide form on its brief; reserve names already known to the hub, including stopped ones.
+function M.aide()
+  local used = {}
+  for _, s in ipairs(state.sessions()) do used[s.name] = true end
+  local n = 1
+  while used['aide-' .. n] do n = n + 1 end
+  return M.open({ name = 'aide-' .. n, role = 'aide', field = 'brief' })
+end
+
+--- opts: name, role (its defaults follow), item, brief (prefilled), field (initial focus).
 function M.open(opts)
   opts = opts or {}
   M.close()
@@ -297,7 +313,7 @@ function M.open(opts)
   f.buf = api.nvim_create_buf(false, true)
   vim.bo[f.buf].bufhidden = 'wipe'
   vim.b[f.buf].cland_role = 'launcher'
-  api.nvim_buf_set_lines(f.buf, 0, -1, false, { opts.name or '', opts.role or '', '', '', state.S.root ~= '' and state.S.root or vim.fn.getcwd(), '', opts.item or '' })
+  api.nvim_buf_set_lines(f.buf, 0, -1, false, { opts.name or '', opts.role or '', '', '', state.S.root ~= '' and state.S.root or vim.fn.getcwd(), '', opts.item or '', opts.brief or '' })
   f.win = api.nvim_open_win(f.buf, true, {
     relative = 'editor', row = math.max(1, math.floor(vim.o.lines / 5)), col = math.floor((vim.o.columns - width) / 2),
     width = width, height = #M.FIELDS + 1, border = 'rounded', style = 'minimal', zindex = 85,
@@ -387,7 +403,7 @@ function M.open(opts)
     end,
   })
   draw(f)
-  local first = opts.name and (opts.role and 3 or 2) or 1
+  local first = index_of(opts.field) or (opts.name and (opts.role and 3 or 2) or 1)
   local line = api.nvim_buf_get_lines(f.buf, first - 1, first, false)[1] or ''
   api.nvim_win_set_cursor(f.win, { first, #line })
   vim.cmd('startinsert!')

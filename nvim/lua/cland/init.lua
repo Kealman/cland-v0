@@ -291,6 +291,7 @@ M.HELP = {
   'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free answer · ↵ open or attach · d dismiss · D all',
   '          :Cland topic new <title> | close | resolve',
   'Session   ↵ attaches in Terminal mode · C-h/j/k/l focus · C-\\ leaves (C-\\ C-n too)',
+  '          ␣l (panel l) launches · ␣A (panel a) launches an Aide, ready for its brief',
   'Artifacts ␣a on ~ · ga topic artifacts · ↵ open chip · R render Mermaid',
   'Prompts   :Cland prompt [title] · :w saves · :Cland prompt send|attach · ␣ps sends · ␣pa attaches',
   'Sessions  ␣l launch · in the panel: ↵ attach · C-v attach in a split · l launch · x stop · c capabilities',
@@ -372,6 +373,9 @@ local function keymaps()
   map('<leader>l', function()
     require('cland.launcher').open()
   end, 'launch a session')
+  map('<leader>A', function()
+    require('cland.launcher').aide()
+  end, 'launch an Aide')
   map('<leader><leader>', layout.back, 'previous centre view')
   map('<leader>r', function()
     require('cland.views').resolve_topic()

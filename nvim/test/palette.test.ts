@@ -52,6 +52,31 @@ test('the palette finds the sessions panel action, displays its key and runs it'
   assert.equal(await c.lua("return require('cland.state').S.ui.right"), null);
 });
 
+test('Aide launches send role defaults, the project root and optional briefs, avoiding names in processes and presence', { skip }, async t => {
+  const c = await start(t, {
+    roles: [{role: 'aide', label: 'Aide', exclusive: false, launch: {harness: 'codex', model: 'planning-model', effort: 'high'}}],
+    processes: [{name: 'aide-1', role: 'aide', status: 'stopped', state: 'unknown'}],
+    presence: [{name: 'aide-2', role: 'aide', state: 'idle'}],
+  });
+  await c.input('<Esc><Space>A');
+  await c.waitScreen(s => s.includes('aide-3') && /model +planning-model/.test(s) && s.includes('brief'), 'Aide launcher defaults');
+  await c.input('Help me plan v0.2<CR>');
+  await c.waitScreen(s => s.includes('attached aide-3') && s.includes('YOURS · 2'), 'Aide attached above crew groups');
+  const frames = async () => ((await c.control({requests: true})).requests as Array<Record<string, unknown>>).filter(f => f.type === 'session.launch');
+  const [first] = await frames();
+  assert.deepEqual({...first, id: undefined}, {type: 'session.launch', id: undefined, name: 'aide-3', role: 'aide', harness: 'codex', model: 'planning-model', effort: 'high', cwd: c.root, brief: 'Help me plan v0.2'});
+  await c.input('<C-l>');
+  await c.waitScreen(s => s.includes('NORMAL'), 'panel focus leaves Terminal mode');
+  await c.input('a');
+  await c.waitScreen(s => s.includes('aide-4') && s.includes('brief'), 'next available Aide name');
+  await c.input('<CR>');
+  await c.waitScreen(s => s.includes('attached aide-4') && s.includes('YOURS · 3'), 'Aide with no brief');
+  const second = (await frames())[1];
+  assert.equal(second?.name, 'aide-4');
+  assert.equal(second?.brief, undefined, 'an empty brief is omitted');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});
+
 const item = (id: string, title: string, state = 'open') => ({ id, kind: 'task', title, state, labels: [], blocked_by: [], file: `${id}.md` });
 
 test('session events move the selected row between groups and update the chip; stopped sessions fold', { skip }, async t => {
