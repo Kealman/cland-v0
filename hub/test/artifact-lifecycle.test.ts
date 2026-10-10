@@ -5,25 +5,31 @@ import * as fs from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { fixedRoles } from '../src/roles/config.ts';
+import { Sessions } from '../src/adapters/sessions.ts';
+import { ProcessTable } from '../src/adapters/processes.ts';
 import { Store } from '../src/hub/store.ts';
 import { ArtifactLifecycle, type ArtifactFiles } from '../src/hub/artifact-lifecycle.ts';
-import type { Artifact } from '../src/protocol.ts';
+import { PROTOCOL_VERSION, type Message, type Artifact } from '../src/protocol.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
-import { connectUi, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { connectSocket, connectUi, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>(r => { resolve = r; });
   return { promise, resolve };
 }
-async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays = 0) {
+async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays = 0, eventLimitMax = 120) {
   const root = await tempProject(t);
   const dbPath = join(root, 'hub.db');
   const records: Record<string, unknown>[] = [];
   let publicationLogFails = false;
+  let postLogFails = false;
+  let eventLogFails = false;
+  const failEventLog = () => { eventLogFails = true; };
+  const failPost = (fail: boolean) => { postLogFails = fail; };
   const failPublicationLog = () => { publicationLogFails = true; };
-  const hub = await startHub({ store: new Store(dbPath), roles: fixedRoles(), artifactFiles: files, artifactRetentionDays: retentionDays,
-    log: r => { records.push(r); if (publicationLogFails && r.event === 'listener-failed') throw new Error('publication error logger failed'); },
+  const hub = await startHub({ store: new Store(dbPath), roles: fixedRoles(), artifactFiles: files, artifactRetentionDays: retentionDays, eventLimit: { max: eventLimitMax, windowMs: 600_000 },
+    log: r => { records.push(r); if (eventLogFails && r.event === 'event-delivery') throw new Error('event journal failed'); if (postLogFails && r.event === 'human-send') throw new Error('post failed inside artifact transaction'); if (publicationLogFails && r.event === 'listener-failed') throw new Error('publication error logger failed'); },
     control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
   });
   t.after(() => hub.close());
@@ -36,7 +42,7 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
   const entries = async () => ((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
   const db = new DatabaseSync(dbPath);
   t.after(() => db.close());
-  return { root, hub, ui, topic, a, entries, db, records, failPublicationLog };
+  return { root, hub, ui, topic, a, entries, db, records, failPublicationLog, failPost, failEventLog };
 }
 
 test('a promotion copying while its topic closes preserves the promotion and excludes it from cleanup', async t => {
@@ -274,4 +280,87 @@ test('a cleanup notification failure after the index commit keeps deletion consi
   await lifecycle.cleanup(0);
   await assert.rejects(fs.readFile(f.a.path + '.retained'), { code: 'ENOENT' });
   assert.equal((await f.entries())[0]?.fileDeleted, true);
+});
+
+test('artifact subscriptions publish only after the existing artifact/post transaction commits', async t => {
+  const f = await fixture(t);
+  await f.ui.request({ type: 'subscribe' });
+  await f.ui.request({ type: 'role.set', session: 'observer', role: 'reviewer' });
+  const socket = await connectSocket(join(f.root, 'hub.sock'));
+  t.after(() => socket.close());
+  socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: 'observer-id', name: 'observer', cwd: f.root });
+  assert.equal((await socket.next()).type, 'welcome');
+  assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name: 'observer' }, subject: { topic: f.topic }, events: ['artifact'] })).ok, true);
+  f.failPost(true);
+  const failed = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Rolled back', content: 'bytes', topic: f.topic });
+  assert.equal(failed.ok, false);
+  assert.equal((await f.entries()).length, 1);
+  const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
+  assert.equal((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event').length, 0);
+  assert.equal(f.records.filter(r => r.event === 'event-delivery').length, 0);
+  f.failPost(false);
+  const accepted = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Committed', content: 'bytes', topic: f.topic });
+  assert.equal(accepted.ok, true, accepted.error);
+  const after = await f.ui.request({ type: 'topic.history', topic: 'agents' });
+  const events = (after.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
+  assert.deepEqual(events.map(m => m.text), ['event · artifact · A-2 created · Committed', 'event · artifact · A-2 shared · Committed']);
+});
+
+
+test('event publication faults preserve reopened artifact bytes and the whole turn/now fan-out', async t => {
+  const f = await fixture(t, fs, 30);
+  await f.ui.request({ type: 'topic.close', topic: f.topic });
+  const table = new ProcessTable();
+  const sessions = new Sessions({ core: f.hub.core, table, root: f.root });
+  t.after(() => { sessions.close(); table.close(); });
+  for (const [name, digest] of [['held', 'turn'], ['steered', 'now']] as const) {
+    if (digest === 'now') table.put({ name, sessionId: `${name}-id`, harness: 'codex', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running', item: null });
+    await f.ui.request({ type: 'role.set', session: name, role: 'reviewer' });
+    const socket = await connectSocket(join(f.root, 'hub.sock'));
+    t.after(() => socket.close());
+    socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: `${name}-id`, name, cwd: f.root });
+    assert.equal((await socket.next()).type, 'welcome');
+    assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name }, subject: { topic: f.topic }, events: ['artifact'], digest })).ok, true);
+  }
+  f.failEventLog();
+  const result = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Retained commit', content: 'new retained bytes', topic: f.topic });
+  assert.equal(result.ok, true, result.error);
+  const created = (result.value as { artifact: Artifact }).artifact;
+  assert.equal(await fs.readFile(created.path, 'utf8'), 'new retained bytes');
+  const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
+  const events = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
+  for (const name of ['held', 'steered']) assert.deepEqual(events.filter(m => m.to.includes(name)).map(m => m.text), [
+    'event · artifact · A-1 shared · Design',
+    'event · artifact · A-2 created · Retained commit',
+    'event · artifact · A-2 shared · Retained commit',
+  ]);
+  assert.ok(f.records.some(r => r.event === 'publication-failed'));
+});
+
+
+test('failure recording the now group rolls back every recipient and their event allowance', async t => {
+  const f = await fixture(t, fs, 30, 1);
+  const table = new ProcessTable();
+  const sessions = new Sessions({ core: f.hub.core, table, root: f.root });
+  t.after(() => { sessions.close(); table.close(); });
+  for (const [name, digest] of [['held', 'turn'], ['steered', 'now']] as const) {
+    if (digest === 'now') table.put({ name, sessionId: `${name}-id`, harness: 'codex', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running', item: null });
+    await f.ui.request({ type: 'role.set', session: name, role: 'reviewer' });
+    const socket = await connectSocket(join(f.root, 'hub.sock'));
+    t.after(() => socket.close());
+    socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: `${name}-id`, name, cwd: f.root });
+    assert.equal((await socket.next()).type, 'welcome');
+    assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name }, subject: { topic: f.topic }, events: ['artifact'], digest })).ok, true);
+  }
+  f.db.exec("create trigger reject_now before insert on messages when new.notice = 'event' and json_extract(new.notice_detail, '$.digest') = 'now' begin select raise(ABORT, 'now group refused'); end");
+  const first = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Faulted occurrence', content: 'committed bytes', topic: f.topic });
+  assert.equal(first.ok, true, first.error);
+  const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
+  assert.deepEqual((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event'), []);
+  assert.equal(await fs.readFile((first.value as { artifact: Artifact }).artifact.path, 'utf8'), 'committed bytes');
+  f.db.exec('drop trigger reject_now');
+  assert.equal((await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Retry allowance', content: 'retry bytes', topic: f.topic })).ok, true);
+  const after = await f.ui.request({ type: 'topic.history', topic: 'agents' });
+  const events = (after.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
+  for (const name of ['held', 'steered']) assert.deepEqual(events.filter(m => m.to.includes(name)).map(m => m.text), ['event · artifact · A-3 created · Retry allowance']);
 });

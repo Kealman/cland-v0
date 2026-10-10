@@ -21,6 +21,7 @@ const START_DEADLINE_MS = 15_000;
 const STOP_DEADLINE_MS = 10_000;
 
 export const HUB_USAGE = `  hub start       start the project's hub in the background (idempotent)
+  hub subscriptions list every session's event subscriptions (--json for JSON)
   hub status      show the running hub and its connected sessions (--json for JSON)
   hub stop        stop the project's hub
   hub serve       run the hub in the foreground (what start runs)
@@ -345,7 +346,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   // Start/serve own the cwd's project. Discovery records an existing hub's actual root, independent
   // of where the file lives. Older copies need a successful probe before lock checks or cleanup.
   const discovery = hubDiscovery(cwd);
-  const overridden = process.env.CLAND_HUB_FILE?.trim() && ['status', 'stop', 'unmute'].includes(sub ?? '');
+  const overridden = process.env.CLAND_HUB_FILE?.trim() && ['status', 'stop', 'unmute', 'subscriptions'].includes(sub ?? '');
   const d = overridden ? readDiscovery(discovery) : null;
   let target = overridden ? d?.root ?? null : root;
   if (overridden && sub === 'stop' && target === null) {
@@ -355,6 +356,13 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   switch (sub) {
     case 'start':
       return start(root, io);
+    case 'subscriptions': {
+      const hub = readDiscovery(l.discovery);
+      if (!hub) throw new Error('no hub running');
+      const result = await askHubFrame(hub, { type: 'hub.subscriptions' }) as { subscriptions: Array<Record<string, unknown>> };
+      io.out(rest.includes('--json') ? `${JSON.stringify(result)}\n` : `${result.subscriptions.map(s => `${s.subscriber} · ${s.id} · ${JSON.stringify(s.subject)} · ${(s.events as string[]).join(', ')} · ${s.digest}`).join('\n') || 'no subscriptions'}\n`);
+      return 0;
+    }
     case 'status':
       return status(l, rest.includes('--json'), io);
     case 'stop':

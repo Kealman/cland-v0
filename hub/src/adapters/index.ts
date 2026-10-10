@@ -59,6 +59,9 @@ export function projectSessions(options: { core: HubCore; root: string; db: stri
       env,
     }),
   );
+  // Startup is ordered: install every adapter and core capability, then reconcile durable
+  // terminal rows/reservations. Resume/watch may emit further facts only after this factory returns.
+  sessions.releaseInterruptedLaunches();
   return {
     sessions,
     close: () => {

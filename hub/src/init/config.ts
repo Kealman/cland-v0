@@ -5,7 +5,7 @@
 import { DEFAULT_LEVELS, configuredLevels } from '../tracker/kinds.ts';
 import { basename } from 'node:path';
 import { parse } from 'smol-toml';
-import { LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
+import { EVENT_LIMIT, LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
 import { MANAGED_MARK } from '../project.ts';
 import { VERSION } from '../version.ts';
 import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts';
@@ -15,7 +15,7 @@ export type ProjectConfig = {
   tracker: { levels: string[] };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
-  hygiene: { rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
+  hygiene: { eventLimit: RateLimit; rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
 };
 
 const MINUTE = 60_000;
@@ -25,7 +25,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   tracker: { levels: [...DEFAULT_LEVELS] },
   artifacts: { retentionDays: 30 },
   keys: { layouts: [] },
-  hygiene: { rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
+  hygiene: { eventLimit: { ...EVENT_LIMIT }, rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
 });
 
 const minutes = (ms: number): number => ms / MINUTE;
@@ -51,6 +51,9 @@ layouts = ${JSON.stringify(c.keys.layouts)}
 # messages one session may send to other sessions within the window
 rate_limit_max = ${h.rateLimit.max}
 rate_limit_window_minutes = ${minutes(h.rateLimit.windowMs)}
+# events delivered to one session within their own window
+event_limit_max = ${h.eventLimit.max}
+event_limit_window_minutes = ${minutes(h.eventLimit.windowMs)}
 # messages between one pair of sessions within the window before the pair is muted, and for how long
 loop_breaker_max = ${h.loopBreaker.max}
 loop_breaker_window_minutes = ${minutes(h.loopBreaker.windowMs)}
@@ -85,6 +88,8 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   };
   set('rate_limit_max', (n) => (c.hygiene.rateLimit.max = Math.floor(n)));
   set('rate_limit_window_minutes', (n) => (c.hygiene.rateLimit.windowMs = n), MINUTE);
+  set('event_limit_max', n => (c.hygiene.eventLimit.max = Math.floor(n)));
+  set('event_limit_window_minutes', n => (c.hygiene.eventLimit.windowMs = n), MINUTE);
   set('loop_breaker_max', (n) => (c.hygiene.loopBreaker.max = Math.floor(n)));
   set('loop_breaker_window_minutes', (n) => (c.hygiene.loopBreaker.windowMs = n), MINUTE);
   set('loop_breaker_mute_minutes', (n) => (c.hygiene.loopBreaker.muteMs = n), MINUTE);

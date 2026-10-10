@@ -99,7 +99,8 @@ export class Sessions {
     this.#root = options.root;
     this.#log = options.log ?? (() => {});
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
-    for (const p of this.#table.all()) this.#core.rememberProcess(this.view(p));
+    // Recovery must select the persisted recipient's delivery mode before recording its final event.
+    this.#core.eventSteering(id => { const p = this.#table.bySessionId(id); return p?.harness === 'codex' || p?.harness === 'opencode'; });
     this.#unprocess = this.#table.subscribe((p) => this.#core.publishProcess(this.view(p)));
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     // a session's hello gets the role it was launched for (spec 4.4): a requested role alone is not enough
@@ -132,6 +133,8 @@ export class Sessions {
         this.#log({ event: 'process-rename-failed', session: to, error: err instanceof Error ? err.message : String(err) });
       }
     });
+    // An active snapshot emits nothing; terminal recovery waits for the fully configured startup sequence.
+    for (const p of this.#table.running()) this.#core.rememberProcess(this.view(p));
   }
 
   readonly #unsubscribe: () => void;
@@ -474,8 +477,9 @@ export class Sessions {
     return resumed(() => publish(settled.resumed, pidStarted));
   }
 
-  /** At the hub's start, before any frame is read: the roles reserved by launches the hub died in are given back. */
+  /** After all adapters/callbacks are installed, reconcile terminal rows and interrupted launch reservations. */
   releaseInterruptedLaunches(): void {
+    for (const p of this.#table.all()) this.#core.rememberProcess(this.view(p));
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running');
   }
 

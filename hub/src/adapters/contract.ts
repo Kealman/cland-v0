@@ -193,7 +193,7 @@ export class InjectUncertain extends Error {
  *  instructions describe it (from, from_kind, msg_id, topic …). Attribute values are escaped. */
 export function envelope(message: Message, topic: TopicRef | null): string {
   const digest = message.digest?.length
-    ? `${message.digest.every(note => note.kind === 'progress') ? `Progress digest (${message.digest.length} notes` : `Turn digest (${message.digest.length} entries`}, oldest first):\n${message.digest.map(note => envelope(note, null)).join('\n')}\nNext delivery:\n`
+    ? `${message.digest.every(note => note.kind === 'progress') ? `Progress digest (${message.digest.length} notes` : `Turn digest (${message.digest.length} entries`}, oldest first):\n${message.digest.map(note => note.detail?.summary === true ? note.text : envelope(note, null)).join('\n')}\nNext delivery:\n`
     : '';
   const attrs: Array<[string, string]> = [
     ['source', 'cland'],

@@ -8,6 +8,8 @@ import {
   isSendKind,
   isHeldDelivery,
   type SubscriptionSubject,
+  type SubscriptionEvent,
+  type OwnedSubscription,
   type Artifact,
   type AgentsHistoryFilter,
   type HandoverNote,
@@ -68,6 +70,8 @@ export const HUMAN = 'human';
 export const DEFAULT_HUMAN_ADDRESSEE = 'coordinator';
 export const TOPIC_HISTORY_LIMIT = 200;
 
+type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean };
+
 export type Connection = {
   name: string;
   cwd: string;
@@ -116,6 +120,7 @@ export type CoreOptions = {
   queueTtlMs?: number;
   retentionMs?: number;
   rateLimit?: RateLimit;
+  eventLimit?: RateLimit;
   loopBreaker?: LoopBreaker;
   maxTextBytes?: number;
   now?: () => Date;
@@ -177,11 +182,15 @@ export class HubCore {
   readonly #renamed = new Set<(from: string, to: string, sessionId: string) => void>();
   /** The live Coordinator last announced to subscribers. */
   #coordinator: string | null = null;
+  #canSteerEvents: (sessionId: string) => boolean = () => false;
+  readonly #processItems = new Map<string, string | null>();
+  readonly #artifactStates = new Map<string, Artifact['status']>();
   readonly #processStatus = new Map<string, HarnessProcessView['status']>();
   #publishedPresence = '[]';
   #items: TopicItems | null;
   /** What subscribers last heard of each topic (status, warning, binding, title): a change is a `topic` event. */
   readonly #publishedTopics = new Map<string, string>();
+  readonly #topicStatuses = new Map<string, TopicStatus>();
   /** The Coordinator's asks to the human (#33). */
   readonly asks: Asks;
   /** The human's inbox (#33): open asks, approvals, waiting topics, notifications. */
@@ -200,11 +209,13 @@ export class HubCore {
       ...(options.rateLimit ? { rateLimit: options.rateLimit } : {}),
       ...(options.loopBreaker ? { loopBreaker: options.loopBreaker } : {}),
       ...(options.maxTextBytes !== undefined ? { maxTextBytes: options.maxTextBytes } : {}),
+      ...(options.eventLimit ? { eventLimit: options.eventLimit } : {}),
       memory: this.#store,
     });
+    for (const a of this.#store.artifacts()) this.#artifactStates.set(a.id, a.status);
     const now = this.#now().toISOString();
     for (const t of STANDING_TOPICS) this.#store.ensureTopic(t.id, t.title, true, now);
-    for (const t of this.#store.topics()) this.#publishedTopics.set(t.id, HubCore.#topicSignature(t));
+    for (const t of this.#store.topics()) { this.#publishedTopics.set(t.id, HubCore.#topicSignature(t)); this.#topicStatuses.set(t.id, t.status); }
     this.asks = new Asks({
       store: this.#store,
       now: this.#now,
@@ -269,37 +280,146 @@ export class HubCore {
     this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
   }
 
-  /** Seed the restart snapshot without announcing another launch. */
+  /** Observers and transport see committed rows; their failures cannot enter a caller's rollback path. */
+  #afterCommit(publish: () => void): void {
+    this.#store.afterCommit(publish, error => this.#log({ event: 'publication-failed', error: error instanceof Error ? error.message : String(error) }));
+  }
+
+  /** Seed active rows; recover a committed stop whose publication was interrupted by a hub crash. */
   rememberProcess(process: HarnessProcessView): void {
+    if (process.status !== 'running') { this.publishProcess(process); return; }
     this.#processStatus.set(process.sessionId, process.status);
+    this.#processItems.set(process.sessionId, process.item);
+    this.#store.setMeta(`subscription-terminal:${process.sessionId}`, '');
+  }
+
+  /** Every terminal fact records its fan-out and exact-subject cleanup together, before observers. */
+  #terminalEvent(subject: SubscriptionSubject, event: SubscriptionEvent, text: string, context: EventContext = {}, options: { subscriberId?: string; selected?: OwnedSubscription[]; memberOnly?: boolean } = {}): void {
+    this.#store.transaction(() => {
+      this.publishEvent(subject, event, text, { ...context, final: true }, options.selected);
+      if (options.subscriberId) this.#store.endSubscriptions(options.subscriberId);
+      if (!options.memberOnly) {
+        this.#store.endSubject(subject);
+        if ('item' in subject) this.#store.endSubject({ subtree: subject.item });
+      }
+    });
   }
 
   /** Adapter-owned process facts go through the same subscription as the core's events. */
   publishProcess(process: HarnessProcessView): void {
     const previous = this.#processStatus.get(process.sessionId);
-    this.rememberProcess(process);
-    const state = previous === process.status ? null : process.status === 'running' ? 'launched'
-      : process.status === 'stopped' ? 'stopped' : 'died';
-    if (state) this.publishEvent({ session: process.name }, 'session.state', `${process.name} ${state}${process.item ? ` · ${process.item}` : ''}`);
+    this.#processStatus.set(process.sessionId, process.status);
+    this.#processItems.set(process.sessionId, process.item);
+    const context = { role: process.role, item: process.item };
+    const suffix = process.item ? ` · ${process.item}` : '';
+    const checkpoint = `subscription-terminal:${process.sessionId}`;
+    if (process.status === 'running') {
+      this.#store.setMeta(checkpoint, '');
+      if (previous !== process.status) this.publishEvent({ session: process.name }, 'session.state', `${process.name} launched${suffix}`, context);
+    } else {
+      // Status is committed before ProcessTable listeners run. The checkpoint and closure share the event commit.
+      const signature = JSON.stringify([process.startedAt, process.status]);
+      this.#store.transaction(() => {
+        // The checkpoint covers cleanup as well as fan-out. A role/model/rename update
+        // on an already-terminal row must preserve subscriptions created for its next launch.
+        if (this.#store.meta(checkpoint) === signature) return;
+        this.#terminalEvent({ session: process.name }, 'session.state', `${process.name} ${process.status === 'stopped' ? 'stopped' : 'died'}${suffix}`, context,
+          { subscriberId: process.sessionId });
+        this.#store.setMeta(checkpoint, signature);
+      });
+    }
     this.#emit({ type: 'session.process', process });
   }
 
   publishTask(change: ItemChange): void {
-    for (const text of change.events ?? []) this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`);
+    if (change.item === null) {
+      this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
+      return;
+    }
+    // Reparenting ends membership in departed ancestor subtrees, not those ancestor subscriptions.
+    const current = this.#items?.ancestry?.(change.id) ?? [change.id];
+    const departed = change.previousAncestry?.filter(id => !current.includes(id)) ?? [];
+    if (departed.length) {
+      const selected = this.#store.allSubscriptions().filter(s => 'subtree' in s.subject && departed.includes(s.subject.subtree) && s.events.includes('task'));
+      this.#terminalEvent({ item: change.id }, 'task', `${change.id} left subtree`, {}, { selected, memberOnly: true });
+    }
+    for (const text of change.events ?? []) {
+      if (text === 'closed') this.#terminalEvent({ item: change.id }, 'task', `${change.id} closed`);
+      else this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`);
+    }
   }
 
-  /** Fan-out is recorded once in the ordinary queue, before any observer can re-enter or fail. */
-  publishEvent(subject: SubscriptionSubject, event: 'session.state' | 'task', text: string): void {
-    const to = [...new Set(this.#store.eventSubscribers(subject, event).flatMap(id => {
-      const name = this.#store.nameOfSession(id);
-      return name ? [name] : [];
-    }))];
-    if (!to.length) return;
-    const id = this.noticeInTopic(AGENTS.id, { kind: 'event', to, text: `event · ${event} · ${text.replace(/[\r\n\u2028\u2029]+/g, ' ')}`, detail: { event, subject } });
-    if (id) this.#log({ event: 'event-delivery', id, subject, kind: event, to });
+  /** Immediate events still use the ordinary delivery queue and the adapter's ordinary injection. */
+  eventSteering(canSteer: (sessionId: string) => boolean): void { this.#canSteerEvents = canSteer; }
+
+  #eventMatches(s: OwnedSubscription, subject: SubscriptionSubject, context: EventContext): boolean {
+    if (JSON.stringify(s.subject) === JSON.stringify(subject)) return true;
+    if ('role' in s.subject) return s.subject.role === context.role;
+    const item = 'item' in subject ? subject.item : context.item;
+    if ('item' in s.subject) return item === s.subject.item;
+    if ('subtree' in s.subject && item) return item === s.subject.subtree || ((context.ancestry ?? this.#items?.ancestry?.(item))?.includes(s.subject.subtree) ?? false);
+    return false;
+  }
+
+  /** Snapshot the matching owners before publication; no await, so a stop cannot split fan-out. */
+  publishEvent(subject: SubscriptionSubject, event: SubscriptionEvent, text: string, context: EventContext = {}, selected?: OwnedSubscription[]): void {
+    const session = 'session' in subject ? subject.session : null;
+    const facts = { ...(session ? { role: this.#store.roleOf(session), item: this.#processItems.get(this.#store.sessionIdOf(session) ?? '') ?? null } : {}), ...context };
+    const recipients = new Map<string, 'turn' | 'now'>();
+    for (const s of selected ?? this.#store.allSubscriptions()) {
+      const finalSubject = context.final && (JSON.stringify(s.subject) === JSON.stringify(subject) || ('item' in subject && 'subtree' in s.subject && s.subject.subtree === subject.item));
+      if (!s.events.includes(event) && !finalSubject) continue;
+      if (!selected && !this.#eventMatches(s, subject, facts)) continue;
+      const name = this.#store.nameOfSession(s.subscriberId);
+      if (!name) continue;
+      const mode = s.digest === 'now' && this.#canSteerEvents(s.subscriberId) ? 'now' : 'turn';
+      if (recipients.get(name) !== 'now') recipients.set(name, mode);
+    }
+    const body = this.#hygiene.boundedText(`event · ${event} · ${text.replace(/[\r\n\u2028\u2029]+/g, ' ')}`);
+    const key = JSON.stringify([subject, event, body, context.final ?? false]);
+    this.#store.transaction(() => {
+      const groups = new Map<'turn' | 'now', string[]>();
+      for (const [name, digest] of recipients) {
+        const now = this.#now().getTime();
+        if (!context.final && !this.#hygiene.admitEvent(this.#identity(name), now)) {
+          this.#afterCommit(() => this.#log({ event: 'event-limited', subject, kind: event, session: name }));
+          continue;
+        }
+        this.#dropExpired(name);
+        const coalesced = digest === 'turn' && this.#store.coalesceEvent(name, subject, key, now);
+        if (coalesced) {
+          this.#afterCommit(() => this.#log({ event: 'event-delivery', id: coalesced.id, subject, kind: event, to: [name], count: coalesced.count, coalesced: true }));
+          continue;
+        }
+        groups.set(digest, [...(groups.get(digest) ?? []), name]);
+      }
+      // All modes and recipient counts join the same commit before any observer can bind a digest.
+      for (const [digest, to] of groups) {
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.final ? { final: true } : {}) } });
+        if (!message) continue;
+        this.#afterCommit(() => this.#emitMessage(message));
+        for (const name of to) this.#afterCommit(() => { this.#send(message, name); });
+        this.#afterCommit(() => this.#log({ event: 'event-delivery', id: message.id, subject, kind: event, to, count: 1, digest }));
+      }
+    });
   }
 
   publishUsage(session: string, sessionId: string, usage: SessionUsage): void {
+    const subject = { session };
+    const context = { role: this.#store.roleOf(session), item: this.#processItems.get(sessionId) ?? null };
+    const crossings = new Map<string, OwnedSubscription[]>();
+    for (const s of this.#store.allSubscriptions()) {
+      if (!s.events.includes('usage') || !s.threshold || !this.#eventMatches(s, subject, context)) continue;
+      const total = usage.total;
+      const value = 'cost' in s.threshold ? total?.cost : total?.totalTokens;
+      if (value === undefined) continue; // absent cost is unknown, never zero
+      const limit = 'cost' in s.threshold ? s.threshold.cost : s.threshold.tokens;
+      if (this.#store.usageCrossed(s.id, sessionId, value >= limit)) {
+        const text = `${session} ${'cost' in s.threshold ? 'cost' : 'tokens'} threshold ${limit} crossed · ${value}`;
+        crossings.set(text, [...(crossings.get(text) ?? []), s]);
+      }
+    }
+    for (const [text, subscriptions] of crossings) this.publishEvent(subject, 'usage', text, context, subscriptions);
     this.#emit({ type: 'session.usage', session, sessionId, usage });
   }
 
@@ -474,8 +594,8 @@ export class HubCore {
     if (!connection) return;
     const { deliver, dropped } = this.#store.pendingFor(name, this.#now().getTime(), this.#queueTtlMs);
     for (const message of dropped) {
-      this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
-      this.#emitStage(message.id);
+      this.#afterCommit(() => this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name }));
+      this.#afterCommit(() => this.#emitStage(message.id));
     }
     // a clause the launch already handed over: the spoke learns it (it acks; nothing is injected again)
     const carried = this.#carriedNotice.get(name);
@@ -501,7 +621,23 @@ export class HubCore {
     this.#onDelivered?.(messageId, connection.name, connection.sessionId);
   }
 
-  artifactChanged(artifact: Artifact): void { this.#emit({ type: 'artifact', artifact }); }
+  artifactChanged(artifact: Artifact): void {
+    this.#afterCommit(() => this.#publishArtifact(artifact));
+  }
+
+  #publishArtifact(artifact: Artifact): void {
+    const previous = this.#artifactStates.get(artifact.id);
+    this.#artifactStates.set(artifact.id, artifact.status);
+    const context = { item: this.#store.topic(artifact.topic)?.item ?? null, role: this.#store.roleOf(artifact.creator) };
+    const subjects: SubscriptionSubject[] = [{ topic: artifact.topic }, { session: artifact.creator }];
+    // One logical occurrence per recipient even when topic and creator subscriptions overlap.
+    const selected = this.#store.allSubscriptions().filter(s => subjects.some(subject => this.#eventMatches(s, subject, context)));
+    const publish = (action: string) => this.publishEvent({ topic: artifact.topic }, 'artifact', `${artifact.id} ${action} · ${artifact.title}`, context,
+      selected);
+    if (previous === undefined) publish('created');
+    if ((artifact.status === 'shared' || artifact.status === 'sent') && artifact.status !== previous) publish('shared');
+    this.#emit({ type: 'artifact', artifact });
+  }
   textFits(text: string): boolean { return this.#hygiene.sizeRefusal(text) === null; }
   boundedText(text: string): string { return this.#hygiene.boundedText(text); }
 
@@ -514,8 +650,8 @@ export class HubCore {
 
   #dropExpired(name: string): void {
     for (const message of this.#store.expireQueued(name, this.#now().getTime(), this.#queueTtlMs)) {
-      this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name });
-      this.#emitStage(message.id);
+      this.#afterCommit(() => this.#log({ event: 'dropped', reason: 'queue ttl', id: message.id, session: name }));
+      this.#afterCommit(() => this.#emitStage(message.id));
     }
   }
 
@@ -1248,6 +1384,12 @@ export class HubCore {
       const signature = HubCore.#topicSignature(topic);
       if (this.#publishedTopics.get(topic.id) === signature && !force.has(topic.id)) continue;
       this.#publishedTopics.set(topic.id, signature);
+      const previous = this.#topicStatuses.get(topic.id);
+      this.#topicStatuses.set(topic.id, topic.status);
+      if (previous !== topic.status && (topic.status === 'waiting for human' || topic.status === 'closed')) {
+        if (topic.status === 'closed') this.#terminalEvent({ topic: topic.id }, 'topic', `${topic.id} closed`, { item: topic.item });
+        else this.publishEvent({ topic: topic.id }, 'topic', `${topic.id} ${topic.status}`, { item: topic.item });
+      }
       this.#emit({ type: 'topic', topic });
     }
   }
@@ -1406,7 +1548,12 @@ export class HubCore {
   deleteTopic(id: string): void {
     const topic = this.#topicOrThrow(id);
     if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be deleted`);
-    this.#logReleased(this.#store.deleteTopic(id));
+    this.#store.transaction(() => {
+      this.#terminalEvent({ topic: id }, 'topic', `${id} deleted`, { item: topic.item });
+      const released = this.#store.deleteTopic(id);
+      this.#afterCommit(() => this.#logReleased(released));
+    });
+    this.#topicStatuses.delete(id);
     this.#publishedTopics.delete(id);
     // its asks went with it: the inbox lists them no more
     this.inbox.refresh();

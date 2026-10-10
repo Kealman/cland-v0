@@ -160,8 +160,11 @@ test('resume --relaunch announces each transition into running once for the same
   assert.equal(launched.ok, true, launched.error);
   const first = (launched.value as { process: { pid: number; sessionId: string } }).process;
   t.after(() => killDaemon(first.pid));
+  await ui.request({ type: 'topic.send', topic: 'general', text: '@coord freeze initial launch' });
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
   for (const count of [2, 3]) {
+    if (count === 3) assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
+    await coord.call('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
     const result = await cland(root, 'session', 'resume', 'impl', '--relaunch', '--json');
     assert.equal(result.code, 0, result.stderr);
     const process = JSON.parse(result.stdout).process as { pid: number; sessionId: string };
@@ -171,6 +174,7 @@ test('resume --relaunch announces each transition into running once for the same
       const history = await ui.request({ type: 'topic.history', topic: 'agents' });
       return (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.text === 'event · session.state · impl launched').length === count || undefined;
     });
+    await ui.request({ type: 'topic.send', topic: 'general', text: `@coord freeze launch ${count}` });
   }
   assert.equal((await ui.request({ type: 'session.resume', session: 'impl' })).ok, true);
   const history = await ui.request({ type: 'topic.history', topic: 'agents' });
@@ -209,6 +213,7 @@ test('session state and lifecycle events include death, held until the Coordinat
   await impl.call('send', { to: ['coord'], text: 'Coordinator next turn' });
   const received = await coord.waitForEvent(e => e.params.meta?.from === 'messenger' && e.params.content.includes('Coordinator next turn'));
   assert.match(received.params.content, /impl died[\s\S]*Coordinator next turn/);
+  await coord.call('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   const relaunch = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true });
   assert.equal(relaunch.ok, true, relaunch.error);
   assert.equal((relaunch.value as { process: { sessionId: string } }).process.sessionId, p.sessionId);
@@ -409,7 +414,7 @@ test('invalid subjects and events are refused at the frame and MCP boundaries; C
   await coord.waitForPresence(['coord']);
   for (const [subject, events] of [
     [{ session: 'impl', item: 'T-1' }, ['session.state']], [{ session: 'impl' }, ['task']],
-    [{ topic: 'general' }, ['topic']], [{ item: 'T-999' }, ['task']], [{ session: 'impl' }, []],
+    [{ topic: 'missing' }, ['topic']], [{ item: 'T-999' }, ['task']], [{ session: 'impl' }, []],
     [{ session: 'coordinator' }, ['session.state']], [{ session: 'impl' }, ['usage']],
   ]) {
     assert.equal((await coord.call<{ ok: boolean }>('subscribe', { subject, events })).ok, false);
@@ -420,4 +425,26 @@ test('invalid subjects and events are refused at the frame and MCP boundaries; C
   assert.equal(impostor.code, 1);
   assert.match(impostor.stderr, /forbidden/);
   assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
+});
+
+test('a terminal session role update preserves a subscription created for its next launch', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t, { pollMs: 50 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  assert.equal((await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' })).ok, true);
+  await coord.waitForPresence(['coord', 'impl']);
+  assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
+  const subscribed = await coord.call<{ subscription: Subscription }>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
+  assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'qa' })).ok, true);
+  assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, [subscribed.subscription], 'a metadata update is not another terminal occurrence');
+  assert.equal((await ui.request({ type: 'session.resume', session: 'impl', relaunch: true })).ok, true);
+  await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl launched');
+  const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+  const events = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
+  assert.deepEqual(events.map(m => m.text), ['event · session.state · impl launched'], 'the prior terminal fact must not replay into a new subscription');
 });

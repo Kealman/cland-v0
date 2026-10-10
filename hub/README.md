@@ -1013,23 +1013,73 @@ From the human's shell, add `--as <session>` to act as a known session. CLI call
 checked against that session's hub-held permissions. A session can subscribe to a
 session name before it launches. A rename moves session subjects to the new name;
 subscriptions belong to the subscriber's stable session id, so its own rename keeps
-them. Item subjects must name existing items. Session subjects support `session.state`;
-item subjects support `task`.
+them. Item and subtree subjects must name existing items; topic and role subjects
+must exist. A subtree includes its root and all descendants, following the current
+item tree. Item/subtree events also include sessions working on those items and
+artifacts/topics bound to them. Role subjects follow sessions holding that role,
+including their usage and artifacts. Session subjects support `session.state`,
+`usage` and `artifact`; topic subjects support `topic` and `artifact`.
 
 Session events are idle, busy, waiting for human, waiting for approval, launched,
 stopped and died. Task events are status changed, claimed, verdict posted and closed.
+Topic events report waiting for human, closed and deleted; artifact events report created
+and shared (including a sent prompt). Usage subscriptions require exactly one
+positive threshold, `{ cost: 3 }` (USD) or `{ tokens: 1000000 }` (total tokens).
+A threshold crossing is remembered per subscription and session across hub restarts;
+updates remaining above it do not repeat the event. Unknown cost does not mean zero.
+Overlapping subscriptions deliver the same occurrence once per recipient.
 Each is a one-line delivery from `hub`, for example
 `event · session.state · impl-3 died · T-58`. Only the hub emits kind `event`;
 a session's `send` cannot use it.
 
 Events remain queued without starting a turn. They join progress notes, in recorded
 order, in the ordinary recipient-specific digest with the next turn-starting delivery.
-Subscriptions and queued events survive a hub restart. Events use the same delivery
+Subscriptions and queued events survive a hub restart. Every recipient row, including
+mixed turn/now modes and coalesced counts, commits together before publication or
+steering. Observer, transport and logger faults after commit are isolated and logged;
+they leave the committed rows and artifact bytes intact. Events use the same delivery
 stages, acknowledgement, injection, immutable retry batches, TTL, retention and
 message-deletion rules as progress. Unsubscribe stops future matching events when
 it returns; events already recorded remain queued or bound to their existing digest.
 The UI's connection-scoped `subscribe` stream frame is unchanged: session tools use
 `event.subscribe`, `event.unsubscribe` and `event.subscriptions` frames.
 
-Other subjects and event families, immediate steering, coalescing, digest caps,
-subscription lifetimes, and default lead subscriptions are subsequent slices.
+Use `digest: "now"` to deliver immediately through the same queue: Codex and OpenCode
+steer a running turn or start one while idle; Claude Code and unmanaged sessions
+fall back to the next-turn digest. The CLI accepts `--digest now`, `--cost 3` and
+`--tokens 1000000`, with subjects `session`, `item`, `topic`, `role` and `subtree`.
+For example:
+
+```sh
+cland subscribe subtree T-50 --event task --event topic
+cland subscribe role implementer --event usage --cost 3 --digest now
+cland hub subscriptions --json
+```
+
+Consecutive equal events on the same concrete subject coalesce while queued and unbound within
+60 seconds of their first occurrence, with `×N` on the delivered line. A different
+event for that subject breaks the run, preserving every lifecycle transition. A bound
+recipient's batch never changes; another recipient can still coalesce its own
+unbound row. A digest shows at most 10 event lines, prioritizing final subject facts
+and then the oldest events, with `and N more` for overflow. Progress notes remain
+uncapped. All underlying event rows move through acknowledgement and injection
+with the batch, including the summarized rows.
+
+Stopping or losing a subscriber ends its subscriptions. A session stop/death, an
+item close/removal or a topic close/deletion sends a final event and ends subscriptions to
+that exact subject, including a subtree's root. A role or subtree subscription
+survives the death of a member. Removal uses the item's pre-removal ancestry;
+reparenting sends a final membership fact to subtrees the item left. Startup
+reconciles committed stops and persists their final-event checkpoint with cleanup,
+so another restart does not repeat them. Reopening or relaunching an exact subject requires
+a new subscription. Unsubscribe and lifecycle closure leave previously recorded
+events in their existing queue/batch.
+
+Events have a separate durable recipient limit under `[hygiene]`:
+`event_limit_max = 120` and `event_limit_window_minutes = 10`. Each occurrence,
+including a coalesced occurrence, uses that allowance; final subject events bypass
+it so closure is reported. Events consume no message or pair-loop allowance.
+The human's `cland hub subscriptions` lists all session owners and subscriptions;
+sessions keep caller-only `subscriptions`. Subscriptions create no inbox entries.
+The journal records event ids, subjects, kinds, recipients, counts and limiting,
+never bodies. Default lead subscriptions are the next slice.

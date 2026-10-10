@@ -31,16 +31,18 @@ export function isSendKind(value: unknown): value is SendKind {
 export type Outcome = 'delivered' | 'queued' | 'unknown' | 'refused' | 'empty';
 
 /** A standing request for hub events, owned by the caller's stable session identity. */
-export type SubscriptionSubject = { session: string } | { item: string };
-export type SubscriptionEvent = 'session.state' | 'task';
-export type Subscription = { id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest: 'turn' };
+export type SubscriptionSubject = { session: string } | { item: string } | { topic: string } | { role: string } | { subtree: string };
+export type SubscriptionEvent = 'session.state' | 'task' | 'topic' | 'usage' | 'artifact';
+export type UsageThreshold = { cost: number } | { tokens: number };
+export type OwnedSubscription = Subscription & { subscriberId: string };
+export type Subscription = { id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest: 'turn' | 'now'; threshold?: UsageThreshold };
 export type SubscriptionRequest = (
-  | { type: 'event.subscribe'; id: string; subject: SubscriptionSubject; events: SubscriptionEvent[] }
+  | { type: 'event.subscribe'; id: string; subject: SubscriptionSubject; events: SubscriptionEvent[]; digest?: 'turn' | 'now'; threshold?: UsageThreshold }
   | { type: 'event.unsubscribe'; id: string; subscription: string }
   | { type: 'event.subscriptions'; id: string }
 ) & { as?: { name: string; sessionId?: string; shell?: boolean } };
-export function isHeldDelivery(message: { kind?: string | undefined }): boolean {
-  return message.kind === 'progress' || message.kind === 'event';
+export function isHeldDelivery(message: { kind?: string | undefined; detail?: Record<string, unknown> }): boolean {
+  return message.kind === 'progress' || (message.kind === 'event' && message.detail?.digest !== 'now');
 }
 
 export type Presence = {
@@ -436,6 +438,7 @@ export type ClientRequest =
   | PromptSend
   | ArtifactPromote
   /** What runs: the hub's process and the connected sessions. */
+  | { type: 'hub.subscriptions'; id: string }
   | { type: 'hub.status'; id: string; flushLogs?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
@@ -594,6 +597,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'prompt.send':
     case 'artifact.promote':
       return true;
+    case 'hub.subscriptions':
     case 'hub.status':
     case 'hub.stop':
     case 'topic.list':

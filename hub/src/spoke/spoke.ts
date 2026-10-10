@@ -57,13 +57,15 @@ const TOOLS = [
   },
   {
     name: 'subscribe',
-    description: "Receive hub events about a session or item in your next-turn digest. Returns a durable caller-owned subscription; repeated identical requests return the same id.",
+    description: "Receive hub events about sessions, items, topics, roles or subtrees; turn digests are default, now steers where supported. Returns a durable caller-owned subscription; repeated identical requests return the same id.",
     inputSchema: { type: 'object', properties: {
       subject: { type: 'object', oneOf: [
         { properties: { session: { type: 'string' } }, required: ['session'], additionalProperties: false },
-        { properties: { item: { type: 'string' } }, required: ['item'], additionalProperties: false },
+        ...['item', 'topic', 'role', 'subtree'].map(key => ({ properties: { [key]: { type: 'string' } }, required: [key], additionalProperties: false })),
       ] },
-      events: { type: 'array', items: { type: 'string', enum: ['session.state', 'task'] }, minItems: 1 },
+      events: { type: 'array', items: { type: 'string', enum: ['session.state', 'task', 'topic', 'usage', 'artifact'] }, minItems: 1 },
+      digest: { type: 'string', enum: ['turn', 'now'] },
+      threshold: { type: 'object', oneOf: ['cost', 'tokens'].map(key => ({ properties: { [key]: { type: 'number', exclusiveMinimum: 0 } }, required: [key], additionalProperties: false })) },
     }, required: ['subject', 'events'] },
   },
   {
@@ -275,8 +277,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     try {
       switch (req.params.name) {
         case 'subscribe': {
-          const input = subscriptionInput(args.subject, args.events);
-          const value = await hub.request({ type: 'event.subscribe', subject: input.subject, events: input.events }) as Record<string, unknown>;
+          const input = subscriptionInput(args.subject, args.events, args.digest, args.threshold);
+          const value = await hub.request({ type: 'event.subscribe', ...input }) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'unsubscribe': {

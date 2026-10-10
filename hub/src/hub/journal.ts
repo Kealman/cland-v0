@@ -29,6 +29,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'config-unreadable',
   // messages (metadata only) and their deliveries
   'event-delivery',
+  'event-limited',
   'send',
   'send-refused',
   'human-send',

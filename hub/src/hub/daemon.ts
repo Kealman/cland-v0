@@ -119,7 +119,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       store: new Store(l.db),
       log,
       requestGuard,
-      ...(config ? { rateLimit: config.hygiene.rateLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
+      ...(config ? { rateLimit: config.hygiene.rateLimit, eventLimit: config.hygiene.eventLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
       tracker,
       roles,
       artifactRetentionDays: config?.artifacts.retentionDays ?? 30,
@@ -212,7 +212,6 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log });
   hub.dispatcher.useSessions(adapters.sessions);
-  adapters.sessions.releaseInterruptedLaunches();
 
   const discovery: Discovery = { root, socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);

@@ -68,6 +68,7 @@ export function vacancyWarning(roles: string[]): string | undefined {
  * The tracker as a topic's binding sees it. A hub with no project has none, and refuses a binding.
  */
 export type TopicItems = {
+  ancestry?: (item: string) => string[];
   /** The item's normalized id (`T-12`), with the topic its file names (or null); throws why it cannot be bound. */
   check: (item: string) => { id: string; topic: string | null; state: string };
   /** Record the binding in the item's file (`topic:`), through the tracker. */
@@ -79,6 +80,12 @@ export type TopicItems = {
 export function trackerItems(tracker: Tracker): TopicItems {
   const hub = { id: 'hub', name: 'hub', role: null };
   return {
+    ancestry: (item) => {
+      const parents = new Map(tracker.list().map(i => [i.id, i.parent]));
+      const path: string[] = [];
+      for (let id: string | null | undefined = item; id && !path.includes(id); id = parents.get(id)) path.push(id);
+      return path;
+    },
     check: (item) => {
       const view = tracker.view(item);
       return { id: view.id, topic: view.topic ?? null, state: view.state };

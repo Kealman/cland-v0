@@ -32,6 +32,7 @@ const READS: ReadonlySet<string> = new Set([
   'role.list',
   'role.state',
   'hub.status',
+  'hub.subscriptions',
   'who',
   'history',
   'artifact.list',

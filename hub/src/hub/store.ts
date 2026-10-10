@@ -2,7 +2,7 @@
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
 import { isHeldDelivery } from '../protocol.ts';
-import type { Subscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import { vacancyWarning } from './topics.ts';
 
@@ -21,6 +21,12 @@ create table if not exists subscriptions (
 );
 create index if not exists subscriptions_owner on subscriptions (subscriber_id);
 create index if not exists subscriptions_subject on subscriptions (subject_json);
+create table if not exists subscription_usage (
+  subscription_id text not null references subscriptions (id) on delete cascade,
+  session_id text not null,
+  above integer not null,
+  primary key (subscription_id, session_id)
+);
 create table if not exists artifacts (
   number integer primary key autoincrement,
   value text not null
@@ -152,6 +158,9 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'deliveries', column: 'session_id', type: 'text' },
   /** A progress note's turn-starting delivery, fixed before transport and reused on every retry. */
   { table: 'deliveries', column: 'digest_id', type: 'text' },
+  { table: 'deliveries', column: 'event_count', type: 'integer not null default 1' },
+  { table: 'subscriptions', column: 'digest', type: "text not null default 'turn'" },
+  { table: 'subscriptions', column: 'threshold_json', type: 'text' },
   /** The sender's session id, for an agent's message: a reply finds the sender after a rename. */
   { table: 'messages', column: 'from_session_id', type: 'text' },
 ];
@@ -433,6 +442,12 @@ export class Store implements HygieneMemory {
     return (this.#db.prepare('select kind, key, value from hygiene').all() as Row[]).map((r) => ({ kind: r.kind as HygieneRow['kind'], key: r.key as string, value: r.value as string }));
   }
 
+  /** One window as visible in the current transaction, including any rollback. */
+  hygieneValue(kind: HygieneRow['kind'], key: string): string | null {
+    const row = this.#db.prepare('select value from hygiene where kind = ? and key = ?').get(kind, key) as Row | undefined;
+    return row ? row.value as string : null;
+  }
+
   /** One piece of hygiene's state; null forgets it. */
   saveHygiene(kind: HygieneRow['kind'], key: string, value: string | null): void {
     if (value === null) this.#db.prepare('delete from hygiene where kind = ? and key = ?').run(kind, key);
@@ -457,6 +472,20 @@ export class Store implements HygieneMemory {
 
   /** How deep the running transaction is nested: an inner one joins the outer (a role's move records its notices). */
   #depth = 0;
+  #afterCommit: Array<() => void> = [];
+
+  /** Publication inside a nested artifact/post write waits for the outer commit; rollback discards it. */
+  afterCommit(publish: () => void, failed: (error: unknown) => void): void {
+    const observe = () => {
+      try { publish(); }
+      catch (error) {
+        try { failed(error); }
+        catch { /* an error observer cannot turn a committed write into a failed write */ }
+      }
+    };
+    if (this.#depth) this.#afterCommit.push(observe);
+    else observe();
+  }
 
   /** Run `fn` in one transaction: all of its writes land, or none does. Nested, it is part of the outer one. */
   #transaction<T>(fn: () => T): T {
@@ -470,16 +499,21 @@ export class Store implements HygieneMemory {
     }
     this.#db.exec('begin immediate');
     this.#depth = 1;
+    let result: T;
     try {
-      const result = fn();
+      result = fn();
       this.#db.exec('commit');
-      return result;
     } catch (err) {
       this.#db.exec('rollback');
+      this.#afterCommit = [];
       throw err;
     } finally {
       this.#depth = 0;
     }
+    const publications = this.#afterCommit;
+    this.#afterCommit = [];
+    for (const publish of publications) publish();
+    return result;
   }
 
   /** Record a message and the state of each addressee's delivery, together: a message is never stored with
@@ -519,23 +553,31 @@ export class Store implements HygieneMemory {
       // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
       // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
       const kind = notice ?? message.kind;
-      if (!isHeldDelivery({ kind }) && kind !== 'role') {
+      if (!isHeldDelivery({ kind, ...(message.detail ? { detail: message.detail } : {}) }) && kind !== 'role') {
         for (const d of deliveries) this.#bindProgress(message.id, d.session, seq);
       }
     });
   }
 
+  allSubscriptions(): OwnedSubscription[] {
+    return (this.#db.prepare('select * from subscriptions order by rowid').all() as Row[]).map(row => ({
+      id: row.id as string, subscriberId: row.subscriber_id as string,
+      subject: JSON.parse(row.subject_json as string), events: JSON.parse(row.events_json as string),
+      digest: row.digest as Subscription['digest'],
+      ...(row.threshold_json ? { threshold: JSON.parse(row.threshold_json as string) } : {}),
+    }));
+  }
+
   subscriptions(subscriberId: string): Subscription[] {
-    return (this.#db.prepare('select * from subscriptions where subscriber_id = ? order by rowid').all(subscriberId) as Row[])
-      .map(row => ({ id: row.id as string, subject: JSON.parse(row.subject_json as string), events: JSON.parse(row.events_json as string), digest: 'turn' }));
+    return this.allSubscriptions().filter(s => s.subscriberId === subscriberId).map(({ subscriberId: _, ...s }) => s);
   }
 
   addSubscription(subscriberId: string, subscription: Subscription): Subscription {
     return this.#transaction(() => {
-      const existing = this.subscriptions(subscriberId).find(s => JSON.stringify(s.subject) === JSON.stringify(subscription.subject) && JSON.stringify(s.events) === JSON.stringify(subscription.events));
+      const existing = this.subscriptions(subscriberId).find(s => JSON.stringify([s.subject, s.events, s.digest, s.threshold]) === JSON.stringify([subscription.subject, subscription.events, subscription.digest, subscription.threshold]));
       if (existing) return existing;
-      this.#db.prepare('insert into subscriptions (id, subscriber_id, subject_json, events_json) values (?, ?, ?, ?)')
-        .run(subscription.id, subscriberId, JSON.stringify(subscription.subject), JSON.stringify(subscription.events));
+      this.#db.prepare('insert into subscriptions (id, subscriber_id, subject_json, events_json, digest, threshold_json) values (?, ?, ?, ?, ?, ?)')
+        .run(subscription.id, subscriberId, JSON.stringify(subscription.subject), JSON.stringify(subscription.events), subscription.digest, subscription.threshold ? JSON.stringify(subscription.threshold) : null);
       return subscription;
     });
   }
@@ -544,9 +586,34 @@ export class Store implements HygieneMemory {
     return this.#db.prepare('delete from subscriptions where id = ? and subscriber_id = ?').run(id, subscriberId).changes > 0;
   }
 
-  eventSubscribers(subject: SubscriptionSubject, event: string): string[] {
-    return (this.#db.prepare('select distinct subscriber_id from subscriptions where subject_json = ? and exists (select 1 from json_each(events_json) where value = ?)')
-      .all(JSON.stringify(subject), event) as Row[]).map(row => row.subscriber_id as string);
+  endSubscriptions(subscriberId: string): void {
+    this.#db.prepare('delete from subscriptions where subscriber_id = ?').run(subscriberId);
+  }
+
+  endSubject(subject: SubscriptionSubject): void {
+    this.#db.prepare('delete from subscriptions where subject_json = ?').run(JSON.stringify(subject));
+  }
+
+  usageCrossed(subscription: string, sessionId: string, above: boolean): boolean {
+    const before = this.#db.prepare('select above from subscription_usage where subscription_id = ? and session_id = ?').get(subscription, sessionId) as Row | undefined;
+    this.#db.prepare('insert into subscription_usage values (?, ?, ?) on conflict(subscription_id, session_id) do update set above = excluded.above').run(subscription, sessionId, above ? 1 : 0);
+    return above && !before?.above;
+  }
+
+  /** Only the latest event for this subject can extend a run. Bound batches and other recipients are immutable. */
+  coalesceEvent(session: string, subject: SubscriptionSubject, key: string, now: number): { id: string; count: number } | null {
+    const row = this.#db.prepare(`select * from (
+      select m.id, m.created_at, m.notice_detail, d.event_count, d.state, d.digest_id
+      from messages m join deliveries d on d.message_id = m.id
+      where d.session = ? and m.notice = 'event' and json_extract(m.notice_detail, '$.subject') = ?
+      order by m.seq desc limit 1
+    ) where state = 'queued' and digest_id is null and created_at > ?
+      and json_extract(notice_detail, '$.digest') = 'turn' and json_extract(notice_detail, '$.key') = ?`)
+      .get(session, JSON.stringify(subject), now - 60_000, key) as Row | undefined;
+    if (!row) return null;
+    const count = (row.event_count as number) + 1;
+    this.#db.prepare('update deliveries set event_count = ? where message_id = ? and session = ?').run(count, row.id as string, session);
+    return { id: row.id as string, count };
   }
 
   renameSubscriptionSubject(from: string, to: string): void {
@@ -634,7 +701,7 @@ export class Store implements HygieneMemory {
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
   uninjected(session: string): Message[] {
     const rows = this.#db
-      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') not in ('progress', 'event') order by m.seq")
+      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') != 'progress' and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') order by m.seq")
       .all(session) as Row[];
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
   }
@@ -655,14 +722,29 @@ export class Store implements HygieneMemory {
     const root = this.deliveryRoot(messageId, session);
     const message = this.message(root);
     if (!message) return null;
-    const digest = this.deliveryIds(root, session).filter(id => id !== root).map(id => this.message(id)!);
+    const members = this.deliveryIds(root, session).filter(id => id !== root).map(id => {
+      const note = this.message(id)!;
+      if (note.kind !== 'event') return note;
+      const row = this.#db.prepare('select event_count from deliveries where message_id = ? and session = ?').get(id, session) as Row;
+      const count = row.event_count as number;
+      return count > 1 ? { ...note, text: `${note.text} (×${count})`, detail: { ...note.detail, count } } : note;
+    });
+    // Keep terminal subject facts visible, then fill remaining event slots in recorded order.
+    // Progress is never capped. Every underlying row is still acknowledged with the same fixed root.
+    const cap = message.kind === 'event' ? 9 : 10;
+    const eventNotes = members.filter(note => note.kind === 'event');
+    const visible = new Set(eventNotes.filter(note => note.detail?.final === true).slice(0, cap).map(note => note.id));
+    for (const note of eventNotes) if (visible.size < cap) visible.add(note.id);
+    const digest = members.filter(note => note.kind !== 'event' || visible.has(note.id));
+    const hidden = eventNotes.length - visible.size;
+    if (hidden) digest.push({ id: `${root}:event-summary`, from: 'hub', fromKind: 'hub', via: 'hub', to: [session], ts: message.ts, kind: 'event', text: `event · and ${hidden} more`, detail: { count: hidden, summary: true } });
     return digest.length ? { ...message, digest } : message;
   }
 
   #bindProgress(messageId: string, session: string, seq: number): void {
     this.#db.prepare(`update deliveries set digest_id = ?
       where session = ? and state = 'queued' and digest_id is null and message_id in
-      (select id from messages where notice in ('progress', 'event') and seq < ?)`).run(messageId, session, seq);
+      (select id from messages where (notice = 'progress' or (notice = 'event' and coalesce(json_extract(notice_detail, '$.digest'), 'turn') = 'turn')) and seq < ?)`).run(messageId, session, seq);
   }
 
   /**

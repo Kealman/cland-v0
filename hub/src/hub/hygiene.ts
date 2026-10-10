@@ -11,6 +11,7 @@ export type RateLimit = { max: number; windowMs: number };
 export type LoopBreaker = { max: number; windowMs: number; muteMs: number };
 
 export const RATE_LIMIT: RateLimit = { max: 30, windowMs: 10 * 60 * 1000 };
+export const EVENT_LIMIT: RateLimit = { max: 120, windowMs: 10 * 60 * 1000 };
 export const LOOP_BREAKER: LoopBreaker = { max: 20, windowMs: 5 * 60 * 1000, muteMs: 10 * 60 * 1000 };
 export const MAX_TEXT_BYTES = 8 * 1024;
 
@@ -25,11 +26,12 @@ export class HygieneError extends Error {
 }
 
 /** One piece of hygiene's state: a session's send instants, a pair's instants, or a pair's mute end. */
-export type HygieneRow = { kind: 'outbound' | 'pair' | 'mute'; key: string; value: string };
+export type HygieneRow = { kind: 'outbound' | 'pair' | 'mute' | 'event'; key: string; value: string };
 
 /** Where hygiene keeps its state across restarts. */
 export interface HygieneMemory {
   hygieneRows(): HygieneRow[];
+  hygieneValue(kind: HygieneRow['kind'], key: string): string | null;
   saveHygiene(kind: HygieneRow['kind'], key: string, value: string | null): void;
 }
 
@@ -38,6 +40,8 @@ const minutes = (ms: number): number => Math.round(ms / 60_000);
 
 export class Hygiene {
   readonly #rate: RateLimit;
+  readonly #eventLimit: RateLimit;
+  readonly #events = new Map<string, number[]>();
   readonly #loop: LoopBreaker;
   readonly #maxBytes: number;
   readonly #outbound = new Map<string, number[]>(); // session → send instants in the window
@@ -45,8 +49,9 @@ export class Hygiene {
   readonly #muted = new Map<string, number>(); // pair → muted until
   readonly #memory: HygieneMemory | null;
 
-  constructor(options: { rateLimit?: RateLimit; loopBreaker?: LoopBreaker; maxTextBytes?: number; memory?: HygieneMemory } = {}) {
+  constructor(options: { rateLimit?: RateLimit; eventLimit?: RateLimit; loopBreaker?: LoopBreaker; maxTextBytes?: number; memory?: HygieneMemory } = {}) {
     this.#rate = options.rateLimit ?? RATE_LIMIT;
+    this.#eventLimit = options.eventLimit ?? EVENT_LIMIT;
     this.#loop = options.loopBreaker ?? LOOP_BREAKER;
     this.#maxBytes = options.maxTextBytes ?? MAX_TEXT_BYTES;
     this.#memory = options.memory ?? null;
@@ -54,7 +59,7 @@ export class Hygiene {
       try {
         const value: unknown = JSON.parse(row.value);
         if (row.kind === 'mute' && typeof value === 'number') this.#muted.set(row.key, value);
-        else if (Array.isArray(value) && value.every((v) => typeof v === 'number')) (row.kind === 'pair' ? this.#pairs : this.#outbound).set(row.key, value);
+        else if (Array.isArray(value) && value.every((v) => typeof v === 'number')) (row.kind === 'event' ? this.#events : row.kind === 'pair' ? this.#pairs : this.#outbound).set(row.key, value);
       } catch {
         /* an unreadable row is no state */
       }
@@ -64,7 +69,7 @@ export class Hygiene {
   /** Write one map entry through to the memory (or forget it there when it is gone here). */
   #save(kind: HygieneRow['kind'], key: string): void {
     if (!this.#memory) return;
-    const map = kind === 'mute' ? this.#muted : kind === 'pair' ? this.#pairs : this.#outbound;
+    const map = kind === 'event' ? this.#events : kind === 'mute' ? this.#muted : kind === 'pair' ? this.#pairs : this.#outbound;
     const value = map.get(key);
     const empty = value === undefined || (Array.isArray(value) && value.length === 0);
     this.#memory.saveHygiene(kind, key, empty ? null : JSON.stringify(value));
@@ -103,6 +108,25 @@ export class Hygiene {
     stamps.push(now);
     this.#save('outbound', session);
     return null;
+  }
+
+  /** Events have a separate durable recipient window and never consume a sender's messages. */
+  admitEvent(session: string, now: number): boolean {
+    // Read through the transaction: a failed event fan-out must roll its allowance back too.
+    const stored = this.#memory?.hygieneValue('event', session);
+    let previous = this.#memory ? [] : (this.#events.get(session) ?? []);
+    if (stored) {
+      try {
+        const parsed: unknown = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.every(t => typeof t === 'number')) previous = parsed;
+      } catch { /* unreadable state is no allowance usage */ }
+    }
+    const stamps = previous.filter(t => now - t < this.#eventLimit.windowMs);
+    const admitted = stamps.length < this.#eventLimit.max;
+    if (admitted) stamps.push(now);
+    this.#events.set(session, stamps);
+    this.#save('event', session);
+    return admitted;
   }
 
   /** Why a pair may not talk now, or null. An expired mute is forgotten on the way. `names` are what the

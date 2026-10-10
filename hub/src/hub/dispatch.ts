@@ -18,7 +18,7 @@ import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type Hu
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import type { RolesConfig } from '../roles/config.ts';
-import { withRole } from '../names.ts';
+import { ROLE_NAMES, withRole } from '../names.ts';
 import {
   PROTOCOL_VERSION,
   UPDATE_HINT,
@@ -681,9 +681,12 @@ export class Dispatcher {
         let value: unknown;
         switch (frame.type) {
           case 'event.subscribe': {
-            const input = subscriptionInput(frame.subject, frame.events);
+            const input = subscriptionInput(frame.subject, frame.events, frame.digest, frame.threshold);
             const subject = input.subject;
-            if ('item' in subject && !this.#options.tracker?.list().some(item => item.id === subject.item)) throw new Error(`no item ${subject.item}`);
+            const itemId = 'item' in subject ? subject.item : 'subtree' in subject ? subject.subtree : null;
+            if (itemId && !this.#options.tracker?.list().some(item => item.id === itemId)) throw new Error(`no item ${itemId}`);
+            if ('topic' in subject && !core.store.topic(subject.topic)) throw new Error(`no topic ${subject.topic}`);
+            if ('role' in subject && !ROLE_NAMES.includes(subject.role)) throw new Error(`unknown role ${subject.role}`);
             value = { subscription: core.store.addSubscription(caller.sessionId, { id: randomUUID(), ...input }) };
             break;
           }
@@ -918,6 +921,9 @@ export class Dispatcher {
         return;
       }
       switch (frame.type) {
+        case 'hub.subscriptions':
+          peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.store.allSubscriptions().map(s => ({ ...s, subscriber: core.store.nameOfSession(s.subscriberId) })) } });
+          break;
         case 'hub.status': {
           const status = (): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
           if (frame.flushLogs === true && control.flushLogs) {
