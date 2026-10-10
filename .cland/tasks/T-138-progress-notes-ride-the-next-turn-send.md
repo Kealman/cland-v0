@@ -2,8 +2,8 @@
 id: T-138
 kind: task
 title: "Progress notes ride the next turn: send gains kind; progress is held and digested with the next turn on all three adapters, across a hub restart"
-state: open
-status: ready
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-52
 branch: t/T-138-progress-notes-ride-the-next-turn-send
 created: 2026-10-10T01:52:18.096Z
-updated: 2026-10-10T03:12:11.071Z
+updated: 2026-10-10T03:13:11.367Z
 ---
 
 ## Parent
@@ -176,3 +176,23 @@ Evidence A-375: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-375-t-
 ### impl-138 · 2026-10-10T03:12:11.003Z
 
 Final handoff at f84e37a2ebc16a3d8eef31853c765ed4001c2d90 (copied git log -1), pushed local origin, clean worktree. Typecheck passed on final head. Root hub838/838 passed; Coordinator-approved carryover after one Neovim test-only correction. Final npm run test:nvim146/146 passed, exit0, no skips. Current clear role-held review rev-66-138-2. Final report A-382 includes implementation/deletion/journal audits, exact instance-role old/new lines, and accepted low broadcast-retention follow-up. Root log A-374; final Neovim log A-381. No merge.
+
+### coord · 2026-10-10T03:12:48.120Z
+
+Merged f9912c258662f7b435c71ac31c0aa3bc7f153cc6 onto dev.
+
+### coord · 2026-10-10T03:13:11.367Z
+
+Merged by the Coordinator through `cland merge T-138`, after `cland push`: squash f9912c2 on dev.
+Gate: review rev-66-138-2 clear on f84e37a, carrying forward rev-66-138-1 (6d6a625) and rev-65-138-4 (f64573f, A-358). Earlier rounds:
+- rev-65-138-1, -2 and -3 (A-347, A-352, A-356): the role-claim binding, TTL, retention and pending digests, rename collisions, orphaned notes after trigger deletion, and journal filtering.
+- The suite rounds: a blanket queued-retention guard was narrowed to pending-digest members (A-363), and the Agents assertions in the hub and Neovim were updated for the default `report` kind after a production audit.
+Decisions:
+- a missing kind is `report`;
+- expired notes are dropped before binding, and bound notes follow their trigger's TTL;
+- retention protects pending-digest members only;
+- a rename is refused on unacknowledged target rows and on any same-message collision;
+- a deleted trigger re-holds pending notes and leaves settled ones settled;
+- one transactional helper handles every physical deletion.
+Evidence: hub 838 of 838 on 6d6a625 (A-374), Neovim 146 of 146 on f84e37a (A-381); handover A-382. Low follow-up T-144: broadcast retention.
+Project instance: the four role-clause lines for progress kinds are committed next. They take effect at the next hub restart and on new launches.

@@ -3,7 +3,7 @@ id: T-133
 kind: task
 title: "Markdown per message: per-body tree-sitter parse with cached conceal spans, plain fallback, verdict colours, blue item ids, 80-column safe"
 state: open
-status: review
+status: in progress
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-53
 branch: t/T-133-markdown-per-message-per-body-tree
 created: 2026-10-10T01:20:46.534Z
-updated: 2026-10-10T03:10:52.252Z
+updated: 2026-10-10T03:13:04.378Z
 ---
 
 ## Parent
@@ -80,3 +80,23 @@ Review follow-up: reproduced header-only table loss and stacked header Markdown/
 ### impl-133 · 2026-10-10T03:09:15.983Z
 
 Delta head from git log -1: 952b8d9eb275e7a22097d5a42be229e6315d1b9c, clean. Focused thread14/14 and width-aware differential pass; updated THREAD-003/004 pass and typecheck passes. Table cells/headers carry rendered text, spans and links together; full columns fit rendered widths through shared fitter, narrow headers retain Markdown/targets, header-only content stays. Valid reference links also retain destinations. Warm21.412 ms/0 parses, append+eviction1.279 ms, cold221.701 ms/200 distinct parses. Root suite held for Coordinator's review delta.
+
+### rev-66 · 2026-10-10T03:13:04.378Z
+
+verdict: review
+result: not clear
+by: rev-66 [reviewer]
+run: rev-66-133-2
+commit: 952b8d9eb275e7a22097d5a42be229e6315d1b9c
+
+High: 0. Medium: 3. Low: 0. All original A-373 findings resolved.
+
+Medium — nvim/lua/cland/thread_md.lua:437: stacked rendering walks only present data cells; a short row | x | drops its trailing linked header and target at widths78/118 while full width200 preserves them. Iterate all columns with empty cell fallbacks.
+
+Medium — nvim/lua/cland/thread_md.lua:181: duplicate reference labels overwrite the first destination; all full/collapsed/shortcut references resolve to the second URL, contrary to Coordinator's first-wins rule in56d979c5.
+
+Medium — nvim/lua/cland/thread_md.lua:190: link capture excludes URL/email autolinks; both forms have empty target metadata, contrary to Coordinator's follow-up requirement.
+
+Actual pinned-source/bundled-Neovim probes reproduce all three. Original header-only, stacked styled-header, and hidden-URL fit probes now pass. Width sweep confirms explicit empty-leading/middle cells and normal Unicode/styled/link cells preserve positions and targets. Expanded differential covers new regular examples but lacks short-row trailing-header case. No suite or edits.
+
+Full-item unaffected parser/cache/fallback, fences, verdict/gi, incremental extmarks, resize/local options and accepted cost/fold scope carry forward from A-373. Standards:0; Spec:3medium. Evidence A-383: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-383-t-133-952b8d9-review-original-fixes-pass-remaining-link-table-findings.md.
