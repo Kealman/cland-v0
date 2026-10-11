@@ -21,7 +21,7 @@ return {
     end, 10000, 'state groups')
     qa.expect(qa.screen():match('sessions +2 +1▲') ~= nil, 'busy and waiting count as now; idle and unknown stay watch')
     qa.expect(not qa.screen():find('old-session [Reviewer]',1,true), 'stopped session is folded')
-    qa.keys('<Esc><Space>s<Space>s/stopped (<CR>za')
+    qa.keys('<Esc><Space>s<Space>s/more (<CR>za')
     qa.wait_for(function() return qa.screen():find('old-session [Reviewer]',1,true) end, 5000, 'stopped unfolds')
     qa.keys('za')
     qa.wait_for(function() return not qa.screen():find('old-session [Reviewer]',1,true) end, 5000, 'stopped folds')

@@ -48,7 +48,7 @@ The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that or
 
 - **Panels.** Items on the left (below). On the right one of: the inbox (below), sessions (name, role, harness, model, the state with `(heuristic)` when the adapter's capability table says so, the claimed item) and topics (below). Topics can also dock above the right panel. Opening the workbench shows General with the sessions panel.
 - **Topics** (spec 4.5, #32). The panel groups NEEDS YOU (topics waiting for the human, pinned on top, an amber `●`), OPEN (`●` open, `◐` waiting for an agent) and CLOSED (`○`), in the hub's order (activity) within each; Agents is the `≡` log. A row shows the bound item (`T-12`) unless the title says it, a red `▲` while the topic carries a warning (`no coordinator`), and the unread badge (amber when the topic needs the human); the header counts topics and unread messages. A thread in view is read (`topic.read`) and a `message` event raises the badge of a topic out of view. The thread header shows the binding, the warning and the status (`waiting for you`, `topic waiting for agent`, …); the status line names the binding and the status too. The "needs you" chip is the hub's count (asks, approvals and topics waiting for the human, #33).
-- **The inbox** (spec 5, #33) in the right panel (`␣n`) or full width (`␣N`): ASKS (each with its topic or bound item, the asker and the time, the question, the numbered options, the free-answer hint), APPROVALS (sessions waiting for approval), WAITING FOR YOU (topics waiting for the human without an ask) and NOTIFICATIONS (`✓`/`✗` verdicts, `↔` role changes, `!` deaths, `○` long idles), in that order; the header and the top bar count what needs you. It comes from `inbox.list` and is replaced by every `inbox` event, so rows come and go without a prompt.
+- **The inbox** (spec 5, #33, T-191) in the right panel (`␣n`) or full width (`␣N`) shows **NOW**, then **WATCH**, using the hub's shared classifier. Within each layer: ASKS (each with its topic or bound item, the asker and the time, the question, the numbered options, the free-answer hint), APPROVALS (sessions waiting for approval), WAITING FOR YOU (topics waiting for the human without an ask) and NOTIFICATIONS (`✓`/`✗` verdicts, `!` deaths, `○` long idles), in that order; the header and the top bar count what needs you. Clear verdicts sit under Watch. Background entries, including ordinary role bookkeeping, never appear here: open Agents (`␣L`) to read them. `A` explicitly shows or hides the Archive layer; the panel and full-width view share that choice. It comes from `inbox.list` and is replaced by every `inbox` event, so rows come and go without a prompt.
 - **Asks in the thread** show as a card under the asker's header (`ask · ▲ waiting for you` on the right): the question, the numbered options and `1-9 answers · free answer: i`. Answered, it marks the chosen option (`✓ 2 …`) and the answer message follows right under it; a withdrawn or cancelled ask says so. `ask` events change the card in place. After every reconnect, once the history is merged, the thread asks `inbox.list` for the open asks: a card it cached as open that is not among them (closed while the client was away, its message older than the latest 200 the history returns) shows `closed` and takes no answer.
 - **Sessions** (#28). The panel shows one row per session: the name with its role (`rev-1 [Reviewer]`, the hub's `label`), the claimed item (or `free`), then the harness, the model, the state with `(heuristic)` when the adapter's capability table says so, and the usage where the adapter reports it (`$1.80` or `12.3k tok`). A launched session whose process died shows `✗ … unknown · died` (the hub's log has `harness-exited`), one stopped `× … unknown · stopped`. The last launch or stop, or what the hub refused, is a notice atop the panel. The panel follows `session.state` and `session.role` events and the periodic refresh.
 - **The launcher** (`␣l`, or `l` in the sessions panel, or `:Cland launch [name]`) is a floating form: name, role, harness (`claude-code` \| `codex` \| `opencode`), model, directory (the project root), effort, item and an optional brief, one line each. The brief is text or an artifact id (`A-<n>`); the hub delivers it once after the role clause. An item (`T-12`, an Implementer's) replaces the directory: the hub starts the session in the item's task worktree, made first when missing, and gives it the item's claim (`hub/README.md`, Task branches and worktrees). Typing a role (or `C-n`/`C-p` on the role and harness lines) fills the harness, model and effort from the role's launch defaults (`role.list`, from `.cland/roles.toml`); a harness other than the role's clears the model and effort meant for the role's. `Tab`/`S-Tab` move between fields, `Enter` sends `session.launch` (empty fields are left to the hub), `Esc` cancels. What the hub refuses (a name in use, the Coordinator held, an unknown harness) shows under the fields and atop the panel; the form stays open to fix it. With no role the first `Enter` warns that the hub will refuse the session's spoke until one is assigned, and the second launches.
@@ -111,19 +111,25 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | `␣l` | anywhere | The session launcher (above). |
 | `␣A` / `a` | anywhere / sessions panel | Launch an Aide with role defaults; focus its optional brief. |
 | `l` `C-v` `x` `c` | sessions panel | Launch a session; attach the row's session in a vertical split beside the centre (Terminal mode; the centre view stays); stop it, after a line in the panel asks (`y` stops through `session.stop`, `n` or `Esc` keeps it); its adapter's capability table in a float (each state signal and optional capability as `reliable`, `heuristic` or `none`; `q` closes). |
-| `za` `zo` `zc` `zR` `zM` | sessions panel | Toggle, open or close the stopped fold on its header or rows; open or fold it from anywhere with `zR` or `zM`. Enter or Tab on the fold header also toggles it. |
+| `za` `zo` `zc` `zR` `zM` | sessions panel | Toggle, open or close the Background `more (N)` fold on its header or rows; open or fold it from anywhere with `zR` or `zM`. Enter or Tab on the fold header also toggles it. These keys never reveal Archive. |
+| `A` | inbox / sessions panel | Explicitly show or hide Archive entries for that surface. Also available as a palette action. |
 | `Enter` `Shift+Enter` | composer | Send; newline (`Alt+Enter` too). A message the hub refuses comes back, ahead of anything typed since. `@reviewer`, `@qa`, … or `@<session>` in the text addresses them instead of the Coordinator. |
 | `C-h` `C-j` `C-k` `C-l` | every mode | Focus left, down, up or right; entering a composer or terminal resumes typing. Use the English layout for these chords. |
 | `C-\` (also `C-\ C-n`) | session terminal | Leave Terminal mode immediately; Esc still goes to the harness. |
 
-### Sessions grouped by state (T-127)
+### Session layers and state groups (T-127, T-191)
 
-The panel lists **yours** (live Aides, when any), then **waiting, busy and idle**
-for the crew, with counts, then one folded
-`stopped (N)` line. Waiting includes both waiting for human and waiting for
-approval. Unknown live sessions sit in idle with a `?` glyph; an exited process
-sits in stopped with its death glyph. The hub supplies state and process changes;
-the workbench never infers them from a session's status text or terminal output.
+The panel shows **NOW**, then **WATCH**, with **yours** (live Aides),
+**waiting, busy and idle** groups inside their hub-assigned layer. Waiting includes
+both waiting for human and waiting for approval; unknown live sessions sit in idle
+with a `?` glyph. Background sessions start behind `more (N)`; fold keys, Enter
+or Tab on that header reveal them, newest first. Ordinary stopped sessions are
+Background by default. Aides keep their hub Now layer even when stopped.
+`A` shows or hides Archive, independently of the background fold.
+Project `[visibility.sessions]` overrides govern placement, including live sessions
+moved to Background and stopped sessions moved to Archive. The workbench uses the
+hub's layers from list results and live frames without deriving a separate policy.
+Older frames without a layer remain visible.
 
 Each row shows glyph, name, role and item. Moving the cursor onto a session
 expands its harness, model, state and running usage total; moving to another
@@ -140,7 +146,7 @@ count. `state.session_now` consumes the hub layer: busy and waiting sessions and
 Aides are now; ordinary idle sessions are watch and stopped sessions background.
 Project overrides apply to that count. Busy, waiting and idle totals include
 Aides even while their rows stay in yours. All panel keys, including Aide launch
-and the stopped fold, are registered actions
+the background fold and archive access, are registered actions
 available in the palette. Ctrl chords use the English layout; Normal-mode letters
 follow `keys.layouts`.
 
@@ -506,3 +512,5 @@ The centre reads the accepted plan through `task.plan show`. Its header shows th
 Folder artifacts open their entry file from their chip or the artifact picker. An absorbed file disappears from ordinary lists, and its old chip still opens that file inside the destination folder. An open draft moved while disconnected resolves its cached id on reconnect and preserves unsaved text at the new save path. Human and Aide artifacts survive topic closure and retention; kept agent artifacts also survive. These storage tools are exposed by the hub; the dedicated Artifacts browser and CLI commands are covered by their own slices.
 
 With `[plan] approval = "human"`, the `gp` plan card shows “awaiting your approval”. Press `a` to approve through the real hub; it refreshes to the approver and time. A revised accepted plan returns to pending approval. With the default `"none"`, the card shows that approval is not required.
+
+T-191's `test/layers.test.ts` exercises inbox Now/Watch ordering, bookkeeping in Agents, explicit archive access in both inbox views, all session fold keys, project layer overrides and cursor tracking across live layer changes through stub-hub frames and headless Neovim. Existing inbox action and session QA cases cover answering, dismissal and attachment with the layered display.

@@ -1899,7 +1899,7 @@ function withInbox(s: Scenario): void {
     waiting: [topic('topic-5', 'Spoke reconnect: flaky test', 'waiting for human', { unread: 2 })],
     notifications: [
       { id: 'n1', kind: 'verdict', text: 'T-19 review not clear · rev-1', ts: ts(3), item: 'T-19', session: 'rev-1', result: 'not clear', dismissed: false },
-      { id: 'n2', kind: 'role', text: 'rev-1 is Reviewer: assigned', ts: ts(4), session: 'rev-1', dismissed: false },
+      { id: 'n2', kind: 'verdict', result: 'clear', text: 'T-19 QA clear: rev-1', ts: ts(4), session: 'rev-1', dismissed: false },
       { id: 'n3', kind: 'death', text: 'impl-3 [Implementer] died: its harness exited', ts: ts(5), session: 'impl-3', dismissed: false },
     ],
   };
@@ -1988,7 +1988,7 @@ test('the inbox lists asks, approvals, waiting topics and notifications in that 
     '● Spoke reconnect: flaky te',
     'NOTIFICATIONS · d dismiss · D all',
     '✗ T-19 review not clear · rev-1',
-    '↔ rev-1 is Reviewer: assigned',
+    '✓ T-19 QA clear: rev-1',
     '! impl-3 [Implementer] died',
   ].map((w) => panel.indexOf(w));
   assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
@@ -2041,8 +2041,8 @@ test('Enter on an approval attaches the session in the centre', { skip }, async 
 test('d dismisses the notification under the cursor, D all of them; asks and approvals stay', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await openInbox(c);
-  await c.input('gg/rev-1 is Reviewer<CR>d');
-  let s = await c.waitScreen((x) => !rightOf(x).includes('rev-1 is Reviewer') && rightOf(x).includes('T-19 review not clear'), 'one dismissed');
+  await c.input('gg/T-19 QA clear<CR>d');
+  let s = await c.waitScreen((x) => !rightOf(x).includes('T-19 QA clear') && rightOf(x).includes('T-19 review not clear'), 'one dismissed');
   assert.deepEqual((await requestsOf(c, 'inbox.dismiss')).map((f) => f.notification), ['n2']);
   await c.input('D');
   s = await c.waitScreen((x) => !rightOf(x).includes('NOTIFICATIONS'), 'all dismissed');

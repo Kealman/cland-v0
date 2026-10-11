@@ -39,7 +39,9 @@ function M.reset(opts)
       board_parent = nil, -- optional open container within the current release
       current_release = nil, -- the human's selected open container; nil uses the semver current release
       sessions_sel = nil, -- the cursor-selected session, expanded in the panel
-      sessions_stopped_folded = true,
+      sessions_stopped_folded = true, -- the background layer (legacy key: stopped)
+      sessions_archive = false,
+      inbox_archive = false,
       confirm = nil, -- { session = name }: the sessions panel asks before stopping it
     },
     attached = {}, -- session name → true while a terminal is attached in this Neovim

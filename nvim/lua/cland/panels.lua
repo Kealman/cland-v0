@@ -269,7 +269,7 @@ local function session_row(c, s, group)
   end
 end
 
-local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · za stopped' }
+local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop', ' za more · A archive' }
 
 local function render_sessions(c)
   local list = state.sessions()
@@ -288,33 +288,39 @@ local function render_sessions(c)
     c:add({ { ' l launches · a (or ␣A) for an Aide.', 'ClandFaint' } })
     return SESSIONS_FOOTER
   end
-  local groups = { stopped = {} }
-  for _, g in ipairs(state.SESSION_GROUPS) do groups[g[1]] = {} end
+  local layers = { now = {}, watch = {}, background = {}, archive = {} }
   for _, s in ipairs(list) do
-    table.insert(groups[state.session_group(s)], s)
+    -- Older hubs omit the layer: keep their sessions visible without classifying state here.
+    local layer = require('cland.visibility').layer(s) or 'now'
+    table.insert(layers[layer], s)
   end
-  for _, g in ipairs(state.SESSION_GROUPS) do
-    local rows = groups[g[1]]
-    if g[1] ~= 'yours' or #rows > 0 then
-      local group = #rows == 0 and 'ClandFaint' or (g[1] == 'waiting' and 'ClandAmber' or 'ClandSection')
-      c:add({ { ' ' .. g[2]:upper() .. ' · ' .. #rows, group } }, nil, { group = g[1] })
-      for _, s in ipairs(rows) do
-        session_row(c, s, g[1])
+  for _, layer in ipairs({ 'now', 'watch' }) do
+    local groups = { stopped = {} }
+    for _, g in ipairs(state.SESSION_GROUPS) do groups[g[1]] = {} end
+    for _, s in ipairs(layers[layer]) do table.insert(groups[state.session_group(s)], s) end
+    c:add({ { ' ' .. layer:upper() .. ' · ' .. #layers[layer], 'ClandSection' } }, nil, { section = layer })
+    local order = vim.list_extend(vim.deepcopy(state.SESSION_GROUPS), { { 'stopped', 'stopped' } })
+    for _, g in ipairs(order) do
+      local rows = groups[g[1]]
+      local default = layer == 'now' and (g[1] == 'waiting' or g[1] == 'busy') or layer == 'watch' and g[1] == 'idle'
+      if #rows > 0 or default then
+        local group = #rows == 0 and 'ClandFaint' or (g[1] == 'waiting' and 'ClandAmber' or 'ClandSection')
+        c:add({ { ' ' .. g[2]:upper() .. ' · ' .. #rows, group } }, nil, { group = layer .. ':' .. g[1] })
+        for _, s in ipairs(rows) do session_row(c, s, layer) end
       end
     end
-  end
-  c:add({})
-  -- the latest first: the processes come oldest first
-  local stopped = {}
-  for i = #groups.stopped, 1, -1 do
-    stopped[#stopped + 1] = groups.stopped[i]
+    c:add({})
   end
   local open = not state.folded('stopped')
-  c:add({ { ' ' .. (open and '▾ ' or '▸ ') .. 'stopped (' .. #stopped .. ')', #stopped > 0 and 'ClandSection' or 'ClandFaint' } }, nil, { fold = 'stopped' })
+  c:add({ { ' ' .. (open and '▾ ' or '▸ ') .. 'more (' .. #layers.background .. ')', 'ClandDim' } }, nil, { fold = 'stopped' })
   if open then
-    for _, s in ipairs(stopped) do
-      session_row(c, s, 'stopped')
-    end
+    -- Latest first, as with the former stopped fold.
+    for i = #layers.background, 1, -1 do session_row(c, layers.background[i], 'background') end
+  end
+  if state.S.ui.sessions_archive then
+    c:add({})
+    c:add({ { ' ARCHIVE · ' .. #layers.archive, 'ClandDim' } }, nil, { section = 'archive' })
+    for i = #layers.archive, 1, -1 do session_row(c, layers.archive[i], 'archive') end
   end
   return SESSIONS_FOOTER
 end
@@ -359,17 +365,24 @@ function M.sessions_cursor(b)
   end
 end
 
---- za, zo, zc on the stopped fold (on its line or inside it); zR and zM open and close it from anywhere.
+--- Fold keys affect Background only; Archive needs its own explicit action.
 function M.session_fold(b, how)
+  local info = M.row_at(b, api.nvim_win_get_cursor(0)[1])
   if how == 'all open' or how == 'all closed' then
     state.set_fold('stopped', how == 'all closed')
-    return state.changed()
+  elseif not (info and (info.fold == 'stopped' or info.group == 'background')) then
+    return state.say('za folds and unfolds background sessions: put the cursor on "more"')
+  else
+    state.set_fold('stopped', how == 'toggle' and not state.folded('stopped') or how == 'close')
   end
-  local info = M.row_at(b, api.nvim_win_get_cursor(0)[1])
-  if not (info and (info.fold == 'stopped' or info.group == 'stopped')) then
-    return state.say('za folds and unfolds the stopped sessions: put the cursor on "stopped"')
+  if state.folded('stopped') and info and info.group == 'background' then
+    for r, entry in pairs(M.rows[b] or {}) do
+      if entry.fold == 'stopped' then
+        api.nvim_win_set_cursor(0, { r, 0 })
+        break
+      end
+    end
   end
-  state.set_fold('stopped', how == 'toggle' and not state.folded('stopped') or how == 'close')
   state.changed()
 end
 
@@ -506,8 +519,12 @@ function M.session_keys(b)
   for lhs, how in pairs({ za = 'toggle', zo = 'open', zc = 'close', zR = 'all open', zM = 'all closed', ['<Tab>'] = 'toggle' }) do
     map(lhs, function()
       M.session_fold(b, how)
-    end, 'stopped sessions: ' .. how)
+    end, 'background sessions: ' .. how)
   end
+  map('A', function()
+    state.S.ui.sessions_archive = not state.S.ui.sessions_archive
+    state.changed()
+  end, 'show or hide archived sessions')
   -- the cursor's row is the selected session, the one whose second line shows
   api.nvim_create_autocmd('CursorMoved', {
     buffer = b,

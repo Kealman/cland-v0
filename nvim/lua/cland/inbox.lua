@@ -1,5 +1,5 @@
--- The inbox (spec section 5, Inbox.dc.html, #33): in the right panel (␣n) and full width in the centre (␣N). Four
--- sections in a fixed order, what only the human can unblock first:
+-- The inbox (spec section 5, Inbox.dc.html, #33): in the right panel (␣n) and full width in the centre (␣N).
+-- Now and Watch each have four sections in a fixed order; Background stays in Agents:
 --   ASKS            the Coordinator's open asks: `1`–`9` answer with that option, `i` a free answer in the topic's
 --                   composer, ↵ opens the topic
 --   APPROVALS       sessions waiting for approval: ↵ attaches the session in the centre, where its harness asks
@@ -10,6 +10,7 @@
 -- renders through `state.changed()`, so no update ever raises a prompt.
 local api = vim.api
 local state = require('cland.state')
+local visibility = require('cland.visibility')
 local ask_card = require('cland.ask_card')
 
 local M = {}
@@ -38,13 +39,8 @@ local function notification_glyph(n)
   return M.GLYPH[n.kind] or { '·', 'ClandDim' }
 end
 
---- Draw the inbox into canvas `c` (a panels canvas); `full` is the centre view. Returns the footer lines.
-function M.render(c, full)
-  local ib = state.S.inbox
-  local n = state.needs_you()
-  if n == 0 then
-    c:add({ { ' ✓ nothing needs you', 'ClandGreen' } })
-  end
+--- Draw one layer with the existing ask, approval, topic and notification actions.
+local function render_layer(c, ib)
   if #ib.asks > 0 then
     c:add({})
     section(c, 'asks · answer here', #ib.asks, nil, true)
@@ -93,10 +89,36 @@ function M.render(c, full)
       c:add({ { ' ' .. g[1] .. ' ', g[2] }, { tostring(note.text) } }, { { clock(note.ts) .. ' ', 'ClandDim' } }, { notification = note.id, item = note.item, session = note.session })
     end
   end
-  if full then
-    return { ' 1-9 answer · i free answer · ↵ open or attach · d dismiss · D all · ␣N or ␣␣ back' }
+end
+
+--- The hub owns placement; older frames without layers remain visible in Now.
+function M.render(c, full)
+  if state.needs_you() == 0 then
+    c:add({ { ' ✓ nothing needs you', 'ClandGreen' } })
   end
-  return { ' 1-9 answer · i free · ↵ act · d/D dismiss · ␣N full width' }
+  local layers = { 'now', 'watch' }
+  if state.S.ui.inbox_archive then table.insert(layers, 'archive') end
+  for _, layer in ipairs(layers) do
+    local ib, count = {}, 0
+    for _, kind in ipairs({ 'asks', 'approvals', 'waiting', 'notifications' }) do
+      ib[kind] = {}
+      for _, entry in ipairs(state.S.inbox[kind]) do
+        if (visibility.layer(entry) or 'now') == layer then
+          table.insert(ib[kind], entry)
+          count = count + 1
+        end
+      end
+    end
+    if count > 0 or layer == 'archive' then
+      c:add({})
+      section(c, layer, count, nil, layer == 'now')
+      render_layer(c, ib)
+    end
+  end
+  if full then
+    return { ' 1-9 answer · i free answer · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
+  end
+  return { ' 1-9 answer · i free · ↵ act · d/D dismiss · A archive · ␣N full width' }
 end
 
 -- Acting from a row ------------------------------------------------------------------------------------------
@@ -179,6 +201,10 @@ function M.keys(buf)
     M.dismiss(buf)
   end, 'dismiss the notification')
   map('D', M.dismiss_all, 'dismiss every notification')
+  map('A', function()
+    state.S.ui.inbox_archive = not state.S.ui.inbox_archive
+    state.changed()
+  end, 'show or hide archived inbox entries')
   require('cland.ask_card').keys(buf, function(r)
     local info = require('cland.panels').row_at(buf, r)
     return info and info.ask or nil

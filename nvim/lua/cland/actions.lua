@@ -47,14 +47,14 @@ end
 add('global', '<C-\\>', 'Leave Terminal mode', 't')
 add('global', '<S-CR>', 'Send Shift+Enter to harness', 't')
 for _, scope in ipairs({'items', 'sessions', 'topics', 'inbox'}) do
-  group(scope, {{'<CR>', scope == 'sessions' and 'Attach selected session (or toggle stopped fold)' or 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
+  group(scope, {{'<CR>', scope == 'sessions' and 'Attach selected session (or toggle background fold)' or 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
 end
 group('sessions', {{'l','Launch a session'}, {'a','Launch an Aide'}, {'<C-v>','Attach session in split'},
   {'x','Stop selected session (confirm)'}, {'L','Agents log for selected session'},
   {'c','Session adapter capabilities'}, {'y','Confirm stopping session'},
-  {'za','Toggle stopped sessions fold'}, {'zo','Open stopped sessions fold'}, {'zc','Close stopped sessions fold'},
-  {'zR','Open all stopped sessions'}, {'zM','Fold all stopped sessions'}, {'<Tab>','Toggle stopped sessions fold'},
-  {'n','Keep session running'}, {'<Esc>','Cancel stopping session'}})
+  {'za','Toggle background sessions fold'}, {'zo','Open background sessions fold'}, {'zc','Close background sessions fold'},
+  {'zR','Open all background sessions'}, {'zM','Fold all background sessions'}, {'<Tab>','Toggle background sessions fold'},
+  {'A','Show or hide session archive'}, {'n','Keep session running'}, {'<Esc>','Cancel stopping session'}})
 group('topics', {{'n','New topic'}, {'c','Close selected topic'}, {'r','Resolve selected topic'}})
 for i, title in ipairs({'Release board','Items in work','Items needing you','Done items','Map items','All items'}) do
   add('items', tostring(i), title)
@@ -65,12 +65,12 @@ group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
   {'K','Rank item before its previous sibling'}, {'J','Rank item after its next sibling'}, {'T','Rank item to the top'},
   {'e','Next open container scope'}, {'E','Previous open container scope'},
   {'p','Next epic tab'}, {'P','Previous epic tab'}, {'<Tab>','Next epic tab'}, {'<S-Tab>','Previous epic tab'}})
-group('inbox', {{'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}})
+group('inbox', {{'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end
   add(scope, 'i', 'Free answer to selected ask' .. (scope == 'thread' and ' or focus composer' or ''))
 end
-group('inbox_full', {{'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}})
+group('inbox_full', {{'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 group('thread', {{'<CR>','Toggle agent run or open artifact chip'}, {'ga','Artifacts in this topic'},
   {'zo','Open agent run'}, {'za','Toggle agent run'}, {'zc','Close agent run'},
   {'zR','Open all agent runs'}, {'zM','Fold all agent runs'}})

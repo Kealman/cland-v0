@@ -82,7 +82,7 @@ const item = (id: string, title: string, state = 'open') => ({ id, kind: 'task',
 test('session events move the selected row between groups and update the chip; stopped sessions fold', { skip }, async t => {
   const process = (name: string, state: string, status = 'running') => ({ name, sessionId: name+'-id', harness: 'codex', model: 'test-model', role: 'reviewer', state, status });
   const c = await start(t, { processes: [process('review', 'busy'), process('rest', 'idle'), process('old', 'unknown', 'stopped')] });
-  await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('BUSY · 1') && s.includes('IDLE · 1') && s.includes('stopped (1)'), 'session groups');
+  await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('BUSY · 1') && s.includes('IDLE · 1') && s.includes('more (1)'), 'session groups');
   assert.match((await c.screen())[0]!, /sessions +1 /, 'busy is now; idle is watch and stopped is background');
   await c.lua(`local b=require('cland.panels').buf('sessions'); for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.api.nvim_win_get_buf(w)==b then vim.api.nvim_set_current_win(w); for i,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if l:find('review [',1,true) then vim.api.nvim_win_set_cursor(w,{i,0}); break end end end end`);
   await c.waitScreen(s => s.includes('test-model'), 'selected details');
@@ -94,12 +94,12 @@ test('session events move the selected row between groups and update the chip; s
   const idle = await c.waitScreen(s => s.includes('WAITING · 0') && s.includes('IDLE · 2') && !s.includes('run: npm test'), 'approval cleared');
   assert.match(idle.split('\n')[0]!, /sessions +0 /, 'idle sessions leave now while their rows remain visible');
   assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /review \[Reviewer\]/);
-  await c.input('/stopped (<CR>za');
+  await c.input('/more (<CR>za');
   await c.waitScreen(s => s.includes('old [Reviewer]'), 'stopped unfolded');
   await c.input('za');
   await c.waitScreen(s => !s.includes('old [Reviewer]'), 'stopped folded again');
   await c.control({ emit: { type: 'session.process', process: process('review', 'unknown', 'stopped') } });
-  const stopped = await c.waitScreen(s => s.includes('stopped (2)'), 'process stopped');
+  const stopped = await c.waitScreen(s => s.includes('more (2)'), 'process stopped');
   assert.match(stopped.split('\n')[0]!, /sessions +0 /);
 });
 
