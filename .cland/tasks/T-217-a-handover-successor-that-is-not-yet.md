@@ -2,8 +2,8 @@
 id: T-217
 kind: task
 title: A handover successor that is not yet live can be launched onto the node it already holds
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - qa-found
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-124
 branch: t/T-217-a-handover-successor-that-is-not-yet
 created: 2026-10-11T08:22:14.796Z
-updated: 2026-10-11T08:30:39.314Z
+updated: 2026-10-11T10:51:56.528Z
 ---
 
 Found by qa-17 in T-113's demo (topic-123, run qa-2026-10-11-17, M10).
@@ -29,10 +29,14 @@ Expected: `session.launch` with the same name and role as the node's current cla
 - [x] C1. Launching the claimant's own name onto its node, with no live session of that name, succeeds and adopts the claim and subscriptions; a different name is refused as today.
   - done: impl-217 · 2026-10-11T08:28:21.048Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-217-1 · 2026-10-11T08:30:39.314Z
+  - verified: rev-13 [reviewer] · run rev-13-20261011-217-3 · 2026-10-11T09:38:57.889Z
 - [x] C2. A protocol test covers a human handover to an offline name, then the launch, then the next verdict reaching the new session.
   - done: impl-217 · 2026-10-11T08:28:21.174Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-217-1 · 2026-10-11T08:30:39.314Z
-- [ ] C3. `npm run typecheck && npm test` pass.
+  - verified: rev-13 [reviewer] · run rev-13-20261011-217-3 · 2026-10-11T09:38:57.889Z
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-217 · 2026-10-11T10:51:16.964Z
+  - verified: rev-13 [reviewer] · run rev-13-20261011-217-4 · 2026-10-11T10:51:40.856Z
 
 ## Comments
 
@@ -63,3 +67,61 @@ C1/C2 verified at 3e2310b. Complete targeted logs establish handover4/4, launch5
 C3 and final readiness remain pending the complete same-head all suite. No exception applied.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-13 · 2026-10-11T09:36:53.938Z
+
+verdict: review
+result: not clear
+by: rev-13 [reviewer]
+run: rev-13-20261011-217-2
+commit: 3e2310b3f85b630fa16357c99eb93287742c5646
+
+Medium — hub/src/hub/worktrees.test.ts:26: the new fixture hardcodes kind: 'epic', which the existing compiler-resolved container guard rejects under hub/src; derive the fixture kind from configured tracker levels while retaining its adoption assertion.
+
+A-1161: typecheck completes, hub 1155/1156 pass, sole guard failure at tracker-container-source.test.ts:109, zero cancelled/skipped/todo; npm test exits 1 before Neovim. C3 failed with no exception. Prior same-head C1/C2 review stands; final readiness withheld.
+
+A-1162: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1162-t-217-c3-at-3e2310b-container-name-guard-fails-full-suite.md
+
+Criteria: C3 failed (npm test exits 1: container-name compiler guard rejects the new kind: 'epic' literal at hub/src/hub/worktrees.test.ts:26; Neovim phase never runs.).
+
+### impl-217 · 2026-10-11T09:37:32.807Z
+
+Fixed review C3 finding from A-1162: new unit fixture uses tracker.levels[1] instead of a hard-coded container name. Architecture guard now 2/2; fixed-clock adoption assertion retained and passes 1/1. Fetched/merged current origin/dev 42bbe78 (merge 4fc77ff), pushed clean corrected head b8bad83479a21c126da0d5760dcffabd7e886984. Production changes unchanged, C1/C2 prior review stands. Requesting review again before replacement all suite; C3 remains pending complete passing result.
+
+### rev-13 · 2026-10-11T09:38:57.889Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261011-217-3
+commit: b8bad83479a21c126da0d5760dcffabd7e886984
+
+No high, medium or low findings at b8bad83. Fixture now uses tracker.levels[1] and retains its fixed-clock identity/timestamp assertion; production adoption and protocol assertions remain unchanged after conflict-free dev integration. Complete architecture guard 2/2 and adoption 1/1 logs pass; independent typecheck and diff checks pass on the clean pushed head.
+
+C1/C2 refreshed at this exact head. C3 remains pending the replacement complete same-head all suite; prior A-1161 failure is not current passing evidence. No exception or final-readiness claim.
+
+A-1167: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1167-t-217-correction-at-b8bad83-c1-c2-clear-replacement-suite-pending.md records separate Standards and Spec reports.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-217 · 2026-10-11T10:51:17.189Z
+
+C3 done: replacement final-head suite 06f594c3 at b8bad83479a21c126da0d5760dcffabd7e886984 passed typecheck and both package phases, 1424/1424 total, zero failures/cancellations/skips/todo, exit 0. Durable log A-1189. Branch remains clean at the same pushed/tested head; current origin/dev was fetched/merged before this suite. Requesting rev-13's final C3 verification. C1/C2 remain verified by review rev-13-20261011-217-3.
+
+### rev-13 · 2026-10-11T10:51:40.856Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261011-217-4
+commit: b8bad83479a21c126da0d5760dcffabd7e886984
+
+No high, medium or low findings. A-1189 verifies C3 at unchanged clean pushed b8bad83: typecheck and npm test exit 0, hub 1166/1166 + Neovim 258/258 = 1424/1424, zero failures/cancellations/skips/todo. The corrected container-name guard, pre-hello adoption and offline handover→launch→verdict protocol case all pass in the full hub phase. No exception applied.
+
+Same-head C1/C2 review rev-13-20261011-217-3 (A-1167) stands; final readiness is clear. A-1190: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1190-t-217-final-c3-at-b8bad83-full-1424-1424-clear.md records complete final validation and separate Standards/Spec conclusions.
+
+Criteria: C3 verified.
+
+### coord · 2026-10-11T10:51:56.528Z
+
+Merged 21b1dddb75adc4042d888b34bde9afd6db9862fe onto dev.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-11T09:15:23.386Z
+updated: 2026-10-11T10:15:18.390Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -163,3 +163,7 @@ Hourly check 08:15Z. No lost runs. T-191's Neovim run holds the lock. Waits over
 ### coord · 2026-10-11T09:15:23.386Z
 
 Hourly check 09:15Z. No lost runs. T-188, T-174, T-217 and T-208 each have a live runner, and T-195 is in progress with no run yet. T-188 holds both locks in its Neovim phase. Its hub phase ran from about 08:56Z to 09:13Z, after T-194's run. Waits over 30 min, in FIFO order: T-174 (ticket from 08:04Z, 71 min, next) and T-217 (08:28Z, 47 min). T-208 (09:01Z) follows. Cause: queue depth, about 17 min of hub phase per full run. T-174 is the fix, and it is itself waiting in the queue. No nudge.
+
+### coord · 2026-10-11T10:15:18.390Z
+
+Hourly check 10:15Z. No lost runs. T-188, T-217 and T-195 each have a live runner. T-174 is waiting on C1, its slow-test inventory, not on a run. T-188 holds both locks; it took them at about 10:11Z. One wait over 30 min: T-217 (ticket from 09:37Z, 37 min, next). T-195's re-run at 5db950d follows (09:59Z). Cause: queue depth. T-208 merged at 09:58Z on the T-213 exception without a retry, which freed one slot. T-174 (merging soon) cuts the hub phase from about 17 min to about 11 min. No nudge.

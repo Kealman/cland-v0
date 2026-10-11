@@ -2,7 +2,7 @@
 id: T-113
 kind: epic
 title: "Epic: Leads and the crew"
-state: open
+state: closed
 criterion_seq: 9
 labels:
   - epic
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-123
 branch: null
 created: 2026-10-09T21:51:34.152Z
-updated: 2026-10-11T08:28:14.576Z
+updated: 2026-10-11T10:52:46.454Z
 ---
 
 ## Goal
@@ -52,22 +52,31 @@ The human agrees with the Coordinator to set `leads = ["epic"]`. The Coordinator
 
 - [ ] C1. The `lead` role exists; a Lead holds one node's lead claim; only the Coordinator launches Leads; the Coordinator's exclusivity covers the root only.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.575Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.625Z
 - [ ] C2. Events, reports and verdicts about an item climb the lead chain through Leads; Lead sessions hold default subscriptions to their subtree, less the subtrees with their own leads.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.575Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.625Z
 - [ ] C3. Asks go up one level at a time with a one-call forward; only the root's lead asks the human.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.575Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.625Z
 - [ ] C4. A Lead's permissions stop at its subtree; the Coordinator keeps releases, sync, push, unscheduled merges and the launch of Leads.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.575Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.626Z
 - [ ] C5. A handover moves a node's lead with its note.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.575Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.626Z
 - [ ] C6. `crew.toml` is validated and reloaded on change; a broken file keeps the last good version in force, with a notice; `cland crew show` and `cland crew set` work.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.575Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.626Z
 - [ ] C7. `session.launch` enforces `size` and singletons, reuses idle pool members with `keep_context`, and `per-item` sessions stop as `stop_after` says.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.576Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.626Z
 - [ ] C8. `cland init` writes the default crew, and the sessions panel header shows its summary.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.576Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.626Z
 - [ ] C9. `hub/README.md`, the role clauses and the `handover` and `merge` skills describe leads and the crew.
   - verified: qa-17 [qa] · run qa-2026-10-11-17 · 2026-10-11T08:28:14.576Z
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-r2 · 2026-10-11T10:52:42.626Z
 
 ## Dogfooding
 
@@ -162,3 +171,35 @@ Executed using the [qa skill](/Users/evgeniyivanov/Projects/cland/v0/.agents/ski
 Report artifact: A-1132, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1132-t-113-qa-clear-leads-and-crew-epic-demo-61-tests.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### qa-17 · 2026-10-11T10:52:42.626Z
+
+verdict: qa
+result: clear
+by: qa-17 [qa]
+run: qa-2026-10-11-17-r2
+commit: 21b1dddb75adc4042d888b34bde9afd6db9862fe
+
+| Case / criterion | Result | Evidence |
+| --- | --- | --- |
+| M1–M4 / C1 | PASS, carried forward | qa-2026-10-11-17, A-1132 |
+| M5–M6, M23 / C2 | PASS, carried forward | Same run and artifact |
+| M12–M13 / C3 | PASS, carried forward | Same run and artifact |
+| M7–M9 / C4 | PASS, carried forward | Same run and artifact |
+| M10–M11 / C5 | PASS, carried forward; follow-up merged | Same run; T-217 merged as 21b1dddb75adc4042d888b34bde9afd6db9862fe |
+| M14–M16 / C6 | PASS, carried forward | Same run and artifact |
+| M19–M21 / C7 | PASS, carried forward | Same run and artifact |
+| M17–M18 / C8 | PASS, carried forward | Same run and artifact |
+| M22 / C9 | PASS, carried forward | Same run and artifact |
+
+No new failures. This is the Coordinator-requested re-record of qa-2026-10-11-17 at current dev 21b1dddb75adc4042d888b34bde9afd6db9862fe, not a fresh execution of the demo. Original proof: 24 manual cases and 61 tests, with detailed corrections and captures in [A-1132](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1132-t-113-qa-clear-leads-and-crew-epic-demo-61-tests.md).
+
+The medium C5 follow-up T-217 is now closed and merged: offline handover successors can launch on their own claim; the merge adds protocol coverage of launch, claim/subscription adoption and next-verdict delivery. Its tracker shows C1–C3 verified and a clear review rev-13-20261011-217-4. Checked current dev, the merge stat, and T-217's closed state; no new tests were run for this re-record.
+
+D1–D5 remain BLOCKED and deferred to v0.1.1 under D19, exactly as in A-1132. Structured verified marks: C1,C2,C3,C4,C5,C6,C7,C8,C9. Failed: none. Run qa-2026-10-11-17-r2. Procedure: [qa skill](/Users/evgeniyivanov/Projects/cland/v0/.agents/skills/qa/SKILL.md).
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-11T10:52:46.454Z
+
+Closed on QA run qa-2026-10-11-17 (A-1132), re-recorded clear at dev 21b1ddd as qa-2026-10-11-17-r2, with C1–C9 verified (D16). Follow-up T-217 is merged. The brief's corrections are on dev at 25756cf.

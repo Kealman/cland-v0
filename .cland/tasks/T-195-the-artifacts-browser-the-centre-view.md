@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-125
 branch: t/T-195-the-artifacts-browser-the-centre-view
 created: 2026-10-10T16:25:07.170Z
-updated: 2026-10-11T09:26:42.727Z
+updated: 2026-10-11T09:59:25.012Z
 ---
 
 ## Parent
@@ -73,3 +73,7 @@ Criteria: C1 failed (Invalid staged artifact IDs strand the composer; a send fai
 ### impl-195b · 2026-10-11T09:25:03.528Z
 
 Fixed rev-15 findings in 8ced8b9: reject foreign-topic/archived s selections, expose :Cland attachments clear recovery without altering draft text, restore captured ids independently when an ask is armed during a pending send, and correct the old README paragraphs. Browser tests 8/8 pass (both new regressions failed before fixes); typecheck/diff check pass. Earlier suite c91008ae remains pending at old recorded head; awaiting its result before a fresh suite for this head.
+
+### impl-195b · 2026-10-11T09:59:25.012Z
+
+Merged origin/dev 237d152; pushed 5db950d. Updated the single failing legacy snapshot assertion to explicitly reveal Archived with A, retaining late-event metadata verification; targeted test passes. Requesting final review and fresh nvim suite on merged head.
