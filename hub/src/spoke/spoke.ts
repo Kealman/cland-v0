@@ -46,7 +46,7 @@ const TOOLS = [
   {
     name: 'send',
     description:
-      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another).',
+      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another). A lead\'s `review request T-<n>` to `reviewer` or `qa request T-<n>` to `qa` in Agents or the item topic reaches one live verifier: the previous verifier, otherwise a free holder. The outcome\'s `resolvedTo` names that session; `empty` means no verifier is available.',
     inputSchema: {
       type: 'object',
       properties: {

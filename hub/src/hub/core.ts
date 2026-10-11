@@ -1740,7 +1740,7 @@ export class HubCore {
   }
 
   /** Tags → addressees. `all`, globs and roles reach the connected and the known-offline; `except` is the sender. */
-  #resolveAddressees(tags: string[], except: string, vacant: 'offline-holders' | 'placeholder') {
+  #resolveAddressees(tags: string[], except: string, vacant: 'offline-holders' | 'placeholder', verifier?: { item: ItemSummary; role: 'reviewer' | 'qa' }) {
     const connected = [...this.#live.keys()];
     const known = this.#known();
     const knownSet = new Set([...connected, ...known]);
@@ -1774,6 +1774,12 @@ export class HubCore {
         }
         case 'role': {
           if (r.role === 'aide') { unknown.push(tag); break; }
+          if (verifier && r.role === verifier.role) {
+            const name = this.#requestVerifier(verifier.item, verifier.role, except);
+            if (name) { tagOf.set(tag, [name]); sessions.add(name); direct.add(name); }
+            else empty.push({ tag, reason: `role "${tag}" has no free live verifier for ${verifier.item.id}` });
+            break;
+          }
           const names = r.names.filter((n) => n !== except && broadcast(n));
           if (names.length) tagOf.set(tag, names);
           else empty.push({ tag: lead ? target : tag, reason: r.names.length ? `the sender is the only session holding role "${target}"` : `role "${target}" has no holder` });
@@ -1790,6 +1796,41 @@ export class HubCore {
       }
     }
     return { sessions, direct, unknown, empty, tagOf };
+  }
+
+  /** Only a lead's item request narrows role addressing; ordinary role traffic still broadcasts. */
+  #verifierRequest(from: string, role: string | null, text: string, topic: Topic): { item: ItemSummary; role: 'reviewer' | 'qa' } | undefined {
+    const request = /^(review|qa) request (T-[1-9]\d*)(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(text);
+    if (!request || (topic.id !== AGENTS.id && topic.item !== request[2])) return;
+    const items = this.#items?.list?.() ?? [];
+    const item = items.find(i => i.id === request[2] && i.state === 'open');
+    if (!item) return;
+    const sender = this.sessionIdentity(`name:${from}`);
+    const owns = (i: ItemSummary) => i.claim && this.sessionIdentity(i.claim.sessionId) === sender;
+    const ancestor = role === 'lead' && (this.#items?.ancestry?.(item.id) ?? []).some(id => {
+      const node = items.find(i => i.id === id);
+      return node && owns(node);
+    });
+    if (role !== COORDINATOR && !(role === 'implementer' && owns(item)) && !ancestor) return;
+    return { item, role: request[1] === 'review' ? 'reviewer' : 'qa' };
+  }
+
+  #requestVerifier(item: ItemSummary, role: 'reviewer' | 'qa', except: string): string | undefined {
+    const live = [...this.#live.values()].filter(c => c.role === role && c.name !== except).sort((a, b) => a.name.localeCompare(b.name));
+    const held = item.holds.find(h => h.role === role);
+    const verdict = this.#items?.lastVerifier?.(item.id, role);
+    const prior = this.#store.meta(`verifier-request:${item.id}:${role}`);
+    const request = prior ? JSON.parse(prior) as { sessionId: string; at: string } : undefined;
+    const previous = held?.sessionId ?? (verdict && (!request || verdict.at > request.at)
+      ? verdict.sessionId : request?.sessionId);
+    const existing = previous && live.find(c => c.sessionId === this.sessionIdentity(previous));
+    if (existing) return existing.name;
+    // A launch can reserve an idle member before its brief is sent.
+    const reserved = live.find(c => this.#store.meta(`pool-handoff:${c.sessionId}`) === item.id);
+    if (reserved) return reserved.name;
+    return live.find(c => ['idle', 'unknown'].includes(this.sessionState(c.sessionId))
+      && !this.sessionHolds(c).length && !this.#store.hasPendingWork(c.name)
+      && !this.#store.meta(`pool-handoff:${c.sessionId}`))?.name;
   }
 
   // ---------------------------------------------------------------- topics
@@ -2092,8 +2133,9 @@ export class HubCore {
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });
     const self = this.#identity(from);
+    const verifier = this.#verifierRequest(from, sender.role, text, topic);
     if (requireAllRecipients) {
-      const intended = this.#resolveAddressees(to, from, 'offline-holders');
+      const intended = this.#resolveAddressees(to, from, 'offline-holders', verifier);
       if (intended.unknown.length || intended.empty.length) throw new Error('result recipients unavailable; delivery remains pending');
       // A running mute is checked before consuming any outbound or pair allowance on retry.
       for (const name of intended.sessions) {
@@ -2107,7 +2149,7 @@ export class HubCore {
       this.#log({ event: 'rate-limited', session: from });
       throw new HygieneError(rate, { code: 'hygiene', rule: 'rate' });
     }
-    const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders');
+    const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders', verifier);
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     for (const { tag, reason } of empty) outcomes.push({ to: tag, outcome: 'empty', reason });
     // the loop breaker: a muted pair refuses; a pair crossing the threshold gets muted and refuses
@@ -2165,6 +2207,10 @@ export class HubCore {
       const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
       this.#store.transaction(() => {
         this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), nowMs);
+        if (verifier) {
+          const selected = [...sessions].filter(name => this.#live.get(name)?.role === verifier.role);
+          if (selected.length === 1) this.#store.setMeta(`verifier-request:${verifier.item.id}:${verifier.role}`, JSON.stringify({ sessionId: this.#live.get(selected[0]!)!.sessionId, at: message.ts }));
+        }
         this.asks.recordQuestion(message);
         this.asks.recordAnswer(message);
       });
@@ -2197,6 +2243,10 @@ export class HubCore {
       if (queued.length === names.length - blocked.length) outcomes.push({ to: tag, outcome: 'queued', reason: kind === 'progress' ? 'progress held for the next turn' : `${queued.join(', ')} offline — queued for up to ${Math.round(this.#queueTtlMs / 3_600_000)} h` });
       else if (queued.length) outcomes.push({ to: tag, outcome: 'delivered', reason: `queued for ${queued.join(', ')} (offline)` });
       else outcomes.push({ to: tag, outcome: 'delivered' });
+    }
+    if (verifier) for (const outcome of outcomes) {
+      const name = outcome.to === verifier.role ? tagOf.get(outcome.to)?.[0] : undefined;
+      if (name) outcome.resolvedTo = name;
     }
     if (sessions.size === 0 && !toHuman) {
       this.#log({ event: 'send-refused', from, to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });

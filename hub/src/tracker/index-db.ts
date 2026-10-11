@@ -376,6 +376,14 @@ export class TrackerIndex {
     return { verdicts: selected };
   }
 
+  /** Routing affinity follows authenticated verifier writes, independent of edited comment headers. */
+  lastVerifier(item: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string } | null {
+    const row = this.#db.prepare(`select session_id, at from tracker_written_verdicts
+      where item_id = ? and role = ? and verdict = ? order by rowid desc limit 1`)
+      .get(item, role, role === 'reviewer' ? 'review' : 'qa') as Row | undefined;
+    return row ? { sessionId: row.session_id as string, at: row.at as string } : null;
+  }
+
   recordMerge(id: string, receipt: MergeReceipt): void {
     this.#db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, override_reason, checkout_recovery) values (?, ?, ?, ?, ?, ?, ?) on conflict (item_id) do update set branch = excluded.branch, tip = excluded.tip, base = excluded.base, commit_sha = excluded.commit_sha, override_reason = excluded.override_reason, checkout_recovery = excluded.checkout_recovery')
       .run(id, receipt.branch, receipt.tip, receipt.base, receipt.commit, receipt.override ?? null, receipt.checkout ? JSON.stringify(receipt.checkout) : null);

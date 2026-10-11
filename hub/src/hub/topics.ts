@@ -73,6 +73,8 @@ export type TopicItems = {
   ancestry?: (item: string) => string[];
   /** Current indexed ownership, without file I/O: resolution and recording must not yield. */
   lead: (item: string) => { state: string; claim: Claim | null } | null;
+  /** Durable verifier identity/order, never inferred from file-only verdict headers. */
+  lastVerifier?: (item: string, role: 'reviewer' | 'qa') => { sessionId: string; at: string } | null;
   provisionalSession: (name: string) => boolean;
   /** The item's normalized id (`T-12`), with the topic its file names (or null); throws why it cannot be bound. */
   check: (item: string) => { id: string; topic: string | null; state: string };
@@ -93,6 +95,7 @@ export function trackerItems(tracker: Tracker): TopicItems {
       return path;
     },
     lead: item => tracker.itemLead(item),
+    lastVerifier: (item, role) => tracker.lastVerifier(item, role),
     provisionalSession: name => tracker.hasProvisionalSession(name),
     check: (item) => {
       const view = tracker.view(item);

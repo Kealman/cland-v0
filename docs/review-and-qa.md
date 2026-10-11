@@ -13,6 +13,8 @@ How an item’s lead runs review and QA until the hub marks it ready (v0.1 §3.7
 
 Use `send` kind `progress` for routine status notes: they wait for the recipient’s next turn. Requests and verdicts use `report` (the default), blockers use `question` or `report`, and decisions use `decision`; these start turns. Coordinator reports to the human appear in Watch, while answers needing attention use `question` or `decision` in Now.
 
+Role-addressed review and QA requests reach one live verifier: the item's previous verifier when still live, otherwise a free holder. The send outcome's `resolvedTo` names the selected session. An `empty` outcome means no verifier is available; report blocked up the item's lead chain. Explicit session names remain available when a verifier has already been chosen.
+
 Default subscriptions give the lead its item’s status/verdict and verifier death or long idle, digested at its next turn. Each container Lead covers its subtree outside descendant leads; the Coordinator covers the remainder. A lead’s death or long idle reaches the nearest lead above it; `ready` is the immediate merge-action exception. Use `subscribe` for additional subjects and `subscriptions` to inspect them instead of polling. An explicit Coordinator subscription to a claimed item widens its traffic, so avoid one when measuring the one-delivery loop.
 
 Only Reviewer and QA (`task.comment:verdict`) and the Coordinator (`task.comment`) may write a verdict. Anyone else gets the typed error `forbidden: task.comment:verdict (<Role> may not write verdicts)`, and the refusal shows in Agents.

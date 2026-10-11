@@ -358,7 +358,7 @@ export type HubFrame =
   | { type: 'inject'; session: string; message: string; text: string }
   | HubEvent;
 
-export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refusal?: HygieneRefusal };
+export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refusal?: HygieneRefusal; resolvedTo?: string };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 

@@ -1311,6 +1311,12 @@ export class Tracker {
     return item ? { state: item.state, claim: this.#index.claimOf(id) } : null;
   }
 
+  /** The last authenticated verifier write, even when the item's comments have been edited. */
+  lastVerifier(id: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string } | null {
+    const writer = this.#index.lastVerifier(id, role);
+    return writer ? { ...writer, sessionId: this.#identityOf(writer.sessionId) } : null;
+  }
+
   hasProvisionalSession(name: string): boolean { return this.#index.provisionalSessions().includes(`name:${name}`); }
 
   // ---------------------------------------------------------------- writing
