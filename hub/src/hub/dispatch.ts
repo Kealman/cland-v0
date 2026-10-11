@@ -538,7 +538,12 @@ export class Dispatcher {
         const a = core.store.resolveArtifact(frame.artifact);
         if (!a || a.fileDeleted) throw new ArtifactError('artifact-unavailable', 'no artifact file is available');
         const files = a.folder ? await folderFiles(a.path, resumed) : undefined;
-        return resumed(() => ({ artifact: a, ...(files ? { files } : {}) }));
+        return resumed(() => {
+          const current = callerNow();
+          const owner = a.movedTo ? core.store.artifact(a.movedTo.folder)! : a;
+          const editable = !current || current.role === 'aide' || (!core.store.humanArtifact(a) && !core.store.humanArtifact(owner));
+          return { artifact: a, ...(files ? { files } : {}), editable };
+        });
       }
       if (frame.topic !== undefined && (typeof frame.topic !== 'string' || !core.store.topic(frame.topic))) throw new ArtifactError('artifact-topic', 'no such artifact topic');
       return { artifacts: core.store.artifacts(frame.topic) };
@@ -750,23 +755,25 @@ export class Dispatcher {
           if (current && current.role !== 'aide' && core.store.humanArtifact(a)) throw new ToolForbidden(current.role, frame.type, 'agents cannot change the human’s or an Aide’s artifacts');
         }
       };
-      authorize();
-      if (frame.type === 'artifact.move') {
-        later(frame.type, this.artifacts.move(frame.artifact, frame.folder, frame.name, authorize, resumed).then(
-          value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value }) as HubFrame),
-          err => resumed(() => Dispatcher.#failure(frame.id, err)),
-        )); return;
-      }
-      if (frame.type === 'artifact.keep' && frame.kept !== undefined && typeof frame.kept !== 'boolean') throw new ArtifactError('artifact-source', 'kept must be a boolean');
-      peer.send({ type: 'result', id: frame.id, ok: true, value: { artifact: frame.type === 'artifact.keep' ? this.artifacts.keep(frame.artifact, frame.kept ?? true) : this.artifacts.archive(frame.artifact) } });
+      try {
+        authorize();
+        if (frame.type === 'artifact.move') {
+          later(frame.type, this.artifacts.move(frame.artifact, frame.folder, frame.name, authorize, resumed).then(
+            value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value }) as HubFrame),
+            err => resumed(() => Dispatcher.#failure(frame.id, err)),
+          )); return;
+        }
+        if (frame.type === 'artifact.keep' && frame.kept !== undefined && typeof frame.kept !== 'boolean') throw new ArtifactError('artifact-source', 'kept must be a boolean');
+        peer.send({ type: 'result', id: frame.id, ok: true, value: { artifact: frame.type === 'artifact.keep' ? this.artifacts.keep(frame.artifact, frame.kept ?? true) : this.artifacts.archive(frame.artifact) } });
+      } catch (err) { peer.send(Dispatcher.#failure(frame.id, err)); }
     };
     const promote = (frame: ArtifactPromote, caller: Caller | null) => {
       const resumed = <T,>(body: () => T): T => this.#guard.measure(frame.type, client, body, 'resumed');
       const authorize = () => {
         if (!caller) return;
-        const a = core.store.artifact(frame.artifact);
-        if (a && core.store.humanArtifact(a) && caller.role !== 'aide') throw new ToolForbidden(caller.role, frame.type, 'agents cannot change the human’s or an Aide’s artifacts');
         const now = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
+        const a = core.store.artifact(frame.artifact);
+        if (a && core.store.humanArtifact(a) && now?.role !== 'aide') throw new ToolForbidden(now?.role ?? null, frame.type, 'agents cannot change the human’s or an Aide’s artifacts');
         const grants = core.roles?.get().get(now?.role ?? '')?.permissions.tools;
         const decision = decide(now?.role ?? null, grants, { tool: frame.type });
         if (!now || now.sessionId !== caller.sessionId || !decision.ok || !(now.role === 'aide' || (client === 'cli' && now.role === 'coordinator'))) throw new ToolForbidden(now?.role ?? null, frame.type, 'promotion belongs to the human, an Aide, or the Coordinator from its own shell');

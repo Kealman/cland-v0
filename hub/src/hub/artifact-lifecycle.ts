@@ -10,7 +10,7 @@ import { ArtifactError } from './artifacts.ts';
 
 export type Resumed = <T>(body: () => T) => T;
 export type ArtifactPromotion = { artifact: Artifact; followUp?: { error: string } };
-export type ArtifactFiles = Pick<typeof fs, 'copyFile' | 'mkdir' | 'lstat' | 'realpath' | 'unlink' | 'link' | 'rename' | 'rm'>;
+export type ArtifactFiles = Pick<typeof fs, 'copyFile' | 'mkdir' | 'lstat' | 'readdir' | 'realpath' | 'unlink' | 'link' | 'rename' | 'rm'>;
 const direct: Resumed = body => body();
 type IO<T> = Generator<Promise<unknown>, T, unknown>;
 
@@ -80,6 +80,26 @@ export class ArtifactLifecycle {
     return run(this.#promote(id, path, authorize), resumed);
   }
 
+  *#copyFolder(source: string, destination: string, root: string, authorize: () => void): IO<void> {
+    const info = yield* wait(this.#files.lstat(source));
+    if (!info.isDirectory() || info.isSymbolicLink()) throw new ArtifactError('artifact-source', 'artifact folders must be real directories');
+    const names = yield* wait(this.#files.readdir(source));
+    for (const name of names.sort()) {
+      authorize();
+      const from = join(source, name), to = join(destination, name);
+      this.#confined(root, to);
+      const child = yield* wait(this.#files.lstat(from));
+      if (child.isSymbolicLink() || (!child.isDirectory() && !child.isFile())) throw new ArtifactError('artifact-source', 'artifact folders contain only regular files and directories, without symbolic links');
+      if (child.isDirectory()) {
+        yield* wait(this.#files.mkdir(to));
+        yield* this.#copyFolder(from, to, root, authorize);
+      } else {
+        yield* wait(this.#files.copyFile(from, to, constants.COPYFILE_EXCL));
+      }
+      this.#confined(root, yield* wait(this.#files.realpath(to)));
+    }
+  }
+
   *#promote(id: string, path: string, authorize: () => void): IO<ArtifactPromotion> {
     authorize();
     const a = this.#available(id);
@@ -91,9 +111,17 @@ export class ArtifactLifecycle {
       const prepared = yield* this.#destination(path);
       destination = prepared.path;
       authorize(); this.#available(id);
-      // Exclusive copy refuses existing files and dangling symlinks; never replace the human's bytes.
-      yield* wait(this.#files.copyFile(a.path, destination, constants.COPYFILE_EXCL));
-      copied = true;
+      // Exclusive creation reserves the entire destination. A partial tree is ours to
+      // remove on failure; an existing directory, file or symlink is never touched.
+      if (a.folder) {
+        yield* wait(this.#files.mkdir(destination)); copied = true;
+        yield* this.#copyFolder(a.path, destination, prepared.root, authorize);
+        const entry = join(destination, folderName(a.entry));
+        const info = yield* wait(this.#files.lstat(entry));
+        if (!info.isFile() || info.isSymbolicLink()) throw new ArtifactError('artifact-source', 'the folder entry must be a regular file');
+      } else {
+        yield* wait(this.#files.copyFile(a.path, destination, constants.COPYFILE_EXCL)); copied = true;
+      }
       const actual = yield* wait(this.#files.realpath(destination));
       this.#confined(prepared.root, actual);
       authorize();
@@ -108,7 +136,7 @@ export class ArtifactLifecycle {
     } catch (err) {
       // A copied destination is ours alone. Roll it back if authorisation or the index commit failed.
       if (copied && destination) {
-        try { yield* wait(this.#files.unlink(destination)); }
+        try { yield* wait(a.folder ? this.#files.rm(destination, { recursive: true }) : this.#files.unlink(destination)); }
         catch (rollback) { throw new AggregateError([err, rollback], `promotion failed and rollback could not remove ${destination}; remove this unindexed copy before retrying`); }
       }
       throw err;

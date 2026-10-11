@@ -438,3 +438,99 @@ test('a refused folder publication rolls back its directory and id reservation',
   assert.equal(a.id, 'A-2');
   assert.equal(await fs.readFile(join(a.path, a.entry!), 'utf8'), 'new bytes');
 });
+
+test('folder promotion rolls back partial copies and failed index writes, then permits retry', async t => {
+  let failCopy = true;
+  const f = await fixture(t, { ...fs, copyFile: async (...args) => {
+    await fs.copyFile(...args);
+    if (failCopy) throw new Error('copy interrupted after bytes were written');
+  } }, 30, 120, true);
+  await fs.mkdir(join(f.a.path, 'details'));
+  await fs.writeFile(join(f.a.path, 'details', 'data.txt'), 'detail bytes');
+  const destination = join(f.root, 'docs', 'notes');
+  const promote = () => f.ui.request({ type: 'artifact.promote', artifact: f.a.id, path: 'docs/notes' });
+  assert.equal((await promote()).ok, false);
+  await assert.rejects(fs.lstat(destination), { code: 'ENOENT' });
+  assert.equal((await f.entries())[0]?.promoted, undefined);
+  failCopy = false;
+  f.db.exec("create trigger reject_folder_promote before update on artifacts when json_extract(new.value, '$.promoted') is not null begin select raise(ABORT, 'index failed'); end");
+  assert.equal((await promote()).ok, false);
+  await assert.rejects(fs.lstat(destination), { code: 'ENOENT' });
+  assert.equal((await f.entries())[0]?.promoted, undefined);
+  assert.equal(await fs.readFile(join(f.a.path, 'index.md'), 'utf8'), 'original bytes');
+  f.db.exec('drop trigger reject_folder_promote');
+  assert.equal((await promote()).ok, true);
+  assert.equal(await fs.readFile(join(destination, 'details', 'data.txt'), 'utf8'), 'detail bytes');
+});
+
+test('folder promotion reserves its tree, rolls back revoked authority, and survives a topic close', async t => {
+  const copying = deferred(), release = deferred(); t.after(() => release.resolve());
+  const f = await fixture(t, { ...fs, copyFile: async (...args) => {
+    copying.resolve(); await release.promise; return fs.copyFile(...args);
+  } }, 0, 120, true);
+  const operation = f.ui.request({ type: 'artifact.promote', artifact: f.a.id, path: 'docs/notes', as: { name: 'coord' } });
+  await copying.promise;
+  const busy = await f.ui.request({ type: 'artifact.promote', artifact: f.a.id, path: 'docs/other' });
+  assert.equal((busy as { code?: string }).code, 'artifact-busy');
+  await f.ui.request({ type: 'role.clear', session: 'coord' });
+  release.resolve();
+  assert.equal((await operation as { code?: string }).code, 'forbidden');
+  await assert.rejects(fs.lstat(join(f.root, 'docs/notes')), { code: 'ENOENT' });
+  await f.ui.request({ type: 'topic.close', topic: f.topic });
+  assert.equal((await f.ui.request({ type: 'artifact.promote', artifact: f.a.id, path: 'docs/notes' })).ok, true);
+  f.hub.prune();
+  assert.equal(await fs.readFile(join(f.a.path, 'index.md'), 'utf8'), 'original bytes');
+  assert.equal((await f.entries())[0]?.promoted, 'docs/notes');
+  assert.equal((await f.entries())[0]?.status, 'shared');
+});
+
+test('folder promotion preserves occupied directories and refuses symlinks added after creation', async t => {
+  const f = await fixture(t, fs, 30, 120, true);
+  const occupied = join(f.root, 'docs/occupied');
+  await fs.mkdir(occupied, { recursive: true }); await fs.writeFile(join(occupied, 'index.md'), 'existing notes');
+  const request = (path: string) => f.ui.request({ type: 'artifact.promote', artifact: f.a.id, path });
+  assert.equal((await request('docs/occupied')).ok, false);
+  assert.equal(await fs.readFile(join(occupied, 'index.md'), 'utf8'), 'existing notes');
+  const outside = await tempProject(t);
+  await fs.writeFile(join(outside, 'secret.md'), 'outside bytes');
+  await fs.symlink(outside, join(f.root, 'escape'));
+  assert.equal((await request('escape/notes')).ok, false);
+  await assert.rejects(fs.lstat(join(outside, 'notes')), { code: 'ENOENT' });
+  await fs.symlink(join(outside, 'secret.md'), join(f.a.path, 'linked.md'));
+  assert.equal((await request('docs/notes')).ok, false);
+  await assert.rejects(fs.lstat(join(f.root, 'docs/notes')), { code: 'ENOENT' });
+  assert.equal((await f.entries())[0]?.promoted, undefined);
+  await fs.unlink(join(f.a.path, 'linked.md'));
+  await fs.unlink(join(f.a.path, 'index.md'));
+  assert.equal((await request('docs/notes')).ok, false, 'an edited folder must still have its entry');
+  await assert.rejects(fs.lstat(join(f.root, 'docs/notes')), { code: 'ENOENT' });
+});
+
+test('an Aide losing its role during human folder promotion is refused and rolls back the complete tree', async t => {
+  const copying = deferred(), release = deferred(); t.after(() => release.resolve());
+  const f = await fixture(t, { ...fs, copyFile: async (...args) => {
+    await fs.copyFile(...args); copying.resolve(); await release.promise;
+  } }, 30);
+  const made = await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Human notes', topic: f.topic, folder: true, content: 'protected entry' });
+  assert.equal(made.ok, true);
+  const folder = (made.value as { artifact: Artifact }).artifact;
+  await fs.mkdir(join(folder.path, 'details')); await fs.writeFile(join(folder.path, 'details', 'note.md'), 'protected detail');
+  await f.ui.request({ type: 'role.set', session: 'notes-aide', role: 'aide' });
+  await f.ui.request({ type: 'role.clear', session: 'coord' });
+  const operation = f.ui.request({ type: 'artifact.promote', artifact: folder.id, path: 'docs/notes', as: { name: 'notes-aide' } });
+  await copying.promise;
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'notes-aide', role: 'coordinator' })).ok, true);
+  release.resolve();
+  const result = await operation;
+  assert.equal(result.ok, false);
+  assert.equal((result as { code?: string }).code, 'forbidden');
+  assert.match(result.error ?? '', /agents cannot change/);
+  await assert.rejects(fs.lstat(join(f.root, 'docs/notes')), { code: 'ENOENT' });
+  const current = (await f.entries()).find(a => a.id === folder.id);
+  assert.equal(current?.promoted, undefined);
+  assert.equal(current?.status, folder.status);
+  assert.equal(await fs.readFile(join(folder.path, 'index.md'), 'utf8'), 'protected entry');
+  assert.equal(await fs.readFile(join(folder.path, 'details/note.md'), 'utf8'), 'protected detail');
+  await f.ui.request({ type: 'role.set', session: 'notes-aide', role: 'aide' });
+  assert.equal((await f.ui.request({ type: 'artifact.promote', artifact: folder.id, path: 'docs/notes', as: { name: 'notes-aide' } })).ok, true, 'rollback releases the reservation for an authorized retry');
+});

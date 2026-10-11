@@ -1163,6 +1163,23 @@ cland artifact create --kind note --title Findings --content-file - --topic topi
 cland artifact list --topic topic-3 --json
 ```
 
+`new` is the creation command; `create` remains an alias. The shell accepts directory sources, `--folder` for a new folder, and `--entry <relative-file>` to select its entry:
+
+```sh
+cland artifact new --kind note --title "v0.2 notes" --topic general --folder --content '# v0.2' --json
+cland artifact new --kind note --title "Imported notes" --topic general --path ./notes --entry README.md
+cland artifact open A-3
+cland artifact keep A-3
+cland artifact keep A-3 --release
+cland artifact move A-4 A-3 --name details.md
+cland artifact archive A-3
+cland artifact promote A-3 docs/v0.2-notes
+```
+
+`open` launches `$VISUAL`, then `$EDITOR`, or `nvim`, on the saved file or a folder's entry. Editor settings may include quoted arguments. Saving edits those durable bytes directly; adding files to the folder needs no hub operation. `open --json` launches no editor and returns the resolved `path`, artifact metadata, `editable`, and the folder's on-demand `files` list. Old ids of absorbed files resolve to their current location. Agents can read protected human and Aide paths with `--json`, but cannot open them for editing; this includes a formerly agent-owned file absorbed into a protected folder. An Aide may edit for the human. The hub includes `editable` in single-artifact `artifact.list` results based on the caller and the containing folder's author.
+
+`keep --release` clears the kept flag. `move` takes the source file id and destination folder id, with an optional single file name. `archive` changes the artifact's layer. These commands use the same hub frames, author protection and calling-session identity as the spoke tools. All accept `--json`; irrelevant options and extra arguments are refused. A refused lifecycle command returns an error without stopping the hub.
+
 Directory sources are copied as a single folder artifact, with `folder: true` and a project-owned directory `path`. Its `entry` is a relative file name: supply it at creation or let the first `.md` in sorted relative-path order become the entry. `folder: true` without a source creates an entry file (`index.md` by default), optionally filled from `content`. A copied folder must contain its entry, and only regular files and directories are accepted; symlinks and special files are refused. Folder contents have no separate ids. The entry is used for prompt sending, attachments, launch briefs and opening the chip in the workbench.
 
 `artifact.list` is also a spoke tool. With `artifact: "A-3"` it resolves that id and returns `{artifact, files}` for a folder (`files` is a sorted list of relative file names), or `{artifact}` for a file. Without an id it lists the project or a supplied topic. Files are discovered on request, so editing or adding them does not require reindexing.
@@ -1184,7 +1201,9 @@ Artifacts record immutable author kind and role at creation. The human's and Aid
 
 Folder retention uses a rename to a deterministic `.retained` directory until the index commits. Failed index writes or a concurrent keep/reopen restore the entire folder; interrupted cleanup recovers on the next sweep. Deletion or housekeeping failures remain retryable. Ordinary file retention keeps its existing hard-link recovery.
 
-The built-in role tool lists now grant `artifact.keep`, `artifact.move` and `artifact.archive`. Existing explicit `roles.toml` lists need those grants added; `artifact.list` uses the existing history/read grant. No role clause changes are required. Folder promotion and the expanded artifact CLI belong to the next artifact slice.
+The built-in role tool lists now grant `artifact.keep`, `artifact.move` and `artifact.archive`. Existing explicit `roles.toml` lists need those grants added; `artifact.list` uses the existing history/read grant. No role clause changes are required.
+
+Folder promotion copies the entire tree, including nested files, binary bytes and empty directories, into a new project-relative directory. The destination names that directory; it must not already exist, even if empty. Symlinks and special files added to an artifact after creation are refused, and the saved entry must still exist as a regular file. Promotion reserves the artifact across the copy and removes the entire partial destination on copy, permission or index failure. The source remains in the artifact workspace, and Git's index and commits are untouched. The same confined-path rules apply to folder promotion, including nested `.cland` or `.git` paths.
 
 `cland init` writes `[artifacts]` with `retention_days = 30`. `cland update` adds that section to managed configurations that lack it and keeps changed values, including zero. It leaves unmarked config files and existing `roles.toml` files alone; an existing explicit Coordinator tool list needs `"artifact.promote"` added by the human.
 
