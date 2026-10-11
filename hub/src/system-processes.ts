@@ -2,6 +2,7 @@
 import { probeTimeout, run } from './doctor/report.ts';
 import { processStartedAsync } from './hub/lock.ts';
 import type { Resumed } from './hub/worktrees.ts';
+import { pidAlive } from './project.ts';
 
 const untimed: Resumed = work => work();
 export type SystemProcess = { pid: number; parent: number; group: number; started: string; state: string; command: string };
@@ -110,6 +111,13 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       // No other target's probe or await may intervene between this identity check and its signal.
       const started = await resumed(() => processStartedAsync(row.pid, timeout(deadline), resumed));
       const permitted = resumed(() => {
+        // A preceding signal can end another captured descendant before its probe runs. An empty
+        // answer alone is ambiguous; a confirmed absent PID needs no signal and is already finished.
+        if (started === null && !pidAlive(row.pid)) {
+          frozen.delete(row.pid);
+          observe({ event: 'signal-skipped', pid: row.pid, signal: kind, reason: 'process exited before its identity probe' });
+          return true;
+        }
         if (started !== null && started !== row.started) frozen.delete(row.pid);
         timeout(deadline);
         if (options.canSignal && !options.canSignal(current)) return false;
