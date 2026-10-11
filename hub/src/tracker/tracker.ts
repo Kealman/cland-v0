@@ -85,6 +85,7 @@ export type ItemView = IndexedItem & {
   qaPolicy?: QaPolicy;
   qaCriteria?: string[];
   planError?: string;
+  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict }>;
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
   criteriaWarnings: CriterionWarning[];
@@ -102,7 +103,7 @@ export type ItemSummary = IndexedItem & { layer?: import('../hub/visibility.ts')
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; previousAncestry?: string[] };
 
-const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by]);
+const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null]);
 
 export type CreateInput = {
   title: string;
@@ -141,7 +142,7 @@ export type LinkInput = {
 };
 
 export type VerdictReport = { topic: string | null; text: string; criteria?: MarkedCriterion[] };
-export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; verified?: string; failed?: { criterion: string; note: string }[] };
+export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; stage?: string; verified?: string; failed?: { criterion: string; note: string }[] };
 
 export class TrackerError extends Error {
   /** `git-unavailable`: Git did not answer a question the write needs (a verdict's commit, a branch tip). */
@@ -429,7 +430,7 @@ export class Tracker {
       for (const verdict of item.verdicts) {
         const key = verdictIdentity(verdict), count = remaining.get(key) ?? 0;
         if (count) remaining.set(key, count - 1);
-        else events.push(`verdict posted ${verdict.verdict} ${verdict.result} · ${verdict.run}`);
+        else events.push(`verdict posted ${verdict.verdict} ${verdict.result}${verdict.stage ? ` · stage ${verdict.stage}` : ''} · ${verdict.run}`);
       }
       if (previous.state !== 'closed' && item.state === 'closed') events.push('closed');
     }
@@ -1043,7 +1044,7 @@ export class Tracker {
       // before showing it, so a following invalid save cannot restore an older version.
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
       ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
-      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item) } : {}),
+      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item), stages: this.#stagesOf(item) } : {}),
       ...parseCriteria(item.body, this.levels.includes(item.fm.kind)),
       ...this.#qaFor(item),
       comments: item.comments,
@@ -1092,7 +1093,85 @@ export class Tracker {
   #annotateVerdicts(id: string, kind: Kind, branch: string | null, verdicts: IndexedVerdict[]): IndexedVerdict[] {
     if (!isPlanningContainer(kind, this.levels)) return this.#fresh.annotate(id, branch, verdicts);
     const tip = this.#fresh.tip('dev');
-    return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict) ? v : { ...v, current: !!tip && v.commit === tip });
+    return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict && w.stage === v.stage && w.source === 'hub') ? v : {
+      ...v, current: v.stage === undefined ? !!tip && v.commit === tip : this.#stageCurrent(id, v),
+    });
+  }
+
+  /** A stage stays closed across later dev builds, but its own plan and landing evidence must stay unchanged. */
+  #stageSnapshot(id: string, name: string): { hash: string; merged: boolean; items: string[]; qa: QaPolicy } | null {
+    const plan = this.#index.plan(id), stage = plan?.stages.find(s => s.name === name);
+    if (!stage) return null;
+    const items = stage.lanes.flat();
+    const facts = items.map(childId => {
+      const child = this.#index.get(childId), receipt = this.#index.mergeReceipt(childId);
+      return { id: childId, state: child?.state, parent: child?.parent, kind: child?.kind, commit: receipt?.commit ?? null, base: receipt?.base ?? null,
+        belongs: !!child && this.#ancestorIds(child.parent).includes(id) };
+    });
+    const overrides = items.map(childId => [childId, plan!.items?.[childId] ?? null]);
+    // An item's after-stage override still needs integrated QA even when the stage default uses per-item/none.
+    const policies = [stage.qa, ...items.flatMap(childId => plan!.items?.[childId]?.qa ? [plan!.items[childId]!.qa!] : [])]
+      .filter(qa => qa.when === 'after-stage' && qa.scope !== 'none');
+    const qa: QaPolicy = policies.length ? { scope: policies.some(qa => qa.scope === 'full') ? 'full' : 'affected', when: 'after-stage' } : stage.qa;
+    return { hash: createHash('sha256').update(JSON.stringify([stage, overrides, facts])).digest('hex'),
+      merged: facts.every(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || !!f.commit && f.base === 'dev')),
+      items, qa };
+  }
+
+  #stageCurrent(id: string, v: IndexedVerdict): boolean {
+    const snapshot = v.stage === undefined ? null : this.#stageSnapshot(id, v.stage);
+    const claim = this.#index.claimOf(id);
+    const independent = !claim || !['implementer', 'aide'].includes(claim.role ?? '') || !v.writer || !this.sameSession(claim.sessionId, v.writer.sessionId);
+    return independent && v.source === 'hub' && v.writer?.role === 'qa' && v.writer.sessionId !== 'human' && !v.writer.sessionId.startsWith('cli:')
+      && !!v.commit && !!snapshot?.merged && snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none' && snapshot.hash === v.stage_hash
+      && this.#fresh.ancestor(id, v.commit) === true;
+  }
+
+  #stagesOf(item: Item): NonNullable<ItemView['stages']> {
+    const plan = this.#index.plan(item.fm.id);
+    if (!plan) return [];
+    const evidence = this.#index.mergeVerdicts(item.fm.id, item.comments.flatMap(c => c.verdict ? [{ key: commentKey(c), verdict: { ...c.verdict, author: c.author, at: c.at } }] : []));
+    return plan.stages.map(stage => {
+      const snapshot = this.#stageSnapshot(item.fm.id, stage.name)!;
+      const verdict = evidence.missing ? undefined : evidence.verdicts.filter(v => v.stage === stage.name).at(-1);
+      const needsQa = snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none';
+      const closed = snapshot.merged && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
+      return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
+        ...(verdict ? { verdict: { ...verdict, current: this.#stageCurrent(item.fm.id, verdict) } } : {}) };
+    });
+  }
+
+  /** Admission and publication both reread files and dev, inside the tracker queue. */
+  async #stageEvidence(rawId: string, name: string, resumed: Resumed): Promise<{ hash: string; tip: string; source: string; canonical: string }> {
+    await this.#rescanAsync(resumed);
+    const { id, file } = resumed(() => this.#require(rawId));
+    const source = await this.#files.readFile(join(this.#dir, file), 'utf8');
+    const snapshot = resumed(() => {
+      const item = parseItem(source, file, this.levels);
+      const plan = this.#validPlan(item);
+      if (!this.isPlanContainer(item.fm.kind) || !plan || this.#planErrors.has(id)) throw new TrackerError('stage QA needs a valid epic plan');
+      this.#acceptPlan(item, 'hand');
+      const snapshot = this.#stageSnapshot(id, name);
+      if (!snapshot) throw new TrackerError(`no stage ${name} in ${id}`);
+      if (snapshot.qa.when !== 'after-stage' || snapshot.qa.scope === 'none') throw new TrackerError(`${name}: stage QA needs non-none after-stage policy`);
+      if (!snapshot.merged) throw new TrackerError(`${name}: all stage items must merge onto dev before stage QA`);
+      return { ...snapshot, canonical: serializeItem(item) };
+    });
+    const tip = await this.#resolve('refs/heads/dev', 'the stage QA build on dev');
+    const commits = resumed(() => {
+      if (!tip) throw new TrackerError('stage QA needs a resolving dev branch');
+      return snapshot.items.flatMap(childId => {
+        const receipt = this.#index.mergeReceipt(childId);
+        return receipt ? [receipt.commit] : [];
+      });
+    });
+    const ancestry = await resumed(() => Promise.all(commits.map(commit => this.#git(['merge-base', '--is-ancestor', commit, tip!]))));
+    const finalTip = await this.#resolve('refs/heads/dev', 'the stage QA build before publication');
+    return resumed(() => {
+      if (finalTip !== tip) throw new TrackerError('stage QA dev changed while checking the build; retry');
+      if (ancestry.some(result => result === null)) throw new TrackerError('stage QA dev build does not contain every stage merge');
+      return { hash: snapshot.hash, tip: tip!, source, canonical: snapshot.canonical };
+    });
   }
 
   #checkEpicClose(view: ItemView, tip: string | null): void {
@@ -1398,6 +1477,34 @@ export class Tracker {
         if (typeof verdict.commit !== 'string' || !/^[0-9a-f]{4,64}$/i.test(verdict.commit)) throw new TrackerError('commit must be a Git commit SHA');
       }
     }
+    if (verdict?.stage !== undefined) {
+      if (typeof verdict.stage !== 'string' || !verdict.stage.trim() || /[\r\n]/.test(verdict.stage)) throw new TrackerError('stage must be a nonempty single-line stage name');
+      if (v?.verdict !== 'qa' || actor.role !== 'qa' || actor.human === true || actor.id === 'human' || actor.id.startsWith('cli:')) throw new TrackerError('only a live QA session records a stage QA verdict');
+      if (verdict.verified !== undefined || verdict.failed !== undefined) throw new TrackerError('stage QA does not mark epic criteria; record the epic demo separately');
+      v.stage = verdict.stage.trim();
+      return this.#stageEvidence(rawId, v.stage, resumed).then(evidence => resumed(async () => {
+        const commit = verdict.commit === undefined ? evidence.tip : await this.#resolve(verdict.commit, 'the stage verdict commit');
+        return resumed(() => {
+          if (commit !== evidence.tip) throw new TrackerError('stage QA commit must be the exact dev tip tested after the stage merges');
+          v!.commit = evidence.tip;
+          v!.stage_hash = evidence.hash;
+          const writer = currentActor ? currentActor() : actor;
+          this.#ensureSession(writer);
+          if (writer.role !== 'qa' || writer.id !== actor.id) throw new TrackerError('stage QA writer changed; retry');
+          const claim = this.#index.claimOf(normalizeId(rawId)!);
+          if (claim && ['implementer', 'aide'].includes(claim.role ?? '') && this.sameSession(claim.sessionId, writer.id)) throw new TrackerError('the claiming session cannot supply stage QA');
+          v!.by = formatVerdictBy(writer.name, writer.role);
+          let checked = evidence;
+          return this.#writeComment(writer, rawId, body, v, null, resumed, () => {
+            const now = currentActor ? currentActor() : writer;
+            this.#ensureSession(now);
+            if (now.id !== writer.id || now.name !== writer.name || now.role !== 'qa') throw new TrackerError('stage QA writer changed; nothing written, retry');
+            if (checked.tip !== evidence.tip || checked.hash !== evidence.hash || checked.source !== evidence.source || this.#stageSnapshot(normalizeId(rawId)!, v!.stage!)?.hash !== evidence.hash) throw new TrackerError('stage QA evidence changed while writing; nothing written, retry');
+            this.#fresh.noteTip('dev', checked.tip);
+          }, verdict, async () => { checked = await this.#stageEvidence(rawId, v!.stage!, resumed); }, evidence.canonical);
+        });
+      }));
+    }
     const marking = verdict?.verified !== undefined || verdict?.failed !== undefined;
     const checkMarks = (writer: Actor) => {
       if (!marking) return;
@@ -1452,10 +1559,11 @@ export class Tracker {
     return write();
   }
 
-  async #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null, resumed: Resumed, beforeCommit?: () => void, input?: VerdictInput): Promise<ItemView> {
+  async #writeComment(actor: Actor, rawId: string, body: string, v: Verdict | undefined, tip: { branch: string; sha: string | null } | null, resumed: Resumed, beforeCommit?: () => void, input?: VerdictInput, beforeRename?: () => Promise<void>, stageSource?: string): Promise<ItemView> {
     const marking = input?.verified !== undefined || input?.failed !== undefined;
     const marked: MarkedCriterion[] = [];
     const view = await this.#mutate(rawId, actor, marking ? 'criterion' : v ? 'verdict' : 'comment', (item) => {
+      if (stageSource !== undefined && serializeItem(item) !== stageSource) throw new TrackerError('stage QA epic changed before writing; retry');
       if (v && !v.commit) {
         // a hand edit moved the branch meanwhile: the tip the cache last read for it
         const branch = isPlanningContainer(item.fm.kind, this.levels) ? 'dev' : item.fm.branch;
@@ -1476,11 +1584,11 @@ export class Tracker {
       }
       const summary = marked.length ? `Criteria: ${marked.map(c => `${c.id} ${c.mark}${c.note ? ` (${c.note})` : ''}`).join(', ')}.` : '';
       item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: [body, summary].filter(Boolean).join('\n\n'), ...(v ? { verdict: v } : {}) });
-      if (v?.result === 'not clear') {
+      if (v?.result === 'not clear' && v.stage === undefined) {
         this.#setStatus(item, 'in progress');
         if (this.levels.includes(item.fm.kind)) item.fm.state = 'open';
       }
-    }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(normalizeId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined);
+    }, resumed, actor, beforeCommit, v ? () => this.#index.setHold(normalizeId(rawId) ?? rawId, this.#sessionId(actor.id), null) : undefined, beforeRename);
     return resumed(() => {
       for (const c of marked) this.#criterionEvent(view.id, c.id, c.mark);
       // what is announced is what the file records, however it came: a structured verdict, or a text that reads back
@@ -1777,7 +1885,7 @@ export class Tracker {
         this.#checkClose(closing.id, closing.kind, children);
         if (evidence) {
           if (override === undefined) this.#checkEpicClose(evidence, epicTip);
-          else this.#log({ event: 'epic-close-overridden', id: closing.id, by: actor.name, override: override.trim(), criteria: incompleteEpicCriteria(evidence, evidence.verdicts.filter(v => v.source === 'hub' && v.verdict === 'qa').at(-1)) });
+          else this.#log({ event: 'epic-close-overridden', id: closing.id, by: actor.name, override: override.trim(), criteria: incompleteEpicCriteria(evidence, evidence.verdicts.filter(v => v.source === 'hub' && v.verdict === 'qa' && v.stage === undefined).at(-1)) });
         }
       }, undefined, async () => {
         if (isPlanningContainer(closing.kind, this.levels)) {

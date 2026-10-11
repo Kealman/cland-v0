@@ -78,8 +78,8 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   // Verdict reports remain readable in their topic; subscribed events cover lead delivery.
   const unwatchVerdicts = options.tracker?.onVerdict((id, author, v, report) => {
     if (report) core.noticeInTopic(report.topic ?? 'agents', {
-      kind: 'report', text: `${id} ${v.verdict} ${v.result} · ${v.by} · run ${v.run}${report.text ? `\n\n${report.text}` : ''}`,
-      detail: { item: id, session: author, verdict: v.verdict, result: v.result, run: v.run },
+      kind: 'report', text: `${id}${v.stage ? ` stage ${v.stage}` : ''} ${v.verdict} ${v.result} · ${v.by} · run ${v.run}${report.text ? `\n\n${report.text}` : ''}`,
+      detail: { item: id, session: author, verdict: v.verdict, result: v.result, run: v.run, ...(v.stage ? { stage: v.stage } : {}) },
       ...(report.criteria !== undefined ? { criteria: report.criteria } : {}),
     });
   });

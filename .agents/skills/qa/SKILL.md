@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Write a Coordinator QA brief, request QA as the item lead, or run the brief as QA and record its verdict.
+description: Write an item or stage QA brief, request QA as the lead, or run the brief as QA and record its verdict.
 ---
 
 A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. The cases it names are Lua files, `qa/cases/<ID>.lua`, run with `cland --headless --qa`. Every case ends as one line of `.cland/qa/runs.jsonl`; the run ends as one verdict on the item.
@@ -15,6 +15,16 @@ A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed 
    - *For an unclaimed item, through the hub (preferred).* `send` to the `qa` role (launch one with `session.launch` if none is live) with first line `qa request T-<n>` and the brief's path (the brief carries its own build rule: the branch tip when the run starts). The QA session runs the brief, records the runs and writes a QA verdict through the hub; the merge gate counts it (decision D5).
    - *Rescue (fallback, or a second opinion).* `/codex:rescue --background --fresh --model gpt-6-astra "Run the QA brief in qa/briefs/T-<n>.md exactly"`, then `/codex:status` and `/codex:result`. A rescue run reaches no hub socket: it returns the `runs.jsonl` lines and the verdict in its output. Recover the run's evidence and lines as "Recovering a rescue run" below says, and record the verdict with `task.comment` (`verdict` qa, `result`, `run` the rescue job id, `commit`), saying in the text that it came through `/codex:rescue`. That verdict shows as yours and **the merge gate does not count it** (decision D5): it informs, it does not clear.
 4. **Read findings escalated by the lead.** The verdict is `clear` only when every case in scope passed. File each finding as an item: `cland task create "<finding>" --label qa-found --label needs-triage --body-file -`, with the case id, the commit, the command and what it showed.
+
+## After-stage QA
+
+The Coordinator or epic's Lead writes `qa/briefs/T-<epic>-stage-<index>.md` from `STAGE-BRIEF.md` after reading `task.plan show` and the stage's merged items. Fill every section: exact stage name, ordered item ids, effective stage scope (`affected` or `full`, including after-stage item overrides), commands/cases and expected results, evidence, out of scope and grants. `affected` covers the stage's combined changes; `full` covers the product's complete QA scope. Commit the brief on dev before requesting the run. A stage uses no stage QA verdict when neither its default nor any item override requires after-stage QA.
+
+Once all stage items are merged onto dev, its Lead or the Coordinator sends to QA in the epic's topic: first line `qa request T-<epic> stage <exact stage name>`, then the committed stage brief and full dev SHA. Keep the next stage's launches held until `task.plan show` reports this stage `closed`. A not-clear verdict keeps it open: file the findings, add their items to this stage through `task.plan set`, merge their fixes, then request a new run on dev.
+
+QA takes a hold on the epic and reads its plan, stage progress and brief. Use a clean detached worktree at the requested dev SHA (the tracker in the root can have live edits). Before running, check that HEAD equals the request and `refs/heads/dev`, and that all listed stage items landed; otherwise report BLOCKED to the requester. Run and record the cases/manual checks with the existing script using the epic id and one unique run id. Record evidence before the verdict. Recheck dev after the cases: if it moved, keep the evidence and report BLOCKED; request a new run at the new build.
+
+Write one `task.comment` on the epic with `verdict: qa`, `stage: "<exact stage name>"`, `commit: "<full tested dev SHA>"`, `run` and `result`. The CLI form adds `--stage "<exact stage name>"` to the normal verdict command. Clear only when every check in the stage brief passed. Stage verdicts carry no `verified` or `failed` epic criterion marks; the epic's Definition of done remains a separate run. Report `qa clear T-<epic> stage <name>` or `qa not clear T-<epic> stage <name>` in the request topic to its Lead. The hub refuses a stale dev build or unfinished stage; retry only the verdict when the evidence/build still qualify, otherwise request a fresh run.
 
 ## If you are the item lead
 

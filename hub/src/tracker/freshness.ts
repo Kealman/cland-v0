@@ -16,7 +16,7 @@ export const TIP_CHECK_MS = 2000;
 /** How soon after a tracker change the tips are read again, ms (changes in a burst share one read). */
 const POKE_MS = 50;
 
-type Want = { commit: string; tip: string; base: string | null; ids: Set<string> };
+type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; ids: Set<string> };
 
 /** Owns when tip reads run, including the first read; tests can drive and await them by hand. */
 export type TipSchedule = (read: () => Promise<void>, intervalMs: number) => { poke: () => void; stop: () => void };
@@ -68,6 +68,8 @@ export class Freshness {
   #tips: Map<string, string> | null = null;
   readonly #results = new Map<string, boolean>();
   readonly #wants = new Map<string, Want>();
+  /** A transient ancestry error is open until a bounded retry on the existing tip schedule answers it. */
+  readonly #retries = new Map<string, { want: Want; after: number }>();
   /** Task patch ids by (base, base tip, commit): the tip's is shared by the review and the QA verdict. */
   readonly #patches = new Map<string, Promise<string | null>>();
   #working = false;
@@ -105,6 +107,8 @@ export class Freshness {
     this.#schedule?.stop();
     this.#schedule = null;
     this.#wants.clear();
+    for (const key of this.#retries.keys()) this.#results.delete(key);
+    this.#retries.clear();
   }
 
   /** The integration branch patch ids are compared against, as last read; null when neither exists or not read yet. */
@@ -144,7 +148,12 @@ export class Freshness {
     });
   }
 
-  #current(id: string, branch: string | null, commit: string | undefined): boolean | undefined {
+  /** Stage builds remain valid only while dev descends from them; unknown answers are computed off-path. */
+  ancestor(id: string, commit: string | undefined, branch = 'dev'): boolean | undefined {
+    return this.#current(id, branch, commit, true);
+  }
+
+  #current(id: string, branch: string | null, commit: string | undefined, ancestry = false): boolean | undefined {
     if (!commit || !branch || !/^[0-9a-f]{4,64}$/i.test(commit)) return false;
     const tips = this.#tips;
     if (!tips) return undefined;
@@ -160,12 +169,15 @@ export class Freshness {
       return missing.absent ? false : undefined;
     }
     if (commit === tip) return true;
-    const base = this.#base;
-    const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null);
+    const base = ancestry ? null : this.#base;
+    const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null) + (ancestry ? ' ancestor' : '');
     const known = this.#results.get(key);
-    if (known !== undefined) return known;
+    if (known !== undefined) {
+      if (id) this.#retries.get(key)?.want.ids.add(id);
+      return known;
+    }
     if (id) {
-      const want = this.#wants.get(key) ?? { commit, tip, base, ids: new Set<string>() };
+      const want = this.#wants.get(key) ?? { commit, tip, base, ancestry, ids: new Set<string>() };
       want.ids.add(id);
       this.#wants.set(key, want);
       this.#startWork();
@@ -218,6 +230,7 @@ export class Freshness {
             else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
           }
           if (moved) this.#prune();
+          this.#retryDue();
           if (moved || settled) this.#tipsMoved();
         });
       } while (this.#readAgain && !this.#stopped);
@@ -237,12 +250,25 @@ export class Freshness {
     const base = this.#base;
     const baseKey = `${base ?? ''} ${base ? (tips.get(base) ?? '') : ''}`;
     const alive = (key: string) => {
-      const [, tip, b, bt] = key.split(' ');
-      return live.has(tip!) && `${b} ${bt}` === baseKey;
+      const [, tip, b, bt, mode] = key.split(' ');
+      return live.has(tip!) && (mode === 'ancestor' || `${b} ${bt}` === baseKey);
     };
     for (const key of [...this.#results.keys()]) if (!alive(key)) this.#results.delete(key);
     for (const key of [...this.#wants.keys()]) if (!alive(key)) this.#wants.delete(key);
+    for (const key of [...this.#retries.keys()]) if (!alive(key)) this.#retries.delete(key);
     for (const key of [...this.#patches.keys()]) if (!key.startsWith(`${baseKey} `)) this.#patches.delete(key);
+  }
+
+  /** Retry errors even at an unchanged tip, with no request-triggered Git or immediate failure loop. */
+  #retryDue(): void {
+    const now = performance.now();
+    for (const [key, retry] of this.#retries) {
+      if (retry.after > now) continue;
+      this.#retries.delete(key);
+      this.#results.delete(key);
+      this.#wants.set(key, retry.want);
+      this.#startWork();
+    }
   }
 
   /** Compute the missing answers, one at a time. */
@@ -256,17 +282,20 @@ export class Freshness {
         if (next.done) return;
         const [key, want] = next.value;
         let value: boolean;
+        let failed = false;
         try {
           value = await this.#compute(want);
         } catch (err) {
           this.#fail('compute', err);
           value = false;
+          failed = true;
         }
         // a tip that moved meanwhile dropped the wait: its answer is for nobody
         if (this.#wants.get(key) !== want) continue;
         this.#wants.delete(key);
         if (this.#stopped) continue;
         this.#results.set(key, value);
+        if (failed && want.ancestry) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
         this.#settled([...want.ids]);
       }
     } finally {
@@ -279,6 +308,7 @@ export class Freshness {
     const resolved = await resolveCommit(this.#git, want.commit);
     if (!resolved) return false;
     if (resolved === want.tip) return true;
+    if (want.ancestry) return await this.#git(['merge-base', '--is-ancestor', resolved, want.tip]) !== null;
     if (!want.base) return false;
     const reviewed = await this.#patch(want.base, resolved);
     return reviewed !== null && reviewed === (await this.#patch(want.base, want.tip));

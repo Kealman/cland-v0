@@ -16,7 +16,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml]
   task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
-  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--verified C1,C3|all | --failed "C1=note"]…]
+  task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--stage <name>] [--verified C1,C3|all | --failed "C1=note"]…]
   task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--status s] [--label l]…
                   [--add-label l]… [--remove-label l]… [--assignee a|none]
   task close <id> [--comment t] [--override reason (human shell only)]
@@ -48,7 +48,7 @@ const OPTIONS = {
   view: { ...COMMON },
   plan: { ...COMMON, file: { type: 'string' } },
   list: { ...COMMON, under: { type: 'string' }, state: { type: 'string' }, label: { type: 'string', multiple: true }, kind: { type: 'string' }, assignee: { type: 'string' }, verdict: { type: 'string' } },
-  comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
+  comment: { ...COMMON, verdict: { type: 'string' }, result: { type: 'string' }, run: { type: 'string' }, commit: { type: 'string' }, stage: { type: 'string' }, verified: { type: 'string' }, failed: { type: 'string', multiple: true }, 'body-file': { type: 'string' } },
   edit: { ...COMMON, version: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' }, 'body-file': { type: 'string' }, kind: { type: 'string' }, state: { type: 'string' }, status: { type: 'string' }, label: { type: 'string', multiple: true }, 'add-label': { type: 'string', multiple: true }, 'remove-label': { type: 'string', multiple: true }, assignee: { type: 'string' } },
   close: { ...COMMON, comment: { type: 'string' }, override: { type: 'string' } },
   link: { ...COMMON, parent: { type: 'string' }, 'blocked-by': { type: 'string', multiple: true }, unblock: { type: 'string', multiple: true }, topic: { type: 'string' }, branch: { type: 'string' } },
@@ -117,9 +117,9 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
       const item = needId();
       const text = typeof v['body-file'] === 'string' ? readBody(v) : positionals.slice(1).join(' ');
       let verdict: Record<string, unknown> | undefined;
-      if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined || v.commit !== undefined || v.verified !== undefined || v.failed !== undefined) {
+      if (v.verdict !== undefined || v.result !== undefined || v.run !== undefined || v.commit !== undefined || v.stage !== undefined || v.verified !== undefined || v.failed !== undefined) {
         if (typeof v.verdict !== 'string' || typeof v.result !== 'string' || typeof v.run !== 'string') throw new UsageError('a verdict needs --verdict review|qa, --result clear|"not clear" and --run <id>');
-        verdict = { verdict: v.verdict, result: v.result === 'not-clear' ? 'not clear' : v.result, run: v.run, ...(typeof v.commit === 'string' ? { commit: v.commit } : {}), ...(v.verified !== undefined ? { verified: v.verified } : {}), ...(Array.isArray(v.failed) ? { failed: v.failed.map(f => {
+        verdict = { verdict: v.verdict, result: v.result === 'not-clear' ? 'not clear' : v.result, run: v.run, ...(typeof v.commit === 'string' ? { commit: v.commit } : {}), ...(typeof v.stage === 'string' ? { stage: v.stage } : {}), ...(v.verified !== undefined ? { verified: v.verified } : {}), ...(Array.isArray(v.failed) ? { failed: v.failed.map(f => {
           const split = f.indexOf('=');
           if (split < 0) throw new UsageError('--failed needs C1=note (repeat for each criterion)');
           return { criterion: f.slice(0, split), note: f.slice(split + 1) };

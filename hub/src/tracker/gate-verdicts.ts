@@ -5,7 +5,7 @@ import type { IndexedVerdict } from './index-db.ts';
 import type { ItemView } from './tracker.ts';
 
 function verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
-  const all = view.verdicts.filter((v) => v.verdict === kind);
+  const all = view.verdicts.filter((v) => v.verdict === kind && v.stage === undefined);
   const v = all.filter((v) => v.source === 'hub').at(-1);
   if (!v) throw new MergeError(all.length ? `${kind}-provenance` : `${kind}-missing`, `${view.id}: no hub-written ${kind} verdict`);
   const role = kind === 'review' ? 'reviewer' : 'qa';

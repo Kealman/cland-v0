@@ -102,7 +102,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       if (frame.op === 'set' && typeof frame.yaml !== 'string') throw new TrackerError('task.plan set needs yaml');
       const item = frame.op === 'approve' ? await tracker.approvePlan(actor, needItem(f), resumed, authorize) : frame.op === 'set' ? await tracker.setPlan(actor, needItem(f), frame.yaml!, resumed, authorize) : await tracker.viewAsync(needItem(f), resumed);
       if (!tracker.isPlanContainer(item.kind)) throw new TrackerError('a plan belongs only to an epic');
-      return { id: item.id, plan: item.plan, approval: item.approval, ...(item.planError ? { planError: item.planError } : {}) };
+      return { id: item.id, plan: item.plan, approval: item.approval, stages: item.stages, ...(item.planError ? { planError: item.planError } : {}) };
     }
     case 'task.view':
       return { item: await tracker.viewAsync(needItem(f), resumed) };

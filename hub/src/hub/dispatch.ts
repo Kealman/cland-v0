@@ -339,7 +339,7 @@ export class Dispatcher {
     const v = verdictOfText(frame.text);
     if (!v) return null;
     if (readsAsVerdict(v.text)) return 'a verdict comment carries one verdict header: its text may not start with another';
-    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}) };
+    frame.verdict = { verdict: v.verdict, result: v.result, run: v.run, ...(v.commit ? { commit: v.commit } : {}), ...(v.stage ? { stage: v.stage } : {}) };
     frame.text = v.text;
     return null;
   }
@@ -364,7 +364,10 @@ export class Dispatcher {
     if (['release', 'sync', 'push', 'hub.stop', 'rename', 'session.resume'].includes(type)) {
       return `root level: only the Coordinator may use ${type}`;
     }
-    const request = type === 'send' && typeof frame.text === 'string' ? /^(?:review|qa) request (T-[1-9]\d*)\s*(?:\n|$)/.exec(frame.text) : null;
+    const request = type === 'send' && typeof frame.text === 'string'
+      ? /^(?:review|qa) request (T-[1-9]\d*)\s*(?:\n|$)/.exec(frame.text)
+        ?? /^qa request (T-[1-9]\d*)[ \t]+stage[ \t]+\S[^\r\n]*(?:\r?\n|$)/.exec(frame.text)
+      : null;
     if (!['session.launch', 'session.stop', 'merge'].includes(type) && !request) return null;
     const tracker = this.#options.tracker;
     const items = tracker?.list() ?? [];
