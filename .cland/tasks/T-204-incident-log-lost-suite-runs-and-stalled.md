@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-11T15:30:41.954Z
+updated: 2026-10-11T16:15:15.062Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -187,3 +187,7 @@ Hourly check 14:15Z. No lost runs. Only one item is open in review: T-192, whose
 ### coord · 2026-10-11T15:15:15.720Z
 
 Hourly check 15:15Z. No lost runs. No item is in review or in progress: all of T-108's and T-115's children are closed. The only suite is the Coordinator's integrated dev run at 36a4860 (T-192 and T-223 since the restart). qa-18 is running T-115's epic demo with no suite lock. No waits. No nudge.
+
+### coord · 2026-10-11T16:15:15.062Z
+
+Hourly check 16:15Z. No lost runs. The only item in work is T-225, in progress; impl-225 was launched at 16:11Z and has no run yet. No suite is running or queued. T-224 merged at 16:11Z after a review-fix loop (a8a8da0); T-108 closed on QA at 15:46Z. No nudge.
