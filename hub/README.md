@@ -1082,16 +1082,45 @@ Implementers use `cland suite` for full runs and wait for its artifact-backed re
 see [the agent test workflow](../docs/agents/tests.md). The package commands below
 are also available for humans and isolated CI.
 
-Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
-`npm test --workspace hub`, or `npm run test:nvim`. A hub-only run takes
-`/tmp/cland-suite.lock`; a Neovim-only run queues once for joint admission to
-`/tmp/cland-suite.lock` and `/tmp/cland-suite-nvim.lock`. Every phase takes the machine lock, so
-hub and Neovim runs serialize across projects and worktrees. `npm test` queues
-once for joint admission to both locks before hub starts, and keeps them through
-Neovim; each phase cleans up its processes and temporary root before the next
-starts. Neovim-only and full-run waiters hold neither lock until both are free
-under their recovery guards, so
-live legacy Neovim-first waiters can drain without an opposite-order cycle.
+`npm test` and `cland suite --report <topic>` default to diff selection. They fetch
+`origin/dev`, compare the branch from its merge base with fetched dev, and include
+staged, unstaged and untracked files. Renames include both old and new paths.
+The pure `chooseSuiteMode` in `src/suite-selection.ts` uses conservative allowlists:
+hub tracker, adapter and ordinary CLI code or package-local tests select `hub-only`;
+Neovim Lua, launcher code or tests select `nvim-only`. Shared hub/event/protocol,
+roles/crew, test harness, runner, package/lockfile/tsconfig, mixed-package and
+unknown paths run `full`. Tracker-only `.cland/tasks/` changes also run full.
+Neovim's hub transport/event-state modules and the adapter event contract run full.
+An empty diff or a failed fetch/diff runs full with its reason. Integrated `dev`
+always runs full. `cland suite all` / `cland suite --all` and `npm test -- --all`
+force full. The runner CLI's `--all` overrides explicit test targets as well as the
+selected mode. Explicit `hub` / `nvim` requests reduce only a qualifying matching
+diff; otherwise they widen to full. The duration line and durable suite report name the
+mode, reason and deciding files. Hub jobs persist one selection for the worker
+and report, including across restart.
+Reports show a byte-bounded file summary with an omitted count when necessary;
+the durable log retains every deciding path. Compact reports preserve the mode,
+result and log-artifact pointer before other details when the configured cap is small.
+
+Reduced runs retain a cross-package smoke baseline. Both lists are named constants
+in `src/suite-selection.ts`:
+
+- `NVIM_SMOKE`: `nvim/test/client.test.ts`, `nvim/test/sessions.test.ts`. A hub-only
+  run executes the whole hub phase followed by these real-hub/spoke UI tests.
+- `HUB_SMOKE`: `hub/test/tracer.test.ts`, `hub/test/daemon.test.ts`. A Neovim-only
+  run executes these spoke/daemon tests followed by the whole Neovim phase.
+
+Per-item targeted hub tests are a possible follow-up; the fixed baseline applies
+to every Neovim-only run today.
+
+All package runs queue once for joint admission to `/tmp/cland-suite.lock` and
+`/tmp/cland-suite-nvim.lock`, and retain both locks through the chosen phases,
+including smoke. Each phase cleans up its processes and temporary root before
+the next starts. Explicit test targets passed to `runPackageSuite` retain the
+single-phase targeted/fixture interface; a hub target run needs only the machine
+lock. Every phase takes the machine lock, so runs serialize across projects and
+worktrees. Joint waiters hold neither lock until both are free under their recovery
+guards, so live legacy Neovim-first waiters can drain without an opposite-order cycle.
 See [agent test notes](../docs/agents/tests.md). A second run prints the holder's
 pid, start time, worktree and its own queue position. Atomic PID/start-time
 tickets published before guard polling in `<lock>.queue/` order admission by monotonic enqueue time; dead

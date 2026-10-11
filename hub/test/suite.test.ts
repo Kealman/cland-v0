@@ -8,6 +8,8 @@ import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
 async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '') {
@@ -31,14 +33,71 @@ async function fixture(t: import('node:test').TestContext, testScript: string, t
     assert.equal(history.ok, true, history.error);
     return (history.value as { messages: ResultMessage[] }).messages.filter(m => m.text.startsWith('suite result '));
   };
-  const launch = async () => {
-    const r = await clandWithEnv(root, env, 'suite', 'all', '--report', topic, '--to', 'rev', '--to', 'impl', '--json');
+  const launch = async (mode = 'all') => {
+    const r = await clandWithEnv(root, env, 'suite', mode, '--report', topic, '--to', 'rev', '--to', 'impl', '--json');
     assert.equal(r.code, 0, r.stderr);
     const job = JSON.parse(r.stdout) as { id: string; pid: number; position: number };
     ownProcess(t, job.pid);
     return job;
   };
   return { root, discovery, ui, env, topic, results, launch, spoke };
+}
+
+test('auto suite reports the fetched diff decision and transports it to the package; --all forces full', async t => {
+  const f = await fixture(t, 'node -e "console.log(process.env.CLAND_SUITE_SELECTION)"');
+  const exec = promisify(execFile);
+  const git = async (...args: string[]) => exec('git', args, { cwd: f.root });
+  const remote = join(f.root, 'origin.git');
+  await git('init', '--initial-branch=dev');
+  await git('config', 'user.name', 'Suite report test'); await git('config', 'user.email', 'suite@example.invalid');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\n');
+  await git('add', '.'); await git('commit', '-m', 'base');
+  await git('init', '--bare', remote); await git('remote', 'add', 'origin', remote); await git('push', 'origin', 'dev');
+  await git('checkout', '-b', 't/T-214');
+  await mkdir(join(f.root, 'hub', 'src', 'tracker'), { recursive: true });
+  await writeFile(join(f.root, 'hub', 'src', 'tracker', 'tracker.ts'), '// package-local change');
+  await git('add', '.'); await git('commit', '-m', 'hub change');
+  await f.launch('auto');
+  const reduced = await eventually('auto result', async () => (await f.results())[0]);
+  assert.match(reduced.text, /mode hub-only; package-local diff against fetched dev; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
+  const log = await readFile(reduced.artifacts[0]!.path, 'utf8');
+  assert.match(log, /"mode":"hub-only","files":\["hub\/src\/tracker\/tracker.ts"\]/);
+  await f.launch('--all');
+  const full = await eventually('forced full result', async () => (await f.results())[1]);
+  assert.match(full.text, /mode full; --all \/ all forces full/);
+  assert.match(full.text, /deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
+});
+
+for (const cap of [768, 384]) {
+test(`a broad deciding-file list publishes once below the ${cap}-byte cap and stays complete in the log`, async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, `[hygiene]\nmax_text_bytes = ${cap}\n`);
+  const exec = promisify(execFile);
+  const git = async (...args: string[]) => exec('git', args, { cwd: f.root });
+  const remote = join(f.root, 'origin.git');
+  await git('init', '--initial-branch=dev');
+  await git('config', 'user.name', 'Suite report test'); await git('config', 'user.email', 'suite@example.invalid');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\n');
+  await git('add', '.'); await git('commit', '-m', 'base');
+  await git('init', '--bare', remote); await git('remote', 'add', 'origin', remote); await git('push', 'origin', 'dev');
+  await git('checkout', '-b', 't/T-214');
+  await mkdir(join(f.root, 'nvim', 'test'), { recursive: true });
+  const names = Array.from({ length: 150 }, (_, n) => `nvim/test/${String(n).padStart(3, '0')}-${'界'.repeat(40)}.test.ts`);
+  for (const name of names) await writeFile(join(f.root, name), '// local test');
+  await f.launch('auto');
+  const result = await eventually('bounded report publication', async () => (await f.results())[0]);
+  assert.ok(Buffer.byteLength(result.text, 'utf8') <= cap);
+  assert.match(result.text, /mode nvim-only/);
+  assert.match(result.text, /package-local diff against fetched dev/);
+  assert.match(result.text, /full list in log/);
+  assert.ok(!result.text.includes('�'));
+  const log = await readFile(result.artifacts[0]!.path, 'utf8');
+  assert.ok(names.every(name => log.includes(name)), 'every deciding path remains in the log');
+  await eventually('bounded report settled', async () => {
+    const status = await f.ui.request({ type: 'hub.status' });
+    return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(job => job.reported) ? true : undefined;
+  });
+  assert.equal((await f.results()).length, 1);
+});
 }
 
 test('suite CLI exits before its worker, posts one artifact-backed result as caller, and rejects duplicate active runs', async t => {

@@ -476,7 +476,7 @@ export type ClientHello = {
   client: string;
 };
 
-export type SuiteStart = { type: 'suite.start'; id: string; mode: 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[] };
+export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[] };
 
 export type ClientRequest =
   | SuiteStart
@@ -647,7 +647,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
     case 'suite.start':
-      return ['all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+      return ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'push':
     case 'sync':
       return true;

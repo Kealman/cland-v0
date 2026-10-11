@@ -13,6 +13,7 @@ import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
 import { Suites, suiteSummary, type SuiteJob } from './suites.ts';
+import { describeSelection } from '../suite-selection.ts';
 import { isAbsolute } from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
@@ -524,7 +525,16 @@ export class Dispatcher {
     const log = await readFile(artifact.path, 'utf8');
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const outcome = job.outcome!;
-    const text = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\nLog ${artifact.id}: ${artifact.path}`;
+    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\nLog ${artifact.id}: ${artifact.path}`;
+    let text = report(2048);
+    // File counts and the artifact retain the complete decision when a broad diff
+    // or a smaller configured cap cannot fit every path in the topic message.
+    for (let bytes = 1024; !core.textFits(text) && bytes >= 0; bytes = bytes ? Math.floor(bytes / 2) : -1) text = report(bytes);
+    if (!core.textFits(text)) {
+      // Long branch names, failures or log paths can exhaust even the no-files
+      // report. Keep the result/mode/log pointer first and respect any byte cap.
+      text = core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; mode ${job.selection?.mode ?? 'full'}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
+    }
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
     if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');

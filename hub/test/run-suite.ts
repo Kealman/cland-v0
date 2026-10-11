@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { acquireLock, holderAlive, HubLocked, processStarted } from '../src/hub/lock.ts';
+import { describeSelection, selectPackageSuite, selectionFromEnv, suitePhases, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 
 type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity };
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
@@ -189,7 +190,7 @@ async function acquire(dirs: string[], interrupted: () => boolean, holder: Holde
   } finally { await rm(ticketPath, { force: true }); }
 }
 
-export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption } = {}): Promise<number> {
+export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[] } = {}): Promise<number> {
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
   const runId = randomBytes(10).toString('base64url');
@@ -230,6 +231,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     for (const [index, args] of suites.entries()) {
       if (interruption.signal) break;
+      if (options.phaseNames?.[index]) process.stderr.write(`suite phase ${options.phaseNames[index]}; locks held ${JSON.stringify(leases.length ? options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'] : [])}\n`);
       if (index > 0) {
         // Remove the previous phase's processes and root without giving up admission.
         await sweep(holder);
@@ -290,24 +292,24 @@ process.chdir(cwd);`);
       for (const lease of leases.reverse()) await lease.release();
     } finally {
       for (const { signal, handler } of handlers) process.off(signal, handler);
-      process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}\n`);
+      process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
     }
   }
 }
 
 export async function runPackageSuite(mode: string, extra: string[] = [], options: { cwd?: string; lockDirs?: { hub: string; nvim: string } } = {}): Promise<number> {
-  if (!['all', 'hub', 'nvim'].includes(mode)) throw new Error(`unknown suite: ${mode}`);
+  if (!['auto', 'all', 'hub', 'nvim'].includes(mode)) throw new Error(`unknown suite: ${mode}`);
   const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
   const locks = options.lockDirs ?? { hub: '/tmp/cland-suite.lock', nvim: '/tmp/cland-suite-nvim.lock' };
-  const phases: Array<'hub' | 'nvim'> = mode === 'all' ? ['hub', 'nvim'] : [mode === 'hub' ? 'hub' : 'nvim'];
-  const suites = phases.map(phase => {
-    const targets = phase === 'hub' ? ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'] : ['nvim/test/**/*.test.ts'];
-    return ['--test', '--test-concurrency=4', ...(extra.length ? extra : targets)];
-  });
+  // Explicit test targets retain the single-phase fixture/targeted-run interface.
+  let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv() ?? await selectPackageSuite(cwd, mode as SuiteRequest);
+  if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
+  const phases = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra })) : suitePhases(selection.mode);
+  const suites = phases.map(phase => ['--test', '--test-concurrency=4', ...phase.targets]);
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.
   // A single ticket/lease spans both phases; single-phase admission is unchanged.
-  const lockDirs = mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
+  const lockDirs = extra.length && mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
   const interruption: Interruption = { signal: null };
   // Keep the first signal latched through final cleanup, after runSuite evaluates its return.
   const handlers = (['SIGINT', 'SIGTERM'] as const).map(signal => {
@@ -316,7 +318,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
     return { signal, handler };
   });
   try {
-    const code = await runSuite(suites, { cwd, lockDirs, interruption });
+    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, phaseNames: phases.map(phase => phase.name) });
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
   } finally {
     for (const { signal, handler } of handlers) process.off(signal, handler);
@@ -324,5 +326,11 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  process.exitCode = await runPackageSuite(process.argv[2] ?? 'all', process.argv.slice(3));
+  const args = process.argv.slice(2);
+  const forceAll = args.includes('--all');
+  const filtered = args.filter(arg => arg !== '--all');
+  const mode = filtered[0] && ['auto', 'all', 'hub', 'nvim'].includes(filtered[0]) ? filtered.shift()! : 'auto';
+  const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
+  const cwd = resolve(process.cwd()) === resolve(packageRoot, 'hub') ? packageRoot : process.cwd();
+  process.exitCode = await runPackageSuite(forceAll ? 'all' : mode, forceAll || mode === 'all' ? [] : filtered, { cwd });
 }

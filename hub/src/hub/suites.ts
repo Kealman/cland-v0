@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import type { Store } from './store.ts';
 import { systemProcesses, endProcess } from '../system-processes.ts';
 import { processStartedAsync } from './lock.ts';
+import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
@@ -16,6 +17,7 @@ export type SuiteJob = {
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
+  selection?: SuiteSelection;
 };
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
@@ -58,15 +60,15 @@ export class Suites {
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const git = async (args: string[]) => exec('git', args, { cwd: input.cwd }).then(r => r.stdout.trim(), () => 'unknown');
-    const [head, branch] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current'])]);
+    const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => !job.reported && !job.outcome && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    const job: SuiteJob = { ...input, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, selection, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     this.#launching.add(id); this.#jobs.push(job); this.#save();
     try {
       await writeFile(join(dir, 'job.json'), JSON.stringify(job), { mode: 0o600 });
-      await writeFile(job.log, `Suite ${id} · ${input.mode}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nStarted ${new Date().toISOString()}\n`, { mode: 0o600 });
+      await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nStarted ${new Date().toISOString()}\n`, { mode: 0o600 });
       const fd = await open(job.log, 'a');
       try {
         authorize();

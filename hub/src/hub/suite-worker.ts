@@ -3,9 +3,10 @@ import { spawn } from 'node:child_process';
 import { readFile, access, rename, writeFile } from 'node:fs/promises';
 import { setTimeout as pause } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import type { SuiteSelection } from '../suite-selection.ts';
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection };
   let signal: NodeJS.Signals | null = null;
   let active: ReturnType<typeof spawn> | undefined;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
@@ -23,7 +24,7 @@ export async function suiteWorker(input: string): Promise<void> {
   let code = 0;
   let cause = admitted ? '' : 'hub stopped before worker admission completed';
   try {
-    const commands = [['run', 'typecheck'], ...(job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
+    const commands = [['run', 'typecheck'], ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
     if (!admitted) code = 1;
     for (const args of admitted ? commands : []) {
       if (signal) break;
@@ -31,6 +32,9 @@ export async function suiteWorker(input: string): Promise<void> {
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_SKIP_LOCK;
+      // One durable decision feeds the package runner and the result, even after restart.
+      if (job.selection) env.CLAND_SUITE_SELECTION = JSON.stringify(job.selection);
+      else delete env.CLAND_SUITE_SELECTION;
       active = spawn('npm', args, { cwd: job.cwd, env, stdio: ['ignore', 'inherit', 'inherit'] });
       const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
         active!.once('error', reject);
