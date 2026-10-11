@@ -462,7 +462,7 @@ export type TaskWorktree = { item: string; branch: string; path: string; base: s
  * own (its `branch` field), else `t/<id>-<slug>`, started at `taskBase`'s tip. The worktree is linked to the
  * project's own repository (decision D3). Under the territory lock; rejects with a reason meant for the asker.
  */
-export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }, resumed: <T>(work: () => T) => T = work => work()): Promise<TaskWorktree> {
+export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }, resumed: <T>(work: () => T) => T = work => work(), authorize: () => void = () => {}): Promise<TaskWorktree> {
   if (!(await hasTerritory(root))) throw new Error('the project has no territory (run cland init)');
   if (!/^T-\d+$/.test(item.id)) throw new Error(`not an item id: ${item.id}`);
   return withTerritoryLockAsync(root, async () => {
@@ -472,6 +472,7 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
     const present = await access(path).then(() => true, () => false);
     // a worktree whose folder was deleted by hand: Git forgets it before the path is used again
     if (registered && !present) {
+      resumed(authorize);
       await territoryGitAsync(root, ['worktree', 'prune']);
       registered = undefined;
     }
@@ -488,8 +489,10 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
     const existingTip = await refAsync(root, `refs/heads/${branch}`);
     if (existingTip !== null) {
       await checkWorktreePath(root, path, resumed);
+      resumed(authorize);
       await mkdir(worktreesPath(root), { recursive: true });
       await checkWorktreePath(root, path, resumed);
+      resumed(authorize);
       await territoryGitAsync(root, ['worktree', 'add', path, branch]);
       await verifyCreatedWorktree(root, path, branch, existingTip, false, resumed);
       return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true };
@@ -499,8 +502,10 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
     const createdTip = await refAsync(root, `refs/heads/${base}`);
     if (createdTip === null) throw new Error(`${base} no longer has a commit to start the task branch from`);
     await checkWorktreePath(root, path, resumed);
+    resumed(authorize);
     await mkdir(worktreesPath(root), { recursive: true });
     await checkWorktreePath(root, path, resumed);
+    resumed(authorize);
     // Pin the creation tip: a later listing may already contain another writer's commit.
     await territoryGitAsync(root, ['worktree', 'add', '--no-track', '-b', branch, path, createdTip]);
     await verifyCreatedWorktree(root, path, branch, createdTip, true, resumed);
@@ -587,6 +592,7 @@ export async function squashTask(
   message: (tip: string, base: string, baseTip: string) => Promise<string>,
   resumed: <T>(work: () => T) => T = (work) => work(),
   prepared: (landing: { commit: string; base: string; tip: string; checkout?: { before: string; after: string } }) => void = () => {},
+  authorize: () => void = () => {},
 ): Promise<{ commit: string; base: string }> {
   const managed = await hasTerritory(root);
   resumed(() => { if (!managed) throw new MergeError('merge-territory', 'the project has no managed territory'); });
@@ -656,10 +662,14 @@ export async function squashTask(
   const recovery = resumed(() => ({ before: beforeIndex, after: mergedIndex.split('\n')[0]! }));
   resumed(() => prepared({ commit, base, tip, checkout: recovery }));
   let advanced = false;
+  let admissionError: unknown;
+  const admit = () => { try { authorize(); } catch (err) { admissionError = err; throw err; } };
   try {
+    resumed(admit);
     await territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit]);
     const afterIndex = await territoryGitAsync(root, ['write-tree']);
     resumed(() => {
+      admit();
       if (afterIndex !== recovery.after) throw new Error('the index changed during landing; checkout recovery is required');
     });
     await territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, commit, before]);
@@ -674,17 +684,18 @@ export async function squashTask(
     } catch (restore) {
       resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${commit} on ${base}: ${restore instanceof Error ? restore.message : String(restore)}; initial failure: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit, base }); });
     }
-    resumed(() => { throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
+    resumed(() => { if (err === admissionError) throw err; throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
   }
   return { commit, base };
 }
 
 /** Restore an unlanded preparation, or roll back a failed landing, only from its recorded index states. */
-export async function restoreTaskCheckout(root: string, receipt: { commit: string; base: string; checkout: { before: string; after: string } }, resumed: <T>(work: () => T) => T): Promise<void> {
+export async function restoreTaskCheckout(root: string, receipt: { commit: string; base: string; checkout: { before: string; after: string } }, resumed: <T>(work: () => T) => T, authorize: () => void = () => {}): Promise<void> {
   const before = await refAsync(root, `${receipt.commit}^`);
   const branch = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
   const index = await territoryGitAsync(root, ['write-tree']);
   resumed(() => {
+    authorize();
     if (!before || branch !== receipt.base) throw new Error(`the root must be on ${receipt.base} for checkout recovery`);
     if (index !== receipt.checkout.before && index !== receipt.checkout.after) throw new Error('the index changed since merge preparation; staged work was kept');
   });
@@ -705,7 +716,7 @@ export async function landedTask(root: string, id: string, receipt: { commit: st
 }
 
 /** Finish a recorded landing's root checkout after an interrupted or failed rollback. No local edits are forced. */
-export async function reconcileTaskCheckout(root: string, receipt: { commit: string; base: string; checkout?: { before: string; after: string } }, resumed: <T>(work: () => T) => T, reconciled: () => void = () => {}): Promise<void> {
+export async function reconcileTaskCheckout(root: string, receipt: { commit: string; base: string; checkout?: { before: string; after: string } }, resumed: <T>(work: () => T) => T, reconciled: () => void = () => {}, authorize: () => void = () => {}): Promise<void> {
   const before = await refAsync(root, `${receipt.commit}^`);
   const current = await refAsync(root, `refs/heads/${receipt.base}`);
   const checkout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
@@ -727,14 +738,18 @@ export async function reconcileTaskCheckout(root: string, receipt: { commit: str
   if (receipt.checkout) {
     const index = await territoryGitAsync(root, ['write-tree']);
     const rolledBack = resumed(() => {
+      authorize();
       if (index !== receipt.checkout!.before && index !== receipt.checkout!.after) throw new Error('the index changed since merge rollback; staged work was kept');
       return index === receipt.checkout!.before;
     });
     if (rolledBack) await territoryGitAsync(root, ['read-tree', '-m', '-u', before!, target]);
     // Record a coherent checkout before the ref repair; a ref failure can be retried without touching staged work.
-    resumed(reconciled);
+    resumed(() => { authorize(); reconciled(); });
   }
-  if (target !== current) await territoryGitAsync(root, ['update-ref', `refs/heads/${receipt.base}`, target, current!]);
+  if (target !== current) {
+    resumed(authorize);
+    await territoryGitAsync(root, ['update-ref', `refs/heads/${receipt.base}`, target, current!]);
+  }
   const finalTip = await refAsync(root, `refs/heads/${receipt.base}`);
   const finalCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
   resumed(() => {

@@ -13,6 +13,7 @@ import { CodexAdapter } from '../src/adapters/codex.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
+import { ToolForbidden } from '../src/roles/permissions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { tempProject } from './harness.ts';
 
@@ -444,4 +445,31 @@ test('OpenCode partial shared-metadata write is removed and a retry publishes th
   await guarded(async () => { await f.adapter.spawn(f.request); });
   assert.match(await fsp.readFile(join(f.root, '.cland/opencode/.gitignore'), 'utf8'), /\n\*\n$/);
   assert.equal((await fsp.readdir(join(f.root, '.cland/opencode'))).some(file => file.startsWith('.stage-')), false);
+});
+
+
+for (const Adapter of [CodexAdapter, OpenCodeAdapter]) test(`${Adapter.name}: pending cleanup retains a typed native admission refusal`, async t => {
+  const f = await fixture(t, Adapter);
+  f.refuseIdentity(true);
+  const refusal = new ToolForbidden('lead', 'session.launch', 'Lead level at epic T-1: outside your subtree');
+  await guarded(async () => {
+    await assert.rejects(f.adapter.spawn(f.request, undefined, () => { if (f.children.length) throw refusal; }), error => {
+      assert.equal(error, refusal);
+      assert.match(refusal.message, /cleanup is pending.*supervised/);
+      assert.equal(refusal.permission, 'session.launch');
+      assert.equal(refusal.role, 'lead');
+      assert.match(refusal.reason, /epic T-1.*subtree/);
+      return true;
+    });
+  });
+  assert.equal(f.children[0]!.exitCode, null);
+  assert.ok(f.events.some(entry => entry.event === 'launch-recovery-pending'));
+  await assert.rejects(f.adapter.spawn(f.request), /still supervised/);
+  // An identity unavailable at capture cannot become trusted later; verified child exit makes rollback safe.
+  const child = f.children[0]!;
+  child.kill(); await once(child, 'exit');
+  const deadline = Date.now() + 5000;
+  while (!f.events.some(entry => entry.event === 'launch-recovered') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));
+  assert.ok(f.events.some(entry => entry.event === 'launch-recovered'));
+  assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null));
 });

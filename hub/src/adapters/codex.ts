@@ -362,7 +362,7 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string): Promise<{ pid: number; client: AppServerClient }> {
+  async #startServer(p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerClient }> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
       pid: number;
       client: AppServerClient;
@@ -390,6 +390,7 @@ export class CodexAdapter implements HarnessAdapter {
           ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
           ...(p.role ? { CLAND_ROLE: p.role } : {}),
         };
+        authorize();
         const child = spawn(this.#bin, args, { cwd: p.cwd, env, detached: true, stdio: ['ignore', out.fd, out.fd] });
         child.once('exit', (code, signal) => (exited = `exited (${code ?? signal})`));
         child.once('error', (err) => (exited = err.message));
@@ -564,10 +565,11 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- launch
 
-  async spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
+  async spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(request.name);
       yield* wait(this.#checkVersion(request.cwd, resumed));
+      authorize();
       const files = new LaunchFiles(resumed);
       const sessionId = randomUUID();
       this.#tmpRun = yield* wait(tmpRunDir(resumed));
@@ -577,7 +579,8 @@ export class CodexAdapter implements HarnessAdapter {
       let client: AppServerClient | undefined;
       try {
         const policy = yield* wait(this.#threadPolicy(request.cwd, request, files, resumed));
-        ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed, request.launchToken)));
+        ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));
+        authorize();
         const started = yield* wait(client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread }));
         const threadId = started.thread.id;
         const p: HarnessProcess = {
@@ -596,6 +599,7 @@ export class CodexAdapter implements HarnessAdapter {
         void this.#readRateLimits(live);
         // the first turn carries the clause: the thread gets its rollout, so attach and resume work
         // the launch's effort (roles.toml) rides on the first turn: `turn/start` takes it for this turn and the next ones
+        authorize();
         const turn = yield* wait(client.request<{
           turn?: {
             id?: string;
@@ -904,11 +908,11 @@ export class CodexAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  async stop(p: HarnessProcess, resumed: Resumed = untimed): Promise<void> {
+  async stop(p: HarnessProcess, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<void> {
     this.#stopping.add(p.sessionId);
     let ended = false;
     try {
-      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       ended = true;
     } finally {
       resumed(() => {

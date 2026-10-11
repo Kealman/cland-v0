@@ -54,6 +54,8 @@
 // recorded but never announced (`item/completed` missed), so only the turn's record shows it; one containing "lose
 // its envelope" is recorded as a `userMessage` holding only the body (a shape the input was not sent in, no
 // envelope id); a thread whose turns hold "fail the readback" refuses `thread/read` with `includeTurns`.
+// Launch admission probes: hold-version / hold-thread-start wait for release-version / release-thread-start,
+// publishing version-running / thread-start-running before their response.
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
@@ -99,6 +101,10 @@ type ThreadFile = { id: string; cwd: string; model: string; turns: number };
 
 async function main(args: string[]): Promise<number> {
   if (args[0] === '--version' || args[0] === '-V') {
+    if (existsSync(join(HOME, 'hold-version'))) {
+      writeFileSync(join(HOME, 'version-running'), 'ready');
+      while (!existsSync(join(HOME, 'release-version'))) await sleep(5);
+    }
     process.stdout.write(`codex-cli ${VERSION}\n`);
     return 0;
   }
@@ -398,6 +404,10 @@ async function appServer(args: string[]): Promise<number> {
         return { result: { userAgent: `fake-codex/${VERSION}`, platformFamily: 'unix' } };
       case 'thread/start': {
         log(`thread/start ${JSON.stringify(params)}`);
+        if (existsSync(join(HOME, 'hold-thread-start'))) {
+          writeFileSync(join(HOME, 'thread-start-running'), 'ready');
+          while (!existsSync(join(HOME, 'release-thread-start'))) await sleep(5);
+        }
         const refusal = permissionsRefusal(params);
         if (refusal) return { error: { code: -32600, message: refusal } };
         await mcpReady;

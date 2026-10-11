@@ -266,6 +266,13 @@ export class Dispatcher {
     return false;
   }
 
+  /** Async handlers retain the table's typed reason when their admission changes. */
+  #requirePermission(connection: Caller, frame: Record<string, unknown>, peer: Peer): void {
+    if (this.#permitted(connection, frame, peer, false)) return;
+    const decision = decide(connection.role, this.core.roles?.get().get(connection.role ?? '')?.permissions.tools, this.#toolCall(connection, frame)!);
+    if (!decision.ok) throw new ToolForbidden(connection.role, decision.permission, decision.reason);
+  }
+
   /** Answer a frame with the typed `forbidden` error and post the refusal to the Agents topic. */
   #refuse(connection: Caller, frame: Record<string, unknown>, peer: Peer, permission: string, reason: string, target = '', answer = true): void {
     const core = this.#options.core;
@@ -350,6 +357,57 @@ export class Dispatcher {
     core.store.bindAssignee(item, name, id !== null && id !== UNKNOWN_SESSION ? id : null);
   }
 
+  /** Scope comes from current claims/ancestry, never the session that launched a harness. */
+  #leadRefusal(connection: Caller, frame: Record<string, unknown>): string | null {
+    if (connection.role !== 'lead') return null;
+    const type = String(frame.type);
+    if (['release', 'sync', 'push', 'hub.stop', 'role.handover', 'rename', 'session.resume'].includes(type)) {
+      return `root level: only the Coordinator may use ${type}`;
+    }
+    const request = type === 'send' && typeof frame.text === 'string' ? /^(?:review|qa) request (T-[1-9]\d*)\s*(?:\n|$)/.exec(frame.text) : null;
+    if (!['session.launch', 'session.stop', 'merge'].includes(type) && !request) return null;
+    const tracker = this.#options.tracker;
+    const items = tracker?.list() ?? [];
+    const node = items.find(i => i.state === 'open' && tracker?.levels.includes(i.kind) && i.claim?.role === 'lead' && this.core.sessionIdentity(i.claim.sessionId) === connection.sessionId);
+    if (!node) return 'Lead level: no live container claim; only a claimed subtree may be managed';
+    const reason = (target: string) => `Lead level at ${node.kind} ${node.id}: ${target} is outside your subtree; send the request to lead ${node.id}`;
+    const inside = (id: string | null | undefined): boolean => {
+      const seen = new Set<string>();
+      let item = items.find(i => i.id === normalizeId(id ?? ''));
+      while (item && !seen.has(item.id)) {
+        if (item.id === node.id) return true;
+        seen.add(item.id);
+        item = items.find(i => i.id === item!.parent);
+      }
+      return false;
+    };
+    if (type === 'session.stop') {
+      const process = this.#sessions?.list().find(p => p.name === frame.session);
+      const role = process ? this.core.store.roleOf(process.name) ?? process.role : null;
+      if (!process || ['coordinator', 'lead', 'aide'].includes(role ?? '')) return reason(`session ${String(frame.session)} (root or node role)`);
+      const held = items.filter(i => i.state === 'open' && [i.claim, ...i.holds].some(h => h && this.core.sessionIdentity(h.sessionId) === process.sessionId));
+      const work = held.length ? held.map(i => i.id) : [process.item];
+      return work.every(inside) ? null : reason(`session ${process.name}`);
+    }
+    const item = request?.[1] ?? (typeof frame.item === 'string' ? frame.item : null);
+    if (!inside(item)) return reason(item ?? 'a request with no item');
+    if (type === 'session.launch') {
+      const role = typeof frame.role === 'string' ? frame.role : typeof frame.name === 'string' ? this.core.store.roleOf(frame.name) : null;
+      if (!['implementer', 'reviewer', 'qa'].includes(role ?? '')) return reason(`launch of role ${role ?? '(none)'}`);
+    }
+    if (type === 'merge') {
+      let target = items.find(i => i.id === normalizeId(item!));
+      const seen = new Set<string>();
+      while (target && !seen.has(target.id)) {
+        if (target.kind === tracker?.levels[0]) return null;
+        seen.add(target.id);
+        target = items.find(i => i.id === target!.parent);
+      }
+      return 'root level: only the Coordinator merges unscheduled items';
+    }
+    return null;
+  }
+
   /** The table's view of a spoke frame, or null when it is no tool the table knows. */
   #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
@@ -378,6 +436,7 @@ export class Dispatcher {
     };
     return {
       tool,
+      levelRefusal: this.#leadRefusal(connection, frame),
       ...(tool === 'task.plan' ? { planOp: frame.op } : {}),
       item,
       own,
@@ -580,7 +639,7 @@ export class Dispatcher {
       const check = () => {
         const caller = callerNow();
         if (original && (!caller || caller.sessionId !== original.sessionId)) throw new ToolForbidden(null, 'send', 'the session is no longer current');
-        if (caller && !this.#permitted(caller, { ...frame, type: 'send' }, peer, false)) throw new ToolForbidden(caller.role, 'send', 'permission changed during attachment preparation');
+        if (caller) this.#requirePermission(caller, { ...frame, type: 'send' }, peer);
         if (!Array.isArray(ids) || !ids.length || !ids.every(id => typeof id === 'string')) throw new ArtifactError('artifact-source', 'artifacts must be a nonempty array of ids');
         const artifacts = ids.map(id => {
           const a = core.store.resolveArtifact(id);
@@ -659,7 +718,18 @@ export class Dispatcher {
       if (!this.#merges) return peer.send(Dispatcher.#failure(frame.id, new MergeError('merge-item', 'this hub has no tracker')));
       const actor = caller ? sessionActor(caller, UNKNOWN_SESSION) : { id: 'human', name: 'human', role: null };
       const resumed = <T,>(write: () => T): T => this.#guard.measure('merge', kind === 'spoke' ? (name ?? '?') : client, write, 'resumed');
-      later('merge', this.#merges.merge(frame.item, actor, resumed, frame.override).then(
+      const authorize = () => {
+        if (!caller || !core.roles) return;
+        const now = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
+        if (!now || now.sessionId !== caller.sessionId) throw new ToolForbidden(now?.role ?? null, 'merge', 'the calling session is no longer current');
+        const call = this.#toolCall(now, frame)!;
+        const decision = decide(now.role, core.roles?.get().get(now.role ?? '')?.permissions.tools, call);
+        if (!decision.ok) {
+          this.#refuse(now, frame, peer, decision.permission, decision.reason, '', false);
+          throw new ToolForbidden(now.role, decision.permission, decision.reason);
+        }
+      };
+      later('merge', this.#merges.merge(frame.item, actor, resumed, frame.override, authorize).then(
         (value): HubFrame => ({ type: 'result', id: frame.id, ok: true, value }),
         (err: unknown) => Dispatcher.#failure(frame.id, err),
       ));
@@ -713,7 +783,7 @@ export class Dispatcher {
       const authorize = () => {
         const current = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
         if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
-        if (current && !this.#permitted(current, frame, peer, false)) throw new ToolForbidden(current.role, frame.type, 'permission changed during roles refresh');
+        if (current) this.#requirePermission(current, frame, peer);
         if (inferred && core.store.roleOf(frame.name) !== inferredRole) throw new Error(`session "${frame.name}" changed role while launching; retry the launch`);
       };
       void answerSession(

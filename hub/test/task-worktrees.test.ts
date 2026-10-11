@@ -213,7 +213,7 @@ test('cland session launch --item starts the Implementer in the worktree with th
   assert.match(ok(await cland(root, 'worktree', 'list')).stdout, /^T-1 {2}open {2}t\/T-1-ship-it {2}\.cland\/worktrees\/T-1\n {4}Ship it\n {4}nothing beyond dev; sessions inside: (impl-1, rev-1|rev-1, impl-1)\n$/);
 });
 
-test('the spoke\'s session.launch with item launches in the worktree; a Reviewer, item with cwd, or another session\'s claim is refused', async (t) => {
+test('the spoke\'s session.launch with item launches in the worktree; item with cwd or another session\'s claim is refused', async (t) => {
   const root = await project(t);
   const fake = await fakeClaude(t);
   await startDaemon(t, root, fake.env);
@@ -226,9 +226,6 @@ test('the spoke\'s session.launch with item launches in the worktree; a Reviewer
   assert.ok(tool?.inputSchema.properties?.item);
 
   type Launch = { ok: boolean; error?: string; process: HarnessProcessView; claim: { session: string } | null; worktree: Worktree | null; reason?: string };
-  const asReviewer = await coord.call<Launch>('session.launch', { name: 'rev-1', role: 'reviewer', harness: 'claude-code', item: 'T-1' });
-  assert.equal(asReviewer.ok, false);
-  assert.match(asReviewer.error ?? '', /`item` is for an Implementer/);
   const both = await coord.call<Launch>('session.launch', { name: 'impl-1', role: 'implementer', harness: 'claude-code', item: 'T-1', cwd: '.' });
   assert.equal(both.ok, false);
   assert.match(both.error ?? '', /give `item` or `cwd`, not both/);
@@ -252,7 +249,7 @@ test('the spoke\'s session.launch with item launches in the worktree; a Reviewer
   const epic = await coord.call<Launch>('session.launch', { name: 'impl-3', role: 'implementer', harness: 'claude-code', item: 'T-2' });
   assert.equal(epic.ok, true, epic.error);
   assert.equal(epic.process.cwd, root);
-  assert.equal(epic.process.item, null);
+  assert.equal(epic.process.item, 'T-2');
   assert.equal(epic.worktree, null);
   assert.equal(epic.reason, 'T-2 is an epic: only a task gets a branch and a worktree');
   assert.equal(epic.claim?.session, 'impl-3');

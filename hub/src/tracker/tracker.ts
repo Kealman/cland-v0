@@ -1078,7 +1078,7 @@ export class Tracker {
   mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(normalizeId(rawId) ?? rawId); }
 
   /** Idempotent follow-ups, kept separate so a failure names the step after a successful landing. */
-  finishMerge(actor: Actor, rawId: string, comment: string, resumed: Resumed = untimed): Promise<{ step: string; error: string } | null> {
+  finishMerge(actor: Actor, rawId: string, comment: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ step: string; error: string } | null> {
     return this.#serial(async () => {
       let step = 'close';
       try {
@@ -1091,7 +1091,7 @@ export class Tracker {
           item.fm.state = 'closed';
           this.#setStatus(item, 'done');
           if (!item.comments.some(c => c.text === comment)) item.comments.push({ author: actor.name, at: this.#now().toISOString(), text: comment });
-        }, resumed, undefined, () => this.#checkClose(closing.id, closing.kind, children), undefined, async () => {
+        }, resumed, undefined, () => { authorize(); this.#checkClose(closing.id, closing.kind, children); }, undefined, async () => {
           if (this.levels.includes(closing.kind)) children = await this.#scanChildren(closing.id, resumed);
         });
         return resumed(() => {

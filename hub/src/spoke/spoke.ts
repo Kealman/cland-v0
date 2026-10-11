@@ -29,7 +29,7 @@ import { findDiscovery, readDiscovery } from '../project.ts';
 const VERSION = '0.1.0';
 
 const TOOLS = [
-  { name: 'merge', description: 'Land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator only; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' } }, required: ['item'] } },
+  { name: 'merge', description: 'Land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' } }, required: ['item'] } },
   {
     name: 'artifact.create',
     description: 'Show work through a persistent artifact in a topic. Give a file or directory path (copied), content, or folder: true with optional entry and content. Returns the artifact id and absolute path; posts its chip into the topic.',
@@ -144,7 +144,7 @@ const TOOLS = [
         harness: { type: 'string', description: "The harness (`claude-code`, `opencode`); the role's default, else `claude-code`, when absent" },
         effort: { type: 'string', description: "The reasoning effort (Claude Code: low … max); the role's default when absent" },
         cwd: { type: 'string', description: 'The working directory: absolute or relative to the project root; the project root when absent' },
-        item: { type: 'string', description: "A Lead's open epic or release (at the project root), or an Implementer's item (T-12): the session starts in the item's task worktree, made first when missing, and the item's claim becomes the session's. Not with cwd" },
+        item: { type: 'string', description: "A Lead's open container (at the project root), or an Implementer, Reviewer or QA item (T-12). Task worktrees are prepared first; Implementers take the claim, verifiers leave it intact. A calling Lead must name an item in its subtree. Not with cwd" },
         brief: { type: 'string', description: 'The first task: text, or an artifact id A-<n> whose content is read at launch. Delivered once after the role clause; never repeated on reconnect' },
       },
       required: ['name'],

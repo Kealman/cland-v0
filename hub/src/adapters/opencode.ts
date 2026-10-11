@@ -140,7 +140,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       const files = this.#files(p.name);
@@ -149,7 +149,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       try {
         const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
         yield* wait(transaction.file(files.log, true));
-        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: this.#env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
+        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: this.#env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
         pid = started.pid;
         const { url } = started;
         const client = new OpenCodeClient(url, password);
@@ -158,6 +158,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         if (!session) {
           if (!model)
             model = yield* wait(this.#freeModel(client, resumed));
+          authorize();
           session = yield* wait(client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd }));
         }
         const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
@@ -201,8 +202,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
     }).call(this), resumed);
   }
 
-  spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, resumed, request.launchToken);
+  spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
+    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, resumed, request.launchToken, authorize);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -376,11 +377,11 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  async stop(p: HarnessProcess, resumed: Resumed = untimed): Promise<void> {
+  async stop(p: HarnessProcess, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<void> {
     this.#stopping.add(p.sessionId);
     let ended = false;
     try {
-      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, undefined, { resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       ended = true;
     } finally {
       resumed(() => {

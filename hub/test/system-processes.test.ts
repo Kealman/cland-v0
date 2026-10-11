@@ -81,6 +81,31 @@ assert.deepEqual(signals.filter(p => p.signal === 'SIGTERM' || p.signal === 'SIG
 `);
 });
 
+test('termination rechecks authority after the OS probe and before the harness stop', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+let allowed = true, harnessStopped = false;
+onTable = () => { allowed = false; };
+const refusal = new Error('Lead level: outside the subtree');
+await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0,
+  async () => { harnessStopped = true; }, { authorize: () => { if (!allowed) throw refusal; } }), error => error === refusal);
+assert.equal(harnessStopped, false);
+assert.deepEqual(signals, []);
+`);
+});
+
+test('termination rechecks authority after each identity probe before signalling', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+let allowed = true;
+onProbe = () => { allowed = false; };
+const refusal = new Error('Lead level: outside the subtree');
+await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0,
+  undefined, { authorize: () => { if (!allowed) throw refusal; } }), error => error === refusal);
+assert.deepEqual(signals, []);
+`);
+});
+
 test('termination discovers and ends an owned child spawned between TERM and KILL', async () => {
   await probe(`
 rows = [row(420100, 1, 420100)];

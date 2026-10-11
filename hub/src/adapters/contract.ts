@@ -145,8 +145,9 @@ export interface HarnessAdapter {
   readonly capabilities: Capabilities;
   /** The launch's first turn carries the role's clause (`SpawnRequest.clause`). */
   readonly clauseAtSpawn?: boolean;
-  /** Launch a session; resolves once the harness process runs, with its process-table row. */
-  spawn(request: SpawnRequest, resumed?: Resumed): Promise<HarnessProcess>;
+  /** Launch a session; resolves once the harness process runs, with its process-table row.
+   * Recheck authorize after preparation, immediately before process creation and native first-turn admission. */
+  spawn(request: SpawnRequest, resumed?: Resumed, authorize?: () => void): Promise<HarnessProcess>;
   /** The command a terminal runs to attach to the live session (a string, so a UI re-runs it intact). */
   attachCommand(process: HarnessProcess): string;
   /**
@@ -172,7 +173,7 @@ export interface HarnessAdapter {
   /** Dispose identity-owned supervision after verified exit, without signalling any process. */
   unwatch?(sessionId: string): void;
   /** Stop through the harness; the process table then says `stopped`. */
-  stop(process: HarnessProcess, resumed?: Resumed): Promise<void>;
+  stop(process: HarnessProcess, resumed?: Resumed, authorize?: () => void): Promise<void>;
   /**
    * Re-find a process from the table after a hub restart: alive and still the same session → `found`, with
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own

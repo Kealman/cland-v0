@@ -90,7 +90,7 @@ export function listeningUrl(log: string): string | null {
   return /listening on (https?:\/\/[^\s]+)/i.exec(log)?.[1]?.replace(/\/+$/, '') ?? null;
 }
 
-export async function startServer(options: { bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed }): Promise<{ pid: number; url: string }> {
+export async function startServer(options: { bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
   return continueWith((function* (): Generator<Promise<unknown>, {
     pid: number;
     url: string;
@@ -102,6 +102,7 @@ export async function startServer(options: { bin: string; cwd: string; env: Node
     let child;
     let exited: string | null = null;
     try {
+      options.authorize?.();
       child = spawn(options.bin, ['serve', '--hostname', '127.0.0.1', '--port', '0'], {
         cwd: options.cwd,
         detached: true,

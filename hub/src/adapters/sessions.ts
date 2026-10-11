@@ -482,7 +482,7 @@ export class Sessions {
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => admission?.release(), launchToken, identity, brief);
+          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => admission?.release(), launchToken, identity, brief, authorize);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -519,7 +519,7 @@ export class Sessions {
     });
   }
 
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message): Promise<HarnessProcessView> {
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}): Promise<HarnessProcessView> {
     const role = request.role ?? null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
@@ -537,7 +537,7 @@ export class Sessions {
     let accepted = false;
     try {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed);
+      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
       resumed(() => {
         const proven = !launchIdentityRefusal(identity, owned!.sessionId);
         if (proven) identity.sessionIds.add(owned!.sessionId);
@@ -550,6 +550,7 @@ export class Sessions {
       const p: HarnessProcess = { ...owned, item, pidStarted };
       owned = p;
       return resumed(() => {
+        authorize();
         const proofRefusal = launchIdentityRefusal(identity, p.sessionId);
         if (proofRefusal) throw new Error(proofRefusal);
         const refusal = this.#core.nameReservation(request.name, p.sessionId);
@@ -635,7 +636,7 @@ export class Sessions {
         const current = this.#table.bySessionId(identity);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
         p = current;
-        return this.adapter(p.harness).stop(p, resumed);
+        return this.adapter(p.harness).stop(p, resumed, authorize);
       });
       return resumed(() => {
         try {

@@ -111,7 +111,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  lead: ['send:agents', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
+  lead: ['send:agents', 'session.launch', 'session.stop', 'merge', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
   implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
@@ -135,6 +135,8 @@ export function grantRefusal(grant: string, where: string): string | null {
  */
 export type ToolCall = {
   tool: string;
+  /** Live hierarchy admission, computed from indexed claims and session work. */
+  levelRefusal?: string | null;
   /** Explicit launch role, or the role already assigned to the requested name. */
   launchRole?: string | null;
   /** Manual status edit: Coordinator or Aide, or the claiming Implementer handing over. */
@@ -176,8 +178,9 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   const { tool } = call;
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
   if (tool === 'session.launch' && call.launchRole === 'lead' && role !== 'coordinator') {
-    return { ok: false, permission: tool, reason: 'only the Coordinator launches Leads' };
+    return { ok: false, permission: tool, reason: 'root level: only the Coordinator launches Leads' };
   }
+  if (role === 'lead' && call.levelRefusal) return { ok: false, permission: tool, reason: call.levelRefusal };
   // v0.1 §3.3: an Aide's tool boundary and named addressing are fixed, even if its file grants more.
   if (role === 'aide') {
     if (!DEFAULT_PERMISSIONS.aide!.includes(tool)) return { ok: false, permission: tool, reason: `Aide rule (v0.1 §3.3): an Aide may not use ${tool}; its tools are limited to the tracker, artifacts, named sends, topics, history, who and status` };

@@ -9,6 +9,7 @@ import { normalizeId } from '../tracker/item.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
+import { ToolForbidden } from '../roles/permissions.ts';
 
 type MergeResult = { item: string; commit: string; base: string; cleanup: string; followUp?: { step: string; error: string } };
 
@@ -58,7 +59,7 @@ export class TaskMerges {
     return { ...result, followUp };
   }
 
-  merge(id: string, actor: Actor, resumed: Resumed, override?: string): Promise<MergeResult> {
+  merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}): Promise<MergeResult> {
     id = normalizeId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
       const state: { landed: { commit: string; base: string } | null } = { landed: null };
@@ -68,6 +69,7 @@ export class TaskMerges {
       let landingFailure: { step: string; error: string } | undefined;
       try {
         await withTerritoryLockAsync(this.tracker.root, async () => {
+          resumed(authorize);
           const pendingSync = await access(join(this.tracker.root, '.cland', 'sync.tmp')).then(() => true, err => resumed(() => {
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
             throw err;
@@ -90,11 +92,13 @@ export class TaskMerges {
               recovered = true;
             });
             resumed(() => { step = 'checkout'; });
+            resumed(authorize);
             await reconcileTaskCheckout(this.tracker.root, prior, resumed, () => {
               const { checkout: _checkout, ...coherent } = prior;
               this.tracker.recordMerge(id, coherent);
-            });
+            }, authorize);
             if (!existing.published) {
+              resumed(authorize);
               resumed(() => { step = 'publish'; });
               await territoryGitAsync(this.tracker.root, ['push', territoryPath(this.tracker.root), `refs/heads/${prior.base}:refs/heads/${prior.base}`], true);
             }
@@ -105,12 +109,13 @@ export class TaskMerges {
               const parent = await territoryGitAsync(this.tracker.root, ['rev-parse', `${prior.commit}^`]);
               const base = await territoryGitAsync(this.tracker.root, ['rev-parse', `refs/heads/${prior.base}`]);
               resumed(() => { if (base !== parent) throw new Error('the integration ref moved since preparation; its checkout was kept'); });
-              await restoreTaskCheckout(this.tracker.root, { ...prior, checkout: prior.checkout }, resumed);
+              await restoreTaskCheckout(this.tracker.root, { ...prior, checkout: prior.checkout }, resumed, authorize);
               resumed(() => {
                 const { checkout: _checkout, ...restored } = prior;
                 this.tracker.recordMerge(id, restored);
               });
             } catch (err) {
+              if (err instanceof ToolForbidden) throw err;
               resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${prior.commit} on ${prior.base}: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit: prior.commit, base: prior.base }); });
             }
           }
@@ -123,10 +128,11 @@ export class TaskMerges {
               await this.tracker.refreshFreshness(resumed);
               const now = await this.#view(id, resumed, override === undefined);
               return resumed(() => {
+                authorize();
                 if (now.branch !== view.branch || this.tracker.freshnessTip(now.branch) !== tip || this.tracker.freshnessTip(base) !== baseTip || now.verdictBase !== base) throw new MergeError('merge-changed', `${id}: task branch changed during preparation; try again`);
                 return this.#message(now, override);
               });
-            }, resumed, landing => this.tracker.recordMerge(id, { ...landing, branch: view.branch!, ...(override === undefined ? {} : { override }) }));
+            }, resumed, landing => this.tracker.recordMerge(id, { ...landing, branch: view.branch!, ...(override === undefined ? {} : { override }) }), authorize);
             resumed(() => { state.landed = result; });
           } catch (err) {
             // The failing step alone cannot decide the outcome: a failed rollback can leave either ref landed.
@@ -161,7 +167,7 @@ export class TaskMerges {
         resumed(() => this.log({ event: recovered ? 'merge-resumed' : 'task-merged', id, session: actor.name, ...state.landed!, ...(reason === undefined ? {} : { override: reason }) }));
       } catch (err) { return this.#incomplete(result, 'record', err instanceof Error ? err.message : String(err), resumed); }
       if (landingFailure) return this.#incomplete(result, landingFailure.step, landingFailure.error, resumed);
-      const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed));
+      const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed, authorize));
       return failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result;
     }).then(async result => {
       if (result.followUp) return result;

@@ -7,6 +7,8 @@ const untimed: Resumed = work => work();
 export type SystemProcess = { pid: number; parent: number; group: number; started: string; state: string; command: string };
 export type ProcessEndOptions = {
   resumed?: Resumed;
+  /** Recheck the caller's live authority immediately before destructive actions. */
+  authorize?: () => void;
   /** Atomically reserve each captured identity for this worker before any further await. */
   claim?: (identity: SystemProcess) => boolean;
   /** Relaunch of a row already marked exited may leave a proven reused PID alone. */
@@ -115,6 +117,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
           observe({ event: 'signal-refused', pid: row.pid, signal: kind, reason: 'process identity changed or cannot be verified' });
           return kind === 'SIGTERM';
         }
+        options.authorize?.();
         try {
           process.kill(row.pid, kind);
           if (kind === 'SIGSTOP') frozen.set(row.pid, row);
@@ -169,6 +172,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
     }
   };
   try {
+    resumed(() => options.authorize?.());
     await beforeSignal?.();
     // Let the harness close its bridges gracefully. Before escalation, freeze and capture the entire tree.
     if (!await signal('SIGTERM', true)) return await incomplete('SIGTERM refused');

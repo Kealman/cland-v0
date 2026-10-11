@@ -106,7 +106,9 @@ export class FailedLaunches {
         this.#pending.set(identity, { name, files, settled });
         this.#report({ event: 'launch-recovery-pending', session: name, sessionId: identity, pids: files.pids, error: String(error), cause: String(cause) });
         if (!this.#timer) { this.#timer = setInterval(() => { void this.#retry(); }, this.#pollMs); this.#timer.unref(); }
-        throw new Error(`${cause instanceof Error ? cause.message : String(cause)}; cleanup is pending and the failed launch remains supervised`, { cause: error });
+        const detail = `${cause instanceof Error ? cause.message : String(cause)}; cleanup is pending and the failed launch remains supervised`;
+        if (cause instanceof Error) { cause.message = detail; cause.cause = error; throw cause; }
+        throw new Error(detail, { cause: error });
       }
       settled();
       throw cause;

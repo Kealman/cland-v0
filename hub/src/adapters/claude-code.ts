@@ -269,7 +269,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return /claude attach (\S+)/.exec(stdout)?.[1]?.replace(/[`'".,]+$/, '') ?? /\(([0-9a-f]{6,})\)/.exec(stdout)?.[1] ?? /\b([0-9a-f]{8})\b/.exec(stdout)?.[1] ?? null;
   }
 
-  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string): Promise<HarnessProcess> {
+  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
       // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
@@ -283,6 +283,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         ...(effort ? ['--effort', effort] : []),
         ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree),
       ];
+      authorize();
       const r = yield* wait(this.#run(args, p.cwd, undefined, resumed, launchToken));
       const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
       const launched: HarnessProcess = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running' };
@@ -315,8 +316,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }).call(this), resumed);
   }
 
-  spawn(request: SpawnRequest, resumed: Resumed = untimed): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null, resumed, request.launchToken);
+  spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null, item: request.item ?? null }, false, request.effort ?? null, resumed, request.launchToken, authorize);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -459,7 +460,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   // ---------------------------------------------------------------- stop, resume
 
-  async stop(p: HarnessProcess, resumed: Resumed = untimed): Promise<void> {
+  async stop(p: HarnessProcess, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<void> {
     // watched until the process is known to be gone: a stop that fails leaves it supervised
     this.#stopping.add(p.sessionId);
     let ended = false;
@@ -467,6 +468,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       let stopped = false;
       const cliStop = async () => {
         if (p.harnessId) {
+          resumed(authorize);
           try {
             const r = await this.#run(['stop', p.harnessId], p.cwd);
             resumed(() => {
@@ -482,7 +484,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         await cliStop();
         if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
       } else {
-        if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, cliStop, { resumed, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+        if (!await endProcess(p, (entry) => this.#host.log({ ...entry, harness: this.harness, session: p.name }), this.#stopGraceMs, cliStop, { resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       }
       ended = true;
     } finally {

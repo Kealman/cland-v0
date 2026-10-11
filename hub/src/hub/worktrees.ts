@@ -13,6 +13,7 @@ import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import type { LaunchRequest, Sessions } from '../adapters/sessions.ts';
 import { commitsAhead, ensureTaskWorktree, hasTerritory, listTaskWorktrees, removeTaskWorktree, taskBase, type TaskWorktree, type ExpectedBranch } from '../territory.ts';
+import { ToolForbidden } from '../roles/permissions.ts';
 
 /** What a claim or a launch made of the item's worktree: the worktree, or why there is none. */
 export type WorktreeOutcome = { worktree: TaskWorktree | null; reason?: string };
@@ -101,11 +102,12 @@ export class TaskWorktrees {
   }
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
-  async #make(view: ItemView, session: string | null, resumed: Resumed = untimed): Promise<TaskWorktree> {
-    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed);
+  async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<TaskWorktree> {
+    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
-    if (current.branch !== worktree.branch) await resumed(() => this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch }, resumed));
+    resumed(authorize);
+    if (current.branch !== worktree.branch) await resumed(() => this.#tracker.link(HUB_ACTOR, view.id, { branch: worktree.branch }, resumed, authorize));
     resumed(() => {
       if (worktree.createdWorktree) {
         this.#log({
@@ -153,16 +155,19 @@ export class TaskWorktrees {
    * the project root; a Lead records its node in process.item without a task worktree.
    */
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
-    if (request.role !== 'implementer' && request.role !== 'lead') throw new Error('`item` is for an Implementer (--role implementer) or Lead (--role lead); a Reviewer or QA session stands in a worktree with cwd');
+    if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa') throw new Error('`item` is for an Implementer, Lead, Reviewer or QA');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = await this.#tracker.viewAsync(request.item, resumed);
+    resumed(() => authorize?.());
+    const verifier = request.role === 'reviewer' || request.role === 'qa';
+    if (verifier && view.state !== 'open') throw new Error(`${view.id} is closed: no verifier launch`);
     if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.levels.includes(view.kind))) {
       throw new Error('a Lead needs an open configured container');
     }
     // a claim the launch may take over: none, the Coordinator's, the human's, or one under the new session's name
     const yields = (held: Claim | null): boolean => !held || (request.role !== 'lead' && held.session === request.name) || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
-    if (!yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
+    if (!verifier && !yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
     const token = Symbol(request.name);
     const release = () => {
       if (this.#launching.get(view.id) === token) this.#launching.delete(view.id);
@@ -175,13 +180,16 @@ export class TaskWorktrees {
       this.#launching.set(view.id, token);
       try {
         const now = await this.#tracker.viewAsync(view.id, resumed);
+        if (verifier && now.state !== 'open') throw new Error(`${view.id} is closed: no verifier launch`);
         if (request.role === 'lead' && (now.state !== 'open' || !this.#tracker.levels.includes(now.kind))) throw new Error('a Lead needs an open configured container');
         const reason = await this.#ineligible(now);
+        resumed(() => authorize?.());
         let worktree: TaskWorktree | null = null;
         if (reason === null) {
           try {
-            worktree = await this.#make(now, request.name, resumed);
+            worktree = await this.#make(now, request.name, resumed, authorize);
           } catch (err) {
+            if (err instanceof ToolForbidden) throw err;
             throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
@@ -192,6 +200,11 @@ export class TaskWorktrees {
       }
     });
     try {
+      if (verifier) {
+        // Verifiers keep the launch reservation, but take only a verifier hold when accepting work.
+        const process = await sessions.launch({ ...request, item: view.id, cwd: worktree?.path ?? this.root }, resumed, authorize);
+        return { process, claim: null, worktree, ...(reason ? { reason } : {}) };
+      }
       return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed, authorize);
     } finally {
       release();
@@ -211,7 +224,7 @@ export class TaskWorktrees {
     authorize?: () => void,
   ): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
     const { item: _item, ...launch } = request;
-    const process = await sessions.launch({ ...launch, ...(worktree ? { cwd: worktree.path, item: id } : request.role === 'lead' ? { cwd: this.root, item: id } : {}) }, resumed, authorize);
+    const process = await sessions.launch({ ...launch, cwd: worktree?.path ?? this.root, item: id }, resumed, authorize);
     // Claim admission and its final status write both recheck the hold and the launch grant.
     let lost: Claim | null = null;
     let taken: { claim: Claim | null };
@@ -232,6 +245,7 @@ export class TaskWorktrees {
         (err: unknown) => `stopping ${process.name} failed (${err instanceof Error ? err.message : String(err)}): stop it by hand`,
       );
       if (lost) throw new Error(`${other(lost)}, taken while ${process.name} started: launch refused, the claim stays with its holder; ${stopped}`);
+      if (err instanceof ToolForbidden) { err.message += `; ${stopped}`; throw err; }
       throw new Error(`launch claim failed (${err instanceof Error ? err.message : String(err)}); ${stopped}`);
     }
     return { process, claim: taken.claim, worktree, ...(reason !== null ? { reason } : {}) };
