@@ -32,16 +32,57 @@ carry structured verdict/result/run facts into the Agents log even when their re
 belongs to a bound item topic; death subscription events carry their lifecycle fact.
 Bound-topic agent verdict references retain the verdict result too. Their inbox entries
 and event-log messages show an amber `⚠` marker, sorted with the other events.
-Warnings stay in Watch even under a now override. Old messages still follow the
+Warnings default to Watch even under a project now override; explicit human pins
+and mutes then adjust their layer while retaining warn severity. Old messages still follow the
 seven-day archive policy and retain their severity. Warnings are information:
 there is no dismissal, acknowledgement or later-clear resolution rule. `d` refuses
 a warning and `D` retains warnings while dismissing ordinary notifications.
 Clear verdicts and long idles default to Watch; role bookkeeping is Background.
 
-The placement table and consumers land in T-190. The later T-115 slices add folds
-and filtering to the other panels, archive retrieval for threads, and pins/mutes.
-T-190 does not implement those later panel controls or persisted overrides in
-`ui.json`.
+## Human pins and mutes
+
+In a thread or topics panel, on a session row, or on an artifact in its browser or
+file buffer, `gP` toggles a pin and `gM` toggles a mute. A pin raises the effective
+layer to now; a mute lowers the default/project layer by one step (now → watch →
+background → archive; archive stays archive). Repeating the current choice restores
+the default; choosing the other replaces it. `gp` still opens an epic plan.
+
+The human-only `visibility.set` frame takes `surface` (`topics`, `sessions` or
+`artifacts`), `target` (the record id or session name), and `mode` (`pin` or `mute`).
+It refuses unknown targets and session callers, asynchronously updates `ui.json` with an atomic replacement, and
+publishes a `visibility` event. Open clients refresh snapshots and threads on that
+event; future history, live frames, palette hits and the hub's now counts use the
+same effective placement. These choices change presentation, not message delivery,
+workflow status, artifact ownership, kept status or retention.
+
+The file's `visibility` object maps each surface to ids and `pin`/`mute` choices.
+The hub preserves layout fields, and Neovim preserves the hub-owned visibility
+field on its debounced layout writes. Both writers hold a shared directory lock
+across read and replacement. Recovery removes only a proven-dead owner's unique
+file, preserving a competing replacement and uncertain PID owners. A busy layout
+save defers; a busy pin/mute returns a retry message. Hub writes serialize without
+blocking unrelated requests. Both survive cold restarts. Direct topic,
+session and artifact choices win over inherited choices. Topic choices also affect
+that topic's messages, artifacts, bound items and inbox entries; session choices
+also affect its messages and inbox entries. A creation chip uses its artifact's
+effective layer once, so a mute does not lower it twice.
+
+The items panel keeps its workflow views and adds explicit layer filters: `gn`
+(now), `gw` (watch), `gb` (background) and `gA` (archive), across the ranked project
+items. The default release board shows foreground tasks in status sections and
+folds background tasks, including done work, behind counts. `zR` does not reveal
+archive; the archive filter and the complete tree are explicit archive actions.
+Done tasks raised to Now or Watch remain visible in the default board and plan,
+including through closed parent items.
+
+Topics similarly fold background behind `more (N)`, with `za` to unfold and `A` for
+archive. Artifacts use their effective layer in all browser sections, including a
+pin on an archived artifact.
+
+Threads hide archive-layer messages by default. `A` requests them and toggles them
+back out; ordinary agent-run unfold keys leave archive hidden. Recent answers and
+artifact chips remain visible when an older companion ask is archived. The
+ordinary view keeps the latest 200 messages. Requesting archive pages through all retained history.
 
 ## Project overrides
 
@@ -64,7 +105,7 @@ managed-file updates keep invalid files for the human to correct.
 | `messages` | `human`, `ask`: now; `not_clear`, `coordinator_report`, `clear`: watch; `agent`: background; `old`: archive |
 | `inbox` | `ask`, `approval`, `waiting`: now; `not_clear`, `death`, `clear`, `release`, `import`, `idle`: watch; `other`: background |
 | `sessions` | `aide`, `waiting`, `busy`: now; `idle`: watch (unknown states also use this cell); `stopped`: background |
-| `items` | `active`: now; `planned`: watch; `backlog`, `unscheduled`, `done`: background; `closed_release`: archive |
+| `items` | `active` and `planned` require current-release membership: now and watch respectively; `backlog`, `unscheduled`, `done`: background; `closed_release`: archive |
 | `artifacts` | `human`, `coordinator`, `kept`: watch; `agent`: background; `archived`: archive |
 | `topics` | `waiting`: now; `open`: watch; `closed`: archive (for palette entries) |
 

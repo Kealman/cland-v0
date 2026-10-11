@@ -68,7 +68,7 @@ The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that or
   - **The experimental graph** (`␣G`, `:Cland graph [T-n]`) draws one container's direct children by their sibling blocking edges, vertically by default. It opens the current release's first open descendant container in rank/tree order; `p` / `P` cycle those containers, then the release itself, and wrap. With no open descendant containers the release is the only choice. An explicit id opens any known container, including an empty or closed one. Each node shows the hub's status glyph, id, title, separate ◌ blocked mark, ask count, claim/assignee, latest verdict and verified/total. Fractions count verified marks from `task.view.criteria`. Done nodes are dimmed. Children without sibling edges sit in a tray; its done nodes start folded and `d` reveals them. Linked done nodes stay drawn to preserve their edges. `o` turns the layout sideways; `r` reveals edges implied by longer paths. The footer names cycle edges left out, hidden edges and outside blockers. The cursor moves node to node with `h` / `l` / `j` / `k`: across a band and between layers according to the visible orientation, then into the tray. `^` / `$` select a vertical band’s ends or the first/last sideways layer; `gg` / `G` jump to the first/last vertical layer (the buffer’s ends sideways). Its edges are highlighted and the winbar spells out its full title, status, blockers and badges. `↵` or `gi` opens the node’s item; `gt` opens its topic and `gs` its claiming session. Sideways scrolling keeps the label visible. Hub updates rewrite the canvas only when its text or highlights change, keeping the cursor on its node through layout changes; `␣␣` returns to that node after opening another view. Each parent remembers its own node. The board remains on `␣b`. Vertical labels fit the centre’s display columns (20–40 by default); a wide layer continues below itself under `↳` in the numbered gutter. `+` / `-` change the minimum vertical label width (14–36, in steps of two), or the sideways label width (18–60, in steps of four). Clipped text ends in `…`; focus the node for its full text in the winbar or open its item. The footer and key hints wrap independently of the canvas.
     **Known limits (spec §3.15).** At T-19’s density (22 linked items, 36 edges), crossings still take effort to follow. A vertical line passes over a broken horizontal line; it is never a `┼` junction. Selecting a node highlights its incident edges, but continuation rows add pass-through tracks and can increase crossings. Routing at greater density can exceed the window, so horizontal scrolling remains available. Bundling, collapsing done layers and a different projection remain fog for v0.2. Stage tags and `s` grouping use the accepted epic plan (T-162); see the epic plan view below.
     **Headless evidence.** `node hub/bin/cland.ts --headless --qa qa/cases/GRAPH-001.lua --out <directory>` runs the successor to the prototype case on native hub `status`, `claim`, `verdicts` and `criteria` fields. Its fixture freezes T-19’s 44 children from T-86, with field snapshots from 2026-10-10, plus a synthetic workflow sampler; later unlinked tail items are excluded. It polls rendered state and writes complete `.canvas.txt` dumps and screen/state evidence at 120, 160 and 200 columns, with the sessions panel and at full width, plus sideways and live-update evidence. The case is part of `npm run test:nvim`.
-- **Hub data** comes from the `message`, `delivery`, `topic`, `ask`, `inbox`, `presence`, `session.process`, `session.usage`, `session.state`, `session.role`, `role.vacant`, `role.filled` and `task` events. On each connect the shell reads `topic.list`, `task.list`, `session.list`, `hub.status`, `role.list` and a shared `inbox.list` once. Presence snapshots keep connected spokes current; process rows carry launches, renames and exits; usage snapshots update token and cost totals at most once per second per session. There is no refresh timer. Only a launch or stop made by this workbench refreshes its sessions and presence again; role and unknown-session events do not request lists. The shell and topic views share the inbox snapshot, kept by `inbox` events. An item view asks `task.view` for its body and comments. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
+- **Hub data** comes from the `message`, `delivery`, `topic`, `ask`, `inbox`, `presence`, `session.process`, `session.usage`, `session.state`, `session.role`, `role.vacant`, `role.filled` and `task` events. On each connect the shell reads `topic.list`, `task.list`, `session.list`, `hub.status`, `role.list` and a shared `inbox.list` once. Presence snapshots keep connected spokes current; process rows carry launches, renames and exits; usage snapshots update token and cost totals at most once per second per session. There is no refresh timer. A launch, stop or human visibility change refreshes its sessions and presence again; role and unknown-session events do not request lists. The shell and topic views share the inbox snapshot, kept by `inbox` events. An item view asks `task.view` for its body and comments. Every change renders once, in the next main-loop tick (`state.changed()`), whatever the burst.
 
 ### Keys
 
@@ -522,6 +522,29 @@ A plan restored by `:restart` counts as a new visit and records the last look af
 
 T-191's `test/layers.test.ts` exercises inbox Now/Watch ordering, bookkeeping in Agents, explicit archive access in both inbox views, all session fold keys, project layer overrides and cursor tracking across live layer changes through stub-hub frames and headless Neovim. Existing inbox action and session QA cases cover answering, dismissal and attachment with the layered display.
 
+
+## Layers, pins and mutes (T-192)
+
+`gP` pins the topic in a thread/topics panel, the session on its row, or the
+artifact in the browser/file buffer. `gM` mutes it. Repeating the current action
+restores its default; the other action replaces it. Pin raises to now and mute
+lowers one layer. Choices persist under `visibility` in `.cland/ui.json`; the hub
+owns those choices and layout saves preserve them under the shared `ui.json.lock` directory lock. Busy layout saves defer; busy pin/mute commands report retry. Recovery removes only a proven-dead owner's unique file and preserves replacement writers. The hub broadcasts changes to
+connected clients, so the thread, palette, panels and top-bar counts agree. `gp`
+continues to open the epic plan.
+
+Items have explicit layer filters `gn` now, `gw` watch, `gb` background and `gA`
+archive. These show the project's ranked matching items; `1`–`6` retain the
+workflow/tree views. The default board honors the hub layers in its status
+sections, shows now/watch (including promoted done tasks beneath closed parents), folds background and hides archive. The plan panel follows the same layer filters. Ordinary `zR`
+opens background only. Layer filter choices survive a cold UI restart.
+
+Topics put background behind `more (N)` (`za` unfolds) and reveal archive only
+with `A`. In threads, messages older than seven days leave the ordinary view;
+`A` shows/hides archive, independently of agent-run folds. Recent answers stay
+visible when their older ask is hidden. The ordinary view keeps the latest 200 messages; requesting archive pages through all retained history. Artifact browser sections likewise use effective layers,
+including pins on archived artifacts. Pin/mute changes neither artifact lifetime
+nor kept status. See [the shared placement rules](../docs/visibility.md).
 
 ## Artifacts browser (T-195)
 

@@ -125,6 +125,7 @@ test('cland init on an empty repository: git status shows exactly the committed 
   await gitRepo(root);
   const changes = await run(root, 'init');
   assert.ok((await readFile(join(root, '.cland', '.gitignore'), 'utf8')).split('\n').includes('ui.json'));
+  assert.ok((await readFile(join(root, '.cland', '.gitignore'), 'utf8')).split('\n').includes('ui.json.lock*'));
   assert.match(await readFile(join(root, '.cland/config.toml'), 'utf8'), /^\[artifacts\]\nretention_days = 30$/m);
   assert.ok(changes.every((c) => c.action === 'created' || c.path === '.cland/hub.db' || c.path.startsWith('.cland/territory.git')), JSON.stringify(changes.filter((c) => c.action !== 'created')));
 
@@ -274,6 +275,7 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   await writeFile(join(root, '.cland', '.gitignore'), (await readFile(join(root, '.cland', '.gitignore'), 'utf8')).replace('ui.json\n', ''));
   const changes = await run(root, 'update');
   assert.ok((await readFile(join(root, '.cland', '.gitignore'), 'utf8')).split('\n').includes('ui.json'));
+  assert.ok((await readFile(join(root, '.cland', '.gitignore'), 'utf8')).split('\n').includes('ui.json.lock*'));
   const after = await tree(root);
   // the managed parts were rewritten; the skills' contents and roles.toml did not change
   assert.deepEqual(changed(before, after), [

@@ -36,6 +36,7 @@ export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; rem
 hub.db*
 hub.json
 ui.json
+ui.json.lock*
 hub.lock*
 hub.sock
 secret

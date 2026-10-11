@@ -65,6 +65,8 @@ group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
   {'K','Rank item before its previous sibling'}, {'J','Rank item after its next sibling'}, {'T','Rank item to the top'},
   {'e','Next open container scope'}, {'E','Previous open container scope'},
   {'p','Next epic tab'}, {'P','Previous epic tab'}, {'<Tab>','Next epic tab'}, {'<S-Tab>','Previous epic tab'}})
+group('items', {{'gn','Now-layer items'}, {'gw','Watch-layer items'}, {'gb','Background-layer items'}, {'gA','Archived items'}})
+group('topics', {{'za','Toggle background topics'}, {'A','Show or hide archived topics'}})
 group('inbox', {{'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end
@@ -97,6 +99,10 @@ group('artifacts', {{'<CR>','Open file or fold folder/section'}, {'q','Previous 
   {'p','Promote selected artifact to repository'}, {'k','Keep or unkeep artifact'}, {'d','Archive artifact'}, {'x','Delete artifact (confirm)'},
   {'za','Toggle artifact fold'}, {'zo','Open artifact fold'}, {'zc','Close artifact fold'},
   {'zR','Open background sections'}, {'zM','Fold background sections'}, {'A','Show or hide archived artifacts'}})
+for _, scope in ipairs({'thread', 'topics', 'sessions', 'artifact', 'artifacts'}) do
+  group(scope, {{'gP','Pin or restore visibility'}, {'gM','Mute or restore visibility'}})
+end
+add('thread', 'A', 'Show or hide archived messages')
 group('help', {{'q','Close keys'}, {'<Esc>','Close keys'}})
 group('capabilities', {{'q','Close capabilities'}, {'<Esc>','Close capabilities'}, {'c','Close capabilities'}})
 group('palette', {{'<CR>','Run or open palette selection'}, {'<C-v>','Open palette selection in split'},

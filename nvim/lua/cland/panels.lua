@@ -426,26 +426,39 @@ end
 
 local function render_topics(c)
   local v = state.S.ui.view
-  if #state.S.topics == 0 then
-    c:add({ { ' No topics yet (the hub is not connected).', 'ClandDim' } })
+  local function topic_row(t)
+    local cur = v.kind == 'thread' and v.id == t.id
+    local glyph, ghl = M.topic_glyph(t)
+    local left = { { cur and '▎' or ' ', 'ClandBlue' }, { glyph, ghl }, { ' ' } }
+    if t.item and t.item ~= vim.NIL and not tostring(t.title):find(t.item, 1, true) then
+      left[#left + 1] = { t.item .. ' ', 'ClandDim' }
+    end
+    left[#left + 1] = { t.title, cur and 'ClandBold' or (require('cland.visibility').dim(t) and 'ClandDim' or nil) }
+    c:add(left, M.topic_marks(t), { topic = t.id })
   end
+  if #state.S.topics == 0 then c:add({ { ' No topics yet (the hub is not connected).', 'ClandDim' } }) end
+  local background, archive = {}, {}
   for _, g in ipairs(state.topic_groups()) do
-    if #g.topics > 0 then
-      c:add({ { ' ' .. g.name:upper() .. ' · ' .. #g.topics, g.name == 'needs you' and 'ClandAmber' or 'ClandSection' } })
-      for _, t in ipairs(g.topics) do
-        local cur = v.kind == 'thread' and v.id == t.id
-        local glyph, ghl = M.topic_glyph(t)
-        local left = { { cur and '▎' or ' ', 'ClandBlue' }, { glyph, ghl }, { ' ' } }
-        -- the binding, unless the title already says it
-        if t.item and t.item ~= vim.NIL and not tostring(t.title):find(t.item, 1, true) then
-          left[#left + 1] = { t.item .. ' ', 'ClandDim' }
-        end
-        left[#left + 1] = { t.title, cur and 'ClandBold' or (t.status == 'closed' and 'ClandDim' or nil) }
-        c:add(left, M.topic_marks(t), { topic = t.id })
-      end
+    local shown = {}
+    for _, t in ipairs(g.topics) do
+      if t.layer == 'background' then background[#background + 1] = t
+      elseif t.layer == 'archive' then archive[#archive + 1] = t
+      else shown[#shown + 1] = t end
+    end
+    if #shown > 0 then
+      c:add({ { ' ' .. g.name:upper() .. ' · ' .. #shown, g.name == 'needs you' and 'ClandAmber' or 'ClandSection' } })
+      for _, t in ipairs(shown) do topic_row(t) end
     end
   end
-  return { ' ↵ open · n new · c close · r resolve' }
+  if #background > 0 then
+    c:add({ { ' ' .. (state.S.ui.topics_more and '▾ ' or '▸ ') .. 'more (' .. #background .. ')', 'ClandDim' } }, nil, { topic_more = true })
+    if state.S.ui.topics_more then for _, t in ipairs(background) do topic_row(t) end end
+  end
+  if state.S.ui.topics_archive then
+    c:add({ { ' ARCHIVE · ' .. #archive, 'ClandDim' } })
+    for _, t in ipairs(archive) do topic_row(t) end
+  end
+  return { ' ↵ open · n new · c close · r resolve', ' gP pin · gM mute · za more · A archive' }
 end
 
 -- Items -----------------------------------------------------------------------------------------------
@@ -558,13 +571,23 @@ function M.buf(kind, slot)
     require('cland.items').keys(b)
   elseif kind == 'sessions' then
     M.session_keys(b)
+    require('cland.visibility').keys(b, function()
+      local row = M.row_at(b, api.nvim_win_get_cursor(0)[1])
+      return row and row.session and 'sessions', row and row.session
+    end)
   elseif kind == 'inbox' then
     require('cland.inbox').keys(b)
   elseif kind == 'topics' then
+    require('cland.visibility').keys(b, function()
+      local row = M.row_at(b, api.nvim_win_get_cursor(0)[1])
+      return row and row.topic and 'topics', row and row.topic
+    end)
     local views = require('cland.views')
     local function topic_key(lhs, fn, desc)
       require('cland.actions').map('n', lhs, fn, { buffer = b, nowait = true, silent = true, desc = 'cland: ' .. desc })
     end
+    topic_key('za', function() state.S.ui.topics_more = not state.S.ui.topics_more; state.changed() end, 'toggle background topics')
+    topic_key('A', function() state.S.ui.topics_archive = not state.S.ui.topics_archive; state.changed() end, 'show or hide archived topics')
     topic_key('n', views.prompt_topic, 'new topic')
     topic_key('c', function()
       views.close_topic()

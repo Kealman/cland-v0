@@ -1018,6 +1018,24 @@ export class Dispatcher {
       const answer = (value: unknown) => peer.send({ type: 'result', id: frame.id, ok: true, value });
       try {
         switch (frame.type) {
+          case 'visibility.set': {
+            if (this.#asSession(frame)) throw new Error('visibility choices belong to the human');
+            const preferences = core.visibility.preferences;
+            if (!preferences) throw new Error('this hub has no UI preferences file');
+            const exists = frame.surface === 'topics' ? core.store.topic(frame.target)
+              : frame.surface === 'artifacts' ? core.store.artifact(frame.target)
+              : core.store.knownSessions().some(s => s.name === frame.target) || core.presence().some(s => s.name === frame.target);
+            if (!exists) throw new Error(`no ${frame.surface} entry ${frame.target}`);
+            const resumed = this.#guard.resumer(frame.type, client);
+            later(frame.type, preferences.toggle(frame.surface, frame.target, frame.mode, resumed).then(
+              visibility => resumed(() => {
+                this.#guard.changed();
+                core.refreshVisibility();
+                return { type: 'result', id: frame.id, ok: true, value: { visibility } } as HubFrame;
+              }),
+              err => resumed(() => Dispatcher.#failure(frame.id, err))));
+            break;
+          }
           case 'topic.list':
             return answer({ topics: core.topics() });
           case 'topic.history':

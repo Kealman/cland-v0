@@ -1154,7 +1154,7 @@ export class Store implements HygieneMemory {
   }
 
   /** A topic's latest messages, oldest first, each with its stage. */
-  topicMessages(topic: string, limit: number, filter: AgentsHistoryFilter = {}): TopicMessage[] {
+  topicMessages(topic: string, limit: number, filter: AgentsHistoryFilter & { before?: string } = {}): TopicMessage[] {
     const clauses = ['topic = ?'];
     const args: Array<string | number | null> = [topic];
     // Exact JSON values, including arrays/nested facts, avoid matching T-1 to T-12 or alpha to alpha-2.
@@ -1169,6 +1169,10 @@ export class Store implements HygieneMemory {
         or exists (select 1 from json_tree(coalesce(notice_detail, '{}')) where type = 'text'
           and (fullkey in ('$.session', '$.from', '$.to', '$.by') or path in ('$.to', '$.pair')) and value = ?))`);
       args.push(filter.session, filter.session, filter.session);
+    }
+    if (filter.before !== undefined) {
+      clauses.push('(created_at, rowid) < (select created_at, rowid from messages where id = ? and topic = ?)');
+      args.push(filter.before, topic);
     }
     args.push(limit);
     const rows = this.#db.prepare(`select * from messages where ${clauses.join(' and ')} order by created_at desc, rowid desc limit ?`).all(...args) as Row[];

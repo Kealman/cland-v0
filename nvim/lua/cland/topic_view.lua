@@ -46,45 +46,52 @@ function M.new(client, topic)
   local function load()
     generation = generation + 1
     local current = generation
-    client:snapshot({ type = 'topic.history', topic = topic.id, limit = M.HISTORY_LIMIT }, function(err, value, events)
-      if current ~= generation then return end
-      if err then
-        return view.thread:set_notice('no history: ' .. err)
-      end
-      view.thread:merge(value.messages)
-      for _, e in ipairs(events) do
-        if e.topic == topic.id then
-          if e.type == 'ask' then view.thread:set_card(e.ask, e.card)
-          elseif e.type == 'delivery' then view.thread:set_stage(e.message, e.stage) end
+    local function page(before)
+      client:snapshot({ type = 'topic.history', topic = topic.id, limit = M.HISTORY_LIMIT, before = before }, function(err, value, events)
+        if current ~= generation then return end
+        if err then
+          return view.thread:set_notice('no history: ' .. err)
         end
-      end
-      -- a free answer armed for an ask that closed meanwhile goes
-      local function disarm()
-        local a = view.composer.answering
-        local m = a and view.thread.by_id[a.ask]
-        if m and type(m.ask) == 'table' and m.ask.state ~= 'open' then
-          view.composer:answer_to(nil)
+        view.thread:merge(value.messages, before ~= nil)
+        if view.thread.archive and #value.messages == M.HISTORY_LIMIT then
+          page(value.messages[1].id)
         end
-      end
-      disarm()
-      -- the history holds only the latest messages: an older ask cached as open is checked against the hub's open
-      -- asks, asked after the history so an ask opened meanwhile is in both
-      client:inbox(function(ierr, inbox)
-        if ierr or type(inbox) ~= 'table' or type(inbox.asks) ~= 'table' then
-          return
-        end
-        local open = {}
-        for _, a in ipairs(inbox.asks) do
-          if type(a) == 'table' and a.id then
-            open[a.id] = true
+        for _, e in ipairs(events) do
+          if e.topic == topic.id then
+            if e.type == 'ask' then view.thread:set_card(e.ask, e.card)
+            elseif e.type == 'delivery' then view.thread:set_stage(e.message, e.stage) end
           end
         end
-        view.thread:reconcile_asks(open)
+        -- a free answer armed for an ask that closed meanwhile goes
+        local function disarm()
+          local a = view.composer.answering
+          local m = a and view.thread.by_id[a.ask]
+          if m and type(m.ask) == 'table' and m.ask.state ~= 'open' then
+            view.composer:answer_to(nil)
+          end
+        end
         disarm()
+        -- the history holds only the latest messages: an older ask cached as open is checked against the hub's open
+        -- asks, asked after the history so an ask opened meanwhile is in both
+        client:inbox(function(ierr, inbox)
+          if ierr or type(inbox) ~= 'table' or type(inbox.asks) ~= 'table' then
+            return
+          end
+          local open = {}
+          for _, a in ipairs(inbox.asks) do
+            if type(a) == 'table' and a.id then
+              open[a.id] = true
+            end
+          end
+          view.thread:reconcile_asks(open)
+          disarm()
+        end)
       end)
-    end)
+    end
+    page(nil)
   end
   client:on('connected', load)
+  client:on('visibility', load)
   if client:connected() then
     load()
   end
@@ -128,6 +135,12 @@ function M.new(client, topic)
   for _, key in ipairs({ 'zo', 'za', 'zc', 'zR', 'zM' }) do
     require('cland.actions').map('n', key, function() view.thread:fold(key) end, { buffer = view.thread.buf })
   end
+  require('cland.visibility').keys(view.thread.buf, function() return 'topics', topic.id end)
+  require('cland.actions').map('n', 'A', function()
+    view.thread.archive = not view.thread.archive
+    view.thread:render()
+    load()
+  end, { buffer = view.thread.buf, desc = 'show or hide archived messages' })
   require('cland.actions').map('n', 'ga', function()
     require('cland.layout').show({ kind = 'artifacts', id = topic.id }, { insert = false })
   end, { buffer = view.thread.buf, desc = 'topic artifacts' })

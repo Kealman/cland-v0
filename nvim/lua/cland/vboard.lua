@@ -78,6 +78,34 @@ function M.compose()
   return out
 end
 
+-- The vertical panel may promote foreground rows inside its selected scope. The centre
+-- board uses compose() directly and always retains its open-parent boundary.
+local function panel_composition()
+  local out, parent = M.compose(), M.parent_filter()
+  if not out.scope then return out end
+  local present, columns = {}, {}
+  for status, list in pairs(out.columns) do
+    columns[status] = {}
+    for _, it in ipairs(list) do present[it.id] = true end
+  end
+  for _, it in ipairs(items.ordered()) do
+    local promoted = it.id ~= out.scope.id and M.under(it, out.scope.id)
+      and (not parent or M.under(it, parent)) and not open_parents(it)
+      and (it.layer == 'now' or it.layer == 'watch')
+    if it.kind == 'task' and columns[it.status] and (present[it.id] or promoted) then
+      columns[it.status][#columns[it.status] + 1] = it
+      if promoted and items.in_work(it) then out.work = out.work + 1 end
+    elseif promoted and not items.is_container(it) then
+      out.leaves[#out.leaves + 1] = it
+    end
+  end
+  out.columns, out.next = columns, nil
+  for _, it in ipairs(columns.planned) do
+    if #items.open_blockers(it) == 0 then out.next = it.id; break end
+  end
+  return out
+end
+
 --- One source for panel rows, board cards and graph nodes: hub verification marks.
 function M.fraction(it)
   local d = require('cland.item_view').get(it.id)
@@ -142,6 +170,8 @@ local function row(c, it, bucket, next_id)
 end
 
 local function selected(it, filter)
+  if it.layer == 'archive' then return false end
+  if filter == 'board' then return it.layer == nil or it.layer == 'now' or it.layer == 'watch' end
   if filter == 'work' then return items.in_work(it) end
   if filter == 'you' then return items.needs_you(it) end
   if filter == 'done' then return it.kind == 'task' and it.status == 'done' end
@@ -149,7 +179,7 @@ local function selected(it, filter)
 end
 
 local function fold(c, key, label, list, filter, next_id)
-  local shown = vim.tbl_filter(function(it) return selected(it, filter) end, list)
+  local shown = vim.tbl_filter(function(it) return it.layer ~= 'archive' and (filter == 'board' or selected(it, filter)) end, list)
   local closed = state.S.ui.items_folds[key] ~= false
   c:add({ { ' ' .. (closed and '▸ ' or '▾ ') .. label .. ' (' .. #shown .. ')', 'ClandSection' } }, nil, { fold = key })
   if M.follow_fold == key then c.cursor_to = #c.lines; M.follow_fold = nil end
@@ -157,7 +187,7 @@ local function fold(c, key, label, list, filter, next_id)
 end
 
 function M.summary()
-  local b, f = M.compose(), items.filter()
+  local b, f = panel_composition(), items.filter()
   if f == 'board' then return 'board · ' .. b.work .. ' in work · ' .. b.done .. ' done' end
   if f == 'map' then return nil end
   local n = 0
@@ -171,7 +201,7 @@ function M.summary()
 end
 
 function M.render(c)
-  local b, f = M.compose(), items.filter()
+  local b, f = panel_composition(), items.filter()
   local tabs = { { ' epic ', 'ClandDim' }, { 'all', not M.parent_filter() and 'ClandTabOn' or 'ClandTab' } }
   for _, it in ipairs(M.parents()) do tabs[#tabs + 1] = { ' · ' .. it.id .. ' ' .. it.title, state.S.ui.board_parent == it.id and 'ClandTabOn' or 'ClandTab' } end
   c:add(tabs, nil, { epic_tabs = true })
@@ -195,18 +225,39 @@ function M.render(c)
         and (not M.parent_filter() or M.under(it, M.parent_filter())) then row(c, it, 'done') end
     end
   else
-    for _, status in ipairs(M.SECTIONS) do
+    local sections = vim.list_extend({}, M.SECTIONS)
+    if f == 'board' then
+      sections[#sections + 1] = 'backlog'
+      if #vim.tbl_filter(function(it) return selected(it, f) end, b.columns.done) > 0 then sections[#sections + 1] = 'done' end
+    end
+    for _, status in ipairs(sections) do
       local list = vim.tbl_filter(function(it) return selected(it, f) end, b.columns[status])
       c:add({ { ' ' .. status:upper() .. ' · ' .. #list, #list > 0 and 'ClandSection' or 'ClandFaint' } }, nil, { section = status })
       for _, it in ipairs(list) do row(c, it, status, b.next) end
     end
     if f == 'board' then
-      fold(c, 'backlog', 'backlog', b.columns.backlog, f)
-      if #b.leaves > 0 then fold(c, 'leaves', 'questions and specs', b.leaves, f) end
+      fold(c, 'backlog', 'backlog', vim.tbl_filter(function(it) return it.layer == nil or it.layer == 'background' end, b.columns.backlog), f)
+      local leaves = {}
+      for _, it in ipairs(b.leaves) do
+        if selected(it, f) then row(c, it, 'leaves') elseif it.layer ~= 'archive' then leaves[#leaves + 1] = it end
+      end
+      if #leaves > 0 then fold(c, 'leaves', 'questions and specs', leaves, f) end
     end
-    fold(c, 'unscheduled', 'unscheduled', b.unscheduled, f)
+    local unscheduled = {}
+    for _, it in ipairs(b.unscheduled) do
+      if f == 'board' and selected(it, f) then row(c, it, 'unscheduled') else unscheduled[#unscheduled + 1] = it end
+    end
+    fold(c, 'unscheduled', 'unscheduled', unscheduled, f)
+    if f == 'board' then
+      local more = {}
+      for _, it in ipairs(items.ordered()) do
+        if b.scope and M.under(it, b.scope.id) and it.id ~= b.scope.id and it.layer == 'background'
+          and (it.kind == 'task' or items.is_container(it)) and it.status ~= 'backlog' and (not M.parent_filter() or M.under(it, M.parent_filter())) then more[#more + 1] = it end
+      end
+      if #more > 0 then fold(c, 'background', 'more', more, f) end
+    end
   end
-  return { ' K J rank · T top · ↵ open · za fold', ' e E scope · p P epic · 1-6 or f · gi gt gs' }
+  return { ' K J rank · T top · ↵ open · za fold', ' gn now · gw watch · gb more · gA archive' }
 end
 
 local function info_at()
@@ -215,7 +266,7 @@ end
 
 function M.fold(how)
   if how == 'all open' or how == 'all closed' then
-    for _, key in ipairs({ 'backlog', 'unscheduled', 'leaves' }) do state.S.ui.items_folds[key] = how == 'all closed' end
+    for _, key in ipairs({ 'backlog', 'unscheduled', 'leaves', 'background' }) do state.S.ui.items_folds[key] = how == 'all closed' end
     for _, it in ipairs(items.ordered()) do
       if items.is_container(it) or #items.children(it.id) > 0 then state.S.ui.items_folds[it.id] = how == 'all closed' end
     end

@@ -129,10 +129,14 @@ local function advance(existing, stage)
 end
 
 --- The answers shown under their ask's card: ask id → the answer message.
+function Thread:visible(m)
+  return self.archive or M.layer(m) ~= 'archive'
+end
+
 function Thread:_answers()
   local answers = {}
   for _, m in ipairs(self.messages) do
-    if m.answerTo and self.by_id[m.answerTo] and type(self.by_id[m.answerTo].ask) == 'table' then
+    if self:visible(m) and m.answerTo and self.by_id[m.answerTo] and self:visible(self.by_id[m.answerTo]) and type(self.by_id[m.answerTo].ask) == 'table' then
       answers[m.answerTo] = m
     end
   end
@@ -142,12 +146,13 @@ end
 --- Only the immediately following bare chip by the same Coordinator belongs to an ask.
 --- Derive ownership from retained history, so eviction and older snapshots use the same rule.
 function Thread:_chip_owner(m)
+  if not self:visible(m) then return nil end
   if m.fromKind ~= 'agent' or m.fromRole ~= 'coordinator' or #addressees(m) > 0 or
       type(m.artifact) ~= 'table' or type(m.artifacts) == 'table' then return nil end
   for k, candidate in ipairs(self.messages) do
     if candidate.id == m.id then
       local prev = self.messages[k - 1]
-      if prev and type(prev.ask) == 'table' and prev.fromKind == 'agent' and
+      if prev and self:visible(prev) and type(prev.ask) == 'table' and prev.fromKind == 'agent' and
           prev.fromRole == 'coordinator' and prev.from == m.from and
           prev.topic == m.topic and M.day(prev.ts) == M.day(m.ts) then return prev end
       return nil
@@ -649,7 +654,7 @@ function Thread:render()
   local answers = self:_answers()
   local prev
   for _, m in ipairs(self.messages) do
-    if not (m.answerTo and answers[m.answerTo] == m) and not self:_chip_owner(m) then
+    if self:visible(m) and not (m.answerTo and answers[m.answerTo] == m) and not self:_chip_owner(m) then
       local b = self:_build(m, prev, answers[m.id])
       b.start = #lines
       for k, l in ipairs(b.lines) do
@@ -770,7 +775,7 @@ end
 --- Discard expired messages without rewriting retained text. The uncommon ask/answer boundary
 --- uses the same block replacement seam as a card update, then places a surviving answer in time order.
 function Thread:_trim()
-  local drop = #self.messages - M.LIMIT
+  local drop = #self.messages - (self.archive and math.huge or M.LIMIT)
   if drop <= 0 then return end
   local wins = self:_windows()
   local gone, messages = {}, {}
@@ -811,6 +816,7 @@ end
 
 --- Insert a standalone retained answer among existing blocks without rewriting its neighbours.
 function Thread:_insert(m)
+  if not self:visible(m) then return end
   -- Retention keeps the hub's arrival order on equal timestamps, including
   -- answers promoted from asks that are removed in reverse block order.
   local order = {}
@@ -871,6 +877,7 @@ end
 
 --- A new message into the buffer: under its ask's card when it answers one, else at the end.
 function Thread:_place(m)
+  if not self:visible(m) then return end
   -- A batch merge can have already incorporated this companion into its ask.
   if self.block_of[m.id] then return end
   local owner = self:_chip_owner(m)
@@ -885,10 +892,10 @@ end
 --- Merge a history snapshot: new messages join in time order, known ones advance their stage and take the hub's
 --- ask card (an ask answered, withdrawn or cancelled while the client was away is no longer open). Only a message
 --- older than the latest shown or a changed layer rewrites the buffer; otherwise each change touches its own lines.
-function Thread:merge(messages)
+function Thread:merge(messages, prepend)
   local latest = self.messages[#self.messages]
   local fresh, cards, stages = {}, {}, {}
-  local older, placement_changed = false, false
+  local older, placement_changed = prepend or false, false
   for _, m in ipairs(messages or {}) do
     local existing = self.by_id[m.id]
     if existing then
@@ -923,9 +930,13 @@ function Thread:merge(messages)
     end
     return a._seq < b._seq
   end)
-  for _, m in ipairs(fresh) do
-    self.by_id[m.id] = m
-    table.insert(self.messages, m)
+  for _, m in ipairs(fresh) do self.by_id[m.id] = m end
+  if prepend then
+    -- A history page precedes the loaded window, even at equal timestamps.
+    vim.list_extend(fresh, self.messages)
+    self.messages = fresh
+  else
+    vim.list_extend(self.messages, fresh)
   end
   if older or placement_changed or #self.blocks == 0 then
     -- ISO timestamps sort as text; equal ones keep their arrival order

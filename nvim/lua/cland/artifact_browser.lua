@@ -175,6 +175,10 @@ local function bind(tree)
     for key in pairs(M.open) do M.open[key] = false end
     state.changed()
   end)
+  require('cland.visibility').keys(b, function()
+    local row = selected(b)
+    return row and row.artifact and 'artifacts', row and row.artifact and row.artifact.id
+  end)
   map('A', function() M.open.archived = not M.open.archived; state.changed() end)
   map('n', function() create(b, topic) end)
   map('s', function() attach(selected(b), topic) end)
@@ -266,7 +270,7 @@ function M.buffer(topic)
       if more_open then for _, a in ipairs(background) do artifact_row(a) end end
     end
   end
-  local function archived(a) return a.layer == 'archive' or a.status == 'archived' or a.fileDeleted end
+  local function archived(a) return a.layer == 'archive' or (a.layer == nil and a.status == 'archived') or a.fileDeleted end
   section('mine', 'Mine', function(a) return human(a) and not archived(a) end)
   section('topic', 'This topic', function(a) return a.topic == topic and not archived(a) end)
   section('kept', 'Kept', function(a) return a.kept and not archived(a) end)

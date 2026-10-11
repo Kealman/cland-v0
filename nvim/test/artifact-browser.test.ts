@@ -348,6 +348,53 @@ test('a refused ordinary send restores artifacts when an ask was armed while its
   });
 });
 
+test('artifact pin and mute keys share hub layers with the thread, palette and browser', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  t.after(() => impl.close());
+  await impl.waitForPresence(['impl']);
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Placement' })).value as { topic: { id: string } }).topic.id;
+  await ui.request({ type: 'topic.send', topic, text: '@impl show a report' });
+  const result = await impl.call<{ ok: boolean; artifact: { id: string } }>('artifact.create', { kind: 'note', title: 'Pinned report', topic, content: 'Report bytes' });
+  assert.equal(result.ok, true);
+  const id = result.artifact.id;
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.input('<Esc>:Cland view artifacts ' + topic + '<CR>');
+  await c.waitScreen(s => s.includes('more (1)'), 'background report folded');
+  await row(c, 'more (1)');
+  await c.input('za');
+  await c.waitScreen(s => s.includes('Pinned report'), 'report unfolded');
+  await row(c, 'Pinned report');
+  await c.input('gP');
+  const layer = async (expected: string) => eventually('artifact layer ' + expected, async () => {
+    const r = (await ui.request({ type: 'artifact.list', artifact: id })).value as { artifact: { layer: string } };
+    return r.artifact.layer === expected || undefined;
+  });
+  await layer('now');
+  await c.input('zM');
+  await c.waitScreen(s => s.includes('Pinned report'), 'pinned report survives background fold');
+  const history = (await ui.request({ type: 'topic.history', topic })).value as { messages: Array<{ artifact?: { id: string }; layer: string }> };
+  assert.equal(history.messages.find(m => m.artifact?.id === id)?.layer, 'now');
+  await row(c, 'Pinned report');
+  await c.input('gM');
+  await layer('archive');
+  await c.waitScreen(s => !s.includes('Pinned report'), 'muted background report archived');
+  await c.input('zR');
+  assert.ok(!(await c.screen()).join('\n').includes('Pinned report'), 'zR never requests archive');
+  await c.input('A');
+  await c.waitScreen(s => s.includes('Pinned report'), 'archive action reveals muted report');
+  await row(c, 'Pinned report');
+  await c.input('gP');
+  await layer('now');
+  await c.input('A');
+  await c.waitScreen(s => s.includes('Pinned report'), 'pin raises archived layer into foreground');
+  assert.equal(await c.lua("return require('cland.palette').dim('artifacts', require('cland.artifacts').get(...))", id), false);
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});
+
 test('x asks before deleting; cancel keeps bytes and confirm updates the browser and topic chips', { skip }, async t => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
@@ -365,9 +412,17 @@ test('x asks before deleting; cancel keeps bytes and confirm updates the browser
   await c.waitScreen(s => s.includes('Mine (1)'), 'cancelled deletion');
   assert.match(await c.lua<string>('return vim.g.delete_prompt'), new RegExp('Delete ' + a.id));
   assert.equal(await readFile(a.path, 'utf8'), '# Keep until confirmed');
+  // gP remains distinct from x; a pin must not make a deleted tombstone active.
+  await c.input('gP');
+  await eventually('artifact pinned before delete', async () => {
+    const result = (await ui.request({type:'artifact.list',artifact:a.id})).value as {artifact:{layer:string}};
+    return result.artifact.layer === 'now' || undefined;
+  });
   await c.input('x2<CR>');
   await c.waitScreen(s => s.includes('Mine (0)'), 'deleted artifact leaves active browser');
   await assert.rejects(readFile(a.path), {code:'ENOENT'});
+  await c.input('zR');
+  assert.ok(!(await c.screen()).join('\n').includes('Disposable notes'), 'unfold does not reveal a deleted artifact even when pinned');
   await c.input('A');
   await c.waitScreen(s => s.includes('Disposable notes') && s.includes('file deleted'), 'deleted tombstone in archive');
   await c.input(':Cland view thread general<CR>');
@@ -376,6 +431,7 @@ test('x asks before deleting; cancel keeps bytes and confirm updates the browser
   const chips = lines.filter(l => l.includes('▣ ' + a.id));
   assert.equal(chips.length, 2);
   assert.ok(chips.every(l => l.includes('file deleted')), 'creation and attachment chips reflect deletion');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), [], 'delete and visibility keys retain registered mappings');
 });
 
 test('deletion updates an already-open attachment-only chip when creation is outside retained history', { skip }, async t => {

@@ -10,6 +10,7 @@ import { mkdirSync } from 'node:fs';
 import { access, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sweepOrphans } from '../orphans.ts';
+import { VisibilityPreferenceFile } from './visibility-preferences.ts';
 import { Store } from './store.ts';
 import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
@@ -138,6 +139,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       tracker,
       roles,
       visibility: config?.visibility ?? {},
+      visibilityPreferences: new VisibilityPreferenceFile(join(l.dir, 'ui.json')),
       crew,
       artifactRetentionDays: config?.artifacts.retentionDays ?? 30,
       idleNotifyMs: idleNotifyMs(join(l.dir, 'config.toml'), process.env, log),

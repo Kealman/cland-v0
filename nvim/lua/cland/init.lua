@@ -203,6 +203,7 @@ local function wire_client(client)
     state.changed()
   end)
   client:on('connected', M.refresh)
+  client:on('visibility', M.refresh)
   client:on('message', function(event)
     if not event.topic then
       return

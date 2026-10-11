@@ -31,7 +31,7 @@ local function validate(data)
     assert(vim.tbl_contains({ 'left', 'right', 'dock' }, key), 'unknown size')
     assert(type(size) == 'number' and size >= 1 and size < 100000 and size == math.floor(size), 'invalid size')
   end
-  assert(vim.tbl_contains(require('cland.items').FILTERS, data.items_filter), 'invalid items filter')
+  assert(vim.tbl_contains(require('cland.items').FILTERS, data.items_filter) or vim.tbl_contains(require('cland.items').LAYERS, data.items_filter), 'invalid items filter')
   assert(data.current_release == nil or (type(data.current_release) == 'string' and data.current_release:match('^T%-[1-9]%d*$')), 'invalid release pick')
   data.plan_seen = data.plan_seen or vim.empty_dict()
   assert(type(data.plan_seen) == 'table', 'invalid plan receipts')
@@ -67,9 +67,20 @@ end
 -- Write completely to a unique sibling, then rename. An interrupted write leaves the previous file intact.
 local function atomic_write(text)
   vim.fn.mkdir(vim.fn.fnamemodify(path, ':h'), 'p')
+  local release = require('cland.ui_lock').acquire(path .. '.lock')
+  if not release then return false end
   local tmp = path .. '.' .. vim.fn.getpid() .. '.' .. uv.hrtime() .. '.tmp'
   local fd
   local ok, err = pcall(function()
+    -- The shared lock covers the read as well as replacement.
+    local read_ok, current = pcall(function()
+      return vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
+    end)
+    if read_ok and type(current) == 'table' and current.visibility then
+      local data = vim.json.decode(text)
+      data.visibility = current.visibility
+      text = vim.json.encode(data) .. '\n'
+    end
     fd = assert(uv.fs_open(tmp, 'wx', 384))
     local offset = 0
     while offset < #text do
@@ -83,10 +94,13 @@ local function atomic_write(text)
     assert(uv.fs_rename(tmp, path))
   end)
   if fd then pcall(uv.fs_close, fd) end
+  local released, release_err = pcall(release)
   if not ok then
     pcall(uv.fs_unlink, tmp)
     error(err)
   end
+  if not released then error(release_err) end
+  return true
 end
 
 function M.flush()
@@ -95,6 +109,12 @@ function M.flush()
   local text = pending
   pending = nil
   local ok, err = pcall(atomic_write, text .. '\n')
+  if ok and err == false then
+    pending = text
+    if not timer then timer = uv.new_timer() end
+    timer:start(M.DEBOUNCE_MS, 0, vim.schedule_wrap(M.flush))
+    return false
+  end
   if ok then
     saved = text
   elseif not warned then

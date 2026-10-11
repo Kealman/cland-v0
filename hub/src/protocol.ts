@@ -220,6 +220,7 @@ export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Top
 
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
+  | { type: 'visibility' }
   | { type: 'crew'; config: import('./crew.ts').CrewConfig; summary: string }
   | { type: 'artifact'; artifact: Artifact }
   /** The connected sessions, replaced on a hello, last spoke leaving, rename, status or role change. */
@@ -486,6 +487,7 @@ export type ClientHello = {
 export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[] };
 
 export type ClientRequest =
+  | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
   | SuiteStart
   | ReleaseRequest
   | { type: 'sync'; id: string }
@@ -509,7 +511,7 @@ export type ClientRequest =
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
   | { type: 'topic.list'; id: string }
   /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. Agents filters precede the limit. */
-  | ({ type: 'topic.history'; id: string; topic: string; limit?: number } & AgentsHistoryFilter)
+  | ({ type: 'topic.history'; id: string; topic: string; limit?: number; before?: string } & AgentsHistoryFilter)
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
@@ -654,6 +656,8 @@ export function isClientHello(f: Record<string, unknown>): f is ClientHello {
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'visibility.set':
+      return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
     case 'suite.start':
       return ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'push':
@@ -700,7 +704,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'role.clear':
       return typeof f.session === 'string';
     case 'topic.history':
-      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && isAgentsHistoryFilter(f);
+      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string') && isAgentsHistoryFilter(f);
     case 'topic.send':
       return (
         typeof f.topic === 'string' &&

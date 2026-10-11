@@ -253,13 +253,17 @@ test('writes debounce; a process interrupted before rename preserves the previou
   assert.equal((JSON.parse(await readFile(path, 'utf8')) as { items_filter: string }).items_filter, 'done');
   const complete = await readFile(path, 'utf8');
   // Halt at the actual rename boundary after the temp file was written and closed, then kill the process.
-  await c.lua(`vim.uv.fs_rename = function() vim.wait(10000, function() return false end); return nil, 'interrupted' end
-    require('cland.items').set_filter('map')`);
+  await c.lua(`local target=...; local rename=vim.uv.fs_rename
+    vim.uv.fs_rename = function(from,to)
+      if to==target then vim.wait(10000,function() return false end); return nil,'interrupted' end
+      return rename(from,to)
+    end
+    require('cland.items').set_filter('map')`, path);
   for (let i = 0; i < 100; i++) {
-    if ((await readdir(join(root, '.cland'))).some((f) => f.endsWith('.tmp'))) break;
+    if ((await readdir(join(root, '.cland'))).some((f) => f.startsWith('ui.json.') && !f.startsWith('ui.json.lock.') && f.endsWith('.tmp'))) break;
     await sleep(20);
   }
-  assert.ok((await readdir(join(root, '.cland'))).some((f) => f.endsWith('.tmp')), 'write reached its temporary file');
+  assert.ok((await readdir(join(root, '.cland'))).some((f) => f.startsWith('ui.json.') && !f.startsWith('ui.json.lock.') && f.endsWith('.tmp')), 'write reached its temporary file');
   c.process.kill('SIGKILL');
   await c.rpc.closed;
   assert.equal(await readFile(path, 'utf8'), complete);

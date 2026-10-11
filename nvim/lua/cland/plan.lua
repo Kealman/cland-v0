@@ -626,10 +626,21 @@ function M.render_panel(c, id)
   for _, child in ipairs(list) do if child.status == 'done' then done = done + 1 end end
   c:add({ { ' ' .. id .. ' ' .. (it and it.title or ''), 'ClandBold' } },
     { { (it and items.claim(it) and session_label(items.claim(it).session, items.claim(it).role) .. ' · ' or '') .. done .. '/' .. #list, 'ClandTeal' } }, { item = id })
-  for _, status in ipairs({ 'in progress', 'review', 'qa', 'ready', 'planned', 'backlog' }) do
-    local bucket = vim.tbl_filter(function(child) return child.status == status end, list)
-    c:add({ { ' ' .. status:upper() .. ' · ' .. #bucket, 'ClandSection' } }, nil, { section = status })
-    for _, child in ipairs(bucket) do
+  local filter = items.filter()
+  local layer_filter = vim.tbl_contains(items.LAYERS, filter)
+  local background = vim.tbl_filter(function(child) return child.layer == 'background' end, list)
+  local sections = layer_filter and { filter } or { 'in progress', 'review', 'qa', 'ready', 'planned', 'backlog', 'done' }
+  if not layer_filter and #background > 0 then sections[#sections + 1] = 'background' end
+  for _, status in ipairs(sections) do
+    local bucket = vim.tbl_filter(function(child)
+      if layer_filter then return child.layer == filter end
+      if status == 'background' then return child.layer == 'background' end
+      return child.status == status and child.layer ~= 'background' and child.layer ~= 'archive'
+    end, list)
+    local folded = not layer_filter and status == 'background'
+    local closed = folded and state.S.ui.items_folds.background ~= false
+    c:add({ { ' ' .. (folded and (closed and '▸ more' or '▾ more') or status:upper()) .. ' · ' .. #bucket, 'ClandSection' } }, nil, { section = status, fold = folded and 'background' or nil })
+    for _, child in ipairs(closed and {} or bucket) do
       local glyph = items.GLYPH[items.status(child)] or items.GLYPH.open
       local n, total = require('cland.vboard').fraction(child)
       local left = { { changes.items[child.id] and ' △ ' or ' ', changes.items[child.id] and 'ClandPlanChange' or nil }, { #items.open_blockers(child) > 0 and '◌' or glyph[1], glyph[2] },
@@ -639,6 +650,6 @@ function M.render_panel(c, id)
       c:add(left, right, { item = child.id, list = status })
     end
   end
-  return { ' ↵ open · gp plan · gi gt gs', ' K J rank · T top · ␣␣ back' }
+  return { ' ↵ open · gp plan · gi gt gs', ' gn now · gw watch · gb more · gA archive' }
 end
 return M

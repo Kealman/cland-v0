@@ -67,11 +67,12 @@ test('release board excludes legacy trees and done orphans; all reveals every it
     await c.waitScreen(s => s.includes('board · 1 in work · 1 done'), 'scoped board summary');
     const text = (await panel(c)).join('\n');
     assert.match(text, /▸ unscheduled \(1\)/);
+    assert.doesNotMatch(text, /T-30 Row 30/, '§3.5: unscheduled planned work is Background until unfolded');
     for (const id of ['T-19', 'T-20', 'T-140', 'T-1', 'T-31', 'T-32']) assert.doesNotMatch(text, new RegExp(` ${id} `));
     await c.lua("require('cland.vboard').fold('all open')");
     await c.waitScreen(s => s.includes('Row 30'), 'open unscheduled orphan');
     const rows = () => c.lua<string[]>(`local p=require('cland.panels'); local b=p.buf('items'); local out={}; for i=1,vim.api.nvim_buf_line_count(b) do local info=p.row_at(b,i); if info and info.item then out[#out+1]=info.item end end; return out`);
-    assert.deepEqual(await rows(), ['T-130', 'T-167', 'T-30']);
+    assert.deepEqual(await rows(), ['T-130', 'T-167', 'T-30', 'T-107', 'T-168'], 'unfolding also reveals scoped background containers and done work');
     const columns = await c.lua(`local out={}; for status,list in pairs(require('cland.board').columns()) do out[status]={}; for _,it in ipairs(list) do out[status][#out[status]+1]=it.id end end; return out`);
     assert.deepEqual(columns, { backlog: [], planned: ['T-167'], 'in progress': [], review: [], qa: [], ready: [], done: ['T-168'] });
     await c.input('6zR');
@@ -125,7 +126,7 @@ test('an open scope under an archived release stays out of unscheduled and appea
   await c.waitScreen(s => s.includes('T-1 Current release') && !s.includes('T-8 Open archived epic'), 'original scope');
   assert.equal(await c.lua("return require('cland.items').scope().id"), 'T-1');
 });
-test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria and folded backlog and unscheduled', { skip }, async t => {
+test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria and folded background and unscheduled work', { skip }, async t => {
   const c = await start(t);
   await c.waitScreen(s => s.includes('board · 7 in work · 1 done'), 'board summary');
   await c.waitScreen(s => s.includes('1/2'), 'criteria fetched');
@@ -138,10 +139,12 @@ test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria
   assert.match(text, /○ T-16.*next/);
   assert.ok(text.indexOf('T-16') < text.indexOf('T-14'), 'epic rank precedes task rank');
   assert.match(text, /▸ backlog \(1\)/); assert.match(text, /▸ unscheduled \(1\)/);
-  for (const id of ['T-17', 'T-18', 'T-19', 'T-20']) assert.ok(!lines.some(l => new RegExp(` ${id} `).test(l)), `${id} starts hidden`);
+  assert.doesNotMatch(text, /T-20 Row 20/, '§3.5: planned outside the current release is Background');
+  for (const id of ['T-17', 'T-18', 'T-19']) assert.ok(!lines.some(l => new RegExp(` ${id} `).test(l)), `${id} starts hidden`);
   assert.match(text, /epic.*all.*Tracker.*Panels/);
   await c.input('/backlog (<CR>za'); await c.waitScreen(s => s.includes('Row 17'), 'backlog opens');
   await c.input('za'); await c.waitScreen(s => !s.includes('Row 17'), 'backlog closes');
+  await c.input('/unscheduled (<CR>za'); await c.waitScreen(s => s.includes('Row 20'), 'unscheduled planned work remains reachable');
   const glyphs = await c.lua<Record<string, string>>(`local out={}; local b=require('cland.panels').buf('items'); local lines=vim.api.nvim_buf_get_lines(b,0,-1,false); for _,m in ipairs(vim.api.nvim_buf_get_extmarks(b,-1,0,-1,{details=true})) do local text=(lines[m[2]+1] or ''):sub(m[3]+1,m[4].end_col); if text=='◉' or text=='1/1' or text=='next' then out[(lines[m[2]+1] or ''):match('T%-%d+')..':'..text]=m[4].hl_group end end; return out`);
   assert.equal(glyphs['T-11:◉'], 'ClandAmber'); assert.equal(glyphs['T-13:◉'], 'ClandGreen'); assert.equal(glyphs['T-13:1/1'], 'ClandGreen'); assert.equal(glyphs['T-16:next'], 'ClandTeal');
   await c.input('<Space>i<Space>s<Space>b');

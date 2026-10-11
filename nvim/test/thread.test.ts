@@ -357,7 +357,7 @@ async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', chart
   await mkdir(join(root, '.git'));
   const controlPath = join(root, 'stub.sock');
   const c = await startClient(t, bin, root, {
-    TZ: timeZone, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
+    TZ: timeZone, CLAND_STUB_NOW: ts, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath,
   });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
@@ -443,6 +443,8 @@ test('headers and day rules use the local day and daylight-saving offset', { ski
     { ...msg('summer'), ts: '2026-10-08T22:30:00Z' },
     { ...msg('autumn'), ts: '2026-10-25T01:30:00Z' },
   ] } }, 'Europe/Belgrade');
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('A'); // Historical winter/spring fixtures are reached through the archive action.
   const screen = await c.waitScreen(s => s.includes('Sun 25 Oct'), 'the final local day');
   assert.match(screen, /── Fri 2 Jan/);
   assert.match(screen, /── Sun 29 Mar/);

@@ -37,6 +37,7 @@ return {
     qa.expect(not screen:find('Row 17',1,true) and not screen:find('Row 18',1,true) and not screen:find('Row 19',1,true),'backlog, done and unscheduled hidden')
     qa.keys('/backlog (<CR>za')
     qa.wait_for(function() return qa.screen():find('Row 17',1,true) end,5000,'backlog opens')
+    -- §3.5 Items: planned without release membership is unscheduled Background.
     qa.keys('za/unscheduled (<CR>za')
     qa.wait_for(function() return qa.screen():find('Row 19',1,true) end,5000,'unscheduled opens')
     qa.keys('zap') -- Tracker

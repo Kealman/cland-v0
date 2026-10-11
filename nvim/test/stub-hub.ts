@@ -23,6 +23,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { parseCriteria } from '../../hub/src/tracker/criteria.ts';
+import { VisibilityPreferenceFile } from '../../hub/src/hub/visibility-preferences.ts';
 import { Visibility, warningSeverity } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
@@ -105,7 +106,9 @@ function launched(f: Frame): Record<string, unknown> {
 const requests: Frame[] = [];
 const held: Frame[] = [];
 
+const preferences = new VisibilityPreferenceFile(join(process.cwd(), '.cland/ui.json'));
 const visibility = () => new Visibility({
+  preferences,
   overrides: scenario.visibility ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.visibility ?? {},
   role: name => String([...(scenario.presence ?? []), ...(scenario.processes ?? [])].find(s => s.name === name)?.role ?? '') || null,
   process: id => scenario.processes?.find(p => p.sessionId === id),
@@ -201,6 +204,13 @@ function answer(f: Frame) {
   switch (f.type) {
     case 'hello':
       return write({ type: 'welcome', protocol: 2, client: 'nvim' });
+    case 'visibility.set': {
+      void preferences.toggle(f.surface as 'topics' | 'sessions' | 'artifacts', String(f.target), f.mode as 'pin' | 'mute').then(value => {
+        write({ type: 'visibility' });
+        ok(f.id, { visibility: value });
+      }, err => fail(f.id, String(err)));
+      return;
+    }
     case 'subscribe':
       return ok(f.id, { subscribed: true });
     case 'artifact.list':
@@ -210,7 +220,9 @@ function answer(f: Frame) {
     case 'topic.history': {
       const topic = scenario.topics?.find((t) => t.id === f.topic);
       if (!topic) return fail(f.id, `no topic ${String(f.topic)}`);
-      return ok(f.id, { topic, messages: scenario.messages?.[String(f.topic)] ?? [] });
+      const messages = scenario.messages?.[String(f.topic)] ?? [];
+      const end = f.before === undefined ? messages.length : messages.findIndex(m => m.id === f.before);
+      return ok(f.id, { topic, messages: messages.slice(Math.max(0, end - Number(f.limit ?? 50)), end) });
     }
     case 'topic.send':
       if (scenario.send === 'refuse') return fail(f.id, 'the message is larger than 8192 bytes');

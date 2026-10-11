@@ -25,7 +25,11 @@ return {
     qa.keys('e')
     qa.wait_for(function() return items.scope().id=='T-2' end,5000,'feature scope')
     qa.keys('e')
-    qa.wait_for(function() return qa.screen():find('Future row',1,true) and not qa.screen():find('Current row',1,true) end,5000,'future scope')
+    -- §3.5 Items: work outside the current release is Background, reachable by unfold.
+    qa.wait_for(function() return items.scope().id=='T-3' and qa.screen():find('Future initiative',1,true) and not qa.screen():find('Current row',1,true) end,5000,'future scope')
+    qa.expect(not qa.screen():find('Future row',1,true),'future work starts in folded Background')
+    qa.keys('zR')
+    qa.wait_for(function() return qa.screen():find('Future row',1,true) end,5000,'future work reachable after unfold')
     require('cland.ui').flush()
     state.S.ui.current_release=nil
     require('cland.ui').load(qa.root)

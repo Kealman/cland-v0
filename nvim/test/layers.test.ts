@@ -290,3 +290,228 @@ test('session folds use hub layers even for live background and explicitly reque
   await c.waitScreen(s => !s.includes('archived [Reviewer]'), 'archive hidden');
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
 });
+
+test('thread hides seven-day archive until A and keeps recent replies outside archived asks', { skip }, async t => {
+  const ts = new Date().toISOString();
+  const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
+  const c = await start(t, { messages: { general: [
+    { id: 'old', topic: 'general', from: 'human', fromKind: 'human', to: [], text: 'Old private notes', ts: old },
+    { id: 'ask', topic: 'general', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', to: [], text: 'Old question', ts: old, ask: { question: 'Old question', state: 'answered', options: [] } },
+    { id: 'answer', topic: 'general', from: 'human', fromKind: 'human', to: [], text: 'Recent answer', ts, answerTo: 'ask' },
+    { id: 'recent', topic: 'general', from: 'human', fromKind: 'human', to: [], text: 'Recent notes', ts },
+  ] } });
+  let s = await c.waitScreen(s => s.includes('Recent notes') && s.includes('Recent answer'), 'recent thread');
+  assert.ok(!s.includes('Old private notes') && !s.includes('Old question'), s);
+  await c.input('<Esc><C-k>zR');
+  assert.ok(!(await c.screen()).join('\n').includes('Old private notes'), 'unfold does not request archive');
+  await c.input('A');
+  await c.waitScreen(s => s.includes('Old private notes') && s.includes('Old question'), 'archive requested');
+  await c.input('A');
+  await c.waitScreen(s => s.includes('Recent answer') && !s.includes('Old private notes') && !s.includes('Old question'), 'archive hidden again');
+});
+
+test('A retrieves old messages beyond the latest 200 and hides them again', { skip }, async t => {
+  const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
+  const recent = new Date().toISOString();
+  const messages = Array.from({ length: 205 }, (_, i) => ({ id: `m-${i}`, topic: 'general', from: 'human', fromKind: 'human', to: [], text: `History ${i}`, ts: i < 5 ? old : recent }));
+  const c = await start(t, { messages: { general: messages } });
+  await c.waitScreen(s => s.includes('History 204'), 'latest page');
+  await c.input('<Esc><C-k>A');
+  await c.lua("return vim.wait(5000,function() return require('cland.views').topic('general').thread.by_id['m-0'] ~= nil end,20)");
+  assert.deepEqual(await c.lua("local ids={}; for _,m in ipairs(require('cland.views').topic('general').thread.messages) do ids[#ids+1]=m.id end; return ids"), messages.map(m => m.id));
+  await c.input('gg');
+  await c.waitScreen(s => s.includes('History 0'), 'archive older than first page');
+  await c.input('A');
+  await c.waitScreen(s => !s.includes('History 0'), 'archive hidden again');
+});
+
+test('a layout flush defers while another writer owns ui.json and preserves its pin', { skip }, async t => {
+  const { readFile, writeFile, rm } = await import('node:fs/promises');
+  const c = await start(t);
+  const path = join(c.root, '.cland/ui.json');
+  await mkdir(join(c.root, '.cland'), { recursive: true });
+  await mkdir(`${path}.lock`);
+  await writeFile(join(`${path}.lock`, '00000000-0000-0000-0000-000000000001.owner'), String(process.pid));
+  await c.lua("require('cland.items').set_filter('watch')");
+  assert.equal(await c.lua("return require('cland.ui').flush()"), false);
+  await writeFile(path, JSON.stringify({ visibility: { topics: { general: 'pin' } } }));
+  await rm(`${path}.lock`, { recursive: true });
+  assert.equal(await c.lua("return require('cland.ui').flush()"), true);
+  const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.equal(saved.items_filter, 'watch');
+  assert.equal(saved.visibility.topics.general, 'pin');
+});
+
+test('stale UI recovery preserves a competing replacement and treats EPERM as alive', { skip }, async t => {
+  const { readFile, writeFile, rm } = await import('node:fs/promises');
+  const { spawn } = await import('node:child_process');
+  const dead = spawn(process.execPath, ['-e', '']);
+  const deadPid = dead.pid!;
+  await new Promise<void>(resolve => dead.once('exit', () => resolve()));
+  const c = await start(t);
+  const path = join(c.root, '.cland/ui.json');
+  const lock = `${path}.lock`;
+  const staleName = '00000000-0000-0000-0000-000000000001.owner';
+  const replacement = '00000000-0000-0000-0000-000000000002.owner';
+  await c.lua("require('cland.ui').flush()");
+  const result = await c.lua(`
+    local lock,stale,replacement,pid,deadPid = ...
+    vim.fn.mkdir(lock,'p'); vim.fn.writefile({tostring(deadPid)},lock..'/'..stale)
+    local uv=vim.uv; local unlink=uv.fs_unlink; local raced=false
+    uv.fs_unlink=function(path)
+      if path == lock..'/'..stale and not raced then
+        raced=true
+        assert(unlink(path)); assert(uv.fs_rmdir(lock)); assert(uv.fs_mkdir(lock,448))
+        vim.fn.writefile({tostring(pid)},lock..'/'..replacement)
+      end
+      return unlink(path)
+    end
+    require('cland.items').set_filter('watch')
+    require('cland.ui').changed()
+    local ok,flushed=pcall(require('cland.ui').flush)
+    uv.fs_unlink=unlink
+    if not ok then error(flushed) end
+    return {raced=raced,flushed=flushed}
+  `, lock, staleName, replacement, process.pid, deadPid);
+  assert.deepEqual(result, { raced: true, flushed: false });
+  assert.equal((await readFile(join(lock, replacement), 'utf8')).trim(), String(process.pid));
+  await rm(join(lock, replacement));
+  await writeFile(join(lock, staleName), String(deadPid));
+  assert.equal(await c.lua(`
+    local uv=vim.uv; local kill=uv.kill
+    uv.kill=function() return nil,'operation not permitted','EPERM' end
+    local ok,flushed=pcall(require('cland.ui').flush)
+    uv.kill=kill
+    if not ok then error(flushed) end
+    return flushed
+  `), false);
+  assert.equal((await readFile(join(lock, staleName), 'utf8')).trim(), String(deadPid), 'an uncertain holder is preserved');
+  await rm(lock, { recursive: true });
+  assert.equal(await c.lua("return require('cland.ui').flush()"), true);
+});
+
+test('the human mutes a topic and pins a Reviewer through keys, then a cold UI restores both', { skip }, async t => {
+  const { readFile } = await import('node:fs/promises');
+  const scenario: Scenario = { processes: [session('quiet-reviewer', 'idle')], messages: { general: [
+    { id: 'report', topic: 'general', from: 'coord', fromRole: 'coordinator', fromKind: 'agent', to: [], text: 'Coordinator notes', ts: new Date().toISOString() },
+  ] } };
+  const c = await start(t, scenario);
+  await c.input('<Esc><Space>t<C-l>');
+  // Connection precedes topic snapshot rendering; search only after the target row exists.
+  await c.waitScreen(s => s.includes('TOPICS') && /● General/.test(s), 'topic row ready for mute');
+  await c.input('/General<CR>gM');
+  await c.waitScreen(s => s.includes('more (1)'), 'topic mute applied to its thread');
+  await c.input('<Space>s<C-l>');
+  await c.waitScreen(s => s.includes('SESSIONS') && s.includes('quiet-reviewer [Reviewer]'), 'Reviewer row ready for pin');
+  await c.input('/quiet-reviewer<CR>gP');
+  await c.waitScreen(s => s.includes('NOW · 1') && s.includes('quiet-reviewer [Reviewer]'), 'Reviewer pinned');
+  await c.lua("require('cland.layout').preset('watch')");
+  await c.input('<C-h><C-h>gw');
+  const closed = c.rpc.closed;
+  await c.lua("vim.cmd('qa!')").catch(() => {});
+  await closed;
+  const saved = JSON.parse(await readFile(join(c.root, '.cland/ui.json'), 'utf8'));
+  assert.equal(saved.visibility.topics.general, 'mute');
+  assert.equal(saved.visibility.sessions['quiet-reviewer'], 'pin');
+  assert.equal(saved.items_filter, 'watch', 'layer filter persisted');
+  assert.equal(saved.preset, 'watch', 'layout flush preserves hub-owned choices');
+  const fresh = await startClient(t, bin, c.root, {
+    CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario),
+  });
+  await fresh.waitScreen(s => s.includes('hub: connected') && s.includes('more (1)'), 'topic mute restored');
+  assert.equal(await fresh.lua("return require('cland.items').filter()"), 'watch');
+  await fresh.input('<Esc><Space>s<C-l>');
+  await fresh.waitScreen(s => s.includes('NOW · 1') && s.includes('quiet-reviewer [Reviewer]'), 'Reviewer pin restored');
+  await fresh.input('/quiet-reviewer<CR>gP');
+  await fresh.waitScreen(s => s.includes('NOW · 0') && s.includes('WATCH · 1'), 'pin toggles back to watch');
+  assert.deepEqual(await fresh.lua("return require('cland.actions').audit()"), []);
+});
+
+test('items honor hub layers in the board and explicit layer filters, including live changes', { skip }, async t => {
+  const c = await start(t, { visibility: { items: { backlog: 'now', active: 'background', done: 'archive' } }, items: [
+    { id: 'T-1', kind: 'release', title: 'Current', version: '0.1.0', state: 'open' },
+    { id: 'T-2', kind: 'task', title: 'Raised backlog', parent: 'T-1', status: 'backlog', state: 'open' },
+    { id: 'T-3', kind: 'task', title: 'Quiet active', parent: 'T-1', status: 'in progress', state: 'open' },
+    { id: 'T-4', kind: 'task', title: 'Archived done', parent: 'T-1', status: 'done', state: 'closed' },
+    { id: 'T-5', kind: 'task', title: 'Watch planned', parent: 'T-1', status: 'planned', state: 'open' },
+  ] });
+  await c.input('<Esc><Space>i<C-h>');
+  let s = await c.waitScreen(s => s.includes('Raised backlog') && s.includes('Watch planned'), 'foreground items');
+  assert.ok(!s.includes('Quiet active') && !s.includes('Archived done'), s);
+  await c.input('zR');
+  s = await c.waitScreen(s => s.includes('Quiet active'), 'background unfolded');
+  assert.ok(!s.includes('Archived done'), 'ordinary unfold excludes archive');
+  await c.input('gn');
+  s = await c.waitScreen(s => s.includes('now ·') && s.includes('Raised backlog'), 'now filter');
+  assert.ok(!s.includes('Watch planned') && !s.includes('Quiet active'));
+  await c.input('gw');
+  s = await c.waitScreen(s => s.includes('watch ·') && s.includes('Watch planned'), 'watch filter');
+  assert.ok(!s.includes('Raised backlog'));
+  await c.input('gA');
+  await c.waitScreen(s => s.includes('archive ·') && s.includes('Archived done'), 'explicit archive filter');
+  await c.input('gb');
+  await c.waitScreen(s => s.includes('background ·') && s.includes('Quiet active'), 'background filter');
+  await c.control({ set: { visibility: { items: { active: 'watch' } } } });
+  await c.control({ emit: { type: 'task', id: 'T-3', item: { id: 'T-3', kind: 'task', title: 'Quiet active', parent: 'T-1', status: 'in progress', state: 'open' } } });
+  await c.waitScreen(s => !s.includes('Quiet active'), 'live layer leaves background');
+  await c.input('gw');
+  await c.waitScreen(s => s.includes('Quiet active'), 'live layer joins watch');
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});
+
+test('default board and plan show done items promoted by config and a topic pin', { skip }, async t => {
+  const c = await start(t, { visibility: { items: { done: 'watch' } }, items: [
+    { id: 'T-1', kind: 'release', title: 'Current', state: 'open' },
+    { id: 'T-2', kind: 'epic', title: 'Finished epic', parent: 'T-1', state: 'closed', plan: { stages: [{ name: 'Done', qa: { scope: 'none', when: 'per-item' }, lanes: [['T-3']] }] } },
+    { id: 'T-3', kind: 'task', title: 'Raised done', parent: 'T-2', topic: 'general', state: 'closed', status: 'done' },
+  ] });
+  const panel = () => c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false),'\\n')");
+  await c.input('<Esc><Space>i');
+  await c.waitScreen(s => s.includes('Raised done'), 'done promoted to Watch through a closed epic');
+  assert.ok((await panel()).includes('Raised done'));
+  assert.deepEqual(await c.lua("local out={}; for _,it in ipairs(require('cland.board').columns().done) do out[#out+1]=it.id end; return out"), [], 'the centre board keeps its open-parent scope even when done is promoted to Watch');
+  await c.input(':Cland view plan T-2<CR>');
+  await c.waitScreen(s => s.includes('Plan of'), 'plan');
+  assert.ok((await panel()).includes('Raised done'));
+  await c.control({ set: { visibility: { items: { done: 'background' } } } });
+  await c.control({ emit: { type: 'task', id: 'T-3', item: { id: 'T-3', kind: 'task', title: 'Raised done', parent: 'T-2', topic: 'general', state: 'closed', status: 'done' } } });
+  await c.lua("return vim.wait(100,function() return false end,10)");
+  assert.ok(!(await panel()).includes('Raised done'));
+  await c.input('<Space>t<C-l>/General<CR>gP');
+  assert.equal(await c.lua("return vim.wait(5000,function() return require('cland.state').item('T-3').layer == 'now' end,20)"), true, 'topic pin promotes the done item');
+  await c.input(':Cland view plan T-2<CR>');
+  await c.waitScreen(s => s.includes('Plan of'), 'pinned plan');
+  await c.lua("return vim.wait(100,function() return false end,10)");
+  assert.ok((await panel()).includes('Raised done'), 'topic pin raises a done task into the ordinary plan');
+});
+
+
+test('plan items use layer filters and fold background independently of workflow status', { skip }, async t => {
+  const c = await start(t, { visibility: { items: { active: 'archive', backlog: 'background' } }, items: [
+    { id: 'T-1', kind: 'release', title: 'Current', state: 'open' },
+    { id: 'T-2', kind: 'epic', title: 'Layer plan', parent: 'T-1', state: 'open', plan: { stages: [{ name: 'Work', qa: { scope: 'none', when: 'per-item' }, lanes: [['T-3', 'T-4', 'T-5']] }] } },
+    { id: 'T-3', kind: 'task', title: 'Archived active', parent: 'T-2', state: 'open', status: 'in progress' },
+    { id: 'T-4', kind: 'task', title: 'Background backlog', parent: 'T-2', state: 'open', status: 'backlog' },
+    { id: 'T-5', kind: 'task', title: 'Watching planned', parent: 'T-2', state: 'open', status: 'planned' },
+  ] });
+  await c.input('<Esc>:Cland view plan T-2<CR>');
+  await c.input('<C-h>');
+  const panel = async () => {
+    await c.lua("return vim.wait(100, function() return false end, 10)");
+    return c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false),'\\n')");
+  };
+  let text = await panel();
+  assert.ok(text.includes('T-5') && !text.includes('T-3') && !text.includes('T-4'), text);
+  await c.input('zR');
+  text = await panel();
+  assert.ok(text.includes('T-4') && !text.includes('T-3'), text);
+  await c.input('gn');
+  text = await panel();
+  assert.ok(!text.includes('T-4') && !text.includes('T-3') && !text.includes('T-5'), text);
+  await c.input('gw');
+  assert.ok((await panel()).includes('T-5'));
+  await c.input('gb');
+  assert.ok((await panel()).includes('T-4'));
+  await c.input('gA');
+  assert.ok((await panel()).includes('T-3'));
+});

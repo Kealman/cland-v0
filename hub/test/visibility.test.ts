@@ -5,6 +5,85 @@ import { join } from 'node:path';
 import { connectUi, eventually, fakeClaude, startDaemon, tempProject } from './harness.ts';
 import type { Inbox } from '../src/protocol.ts';
 
+test('layout saves and human choices serialize through the shared UI lock', async t => {
+  const { readFile, rm } = await import('node:fs/promises');
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const path = join(root, '.cland/ui.json');
+  await writeFile(path, JSON.stringify({ layout: 'latest', visibility: {} }));
+  await mkdir(`${path}.lock`);
+  await writeFile(join(`${path}.lock`, '00000000-0000-0000-0000-000000000001.owner'), String(process.pid));
+  const blocked = await ui.request({ type: 'visibility.set', surface: 'topics', target: 'general', mode: 'mute' });
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.error!, /being saved/);
+  await rm(`${path}.lock`, { recursive: true });
+  assert.equal((await ui.request({ type: 'visibility.set', surface: 'topics', target: 'general', mode: 'mute' })).ok, true);
+  const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.equal(saved.layout, 'latest');
+  assert.equal(saved.visibility.topics.general, 'mute');
+});
+
+test('concurrent human choices safely recover a dead UI writer and preserve both updates', async t => {
+  const { readFile } = await import('node:fs/promises');
+  const { spawn } = await import('node:child_process');
+  const dead = spawn(process.execPath, ['-e', '']);
+  const deadPid = dead.pid!;
+  await new Promise<void>(resolve => dead.once('exit', () => resolve()));
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const a = await connectUi(t, discovery), b = await connectUi(t, discovery);
+  const path = join(root, '.cland/ui.json');
+  await writeFile(path, JSON.stringify({ layout: 'preserved', visibility: {} }));
+  await mkdir(`${path}.lock`);
+  await writeFile(join(`${path}.lock`, '00000000-0000-0000-0000-000000000001.owner'), String(deadPid));
+  const results = await Promise.all([
+    a.request({ type: 'visibility.set', surface: 'topics', target: 'general', mode: 'pin' }),
+    b.request({ type: 'visibility.set', surface: 'topics', target: 'agents', mode: 'mute' }),
+  ]);
+  for (const result of results) assert.equal(result.ok, true, result.error);
+  const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.equal(saved.layout, 'preserved');
+  assert.deepEqual(saved.visibility.topics, { general: 'pin', agents: 'mute' });
+});
+
+test('a preference disk wait leaves the serving path responsive', { skip: process.platform === 'win32' }, async t => {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery), observer = await connectUi(t, discovery);
+  const path = join(root, '.cland/ui.json');
+  await promisify(execFile)('mkfifo', [path]);
+  const choice = ui.request({ type: 'visibility.set', surface: 'topics', target: 'general', mode: 'pin' });
+  try {
+    await eventually('preference file read acquired its lock', async () => {
+      const { stat } = await import('node:fs/promises');
+      try { return (await stat(`${path}.lock`)).isDirectory() ? true : undefined; } catch { return undefined; }
+    });
+    assert.equal((await observer.request({ type: 'hub.status' }, 2000)).ok, true, 'another request completes while UI file read is blocked');
+  } finally {
+    await writeFile(path, JSON.stringify({ layout: 'preserved', visibility: {} }));
+  }
+  assert.equal((await choice).ok, true);
+});
+
+test('topic history pages retained messages beyond the latest 200, including equal timestamps', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const ids: string[] = [];
+  for (let i = 0; i < 205; i++) {
+    const sent = await ui.request({ type: 'topic.send', topic: 'general', text: `message ${i}` });
+    assert.equal(sent.ok, true, sent.error);
+    ids.push((sent.value as { message: { id: string } }).message.id);
+  }
+  const latest = (await ui.request({ type: 'topic.history', topic: 'general', limit: 200 })).value as { messages: Array<{ id: string }> };
+  assert.deepEqual(latest.messages.map(m => m.id), ids.slice(5));
+  const older = (await ui.request({ type: 'topic.history', topic: 'general', limit: 200, before: latest.messages[0]!.id })).value as { messages: Array<{ id: string }> };
+  assert.deepEqual(older.messages.map(m => m.id), ids.slice(0, 5));
+});
+
 test('artifact creation chips follow keep and unkeep in frames, history and restart', async t => {
   const { cland, spawnSpoke } = await import('./harness.ts');
   const root = await tempProject(t);
@@ -141,18 +220,23 @@ test('the hub places messages, sessions, items and artifacts by the default tabl
   await ui.request({ type: 'task.edit', item: active.id, status: 'in progress' });
   const planned = await create('Next', { parent: epic.id });
   await ui.request({ type: 'task.edit', item: planned.id, status: 'planned' });
+  // §3.5: planned is Watch only inside the current release; an orphan is unscheduled Background.
+  const orphan = await create('Unscheduled plan');
+  await ui.request({ type: 'task.edit', item: orphan.id, status: 'planned' });
   const later = await create('Later', { kind: 'release', version: '0.2.0' });
   const unscheduled = await create('Future work', { parent: later.id });
   await ui.request({ type: 'task.edit', item: unscheduled.id, status: 'in progress' });
   const oldRelease = await create('Old', { kind: 'release', version: '0.0.1' });
   await ui.request({ type: 'task.close', item: oldRelease.id });
   const list = (await ui.request({ type: 'task.list' })).value as { items: Array<{ id: string; layer: string }> };
-  for (const [id, layer] of [[active.id, 'now'], [planned.id, 'watch'], [unscheduled.id, 'background'], [oldRelease.id, 'archive']]) assert.equal(list.items.find(i => i.id === id)?.layer, layer);
+  for (const [id, layer] of [[active.id, 'now'], [planned.id, 'watch'], [orphan.id, 'background'], [unscheduled.id, 'background'], [oldRelease.id, 'archive']]) assert.equal(list.items.find(i => i.id === id)?.layer, layer);
   const mark = ui.frames.length;
   assert.equal((await ui.request({ type: 'task.edit', item: release.id, version: '0.3.0' })).ok, true);
   const promoted = await ui.waitFor(f => f.type === 'task' && f.id === release.id && ui.frames.indexOf(f) >= mark);
   assert.equal((promoted.layers as Record<string, string>)[unscheduled.id], 'now', 'changing the current release publishes newly active placements');
   assert.equal((promoted.layers as Record<string, string>)[active.id], 'background');
+  assert.equal((promoted.layers as Record<string, string>)[planned.id], 'background', 'planned work leaves Watch when its release is no longer current');
+  assert.equal((promoted.layers as Record<string, string>)[orphan.id], 'background');
   assert.equal((await ui.request({ type: 'task.edit', item: release.id, version: '0.1.0' })).ok, true);
   await ui.request({ type: 'task.comment', item: active.id, text: 'Fix the fold.', verdict: { verdict: 'review', result: 'not clear', run: 'v-now' }, as: { name: 'rev', role: 'reviewer' } });
   const inbox = (await ui.request({ type: 'inbox.list' })).value as Inbox;
@@ -267,6 +351,70 @@ test('artifact placement keeps the author role at publication across a later rol
   assert.equal(after.artifacts.find(a => a.id === result.artifact.id)?.layer, 'now');
 });
 
+test('human pins and mutes reclassify records and survive a hub restart without losing layout', async t => {
+  const { cland, spawnSpoke } = await import('./harness.ts');
+  const { readFile } = await import('node:fs/promises');
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/ui.json'), JSON.stringify({ version: 2, panels: { left: true, right: 'sessions', dock: false }, sizes: {}, items_filter: 'board', plan_seen: {} }));
+  let { discovery } = await startDaemon(t, root);
+  let ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
+  t.after(() => rev.close());
+  await rev.waitForPresence(['rev']);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['rev', 'coord']);
+  await ui.request({ type: 'topic.send', topic: 'general', text: 'Topic notes' });
+  const artifact = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Notes', topic: 'general', content: 'Notes' })).value as { artifact: { id: string } }).artifact.id;
+  const set = async (surface: string, target: string, mode: string) => {
+    const result = await ui.request({ type: 'visibility.set', surface, target, mode });
+    assert.equal(result.ok, true, result.error);
+  };
+  const asking = await coord.call<{ ok: boolean }>('ask', { topic: 'general', question: 'Review topic?', options: ['Yes'], free: true });
+  assert.equal(asking.ok, true);
+  assert.equal(((await ui.request({ type: 'inbox.list' })).value as Inbox).needsYou, 1);
+  await set('topics', 'general', 'mute');
+  await ui.waitFor(f => f.type === 'visibility');
+  assert.equal(((await ui.request({ type: 'inbox.list' })).value as Inbox).needsYou, 0, 'muted asks are watch and the hub now count agrees');
+  await set('sessions', 'rev', 'pin');
+  await set('artifacts', artifact, 'pin');
+  const check = async () => {
+    const topics = (await ui.request({ type: 'topic.list' })).value as { topics: Array<{ id: string; layer: string }> };
+    assert.equal(topics.topics.find(t => t.id === 'general')?.layer, 'watch', 'a muted waiting topic lowers from now to watch');
+    const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; layer: string; artifact?: { id: string } }> };
+    assert.equal(history.messages.find(m => m.text === 'Topic notes')?.layer, 'watch');
+    assert.equal(history.messages.find(m => m.artifact?.id === artifact)?.layer, 'now', 'artifact pin wins over topic mute');
+    const status = (await ui.request({ type: 'hub.status' })).value as { sessions: Array<{ name: string; layer: string }> };
+    assert.equal(status.sessions.find(s => s.name === 'rev')?.layer, 'now');
+    const list = (await ui.request({ type: 'artifact.list' })).value as { artifacts: Array<{ id: string; layer: string }> };
+    assert.equal(list.artifacts.find(a => a.id === artifact)?.layer, 'now');
+  };
+  await check();
+  assert.equal((await rev.call<{ ok: boolean }>('visibility.set', { surface: 'topics', target: 'general', mode: 'pin' })).ok, false);
+  const forbidden = await ui.request({ type: 'visibility.set', surface: 'sessions', target: 'rev', mode: 'mute', as: { name: 'rev', role: 'reviewer' } });
+  assert.equal(forbidden.ok, false, 'a session cannot use the human frame from its shell');
+  const missing = await ui.request({ type: 'visibility.set', surface: 'artifacts', target: 'A-999', mode: 'pin' });
+  assert.equal(missing.ok, false, 'unknown targets never enter ui.json');
+  const preferences = JSON.parse(await readFile(join(root, '.cland/ui.json'), 'utf8'));
+  assert.equal(preferences.panels.left, true);
+  assert.equal(preferences.visibility.topics.general, 'mute');
+  assert.equal(preferences.visibility.sessions.rev, 'pin');
+  await rev.close();
+  await coord.close();
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  ({ discovery } = await startDaemon(t, root));
+  ui = await connectUi(t, discovery);
+  const reconnected = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
+  t.after(() => reconnected.close());
+  await reconnected.waitForPresence(['rev']);
+  await check();
+  await set('topics', 'general', 'mute');
+  const reset = (await ui.request({ type: 'topic.list' })).value as { topics: Array<{ id: string; layer: string }> };
+  assert.equal(reset.topics.find(t => t.id === 'general')?.layer, 'now', 'same action toggles back to waiting-topic default');
+});
+
 test('D17 verdicts and deaths carry warn severity in inbox and event log, never needing the human', async t => {
   const { cland, spawnSpoke } = await import('./harness.ts');
   const root = await tempProject(t);
@@ -345,4 +493,16 @@ test('D17 verdicts and deaths carry warn severity in inbox and event log, never 
   const plain = await cland(root, 'inbox');
   assert.equal(plain.code, 0, plain.stderr);
   assert.match(plain.stdout, /notification: ⚠ /);
+  // §3.6 human choices compose after D17's warning default; severity and needsYou remain hub facts.
+  assert.equal((await ui.request({ type: 'visibility.set', surface: 'topics', target: topic, mode: 'pin' })).ok, true);
+  const pinnedHistory = (await ui.request({ type: 'topic.history', topic })).value as { messages: WarnMessage[] };
+  const pinned = pinnedHistory.messages.find(m => m.id === (failed.message as WarnMessage).id);
+  assert.equal(pinned?.layer, 'now');
+  assert.equal(pinned?.severity, 'warn');
+  assert.equal(((await ui.request({ type: 'inbox.list' })).value as Inbox).needsYou, 1, 'pinned notifications still do not require a response');
+  assert.equal((await ui.request({ type: 'visibility.set', surface: 'topics', target: topic, mode: 'mute' })).ok, true);
+  const mutedHistory = (await ui.request({ type: 'topic.history', topic })).value as { messages: WarnMessage[] };
+  const muted = mutedHistory.messages.find(m => m.id === (failed.message as WarnMessage).id);
+  assert.equal(muted?.layer, 'background');
+  assert.equal(muted?.severity, 'warn');
 });

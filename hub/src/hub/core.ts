@@ -150,6 +150,7 @@ export type CoreOptions = {
   /** How long a session stays idle before subscriptions report it, ms (default 30 min; 0: never). */
   idleNotifyMs?: number;
   visibility?: VisibilityOverrides;
+  visibilityPreferences?: import('./visibility-preferences.ts').VisibilityPreferenceFile;
   topLevel?: () => string;
 };
 
@@ -167,6 +168,8 @@ const ROLE_NOTICE = 'role';
 
 export class HubCore {
   readonly crew: CrewSource | undefined;
+  refreshVisibility(): void { this.#emit({ type: 'visibility' }); }
+
   publishCrew(config: CrewConfig): void {
     this.#emit({ type: 'crew', config, summary: crewSummary(config) });
     for (const connection of this.#live.values()) {
@@ -251,7 +254,7 @@ export class HubCore {
     this.crew = options.crew;
     this.#items = options.items ?? null;
     this.#sessionHolds = options.sessionHolds ?? (() => []);
-    this.visibility = new Visibility({ overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], topLevel: options.topLevel ?? (() => 'release') });
+    this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => this.#items?.list?.() ?? [], topLevel: options.topLevel ?? (() => 'release') });
     for (const item of this.#items?.list?.() ?? []) if (item.state !== 'closed') this.#defaultItems.set(item.id, item);
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
@@ -2021,7 +2024,7 @@ export class HubCore {
     return t;
   }
 
-  topicHistory(id: string, limit?: number, filter: AgentsHistoryFilter = {}): { topic: Topic; messages: TopicMessage[] } {
+  topicHistory(id: string, limit?: number, filter: AgentsHistoryFilter & { before?: string } = {}): { topic: Topic; messages: TopicMessage[] } {
     const topic = this.#topicOrThrow(id);
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
     if (id !== AGENTS.id && (filter.item !== undefined || filter.session !== undefined)) throw new Error('item and session history filters require the Agents topic');

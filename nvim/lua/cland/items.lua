@@ -5,7 +5,8 @@ local state = require('cland.state')
 local M = {}
 
 M.FILTERS = { 'board', 'work', 'you', 'done', 'map', 'all' }
-M.LABEL = { board = 'board', all = 'all', work = 'in work', you = 'needs you', done = 'done', map = 'map' }
+M.LAYERS = { 'now', 'watch', 'background', 'archive' }
+M.LABEL = { now = 'now', watch = 'watch', background = 'background', archive = 'archive', board = 'board', all = 'all', work = 'in work', you = 'needs you', done = 'done', map = 'map' }
 
 --- An item's status as a glyph and its colour.
 M.GLYPH = {
@@ -400,6 +401,11 @@ end
 
 --- The panel header uses the shared board composition; map retains its v0 summary.
 function M.summary()
+  if vim.tbl_contains(M.LAYERS, M.filter()) then
+    local n = 0
+    for _, it in ipairs(M.all()) do if it.layer == M.filter() then n = n + 1 end end
+    return M.filter() .. ' · ' .. n .. ' items'
+  end
   local id = require('cland.plan').panel_id()
   if id then return id .. ' · plan' end
   if M.filter() == 'all' then return 'all · ' .. #state.S.items .. ' items' end
@@ -480,6 +486,11 @@ end
 function M.render(c)
   local plan = require('cland.plan')
   if plan.panel_id() then return plan.render_panel(c, plan.panel_id()) end
+  if vim.tbl_contains(M.LAYERS, M.filter()) then
+    section(c, M.filter())
+    for _, it in ipairs(M.ordered()) do if it.layer == M.filter() then row(c, it, 0) end end
+    return { ' ↵ open · gt topic · gs session', ' gn now · gw watch · gb more · gA archive' }
+  end
   if M.filter() == 'all' then
     -- Walk every tree once, including legacy missing parents and cycles. Hidden children
     -- are visited too, so they cannot reappear as roots below a folded ancestor.
@@ -541,6 +552,9 @@ function M.keys(buf)
     map(tostring(i), function()
       M.set_filter(f)
     end, 'items filter: ' .. M.LABEL[f])
+  end
+  for key, layer in pairs({ gn = 'now', gw = 'watch', gb = 'background', gA = 'archive' }) do
+    map(key, function() M.set_filter(layer) end, 'items layer: ' .. layer)
   end
   require('cland.vboard').keys(buf)
   map('f', function()

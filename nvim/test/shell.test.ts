@@ -1056,12 +1056,15 @@ const rightOf = (text: string): string =>
     })
     .join('\n');
 
-test('the topics panel groups needs you, open and closed, pins what waits for the human, shows unread badges and the warning glyph; Enter opens and reads', { skip }, async (t) => {
+test('the topics panel groups needs you and open, reveals closed with A, pins what waits for the human, shows unread badges and the warning glyph; Enter opens and reads', { skip }, async (t) => {
   const c = await startShell(t, withTopics);
   await c.input('<Esc><Space>t');
-  const s = await c.waitScreen((x) => x.includes('TOPICS') && x.includes('NEEDS YOU · 1'), 'the topics panel');
+  let s = await c.waitScreen((x) => x.includes('TOPICS') && x.includes('NEEDS YOU · 1'), 'the topics panel');
+  assert.doesNotMatch(rightOf(s), /cland task CLI/, '§3.5 Topics: closed entries are Archive');
+  await c.input('A');
+  s = await c.waitScreen(x => rightOf(x).includes('ARCHIVE · 1') && rightOf(x).includes('cland task CLI'), 'closed topic reachable with A');
   const panel = rightOf(s);
-  const order = ['NEEDS YOU · 1', 'Spoke reconnect: flaky', 'OPEN · 4', '● General', '≡ Agents', 'Codex adapter', 'Daemon hello', 'CLOSED · 1', 'cland task CLI'].map((w) => panel.indexOf(w));
+  const order = ['NEEDS YOU · 1', 'Spoke reconnect: flaky', 'OPEN · 4', '● General', '≡ Agents', 'Codex adapter', 'Daemon hello', 'ARCHIVE · 1', 'cland task CLI'].map((w) => panel.indexOf(w));
   assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order, `grouped, needs you pinned on top:\n${panel}`);
   assert.match(panel, /● Spoke reconnect: flaky +2 /, 'an unread badge');
@@ -1111,15 +1114,17 @@ test('a topic is created from the panel (n) and with :Cland topic new, closed wi
   await c.waitScreen((x) => topBar(x).includes('│ Second one, by command'), 'the second topic');
   assert.deepEqual((await requestsOf(c, 'topic.create')).map((f) => f.title), ['Pick a free model', 'Second one, by command']);
 
-  // :Cland topic close closes the topic in view: it moves to CLOSED
+  // :Cland topic close closes the topic in view: §3.5 closed topics move to Archive
   await c.input('<Esc>:Cland topic close<CR>');
-  s = await c.waitScreen((x) => rightOf(x).includes('CLOSED · 2') && statusLine(x).includes('Second one, by command · topic closed'), 'closed');
-  assert.ok(rightOf(s).indexOf('CLOSED · 2') < rightOf(s).indexOf('○ Second one, by command'));
+  s = await c.waitScreen((x) => statusLine(x).includes('Second one, by command · topic closed') && !/○ Second one, by command/.test(rightOf(x)), 'closed topic hidden from ordinary list');
+  await c.input('<Space>t<Space>tA');
+  s = await c.waitScreen(x => rightOf(x).includes('ARCHIVE · 2') && rightOf(x).includes('○ Second one, by command'), 'closed topic reachable with A');
+  assert.ok(rightOf(s).indexOf('ARCHIVE · 2') < rightOf(s).indexOf('○ Second one, by command'));
   // c on a row in the panel closes that one
   await c.input('<Space>t<Space>t');
   await c.waitScreen((x) => x.includes('TOPICS'), 'the panel, focused');
   await c.input('gg/Pick a free<CR>c');
-  await c.waitScreen((x) => rightOf(x).includes('CLOSED · 3'), 'the row closed');
+  await c.waitScreen((x) => rightOf(x).includes('ARCHIVE · 3'), 'the row closed');
   assert.deepEqual((await requestsOf(c, 'topic.close')).map((f) => f.topic), ['topic-8', 'topic-7']);
 
   // ␣r from a thread clears its wait

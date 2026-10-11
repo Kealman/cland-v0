@@ -1,6 +1,7 @@
 // §3.5 policy lives in the hub. Layers are projections, not stored decisions: history,
 // snapshots and live frames all use today's clock, role identities and project defaults.
 import type { HubFrame } from '../protocol.ts';
+import type { VisibilityPreferences, VisibilityPreferenceFile, PreferenceSurface } from './visibility-preferences.ts';
 
 export type Layer = 'now' | 'watch' | 'background' | 'archive';
 export const DEFAULT_VISIBILITY = {
@@ -87,13 +88,15 @@ function versionCompare(a: unknown, b: unknown): number {
 
 export class Visibility {
   readonly #overrides: VisibilityOverrides;
+  readonly preferences: VisibilityPreferenceFile | undefined;
   readonly #role: (name: string) => string | null;
   readonly #process: (sessionId: string) => Row | undefined;
   readonly #now: () => Date;
   readonly #items: () => Row[];
   readonly #topLevel: () => string;
-  constructor(options: { overrides?: VisibilityOverrides; role?: (name: string) => string | null; process?: (sessionId: string) => Row | undefined; now?: () => Date; items?: () => Row[]; topLevel?: () => string } = {}) {
+  constructor(options: { preferences?: VisibilityPreferenceFile | undefined; overrides?: VisibilityOverrides; role?: (name: string) => string | null; process?: (sessionId: string) => Row | undefined; now?: () => Date; items?: () => Row[]; topLevel?: () => string } = {}) {
     this.#overrides = options.overrides ?? {};
+    this.preferences = options.preferences;
     this.#role = options.role ?? (() => null);
     this.#process = options.process ?? (() => undefined);
     this.#now = options.now ?? (() => new Date());
@@ -109,10 +112,25 @@ export class Visibility {
   place<T extends object>(surface: Surface, object: T, kind?: string): T & { layer: Layer; severity?: 'warn' } {
     const r = object as Row;
     const cell = kind ?? this.#kind(surface, r);
-    const layer = surface === 'messages' && cell === 'artifact'
-      ? this.place('artifacts', row(r.artifact)!).layer : this.layer(surface, cell);
+    // Creation chips inherit the artifact's effective layer exactly once.
+    if (surface === 'messages' && cell === 'artifact') return { ...object, layer: this.place('artifacts', row(r.artifact)!).layer };
     const severity = warningSeverity(surface, r);
-    return { ...object, layer: severity && cell !== 'old' ? 'watch' : layer, ...(severity ? { severity } : {}) };
+    let layer = severity && cell !== 'old' ? 'watch' : this.layer(surface, cell);
+    const preferences: VisibilityPreferences = this.preferences?.get() ?? {};
+    const choice = (surface: PreferenceSurface, target: unknown) => {
+      const cells = preferences[surface];
+      return typeof target === 'string' && cells && Object.hasOwn(cells, target) ? cells[target] : undefined;
+    };
+    // A direct choice wins; otherwise related records inherit their topic/session choice.
+    const topic = surface === 'inbox' && cell === 'waiting' ? r.id : typeof r.topic === 'string' ? r.topic : row(r.topic)?.id;
+    const session = surface === 'sessions' ? r.name ?? r.session : r.session ?? (surface === 'messages' ? r.from : undefined);
+    const direct = surface === 'topics' ? choice('topics', r.id)
+      : surface === 'sessions' ? choice('sessions', session)
+      : surface === 'artifacts' ? choice('artifacts', r.id) : undefined;
+    const mode = direct ?? choice('topics', topic) ?? choice('sessions', session);
+    if (mode === 'pin') layer = 'now';
+    if (mode === 'mute') layer = ({ now: 'watch', watch: 'background', background: 'archive', archive: 'archive' } as const)[layer];
+    return { ...object, layer, ...(severity ? { severity } : {}) };
   }
 
   #kind(surface: Surface, r: Row, activeItems?: Set<unknown>): string {
@@ -141,8 +159,9 @@ export class Visibility {
       case 'items': {
         if (r.state === 'closed' && r.kind === this.#topLevel()) return 'closed_release';
         if (r.state === 'closed' || r.status === 'done') return 'done';
-        if (r.status === 'planned') return 'planned';
-        if (['in progress', 'review', 'qa', 'ready'].includes(String(r.status)) && (activeItems ?? this.#currentItems()).has(r.id)) return 'active';
+        const current = (activeItems ?? this.#currentItems()).has(r.id);
+        if (r.status === 'planned' && current) return 'planned';
+        if (['in progress', 'review', 'qa', 'ready'].includes(String(r.status)) && current) return 'active';
         return r.status === 'backlog' ? 'backlog' : 'unscheduled';
       }
       case 'artifacts': {
@@ -197,7 +216,7 @@ export class Visibility {
       if (out.type === 'session.state') {
         // State follows the process event on stop/exit; retain terminal facts and its launch role.
         const process = this.#process(String(out.sessionId));
-        out.layer = this.place('sessions', { ...process, state: out.state, role: process?.role ?? this.#role(String(out.session)) }).layer;
+        out.layer = this.place('sessions', { ...process, name: out.session, state: out.state, role: process?.role ?? this.#role(String(out.session)) }).layer;
       }
       return out;
     };
