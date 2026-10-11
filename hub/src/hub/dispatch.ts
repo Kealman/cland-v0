@@ -47,8 +47,9 @@ import type { Sessions } from '../adapters/sessions.ts';
 import { handOver, roleState, settleAllClaims, type HandoverContext } from '../roles/handover.ts';
 import { NoteIncomplete } from '../roles/note.ts';
 import { ArtifactLifecycle, type ArtifactFiles } from './artifact-lifecycle.ts';
+import { artifactEntry, folderFiles } from './artifact-folder.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
-import type { ArtifactCreate, ArtifactList, ArtifactPromote } from '../protocol.ts';
+import type { ArtifactCreate, ArtifactList, ArtifactPromote, ArtifactKeep, ArtifactArchive, ArtifactMove } from '../protocol.ts';
 import { TaskMerges } from './merge.ts';
 import { Releases } from './releases.ts';
 import { PushError } from '../territory-push.ts';
@@ -471,6 +472,12 @@ export class Dispatcher {
     const caller = callerNow();
     const core = this.#options.core;
     if (frame.type === 'artifact.list') {
+      if (frame.artifact !== undefined) {
+        const a = core.store.resolveArtifact(frame.artifact);
+        if (!a || a.fileDeleted) throw new ArtifactError('artifact-unavailable', 'no artifact file is available');
+        const files = a.folder ? await folderFiles(a.path, resumed) : undefined;
+        return resumed(() => ({ artifact: a, ...(files ? { files } : {}) }));
+      }
       if (frame.topic !== undefined && (typeof frame.topic !== 'string' || !core.store.topic(frame.topic))) throw new ArtifactError('artifact-topic', 'no such artifact topic');
       return { artifacts: core.store.artifacts(frame.topic) };
     }
@@ -479,7 +486,7 @@ export class Dispatcher {
     const root = this.#options.control?.status().root;
     const name = caller?.name ?? 'human';
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
-    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', role: () => callerNow()?.role ?? null }, (a) => {
+    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', kind: caller ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
       if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
       const current = callerNow();
@@ -576,9 +583,9 @@ export class Dispatcher {
         if (caller && !this.#permitted(caller, { ...frame, type: 'send' }, peer, false)) throw new ToolForbidden(caller.role, 'send', 'permission changed during attachment preparation');
         if (!Array.isArray(ids) || !ids.length || !ids.every(id => typeof id === 'string')) throw new ArtifactError('artifact-source', 'artifacts must be a nonempty array of ids');
         const artifacts = ids.map(id => {
-          const a = core.store.artifact(id);
+          const a = core.store.resolveArtifact(id);
           if (!a || a.status === 'archived' || a.topic !== topicId) throw new ArtifactError('artifact-unavailable', `artifact ${id} is unavailable in this topic`);
-          if (prompt && (a.kind !== 'prompt' || a.status !== 'draft' || a.creator !== 'human')) throw new ArtifactError('artifact-unavailable', 'only a human prompt draft can be sent here');
+          if (prompt && (a.movedTo || a.kind !== 'prompt' || a.status !== 'draft' || a.creator !== 'human')) throw new ArtifactError('artifact-unavailable', 'only a human prompt draft can be sent here');
           return a;
         });
         return { caller, artifacts };
@@ -587,10 +594,10 @@ export class Dispatcher {
         try {
           const prepared = check();
           // Reserve the intended ids/topic/caller before I/O; no post or status is changed yet.
-          const contents = await Promise.all(prepared.artifacts.map(a => this.#options.readArtifact ? this.#options.readArtifact(a.path) : readFile(a.path)));
+          const contents = await Promise.all(prepared.artifacts.map(a => this.#options.readArtifact ? this.#options.readArtifact(artifactEntry(a)) : readFile(artifactEntry(a))));
           const files = await resumed(() => {
             check();
-            return Promise.all(prepared.artifacts.map(a => stat(a.path)));
+            return Promise.all(prepared.artifacts.map(a => stat(artifactEntry(a))));
           });
           return resumed(() => {
             if (!files.every(info => info.isFile())) throw new ArtifactError('artifact-unavailable', 'an attachment file is unavailable');
@@ -657,10 +664,35 @@ export class Dispatcher {
         (err: unknown) => Dispatcher.#failure(frame.id, err),
       ));
     };
+    const artifactChange = (frame: ArtifactKeep | ArtifactArchive | ArtifactMove, callerNow: () => Caller | null) => {
+      const original = callerNow();
+      const resumed = this.#guard.resumer(frame.type, kind === 'spoke' ? (name ?? '?') : client);
+      const authorize = () => {
+        const current = callerNow();
+        if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
+        if (current && !this.#permitted(current, frame as unknown as Record<string, unknown>, peer, false)) throw new ToolForbidden(current.role, frame.type, 'permission changed during artifact preparation');
+        for (const id of [frame.artifact, ...(frame.type === 'artifact.move' ? [frame.folder] : [])]) {
+          const a = core.store.artifact(id);
+          if (!a) throw new ArtifactError('artifact-unavailable', 'no such artifact');
+          if (current && current.role !== 'aide' && core.store.humanArtifact(a)) throw new ToolForbidden(current.role, frame.type, 'agents cannot change the human’s or an Aide’s artifacts');
+        }
+      };
+      authorize();
+      if (frame.type === 'artifact.move') {
+        later(frame.type, this.artifacts.move(frame.artifact, frame.folder, frame.name, authorize, resumed).then(
+          value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value }) as HubFrame),
+          err => resumed(() => Dispatcher.#failure(frame.id, err)),
+        )); return;
+      }
+      if (frame.type === 'artifact.keep' && frame.kept !== undefined && typeof frame.kept !== 'boolean') throw new ArtifactError('artifact-source', 'kept must be a boolean');
+      peer.send({ type: 'result', id: frame.id, ok: true, value: { artifact: frame.type === 'artifact.keep' ? this.artifacts.keep(frame.artifact, frame.kept ?? true) : this.artifacts.archive(frame.artifact) } });
+    };
     const promote = (frame: ArtifactPromote, caller: Caller | null) => {
       const resumed = <T,>(body: () => T): T => this.#guard.measure(frame.type, client, body, 'resumed');
       const authorize = () => {
         if (!caller) return;
+        const a = core.store.artifact(frame.artifact);
+        if (a && core.store.humanArtifact(a) && caller.role !== 'aide') throw new ToolForbidden(caller.role, frame.type, 'agents cannot change the human’s or an Aide’s artifacts');
         const now = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
         const grants = core.roles?.get().get(now?.role ?? '')?.permissions.tools;
         const decision = decide(now?.role ?? null, grants, { tool: frame.type });
@@ -799,6 +831,10 @@ export class Dispatcher {
           case 'artifact.promote':
             if (connection?.role === 'aide') return promote(frame, connection);
             throw new ToolForbidden(connection?.role ?? null, frame.type, 'promote from the Coordinator’s shell with cland artifact promote');
+          case 'artifact.keep':
+          case 'artifact.archive':
+          case 'artifact.move':
+            return artifactChange(frame, () => connection && core.isCurrent(connection) ? connection : null);
           case 'artifact.create':
           case 'artifact.list':
             return artifact(frame, () => connection && core.isCurrent(connection) ? connection : null);
@@ -1133,6 +1169,7 @@ export class Dispatcher {
         }
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
         if (isSessionRequest(frame)) return session(frame);
+        if (frame.type === 'artifact.keep' || frame.type === 'artifact.archive' || frame.type === 'artifact.move') return artifactChange(frame as ArtifactKeep | ArtifactArchive | ArtifactMove, () => this.#asSession(frame));
         if (frame.type === 'artifact.promote') return promote(frame as ArtifactPromote, caller);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
           return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));

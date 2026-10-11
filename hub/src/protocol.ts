@@ -73,14 +73,19 @@ export type ArtifactKind = 'prompt' | 'note' | 'page' | 'diagram' | 'file';
 export type Artifact = {
   layer?: Layer;
   id: string; title: string; kind: ArtifactKind; path: string; creator: string; time: string;
-  topic: string; status: 'draft' | 'sent' | 'shared' | 'archived';
-  creatorRole?: string | null;
+  topic: string; status: 'draft' | 'sent' | 'shared' | 'archived' | 'moved';
+  creatorKind?: 'human' | 'agent'; creatorRole?: string | null;
+  folder?: boolean; entry?: string; kept?: boolean;
+  movedTo?: { folder: string; path: string }; explicitArchive?: boolean;
   promoted?: string; archivedAt?: string; fileDeleted?: boolean;
 };
-export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; status?: 'draft' | 'shared' };
+export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
 export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
-export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string };
+export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string };
+export type ArtifactKeep = { type: 'artifact.keep'; id: string; artifact: string; kept?: boolean };
+export type ArtifactArchive = { type: 'artifact.archive'; id: string; artifact: string };
+export type ArtifactMove = { type: 'artifact.move'; id: string; artifact: string; folder: string; name?: string };
 /** Filters on the Agents record; when both are given they intersect. */
 export type AgentsHistoryFilter = { item?: string; session?: string };
 
@@ -293,6 +298,9 @@ export type SpokeRequest =
   | MergeRequest
   | ArtifactCreate
   | ArtifactList
+  | ArtifactKeep
+  | ArtifactArchive
+  | ArtifactMove
   | ArtifactPromote
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
   | { type: 'send'; id: string; to?: string[]; text: string; kind?: SendKind; replyTo?: string; topic?: string; artifacts?: string[] }
@@ -379,6 +387,9 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':
     case 'artifact.list':
+    case 'artifact.keep':
+    case 'artifact.archive':
+    case 'artifact.move':
     case 'artifact.promote':
       return true;
     case 'who':
@@ -459,6 +470,9 @@ export type ClientRequest =
   | MergeRequest
   | ArtifactCreate
   | ArtifactList
+  | ArtifactKeep
+  | ArtifactArchive
+  | ArtifactMove
   | PromptSend
   | ArtifactPromote
   /** What runs: the hub's process and the connected sessions. */
@@ -627,6 +641,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.create':
     case 'artifact.list':
+    case 'artifact.keep':
+    case 'artifact.archive':
+    case 'artifact.move':
     case 'prompt.send':
     case 'artifact.promote':
       return true;

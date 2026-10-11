@@ -7,7 +7,7 @@ import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_PERMISSIONS, decide, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 
-const aideTools = ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];
+const aideTools = ['task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];
 
 test('Aide defaults are non-exclusive, use the human model, and grant exactly §3.3/3.4 tools', () => {
   const aide = DEFAULTS.get('aide')!;

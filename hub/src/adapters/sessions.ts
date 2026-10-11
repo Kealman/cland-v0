@@ -1,3 +1,4 @@
+import { artifactEntry } from '../hub/artifact-folder.ts';
 // The hub's side of the adapters: launching sessions, the process table, each session's state, and the
 // delivery pipeline's last stage. Transport-free; `./requests.ts` puts frames on it.
 //
@@ -496,16 +497,16 @@ export class Sessions {
     if (/^A-\d+$/.test(source)) {
       const artifact = resumed(() => {
         authorize();
-        const artifact = this.#core.store.artifact(source);
+        const artifact = this.#core.store.resolveArtifact(source);
         if (!artifact || artifact.fileDeleted) throw new Error(`unknown or unavailable brief artifact "${source}"`);
         return artifact;
       });
       let content: string;
-      try { content = await readFile(artifact.path, 'utf8'); }
+      try { content = await readFile(artifactEntry(artifact), 'utf8'); }
       catch { return resumed(() => { throw new Error(`cannot read brief artifact "${source}"`); }); }
       text = resumed(() => {
         authorize();
-        const current = this.#core.store.artifact(source);
+        const current = this.#core.store.resolveArtifact(source);
         if (!current || current.fileDeleted || current.path !== artifact.path) throw new Error(`brief artifact "${source}" changed while reading`);
         return content;
       });

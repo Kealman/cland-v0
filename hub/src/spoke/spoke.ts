@@ -32,12 +32,16 @@ const TOOLS = [
   { name: 'merge', description: 'Land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator only; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' } }, required: ['item'] } },
   {
     name: 'artifact.create',
-    description: 'Show work through a persistent artifact in a topic. Give exactly one of path (copied) or content. Returns the artifact id and absolute path; posts its chip into the topic.',
+    description: 'Show work through a persistent artifact in a topic. Give a file or directory path (copied), content, or folder: true with optional entry and content. Returns the artifact id and absolute path; posts its chip into the topic.',
     inputSchema: { type: 'object', properties: {
       kind: { type: 'string', enum: ['prompt', 'note', 'page', 'diagram', 'file'] }, title: { type: 'string' },
-      path: { type: 'string' }, content: { type: 'string' }, topic: { type: 'string' }, status: { type: 'string', enum: ['draft', 'shared'] },
+      path: { type: 'string' }, content: { type: 'string' }, folder: { type: 'boolean' }, entry: { type: 'string' }, topic: { type: 'string' }, status: { type: 'string', enum: ['draft', 'shared'] },
     }, required: ['kind', 'title', 'topic'] },
   },
+  { name: 'artifact.keep', description: 'Keep an artifact from retention, or release it with kept: false. Agents cannot change human or Aide artifacts.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, kept: { type: 'boolean' } }, required: ['artifact'] } },
+  { name: 'artifact.archive', description: 'Archive an artifact explicitly. Human and Aide bytes are retained.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' } }, required: ['artifact'] } },
+  { name: 'artifact.move', description: 'Absorb a file artifact into a folder; its old id redirects to that file. Folder moves are refused.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, folder: { type: 'string' }, name: { type: 'string' } }, required: ['artifact', 'folder'] } },
+  { name: 'artifact.list', description: 'List artifacts, or resolve one id and list its folder files on request.', inputSchema: { type: 'object', properties: { topic: { type: 'string' }, artifact: { type: 'string' } } } },
   { name: 'artifact.promote', description: 'Copy an artifact into a project-relative repository path. Aides may promote here; the Coordinator promotes from its shell.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, path: { type: 'string' } }, required: ['artifact', 'path'] } },
   {
     name: 'send',
@@ -297,12 +301,19 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           const value = await hub.request({ type: 'merge', item: args.item }, 60_000) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
+        case 'artifact.keep':
+        case 'artifact.archive':
+        case 'artifact.move': {
+          const value = await hub.request({ ...args, type: req.params.name } as Omit<import('../protocol.ts').ArtifactKeep, 'id'>) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         case 'artifact.promote': {
           const value = await hub.request({ ...args, type: 'artifact.promote' } as Omit<import('../protocol.ts').ArtifactPromote, 'id'>) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
+        case 'artifact.list':
         case 'artifact.create': {
-          const value = await hub.request({ ...args, type: 'artifact.create' } as Omit<import('../protocol.ts').ArtifactCreate, 'id'>) as Record<string, unknown>;
+          const value = await hub.request({ ...args, type: req.params.name } as Omit<import('../protocol.ts').ArtifactCreate, 'id'>) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'send': {

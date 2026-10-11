@@ -50,9 +50,9 @@ import { Visibility, type VisibilityOverrides } from './visibility.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
 
 /** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
-function messageArtifacts(artifacts?: Artifact[]): Pick<Message, 'artifacts' | 'artifact'> {
+function messageArtifacts(artifacts?: Artifact[], mayChange: (a: Artifact) => boolean = () => true): Pick<Message, 'artifacts' | 'artifact'> {
   if (!artifacts?.length) return {};
-  const sent = artifacts.map(a => a.kind === 'prompt' ? { ...a, status: 'sent' as const } : a);
+  const sent = artifacts.map(a => a.kind === 'prompt' && !a.movedTo && mayChange(a) ? { ...a, status: 'sent' as const } : a);
   return { artifacts: sent, artifact: sent[0]! };
 }
 
@@ -1622,10 +1622,16 @@ export class HubCore {
   }
 
   /** A role notice goes out as a `role` frame, everything else as a `deliver`. */
+  #resolveAttachments<T extends Message | TopicMessage>(message: T): T {
+    const resolve = (a: Artifact) => this.#store.artifact(a.id)?.movedTo ? this.#store.resolveArtifact(a.id) ?? a : a;
+    return { ...message, ...(message.artifact ? { artifact: resolve(message.artifact) } : {}),
+      ...(message.artifacts ? { artifacts: message.artifacts.map(resolve) } : {}) };
+  }
+
   #sendTo(c: Connection, message: Message): boolean {
     if (isHeldDelivery(message)) return false;
     const clause = this.#roleNotices.get(message.id);
-    return clause ? c.deliverRole(message, clause) : c.deliver(this.#store.deliveryMessage(message.id, c.name) ?? message);
+    return clause ? c.deliverRole(message, clause) : c.deliver(this.#resolveAttachments(this.#store.deliveryMessage(message.id, c.name) ?? message));
   }
 
   /** A session the hub has seen within the queue's own TTL — beyond it a name is history, not an addressee. */
@@ -1881,7 +1887,7 @@ export class HubCore {
     const topic = this.#topicOrThrow(id);
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
     if (id !== AGENTS.id && (filter.item !== undefined || filter.session !== undefined)) throw new Error('item and session history filters require the Agents topic');
-    return { topic, messages: this.#store.topicMessages(id, n, filter) };
+    return { topic, messages: this.#store.topicMessages(id, n, filter).map(message => this.#resolveAttachments(message)) };
   }
 
   renameTopic(id: string, title: string): Topic {
@@ -2070,7 +2076,7 @@ export class HubCore {
       ...(replyTo !== undefined ? { replyTo } : {}),
       topic: topic.id,
       ...(artifact ? { artifact } : {}),
-      ...messageArtifacts(artifacts),
+      ...messageArtifacts(artifacts, a => (actor?.role ?? this.#store.roleOf(from)) === 'aide' || !this.#store.humanArtifact(a)),
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
     if (sessions.size > 0 || toHuman) {

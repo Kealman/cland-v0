@@ -6,7 +6,7 @@ local M = { entries = {}, bufs = {}, lists = {} }
 function M.all(topic)
   local out = {}
   for _, a in ipairs(M.entries) do
-    if not topic or a.topic == topic then out[#out + 1] = a end
+    if not a.movedTo and (not topic or a.topic == topic) then out[#out + 1] = a end
   end
   return out
 end
@@ -18,14 +18,58 @@ function M.mark(a)
 end
 
 function M.get(id)
-  for _, a in ipairs(M.entries) do if a.id == id then return a end end
+  for _, a in ipairs(M.entries) do
+    if a.id == id then
+      if not a.movedTo then return a end
+      local folder = M.get(a.movedTo.folder)
+      if not folder then return a end
+      return vim.tbl_extend('force', a, { path = folder.path .. '/' .. a.movedTo.path,
+        status = folder.status, topic = folder.topic, fileDeleted = folder.fileDeleted or false })
+    end
+  end
+end
+
+local function entry_path(a)
+  return a.folder and (a.path .. '/' .. a.entry) or a.path
+end
+
+local function rebind(id)
+  local b, a = M.bufs[id], M.get(id)
+  if b and a and api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) ~= entry_path(a) then
+    local modified = vim.bo[b].modified
+    local lines = modified and api.nvim_buf_get_lines(b, 0, -1, false) or nil
+    local ok, err = pcall(function()
+      api.nvim_buf_set_name(b, entry_path(a))
+      -- Refresh the normal buffer's file identity so :write does not treat the destination as
+      -- an unrelated existing file. Preserve edits made before the hub delivered the move.
+      if vim.bo[b].buftype == '' then
+        api.nvim_buf_call(b, function() vim.cmd('silent keepalt edit!') end)
+        if lines then api.nvim_buf_set_lines(b, 0, -1, false, lines); vim.bo[b].modified = true end
+      end
+    end)
+    if not ok then state.say('artifact moved: ' .. tostring(err), 'ClandRedBar') end
+  end
 end
 
 local function upsert(a)
   for i, old in ipairs(M.entries) do
-    if old.id == a.id then M.entries[i] = a; return end
+    if old.id == a.id then
+      if old.movedTo and not a.movedTo then return end
+      M.entries[i] = a; rebind(a.id); return
+    end
   end
   M.entries[#M.entries + 1] = a
+  rebind(a.id)
+end
+
+local function replay(events)
+  for _, e in ipairs(events) do
+    if e.type == 'artifact' then upsert(e.artifact)
+    elseif e.type == 'message' and e.message then
+      for _, a in ipairs(e.message.artifacts or {}) do upsert(a) end
+      if type(e.message.artifact) == 'table' then upsert(e.message.artifact) end
+    end
+  end
 end
 
 function M.setup(client)
@@ -34,11 +78,20 @@ function M.setup(client)
     client:snapshot({ type = 'artifact.list' }, function(err, value, events)
       if err then return state.say('artifacts: ' .. err, 'ClandRedBar') end
       M.entries = value.artifacts or {}
-      for _, e in ipairs(events) do
-        if e.type == 'artifact' then upsert(e.artifact)
-        elseif e.type == 'message' and e.message then
-          for _, a in ipairs(e.message.artifacts or {}) do upsert(a) end
-          if type(e.message.artifact) == 'table' then upsert(e.message.artifact) end
+      replay(events)
+      -- Absorbed ids are absent from the ordinary list. Open buffers still own those ids:
+      -- resolve them after reconnect before their next save can recreate the obsolete path.
+      for id, b in pairs(M.bufs) do
+        if api.nvim_buf_is_valid(b) then
+          if M.get(id) then rebind(id)
+          else
+            client:snapshot({ type = 'artifact.list', artifact = id }, function(resolve_err, resolved, changes)
+              if resolve_err then return state.say('artifact: ' .. resolve_err, 'ClandRedBar') end
+              upsert(resolved.artifact)
+              replay(changes)
+              state.changed()
+            end)
+          end
         end
       end
       state.changed()
@@ -72,9 +125,9 @@ local function html(s)
 end
 
 function M.preview(a)
-  local ok, lines = pcall(vim.fn.readfile, a.path)
+  local ok, lines = pcall(vim.fn.readfile, entry_path(a))
   if not ok then return state.say('artifact: ' .. tostring(lines), 'ClandRedBar') end
-  local path = a.path .. '.preview.html'
+  local path = entry_path(a) .. '.preview.html'
   local page = '<!doctype html><meta charset="utf-8"><title>' .. html(a.title) .. '</title><pre class="mermaid">' .. html(table.concat(lines, '\n')) .. '</pre>'
     .. [[<script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad: true, securityLevel: 'strict'});</script>]]
   local written, err = pcall(vim.fn.writefile, vim.split(page, '\n', { plain = true }), path)
@@ -84,7 +137,7 @@ end
 
 local browser_ext = { html = true, htm = true, svg = true, png = true, pdf = true, jpg = true, jpeg = true, gif = true, webp = true }
 function M.external(a)
-  local ext = a.path:match('%.([^%.]+)$') or ''
+  local ext = entry_path(a):match('%.([^%.]+)$') or ''
   return browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft')
 end
 function M.open(value)
@@ -93,17 +146,17 @@ function M.open(value)
   a = M.get(a.id) or a
   if a.fileDeleted then return state.say('artifact: file deleted', 'ClandRedBar') end
   upsert(a)
-  if M.external(a) then return browser(a.path) end
+  if M.external(a) then return browser(entry_path(a)) end
   require('cland.layout').show({ kind = 'artifact', id = a.id }, { insert = false })
 end
 
 function M.buffer(id)
   local a = M.get(id)
   local b = M.bufs[id]
-  if b and api.nvim_buf_is_valid(b) then return b end
+  if b and api.nvim_buf_is_valid(b) then rebind(id); return b end
   local draft = a and a.kind == 'prompt' and a.status == 'draft'
   if draft then
-    b = vim.fn.bufadd(a.path)
+    b = vim.fn.bufadd(entry_path(a))
     vim.fn.bufload(b)
   else
     b = api.nvim_create_buf(false, true)
@@ -111,22 +164,22 @@ function M.buffer(id)
   M.bufs[id] = b
   vim.bo[b].bufhidden = 'hide'
   if not draft then
-    local ok, lines = pcall(vim.fn.readfile, a and a.path or '')
+    local ok, lines = pcall(vim.fn.readfile, a and entry_path(a) or '')
     api.nvim_buf_set_lines(b, 0, -1, false, ok and lines or { 'Cannot read artifact: ' .. tostring(lines) })
   end
-  local ext = a and (a.path:match('%.([^%.]+)$') or ''):lower() or ''
+  local ext = a and (entry_path(a):match('%.([^%.]+)$') or ''):lower() or ''
   vim.bo[b].filetype = ({ mmd = 'mermaid', mermaid = 'mermaid', md = 'markdown', markdown = 'markdown' })[ext] or 'text'
   vim.bo[b].readonly = not draft
   vim.bo[b].modifiable = draft
   if draft then
-    if vim.fn.getfsize(a.path) == 0 then vim.bo[b].endofline = false end
+    if vim.fn.getfsize(entry_path(a)) == 0 then vim.bo[b].endofline = false end
     vim.bo[b].fixendofline = false
     vim.bo[b].swapfile = false
     vim.bo[b].modified = false
   end
   vim.b[b].cland_role = 'artifact'
   vim.b[b].cland_artifact = id
-  if a and not draft then pcall(api.nvim_buf_set_name, b, a.path) end
+  if a and not draft then pcall(api.nvim_buf_set_name, b, entry_path(a)) end
   if draft then
     require('cland.actions').map('n', '<leader>ps', function() M.send_prompt(false) end, { buffer = b, desc = 'send prompt' })
     require('cland.actions').map('n', '<leader>pa', function() M.send_prompt(true) end, { buffer = b, desc = 'attach prompt' })

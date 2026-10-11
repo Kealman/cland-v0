@@ -5,11 +5,12 @@ import * as fs from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { Artifact } from '../protocol.ts';
 import type { Store } from './store.ts';
+import { folderName } from './artifact-folder.ts';
 import { ArtifactError } from './artifacts.ts';
 
 export type Resumed = <T>(body: () => T) => T;
 export type ArtifactPromotion = { artifact: Artifact; followUp?: { error: string } };
-export type ArtifactFiles = Pick<typeof fs, 'copyFile' | 'mkdir' | 'lstat' | 'realpath' | 'unlink' | 'link'>;
+export type ArtifactFiles = Pick<typeof fs, 'copyFile' | 'mkdir' | 'lstat' | 'realpath' | 'unlink' | 'link' | 'rename' | 'rm'>;
 const direct: Resumed = body => body();
 type IO<T> = Generator<Promise<unknown>, T, unknown>;
 
@@ -39,10 +40,11 @@ export class ArtifactLifecycle {
     this.#store = store; this.#root = root; this.#changed = changed; this.#files = files;
   }
 
-  #available(id: string): Artifact {
+  #available(id: string, allowPromoted = false): Artifact {
     const a = this.#store.artifact(id);
     if (!a || a.fileDeleted) throw new ArtifactError('artifact-unavailable', 'no artifact file is available');
-    if (a.promoted) throw new ArtifactError('artifact-path', `already promoted: ${a.promoted}`);
+    if (a.movedTo) throw new ArtifactError('artifact-path', 'this artifact was absorbed into a folder; edit its folder instead');
+    if (a.promoted && !allowPromoted) throw new ArtifactError('artifact-path', `already promoted: ${a.promoted}`);
     return a;
   }
 
@@ -115,8 +117,104 @@ export class ArtifactLifecycle {
     }
   }
 
+  keep(id: string, kept: boolean): Artifact {
+    const current = this.#available(id, true);
+    const next: Artifact = { ...current, kept };
+    if (kept && next.status === 'archived') {
+      next.status = 'shared'; delete next.archivedAt; delete next.explicitArchive;
+    } else if (!kept && this.#store.topic(next.topic)?.status === 'closed' && !this.#store.humanArtifact(next)) {
+      next.status = 'archived'; next.archivedAt = new Date().toISOString();
+    }
+    this.#store.updateArtifact(next); this.#changed(next);
+    return next;
+  }
+
+  archive(id: string): Artifact {
+    const current = this.#available(id, true);
+    const next: Artifact = { ...current, status: 'archived', archivedAt: new Date().toISOString(), explicitArchive: true };
+    this.#store.updateArtifact(next); this.#changed(next);
+    return next;
+  }
+
+  move(id: string, folder: string, name: string | undefined, authorize: () => void, resumed: Resumed = direct): Promise<ArtifactPromotion> {
+    return run(this.#move(id, folder, name, authorize), resumed);
+  }
+
+  *#move(id: string, folder: string, name: string | undefined, authorize: () => void): IO<ArtifactPromotion> {
+    authorize();
+    const source = this.#available(id), target = this.#available(folder);
+    if (source.folder) throw new ArtifactError('artifact-path', 'moving a folder into a folder is not supported');
+    if (!target.folder) throw new ArtifactError('artifact-path', 'the destination must be a folder artifact');
+    if (this.#store.humanArtifact(source) && !this.#store.humanArtifact(target)) {
+      throw new ArtifactError('artifact-path', 'the human’s or an Aide’s file must move into a human or Aide folder');
+    }
+    if (target.status === 'archived') throw new ArtifactError('artifact-unavailable', 'the destination folder is archived');
+    const fileName = folderName(name ?? source.path.split(sep).pop());
+    if (fileName.includes('/')) throw new ArtifactError('artifact-path', 'move name must be a single file name');
+    if (this.#busy.has(id) || this.#busy.has(folder)) throw new ArtifactError('artifact-busy', 'an artifact has an operation in progress; retry');
+    this.#busy.add(id); this.#busy.add(folder);
+    const destination = join(target.path, fileName);
+    let linked = false, committed = false;
+    try {
+      const info = yield* wait(this.#files.lstat(target.path));
+      if (!info.isDirectory() || info.isSymbolicLink()) throw new ArtifactError('artifact-path', 'the folder must be a real directory');
+      const sourceInfo = yield* wait(this.#files.lstat(source.path));
+      if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) throw new ArtifactError('artifact-path', 'the source must be a regular file');
+      authorize(); this.#available(id); this.#available(folder);
+      // An exclusive hard link reserves the destination without overwriting any existing bytes.
+      yield* wait(this.#files.link(source.path, destination)); linked = true;
+      const linkedInfo = yield* wait(this.#files.lstat(destination));
+      if (!linkedInfo.isFile() || linkedInfo.isSymbolicLink()) throw new ArtifactError('artifact-path', 'the source changed while moving');
+      authorize();
+      const current = this.#available(id);
+      const next: Artifact = { ...current, status: 'moved', movedTo: { folder, path: fileName } };
+      if (this.#available(folder).status === 'archived') throw new ArtifactError('artifact-unavailable', 'the destination folder was archived during the move');
+      this.#store.updateArtifact(next); committed = true;
+      this.#changed(next); this.#changed(this.#available(folder));
+      yield* wait(this.#files.unlink(source.path));
+      return { artifact: this.#store.resolveArtifact(id)! };
+    } catch (err) {
+      if (committed) return { artifact: this.#store.resolveArtifact(id)!, followUp: { error: err instanceof Error ? err.message : String(err) } };
+      if (!committed) {
+        if (linked) yield* wait(this.#files.unlink(destination));
+      }
+      throw err;
+    } finally { this.#busy.delete(id); this.#busy.delete(folder); }
+  }
+
+  *#cleanupFolder(snapshot: Artifact, cutoff: number): IO<void> {
+    const backup = snapshot.path + '.retained';
+    let retained = false;
+    const missing = (err: unknown) => hasCode(err, 'ENOENT');
+    try {
+      const info = yield* wait(this.#files.lstat(backup).catch(err => { if (missing(err)) return null; throw err; }));
+      if (info) {
+        if (!info.isDirectory() || info.isSymbolicLink()) throw new ArtifactError('artifact-path', 'retained folder must be a real directory');
+        if (this.#store.artifact(snapshot.id)?.fileDeleted) {
+          yield* wait(this.#files.rm(backup, { recursive: true, force: true })); return;
+        }
+        const live = yield* wait(this.#files.lstat(snapshot.path).catch(err => { if (missing(err)) return null; throw err; }));
+        if (live) throw new ArtifactError('artifact-busy', 'both live and retained folders exist; recover them before sweeping');
+        yield* wait(this.#files.rename(backup, snapshot.path));
+      }
+      const current = this.#store.artifact(snapshot.id);
+      if (!current || !this.#expired(current, cutoff) || current.archivedAt !== snapshot.archivedAt) return;
+      const live = yield* wait(this.#files.lstat(snapshot.path).catch(err => { if (missing(err)) return null; throw err; }));
+      if (!live) { this.#markDeleted(current); return; }
+      if (!live.isDirectory() || live.isSymbolicLink()) throw new ArtifactError('artifact-path', 'artifact folder must be a real directory');
+      yield* wait(this.#files.rename(snapshot.path, backup)); retained = true;
+      const latest = this.#store.artifact(snapshot.id);
+      if (latest && this.#expired(latest, cutoff) && latest.archivedAt === snapshot.archivedAt) this.#markDeleted(latest);
+      else { yield* wait(this.#files.rename(backup, snapshot.path)); retained = false; return; }
+      yield* wait(this.#files.rm(backup, { recursive: true, force: true })); retained = false;
+    } catch (err) {
+      if (retained && !this.#store.artifact(snapshot.id)?.fileDeleted) yield* wait(this.#files.rename(backup, snapshot.path));
+      throw err;
+    }
+  }
+
   #expired(a: Artifact, cutoff: number): boolean {
-    return !a.promoted && !a.fileDeleted && a.status === 'archived' &&
+    return !a.kept && !this.#store.humanArtifact(a) && !a.movedTo && !a.promoted && !a.fileDeleted && a.status === 'archived' &&
       typeof a.archivedAt === 'string' && Date.parse(a.archivedAt) <= cutoff;
   }
 
@@ -130,9 +228,27 @@ export class ArtifactLifecycle {
    */
   *#cleanup(cutoff: number): IO<void> {
     const failures: unknown[] = [];
+    for (const moved of this.#store.movedArtifacts()) {
+      if (this.#busy.has(moved.id)) continue;
+      try {
+        const target = this.#store.resolveArtifact(moved.id);
+        if (!target || target.fileDeleted) continue;
+        const original = yield* wait(this.#files.lstat(moved.path).catch(err => { if (hasCode(err, 'ENOENT')) return null; throw err; }));
+        if (!original) continue;
+        const destination = yield* wait(this.#files.lstat(target.path));
+        if (original.dev === destination.dev && original.ino === destination.ino) yield* this.#unlinkIfPresent(moved.path);
+      }
+      catch (err) { failures.push(err); }
+    }
     for (const snapshot of this.#store.artifacts()) {
       if (this.#busy.has(snapshot.id)) continue;
       this.#busy.add(snapshot.id);
+      if (snapshot.folder) {
+        try { yield* this.#cleanupFolder(snapshot, cutoff); }
+        catch (err) { failures.push(err); }
+        finally { this.#busy.delete(snapshot.id); }
+        continue;
+      }
       const backup = snapshot.path + '.retained';
       let retained = false;
       let removed = false;

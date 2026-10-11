@@ -585,7 +585,10 @@ export class Store implements HygieneMemory {
       if (message.artifacts?.length) {
         this.#db.prepare('update messages set artifacts = ? where id = ?').run(JSON.stringify(message.artifacts), message.id);
         // Status and post commit together, before the core publishes either. A failed status write rolls back the post.
-        for (const a of message.artifacts) if (a.kind === 'prompt') this.updateArtifact({ ...a, status: 'sent' });
+        for (const a of message.artifacts) if (a.kind === 'prompt' && a.status === 'sent' && !a.movedTo) {
+          const current = this.artifact(a.id);
+          if (current && !current.movedTo) this.updateArtifact({ ...current, status: 'sent' });
+        }
       }
       if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
@@ -897,6 +900,24 @@ export class Store implements HygieneMemory {
     return row ? JSON.parse(row.value as string) as Artifact : null;
   }
 
+  /** Author provenance is immutable; legacy records fall back to their recorded name/role. */
+  humanArtifact(a: Artifact): boolean {
+    if (a.creatorKind !== undefined) return a.creatorKind === 'human' || a.creatorRole === 'aide';
+    if (Object.hasOwn(a, 'creatorRole')) return a.creator === 'human' || a.creatorRole === 'aide';
+    // Older chips retain their sender's role even when the live role changed or was cleared.
+    const author = this.#db.prepare("select from_kind, from_role from messages where json_extract(artifact, '$.id') = ? order by created_at limit 1").get(a.id) as Row | undefined;
+    return a.creator === 'human' || author?.from_kind === 'human' || author?.from_role === 'aide' ||
+      (!author && this.roleOf(a.creator) === 'aide');
+  }
+
+  resolveArtifact(id: string): Artifact | null {
+    const a = this.artifact(id);
+    if (!a?.movedTo) return a;
+    const folder = this.artifact(a.movedTo.folder);
+    if (!folder || folder.fileDeleted) return { ...a, fileDeleted: true };
+    return { ...a, path: folder.path + '/' + a.movedTo.path, status: folder.status, topic: folder.topic, ...(folder.fileDeleted !== undefined ? { fileDeleted: folder.fileDeleted } : {}) };
+  }
+
   updateArtifact(a: Artifact): void {
     const result = this.#db.prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), Number(a.id.slice(2)));
     if (!result.changes) throw new Error(`no artifact ${a.id}`);
@@ -907,7 +928,7 @@ export class Store implements HygieneMemory {
     return this.#transaction(() => {
       const changed: Artifact[] = [];
       for (const a of this.artifacts(topic)) {
-        if (a.promoted || a.fileDeleted) continue;
+        if (a.promoted || a.fileDeleted || a.kept || this.humanArtifact(a) || a.explicitArchive) continue;
         if (closed && a.status !== 'archived') {
           const next: Artifact = { ...a, status: 'archived', archivedAt: now };
           this.updateArtifact(next);
@@ -927,9 +948,15 @@ export class Store implements HygieneMemory {
     return this.#db.prepare("select 1 from deliveries d join messages m on m.id = d.message_id where d.session_id = ? and m.topic = ? and d.state in ('delivered', 'injected', 'uncertain') limit 1").get(sessionId, topic) !== undefined;
   }
 
+  movedArtifacts(): Artifact[] { return this.#artifactIndex().filter(a => a.movedTo); }
+
   artifacts(topic?: string): Artifact[] {
+    return this.#artifactIndex().filter(a => !a.movedTo && (topic === undefined || a.topic === topic));
+  }
+
+  #artifactIndex(): Artifact[] {
     const rows = this.#db.prepare('select value from artifacts order by number').all() as Row[];
-    return rows.map((r) => JSON.parse(r.value as string) as Artifact).filter((a) => topic === undefined || a.topic === topic);
+    return rows.map(r => JSON.parse(r.value as string) as Artifact);
   }
 
   // ---------------------------------------------------------------- topics

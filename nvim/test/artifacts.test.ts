@@ -132,8 +132,10 @@ test('topic lists follow archive events and lists and pickers mark retained entr
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({ type: 'topic.create', title: 'Archive' })).value as { topic: { id: string } }).topic.id;
-  const created = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'Old note', '--content', 'old bytes', '--topic', topic, '--json');
-  const a = JSON.parse(created.stdout).artifact;
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close()); await coord.waitForPresence(['coord']);
+  const a = (await coord.call<{ artifact: { id: string } }>('artifact.create', { kind: 'note', title: 'Old note', content: 'old bytes', topic })).artifact;
+  await coord.close();
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='artifacts', id=${JSON.stringify(topic)}}, {insert=false})`);
@@ -147,4 +149,65 @@ test('topic lists follow archive events and lists and pickers mark retained entr
   await c.waitScreen(s => s.includes('palette ›') && s.includes('file deleted'), 'deleted picker mark');
   await c.input('<CR>');
   await c.waitScreen(s => s.includes('artifact: file deleted'), 'deleted entry cannot open');
+});
+
+test('folder chips open their entry and old moved-file chips open inside the folder', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const folder = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Folder', topic: 'general', folder: true, content: '# Folder entry' })).value as { artifact: { id: string; path: string } }).artifact;
+  const source = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Source', topic: 'general', content: '# Moved note' })).value as { artifact: { id: string } }).artifact;
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('Folder') && s.includes('Source'), 'folder and source chips');
+  await c.lua(`require('cland.artifacts').open(${JSON.stringify(folder.id)})`);
+  await c.waitScreen(s => s.includes('# Folder entry'), 'folder entry');
+  await c.input('q');
+  assert.equal((await ui.request({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' })).ok, true);
+  await eventually('live source redirect', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}).movedTo ~= nil`) || undefined);
+  await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
+  await c.waitScreen(s => s.includes('# Moved note'), 'old chip resolves to the moved file');
+  assert.equal(await c.lua('return vim.api.nvim_buf_get_name(0)'), join(folder.path, 'moved.md'));
+  assert.deepEqual(await c.lua(`local a = require('cland.artifacts').all(); local ids = {}; for _,x in ipairs(a) do ids[#ids+1] = x.id end; return ids`), [folder.id]);
+});
+
+
+test('moving an already-open prompt rebinds its editable buffer before the next save', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
+  const source = await make(), folder = await make(true);
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
+  await c.waitScreen(s => s.includes('Draft bytes'), 'editable draft');
+  await c.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, {'Unsaved moved bytes'})");
+  const destination = join(folder.path, 'moved.md');
+  assert.equal((await ui.request({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' })).ok, true);
+  await eventually('open buffer rebound', async () => await c.lua('return vim.api.nvim_buf_get_name(0)') === destination ? true : undefined);
+  await c.input(':w<CR>');
+  await eventually('save reaches moved file', async () => (await readFile(destination, 'utf8')).includes('Unsaved moved bytes') ? true : undefined);
+  await assert.rejects(readFile(source.path), { code: 'ENOENT' });
+});
+
+test('a draft moved while disconnected resolves and rebinds on reconnect before saving', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
+  const source = await make(), folder = await make(true);
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
+  await c.waitScreen(s => s.includes('Draft bytes'), 'editable draft');
+  await c.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, {'Unsaved moved bytes'})");
+  await c.lua("require('cland').client:stop()");
+  const destination = join(folder.path, 'moved.md');
+  assert.equal((await ui.request({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' })).ok, true);
+  assert.equal(await c.lua('return vim.api.nvim_buf_get_name(0)'), source.path);
+  await c.lua("require('cland').client:start()");
+  await eventually('open buffer rebound after reconnect', async () => await c.lua('return vim.api.nvim_buf_get_name(0)') === destination ? true : undefined);
+  await c.input(':w<CR>');
+  await eventually('save reaches moved file', async () => (await readFile(destination, 'utf8')).includes('Unsaved moved bytes') ? true : undefined);
+  await assert.rejects(readFile(source.path), { code: 'ENOENT' });
 });

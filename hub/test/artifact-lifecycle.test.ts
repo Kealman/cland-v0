@@ -18,7 +18,7 @@ function deferred() {
   const promise = new Promise<void>(r => { resolve = r; });
   return { promise, resolve };
 }
-async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays = 0, eventLimitMax = 120) {
+async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays = 0, eventLimitMax = 120, folder = false) {
   const root = await tempProject(t);
   const dbPath = join(root, 'hub.db');
   const records: Record<string, unknown>[] = [];
@@ -38,7 +38,8 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
   t.after(() => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'cli');
   const topic = ((await ui.request({ type: 'topic.create', title: 'Design' })).value as { topic: { id: string } }).topic.id;
-  const a = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Design', content: 'original bytes', topic })).value as { artifact: Artifact }).artifact;
+  await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
+  const a = ((await ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Design', content: 'original bytes', topic, ...(folder ? { folder: true } : {}) })).value as { artifact: Artifact }).artifact;
   const entries = async () => ((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
   const db = new DatabaseSync(dbPath);
   t.after(() => db.close());
@@ -190,7 +191,7 @@ test('a failed retention housekeeping step is retried without blocking deletion 
     if (failBackupRemoval && String(path).endsWith('.retained')) throw new Error('backup delete failed');
     return fs.unlink(path);
   } });
-  const another = ((await f.ui.request({ type: 'artifact.create', kind: 'file', title: 'Another', content: 'more bytes', topic: f.topic })).value as { artifact: Artifact }).artifact;
+  const another = ((await f.ui.request({ type: 'artifact.create', kind: 'file', title: 'Another', content: 'more bytes', as: { name: 'coord' }, topic: f.topic })).value as { artifact: Artifact }).artifact;
   await f.ui.request({ type: 'topic.close', topic: f.topic });
   f.hub.prune();
   await eventually('all eligible entries deleted despite housekeeping failures', async () => (await f.entries()).every(a => a.fileDeleted) ? true : undefined);
@@ -256,7 +257,7 @@ test('post-commit promotion publication failure keeps both bytes and mark and re
 
 test('subscriber and publication-error-logger faults cannot undo promotion, archive or reopen commits', async t => {
   const f = await fixture(t);
-  const shared = ((await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Shared', content: 'shared bytes', topic: f.topic })).value as { artifact: Artifact }).artifact;
+  const shared = ((await f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Shared', content: 'shared bytes', as: { name: 'coord' }, topic: f.topic })).value as { artifact: Artifact }).artifact;
   f.failPublicationLog();
   f.hub.core.subscribe(e => { if (e.type === 'artifact') throw new Error('subscriber failed'); });
   assert.equal((await f.ui.request({ type: 'artifact.promote', artifact: f.a.id, path: 'design.md' })).ok, true);
@@ -363,4 +364,77 @@ test('failure recording the now group rolls back every recipient and their event
   const after = await f.ui.request({ type: 'topic.history', topic: 'agents' });
   const events = (after.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
   for (const name of ['held', 'steered']) assert.deepEqual(events.filter(m => m.to.includes(name)).map(m => m.text), ['event · artifact · A-3 created · Retry allowance']);
+});
+
+
+test('folder cleanup rolls back a failed index commit and recovers interrupted retention after reopen', async t => {
+  const f = await fixture(t, fs, 0, 120, true);
+  const entry = join(f.a.path, 'index.md');
+  await f.ui.request({ type: 'topic.close', topic: f.topic });
+  f.db.exec("create trigger reject_folder_delete before update on artifacts when json_extract(new.value, '$.fileDeleted') = 1 begin select raise(ABORT, 'index failed'); end");
+  f.hub.prune();
+  await eventually('folder index failure reported', async () => f.records.find(r => r.event === 'artifact-cleanup-failed'));
+  assert.equal(await fs.readFile(entry, 'utf8'), 'original bytes');
+  assert.equal((await f.entries())[0]?.fileDeleted, undefined);
+  f.db.exec('drop trigger reject_folder_delete');
+  await fs.rename(f.a.path, f.a.path + '.retained');
+  await f.ui.request({ type: 'topic.send', topic: f.topic, text: 'Recover interrupted sweep' });
+  f.hub.prune();
+  await eventually('folder recovered', async () => await fs.readFile(entry, 'utf8').catch(() => '') === 'original bytes' ? true : undefined);
+  assert.equal((await f.entries())[0]?.status, 'shared');
+  await f.ui.request({ type: 'topic.close', topic: f.topic });
+  f.hub.prune();
+  await eventually('folder deleted after retry', async () => (await f.entries())[0]?.fileDeleted ? true : undefined);
+  await assert.rejects(fs.readFile(entry), { code: 'ENOENT' });
+});
+
+test('keeping a folder during the retention rename restores all its files', async t => {
+  const renaming = deferred(), release = deferred(); t.after(() => release.resolve());
+  const f = await fixture(t, { ...fs, rename: async (...args) => {
+    if (String(args[1]).endsWith('.retained')) { renaming.resolve(); await release.promise; }
+    return fs.rename(...args);
+  } }, 0, 120, true);
+  await f.ui.request({ type: 'topic.close', topic: f.topic });
+  f.hub.prune(); await renaming.promise;
+  assert.equal((await f.ui.request({ type: 'artifact.keep', artifact: f.a.id })).ok, true);
+  release.resolve();
+  await eventually('kept folder restored', async () => await fs.readFile(join(f.a.path, 'index.md'), 'utf8').catch(() => '') === 'original bytes' && !(await fs.readdir(join(f.root, '.cland/artifacts'))).some(n => n.endsWith('.retained')) ? true : undefined);
+  assert.equal((await f.entries())[0]?.kept, true);
+  assert.equal((await f.entries())[0]?.fileDeleted, undefined);
+});
+
+test('move index failures retain the original; a committed redirect survives an unlink failure and retries housekeeping', async t => {
+  let failUnlink = false;
+  const f = await fixture(t, { ...fs, unlink: async path => {
+    if (failUnlink && String(path).endsWith('design.md')) throw new Error('unlink failed');
+    return fs.unlink(path);
+  } });
+  const folder = ((await f.ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Folder', folder: true, content: '# Entry', topic: f.topic })).value as { artifact: Artifact }).artifact;
+  f.db.exec("create trigger reject_move before update on artifacts when json_extract(new.value, '$.status') = 'moved' begin select raise(ABORT, 'index failed'); end");
+  assert.equal((await f.ui.request({ type: 'artifact.move', artifact: f.a.id, folder: folder.id, name: 'note.md' })).ok, false);
+  assert.equal(await fs.readFile(f.a.path, 'utf8'), 'original bytes');
+  await assert.rejects(fs.readFile(join(folder.path, 'note.md')), { code: 'ENOENT' });
+  f.db.exec('drop trigger reject_move'); failUnlink = true;
+  const moved = await f.ui.request({ type: 'artifact.move', artifact: f.a.id, folder: folder.id, name: 'note.md' });
+  assert.equal(moved.ok, true);
+  assert.match((moved.value as { followUp: { error: string } }).followUp.error, /unlink failed/);
+  assert.equal((await f.entries()).length, 1);
+  assert.equal(await fs.readFile(join(folder.path, 'note.md'), 'utf8'), 'original bytes');
+  failUnlink = false; f.hub.prune();
+  await eventually('old file path cleaned after commit', async () => await fs.lstat(f.a.path).then(() => undefined, () => true));
+});
+
+test('a refused folder publication rolls back its directory and id reservation', async t => {
+  const f = await fixture(t);
+  f.failPost(true);
+  const create = () => f.ui.request({ type: 'artifact.create', kind: 'note', title: 'Folder', topic: f.topic, folder: true, entry: 'notes/start.md', content: 'new bytes' });
+  assert.equal((await create()).ok, false);
+  assert.deepEqual(await fs.readdir(join(f.root, '.cland/artifacts')), ['A-1-design.md']);
+  assert.equal((await f.entries()).length, 1);
+  f.failPost(false);
+  const accepted = await create();
+  assert.equal(accepted.ok, true);
+  const a = (accepted.value as { artifact: Artifact }).artifact;
+  assert.equal(a.id, 'A-2');
+  assert.equal(await fs.readFile(join(a.path, a.entry!), 'utf8'), 'new bytes');
 });

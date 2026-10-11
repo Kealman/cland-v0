@@ -277,7 +277,8 @@ test('closing topics or bound items archives artifacts; reopening restores files
   const ui = await connectUi(t, discovery);
   const item = JSON.parse((await cland(root, 'task', 'create', 'Design', '--json')).stdout).item.id;
   const topic = ((await ui.request({ type: 'topic.create', title: 'Design', item })).value as { topic: { id: string } }).topic.id;
-  const create = async () => ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Design', content: 'bytes', topic })).value as { artifact: Artifact }).artifact;
+  await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
+  const create = async () => ((await ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Design', content: 'bytes', topic })).value as { artifact: Artifact }).artifact;
   const a = await create();
   const promoted = await create();
   assert.equal((await cland(root, 'artifact', 'promote', promoted.id, 'design.md')).code, 0);
@@ -301,7 +302,8 @@ test('zero-day retention on restart removes only archived files and keeps delete
   let { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({ type: 'topic.create', title: 'Archive' })).value as { topic: { id: string } }).topic.id;
-  const create = async (topic: string) => ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Note', content: 'keep bytes', topic })).value as { artifact: Artifact }).artifact;
+  await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
+  const create = async (topic: string) => ((await ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Note', content: 'keep bytes', topic })).value as { artifact: Artifact }).artifact;
   const gone = await create(topic);
   const deletedTopic = ((await ui.request({ type: 'topic.create', title: 'Deleted archive' })).value as { topic: { id: string } }).topic.id;
   const deletedTopicArtifact = await create(deletedTopic);
@@ -361,7 +363,8 @@ test('promotion is granted to the Coordinator from its shell and refused to the 
     const s = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId });
     t.after(() => s.close());
     await s.waitForPresence([name]);
-    const result = await ui.request({ type: 'artifact.promote', artifact: a.id, path: `${role}.md`, as: { name, sessionId } });
+    const owned = role === 'coordinator' ? (await s.call<{ artifact: Artifact }>('artifact.create', { kind: 'note', title: 'Own note', topic: 'general', content: 'bytes' })).artifact : a;
+    const result = await ui.request({ type: 'artifact.promote', artifact: owned.id, path: `${role}.md`, as: { name, sessionId } });
     if (role === 'coordinator') assert.equal(result.ok, true, result.error);
     else {
       assert.equal(result.ok, false);

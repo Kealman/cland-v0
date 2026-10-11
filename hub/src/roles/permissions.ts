@@ -61,7 +61,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'release',
   'sync',
   'push',
-  'artifact.create',
+  'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive',
   'artifact.promote',
 ];
 
@@ -80,7 +80,7 @@ const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 's
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: [ 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
+  aide: [ 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
   coordinator: [
     'send',
     'ask',
@@ -104,17 +104,17 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   'release',
   'sync',
   'push',
-    'artifact.create',
+    'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive',
     'artifact.promote',
     'rename',
     ...READS,
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  lead: ['send:agents', 'artifact.create', ...READS],
-  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', ...READS, 'task.plan:show'],
-  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS, 'task.plan:show'],
-  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', ...READS, 'task.plan:show'],
+  lead: ['send:agents', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
+  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
+  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
+  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
 };
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */

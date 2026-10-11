@@ -162,3 +162,19 @@ test('a Coordinator spoke resolves relative launch cwd against the project root'
   const child = (await fake.sessions()).find((s) => s.name === 'impl-relative');
   assert.equal(child?.cwd, cwd);
 });
+
+test('folder entries and absorbed-file ids deliver launch briefs to a fake harness', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  await startDaemon(t, root, fake.env);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close()); await coord.waitForPresence(['coord']);
+  const folder = (await coord.call<{ artifact: { id: string } }>('artifact.create', { kind: 'prompt', title: 'Folder brief', topic: 'general', folder: true, content: 'Read the folder entry.' })).artifact;
+  const file = (await coord.call<{ artifact: { id: string } }>('artifact.create', { kind: 'prompt', title: 'File brief', topic: 'general', content: 'Read the absorbed file.' })).artifact;
+  assert.equal((await coord.call<{ ok: boolean }>('artifact.move', { artifact: file.id, folder: folder.id, name: 'absorbed.md' })).ok, true);
+  for (const [name, artifact, text] of [['folder-brief', folder.id, 'Read the folder entry.'], ['absorbed-brief', file.id, 'Read the absorbed file.']]) {
+    const launch = await coord.call<{ ok: boolean; error?: string; process: HarnessProcessView }>('session.launch', { name, role: 'implementer', harness: 'claude-code', brief: artifact });
+    assert.equal(launch.ok, true, launch.error);
+    await eventually('resolved brief delivered to harness', async () => (await fake.log(launch.process.harnessId!)).includes(text!) ? true : undefined);
+  }
+});
