@@ -3,7 +3,7 @@
 local api = vim.api
 local state = require('cland.state')
 local items = require('cland.items')
-local M = { bufs = {}, detail = {}, pending = {}, stale = {} }
+local M = { bufs = {}, detail = {}, pending = {}, stale = {}, history = {}, visits = {} }
 local ns = api.nvim_create_namespace('cland.plan')
 local function width(s) return api.nvim_strwidth(s or '') end
 local function fit(s, w) return require('cland.bars').prefix(s, math.max(0, w)) end
@@ -26,6 +26,29 @@ local function wrap(s, w)
     out[#out + 1] = line
   end
   return out
+end
+
+function M.enter(id)
+  M.stale[id] = true
+  M.visits[id] = { seen = (state.S.ui.plan_seen or {})[id], acknowledge = true }
+end
+
+-- Preserve the hub's publication order, including changes with identical timestamps.
+local function history_from_detail(id, value)
+  local history = {}
+  for _, record in ipairs(value.history or {}) do
+    history[#history + 1] = { id = record.id, ts = record.ts, kind = 'plan',
+      text = 'plan ' .. record.event .. ' by ' .. record.by .. (record.reason and (': ' .. record.reason) or ''),
+      detail = { item = id, by = record.by, previous = record.previous, plan = record.plan, reason = record.reason } }
+  end
+  M.history[id] = history
+  local visit = M.visits[id]
+  if visit and visit.acknowledge and state.S.ui.view.kind == 'plan' and state.S.ui.view.id == id then
+    state.S.ui.plan_seen = state.S.ui.plan_seen or {}
+    state.S.ui.plan_seen[id] = history[#history] and history[#history].id or nil
+    visit.acknowledge = false
+    require('cland.ui').changed()
+  end
 end
 
 function M.setup(client)
@@ -61,6 +84,7 @@ function M.fetch(id)
     else
       M.detail[id] = type(value) == 'table' and value or { error = 'task.plan answered no plan' }
       M.detail[id].seen = asked
+      history_from_detail(id, M.detail[id])
     end
     state.changed()
   end)
@@ -130,6 +154,13 @@ local function stage_policies(stage, plan)
   end end
   return per_item, after
 end
+local function needs_item_qa(id)
+  local detail = require('cland.item_view').get(id)
+  -- Only the hub can qualify durable provenance, independent writers and freshness.
+  -- Missing/older responses and failed refreshes leave the run outstanding.
+  return not (detail and not detail.failed and (detail.merged == true or detail.qaSatisfied == true))
+end
+
 local function gate(stage, plan)
   local per_item, after = stage_policies(stage, plan)
   local parts = {}
@@ -149,6 +180,61 @@ function M.stage_tag(epic, id)
   end
 end
 
+local function locations(plan)
+  local out = {}
+  for n, stage in ipairs(type(plan) == 'table' and plan.stages or {}) do
+    for lane, ids in ipairs(stage.lanes) do for position, id in ipairs(ids) do out[id] = { stage = n, lane = lane, position = position } end end
+  end
+  return out
+end
+
+function M.changes(id)
+  local visit = M.visits[id]
+  local receipt = (state.S.ui.plan_seen or {})[id]
+  if visit and state.S.ui.view.kind == 'plan' and state.S.ui.view.id == id then receipt = visit.seen end
+  local history = M.history[id] or {}
+  local since = 0
+  for n, message in ipairs(history) do if message.id == receipt then since = n end end
+  local out = { stages = {}, items = {}, notes = {} }
+  for n, message in ipairs(history) do
+    local d = message.detail or {}
+    if n > since and type(d.previous) == 'table' and type(d.plan) == 'table' then
+      local before, after = locations(d.previous), locations(d.plan)
+      local changed = {}
+      for item, was in pairs(before) do
+        local now = after[item]
+        if not now or now.stage ~= was.stage or now.lane ~= was.lane or now.position ~= was.position then
+          changed[#changed + 1] = item .. (now and (' moved from S' .. was.stage .. ' to S' .. now.stage) or (' removed from S' .. was.stage))
+          out.items[item], out.stages[was.stage] = true, true
+          if now then out.stages[now.stage] = true end
+        end
+      end
+      for item, now in pairs(after) do if not before[item] then
+        changed[#changed + 1] = item .. ' added to S' .. now.stage
+        out.items[item], out.stages[now.stage] = true, true
+      end end
+      for stage, current in ipairs(d.plan.stages) do
+        if not vim.deep_equal(current, d.previous.stages[stage]) then
+          out.stages[stage] = true
+          local previous = d.previous.stages[stage]
+          if not previous or previous.name ~= current.name or not vim.deep_equal(previous.qa, current.qa) then
+            for _, lane in ipairs(current.lanes) do for _, item in ipairs(lane) do out.items[item] = true end end
+          end
+        end
+      end
+      for item in pairs(after) do
+        if not vim.deep_equal((d.plan.items or {})[item], (d.previous.items or {})[item]) then
+          out.items[item], out.stages[after[item].stage] = true, true
+          changed[#changed + 1] = item .. ' QA override changed'
+        end
+      end
+      table.sort(changed)
+      out.notes[#out.notes + 1] = { message = message, summary = #changed > 0 and table.concat(changed, '; ') or 'stage or QA policy changed' }
+    end
+  end
+  return out
+end
+
 local function session_label(name, role)
   local session = state.session(name)
   return session and session.label or state.label(name, role)
@@ -164,7 +250,7 @@ local function who(it)
   return chunks
 end
 
-local function lane_rows(lane, plan)
+local function lane_rows(lane, plan, changes)
   local rows = {}
   for _, id in ipairs(lane) do
     local it = state.item(id) or { id = id, title = '(not in the index)' }
@@ -173,8 +259,15 @@ local function lane_rows(lane, plan)
     local blockers = items.open_blockers(it)
     local marks, group = {}, glyph[2]
     for _, chunk in ipairs(who(it)) do marks[#marks + 1] = chunk[1]; if chunk[2] == 'ClandRed' then group = chunk[2] end end
+    local verdicts = type(it.verdicts) == 'table' and it.verdicts or {}
+    local last = verdicts[#verdicts]
+    if last and last.result == 'not clear' then
+      local round = 0
+      for _, v in ipairs(verdicts) do if v.verdict == last.verdict then round = round + 1 end end
+      marks[#marks + 1] = 'round ' .. round .. (last.run and (' · ' .. last.run) or '')
+    end
     local mark = #marks > 0 and (' · ' .. table.concat(marks, ' · ')) or ''
-    rows[#rows + 1] = { (#blockers > 0 and '◌' or glyph[1]) .. ' ' .. id .. ' ' .. (it.title or '') .. mark .. ' ' .. n .. '/' .. total, group }
+    rows[#rows + 1] = { (changes and changes.items[id] and '△ ' or '') .. (#blockers > 0 and '◌' or glyph[1]) .. ' ' .. id .. ' ' .. (it.title or '') .. mark .. ' ' .. n .. '/' .. total, changes and changes.items[id] and 'ClandPlanChange' or group }
     if #blockers > 0 then rows[#rows + 1] = { '  blocked by ' .. table.concat(blockers, ', '), 'ClandDim' } end
     local override = plan.items and plan.items[id]
     if override and override.qa then rows[#rows + 1] = { '  override: QA ' .. policy(override.qa), 'ClandDim' } end
@@ -192,6 +285,74 @@ local function stats(plan)
     runs = runs + #per_item + (after and 1 or 0)
   end
   return n, lanes, runs
+end
+
+-- Closure is a hub fact: all merged items alone cannot close an after-stage gate.
+local function progress(plan, detail)
+  local out = { stages = {}, counts = { done = 0, review = 0, work = 0, planned = 0 }, runs = {}, sessions = {}, cost = 0, cost_known = false }
+  local named = {}
+  for n, stage in ipairs(plan.stages) do
+    local metadata = (detail.stages or {})[n] or {}
+    local done, total = 0, 0
+    for _, lane in ipairs(stage.lanes) do for _, id in ipairs(lane) do
+      total = total + 1
+      local it = state.item(id) or {}
+      local status = items.status(it)
+      local key = status == 'done' and 'done' or status == 'review' and 'review'
+        or (status == 'in progress' or status == 'qa' or status == 'ready') and 'work' or 'planned'
+      out.counts[key] = out.counts[key] + 1
+      local item_detail = require('cland.item_view').get(id)
+      if metadata.state == 'closed' or (item_detail and not item_detail.failed and item_detail.merged == true) then done = done + 1 end
+      local claim = items.claim(it)
+      if claim then named[claim.session] = true end
+      for _, v in ipairs(type(it.verdicts) == 'table' and it.verdicts or {}) do
+        if v.verdict == 'qa' then out.runs[#out.runs + 1] = v end
+      end
+    end end
+    local closed = metadata.state == 'closed'
+    out.stages[n] = { state = closed and 'closed' or 'planned', done = done, total = total, verdict = metadata.verdict }
+    if not closed and not out.current then out.current = n end
+  end
+  if out.current and out.counts.done + out.counts.work + out.counts.review > 0 then
+    out.stages[out.current].state = 'in work'
+  end
+  -- Stage run history comes from the epic's hub verdicts, including failed rounds.
+  local epic = require('cland.item_view').detail[detail.id or '']
+  for _, v in ipairs(epic and epic.verdicts or {}) do
+    if v.verdict == 'qa' and v.stage then out.runs[#out.runs + 1] = v end
+  end
+  for _, st in ipairs(out.stages) do
+    if st.verdict and not vim.tbl_contains(vim.tbl_map(function(v) return v.run end, out.runs), st.verdict.run) then out.runs[#out.runs + 1] = st.verdict end
+  end
+  for _, session in ipairs(state.sessions()) do
+    for _, hold in ipairs(session.holds or {}) do
+      if require('cland.vboard').under(state.item(hold.item), detail.id) then named[session.name] = true end
+    end
+    if session.item and require('cland.vboard').under(state.item(session.item), detail.id) then named[session.name] = true end
+    if named[session.name] then
+      out.sessions[#out.sessions + 1] = session
+      local cost = session.usage and session.usage.total and session.usage.total.cost
+      if type(cost) == 'number' then out.cost = out.cost + cost; out.cost_known = true end
+    end
+  end
+  return out
+end
+
+local function lane_sessions(lane)
+  local out, seen = {}, {}
+  for _, id in ipairs(lane) do
+    local it = state.item(id)
+    local claim = it and items.claim(it)
+    local names = {}
+    if claim then names[#names + 1] = claim.session end
+    for _, hold in ipairs(it and it.holds or {}) do names[#names + 1] = hold.session end
+    for _, name in ipairs(names) do if not seen[name] then
+      seen[name] = true
+      local session = state.session(name)
+      out[#out + 1] = session_label(name, claim and claim.role) .. ' · ' .. (session and session.state or 'unknown')
+    end end
+  end
+  return table.concat(out, '; ')
 end
 
 -- The source excerpt keeps the file's text; it does not parse or reconstruct the accepted YAML.
@@ -216,18 +377,24 @@ function M.compose(id, w)
   local fw = w >= 100 and math.min(36, math.floor(w * 0.3)) or 0
   local bw = fw > 0 and w - fw - 3 or w
   local function add(text, hl) left[#left + 1] = { { text or '', hl } } end
-  local boxed = false
+  local boxed, box_group = false, 'ClandFaint'
   local function prose(text, hl)
     for _, line in ipairs(wrap(text, bw - (boxed and 6 or 2))) do
       if boxed then
-        left[#left + 1] = { { ' │ ', 'ClandFaint' }, { line, hl },
-          { (' '):rep(math.max(0, bw - 6 - width(line))) .. ' │', 'ClandFaint' } }
+        left[#left + 1] = { { ' │ ', box_group }, { line, hl },
+          { (' '):rep(math.max(0, bw - 6 - width(line))) .. ' │', box_group } }
       else add(' ' .. line, hl) end
     end
   end
   add()
   prose('Plan of ' .. id .. ' ' .. (it and it.title or ''), 'ClandBold')
   local detail = require('cland.item_view').get(id)
+  local history = M.history[id] or {}
+  local authored
+  for _, message in ipairs(history) do if type((message.detail or {}).plan) == 'table' then authored = message end end
+  if authored and authored.detail and authored.detail.plan then
+    prose('plan by ' .. tostring(authored.detail.by) .. ' · ' .. authored.ts, 'ClandDim')
+  end
   local ancestry = {}
   for _, a in ipairs(detail and detail.ancestry or {}) do ancestry[#ancestry + 1] = a.id .. ' ' .. a.title end
   if #ancestry > 0 then prose(table.concat(ancestry, ' › ') .. ' › plan', 'ClandDim') end
@@ -246,6 +413,15 @@ function M.compose(id, w)
     if d.error then prose('not current: ' .. d.error, 'ClandRed') end
     if d.planError then prose('Previous accepted plan kept: ' .. d.planError, 'ClandAmber') end
     local plan = d.plan
+    d.id = id
+    local p = progress(plan, d)
+    local changes = M.changes(id)
+    for _, note in ipairs(changes.notes) do
+      local m, md = note.message, note.message.detail
+      local _, _, before = stats(md.previous)
+      local _, _, after = stats(md.plan)
+      prose("△ changed " .. m.ts .. " by " .. tostring(md.by) .. ": " .. note.summary .. " · QA runs " .. before .. " → " .. after .. " · " .. (md.reason or "reason not supplied"), "ClandPlanChange")
+    end
     local approval = d.approval or {}
     local approval_text = approval.state == 'approved' and ('✓ approved by ' .. (approval.by or 'human') .. ' · ' .. (approval.at or ''))
       or approval.state == 'pending' and '▲ awaiting your approval · no session launched'
@@ -258,10 +434,22 @@ function M.compose(id, w)
     add(' └' .. ('─'):rep(math.max(0, bw - 4)) .. '┘', 'ClandAmber')
     for n, stage in ipairs(plan.stages) do
       add()
-      add(' ┌' .. ('─'):rep(math.max(0, bw - 4)) .. '┐', 'ClandFaint')
+      local st = p.stages[n]
+      local border = changes.stages[n] and 'ClandPlanChange' or st.state == 'in work' and 'ClandTeal' or 'ClandFaint'
+      box_group = border
+      local tone = st.state == 'planned' and 'ClandDim' or 'ClandText'
+      add(' ┌' .. ('─'):rep(math.max(0, bw - 4)) .. '┐', border)
       boxed = true
-      prose('S' .. n .. ' · ' .. stage.name .. ' · ' .. #stage.lanes .. ' lanes', 'ClandBold')
-      prose('QA: ' .. policy(stage.qa), 'ClandText')
+      prose((changes.stages[n] and '△ ' or '') .. 'S' .. n .. ' · ' .. stage.name .. ' · ' .. st.state .. ' · ' .. #stage.lanes .. ' lanes', changes.stages[n] and 'ClandPlanChange' or st.state == 'in work' and 'ClandTeal' or st.state == 'planned' and 'ClandDim' or 'ClandBold')
+      local filled = st.total > 0 and math.floor(10 * st.done / st.total) or 0
+      prose('[' .. ('━'):rep(filled) .. ('─'):rep(10 - filled) .. '] ' .. st.done .. '/' .. st.total .. ' merged', tone)
+      prose('QA: ' .. policy(stage.qa), tone)
+      if st.verdict then
+        local round = 0
+        for _, v in ipairs(p.runs) do if v.stage == stage.name or v.run == st.verdict.run then round = round + 1 end end
+        prose('QA run ' .. st.verdict.run .. ' · ' .. st.verdict.result .. ' · round ' .. round,
+          st.verdict.result == 'clear' and 'ClandGreen' or 'ClandRed')
+      end
       local per_band = math.max(1, math.floor((bw - 6) / 24))
       for first = 1, #stage.lanes, per_band do
         local count = math.min(per_band, #stage.lanes - first + 1)
@@ -271,25 +459,29 @@ function M.compose(id, w)
           local lane = first + i - 1
           local col = {}
           for _, line in ipairs(wrap('lane ' .. lane .. ' · ordered items', lw)) do col[#col + 1] = { line, 'ClandDim' } end
-          for _, row in ipairs(lane_rows(stage.lanes[lane], plan)) do
-            for _, line in ipairs(wrap(row[1], lw)) do col[#col + 1] = { line, row[2] } end
+          local sessions = lane_sessions(stage.lanes[lane])
+          if st.state == 'in work' and sessions ~= '' then
+            for _, line in ipairs(wrap(sessions, lw)) do col[#col + 1] = { line, 'ClandTeal' } end
+          end
+          for _, row in ipairs(lane_rows(stage.lanes[lane], plan, changes)) do
+            for _, line in ipairs(wrap(row[1], lw)) do col[#col + 1] = { line, row[2] == 'ClandPlanChange' and row[2] or st.state == 'planned' and 'ClandDim' or row[2] } end
           end
           columns[i], height = col, math.max(height, #col)
         end
         for r = 1, height do
-          local chunks = { { ' │ ', 'ClandFaint' } }
+          local chunks = { { ' │ ', border } }
           for i, col in ipairs(columns) do
-            if i > 1 then chunks[#chunks + 1] = { ' │ ', 'ClandFaint' } end
+            if i > 1 then chunks[#chunks + 1] = { ' │ ', border } end
             local row = col[r] or { '' }
             chunks[#chunks + 1] = { row[1] .. (' '):rep(math.max(0, lw - width(row[1]))), row[2] }
           end
-          chunks[#chunks + 1] = { (' '):rep(math.max(0, bw - 6 - (count * lw + (count - 1) * 3))) .. ' │', 'ClandFaint' }
+          chunks[#chunks + 1] = { (' '):rep(math.max(0, bw - 6 - (count * lw + (count - 1) * 3))) .. ' │', border }
           left[#left + 1] = chunks
         end
       end
-      prose('Gate: ' .. gate(stage, plan), 'ClandDim')
+      prose('Gate: ' .. gate(stage, plan), tone)
       boxed = false
-      add(' └' .. ('─'):rep(math.max(0, bw - 4)) .. '┘', 'ClandFaint')
+      add(' └' .. ('─'):rep(math.max(0, bw - 4)) .. '┘', border)
       if n < #plan.stages then prose('↓ S' .. (n + 1) .. ' starts when S' .. n .. ' closes', 'ClandDim') end
     end
     local total, lanes, runs = stats(plan)
@@ -308,9 +500,32 @@ function M.compose(id, w)
       'Review: every item', 'QA runs: ' .. runs .. ' planned', 'Estimated QA cost: [cost]',
       'OUTSIDE THE EPIC',
     }
+    local started = p.counts.done + p.counts.work + p.counts.review > 0
+    if started then
+      fields[1] = 'PROGRESS · stage ' .. (p.current or #plan.stages) .. ' of ' .. #plan.stages
+      fields[2] = p.counts.done .. ' done · ' .. p.counts.review .. ' in review · ' .. p.counts.work .. ' in progress · ' .. p.counts.planned .. ' planned'
+      fields[3] = p.current and ('Current gate: ' .. gate(plan.stages[p.current], plan)) or 'All stages closed'
+      fields[9] = 'QA runs: ' .. #p.runs .. ' so far'
+      local remaining = 0
+      for n, stage in ipairs(plan.stages) do if p.stages[n].state ~= 'closed' then
+        local per_item, after = stage_policies(stage, plan)
+        if after then remaining = remaining + 1 end
+        for _, item in ipairs(per_item) do if needs_item_qa(item) then remaining = remaining + 1 end end
+      end end
+      table.insert(fields, 10, 'QA runs: ' .. remaining .. ' to come')
+      table.insert(fields, 11, 'Cost so far: ' .. (p.cost_known and ('$%.2f'):format(p.cost) .. ' reported session totals' or 'unavailable'))
+      table.insert(fields, 12, 'Approval: ' .. approval_text)
+      for _, session in ipairs(p.sessions) do table.insert(fields, #fields, session.label .. ' · ' .. session.state) end
+      for _, run in ipairs(p.runs) do table.insert(fields, #fields, run.run .. ' · ' .. run.result) end
+    end
     for n, stage in ipairs(plan.stages) do
       table.insert(fields, #fields, 'S' .. n .. ' QA: ' .. policy(stage.qa))
     end
+    fields[#fields] = 'PLAN HISTORY'
+    for _, message in ipairs(M.history[id] or {}) do
+      fields[#fields + 1] = message.ts .. ' · ' .. message.text
+    end
+    fields[#fields + 1] = 'OUTSIDE THE EPIC'
     local outside, seen = {}, {}
     for _, s in ipairs(plan.stages) do for _, lane in ipairs(s.lanes) do for _, item_id in ipairs(lane) do
       for _, blocker in ipairs(items.open_blockers(state.item(item_id) or {})) do
@@ -358,6 +573,9 @@ function M.compose(id, w)
 end
 
 function M.render(id)
+  -- A restart restores ui.view directly, without layout.show's explicit entry.
+  -- Initialize that visit once; ordinary redraws must not acknowledge later changes.
+  if not M.visits[id] then M.enter(id) end
   local b = M.bufs[id]
   if not (b and api.nvim_buf_is_valid(b)) then
     b = api.nvim_create_buf(false, true)
@@ -394,6 +612,7 @@ function M.render_panel(c, id)
   end
   local positions, sequence = {}, 0
   local detail = M.get(id)
+  local changes = M.changes(id)
   for _, stage in ipairs(detail and type(detail.plan) == 'table' and detail.plan.stages or {}) do
     for _, lane in ipairs(stage.lanes) do for _, item in ipairs(lane) do
       sequence = sequence + 1; positions[item] = sequence
@@ -413,7 +632,7 @@ function M.render_panel(c, id)
     for _, child in ipairs(bucket) do
       local glyph = items.GLYPH[items.status(child)] or items.GLYPH.open
       local n, total = require('cland.vboard').fraction(child)
-      local left = { { ' ' }, { #items.open_blockers(child) > 0 and '◌' or glyph[1], glyph[2] },
+      local left = { { changes.items[child.id] and ' △ ' or ' ', changes.items[child.id] and 'ClandPlanChange' or nil }, { #items.open_blockers(child) > 0 and '◌' or glyph[1], glyph[2] },
         { ' ' .. child.id .. ' ', 'ClandDim' }, { (M.stage_tag(id, child.id) or 'unplanned') .. ' › ', 'ClandDim' }, { child.title or '' } }
       local right = who(child)
       right[#right + 1] = { ' ' .. n .. '/' .. total, 'ClandDim' }

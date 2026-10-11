@@ -59,7 +59,7 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   assert.deepEqual(shown.plan, plan);
   const changed = structuredClone(plan);
   changed.stages[0]!.lanes = [[a.id], [b.id]];
-  const update = await coord.call<Result>('task.plan', { id: epic.id, op: 'set', yaml: stringify(changed) });
+  const update = await coord.call<Result>('task.plan', { id: epic.id, op: 'set', yaml: stringify(changed), reason: 'Split work for parallel lanes' });
   assert.equal(update.ok, true, update.error);
   assert.deepEqual(update.plan, changed);
   assert.equal((await readFile(join(root, epic.path), 'utf8')).match(/^## Plan$/gm)?.length, 1);
@@ -74,8 +74,24 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
     assert.deepEqual(changes[1].previous, plan);
     assert.deepEqual(changes[1].plan, changed);
     assert.equal(changes[1].by, 'coord');
+    assert.equal(changes[1].reason, 'Split work for parallel lanes');
   });
-  assert.equal((await cland(root, 'task', 'plan', 'show', epic.id)).code, 0);
+  await eventually('plan notice exposes the accepted comparison and reason', async () => {
+    const result = await ui.request({ type: 'topic.history', topic: 'agents', item: epic.id });
+    const messages = (result.value as { messages: Array<{ detail?: { previous?: EpicPlan; plan?: EpicPlan; reason?: string } }> }).messages;
+    const notice = messages.find(m => m.detail?.reason === 'Split work for parallel lanes');
+    if (!notice) return undefined;
+    assert.deepEqual(notice.detail?.previous, plan);
+    assert.deepEqual(notice.detail?.plan, changed);
+    return true;
+  });
+const beforeRestart = await coord.call<{ history: Array<{ id: string; reason?: string }> }>('task.plan', { id: epic.id, op: 'show' });
+  assert.equal(beforeRestart.history.at(-1)?.reason, 'Split work for parallel lanes');
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await startDaemon(t, root);
+  const restored = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
+  assert.equal(restored.code, 0, restored.stderr);
+  assert.deepEqual(JSON.parse(restored.stdout).history, beforeRestart.history);
 });
 
 test('a refused epic close does not accept or journal the proposed plan', async t => {
@@ -157,8 +173,8 @@ test('invalid hand edits keep the accepted plan across restart, and valid hand e
   assert.match(JSON.parse(restarted.stdout).planError, /scope must/);
   await writeFile(file, original.replace('scope: affected', 'scope: full'));
   await eventually('valid hand plan is journalled', async () => {
-    const records = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
-    return records.includes('"by":"hand","source":"hand","previous"') ? true : undefined;
+    const records = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    return records.some(record => record.event === 'task-plan-changed' && record.by === 'hand' && record.source === 'hand' && record.previous && record.plan?.stages[0]?.qa.scope === 'full') ? true : undefined;
   });
   const valid = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(JSON.parse(valid.stdout).plan.stages[0].qa.scope, 'full');

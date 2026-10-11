@@ -8,6 +8,7 @@ local function snapshot()
   local ui = state.S.ui
   return {
     version = 2,
+    plan_seen = vim.deepcopy(ui.plan_seen or vim.empty_dict()),
     preset = ui.preset or vim.NIL,
     panels = { left = ui.left, right = ui.right or vim.NIL, dock = ui.dock },
     sizes = vim.deepcopy(ui.sizes),
@@ -32,6 +33,11 @@ local function validate(data)
   end
   assert(vim.tbl_contains(require('cland.items').FILTERS, data.items_filter), 'invalid items filter')
   assert(data.current_release == nil or (type(data.current_release) == 'string' and data.current_release:match('^T%-[1-9]%d*$')), 'invalid release pick')
+  data.plan_seen = data.plan_seen or vim.empty_dict()
+  assert(type(data.plan_seen) == 'table', 'invalid plan receipts')
+  for id, receipt in pairs(data.plan_seen) do
+    assert(type(id) == 'string' and id:match('^T%-[1-9]%d*$') and type(receipt) == 'string', 'invalid plan receipt')
+  end
   return data
 end
 
@@ -39,6 +45,7 @@ function M.load(root)
   if timer then timer:stop(); timer:close(); timer = nil end
   path, pending, warned = root .. '/.cland/ui.json', nil, false
   local ui = state.S.ui
+  ui.plan_seen = vim.empty_dict()
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
   ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
   local _, _, stat_code = uv.fs_stat(path)
@@ -46,6 +53,7 @@ function M.load(root)
     return validate(vim.json.decode(table.concat(vim.fn.readfile(path), '\n'), { luanil = { object = true, array = true } }))
   end)
   if ok then
+    ui.plan_seen = data.plan_seen
     ui.preset = data.preset
     ui.left, ui.right, ui.dock = data.panels.left, data.panels.right, data.panels.dock
     ui.sizes, ui.items_filter, ui.current_release = data.sizes, data.items_filter, data.current_release

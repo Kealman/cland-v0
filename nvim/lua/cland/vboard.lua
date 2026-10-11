@@ -113,7 +113,11 @@ local function row(c, it, bucket, next_id)
   if (it.status == 'planned' or it.kind ~= 'task') and it.state ~= 'closed' and #items.open_blockers(it) > 0 then g = { '◌', 'ClandDim' } end
   local parent = items.present(it.parent) and state.item(it.parent)
   local left = { { ' ' }, { g[1], g[2] }, { ' ' .. it.id .. ' ', 'ClandDim' } }
-  if parent then left[#left + 1] = { parent.id .. ' › ', 'ClandDim' } end
+  local plan = require('cland.plan')
+  local epic = plan.owner(it.id)
+  local tag = epic and plan.stage_tag(epic, it.id)
+  if parent then left[#left + 1] = { (tag or parent.id) .. ' › ', 'ClandDim' } end
+  if epic and plan.changes(epic).items[it.id] then left[#left + 1] = { '△ ', 'ClandPlanChange' } end
   left[#left + 1] = { it.title or '', items.is_container(it) and 'ClandBold' or 'ClandText' }
   local right = {}
   local function put(chunk)

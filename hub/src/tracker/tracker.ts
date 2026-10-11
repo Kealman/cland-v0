@@ -51,7 +51,7 @@ import {
 } from './item.ts';
 import type { LogFn } from '../log.ts';
 import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
-import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts } from './gate-verdicts.ts';
+import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts, qaSatisfied } from './gate-verdicts.ts';
 import { MergeError, type MergeCode } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
 import { Freshness, pending, type TipSchedule } from './freshness.ts';
@@ -71,6 +71,8 @@ export type Actor = { id: string; name: string; role: string | null; human?: boo
 
 type Child = Pick<IndexedItem, 'id' | 'kind' | 'title' | 'state' | 'file'>;
 
+export type PlanHistoryEntry = { id: string; ts: string; event: 'changed' | 'approved'; by: string; previous?: EpicPlan | null; plan?: EpicPlan | null; reason?: string };
+
 export type ItemView = IndexedItem & {
   /** The file, relative to the project root. */
   path: string;
@@ -84,8 +86,13 @@ export type ItemView = IndexedItem & {
   /** Effective merge policy, from the nearest containing plan or the project default. */
   qaPolicy?: QaPolicy;
   qaCriteria?: string[];
+  /** Task QA evidence accepted by the merge gate; unknown freshness counts as unsatisfied. */
+  qaSatisfied?: boolean;
+  /** A closed task with a durable landing receipt on dev, as required by stage closure. */
+  merged?: boolean;
   planError?: string;
   stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict }>;
+  planHistory?: PlanHistoryEntry[];
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
   criteriaWarnings: CriterionWarning[];
@@ -196,6 +203,7 @@ export class Tracker {
   #polling = false;
   #bootstrapping = true;
   readonly #planErrors = new Map<string, string>();
+  readonly #planHistory = new Map<string, PlanHistoryEntry[]>();
   /** Parsed file candidates, including temporarily invalid plans waiting for dependent hand saves. */
   readonly #planCandidates = new Map<string, { item: Item; source: 'hub' | 'hand'; writer?: Actor }>();
   readonly #background = new Set<Promise<unknown>>();
@@ -233,7 +241,21 @@ export class Tracker {
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    for (const entry of options.planHistory ?? []) {
+      if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
+      const id = typeof entry.planHistoryId === 'string' ? entry.planHistoryId : typeof entry.agentsNotice === 'string' ? entry.agentsNotice : randomUUID();
+      try {
+        const record: PlanHistoryEntry = { id, ts: entry.ts, event: entry.event === 'task-plan-changed' ? 'changed' : 'approved', by: entry.by };
+        if (record.event === 'changed') {
+          record.previous = entry.previous === null ? null : parsePlan(JSON.stringify(entry.previous));
+          record.plan = entry.plan === null ? null : parsePlan(JSON.stringify(entry.plan));
+          if (typeof entry.reason === 'string') record.reason = entry.reason;
+        }
+        const history = this.#planHistory.get(entry.id) ?? [];
+        history.push(record); this.#planHistory.set(entry.id, history);
+      } catch { /* A malformed journal entry cannot become accepted-plan history. */ }
+    }
     this.#planApproval = options.planApproval ?? 'none';
     this.#qaDefault = options.qaDefault ?? { scope: 'none', when: 'per-item' };
     this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
@@ -794,11 +816,11 @@ export class Tracker {
     }
   }
 
-  #plansAfterIndex(item: Item, source: 'hub' | 'hand', writer?: Actor): void {
+  #plansAfterIndex(item: Item, source: 'hub' | 'hand', writer?: Actor, reason?: string): void {
     if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(item.fm.id, { item, source, ...(writer ? { writer } : {}) });
     else this.#planCandidates.delete(item.fm.id);
     if (this.#bootstrapping) return;
-    this.#acceptPlan(item, source, writer);
+    this.#acceptPlan(item, source, writer, reason);
     // Criterion, kind or parent changes can make a previously refused epic candidate valid.
     this.#retryPlans(item.fm.id);
   }
@@ -809,7 +831,7 @@ export class Tracker {
     }
   }
 
-  #acceptPlan(item: Item, source: 'hub' | 'hand', writer?: Actor): { plan: EpicPlan | null; planError?: string } {
+  #acceptPlan(item: Item, source: 'hub' | 'hand', writer?: Actor, reason?: string): { plan: EpicPlan | null; planError?: string } {
     const state = this.#planState(item), id = item.fm.id;
     if (state.planError) {
       if (this.#planErrors.get(id) !== state.planError) this.#log({ event: 'task-plan-refused', id, file: this.#index.metaOf(id)?.file, error: state.planError, source });
@@ -829,21 +851,30 @@ export class Tracker {
     for (const child of this.#index.list()) {
       if (child.kind === 'task' && this.#ancestorIds(child.parent).includes(id)) this.#changed(child.id);
     }
-    this.#log({ event: 'task-plan-changed', id, by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), source, previous, plan: state.plan });
+    const record: PlanHistoryEntry = { id: randomUUID(), ts: this.#now().toISOString(), event: 'changed', by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), previous, plan: state.plan, ...(reason ? { reason } : {}) };
+    this.#rememberPlanEvent(id, record);
+    this.#log({ ...record, event: 'task-plan-changed', id, planHistoryId: record.id, source });
     return state;
   }
 
+  #rememberPlanEvent(id: string, record: PlanHistoryEntry): void {
+    const history = this.#planHistory.get(id) ?? [];
+    history.push(record);
+    this.#planHistory.set(id, history);
+  }
+
   /** Plans use the same admitted read/modify/publication cycle as other item writes. */
-  setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+  setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}, reason?: string): Promise<ItemView> {
     return this.#serial(() => {
       checkText(yaml, 'plan YAML');
+      if (reason !== undefined) checkText(reason, 'plan change reason');
       let plan: EpicPlan;
       try { plan = parsePlan(yaml); }
       catch (err) { throw new TrackerError(err instanceof Error ? err.message : String(err)); }
       return this.#mutate(rawId, actor, 'plan set', item => {
         if (!this.isPlanContainer(item.fm.kind)) throw new TrackerError('a plan belongs only to an epic');
         item.body = withPlan(item.body, plan);
-      }, resumed, undefined, authorize);
+      }, resumed, undefined, authorize, undefined, undefined, false, reason);
     }, resumed);
   }
 
@@ -860,7 +891,12 @@ export class Tracker {
       const hash = this.#planHash(state.plan);
       if (item.fm.plan_approval?.hash !== hash) item.fm.plan_approval = { hash, by: actor.name, at: this.#now().toISOString() };
       record = item.fm.plan_approval!;
-    }, resumed, undefined, check, () => this.#log({ event: 'task-plan-approved', id: normalizeId(rawId), ...record }), undefined, true), resumed);
+    }, resumed, undefined, check, () => {
+      const id = normalizeId(rawId)!;
+      const event: PlanHistoryEntry = { id: randomUUID(), ts: record.at, event: 'approved', by: record.by };
+      this.#rememberPlanEvent(id, event);
+      this.#log({ event: 'task-plan-approved', id, ...record, ts: event.ts, planHistoryId: event.id });
+    }, undefined, true), resumed);
   }
 
   /** Launch approval is an indexed fact; safe to recheck after every lifecycle await. */
@@ -1031,7 +1067,7 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
-    return {
+    const view: ItemView = {
       ...indexed,
       verdictBase: this.#fresh.base(),
       ...item.fm,
@@ -1044,19 +1080,30 @@ export class Tracker {
       // before showing it, so a following invalid save cannot restore an older version.
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
       ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
-      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item), stages: this.#stagesOf(item) } : {}),
+      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item), stages: this.#stagesOf(item), planHistory: [...(this.#planHistory.get(id) ?? [])] } : {}),
       ...this.#criteriaOf(item),
       ...this.#qaFor(item),
       comments: item.comments,
       verdicts: this.#annotateVerdicts(id, item.fm.kind, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),
     };
+    if (view.kind === 'task') {
+      view.merged = view.state === 'closed' && this.#index.mergeReceipt(id)?.base === 'dev';
+      // Use durable hub write order and normalized writer/claim identity, just as merge does.
+      // A missing or altered recorded comment invalidates the evidence rather than breaking a UI read.
+      try { view.qaSatisfied = qaSatisfied(this.#mergeViewOf(view)); }
+      catch (err) { if (!(err instanceof MergeError)) throw err; view.qaSatisfied = false; }
+    }
+    return view;
   }
 
   #criteriaOf(item: Item): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
     const parsed = parseCriteria(item.body, this.levels.includes(item.fm.kind));
     const branch = isPlanningContainer(item.fm.kind, this.levels) ? 'dev' : item.fm.branch;
-    return { ...parsed, criteria: annotateCriteria(parsed.criteria, this.#fresh.tip(branch)) };
+    // A landed task keeps its final build's marks after its branch is pruned.
+    // Reopened or manually closed tasks without a receipt still use live branch freshness.
+    const receipt = item.fm.kind === 'task' && item.fm.state === 'closed' ? this.#index.mergeReceipt(item.fm.id) : null;
+    return { ...parsed, criteria: annotateCriteria(parsed.criteria, receipt?.tip ?? this.#fresh.tip(branch)) };
   }
 
   #ancestry(item: Item): ItemView['ancestry'] {
@@ -1283,7 +1330,7 @@ export class Tracker {
    * replaced file in place up to the rename. Either is looked for, just before and just after the rename,
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
-  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, planWriter?: Actor): Promise<Item> {
+  async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, planWriter?: Actor, planReason?: string): Promise<Item> {
     this.#normalizeStatus(item);
     const text = serializeItem(item);
     const written = parseItem(text, name, this.levels);
@@ -1306,7 +1353,7 @@ export class Tracker {
       return resumed(() => {
         if (read?.captured) this.#log({ event: 'task-criterion-source', id: read.id, path: read.captured, note: 'retained source protects late saves through an already open editor handle' });
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
-        this.#plansAfterIndex(written, 'hub', planWriter);
+        this.#plansAfterIndex(written, 'hub', planWriter, planReason);
         committed?.();
         this.#changed(written.fm.id);
         if (read && (before !== read.hash || replaced !== read.hash)) {
@@ -1354,7 +1401,7 @@ export class Tracker {
   }
 
   /** Called only with the tracker queue held: always read the latest committed file. */
-  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, skipUnchanged = false): Promise<ItemView> {
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, skipUnchanged = false, planReason?: string): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;
@@ -1377,7 +1424,7 @@ export class Tracker {
         change(item);
         if (skipUnchanged && serializeItem(item) === text) return Promise.resolve(item);
         item.fm.updated = this.#now().toISOString();
-        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename, actor);
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename, actor, planReason);
       });
       result = { written };
     } catch (error) { result = { error }; }

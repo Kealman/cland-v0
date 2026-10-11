@@ -303,7 +303,7 @@ function answer(f: Frame) {
       if (f.op !== 'show') return fail(f.id, 'task.plan op must be set or show');
       const item = scenario.items?.find(i => i.id === f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
-      return ok(f.id, { id: item.id, plan: item.plan ?? null, ...(item.planError ? { planError: item.planError } : {}) });
+      return ok(f.id, { id: item.id, plan: item.plan ?? null, stages: item.stages, approval: item.approval, history: item.planHistory, ...(item.planError ? { planError: item.planError } : {}) });
     }
     case 'task.view': {
       // the whole item: a scenario item may carry `body` and `comments` beside its summary fields

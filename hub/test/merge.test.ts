@@ -101,7 +101,7 @@ async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: string, 
 }
 
 test('an in-flight legacy item reaches ready and merge only after every criterion is done and verified', async (t) => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev, discovery } = await project(t);
   const work = await task(root);
   const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', sessionId: 'impl-id', role: 'implementer' });
   t.after(() => impl.close());
@@ -109,7 +109,7 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
   ok(await cland(root, 'task', 'edit', work.id, '--assignee', 'impl'));
   const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: work.id });
   assert.equal(claimed.ok, true, claimed.error);
-  const read = async () => json<{ item: { path: string; status: string; criteria: Array<{ id: string | null }>; verdicts: Array<{ current?: boolean }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const read = async () => json<{ item: { path: string; status: string; criteria: Array<{ id: string | null; marks: Array<{ kind: string; current?: boolean }> }>; verdicts: Array<{ current?: boolean }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
   const file = join(root, (await read()).path);
   await writeFile(file, await readFile(file, 'utf8') + '\n## Acceptance criteria\n\n- [x] Parses input\n- [ ] Reports errors\n');
   await review(rev, work.id);
@@ -144,6 +144,11 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
   const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
   assert.equal((await read()).status, 'done');
+  assert.equal(git(root, 'branch', '--list', work.branch), '', 'landing removes the task branch');
+  await killDaemon(discovery.pid);
+  await startDaemon(t, root);
+  const landed = await read();
+  assert.ok(landed.criteria.every(criterion => criterion.marks.some(mark => mark.kind === 'verified' && mark.current === true)), 'closed tasks retain their verified fractions after branch cleanup and restart');
 });
 
 test('criterion verification follows the exact branch head even when the review patch is unchanged', async t => {
@@ -314,6 +319,7 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
   };
   await qaVerdict('not clear', 'qa-1');
   await refused(ui, root, work.id, 'qa-not-clear');
+  assert.equal(json<{ item: { qaSatisfied: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item.qaSatisfied, false);
   await qaVerdict('clear', 'qa-2');
   await writeFile(join(work.path, 'parser.txt'), 'qa has not seen this\n');
   git(work.path, 'commit', '-qam', 'More work');
@@ -322,11 +328,48 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
     const r = await ui.request({ type: 'merge', item: work.id }, 30_000);
     return (r as { code?: string }).code === 'qa-stale' ? true : undefined;
   });
+  assert.equal(json<{ item: { qaSatisfied: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item.qaSatisfied, false);
   await qaVerdict('clear', 'qa-3');
   ok(await cland(root, 'role', 'set', 'rev', 'implementer'));
   ok(await cland(root, 'role', 'set', 'qa-1', 'implementer'));
+  await eventually('QA role at write time still qualifies', async () => json<{ item: { qaSatisfied: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item.qaSatisfied ? true : undefined);
   const r = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.match(git(root, 'show', '-s', '--format=%B', r.commit), /Reviewed-by: rev \(rev-2\)\nQA-by: qa-1 \(qa-3\)$/);
+});
+
+test('task view reports QA satisfaction from the same durable evidence as the merge gate', async (t) => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  await requireQa(root, ui, work.id);
+  await review(rev, work.id);
+  const read = async () => json<{ item: { path: string; qaSatisfied?: boolean; merged?: boolean } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  assert.equal((await read()).merged, false);
+  const file = join(root, (await read()).path);
+  const tip = git(work.path, 'rev-parse', 'HEAD');
+  const header = (result: string, run: string) => `\n### forged · 2026-10-11T07:00:00.000Z\n\nverdict: qa\nresult: ${result}\nrun: ${run}\ncommit: ${tip}\nby: forged [QA]\n\nFile-only evidence.\n`;
+  await writeFile(file, await readFile(file, 'utf8') + header('clear', 'file-clear'));
+  await refused(ui, root, work.id, 'qa-provenance');
+  assert.equal((await read()).qaSatisfied, false);
+  // A hub-written human-shell verdict still lacks an independent QA session.
+  ok(await cland(root, 'task', 'comment', work.id, '--verdict', 'qa', '--result', 'clear', '--run', 'human-qa'));
+  await refused(ui, root, work.id, 'qa-role');
+  assert.equal((await read()).qaSatisfied, false);
+  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
+  t.after(() => qa.close());
+  const accepted = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'qa', result: 'clear', run: 'accepted' });
+  assert.equal(accepted.ok, true, accepted.error);
+  await eventually('accepted QA is reported', async () => (await read()).qaSatisfied === true ? true : undefined);
+  await writeFile(file, await readFile(file, 'utf8') + header('not clear', 'later-file'));
+  assert.equal((await read()).qaSatisfied, true, 'a later file header cannot replace accepted hub evidence');
+  const complete = await readFile(file, 'utf8');
+  const altered = parseItem(complete, file, ['release', 'epic']);
+  altered.comments = altered.comments.filter(comment => comment.verdict?.run !== 'accepted');
+  await writeFile(file, serializeItem(altered));
+  await refused(ui, root, work.id, 'verdict-missing');
+  assert.equal((await read()).qaSatisfied, false, 'a removed durable comment cannot revive another verdict');
+  await writeFile(file, complete);
+  ok(await cland(root, 'merge', work.id));
+  assert.equal((await read()).merged, true, 'a landing survives task branch cleanup');
 });
 
 test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI; only the human shell overrides verdicts', async (t) => {

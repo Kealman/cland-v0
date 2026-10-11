@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
-import { spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
 
@@ -283,6 +283,7 @@ test('verdict results are red/green and the registry gi opens a concealed item r
     msg('pass', 'qa', 'qa clear T-58'),
     msg('target', 'coordinator', 'See **T-58**.'),
   ] } });
+  await c.waitScreen(s => s.includes('review not clear T-58'), 'verdict history loaded');
   const marks = await c.lua<Array<{line: string; group: string}>>(`
     local b=vim.fn.bufnr('cland://topic/general')
     local out={}
@@ -551,21 +552,25 @@ test('background fold reconstruction leaves the focused board alone and rejects 
   assert.equal(result.wrong_window, 0, 'fold handlers never execute on a non-thread window');
   assert.ok(result.resets > 0, 'the real-run thread was reset and rebuilt while the board was focused');
   assert.deepEqual(result.after, result.before, 'board folds, cursor, selection, mode and focus survive background reconstruction');
+  const rankRequests = (count: number) => eventually(`${count} board rank requests received`, async () => {
+    const received = await c.control({ requests: true });
+    const ranks = (received.requests as Array<Record<string, unknown>>).filter(frame => frame.type === 'task.rank');
+    return ranks.length >= count ? ranks : undefined;
+  });
   await c.input('T');
-  const received = await c.control({ requests: true });
-  const ranks = (received.requests as Array<Record<string, unknown>>).filter(frame => frame.type === 'task.rank');
+  const ranks = await rankRequests(1);
   assert.equal(ranks[0]?.item, 'T-21', 'board rank key still selects its item after background fold work');
   assert.equal(ranks[0]?.top, true);
   const item = { id: 'T-21', kind: 'task', title: 'Selected', parent: 'T-2', status: 'planned', state: 'open', rank: 20 };
   await c.control({ emit: { type: 'task', id: 'T-21', item, siblings: ['T-21', 'T-14'] } });
   await c.waitScreen(s => /T-21.*next/.test(s), 'rank event moves selected item first');
   await c.input('J');
+  const movedDown = await rankRequests(2);
+  assert.equal(movedDown[1]?.after, 'T-14');
   await c.control({ emit: { type: 'task', id: 'T-21', item, siblings: ['T-14', 'T-21'] } });
   await c.waitScreen(s => /T-14.*next/.test(s), 'rank event moves selected item second');
   await c.input('K');
-  const final = await c.control({ requests: true });
-  const moves = (final.requests as Array<Record<string, unknown>>).filter(frame => frame.type === 'task.rank');
-  assert.equal(moves[1]?.after, 'T-14');
+  const moves = await rankRequests(3);
   assert.equal(moves[2]?.before, 'T-14');
 });
 

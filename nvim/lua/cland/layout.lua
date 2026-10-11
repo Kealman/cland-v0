@@ -382,6 +382,7 @@ function M.show(view, opts)
       table.remove(ui.hist, 1)
     end
   end
+  if view.kind == 'plan' then require('cland.plan').enter(view.id) end
   ui.view = view
   M.apply_view(opts)
   state.changed()
@@ -455,6 +456,7 @@ function M.back()
     return
   end
   table.insert(ui.hist, ui.view)
+  if prev.kind == 'plan' then require('cland.plan').enter(prev.id) end
   ui.view = prev
   M.apply_view({ insert = false })
   state.changed()

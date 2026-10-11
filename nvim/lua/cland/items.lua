@@ -460,9 +460,13 @@ local function row(c, it, depth)
   local kids = #M.children(it.id) > 0
   local container = kids or M.is_container(it)
   local title_hl = it.state == 'closed' and 'ClandDim' or (container and 'ClandBold' or nil)
+  local plan = require('cland.plan')
+  local epic = plan.owner(it.id)
+  local tag = epic and plan.stage_tag(epic, it.id)
+  local changed = epic and plan.changes(epic).items[it.id]
   local fold = container and (M.folded(it) and '▸ ' or '▾ ') or ''
   c:add(
-    { { ' ' .. ('  '):rep(depth) .. fold }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { ' ' .. (it.title or ''), title_hl } },
+    { { ' ' .. ('  '):rep(depth) .. fold }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { tag and (' ' .. tag .. ' ›') or '', 'ClandDim' }, { changed and ' △' or '', 'ClandPlanChange' }, { ' ' .. (it.title or ''), title_hl } },
     right_of(it, container),
     { item = it.id, fold = container and it.id or nil }
   )

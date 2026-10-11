@@ -28,7 +28,7 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
   const session = str(entry.session);
   switch (entry.event) {
     case 'task-plan-changed':
-      return { kind: 'plan', text: `${String(entry.id)}: plan changed by ${String(entry.by)}`, detail: { item: entry.id } };
+      return { kind: 'plan', text: `${String(entry.id)}: plan changed by ${String(entry.by)}${entry.reason ? `: ${String(entry.reason)}` : ''}`, detail: { item: entry.id, by: entry.by, previous: entry.previous, plan: entry.plan, ...(entry.reason ? { reason: entry.reason } : {}) } };
     case 'task-plan-approved':
       return { kind: 'plan', text: `${String(entry.id)}: plan approved by ${String(entry.by)}`, to: ['coordinator'], detail: { item: entry.id } };
     case 'task-plan-refused':

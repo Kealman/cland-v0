@@ -18,6 +18,12 @@ function verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
   return v;
 }
 
+/** Whether the item's independent, current QA evidence qualifies, apart from criteria and review. */
+export function qaSatisfied(view: ItemView): boolean {
+  try { verdict(view, 'qa'); return true; }
+  catch (err) { if (err instanceof MergeError) return false; throw err; }
+}
+
 export function incompleteCriteria(view: ItemView): string[] {
   const missingIds = (view.qaCriteria ?? []).filter(id => !view.criteria.some(c => c.id === id)).map(id => `${id}: QA criterion is missing`);
   return [...missingIds, ...view.criteria.flatMap(c => {
