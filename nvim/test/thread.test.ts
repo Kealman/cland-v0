@@ -506,6 +506,20 @@ test('background fold reconstruction leaves the focused board alone and rejects 
   ], rankEvents: 'manual' }, 'UTC', false);
   await c.input('<Esc><Space>i');
   await c.waitScreen(s => s.includes('Selected'), 'board rows');
+  // Board data and topic history arrive independently. Yield between RPC reads
+  // until navigation and the real thread's fold setup have both completed.
+  await eventually('items panel and thread folds ready', async () => await c.lua<boolean>(`
+    local api=vim.api
+    local layout=require('cland.layout')
+    local thread=require('cland.views').topic('general').thread
+    local centre=layout.centre()
+    return layout.win.left~=nil and api.nvim_win_is_valid(layout.win.left)
+      and vim.b[api.nvim_win_get_buf(layout.win.left)].cland_role=='items'
+      and api.nvim_get_mode().mode=='n'
+      and thread.by_id['agent-a']~=nil and thread.by_id['agent-b']~=nil
+      and centre~=nil and api.nvim_win_is_valid(centre)
+      and api.nvim_win_get_buf(centre)==thread.buf and thread.fold_ready[centre]==true
+  `) ? true : undefined, 10_000);
   const result = await c.lua<{ before: unknown; after: unknown; wrong_window: number; resets: number }>(`
     local api=vim.api
     local thread=require('cland.views').topic('general').thread

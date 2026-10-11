@@ -528,8 +528,13 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   assert.deepEqual(qa2.thread, { approvalPolicy: 'on-request', permissions: 'cland' });
   assert.deepEqual(qa2.overrides, qaProfile);
 
+  // This case exercises relaunch policy, so await the hub's acknowledged stop
+  // rather than racing its background detection of an externally killed PID.
   await presentAs(ui, 'qa-1', 'idle');
-  await killDaemon(qa.launched.pid as number);
+  const stoppedQa = await ui.request({ type: 'session.stop', session: 'qa-1' }, 15_000);
+  assert.equal(stoppedQa.ok, true, stoppedQa.error);
+  assert.equal((stoppedQa.value as { process: Harness }).process.status, 'stopped');
+  assert.equal(pidAlive(qa.launched.pid as number), false);
   await eventually('qa-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'qa-1')?.state === 'unknown' ? true : undefined));
   const relaunched = await ui.request({ type: 'session.resume', session: 'qa-1', relaunch: true }, 30_000);
   assert.equal(relaunched.ok, true, relaunched.error);
@@ -540,7 +545,10 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
 
   // the Implementer's configured profile still grants the main worktree and both git directories
   await presentAs(ui, 'impl-1', 'idle');
-  await killDaemon(impl.launched.pid as number);
+  const stoppedImpl = await ui.request({ type: 'session.stop', session: 'impl-1' }, 15_000);
+  assert.equal(stoppedImpl.ok, true, stoppedImpl.error);
+  assert.equal((stoppedImpl.value as { process: Harness }).process.status, 'stopped');
+  assert.equal(pidAlive(impl.launched.pid as number), false);
   await eventually('impl-1 is seen gone', async () => ((await status(ui)).harnesses.find((h) => h.name === 'impl-1')?.state === 'unknown' ? true : undefined));
   const implAgain = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
   assert.equal(implAgain.ok, true, implAgain.error);

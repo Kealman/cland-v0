@@ -85,13 +85,16 @@ test('non-table crew values are refused and cannot replace the last good staffin
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 3 })).ok, true);
+  await eventually('last good staffing published', () => ui.frames.find(f => f.type === 'crew' && (f.config as CrewConfig)?.crew.reviewer?.size === 3));
   const path = join(root, '.cland/crew.toml');
   // smol-toml represents dates and times as objects; arrays are objects as well.
   for (const value of ['1979-05-27', '1979-05-27T07:32:00Z', '1979-05-27T07:32:00', '07:32:00', '[]', '[{}]']) {
     for (const text of [`crew = ${value}\n`, `[crew]\nreviewer = ${value}\n`]) {
       const previous = ui.frames.length;
       await writeFile(path, text);
-      await eventually('reload observed', () => ui.frames.slice(previous).find(f => f.type === 'crew' || (f.type === 'message' && String((f.message as { text?: string })?.text).includes('crew refused'))));
+      // A crew event may still be arriving from the preceding valid set. Only
+      // the refusal notice proves this invalid hand edit has been processed.
+      await eventually('invalid source refused', () => ui.frames.slice(previous).find(f => f.type === 'message' && String((f.message as { text?: string })?.text).includes('crew refused')));
       const show = await ui.request({ type: 'crew.show' });
       assert.equal((show.value as View).config.crew.reviewer!.size, 3, `invalid source replaced the last good crew: ${text}`);
       assert.ok(ui.frames.slice(previous).some(f => f.type === 'message' && String((f.message as { text?: string })?.text).includes('crew refused')), 'broken source emits a refusal notice');
