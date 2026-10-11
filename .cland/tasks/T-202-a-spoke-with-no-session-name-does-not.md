@@ -9,12 +9,12 @@ labels:
   - low
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: T-229
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T17:49:31.970Z
-updated: 2026-10-11T06:35:54.795Z
+updated: 2026-10-11T17:48:37.028Z
 ---
 
 ## What to build

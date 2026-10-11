@@ -22,7 +22,7 @@ subagents = false
 
 [crew.reviewer]
 policy = "pool"
-size = 1
+size = 2
 keep_context = true
 stop_after = "never"
 subagents = false

@@ -9,12 +9,12 @@ labels:
   - tech-debt
   - low
 assignee: null
-parent: T-216
+parent: T-230
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T09:22:48.031Z
-updated: 2026-10-11T15:30:42.072Z
+updated: 2026-10-11T17:48:38.235Z
 ---
 
 ## What happened

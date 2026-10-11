@@ -8,12 +8,12 @@ labels:
   - tech-debt
   - ready-for-agent
 assignee: null
-parent: T-216
+parent: T-230
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T05:55:12.001Z
-updated: 2026-10-11T07:33:10.348Z
+updated: 2026-10-11T17:48:37.989Z
 ---
 
 ## What to build
