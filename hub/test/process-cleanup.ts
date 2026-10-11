@@ -162,9 +162,20 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
     const wholeGroup = !protectedGroups.has(row.group) && leader !== undefined && verified(leader) && members.every(verified);
     report(`cleanup pid ${row.pid}: ${row.command}`);
     try {
-      if (wholeGroup) { process.kill(-row.group, 'SIGKILL'); groups.add(row.group); }
+      // A group is attempted once even when kill reports that it vanished. Its other
+      // captured members cannot establish ownership for a later replacement group.
+      if (wholeGroup) { groups.add(row.group); process.kill(-row.group, 'SIGKILL'); }
       else process.kill(row.pid, 'SIGKILL');
-    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ESRCH') continue;
+      if (code !== 'EPERM') throw error;
+      // macOS can report EPERM when a group/child is reaped between ps and kill. Do not
+      // hide a permission failure for a live captured identity, or retry a replacement PID.
+      const signalled = wholeGroup ? targets.filter(target => target.group === row.group) : [row];
+      const remaining = processes().filter(current => signalled.some(target => current.pid === target.pid && current.started === target.started));
+      if (remaining.length > 0) throw error;
+    }
   }
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {

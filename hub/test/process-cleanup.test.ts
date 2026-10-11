@@ -91,3 +91,45 @@ const runner = captureProcess(420009); const child = captureProcess(420010);
 rows[0].started = 'Tue Oct 6 12:00:00 2026';
 await cleanupProcesses(undefined, child ? [child] : [], () => {}, 'owned-run', runner ? [runner] : []);`), []);
 });
+
+test('cleanup tolerates EPERM only after the signalled identity is confirmed gone', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420011, parent: 1, group: 420011, started: start, command: 'node ' + root + '/owned.mjs', runId: 'owned-run' }];
+cwd = 'p420011\\nn' + root + '\\n';
+process.kill = (pid, signal) => { signals.push({ pid, signal }); rows = []; const e = new Error('reaped'); e.code = 'EPERM'; throw e; };
+await cleanupProcesses(root);`), [{ pid: -420011, signal: 'SIGKILL' }]);
+});
+
+test('cleanup does not swallow EPERM for an owned identity that remains live', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420012, parent: 1, group: 420012, started: start, command: 'node ' + root + '/owned.mjs', runId: 'owned-run' }];
+cwd = 'p420012\\nn' + root + '\\n';
+process.kill = () => { const e = new Error('live permission error'); e.code = 'EPERM'; throw e; };
+let refused = false;
+try { await cleanupProcesses(root); } catch (e) { refused = e.code === 'EPERM'; }
+if (!refused) throw new Error('a live owned identity must fail cleanup');`), []);
+});
+
+test('cleanup preserves a replacement identity after EPERM', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420013, parent: 1, group: 420013, started: start, command: 'node ' + root + '/owned.mjs', runId: 'owned-run' }];
+cwd = 'p420013\\nn' + root + '\\n';
+process.kill = (pid, signal) => { signals.push({ pid, signal }); rows[0].started = 'Tue Oct 6 12:00:00 2026'; const e = new Error('reused'); e.code = 'EPERM'; throw e; };
+await cleanupProcesses(root);`), [{ pid: -420013, signal: 'SIGKILL' }]);
+});
+
+test('cleanup settles an EPERM group before visiting its other captured members', () => {
+  assert.deepEqual(probe(`
+rows = [
+ { pid: 420014, parent: 1, group: 420014, started: start, command: 'node ' + root + '/owned.mjs', runId: 'owned-run' },
+ { pid: 420015, parent: 420014, group: 420014, started: start, command: 'child', runId: 'owned-run' }
+];
+cwd = 'p420014\\nn' + root + '\\np420015\\nn' + root + '\\n';
+process.kill = (pid, signal) => {
+ signals.push({ pid, signal });
+ for (const row of rows) row.started = 'Tue Oct 6 12:00:00 2026';
+ const e = new Error('group replaced'); e.code = 'EPERM'; throw e;
+};
+await cleanupProcesses(root);
+if (rows.length !== 2) throw new Error('replacement members must be preserved');`), [{ pid: -420014, signal: 'SIGKILL' }]);
+});

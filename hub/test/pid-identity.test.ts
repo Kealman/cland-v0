@@ -70,15 +70,22 @@ test('Codex: after a crash and a hub restart, neither resume, relaunch nor stop 
   assert.equal(pidAlive(other), true, 'resume at start left the bystander alone');
   const relaunched = await ui2.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);
   assert.equal(relaunched.ok, true, relaunched.error);
-  await sleep(200);
+  await eventually('relaunched session idle', async () => ((await harness(ui2, 'impl-1'))?.state === 'idle' ? true : undefined));
   assert.equal(pidAlive(other), true, 'the relaunch left the bystander alone');
 
   // the relaunched app-server's pid goes to the bystander too: stop refuses to signal it
-  const fresh = (await harness(ui2, 'impl-1'))?.pid as number;
+  const fresh = (relaunched.value as { process: Harness }).process.pid as number;
   t.after(() => killDaemon(fresh));
   reusePid(root, 'impl-1', other);
-  await ui2.request({ type: 'session.stop', session: 'impl-1' }, 15_000);
-  await sleep(200);
+  // Wait for the refusal itself; OS inspection and lifecycle settlement are not a 15s latency contract.
+  const stopped = ui2.request({ type: 'session.stop', session: 'impl-1' }, 30_000);
+  const [result] = await Promise.all([stopped, eventually('stop refused the reused PID', async () => {
+    await ui2.request({ type: 'hub.status', flushLogs: true });
+    const records = (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line) as { event: string; pid?: number; session?: string });
+    return records.some(record => record.event === 'signal-refused' && record.pid === other && record.session === 'impl-1') ? true : undefined;
+  }, 30_000)]);
+  assert.equal(result.ok, false, 'a running row with a reused PID refuses stop');
+
   assert.equal(pidAlive(other), true, 'stop left the bystander alone');
   assert.match(await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'), /"event":"signal-refused","pid":\d+/);
 });

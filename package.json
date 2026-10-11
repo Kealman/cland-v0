@@ -15,6 +15,7 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspace hub && tsc -p nvim/tsconfig.json",
     "test": "node hub/test/run-suite.ts all",
-    "test:nvim": "node hub/test/run-suite.ts nvim"
+    "test:nvim": "node hub/test/run-suite.ts nvim",
+    "benchmark:thread": "CLAND_RENDER_BENCHMARK=1 node --test --test-name-pattern='200 message rewrites' nvim/test/thread.test.ts"
   }
 }

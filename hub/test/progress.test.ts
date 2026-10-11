@@ -37,8 +37,11 @@ test('progress stays queued and reaches the spoke in one ordered digest with the
   const digest = await receiver.waitForEvent(e => e.params.content.includes('finished'));
   assert.match(digest.params.content, /first note[\s\S]*second note[\s\S]*third note[\s\S]*finished/);
   assert.equal(receiver.events.slice(mark).length, 1);
-  const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-  const messages = (history.value as { messages: Array<{ text: string; kind?: string; stage?: string }> }).messages;
+  const messages = await eventually('progress digest acknowledged by the spoke', async () => {
+    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+    const messages = (history.value as { messages: Array<{ text: string; kind?: string; stage?: string }> }).messages;
+    return ['first note', 'second note', 'third note', 'finished'].every(text => messages.some(m => m.text === text && m.stage === 'delivered')) ? messages : undefined;
+  });
   assert.equal(messages.find(m => m.text === 'finished')?.kind, 'report');
   for (const text of ['first note', 'second note', 'third note']) assert.equal(messages.find(m => m.text === text)?.stage, 'delivered');
   for (const kind of ['question', 'decision']) {

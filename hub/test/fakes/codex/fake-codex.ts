@@ -291,6 +291,8 @@ async function appServer(args: string[]): Promise<number> {
     const record: TurnRecord = { id: turnId, status: 'inProgress', items: [] };
     (t.history ??= []).push(record);
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
+      // Consumption receipts separate real harness inputs from RPC admission/debug echoes.
+      appendFileSync(join(HOME, 'log', `${process.pid}.inputs.jsonl`), `${JSON.stringify({ turnId, text: item.text })}\n`);
       log(`turn ${turnId} item: ${item.text}`);
       // as the real one: an input the turn takes up becomes an item of the turn, and is announced; a tool output is a
       // functionCallOutput (measured with 0.160.0, T-68), text input a userMessage

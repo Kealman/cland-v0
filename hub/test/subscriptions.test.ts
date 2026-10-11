@@ -283,7 +283,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     t.after(() => killDaemon(p.pid));
     if (harness !== 'codex') await clauseAnswered(ui, 'coord');
     const idle = () => eventually('coord idle', async () => {
-      const result = await ui.request({ type: 'hub.status' });
+      const result = await ui.request({ type: 'hub.status', flushLogs: true });
       return (result.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') || undefined;
     });
     await idle();
@@ -294,7 +294,12 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
     const item = (made.value as { item: { id: string } }).item;
     const subscribed = await clandWithEnv(root, env, 'subscribe', 'item', item.id, '--event', 'task', '--as', 'coord', '--json');
     assert.equal(subscribed.code, 0, subscribed.stderr);
-    const inputLog = () => readFile(harness === 'claude-code' ? join(home, 'jobs', `${p.harnessId}.log`) : harness === 'codex' ? join(home, 'log', `${p.pid}.log`) : join(home, 'prompts', `${p.harnessSessionId}.log`), 'utf8').catch(() => '');
+    const inputLog = async () => {
+      const log = await readFile(harness === 'claude-code' ? join(home, 'jobs', `${p.harnessId}.log`) : harness === 'codex' ? join(home, 'log', `${p.pid}.inputs.jsonl`) : join(home, 'prompts', `${p.harnessSessionId}.log`), 'utf8').catch(() => '');
+      // Codex logs a steer both at RPC admission and when the turn consumes it. Count
+      // consumption receipts so a busy turn's diagnostic echo cannot become a third input.
+      return harness === 'codex' ? log.split('\n').filter(Boolean).map(line => (JSON.parse(line) as { text: string }).text).join('\n') : log;
+    };
     for (const restart of [false, true]) {
       const prefix = restart ? 'durable' : 'initial';
       await sender.call('send', { to: ['coord'], text: `${prefix} progress before`, kind: 'progress' });
@@ -327,6 +332,11 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
       assert.ok(before < event && event < after && after < end);
       const id = (recorded.message as Message).id;
       await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+      await eventually('every mixed digest member injected', async () => {
+        const result = await ui.request({ type: 'topic.history', topic: 'agents' });
+        const messages = (result.value as { messages: Array<{ text: string; stage?: string }> }).messages;
+        return [`${prefix} progress before`, eventText, `${prefix} progress after`, report].every(text => messages.some(message => message.text === text && message.stage === 'injected')) || undefined;
+      });
       await idle();
       assert.equal((await inputLog()).split('Turn digest (3 entries, oldest first):').length - 1, restart ? 2 : 1);
       assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);

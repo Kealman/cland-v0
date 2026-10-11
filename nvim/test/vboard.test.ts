@@ -154,6 +154,8 @@ test('the board shows hub sections, epic rank, status glyphs, verdicts, criteria
 });
 
 async function select(c: Awaited<ReturnType<typeof start>>, id: string) {
+  // Connected precedes the items snapshot and its render. Select only once that row exists.
+  await c.waitScreen(screen => screen.split('\n').some(line => line.includes(' ' + id + ' ')), 'rendered item row ' + id);
   await c.lua(`local id=...; local b=require('cland.panels').buf('items'); local w=vim.fn.bufwinid(b); vim.api.nvim_set_current_win(w); for i, line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if line:find(' '..id..' ',1,true) then vim.api.nvim_win_set_cursor(w,{i,0}); return end end; error('no row '..id)`, id);
 }
 test('T, K and J send rank operations; only task events and final siblings reorder and move next', { skip }, async t => {

@@ -204,7 +204,7 @@ test('doctor reports a hub whose project was deleted; --fix ends it while preser
   const env = { CLAND_TEST_ORPHAN_ROOT: scope };
   const { discovery } = await startDaemon(t, removed);
   const live = await startDaemon(t, root);
-  await rm(removed, { recursive: true, force: true });
+  await rm(removed, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   await sleep(100);
   const readOnly = await clandWithEnv(root, env, 'doctor', '--json');
   const check = (JSON.parse(readOnly.stdout) as { checks: Array<{ name: string; detail: string; fix?: string }> }).checks.find(c => c.name === 'orphan hub' && c.detail.includes(String(discovery.pid)));
@@ -441,7 +441,7 @@ test('doctor --fix lets a foreground hub for a deleted project stop cleanly with
     const discovery = JSON.parse(await readFile(join(removed, '.cland', 'hub.json'), 'utf8')) as { pid: number };
     return discovery.pid === child.pid ? true : undefined;
   });
-  await rm(removed, { recursive: true });
+  await rm(removed, { recursive: true, maxRetries: 10, retryDelay: 50 });
   const fixed = await clandWithEnv(root, { CLAND_TEST_ORPHAN_ROOT: scope }, 'doctor', '--fix', '--json');
   assert.match(fixed.stdout, new RegExp(`ended pid ${child.pid}`));
   const result = await exited.promise;

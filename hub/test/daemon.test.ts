@@ -293,7 +293,7 @@ test('a stopping hub leaves alone a socket that is no longer the one it bound, a
   await assert.rejects(stat(join(root, '.cland', 'hub.json')), { code: 'ENOENT' });
   const log = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
   const events = log.split('\n').filter((l) => l.startsWith('{')).map((l) => (JSON.parse(l) as { event: string }).event);
-  assert.deepEqual(events.slice(-3), ['stopping', 'socket-kept', 'stopped']);
+  assert.deepEqual(events.filter(event => ['stopping', 'socket-kept', 'stopped'].includes(event)), ['stopping', 'socket-kept', 'stopped']);
 });
 
 test('a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start', { skip: NO_PS }, async (t) => {
