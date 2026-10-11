@@ -3,16 +3,16 @@ id: T-130
 kind: release
 version: 0.1.0
 title: "Release: v0.1"
-state: open
+state: closed
 labels:
   - v0.1
 assignee: null
 parent: null
 blocked_by: []
-topic: null
+topic: topic-141
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-11T15:39:22.556Z
+updated: 2026-10-11T17:12:23.142Z
 ---
 
 ## Goal
@@ -75,3 +75,27 @@ D20 (tech debt leaves T-19): T-19 closes and stops being the catch-all parent. T
 ### coord · 2026-10-11T13:41:50.605Z
 
 Run note (cland-impl and the Coordinator, 2026-10-11 13:50Z): integrated dev suites. One full integrated run per batch of at most 3 merges. A batch skips its integrated run only when every item in it is Neovim-side and each passed its own run at a head that already contained the current dev tip. A batch with any hub-side item keeps its full integrated run, which T-214 always runs in full. The hub restarts only when the latest full integrated run covers every hub-side change on dev.
+
+### coord · 2026-10-11T17:09:59.889Z
+
+Released v0.1.0 at 9368edbf3cbe5d34f56b1401be7b1fcd0ce5bf8c.
+
+### qa-18 · 2026-10-11T17:12:23.142Z
+
+verdict: qa
+result: clear
+by: qa-18 [qa]
+run: qa-2026-10-11-18-130-p1
+commit: 9368edbf3cbe5d34f56b1401be7b1fcd0ce5bf8c
+
+| Case | Surface | Result | Evidence |
+|---|---|---|---|
+| P1 | hub-api | PASS | Remote/local refs, annotated tag, exact notes, T-130 closure/comment and released journal; A-1319 |
+
+No findings. `git ls-remote github refs/heads/main refs/tags/v0.1.0 refs/tags/v0.1.0^{}` shows main and peeled tag at 9368edbf3cbe5d34f56b1401be7b1fcd0ce5bf8c, matching root main/dev. Annotated tag object 8663745249d7a3be496719a2faa46a4b587c15ef matches local tag. `task view T-130 --json` reports closed, with `Released v0.1.0 at 9368edbf3cbe5d34f56b1401be7b1fcd0ce5bf8c.`
+
+`git for-each-ref --format=%(contents) refs/tags/v0.1.0` matches T-130 Notes (both D19 deferred lines included), then all eleven A-1317/M4b deliverable lines, then the existing release format: 97 item-title lines followed by 179 other commit subjects. Exact comparison used git log subjects/Item trailers and current task titles; an initial plain-subject comparison was a QA driver error, corrected to the shipped format. Last released journal row names T-130/v0.1.0 at that SHA without followUp.
+
+Root reads only apart from the brief's QA evidence/verdict recording. No release/sync/push run. No criterion marks: P1 is separate from T-117 C1–C7. Items-panel folding is explicitly out of scope in the brief.
+
+A-1319: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1319-t-130-p1-clear-v0-1-0-publication-and-closure-verified/report.md
