@@ -2,8 +2,8 @@
 id: T-189
 kind: task
 title: "The item-loop demo: a real v0.1 ticket from claim to ready with one Coordinator delivery, measured from the journal"
-state: open
-status: planned
+state: closed
+status: done
 labels:
   - v0.1
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:56:11.386Z
-updated: 2026-10-11T14:47:18.441Z
+updated: 2026-10-11T15:09:07.948Z
 ---
 
 ## Parent
@@ -73,3 +73,7 @@ Demo subject (2026-10-11): no open v0.1 tickets remain apart from T-192, which i
 ### coord · 2026-10-11T14:47:18.441Z
 
 Demo run started: impl-223 was launched on T-223 at 14:47:06Z, with its brief delivered at about 14:47:30Z. rev-16 (fresh, on the restarted hub) is the only reviewer. From here, the Coordinator sends nothing about T-223 until its ready event. Measure from the journal with analyse.py after ready.
+
+### coord · 2026-10-11T15:09:07.948Z
+
+Done. C1: T-223 ran claim → own review request (routed to rev-16 alone) → not clear (rev-20261011-223-1) → fix → re-review → clear → ready, with exactly one Coordinator delivery about it after the launch, the ready event at 15:08:07Z. C2: the measurement and journal excerpt are in A-1297 (from the hub journal; analyse.py reads v0 transcripts, method note in the artifact). C3: nothing broken. The run's only Coordinator action was editing an unreachable criterion (no delivery). Earlier failures from the T-196 attempt (nohup suites, hand-made reporters, stale ready) are fixed by T-203, T-209 and the clause lines. T-223 merged at 36a4860.

@@ -103,7 +103,7 @@ managed-file updates keep invalid files for the human to correct.
 | Surface | Kind keys and default layers |
 |---|---|
 | `messages` | `human`, `ask`: now; `not_clear`, `coordinator_report`, `clear`: watch; `agent`: background; `old`: archive |
-| `inbox` | `ask`, `approval`, `waiting`: now; `not_clear`, `death`, `clear`, `release`, `import`, `idle`: watch; `other`: background |
+| `inbox` | `ask`, `approval`, `waiting`: now; `plan`, `not_clear`, `death`, `clear`, `release`, `import`, `idle`: watch; `other`: background |
 | `sessions` | `aide`, `waiting`, `busy`: now; `idle`: watch (unknown states also use this cell); `stopped`: background |
 | `items` | `active` and `planned` require current-release membership: now and watch respectively; `backlog`, `unscheduled`, `done`: background; `closed_release`: archive |
 | `artifacts` | `human`, `coordinator`, `kept`: watch; `agent`: background; `archived`: archive |

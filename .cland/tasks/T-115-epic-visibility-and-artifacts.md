@@ -3,6 +3,7 @@ id: T-115
 kind: epic
 title: "Epic: Visibility and artifacts"
 state: open
+criterion_seq: 9
 labels:
   - epic
   - v0.1
@@ -12,10 +13,10 @@ parent: T-130
 blocked_by:
   - T-110
   - T-109
-topic: null
+topic: topic-136
 branch: null
 created: 2026-10-09T21:51:34.527Z
-updated: 2026-10-10T16:43:27.313Z
+updated: 2026-10-11T15:15:57.536Z
 ---
 
 ## Goal
@@ -46,15 +47,24 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 The human starts the day. The inbox shows an ask and a not-clear verdict on top, the clear verdicts under watch, and no agent bookkeeping; the sessions panel folds the stopped sessions; the items panel shows the release's work with backlog and done folded. They mute a noisy item topic and pin a Reviewer. In the Artifacts browser they create a folder "v0.2 notes", add files over two days and attach it to a message with `s`. An agent's report artifact disappears after the retention period unless it was kept; the human's folder never does.
 
-- [ ] One classifier places every message, inbox event, session, item and artifact by the default table and `[visibility]`.
-- [ ] Each surface shows now and watch, folds background behind a count, and reaches archive only on an action; the inbox never shows background.
-- [ ] Pins and mutes on topics, sessions and artifacts persist in `.cland/ui.json`.
-- [ ] Messages older than 7 days leave the thread until the human asks for them.
-- [ ] A folder artifact has one id and an entry file, and its files are listed on request.
-- [ ] The human's and Aides' artifacts are never archived or deleted automatically; `kept` exempts an agent's artifact from the sweep and raises it to watch.
-- [ ] `artifact.keep`, `artifact.move`, `artifact.archive` and the `cland artifact` commands work; agents cannot change the human's or an Aide's artifacts.
-- [ ] The Artifacts browser has the sections and keys of §3.6, and saving a buffer saves the artifact.
-- [ ] `hub/README.md` and `nvim/README.md` describe the layers, the overrides and the artifacts.
+- [ ] C1. One classifier places every message, inbox event, session, item and artifact by the default table and `[visibility]`.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:34.780Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C2. Each surface shows now and watch, folds background behind a count, and reaches archive only on an action; the inbox never shows background.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:34.944Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C3. Pins and mutes on topics, sessions and artifacts persist in `.cland/ui.json`.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.099Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C4. Messages older than 7 days leave the thread until the human asks for them.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.253Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C5. A folder artifact has one id and an entry file, and its files are listed on request.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.427Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C6. The human's and Aides' artifacts are never archived or deleted automatically; `kept` exempts an agent's artifact from the sweep and raises it to watch.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.603Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C7. `artifact.keep`, `artifact.move`, `artifact.archive` and the `cland artifact` commands work; agents cannot change the human's or an Aide's artifacts.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.769Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C8. The Artifacts browser has the sections and keys of §3.6, and saving a buffer saves the artifact.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.960Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+- [ ] C9. `hub/README.md` and `nvim/README.md` describe the layers, the overrides and the artifacts.
+  - failed: qa-18 [qa] · 2026-10-11T15:15:57.535Z · note M19-AIDE: nvim/README.md:56 says stopped Aides fold, but they remain Now under STOPPED.
 
 ## Dogfooding
 
@@ -78,3 +88,61 @@ From this epic on, the human's inbox holds only what needs them during the rest 
 - GLOSSARY: Layer, Artifact, Aide, Topic, Agents topic.
 - ADRs: `docs/adr/0005-neovim-is-the-host.md`, `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - Mockups: `docs/design/main-screen/Inbox.dc.html`, `Thread.dc.html`, `SessionsPanel.dc.html`, `ItemsBoard.dc.html`, `Palette.dc.html`.
+
+## Comments
+
+### qa-18 · 2026-10-11T15:15:57.536Z
+
+verdict: qa
+result: not clear
+by: qa-18 [qa]
+run: qa-2026-10-11-18
+commit: 36a4860b4e5b56e785b933a40702b3ede50ba53f
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| M0 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M0.log) |
+| M1 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M1.log) |
+| M2 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M2.log) |
+| M3 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M3.log) |
+| M4 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M4.log) |
+| M5 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M5.log) |
+| M6 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M6.log) |
+| M7 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M7.log) |
+| M8 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M8.log) |
+| M9 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M9.log) |
+| M10 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M10.log) |
+| M11 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M11.log) |
+| M12 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M12.log) |
+| M13 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M13.log) |
+| M14 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M14.log) |
+| M15 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M15.log) |
+| M16 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M16.log) |
+| M17 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M17.log) |
+| M18 | PASS | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M18.log) |
+| M19 | FAIL (supplement below) | [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M19.log) |
+| M19-AIDE | FAIL | [screen](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M19-AIDE-stopped-aide.screen.txt), [command log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/M19-AIDE.log) |
+| D1–D3 | BLOCKED, deferred under D19 | Two-day/daily-timer behavior, real agents, human visual judgement |
+
+**Low — C9, M19-AIDE, nvim/README.md:56.** The sentence “Stopped Aides join the stopped fold” contradicts current behavior. In the scratch project, `cland session stop aide-1` followed by `cland session list --json` shows `status: stopped, layer: now`. The headless sessions panel displays NOW → STOPPED · 1 → aide-1, outside `more (2)`. This agrees with the classifier's aide-before-stopped precedence. The supplemental check supersedes the initial M19 PASS note. No product fix was made.
+
+**Low — M19, docs/visibility.md:105.** The default table omits `inbox.plan`, which `hub/src/hub/visibility.ts:10` defines as watch. This reference file is outside C9's two README files.
+
+**Brief corrections / observations:**
+- M6's `more (3)` accurately includes two background epics plus the done task; the brief expected 1. The background filter includes all three containers.
+- M9 requires a fixture close override because the scratch epic has no QA verdict. The Coordinator authorized the human-only override; it only established a closed parent for the test. Both post-close UI expectations passed.
+- M11's moved id disappears from ordinary lists; opening it returns a resolved shared artifact with `movedTo`. The brief's moved status describes the underlying source index, not resolved open output.
+- M11 promotion leaves preexisting init-generated files untracked too; the index and HEAD were unchanged.
+- M17 inherited an explicitly open Archive from M15. `zR` preserved that choice; `A` hid the deleted entries.
+- M3's warning-dismissal notice is visually shortened to an ellipsis at 160 columns. Warnings remain intact, as required; targeted layer tests pass.
+
+**Validation:** all 62 tests passed across the brief's ten serial targeted invocations, with zero failures, skips or cancellations. Raw logs retain every passing test name. M0–M18 product checks passed. All 11 child items and T-109/T-110 were closed; T-130 is a release. The requested known README fixes are present.
+
+**Build provenance:** run began at `2d231f9d3404929a0550cf7aef7521d6cdcc941c`. Dev moved during evidence collection to `36a4860b4e5b56e785b933a40702b3ede50ba53f`. Verified delta: only `nvim/test/plan.test.ts`, T-223 readiness waits, 15 insertions and 2 deletions; this test is excluded by the brief. No product source changed. The Coordinator explicitly authorized continuing and recording at the new tip. Logs retain the SHA at recording time; product evidence spans both identical product builds.
+
+**Verdict:** not clear, run `qa-2026-10-11-18`, commit `36a4860b4e5b56e785b933a40702b3ede50ba53f`. Verify C1–C8 through separate structured criterion marks; fail C9 for the stopped-Aide README contradiction. D1–D3 are deferred to v0.1.1 under D19 and do not independently block this verdict.
+
+
+Evidence artifact A-1298: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/report.md
+
+Criteria: C9 failed (M19-AIDE: nvim/README.md:56 says stopped Aides fold, but they remain Now under STOPPED.).
