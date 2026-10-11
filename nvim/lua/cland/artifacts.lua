@@ -13,7 +13,7 @@ end
 
 function M.mark(a)
   if a.fileDeleted then return 'file deleted' end
-  if a.promoted then return 'promoted: ' .. a.promoted end
+  if a.promoted then return 'promoted: ' .. a.promoted .. ' · ' .. a.status end
   return a.status
 end
 
@@ -78,6 +78,7 @@ function M.setup(client)
     client:snapshot({ type = 'artifact.list' }, function(err, value, events)
       if err then return state.say('artifacts: ' .. err, 'ClandRedBar') end
       M.entries = value.artifacts or {}
+      require('cland.artifact_browser').invalidate()
       replay(events)
       -- Absorbed ids are absent from the ordinary list. Open buffers still own those ids:
       -- resolve them after reconnect before their next save can recreate the obsolete path.
@@ -100,6 +101,7 @@ function M.setup(client)
   client:on('connected', load)
   client:on('artifact', function(e)
     upsert(e.artifact)
+    require('cland.artifact_browser').refresh(e.artifact.id)
     state.changed()
   end)
   client:on('message', function(e)
@@ -140,53 +142,51 @@ function M.external(a)
   local ext = entry_path(a):match('%.([^%.]+)$') or ''
   return browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft')
 end
-function M.open(value)
+function M.open(value, file)
   local a = type(value) == 'table' and (M.get(value.id) or value) or M.get(value)
   if not a then return state.say('no such artifact', 'ClandRedBar') end
   a = M.get(a.id) or a
   if a.fileDeleted then return state.say('artifact: file deleted', 'ClandRedBar') end
   upsert(a)
-  if M.external(a) then return browser(entry_path(a)) end
-  require('cland.layout').show({ kind = 'artifact', id = a.id }, { insert = false })
+  local target = file and vim.tbl_extend('force', a, { folder = false, path = a.path .. '/' .. file }) or a
+  if M.external(target) then return browser(entry_path(target)) end
+  require('cland.layout').show({ kind = 'artifact', id = a.id, file = file }, { insert = false })
 end
 
-function M.buffer(id)
+function M.buffer(id, file)
   local a = M.get(id)
-  local b = M.bufs[id]
-  if b and api.nvim_buf_is_valid(b) then rebind(id); return b end
-  local draft = a and a.kind == 'prompt' and a.status == 'draft'
-  if draft then
-    b = vim.fn.bufadd(entry_path(a))
-    vim.fn.bufload(b)
-  else
-    b = api.nvim_create_buf(false, true)
-  end
-  M.bufs[id] = b
+  M.file_bufs = M.file_bufs or {}
+  local cache = file and M.file_bufs or M.bufs
+  local key = file and (id .. '/' .. file) or id
+  local b = cache[key]
+  if b and api.nvim_buf_is_valid(b) then if not file then rebind(id) end; return b end
+  local path = file and (a.path .. '/' .. file) or entry_path(a)
+  b = vim.fn.bufadd(path)
+  vim.fn.bufload(b)
+  cache[key] = b
   vim.bo[b].bufhidden = 'hide'
-  if not draft then
-    local ok, lines = pcall(vim.fn.readfile, a and entry_path(a) or '')
-    api.nvim_buf_set_lines(b, 0, -1, false, ok and lines or { 'Cannot read artifact: ' .. tostring(lines) })
-  end
-  local ext = a and (entry_path(a):match('%.([^%.]+)$') or ''):lower() or ''
+  local ext = (path:match('%.([^%.]+)$') or ''):lower()
   vim.bo[b].filetype = ({ mmd = 'mermaid', mermaid = 'mermaid', md = 'markdown', markdown = 'markdown' })[ext] or 'text'
-  vim.bo[b].readonly = not draft
-  vim.bo[b].modifiable = draft
-  if draft then
-    if vim.fn.getfsize(entry_path(a)) == 0 then vim.bo[b].endofline = false end
-    vim.bo[b].fixendofline = false
-    vim.bo[b].swapfile = false
-    vim.bo[b].modified = false
-  end
+  vim.bo[b].readonly = false
+  vim.bo[b].modifiable = true
+  if vim.fn.getfsize(path) == 0 then vim.bo[b].endofline = false end
+  vim.bo[b].fixendofline = false
+  vim.bo[b].swapfile = false
   vim.b[b].cland_role = 'artifact'
   vim.b[b].cland_artifact = id
-  if a and not draft then pcall(api.nvim_buf_set_name, b, entry_path(a)) end
-  if draft then
+  vim.b[b].cland_file = file
+  if a.kind == 'prompt' and a.status == 'draft' and not file then
     require('cland.actions').map('n', '<leader>ps', function() M.send_prompt(false) end, { buffer = b, desc = 'send prompt' })
     require('cland.actions').map('n', '<leader>pa', function() M.send_prompt(true) end, { buffer = b, desc = 'attach prompt' })
   end
-  require('cland.actions').map('n', 'q', require('cland.layout').back, { buffer = b })
+  require('cland.actions').map('n', 'q', function()
+    require('cland.artifact_browser').refresh(id)
+    require('cland.layout').back()
+  end, { buffer = b })
   if vim.bo[b].filetype == 'mermaid' then
-    require('cland.actions').map('n', 'R', function() M.preview(a) end, { buffer = b, desc = 'render Mermaid in browser' })
+    require('cland.actions').map('n', 'R', function()
+      M.preview(file and vim.tbl_extend('force', a, {folder=false, path=path}) or a)
+    end, { buffer = b, desc = 'render Mermaid in browser' })
   end
   return b
 end
@@ -225,41 +225,7 @@ function M.send_prompt(attach)
 end
 
 function M.list_buffer(topic)
-  local b = M.lists[topic]
-  if not (b and api.nvim_buf_is_valid(b)) then
-    b = api.nvim_create_buf(false, true)
-    M.lists[topic] = b
-    vim.bo[b].bufhidden = 'hide'
-    vim.b[b].cland_role = 'artifacts'
-    vim.b[b].cland_topic = topic
-    require('cland.actions').map('n', '<CR>', function()
-      local a = M.all(topic)[api.nvim_win_get_cursor(0)[1]]
-      if a then M.open(a) end
-    end, { buffer = b })
-    require('cland.actions').map('n', 'q', require('cland.layout').back, { buffer = b })
-    require('cland.actions').map('n', 'p', function()
-      local a = M.all(topic)[api.nvim_win_get_cursor(0)[1]]
-      if not a then return end
-      if a.fileDeleted or a.promoted then return state.say(M.mark(a), 'ClandRedBar') end
-      vim.ui.input({ prompt = 'Promote to project path: ' }, function(path)
-        if not path or path == '' then return end
-        M.client:request({ type = 'artifact.promote', artifact = a.id, path = path }, function(err, value)
-          if err then return state.say('promote: ' .. err, 'ClandRedBar') end
-          upsert(value.artifact)
-          state.changed()
-          if value.followUp then state.say('Artifact promoted; notification failed: ' .. value.followUp.error, 'ClandRedBar') end
-        end)
-      end)
-    end, { buffer = b, desc = 'promote artifact into project' })
-  end
-  local lines = {}
-  for _, a in ipairs(M.all(topic)) do
-    lines[#lines + 1] = ' ▣ ' .. a.id .. ' ' .. a.kind .. ' · ' .. a.title .. '  ' .. a.creator .. ' · ' .. M.mark(a) .. ' · ' .. a.time
-  end
-  vim.bo[b].modifiable = true
-  api.nvim_buf_set_lines(b, 0, -1, false, #lines > 0 and lines or { ' No artifacts shared in this topic yet.' })
-  vim.bo[b].modifiable = false
-  return b
+  return require('cland.artifact_browser').buffer(topic)
 end
 
 return M

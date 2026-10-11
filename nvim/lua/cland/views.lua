@@ -176,7 +176,7 @@ end
 function M.placeholder(v)
   if v.kind == 'plan' and v.id then return require('cland.plan').render(v.id) end
   if v.kind == 'artifact' then
-    return require('cland.artifacts').buffer(v.id)
+    return require('cland.artifacts').buffer(v.id, v.file)
   elseif v.kind == 'artifacts' then
     return require('cland.artifacts').list_buffer(v.id)
   elseif v.kind == 'item' and v.id then
@@ -215,7 +215,7 @@ end
 function M.render_placeholder(v)
   if v.kind == 'plan' and v.id then return require('cland.plan').render(v.id) end
   if v.kind == 'artifact' then
-    return require('cland.artifacts').buffer(v.id)
+    return require('cland.artifacts').buffer(v.id, v.file)
   elseif v.kind == 'artifacts' then
     return require('cland.artifacts').list_buffer(v.id)
   elseif v.kind == 'item' and v.id then

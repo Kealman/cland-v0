@@ -327,13 +327,13 @@ function M.winbar(win)
     local n = state.needs_you()
     return head(win, 'INBOX', n == nil and {} or { n > 0 and { n .. ' need you', 'ClandAmberBar' } or { 'nothing needs you', 'ClandGreenBar' } })
   elseif role == 'artifacts' then
-    return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open · q back', 'ClandDimBar' } })
+    return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open/fold · n new · s attach · q back', 'ClandDimBar' } })
   elseif role == 'artifact' then
     local a = require('cland.artifacts').get(vim.b[buf].cland_artifact)
     if a and a.kind == 'prompt' and a.status == 'draft' then
       return head(win, a.id .. ' · draft', { { ':w saves · ␣ps send · ␣pa attach · q back', 'ClandDimBar' } })
     end
-    return head(win, tostring(vim.b[buf].cland_artifact), { { 'read-only · R render Mermaid · q back', 'ClandDimBar' } })
+    return head(win, tostring(vim.b[buf].cland_artifact), { { ':w saves · R render Mermaid · q back', 'ClandDimBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)
     local marks = M.thread_marks(t)
@@ -347,8 +347,10 @@ function M.winbar(win)
     if answering then
       return head(win, 'answer to: ' .. answering.question, { { 'Enter sends the answer', 'ClandAmberBar' } })
     end
+    local attached = tv and tv.composer.attachments or {}
+    local attachments = #attached > 0 and ('attached: ' .. table.concat(attached, ', ') .. ' · :Cland attachments clear · ') or ''
     local coord = state.coordinator()
-    return head(win, 'to: Coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues it)'), { { 'Enter sends · S-Enter newline', 'ClandDimBar' } })
+    return head(win, 'to: Coordinator' .. (coord and (' (' .. coord.name .. ')') or ' (vacant: the hub queues it)'), { { attachments .. 'Enter sends · S-Enter newline', 'ClandDimBar' } })
   elseif role == 'session' then
     local name = vim.b[buf].cland_session
     local s = state.session(name)

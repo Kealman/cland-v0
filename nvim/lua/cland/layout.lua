@@ -272,7 +272,7 @@ end
 -- Centre views -------------------------------------------------------------------------------------
 
 local function same(a, b)
-  return a and b and a.kind == b.kind and a.id == b.id
+  return a and b and a.kind == b.kind and a.id == b.id and a.file == b.file
 end
 
 local function centre_opts(w, kind)

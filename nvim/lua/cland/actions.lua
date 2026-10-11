@@ -92,7 +92,11 @@ group('graph', {{'p','Next graph parent'}, {'P','Previous graph parent'}, {'d','
   {'gg','First graph layer or buffer start'}, {'G','Last graph layer or buffer end'}, {'<CR>','Open graph node item'}})
 group('artifact', {{'<leader>ps','Send prompt draft'}, {'<leader>pa','Attach prompt draft'},
   {'q','Previous centre view'}, {'R','Render Mermaid in browser'}})
-group('artifacts', {{'<CR>','Open selected artifact'}, {'q','Previous centre view'}, {'p','Promote selected artifact to repository'}})
+group('artifacts', {{'<CR>','Open file or fold folder/section'}, {'q','Previous centre view'},
+  {'n','Create file or folder'}, {'m','Move file into folder'}, {'s','Attach artifact to composer'},
+  {'p','Promote selected artifact to repository'}, {'k','Keep or unkeep artifact'}, {'d','Archive artifact'},
+  {'za','Toggle artifact fold'}, {'zo','Open artifact fold'}, {'zc','Close artifact fold'},
+  {'zR','Open background sections'}, {'zM','Fold background sections'}, {'A','Show or hide archived artifacts'}})
 group('help', {{'q','Close keys'}, {'<Esc>','Close keys'}})
 group('capabilities', {{'q','Close capabilities'}, {'<Esc>','Close capabilities'}, {'c','Close capabilities'}})
 group('palette', {{'<CR>','Run or open palette selection'}, {'<C-v>','Open palette selection in split'},
@@ -286,6 +290,11 @@ command('topic new', 'New topic', function(args)
 end, 'topics:n')
 command('topic close', 'Close this topic', function(args) views().close_topic(args[1]) end, 'topics:c')
 command('topic resolve', 'Resolve this topic', function(args) views().resolve_topic(args[1]) end, 'global:<leader>r')
+command('attachments clear', 'Clear staged artifacts (retain draft text)', function()
+  local topic = views().current_topic()
+  if not topic or topic == 'agents' then return require('cland.state').say('open a topic composer to clear attachments', 'ClandRedBar') end
+  views().topic(topic).composer:clear_attachments()
+end)
 command('prompt', 'Draft a prompt', function(args) require('cland.artifacts').prompt(table.concat(args,' ')) end, 'global:<leader>P')
 command('prompt send', 'Send prompt draft', function() require('cland.artifacts').send_prompt(false) end, 'artifact:<leader>ps')
 command('prompt attach', 'Attach prompt draft', function() require('cland.artifacts').send_prompt(true) end, 'artifact:<leader>pa')

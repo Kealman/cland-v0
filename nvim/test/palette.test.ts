@@ -307,7 +307,7 @@ test('session, topic and text-artifact selections open in splits and receive liv
   await c.input('<Space>aA-1<C-v>');
   await c.waitScreen(s => s.includes('# Split artifact'), 'text artifact split');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'general');
-  assert.equal(await c.lua('return vim.bo.readonly'), true);
+  assert.equal(await c.lua('return vim.bo.readonly'), false);
 });
 
 test('later modules register stable action ids and keys; unkeyed preset commands say no key', { skip }, async t => {

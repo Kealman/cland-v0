@@ -14,7 +14,7 @@ function M.new(client, topic)
   view.thread = Thread.new(topic)
   view.composer = Composer.new({
     topic = topic,
-    send = function(text, done)
+    send = function(text, done, attachments)
       if not client:connected() then
         view.thread:set_notice('not sent: ' .. (client.detail or 'the hub is not connected'), 'ClandRed')
         return done('not connected')
@@ -33,7 +33,7 @@ function M.new(client, topic)
           done(err)
         end)
       end
-      client:request({ type = 'topic.send', topic = topic.id, text = text }, function(err)
+      client:request({ type = 'topic.send', topic = topic.id, text = text, artifacts = #attachments > 0 and attachments or nil }, function(err)
         if err then
           view.thread:set_notice('not sent: ' .. err, 'ClandRed')
         end

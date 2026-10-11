@@ -67,14 +67,16 @@ test('Coordinator artifacts in Agents open from the log and its topic list', { s
   await c.lua(`local b = require('cland.agents_log').buf; for i,l in ipairs(vim.api.nvim_buf_get_lines(b, 0, -1, false)) do if l:find('▣') then vim.api.nvim_set_current_win(require('cland.layout').centre()); vim.api.nvim_win_set_cursor(0, {i,0}); break end end`);
   await c.input('<CR>');
   await c.waitScreen((s) => s.includes('# Shared plan'), 'Agents artifact source');
-  assert.deepEqual(await c.lua('return { vim.bo.filetype, vim.bo.readonly, vim.bo.modifiable }'), ['markdown', true, false]);
+  assert.deepEqual(await c.lua('return { vim.bo.filetype, vim.bo.readonly, vim.bo.modifiable }'), ['markdown', false, true]);
   await c.input('qga');
+  await c.input('zR');
   await c.waitScreen((s) => s.includes('ARTIFACTS') && s.includes('A-1 note · Plan') && s.includes('coord') && s.includes('shared'), 'Agents artifact list');
-  await c.input('gg<CR>');
+  await c.lua("for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('A%-1 ') then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
+  await c.input('<CR>');
   await c.waitScreen((s) => s.includes('# Shared plan'), 'source from Agents list');
 });
 
-test('artifact chip opens Mermaid source read-only and the browser renderer, topic list and picker open artifacts', { skip }, async (t) => {
+test('artifact chip opens editable Mermaid source and the browser renderer, topic list and picker open artifacts', { skip }, async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root);
   const create = await cland(root, 'artifact', 'create', '--kind', 'diagram', '--title', 'Merge flow', '--content', 'graph TD\n A-->B', '--topic', 'general', '--json');
@@ -89,7 +91,7 @@ test('artifact chip opens Mermaid source read-only and the browser renderer, top
   await c.lua(`local tv = require('cland.views').topic('general'); for i,l in ipairs(vim.api.nvim_buf_get_lines(tv.thread.buf, 0, -1, false)) do if l:find('▣') then vim.api.nvim_set_current_win(require('cland.layout').centre()); vim.api.nvim_win_set_cursor(0, {i,0}); break end end`);
   await c.input('<CR>');
   await c.waitScreen((s) => s.includes('graph TD'), 'Mermaid source');
-  assert.deepEqual(await c.lua('return { vim.bo.filetype, vim.bo.readonly, vim.bo.modifiable }'), ['mermaid', true, false]);
+  assert.deepEqual(await c.lua('return { vim.bo.filetype, vim.bo.readonly, vim.bo.modifiable }'), ['mermaid', false, true]);
   await c.input('R');
   const renderPath = await eventually('Mermaid browser opener', async () => (await readFile(opened, 'utf8').catch(() => '')).trim() || undefined);
   const rendered = await readFile(renderPath, 'utf8');
@@ -100,7 +102,8 @@ test('artifact chip opens Mermaid source read-only and the browser renderer, top
   await c.input('<Space><Space>');
   await c.input('ga');
   await c.waitScreen((s) => s.includes('ARTIFACTS') && s.includes('A-1 diagram · Merge flow') && s.includes('human') && s.includes('shared'), 'topic artifact list');
-  await c.input('gg<CR>');
+  await c.lua("for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('A%-1 ') then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
+  await c.input('<CR>');
   await c.waitScreen((s) => s.includes('graph TD'), 'source from list');
   await c.input('<Space>a');
   await c.waitScreen((s) => s.includes('palette ›') && s.includes('A-1 diagram · Merge flow'), 'artifacts picker');
@@ -159,7 +162,8 @@ test('p in a topic artifact list promotes it and updates the list and picker mar
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
   await c.input('ga');
   await c.waitScreen(s => s.includes('ARTIFACTS') && s.includes(a.id), 'artifact list');
-  await c.input('ggp');
+  await c.lua("for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('A%-1 ') then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
+  await c.input('p');
   await c.waitScreen(s => s.includes('Promote to project path'), 'promote prompt');
   await c.input('docs/keep.md<CR>');
   await c.waitScreen(s => s.includes('promoted: docs/keep.md'), 'promoted list mark');
@@ -182,8 +186,11 @@ test('topic lists follow archive events and lists and pickers mark retained entr
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='artifacts', id=${JSON.stringify(topic)}}, {insert=false})`);
+  await c.input('zR');
   await c.waitScreen(s => s.includes(a.id) && s.includes('shared'), 'shared artifact mark');
   await ui.request({ type: 'topic.close', topic });
+  await c.waitScreen(s => s.includes('Archived (1)') && !s.includes(a.id + ' note'), 'artifact leaves live sections');
+  await c.input('A');
   await c.waitScreen(s => s.includes(a.id) && s.includes('archived'), 'live archived artifact mark');
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await startDaemon(t, root);

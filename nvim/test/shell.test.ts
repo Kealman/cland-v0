@@ -1818,7 +1818,10 @@ test('overlapping delayed panel snapshots keep topic, session, artifact and inbo
   assert.deepEqual(data.asks, []);
   assert.equal(data.needs_you, 0);
   await c.input(':Cland view artifacts general<CR>');
-  const artifacts = await c.waitScreen((x) => x.includes('ARTIFACTS'), 'artifact list');
+  const folded = await c.waitScreen((x) => x.includes('ARTIFACTS'), 'artifact list');
+  assert.ok(!folded.includes('Live artifact'), 'archived artifacts stay folded until explicitly revealed');
+  await c.input('A');
+  const artifacts = await c.waitScreen((x) => x.includes('Live artifact'), 'archived artifact');
   assert.ok(artifacts.includes('archived'), 'the late artifact list keeps the event metadata');
   assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"), 0);
 });

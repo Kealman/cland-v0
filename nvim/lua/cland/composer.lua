@@ -22,7 +22,7 @@ function M.new(opts)
   pcall(api.nvim_buf_set_name, buf, 'cland://composer/' .. opts.topic.id)
   vim.b[buf].cland_role = 'composer'
   vim.b[buf].cland_topic = opts.topic.id
-  local self = setmetatable({ topic = opts.topic, buf = buf, send = opts.send }, Composer)
+  local self = setmetatable({ topic = opts.topic, buf = buf, send = opts.send, attachments = {} }, Composer)
   vim.fn.prompt_setprompt(buf, M.PROMPT)
   vim.fn.prompt_setcallback(buf, function(text)
     self:_submit(text)
@@ -51,6 +51,10 @@ function Composer:placeholder()
   end
   local hint = self.answering and ('Your answer to: ' .. self.answering.question .. '  Enter sends it as the answer')
     or ('Message ' .. self.topic.title .. '…  Enter sends · Shift+Enter newline')
+  if #self.attachments > 0 then
+    local label = self.answering and 'pending for next message: ' or 'attached: '
+    hint = label .. table.concat(self.attachments, ', ') .. ' · :Cland attachments clear · ' .. hint
+  end
   pcall(api.nvim_buf_set_extmark, buf, ns, 0, #M.PROMPT, { virt_text = { { hint, 'ClandFaint' } }, virt_text_pos = 'inline' })
 end
 
@@ -90,6 +94,25 @@ function Composer:restore(text)
   self:set_text(vim.trim(now) == '' and text or (text .. '\n' .. now))
 end
 
+-- Restoring an earlier send is independent of the guard on newly staged artifacts.
+function Composer:restore_attachments(ids)
+  for _, id in ipairs(ids) do
+    if not vim.tbl_contains(self.attachments, id) then self.attachments[#self.attachments + 1] = id end
+  end
+  self:placeholder()
+end
+
+function Composer:attach(id)
+  if self.answering then return require('cland.state').say('send artifacts in a message after answering the ask', 'ClandRedBar') end
+  self:restore_attachments({ id })
+end
+
+function Composer:clear_attachments()
+  self.attachments = {}
+  self:placeholder()
+  require('cland.state').say('attachments cleared; draft text retained')
+end
+
 function Composer:_submit(text)
   -- after the callback the prompt buffer holds the submitted lines and a fresh prompt line: free it now
   vim.schedule(function()
@@ -103,11 +126,17 @@ function Composer:_submit(text)
     end
     self:placeholder()
     if text and vim.trim(text) ~= '' then
+      -- An ask answer has no artifact field. Keep staged message attachments for
+      -- the next ordinary message, including when the answer is refused.
+      local attachments = self.answering and {} or self.attachments
+      if not self.answering then self.attachments = {} end
+      self:placeholder()
       self.send(text, function(err)
         if err then
+          self:restore_attachments(attachments)
           self:restore(text)
         end
-      end)
+      end, attachments)
     end
   end)
 end

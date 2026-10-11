@@ -1,6 +1,6 @@
 # nvim
 
-The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. The session launcher and the sessions panel are #28; the items panel, the item view and the board are #36. The Agents log is #34, the inbox and the ask cards #33. Shared artifacts open from topic chips, per-topic lists and the palette.
+The Neovim side of cland: the standalone start and the Lua UI (spec `docs/spec/v0.md`, sections 4.1 and 5; ADR 0005): the workbench shell (#25) around the topic threads of #23. The session launcher and the sessions panel are #28; the items panel, the item view and the board are #36. The Agents log is #34, the inbox and the ask cards #33. Shared artifacts open from topic chips, the Artifacts browser and the palette.
 
 ## Starting it
 
@@ -408,11 +408,11 @@ The binary comes from `CLAND_NVIM`, else the cache (a linked git worktree with n
 
 ## Shared artifacts
 
-Topic messages with artifacts show a chip such as `▣ A-3 diagram · Merge flow`. Put the cursor on it and press Enter to open it. Markdown opens as a read-only buffer; Mermaid opens as source with the `mermaid` filetype (decision D12). Press `R` in a Mermaid buffer to open a generated browser page using Mermaid 11.4.1 with strict security. That preview needs browser access to the pinned CDN module. Press `q` or `␣␣` to return to the previous centre view.
+Topic messages with artifacts show a chip such as `▣ A-3 diagram · Merge flow`. Put the cursor on it and press Enter to open it. Markdown and Mermaid open in normal editable buffers; `:w` saves their durable artifact files. Mermaid uses the `mermaid` filetype (decision D12). Press `R` in a Mermaid buffer to open a generated browser page using Mermaid 11.4.1 with strict security. That preview needs browser access to the pinned CDN module. Press `q` or `␣␣` to return to the previous centre view.
 
 HTML, SVG, PNG, PDF and other common images open through the system opener (`open` on macOS, `xdg-open` elsewhere). `CLAND_OPENER` can name a replacement executable; it receives the absolute file path as its single argument, including for Mermaid previews. Tests use this to record opening without launching a browser.
 
-The thread header counts the topic's artifacts. Press `ga` in the thread for its artifact list, with id, kind, title, creator, status and time; Enter opens the selected row and `q` returns. The Agents log also counts artifacts and supports Enter on a chip and `ga` for its list. `:Cland view artifacts <topic>` opens that list directly. `␣a` opens the palette with `~`; Tab cycles to topics, all kinds, actions, items, sessions and artifacts. Artifacts from the current topic appear first. Type an id, kind or title to filter, then Enter to open.
+The thread header counts the topic's artifacts. Press `ga` in the thread for the Artifacts browser with Mine, This topic, Kept, By role and Archived sections; Enter opens a file or toggles a folder/section and `q` returns. The Agents log also counts artifacts and supports Enter on a chip and `ga` for the browser. `:Cland view artifacts <topic>` opens the browser directly. `␣a` opens the palette with `~`; Tab cycles to topics, all kinds, actions, items, sessions and artifacts. Artifacts from the current topic appear first. Type an id, kind or title to filter, then Enter to open.
 
 
 ## Prompt drafts
@@ -509,7 +509,7 @@ The centre reads the accepted plan through `task.plan show`. Its header shows th
 `d` opens the epic's topic (creating a bound topic if needed) and prepares an `@lead T-<epic>` discussion in its composer; Enter sends it. Existing draft text is retained. `e` opens the epic's source file at `## Plan`, validated by the hub on save. `a` requests `task.plan` with `op: approve` and never records local approval. The card follows the hub's pending, approved or not-required state, including the approver and time; with human approval required the hub holds launches until approval. A refused request stays visible without changing the card.
 
 
-Folder artifacts open their entry file from their chip or the artifact picker. An absorbed file disappears from ordinary lists, and its old chip still opens that file inside the destination folder. An open draft moved while disconnected resolves its cached id on reconnect and preserves unsaved text at the new save path. Human and Aide artifacts survive topic closure and retention; kept agent artifacts also survive. These storage tools are exposed by the hub; the dedicated Artifacts browser and CLI commands are covered by their own slices.
+Folder artifacts open their entry file from their chip or the artifact picker. An absorbed file disappears from ordinary lists, and its old chip still opens that file inside the destination folder. An open draft moved while disconnected resolves its cached id on reconnect and preserves unsaved text at the new save path. Human and Aide artifacts survive topic closure and retention; kept agent artifacts also survive. These storage tools are exposed by the hub; the Artifacts browser below uses the same storage tools, and `cland artifact` provides shell access.
 
 With `[plan] approval = "human"`, the `gp` plan card shows “awaiting your approval”. Press `a` to approve through the real hub; it refreshes to the approver and time. A revised accepted plan returns to pending approval. With the default `"none"`, the card shows that approval is not required.
 
@@ -520,3 +520,46 @@ Accepted plan notices carry the author, previous/current plan and an optional re
 A plan restored by `:restart` counts as a new visit and records the last look after its history arrives; routine redraws keep later changes outstanding.
 
 T-191's `test/layers.test.ts` exercises inbox Now/Watch ordering, bookkeeping in Agents, explicit archive access in both inbox views, all session fold keys, project layer overrides and cursor tracking across live layer changes through stub-hub frames and headless Neovim. Existing inbox action and session QA cases cover answering, dismissal and attachment with the layered display.
+
+
+## Artifacts browser (T-195)
+
+Open the centre browser with `ga` in a thread or the Agents log, or
+`:Cland view artifacts <topic-id>`. It shows Mine (the human's and Aides', folders
+first), This topic, Kept, By role (Coordinator, Implementers, Reviewers, QA and
+Other), and Archived. An artifact can appear in several sections. The hub's
+`layer` decides which entries are background or archive: background entries in
+the first three sections sit behind `more (N)`, the role sections start folded for background artifacts (now/watch entries open their role),
+and Archived opens only on an explicit action. Live changes retain the selected
+artifact when it remains visible.
+
+| Key | Action |
+| --- | --- |
+| Enter | Open a file, or unfold/fold a folder or section. Folder children are listed by the hub on demand. |
+| `n` | Create a file or folder: choose `file`/`folder`, a kind (`prompt`, `note`, `page`, `diagram`, `file`), then a title. On a folder or its child, enter a new filename instead; this creates a file inside the folder without another artifact id. |
+| `m` | Move a file artifact into a chosen folder. The old id redirects to its new path. Folder moves are refused. |
+| `s` | Attach an available, unarchived artifact from this topic to its composer, retaining any draft text. For an artifact from another topic, open that topic first; keep archived artifacts before attaching. A child attaches its folder. Enter sends the message with the artifact id; a refused send restores both text and attachments. Attachments already staged before answering an ask remain pending for the next ordinary message. Agents has no writable composer. |
+| `p` | Promote the selected file or folder artifact into a project-relative destination. |
+| `k` | Keep/unkeep the artifact. Keeping raises it to watch and exempts it from retention. |
+| `d` | Archive the artifact; human and Aide bytes remain available. |
+| `za` / `zo` / `zc` | Toggle/open/close the selected folder or section. |
+| `zR` / `zM` | Open background sections / close all folds. `zR` leaves archive closed. |
+| `A` | Show/hide Archived. |
+| `q` | Return to the previous centre view. |
+
+`x` deletion and confirmation are deferred to T-219 and are not bound yet.
+`␣a` and the palette's `~` prefix continue to open artifacts quickly.
+Text artifacts and folder files use normal editable buffers: `:w` saves directly
+to the durable artifact path, and `q` returns to the browser with edits retained.
+Images, PDFs, HTML and SVG previews keep their system opener; Mermaid source is
+editable and `R` renders its saved bytes. Prompt drafts retain `␣ps` / `␣pa`.
+If a staged artifact becomes unavailable, `:Cland attachments clear` removes staged ids while retaining draft text, so a refused message can be retried. The command is also available in the palette.
+The browser coalesces folder refreshes beyond the hub's 250 ms repeated-read
+window, because a local file save does not update the hub index.
+
+For the folder demo, open the browser, use `n` to make a `folder`, kind `note`,
+title `v0.2 notes`, then Enter on its row. Press `n` on the folder to make
+`ideas.md`, edit and `:w`, and `q` back. Repeat for `release.md`. Press `s` on
+the folder, write a message and Enter. `test/artifact-browser.test.ts` exercises
+this demo against a real hub and headless Neovim, plus folds, keep/unkeep, move,
+promotion, archive and retrying an attachment after a refused send.
