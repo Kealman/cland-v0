@@ -1,12 +1,13 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive } from './harness.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { ownProcess } from './process-cleanup.ts';
+import type { Artifact } from '../src/protocol.ts';
 
 type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
 async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '') {
@@ -168,6 +169,50 @@ test('a muted named recipient keeps the single result pending across restart unt
   assert.equal((history.value as { messages: ResultMessage[] }).messages.filter(m => m.id === `suite:${job.id}`).length, 1);
   const artifacts = await ui.request({ type: 'artifact.list', topic: f.topic });
   assert.equal((artifacts.value as { artifacts: unknown[] }).artifacts.length, 1);
+});
+
+test('a muted suite report follows its moved log after unmute and publishes once', async t => {
+  const f = await fixture(t, 'node -e "console.log(\'ℹ tests 1\\nℹ pass 1\\nℹ fail 0\')"', undefined, '[hygiene]\nloop_breaker_max = 2\n');
+  for (let n = 0; n < 3; n++) await f.spoke.call('send', { to: ['rev'], topic: f.topic, text: `seed ${n}` });
+  const job = await f.launch();
+  await eventually('suite report paused after log registration', async () => {
+    const status = await f.ui.request({ type: 'hub.status' });
+    const record = (status.value as { suites: Array<{ reported: boolean; error: string | null }> }).suites[0]!;
+    return !record.reported && record.error?.includes('loop breaker') ? true : undefined;
+  });
+  assert.equal((await f.results()).length, 0);
+  const listed = await f.ui.request({ type: 'artifact.list', topic: f.topic });
+  assert.equal(listed.ok, true, listed.error);
+  const logs = (listed.value as { artifacts: Artifact[] }).artifacts;
+  assert.equal(logs.length, 1, 'the pending report has registered one log');
+  const log = logs[0]!;
+  const original = await readFile(log.path, 'utf8');
+  const created = await f.ui.request({ type: 'artifact.create', kind: 'file', title: 'Suite logs', topic: f.topic, folder: true });
+  assert.equal(created.ok, true, created.error);
+  const folder = (created.value as { artifact: Artifact }).artifact;
+  const moved = await f.ui.request({ type: 'artifact.move', artifact: log.id, folder: folder.id, name: 'suite.log' });
+  assert.equal(moved.ok, true, moved.error);
+  const path = join(folder.path, 'suite.log');
+  assert.equal(await readFile(path, 'utf8'), original);
+  await assert.rejects(stat(log.path), { code: 'ENOENT' });
+  assert.equal((await f.ui.request({ type: 'hygiene.unmute', a: 'impl', b: 'rev' })).ok, true);
+  const result = await eventually('suite publication with moved log', async () => (await f.results())[0]);
+  assert.equal(result.id, `suite:${job.id}`);
+  assert.deepEqual(result.to.sort(), ['impl', 'rev']);
+  assert.match(result.text, /all exit 0/);
+  assert.match(result.text, /tests 1; pass 1; fail 0/);
+  assert.ok(result.text.includes(`Log ${log.id}: ${path}`));
+  assert.equal(result.artifacts.length, 1);
+  assert.equal(result.artifacts[0]!.id, log.id);
+  assert.equal(result.artifacts[0]!.path, path);
+  assert.equal(await readFile(result.artifacts[0]!.path, 'utf8'), original);
+  await eventually('suite report receipt settled', async () => {
+    const status = await f.ui.request({ type: 'hub.status' });
+    return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(record => record.reported) ? true : undefined;
+  });
+  assert.equal((await f.results()).length, 1);
+  const artifacts = await f.ui.request({ type: 'artifact.list', topic: f.topic });
+  assert.equal((artifacts.value as { artifacts: Artifact[] }).artifacts.length, 1, 'only the destination folder is listed; no replacement log was created');
 });
 
 test('failure cleanup preserves a live worker whose recorded start identity is unavailable', async t => {

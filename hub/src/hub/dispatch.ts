@@ -519,7 +519,7 @@ export class Dispatcher {
       const result = await operation as { id: string };
       artifactId = result.id; checkpointArtifact(artifactId);
     }
-    const artifact = core.store.artifact(artifactId);
+    const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');
     const log = await readFile(artifact.path, 'utf8');
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
