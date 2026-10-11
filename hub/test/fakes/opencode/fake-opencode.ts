@@ -30,9 +30,11 @@
 //
 // State lives under FAKE_OPENCODE_HOME: sessions/<ses>.json (shared by every server, like OpenCode's database),
 // servers/<pid>.json (the live servers, for the tests' cleanup), prompts/<ses>.log (each prompt and its delivery).
+// Recovery probes: hold-session publishes session-running and waits for release-session;
+// fail-session refuses creation without ending the server.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { appendFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -278,6 +280,11 @@ async function serve(args: string[]): Promise<number> {
       if (url.pathname === '/api/session/active' && method === 'GET') return send(res, 200, { data: Object.fromEntries([...runs.keys()].map((id) => [id, { type: 'running' }])) });
       if (url.pathname === '/api/session' && method === 'GET') return send(res, 200, { data: readdirSync(SESSIONS).map((f) => readJson<SessionInfo>(join(SESSIONS, f))).filter(Boolean), cursor: {} });
       if (url.pathname === '/api/session' && method === 'POST') {
+        if (existsSync(join(HOME, 'hold-session'))) {
+          writeFileSync(join(HOME, 'session-running'), 'ready');
+          while (!existsSync(join(HOME, 'release-session'))) await sleep(5);
+        }
+        if (existsSync(join(HOME, 'fail-session'))) return send(res, 500, { message: 'planted session creation failure' });
         await sleep(Number(process.env.FAKE_OPENCODE_SESSION_DELAY_MS ?? 0));
         const body = await readBody(req);
         const id = typeof body.id === 'string' ? body.id : rid('ses');

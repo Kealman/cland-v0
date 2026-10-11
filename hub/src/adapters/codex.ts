@@ -325,7 +325,7 @@ export class CodexAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: CodexOptions = {}) {
     this.#host = host;
-    this.#recoveries = new FailedLaunches(host.log);
+    this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
     this.#bin = options.bin ?? process.env.CLAND_CODEX_BIN ?? 'codex';
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;

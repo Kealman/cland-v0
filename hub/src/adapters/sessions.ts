@@ -25,6 +25,7 @@ import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText } from '../roles/clause.ts';
 import { systemProcesses } from '../system-processes.ts';
+import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
@@ -37,9 +38,9 @@ export class InvalidLaunchCwd extends Error {}
 
 type LaunchOwnership = { name: string; prior: string | null; existingIds: Set<string>; sessionIds: Set<string>; anonymousSessionId: string | null; returnedId: string | null };
 
-function launchIdentityRefusal(launch: LaunchOwnership, id: string): string | null {
+function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: Set<string>): string | null {
   if (id === UNKNOWN_SESSION) return `launch "${launch.name}" must prove a stable session identity, not unknown`;
-  return launch.existingIds.has(id) ? `launch "${launch.name}" cannot prove pre-existing session identity (${id}); use the launch's new identity` : null;
+  return launch.existingIds.has(id) || (currentIds.has(id) && !launch.sessionIds.has(id)) ? `launch "${launch.name}" cannot prove pre-existing session identity (${id}); use the launch's new identity` : null;
 }
 
 export type SessionsOptions = {
@@ -90,6 +91,7 @@ export class Sessions {
   #closed = false;
   #resuming = 0;
   readonly #pendingStops = new Map<string, PendingStop>();
+  readonly #recoveryObservers = new Map<string, () => void>();
   readonly #stoppingLaunches = new Set<string>();
   #stopRetry: ReturnType<typeof setInterval> | null = null;
   readonly #lifecycle = new Map<string, Promise<void>>();
@@ -146,6 +148,17 @@ export class Sessions {
 
   #inflightHasSession(id: string): boolean { return [...this.#inflight.keys()].some(key => key.startsWith(`${id}:`)); }
 
+  #knownLaunchIds(): Set<string> {
+    const ids = this.#core.sessionIds();
+    for (const process of this.#table.all()) ids.add(process.sessionId);
+    for (const entry of this.#pendingStops.values()) {
+      ids.add(entry.process.sessionId);
+      for (const id of entry.ownership?.sessionIds ?? []) ids.add(id);
+    }
+    ids.delete(UNKNOWN_SESSION);
+    return ids;
+  }
+
   async stopAfterMerge(item: string, resumed: Resumed): Promise<void> {
     const candidates = resumed(() => this.#table.running());
     for (const p of candidates) {
@@ -198,7 +211,7 @@ export class Sessions {
       const launch = this.#launchIdentities.get(credential);
       if (launch) {
         const proven = id === UNKNOWN_SESSION ? launch.anonymousSessionId ?? launch.returnedId ?? randomUUID() : id;
-        const refusal = launchIdentityRefusal(launch, proven);
+        const refusal = launchIdentityRefusal(launch, proven, this.#knownLaunchIds());
         if (refusal) return { refusal };
         return { name: launch.name, sessionId: proven, prove: () => {
           if (id === UNKNOWN_SESSION) launch.anonymousSessionId ??= proven;
@@ -282,6 +295,7 @@ export class Sessions {
     return {
       ...fields,
       root: this.#root,
+      durableLaunchRecovery: true,
       log: this.#log,
       usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
@@ -310,7 +324,7 @@ export class Sessions {
 
   register(adapter: HarnessAdapter): void {
     this.#adapters.set(adapter.harness, adapter);
-    for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.stages.stopped && !entry.stopIntent) {
+    for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.files && !entry.stages.stopped && !entry.stopIntent) {
       try { adapter.watch(entry.process); }
       catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
     }
@@ -392,7 +406,7 @@ export class Sessions {
     if (!entry.stages.rowRemoved) {
       // A published launch has a terminal transition even when later setup fails. The
       // core commits its final fan-out, subscription closure and checkpoint together.
-      if (entry.published) {
+      if (entry.published && !entry.preserveRow) {
         const row = this.#table.bySessionId(process.sessionId);
         this.#core.publishProcess(this.view(row?.sessionId === process.sessionId ? row : process));
       }
@@ -400,15 +414,20 @@ export class Sessions {
     }
     if (!entry.stages.roleRolledBack) {
       if (rollback) for (const id of rollbackIds) this.#core.releaseLaunchRole(process.name, rollback.role, rollback.previous, 'launch-failed', id, rollback.previousSessionId, checkpoint(id));
+      // Proven early subscribers belong to this launch even if row publication never committed.
+      if (!entry.preserveRow) for (const id of proven) this.#core.store.endSubscriptions(id);
       entry.stages.roleRolledBack = true;
       this.#table.pendingStop(entry);
     }
     // Brief settlement belongs to this receipt's launch credential. A failure here keeps the stopped
     // process's receipt for retry; it never bypasses the owned-process stop above.
     if (entry.ownership) this.#core.cancelLaunchBrief(entry.ownership.credential);
+    this.#recoveryObservers.get(process.sessionId)?.();
     this.#table.clearPendingStop(process.sessionId);
     for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
     this.#pendingStops.delete(process.sessionId);
+    this.#recoveryObservers.delete(process.sessionId);
+    if (entry.files) this.#log({ event: 'launch-recovered', session: process.name, sessionId: process.sessionId });
     this.#core.publishCleanup(process.sessionId, false);
     if (!this.#pendingStops.size && this.#stopRetry) { clearInterval(this.#stopRetry); this.#stopRetry = null; }
   }
@@ -422,11 +441,17 @@ export class Sessions {
       resumed(() => {
         // One failed persistence/watch operation must not skip the ownership-verified stop attempt.
         try { this.#table.pendingStop(entry); } catch (error) { preparationError = error; }
-        if (!entry.stages.stopped && !entry.stopIntent) try { this.adapter(p.harness).watch(p); } catch (error) { preparationError ??= error; }
+        if (!entry.files && !entry.stages.stopped && !entry.stopIntent) try { this.adapter(p.harness).watch(p); } catch (error) { preparationError ??= error; }
         try { this.#core.publishCleanup(p.sessionId, true); } catch (error) { preparationError ??= error; }
       });
       try {
-        if (!entry.stages.stopped) {
+        if (entry.files) {
+          await LaunchFiles.restore(entry.files, resumed).rollback(state => {
+            entry.files = state;
+            this.#table.pendingStop(entry);
+          }, this.#log);
+          resumed(() => { entry.stages.stopped = true; this.#table.pendingStop(entry); });
+        } else if (!entry.stages.stopped) {
           const recovering = entry.stopIntent === true;
           resumed(() => { entry.stopIntent = true; this.#table.pendingStop(entry); });
           let gone = false;
@@ -497,17 +522,11 @@ export class Sessions {
     const effectiveRequest = { ...request, role };
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
+    if ([...this.#pendingStops.values()].some(entry => entry.process.name === request.name)) throw new Error(`failed launch of "${request.name}" is still supervised; cleanup is pending`);
     const reserved = this.#core.nameReservation(request.name);
     if (reserved) throw new Error(reserved);
-    if ([...this.#pendingStops.values()].some(entry => entry.process.name === request.name)) throw new Error(`failed launch of "${request.name}" is still supervised; cleanup is pending`);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
-    const existingIds = this.#core.sessionIds();
-    for (const process of this.#table.all()) existingIds.add(process.sessionId);
-    for (const entry of this.#pendingStops.values()) {
-      existingIds.add(entry.process.sessionId);
-      for (const id of entry.ownership?.sessionIds ?? []) existingIds.add(id);
-    }
-    existingIds.delete(UNKNOWN_SESSION);
+    const existingIds = this.#knownLaunchIds();
     // Ticket every named role before I/O: even a nonexclusive cached definition may become exclusive at fresh.
     this.#checkCrew(request.name, role);
     const admission = role !== null ? this.#core.admitRole(request.name, role) : null;
@@ -620,7 +639,7 @@ export class Sessions {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
       owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
       resumed(() => {
-        const proven = !launchIdentityRefusal(identity, owned!.sessionId);
+        const proven = !launchIdentityRefusal(identity, owned!.sessionId, this.#knownLaunchIds());
         if (proven) identity.sessionIds.add(owned!.sessionId);
         identity.returnedId = owned!.sessionId;
         // Returning from a carried spawn confirms the native first turn, independently of the hello timing.
@@ -632,13 +651,17 @@ export class Sessions {
       owned = p;
       return resumed(() => {
         authorize();
-        const proofRefusal = launchIdentityRefusal(identity, p.sessionId);
+        const proofRefusal = launchIdentityRefusal(identity, p.sessionId, this.#knownLaunchIds());
         if (proofRefusal) throw new Error(proofRefusal);
         const refusal = this.#core.nameReservation(request.name, p.sessionId);
         if (refusal) { conflict = true; throw new Error(refusal); }
-        this.#core.rememberLaunchIdentity(p.name, p.sessionId, launchToken);
         if (this.#core.roles) p.role = this.#core.store.roleOf(p.name);
-        this.#table.put(p);
+        try { this.#table.put(p); }
+        finally {
+          // An observer may throw after the row commits. Publish the binding for that
+          // owned row too, but leave the prior binding intact on an unpublished failure.
+          if (this.#table.get(p.name)?.sessionId === p.sessionId) this.#core.rememberLaunchIdentity(p.name, p.sessionId, launchToken);
+        }
         adapter.watch(p);
         if (reservation) this.#core.launchSettled(request.name);
         this.#lastAt.delete(p.sessionId);
@@ -664,9 +687,16 @@ export class Sessions {
       });
     } catch (cause) {
       let detail = cause instanceof Error ? cause.message : String(cause);
+      if (cause instanceof LaunchRecoveryPending) {
+        const child = cause.files.children[0];
+        owned = { name: request.name, harness, role, model, cwd, sessionId: cause.sessionId, pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'stopped', item };
+        this.#recoveryObservers.set(owned.sessionId, cause.settled);
+      }
       if (owned) {
-        const process: HarnessProcess = { ...owned, item, status: 'stopped' };
-        const entry: PendingStop = { process, error: detail, priorSessionId: conflict ? null : identity.prior, ownership: { credential: launchToken, sessionIds: [...identity.sessionIds], anonymousSessionId: identity.anonymousSessionId }, stages: { stopped: false, rowRemoved: false, roleRolledBack: false }, ...(role !== null && reservation ? { rollback: { role, previous: reservation.previous, previousSessionId: conflict ? null : reservation.previousSessionId } } : {}) };
+        // A rejected foreign adapter identity owns no row, terminal fact or verifier hold.
+        const rejectedId = !(cause instanceof LaunchRecoveryPending) && !identity.sessionIds.has(owned.sessionId);
+        const process: HarnessProcess = { ...owned, ...(rejectedId ? { sessionId: randomUUID() } : {}), item, status: 'stopped' };
+        const entry: PendingStop = { process, ...(cause instanceof LaunchRecoveryPending ? { files: cause.files } : {}), error: detail, priorSessionId: conflict ? null : identity.prior, ownership: { credential: launchToken, sessionIds: [...identity.sessionIds], anonymousSessionId: identity.anonymousSessionId }, stages: { stopped: false, rowRemoved: false, roleRolledBack: false }, ...(role !== null && reservation ? { rollback: { role, previous: reservation.previous, previousSessionId: conflict ? null : reservation.previousSessionId } } : {}) };
         resumed(() => {
           this.#pendingStops.set(process.sessionId, entry);
           this.#retryStops();
@@ -684,7 +714,9 @@ export class Sessions {
           const proven = [...identity.sessionIds];
           for (const id of proven.length ? proven : [null]) this.#core.releaseLaunchRole(request.name, role, reservation.previous, 'launch-failed', id, reservation.previousSessionId);
         }
-        if (cause instanceof Error) { cause.message = detail; throw cause; }
+        if (!owned) for (const id of identity.sessionIds) this.#core.store.endSubscriptions(id);
+        const original = cause instanceof LaunchRecoveryPending ? cause.cause : cause;
+        if (original instanceof Error) { original.message = detail; throw original; }
         throw new Error(detail);
       });
     } finally {
@@ -716,6 +748,7 @@ export class Sessions {
         authorize();
         const current = this.#table.bySessionId(identity);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
         p = current;
         return this.adapter(p.harness).stop(p, resumed, authorize);
       });
@@ -747,6 +780,7 @@ export class Sessions {
         authorize();
         const current = this.#table.bySessionId(identity);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        if ([...this.#pendingStops.values()].some(entry => entry.process.sessionId === identity || entry.process.name === current.name)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
         return this.#resume(current.name, relaunch, resumed);
       });
     } finally { resumed(() => { this.#resuming--; slot.release(); }); }
@@ -773,7 +807,28 @@ export class Sessions {
     } else {
       resuming = adapter.resume(p, { relaunch, resumed, policy: this.#launchPolicy(p.role) });
     }
-    const r = await resuming;
+    let r: ResumeResult;
+    try { r = await resuming; }
+    catch (cause) {
+      if (cause instanceof LaunchRecoveryPending) {
+        const entry = resumed(() => {
+          const child = cause.files.children[0];
+          const entry: PendingStop = { process: { ...row(), pid: child?.pid ?? null, pidStarted: child?.pidStarted ?? null }, files: cause.files, preserveRow: true, error: cause.message, stages: { stopped: false, rowRemoved: false, roleRolledBack: false } };
+          this.#pendingStops.set(p.sessionId, entry);
+          this.#recoveryObservers.set(p.sessionId, cause.settled);
+          this.#retryStops();
+          return entry;
+        });
+        let detail = cause.message;
+        try { await this.#stopFailedLaunch(entry, resumed); }
+        catch (error) { detail += `; spawned process cleanup failed: ${error instanceof Error ? error.message : String(error)}; cleanup is pending and the failed launch remains supervised`; }
+        return resumed(() => {
+          if (cause.cause instanceof Error) { cause.cause.message = detail; throw cause.cause; }
+          throw new Error(detail);
+        });
+      }
+      throw cause;
+    }
     const publish = (found: Extract<ResumeResult, { found: true }>, pidStarted: string | null) => {
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
@@ -807,7 +862,7 @@ export class Sessions {
     // Recovery must know every lead's durable status before routing any verifier's final event.
     for (const process of processes) this.#core.seedProcess(process);
     // A verified stop is authoritative even while its published row awaits cleanup.
-    for (const entry of this.#pendingStops.values()) if (entry.published && entry.stages.stopped) this.#core.seedProcess(this.view({ ...entry.process, status: 'stopped' }));
+    for (const entry of this.#pendingStops.values()) if (entry.published && !entry.preserveRow && entry.stages.stopped) this.#core.seedProcess(this.view({ ...entry.process, status: 'stopped' }));
     for (const process of processes) this.#core.rememberProcess(process);
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }

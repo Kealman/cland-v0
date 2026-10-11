@@ -3,6 +3,7 @@
 import type { Resumed } from '../hub/worktrees.ts';
 import { DatabaseSync } from 'node:sqlite';
 import type { HarnessProcess } from './contract.ts';
+import type { LaunchFilesState } from './launch-files.ts';
 import { processStartedAsync as processStarted } from '../hub/lock.ts';
 
 export { processStarted };
@@ -65,6 +66,10 @@ type Row = Record<string, string | number | null>;
 
 export type PendingStop = {
   process: HarnessProcess;
+  /** An adapter failed before returning a process row. Resource undo survives hub restart. */
+  files?: LaunchFilesState;
+  /** Failed relaunches retain the prior conversation row for another explicit resume. */
+  preserveRow?: boolean;
   error: string;
   stopIntent?: boolean;
   published?: boolean;
@@ -208,7 +213,7 @@ export class ProcessTable {
       const published = entry.published || !!this.#db.prepare('select 1 from harness_processes where session_id = ?').get(entry.process.sessionId);
       this.#db.prepare('insert or replace into harness_pending_stops (session_id, recovery_json) values (?, ?)')
         .run(entry.process.sessionId, JSON.stringify({ ...entry, published, process: { ...entry.process, status: 'stopped' } }));
-      this.#db.prepare("update harness_processes set status = 'stopped' where session_id = ?").run(entry.process.sessionId);
+      if (!entry.preserveRow) this.#db.prepare("update harness_processes set status = 'stopped' where session_id = ?").run(entry.process.sessionId);
       this.#db.exec('commit');
       entry.published = published;
     } catch (error) {
@@ -226,7 +231,7 @@ export class ProcessTable {
     const completed = { ...entry, stages: { ...entry.stages, rowRemoved: true } };
     this.#db.exec('begin immediate');
     try {
-      this.#db.prepare('delete from harness_processes where session_id = ?').run(entry.process.sessionId);
+      if (!entry.preserveRow) this.#db.prepare('delete from harness_processes where session_id = ?').run(entry.process.sessionId);
       this.#db.prepare('insert or replace into harness_pending_stops (session_id, recovery_json) values (?, ?)')
         .run(entry.process.sessionId, JSON.stringify(completed));
       this.#db.exec('commit');

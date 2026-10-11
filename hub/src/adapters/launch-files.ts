@@ -8,14 +8,45 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import { mkdir, readFile, rm, rmdir, stat, truncate, writeFile, chmod } from 'node:fs/promises';
 
+type FileUndo = { kind: 'remove' | 'directory'; path: string }
+  | { kind: 'truncate'; path: string; size: number }
+  | { kind: 'restore'; path: string; content: string; mode: number };
+export type LaunchFilesState = {
+  undo: FileUndo[];
+  children: Array<{ pid: number; pidStarted: string | null; graceMs: number }>;
+};
+
+/** Hand an unsuccessful adapter handshake to the hub's durable recovery owner. */
+export class LaunchRecoveryPending extends Error {
+  readonly sessionId: string;
+  readonly files: LaunchFilesState;
+  readonly settled: () => void;
+  constructor(sessionId: string, files: LaunchFilesState, settled: () => void, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.sessionId = sessionId; this.files = files; this.settled = settled;
+  }
+}
+
 export class LaunchFiles {
-  readonly #undo: Array<() => Promise<unknown>> = [];
-  readonly #children: Array<{ pid: number; end: () => Promise<void> }> = [];
+  readonly #undo: FileUndo[] = [];
+  readonly #children: Array<{ pid: number; identity: Promise<string | null>; graceMs: number; child?: ChildProcess }> = [];
 
   get pids(): number[] { return this.#children.map(child => child.pid); }
 
   readonly resumed: Resumed;
   constructor(resumed: Resumed = untimed) { this.resumed = resumed; }
+
+  static restore(state: LaunchFilesState, resumed: Resumed = untimed): LaunchFiles {
+    const files = new LaunchFiles(resumed);
+    files.#undo.push(...state.undo);
+    files.#children.push(...state.children.map(({ pid, pidStarted, graceMs }) => ({ pid, identity: Promise.resolve(pidStarted), graceMs })));
+    return files;
+  }
+
+  async snapshot(): Promise<LaunchFilesState> {
+    const children = await Promise.all(this.#children.map(async ({ pid, identity, graceMs }) => ({ pid, pidStarted: await identity, graceMs })));
+    return this.resumed(() => ({ undo: [...this.#undo], children }));
+  }
 
   async directory(path: string, mode?: number): Promise<void> {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
@@ -30,9 +61,7 @@ export class LaunchFiles {
         throw err;
       }
       // Record each parent as it is created: a later mkdir failure cannot strand earlier parents.
-      this.#undo.push(() => rmdir(path).catch(err => this.resumed(() => {
-        if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(err.code)) throw err;
-      })));
+      this.#undo.push({ kind: 'directory', path });
     }).call(this), this.resumed);
   }
 
@@ -41,43 +70,57 @@ export class LaunchFiles {
       let before;
       try { before = yield* wait(stat(path)); } catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; before = null; }
       if (!before)
-        this.#undo.push(() => rm(path, { force: true }));
+        this.#undo.push({ kind: 'remove', path });
       else if (append)
-        this.#undo.push(() => truncate(path, before.size));
+        this.#undo.push({ kind: 'truncate', path, size: before.size });
       else {
         const content = yield* wait(readFile(path));
         const mode = before.mode;
-        this.#undo.push(() => writeFile(path, content).then(() => this.resumed(() => chmod(path, mode))));
+        this.#undo.push({ kind: 'restore', path, content: content.toString('base64'), mode });
       }
     }).call(this), this.resumed);
   }
 
-  removeOnFailure(path: string): void { this.#undo.push(() => rm(path, { force: true })); }
+  removeOnFailure(path: string): void { this.#undo.push({ kind: 'remove', path }); }
 
   /** Capture the owned child's identity immediately, before a failed handshake can leave it behind. */
   child(child: ChildProcess, log: (entry: Record<string, unknown>) => void, graceMs: number): void {
     if (child.pid === undefined) return;
     const pid = child.pid;
     const identity = processStarted(pid, undefined, this.resumed);
-    this.#children.push({ pid, end: () => continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
-      const pidStarted = yield* wait(identity);
-      if (child.exitCode !== null || child.signalCode !== null) return;
-      if (!(yield* wait(endProcess({ pid, pidStarted }, log, graceMs, undefined, { resumed: this.resumed })))) throw new Error(`could not roll back launched process ${pid}`);
-    }).call(this), this.resumed) });
+    this.#children.push({ pid, identity, graceMs, child });
+    this.#log = log;
   }
+
+  #log: (entry: Record<string, unknown>) => void = () => {};
 
   commit(): void { this.#undo.length = 0; this.#children.length = 0; }
 
-  async rollback(): Promise<void> {
+  async rollback(checkpoint?: (state: LaunchFilesState) => void, log = this.#log): Promise<void> {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
       // Never undo a live child's resources. Failed verification leaves the complete recovery state intact.
       while (this.#children.length) {
-        yield* wait(this.#children[0]!.end());
+        const { pid, identity, graceMs, child } = this.#children[0]!;
+        const pidStarted = yield* wait(identity);
+        if (!child || (child.exitCode === null && child.signalCode === null)) {
+          if (!(yield* wait(endProcess({ pid, pidStarted }, log, graceMs, undefined, { resumed: this.resumed, allowReused: true })))) throw new Error(`could not roll back launched process ${pid}`);
+        }
         this.#children.shift();
+        if (checkpoint) checkpoint(yield* wait(this.snapshot()));
       }
       while (this.#undo.length) {
-        yield* wait(this.#undo[this.#undo.length - 1]!());
+        const undo = this.#undo[this.#undo.length - 1]!;
+        if (undo.kind === 'remove') yield* wait(rm(undo.path, { force: true }));
+        else if (undo.kind === 'directory') yield* wait(rmdir(undo.path).catch(err => this.resumed(() => {
+          if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(err.code)) throw err;
+        })));
+        else if (undo.kind === 'truncate') yield* wait(truncate(undo.path, undo.size));
+        else if (undo.kind === 'restore') {
+          yield* wait(writeFile(undo.path, Buffer.from(undo.content, 'base64')));
+          yield* wait(chmod(undo.path, undo.mode));
+        }
         this.#undo.pop();
+        if (checkpoint) checkpoint(yield* wait(this.snapshot()));
       }
     }).call(this), this.resumed);
   }
@@ -91,8 +134,9 @@ export class FailedLaunches {
   readonly #pollMs: number;
   #timer: NodeJS.Timeout | null = null;
   #retrying = false;
+  readonly #durable: boolean;
 
-  constructor(log: (entry: Record<string, unknown>) => void, pollMs = 1000) { this.#log = log; this.#pollMs = pollMs; }
+  constructor(log: (entry: Record<string, unknown>) => void, pollMs = 1000, durable = false) { this.#log = log; this.#pollMs = pollMs; this.#durable = durable; }
 
   assertAvailable(name: string, identity?: string): void {
     if ([...this.#pending].some(([id, entry]) => id === identity || entry.name === name)) throw new Error(`failed launch of "${name}" is still supervised; cleanup is pending`);
@@ -102,6 +146,9 @@ export class FailedLaunches {
 
   async failed(identity: string, name: string, files: LaunchFiles, cause: unknown, settled: () => void): Promise<never> {
     return continueWith((function* (this: FailedLaunches): Generator<Promise<unknown>, never, unknown> {
+      // In a hub, persist the receipt before the first termination/resource undo await.
+      // Standalone adapters retain their local supervisor for the same failure contract.
+      if (this.#durable) throw new LaunchRecoveryPending(identity, yield* wait(files.snapshot()), settled, cause);
       try { yield* wait(files.rollback()); } catch (error) {
         this.#pending.set(identity, { name, files, settled });
         this.#report({ event: 'launch-recovery-pending', session: name, sessionId: identity, pids: files.pids, error: String(error), cause: String(cause) });

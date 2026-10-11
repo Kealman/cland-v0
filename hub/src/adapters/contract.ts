@@ -107,6 +107,8 @@ export type StateSignal = { state: SessionState; source: string; at: number; app
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
   root: string;
+  /** The sessions layer takes failed handshakes into its durable pending-stop receipts. */
+  durableLaunchRecovery?: boolean;
   /** The project's `.cland/hub.json`: the spoke, the hooks and the mod find the hub through it, so no secret is put on a command line. */
   discoveryFile: string;
   /** The node binary and the `cland` CLI entry that hooks and the mod call (`cland hook …`). */

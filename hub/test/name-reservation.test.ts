@@ -15,7 +15,9 @@ import type { LogFn } from '../src/log.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { connectSocket, connectUi, eventually, spawnSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
-async function pendingAlias(t: TestContext, log?: LogFn) {
+const nativePrepare = DatabaseSync.prototype.prepare;
+
+async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const root = await tempProject(t);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
   tracker.start();
@@ -33,10 +35,9 @@ async function pendingAlias(t: TestContext, log?: LogFn) {
   const made = await ui.request({ type: 'task.create', title: 'Pending claimant', assignee: 'session-1' });
   const item = (made.value as { item: { id: string } }).item.id;
   assert.equal((await ui.request({ type: 'task.claim', item, as: { name: 'session-1' } })).ok, true);
-  const prepare = DatabaseSync.prototype.prepare;
   t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
-    if (sql.startsWith('update tracker_written_verdicts set session_id')) throw new Error('adoption deliberately failed');
-    return prepare.call(this, sql);
+    if (faultAdoption && sql.startsWith('update tracker_written_verdicts set session_id')) throw new Error('adoption deliberately failed');
+    return nativePrepare.call(this, sql);
   });
   const owner = await spawnSpoke({ hub, name: 'session-1', sessionId: 'owner-id' });
   t.after(() => owner.close());
@@ -968,6 +969,93 @@ test('an early-connected failed launch cannot rename while its stop is pending',
   assert.equal(presence.sessions.find(s => s.sessionId === 'launched:target')?.role, null);
 });
 
+test('an unpublished row failure preserves the prior identity and its claimant lead', async t => {
+  const f = await pendingAlias(t, undefined, false);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'implementer' })).ok, true);
+  const { client, welcome } = await f.openHello('prior-target', 'target');
+  assert.equal(welcome.type, 'welcome');
+  client.close(); await client.closed;
+  await eventually('prior target offline', () => !f.hub.core.connectionOf('prior-target') || undefined);
+  const made = await f.ui.request({ type: 'task.create', title: 'Prior target claim', assignee: 'target' });
+  const item = (made.value as { item: { id: string } }).item.id;
+  const claim = await f.ui.request({ type: 'task.claim', item, as: { name: 'target' } });
+  assert.equal(claim.ok, true, claim.error);
+  const prepare = DatabaseSync.prototype.prepare;
+  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+    if (sql.startsWith('insert into harness_processes')) throw new Error('unpublished row failed');
+    return prepare.call(this, sql);
+  });
+  const refused = await f.launch('target');
+  assert.equal(refused.ok, false); assert.match(refused.error!, /unpublished row failed/);
+  const report = await f.ui.request({ type: 'topic.send', topic: 'general', to: [`lead ${item}`], text: 'The prior claimant still leads' });
+  assert.equal(report.ok, true, report.error);
+  assert.deepEqual((report.value as { message: { to: string[] } }).message.to, ['target']);
+  const reconnect = await f.hello('prior-target');
+  assert.equal(reconnect.type, 'welcome'); assert.equal(reconnect.name, 'target');
+});
+
+test('an unpublished row failure ends proven early subscriber ownership', async t => {
+  const f = await pendingAlias(t, undefined, false);
+  const { started, release, credential } = deferSpawn(t, f.sessions);
+  const launching = f.launch('target');
+  await started;
+  const welcome = await f.hello('launched:target', 'target', credential());
+  assert.equal(welcome.type, 'welcome');
+  assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name: 'target' }, subject: { role: 'reviewer' }, events: ['session.state'] })).ok, true);
+  const prepare = DatabaseSync.prototype.prepare;
+  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+    if (sql.startsWith('insert into harness_processes')) throw new Error('unpublished row failed');
+    return prepare.call(this, sql);
+  });
+  release();
+  assert.equal((await launching).ok, false);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'implementer' })).ok, true);
+  const subscriptions = await f.ui.request({ type: 'event.subscriptions', as: { name: 'target' } });
+  assert.equal(subscriptions.ok, true, subscriptions.error);
+  assert.deepEqual((subscriptions.value as { subscriptions: Subscription[] }).subscriptions.filter(s => !s.default), []);
+});
+
+test('a credential cannot adopt an identity first connected after launch admission', async t => {
+  const f = await pendingAlias(t);
+  const { started, release, credential } = deferSpawn(t, f.sessions);
+  const spawn = f.sessions.adapter('test').spawn;
+  f.sessions.register({ ...f.sessions.adapter('test'), spawn: async (...args) => { await spawn(...args); throw new Error('spawn rejected'); } });
+  const launching = f.launch('target');
+  await started;
+  const { client, welcome } = await f.openHello('foreign-after-admission', 'target');
+  assert.equal(welcome.type, 'welcome');
+  client.close(); await client.closed;
+  await eventually('foreign target offline', () => !f.hub.core.connectionOf('foreign-after-admission') || undefined);
+  const adopted = await f.hello('foreign-after-admission', 'target', credential());
+  assert.equal(adopted.type, 'error'); assert.match(String(adopted.message), /cannot prove pre-existing/);
+  release(); assert.equal((await launching).ok, false);
+  const reconnect = await f.hello('foreign-after-admission', 'target');
+  assert.equal(reconnect.type, 'welcome'); assert.equal(reconnect.role, 'implementer');
+});
+
+test('a foreign returned identity introduced after admission keeps its process row and verifier hold', async t => {
+  const f = await pendingAlias(t, undefined, false);
+  const { started, release } = deferSpawn(t, f.sessions);
+  const spawn = f.sessions.adapter('test').spawn;
+  f.sessions.register({ ...f.sessions.adapter('test'), spawn: async (...args) => ({ ...await spawn(...args), sessionId: 'foreign-after-admission' }) });
+  const launching = f.launch('target');
+  await started;
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'other', role: 'reviewer' })).ok, true);
+  const welcome = await f.hello('foreign-after-admission', 'other');
+  assert.equal(welcome.type, 'welcome');
+  const foreign = { name: 'other', harness: 'test', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, sessionId: 'foreign-after-admission', harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' as const };
+  f.table.put(foreign);
+  const hold = await f.ui.request({ type: 'task.hold', item: f.item, as: { name: 'other' } });
+  release();
+  assert.equal(hold.ok, true, hold.error);
+  const refused = await launching;
+  assert.equal(refused.ok, false); assert.match(refused.error!, /cannot prove pre-existing/);
+  const listed = await f.ui.request({ type: 'session.list' });
+  assert.equal((listed.value as { processes: Array<{ name: string; status: string }> }).processes.find(p => p.name === 'other')?.status, 'running');
+  const view = await f.ui.request({ type: 'task.view', item: f.item });
+  assert.equal((view.value as { item: { holds: Array<{ session: string }> } }).item.holds.some(hold => hold.session === 'other'), true);
+});
+
 test('failed publication retains recovery when accepted-row removal fails after verified stop', async t => {
   const f = await pendingAlias(t);
   const unsubscribe = f.table.subscribe(process => {
@@ -1114,11 +1202,11 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
     }
     return statement;
   });
-  const { started, release } = deferSpawn(t, f.sessions);
+  const { started, release, credential } = deferSpawn(t, f.sessions);
   f.sessions.register({ ...f.sessions.adapter('test'), watch: () => { throw new Error('watch failed after publication'); } });
   const launching = f.launch('target');
   await started;
-  const { client, welcome } = await f.openHello('launched:target', 'target');
+  const { client, welcome } = await f.openHello('launched:target', 'target', credential());
   assert.equal(welcome.type, 'welcome');
   assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name: 'target' }, subject: { role: 'reviewer' }, events: ['session.state'] })).ok, true);
   release();

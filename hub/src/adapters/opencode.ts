@@ -107,7 +107,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
-    this.#recoveries = new FailedLaunches(host.log);
+    this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
     this.#bin = options.bin ?? process.env.CLAND_OPENCODE_BIN ?? 'opencode';
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
