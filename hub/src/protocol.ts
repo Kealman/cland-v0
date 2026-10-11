@@ -485,10 +485,12 @@ export type ClientHello = {
 };
 
 export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[] };
+export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
   | SuiteStart
+  | SuiteCancel
   | ReleaseRequest
   | { type: 'sync'; id: string }
   | { type: 'push'; id: string }
@@ -660,6 +662,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
     case 'suite.start':
       return ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+    case 'suite.cancel':
+      return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'push':
     case 'sync':
       return true;

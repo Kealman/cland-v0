@@ -1094,6 +1094,22 @@ Implementers use `cland suite` for full runs and wait for its artifact-backed re
 see [the agent test workflow](../docs/agents/tests.md). The package commands below
 are also available for humans and isolated CI.
 
+`cland suite cancel [<suite id>]` requests cancellation through the hub and exits.
+Without an id it selects the caller's latest active run. A session can cancel only
+runs submitted by its own stable session identity; the human can cancel any run
+by id. Reporting topic and recipients stay those of the original submission.
+Cancellation reconciles only the selected run; unrelated submissions and cleanup
+do not hold up its cancellation or FIFO removal.
+The hub persists cancellation before sending SIGTERM to the identity-verified
+worker. The worker forwards it to npm and the lock runner: a queued runner removes
+its FIFO ticket without disturbing the holder, and a running runner cleans its
+children, temporary root and leases. Cleanup finishes before one `cancelled`
+result (exit 143) is posted with its log. Restart and reporting retries retain
+cancellation even when the worker receipt says interrupted; repeating an explicit
+cancel is harmless. A finished run cannot be newly cancelled. If cleanup or
+reporting cannot proceed, `cland hub status --json` shows the retained error and
+the hub retries without duplicating the result.
+
 `npm test` and `cland suite --report <topic>` default to diff selection. They fetch
 `origin/dev`, compare the branch from its merge base with fetched dev, and include
 staged, unstaged and untracked files. Renames include both old and new paths.

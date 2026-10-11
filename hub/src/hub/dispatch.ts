@@ -106,7 +106,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -533,7 +533,7 @@ export class Dispatcher {
     if (!core.textFits(text)) {
       // Long branch names, failures or log paths can exhaust even the no-files
       // report. Keep the result/mode/log pointer first and respect any byte cap.
-      text = core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; mode ${job.selection?.mode ?? 'full'}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
+      text = core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
@@ -1268,6 +1268,17 @@ export class Dispatcher {
             () => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: value() })),
             err => resumed(() => Dispatcher.#failure(frame.id, err)),
           ));
+        }
+        if (frame.type === 'suite.cancel' && isClientRequest(frame)) {
+          if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));
+          const request = frame as import('../protocol.ts').SuiteCancel;
+          const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (actor && now?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
+          };
+          later('suite.cancel', this.#suites.cancel(request.suite, actor, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+          return;
         }
         if (frame.type === 'suite.start' && isClientRequest(frame)) {
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));

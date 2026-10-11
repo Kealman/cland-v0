@@ -18,6 +18,7 @@ export type SuiteJob = {
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   selection?: SuiteSelection;
+  cancelled?: boolean;
 };
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
@@ -35,7 +36,7 @@ export class Suites {
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
   readonly #timer: ReturnType<typeof setInterval>;
-  #checking: Promise<void> | null = null;
+  readonly #inspecting = new Map<string, Promise<void>>();
   readonly #starting = new Set<Promise<unknown>>();
   #closed = false;
   readonly #launching = new Set<string>();
@@ -46,6 +47,26 @@ export class Suites {
     this.#timer.unref();
   }
   #save = () => { this.#store.setMeta(KEY, JSON.stringify(this.#jobs)); };
+  #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.cancelled && !job.cleaned));
+  async cancel(id: string | undefined, actor: SuiteActor | null, authorize: () => void): Promise<{ id: string; topic: string; cancelled: true }> {
+    if (this.#closed) throw new Error('hub is closing');
+    authorize();
+    const job = id ? this.#jobs.find(job => job.id === id)
+      : this.#jobs.findLast(job => this.#active(job) && (job.actor?.sessionId ?? null) === (actor?.sessionId ?? null));
+    if (!job) throw new Error(id ? `no suite named ${id}` : 'this session has no suite queued or running');
+    if (actor && job.actor?.sessionId !== actor.sessionId) throw new Error('cannot cancel another session’s suite; only the human may cancel any run');
+    // Reconcile only this run. Other submissions, cleanup and reports must not delay cancellation.
+    await this.#inspectJob(job);
+    if (this.#closed) throw new Error('hub is closing');
+    authorize();
+    if (!job.cancelled) {
+      if (job.outcome || job.reported) throw new Error('suite already finished');
+      // Persist before signalling: restart, late receipts and reporting retries retain this outcome.
+      job.cancelled = true; job.outcome = { code: 143, cause: 'cancelled' }; this.#save();
+    }
+    void this.#inspectJob(job);
+    return { id: job.id, topic: job.topic, cancelled: true };
+  }
   start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'>, authorize: () => void): Promise<{ id: string; pid: number; topic: string; position: number }> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
@@ -55,7 +76,7 @@ export class Suites {
   }
   async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'>, authorize: () => void): Promise<{ id: string; pid: number; topic: string; position: number }> {
     const identity = input.actor?.sessionId ?? 'human';
-    if (this.#jobs.some(job => !job.reported && !job.outcome && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
+    if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     await mkdir(dir, { recursive: true, mode: 0o700 });
@@ -63,20 +84,24 @@ export class Suites {
     const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
-    if (this.#jobs.some(job => !job.reported && !job.outcome && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
+    if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const job: SuiteJob = { ...input, selection, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const admit = () => {
+      authorize();
+      if (job.cancelled) throw new Error('suite cancelled before worker admission');
+    };
     this.#launching.add(id); this.#jobs.push(job); this.#save();
     try {
       await writeFile(join(dir, 'job.json'), JSON.stringify(job), { mode: 0o600 });
       await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nStarted ${new Date().toISOString()}\n`, { mode: 0o600 });
       const fd = await open(job.log, 'a');
       try {
-        authorize();
+        admit();
         const env = { ...process.env };
         // Package scripts need a fresh Node test context.
         delete env.NODE_TEST_CONTEXT;
         const child = spawn(process.execPath, [fileURLToPath(new URL('./suite-worker.ts', import.meta.url)), join(dir, 'job.json')], { cwd: input.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
-        child.once('error', error => { if (this.#closed) return; job.outcome = { code: 1, cause: `worker could not start: ${error.message}` }; this.#save(); });
+        child.once('error', error => { if (this.#closed) return; job.outcome ??= { code: 1, cause: `worker could not start: ${error.message}` }; this.#save(); });
         child.once('close', (code, signal) => {
           if (this.#closed) return;
           if (signal || code !== 0) job.outcome ??= { code: code ?? 1, cause: signal ? `worker killed by ${signal}` : `worker exited ${code}` };
@@ -88,61 +113,67 @@ export class Suites {
         job.started = job.pid ? await processStartedAsync(job.pid) : null;
         this.#save();
         if (!job.pid || !job.started) throw new Error('cannot establish suite worker process identity');
-        authorize();
+        admit();
         await writeFile(job.gate, 'ready');
       } finally { await fd.close(); }
     } catch (error) {
       // Keep the failure receipt: the inspector only terminates identity-verified processes.
-      job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save();
+      if (!job.cancelled) job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error) };
+      this.#save();
       throw error;
-    } finally { this.#launching.delete(id); }
-    return { id, pid: job.pid ?? 0, topic: job.topic, position: this.#jobs.filter(j => !j.outcome && !j.reported).length };
+    } finally {
+      this.#launching.delete(id);
+      if (job.cancelled) void this.#inspectJob(job);
+    }
+    return { id, pid: job.pid ?? 0, topic: job.topic, position: this.#jobs.filter(this.#active).length };
   }
   #check(): Promise<void> {
-    if (this.#checking) return this.#checking;
     if (this.#closed) return Promise.resolve();
-    this.#checking = this.#inspect().catch(() => { /* saved errors are retried on the next tick */ }).finally(() => { this.#checking = null; });
-    return this.#checking;
+    return Promise.all(this.#jobs.map(job => this.#inspectJob(job))).then(() => {});
   }
-  async #inspect(): Promise<void> {
-    for (const job of this.#jobs) {
-      if (this.#closed) return;
-      if (job.reported || this.#launching.has(job.id)) continue;
-      try {
-        const receipt = await readFile(job.result, 'utf8').then(text => JSON.parse(text) as { code: number; cause: string }, () => null);
-        if (receipt) job.outcome = receipt;
-        if (!job.outcome) {
-          if (job.pid && pidAlive(job.pid)) {
-            const current = await processStartedAsync(job.pid);
-            if (job.started === null || current === null || current === job.started) continue;
-          }
-          job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
+  #inspectJob(job: SuiteJob): Promise<void> {
+    const pending = this.#inspecting.get(job.id);
+    if (pending) return pending;
+    if (this.#closed || job.reported || this.#launching.has(job.id)) return Promise.resolve();
+    const work = this.#inspect(job).catch(() => { /* saved errors are retried on the next tick */ }).finally(() => { this.#inspecting.delete(job.id); });
+    this.#inspecting.set(job.id, work);
+    return work;
+  }
+  async #inspect(job: SuiteJob): Promise<void> {
+    try {
+      const receipt = await readFile(job.result, 'utf8').then(text => JSON.parse(text) as { code: number; cause: string }, () => null);
+      if (receipt && !job.cancelled) job.outcome = receipt;
+      if (!job.outcome) {
+        if (job.pid && pidAlive(job.pid)) {
+          const current = await processStartedAsync(job.pid);
+          if (job.started === null || current === null || current === job.started) return;
         }
-        this.#save();
-        if (job.outcome.code !== 0 && !job.cleaned) {
-          if (job.pid && !job.started && pidAlive(job.pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
-          if (job.pid && job.started) {
-            // Launch failures can leave the worker live; endProcess rechecks its positive PID
-            // immediately before signalling. Missing/reused leaders preserve unrelated processes.
-            if (!await endProcess({ pid: job.pid, pidStarted: job.started }, () => {}, 500, undefined, { allowReused: true })) throw new Error('suite cleanup could not verify the worker identity');
-            const rows = await systemProcesses();
-            const leader = rows.find(row => row.pid === job.pid);
-            if (!leader || leader.started === job.started) {
-              for (const row of rows.filter(row => row.group === job.pid && row.pid !== job.pid)) {
-                if (!await endProcess({ pid: row.pid, pidStarted: row.started }, () => {}, 500, undefined, { allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
-              }
+        job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
+      }
+      this.#save();
+      if (job.outcome.code !== 0 && !job.cleaned) {
+        if (job.pid && !job.started && pidAlive(job.pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
+        if (job.pid && job.started) {
+          // Launch failures can leave the worker live; endProcess rechecks its positive PID
+          // immediately before signalling. Missing/reused leaders preserve unrelated processes.
+          if (!await endProcess({ pid: job.pid, pidStarted: job.started }, () => {}, job.cancelled ? 10000 : 500, undefined, { allowReused: true })) throw new Error('suite cleanup could not verify the worker identity');
+          const rows = await systemProcesses();
+          const leader = rows.find(row => row.pid === job.pid);
+          if (!leader || leader.started === job.started) {
+            for (const row of rows.filter(row => row.group === job.pid && row.pid !== job.pid)) {
+              if (!await endProcess({ pid: row.pid, pidStarted: row.started }, () => {}, 500, undefined, { allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
             }
           }
-          job.cleaned = true; this.#save();
         }
-        await this.#report(job, id => {
-          if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
-          job.artifact = id; this.#save();
-        });
-        job.reported = true; job.error = null; this.#save();
-      } catch (error) { job.error = error instanceof Error ? error.message : String(error); this.#save(); }
-    }
+        job.cleaned = true; this.#save();
+      }
+      await this.#report(job, id => {
+        if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
+        job.artifact = id; this.#save();
+      });
+      job.reported = true; job.error = null; this.#save();
+    } catch (error) { job.error = error instanceof Error ? error.message : String(error); this.#save(); }
   }
   status(): Array<Pick<SuiteJob, 'id' | 'pid' | 'topic' | 'reported' | 'outcome' | 'error'>> { return this.#jobs.map(({ id, pid, topic, reported, outcome, error }) => ({ id, pid, topic, reported, outcome, error })); }
-  async close(): Promise<void> { this.#closed = true; clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; }
+  async close(): Promise<void> { this.#closed = true; clearInterval(this.#timer); await Promise.allSettled(this.#starting); await Promise.allSettled(this.#inspecting.values()); }
 }
