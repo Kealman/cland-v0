@@ -3,6 +3,7 @@
 hub.db*
 hub.json
 ui.json
+ui.json.lock*
 hub.lock*
 hub.sock
 secret
