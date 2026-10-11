@@ -2,8 +2,8 @@
 id: T-195
 kind: task
 title: "The Artifacts browser: the centre view with mine, this topic, kept, by role and archived, editing in place, attaching with s"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-125
 branch: t/T-195-the-artifacts-browser-the-centre-view
 created: 2026-10-10T16:25:07.170Z
-updated: 2026-10-11T09:59:25.012Z
+updated: 2026-10-11T11:22:26.625Z
 ---
 
 ## Parent
@@ -31,11 +31,16 @@ The centre view with its sections and keys, editing in place, attaching to the c
 
 - [x] C1. The behaviour above works end to end through the v0 seams: the hub frame protocol, the fake harnesses and headless Neovim where the UI is touched.
   - done: impl-195b · 2026-10-11T09:24:39.221Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T195-r3 · 2026-10-11T10:54:44.399Z
 - [x] C2. Demo: the human creates a folder "v0.2 notes" in the browser, adds two files, and attaches it to a message with `s`.
   - done: impl-195b · 2026-10-11T09:14:19.172Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T195-r3 · 2026-10-11T10:54:44.399Z
 - [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
   - done: impl-195b · 2026-10-11T09:14:19.303Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T195-r3 · 2026-10-11T10:54:44.399Z
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-195b · 2026-10-11T10:54:22.069Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T195-r3 · 2026-10-11T10:54:44.399Z
 
 ## Comments
 
@@ -77,3 +82,26 @@ Fixed rev-15 findings in 8ced8b9: reject foreign-topic/archived s selections, ex
 ### impl-195b · 2026-10-11T09:59:25.012Z
 
 Merged origin/dev 237d152; pushed 5db950d. Updated the single failing legacy snapshot assertion to explicitly reveal Archived with A, retaining late-event metadata verification; targeted test passes. Requesting final review and fresh nvim suite on merged head.
+
+### impl-195b · 2026-10-11T10:54:22.254Z
+
+C4 complete at 5db950d05ed573bb9b270f9ab66fd45f32827b5f: cland suite nvim 879d67d7-5877-44d2-b498-b216601e54f6 exited 0; typecheck passed and all 266 Neovim tests passed. Durable log A-1192: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1192-suite-879d67d7-5877-44d2-b498-b216601e54f6-nvim-at-5db950d.log. All acceptance criteria marked done; awaiting rev-15 final verdict.
+
+### rev-15 · 2026-10-11T10:54:44.399Z
+
+verdict: review
+result: clear
+by: rev-15 [reviewer]
+run: rev-20261011-15-T195-r3
+commit: 5db950d05ed573bb9b270f9ab66fd45f32827b5f
+
+Standards: clear, no remaining findings; earlier documentation inconsistency and attachment validation/recovery issues resolved.
+Spec: clear. C1 browser sections/nondeferred keys, editable files/folder children and attachment behavior established by code plus public real-hub/headless and controlled-stub regressions. C2 v0.2 notes two-file folder attachment demo passes. C3 docs consistent; no role clause changes. Deletion x excluded per Coordinator's T-219 deferral.
+C4 verified from A-1192: fresh suite 879d67d7 at exact reviewed head 5db950d completed npm run typecheck and npm run test:nvim, exit 0; 266/266 passed, zero fail/cancelled/skipped/todo. Previously failing delayed snapshot test passes with explicit Archived reveal and metadata check retained. No exception needed.
+All C1–C4 verified. Code review A-1176, attachment fix review A-1158, final review artifact in topic-125. Reviewer made no edits and ran no tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-11T10:55:38.389Z
+
+Merged fbd37e8d2844a151178f36c6fea3ae1a362d97c0 onto dev.

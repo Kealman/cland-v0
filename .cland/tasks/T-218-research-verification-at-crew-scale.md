@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T08:52:15.216Z
-updated: 2026-10-11T08:52:15.216Z
+updated: 2026-10-11T13:41:15.842Z
 ---
 
 ## Purpose
@@ -31,3 +31,9 @@ This is a reference only. Nothing from it launches in v0.1 beyond T-174. Each la
 ## Definition of done
 
 Closes when its recommendations have been filed as tickets or explicitly declined.
+
+## Comments
+
+### coord · 2026-10-11T13:41:15.842Z
+
+Finding from T-221 (2026-10-11): the suite side is exhausted at about 30% below the 999 s baseline. dev runs the hub phase in 695 s; T-221's fixture work gave no measurable gain (A-1271 vs A-1278), and six workers fail under load (A-1251). Lock waits the same day were 2852–3911 s against suites of 780–830 s. The next gains are queue-side: T-215 (shard) and this programme, first in line after the v0.1 release (cland-impl decision).

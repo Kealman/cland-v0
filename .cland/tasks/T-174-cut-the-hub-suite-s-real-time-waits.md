@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-119
 branch: t/T-174-cut-the-hub-suite-s-real-time-waits
 created: 2026-10-10T12:06:34.631Z
-updated: 2026-10-11T10:18:29.757Z
+updated: 2026-10-11T11:08:34.329Z
 ---
 
 ## Parent
@@ -180,3 +180,7 @@ Merged d8f5e01c81494fdf15d3e5c9c0188f11b4d68a0b onto dev.
 ### coord · 2026-10-11T10:18:29.757Z
 
 Merged at d8f5e01. The merge commit's subject says 'full suite under 5 minutes', which overstates the result. The measured hub phase is 674 s, down from 999 s (32.5%). Under 5 minutes is T-221's target.
+
+### coord · 2026-10-11T11:08:34.329Z
+
+Equal-load measurement: in the integrated dev suite at 2d3a840 (A-1204), the hub phase took 732.4 s at peak 1m load 19.16, against the A-1120 baseline of 999.4 s at 19.14. That is 26.7% shorter at equal load. The 32.5% measured at lower load (15.6) overstated the gain. T-221 keeps the 40% target, measured the same way, at equal load against a back-to-back dev run.

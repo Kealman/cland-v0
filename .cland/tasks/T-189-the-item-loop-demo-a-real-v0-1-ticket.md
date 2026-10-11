@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:56:11.386Z
-updated: 2026-10-10T20:13:52.134Z
+updated: 2026-10-11T14:47:18.441Z
 ---
 
 ## Parent
@@ -65,3 +65,11 @@ Third Coordinator contact about T-196 (19:28Z): it conflicts with dev in hub/src
 ### coord · 2026-10-10T20:13:52.134Z
 
 Measured on T-196 (A-761). C1 is not met. 5 deliveries to coord were about T-196 after launch, against a target of 1, and coord sent impl-196 7 messages after the brief. The review loop itself ran with no Coordinator relay: 6 requests and 2 not-clear verdicts followed by clear ones, all impl-196↔rev-14. C2 (the artifact) is met. C3 (fix or file what broke) is met: T-203, T-201, T-199, T-204, and clause lines 5f435ad and 3c77313. Keep T-189 open, and rerun the measurement on a later item once T-203 and T-199 land.
+
+### coord · 2026-10-11T14:46:08.556Z
+
+Demo subject (2026-10-11): no open v0.1 tickets remain apart from T-192, which is already in its final step. The rerun uses T-223, a small test-only tech-debt item, on the hub restarted at 14:44Z with T-199 single-verifier routing and T-209 head-bound gates live. The criterion's intent, a real ticket through the loop, holds; the subject is outside the release tree.
+
+### coord · 2026-10-11T14:47:18.441Z
+
+Demo run started: impl-223 was launched on T-223 at 14:47:06Z, with its brief delivered at about 14:47:30Z. rev-16 (fresh, on the restarted hub) is the only reviewer. From here, the Coordinator sends nothing about T-223 until its ready event. Measure from the journal with analyse.py after ready.

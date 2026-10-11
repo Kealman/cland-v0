@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-11T06:36:26.364Z
+updated: 2026-10-11T13:41:50.605Z
 ---
 
 ## Goal
@@ -65,3 +65,7 @@ D17 (answers the open question on T-130): not-clear verdicts and session deaths 
 D18 (release version, D11 satisfied): v0.1.0. The stand-in answers T-117's version ask with v0.1.0, citing this decision.
 D19 (T-117 acceptance): the human does no acceptance pass. QA runs the T-117 walkthrough and closes it on a clear verdict, and the release goes out on that. The deferred checks T-109 C1 (Ghostty and tmux keys) and T-111 M7 (real-model Aide follow-through) are not release blockers. The release notes list them as 'verified in v0.1.1'.
 D20 (tech debt leaves T-19): T-19 closes and stops being the catch-all parent. Tech debt lives in the standing container T-216 'Tech debt' (kind epic, no release parent, label tech-debt). The open tech-debt items moved there: T-102, T-103, T-129, T-137, T-147, T-170, T-174, T-202, T-204, T-209, T-211, T-212, T-213, T-214 and T-215.
+
+### coord · 2026-10-11T13:41:50.605Z
+
+Run note (cland-impl and the Coordinator, 2026-10-11 13:50Z): integrated dev suites. One full integrated run per batch of at most 3 merges. A batch skips its integrated run only when every item in it is Neovim-side and each passed its own run at a head that already contained the current dev tip. A batch with any hub-side item keeps its full integrated run, which T-214 always runs in full. The hub restarts only when the latest full integrated run covers every hub-side change on dev.

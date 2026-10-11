@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T06:35:45.532Z
-updated: 2026-10-11T06:37:50.145Z
+updated: 2026-10-11T13:03:58.092Z
 ---
 
 ## Purpose
@@ -23,3 +23,9 @@ Created 2026-10-11 by the human's decision D20 (T-130). It replaces T-19 (the v0
 ## Definition of done
 
 Standing container; it does not close.
+
+## Comments
+
+### coord · 2026-10-11T13:03:58.092Z
+
+Shared test fixes in flight (2026-10-11). (1) The moved-draft tests in nvim/test/artifacts.test.ts fail alone on dev; fixed by 7eb519c, which is merged with T-171 at b1add76. (2) The PANELS-012 QA case fails 1 time in 6 on dev 4846a44 (the screen is read before the resize repaint); fixed by d114dc0 on T-219's branch. A branch that hits either before its fix lands should cherry-pick that exact commit.

@@ -2,8 +2,8 @@
 id: T-214
 kind: task
 title: "The suite runner picks its phases from the diff: hub-only changes skip the Neovim phase, Neovim-only changes skip the hub phase"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - tech-debt
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-127
 branch: t/T-214-the-suite-runner-picks-its-phases-from
 created: 2026-10-11T06:30:53.442Z
-updated: 2026-10-11T10:39:49.456Z
+updated: 2026-10-11T11:54:19.640Z
 ---
 
 ## What to build
@@ -32,13 +32,19 @@ The integrated dev suite after a batch always runs in full. The chosen mode is p
 
 - [x] C1. The phase choice is a pure function of the diff, with a unit test per rule.
   - done: impl-214 · 2026-10-11T10:29:59.787Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T214-r2 · 2026-10-11T11:22:01.830Z
 - [x] C2. `--all` forces the full run.
   - done: impl-214 · 2026-10-11T10:39:26.827Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T214-r2 · 2026-10-11T11:22:01.830Z
 - [x] C3. The suite report names the mode and the deciding files.
   - done: impl-214 · 2026-10-11T10:39:27.038Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T214-r2 · 2026-10-11T11:22:01.830Z
 - [x] C4. A hub-only item on dev shows the lock held for the hub phase and the smoke only.
   - done: impl-214 · 2026-10-11T10:30:00.182Z
-- [ ] C5. `npm run typecheck && npm test` pass.
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T214-r2 · 2026-10-11T11:22:01.830Z
+- [x] C5. `npm run typecheck && npm test` pass.
+  - done: impl-214 · 2026-10-11T11:21:42.584Z
+  - verified: rev-15 [reviewer] · run rev-20261011-15-T214-r2 · 2026-10-11T11:22:01.830Z
 
 ## Notes
 
@@ -77,3 +83,26 @@ Criteria: C2 failed (CLI --all with explicit targets runs only those targets in 
 ### impl-214 · 2026-10-11T10:35:54.315Z
 
 Review fixes in progress (rev-20261011-15-T214): C2 regression reproduced --all plus explicit target running only the target twice; CLI now discards targets when forced full while retaining targeted fixture API compatibility. C3 regression reproduced a 150-file Unicode diff stranding publication at a 768-byte hygiene cap; report now bounds the file summary to the actual configured cap, preserving complete paths in the durable log and retaining a compact result/artifact fallback.
+
+### impl-214 · 2026-10-11T11:21:42.854Z
+
+Fresh full suite f23d5c1d-e495-482e-a909-3421e8fe32a0 passed at 74d278797d3dc2efc459d7fc74e14e2d25cdda6d: typecheck and full hub+Neovim phases, 1473 tests passed, zero failures/cancellations/skips. Durable log A-1212: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1212-suite-f23d5c1d-e495-482e-a909-3421e8fe32a0-all-at-74d2787.log. C5 marked done. Re-review code clear per rev-15 A-1188; awaiting its final verdict and hub ready event.
+
+### rev-15 · 2026-10-11T11:22:01.830Z
+
+verdict: review
+result: clear
+by: rev-15 [reviewer]
+run: rev-20261011-15-T214-r2
+commit: 74d278797d3dc2efc459d7fc74e14e2d25cdda6d
+
+Standards: clear; report-size failure resolved with cap-aware UTF-8 samples/fallback and complete deciding paths in the log. No remaining findings.
+Spec: clear; C1 pure selector/rule coverage, C2 forced-full target precedence, C3 delivered mode/files reporting, and C4 joint-lock phase/smoke continuity established in A-1188. Fixed smoke baseline and conservative fallbacks follow Coordinator decisions.
+C5 verified from fresh suite f23d5c1d at exact reviewed head 74d2787, durable log A-1212: npm run typecheck and npm test full mode pass; hub 1209/1209 plus Neovim 264/264, total 1473/1473; zero fail/cancelled/skipped/todo, exit 0. No exception needed.
+All C1–C5 verified. Final review artifact in topic-127; detailed review A-1188. Reviewer made no edits and ran no tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-11T11:22:13.926Z
+
+Merged 1697cedaba7f3e6729d5ef4f31827718cfd4317c onto dev.

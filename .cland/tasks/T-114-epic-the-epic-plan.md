@@ -2,7 +2,8 @@
 id: T-114
 kind: epic
 title: "Epic: The epic plan"
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.1
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-128
 branch: null
 created: 2026-10-09T21:51:34.340Z
-updated: 2026-10-11T10:45:25.794Z
+updated: 2026-10-11T10:54:45.631Z
 ---
 
 ## Goal
@@ -51,14 +52,22 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 Before an epic starts, its Lead or the Coordinator runs `plan-epic`. The human opens `gp` on the epic and sees its stages, lanes and QA policy; in a scratch project with `approval = "human"` they approve it with `a`, and only then do the first stage's sessions launch, one per lane. Mid-way, the items of an after-stage stage merge on review alone and one QA run on `dev` closes the stage; the gate refuses an item of a per-item stage that has no QA verdict; a plan change shows in the watch colour until the human opens the view.
 
-- [ ] The hub parses and validates `## Plan`; a broken plan is refused and the previous one stays; `task.plan` and `cland task plan` set, show and approve.
-- [ ] The gate takes each item's QA policy from its plan or `[plan] qa_default`; `qa-required` is retired; `ready` agrees with the gate.
-- [ ] After-stage QA: the stage's items merge on review, one QA verdict on the stage closes it, and a not-clear stage verdict keeps it open.
-- [ ] Criteria the plan marks for QA need a QA verification before the merge.
-- [ ] `plan-epic` writes a valid plan; `approval = "human"` holds the epic's launches until the human or an Aide approves.
-- [ ] `gp` opens the plan view before the start and mid-way as §3.13 describes; the items panel shows the stage tags.
-- [ ] A plan change is journalled, leaves merged items alone, and stays marked for the human until they open the view.
-- [ ] `docs/review-and-qa.md`, the `merge` and `qa` skills, the role clauses and `nvim/README.md` describe the plan and its view.
+- [ ] C1. The hub parses and validates `## Plan`; a broken plan is refused and the previous one stays; `task.plan` and `cland task plan` set, show and approve.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C2. The gate takes each item's QA policy from its plan or `[plan] qa_default`; `qa-required` is retired; `ready` agrees with the gate.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C3. After-stage QA: the stage's items merge on review, one QA verdict on the stage closes it, and a not-clear stage verdict keeps it open.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C4. Criteria the plan marks for QA need a QA verification before the merge.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C5. `plan-epic` writes a valid plan; `approval = "human"` holds the epic's launches until the human or an Aide approves.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C6. `gp` opens the plan view before the start and mid-way as §3.13 describes; the items panel shows the stage tags.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C7. A plan change is journalled, leaves merged items alone, and stays marked for the human until they open the view.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
+- [ ] C8. `docs/review-and-qa.md`, the `merge` and `qa` skills, the role clauses and `nvim/README.md` describe the plan and its view.
+  - verified: qa-17 [qa] · run qa-2026-10-11-17-114 · 2026-10-11T10:54:40.899Z
 
 ## Dogfooding
 
@@ -89,3 +98,64 @@ Once `plan-epic` lands, the rest of this epic, "Visibility and artifacts", "The 
 ### coord · 2026-10-10T17:04:49.044Z
 
 Spec gap from T-183's review (rev-11, A-685): with a custom ladder, which level owns a plan? T-183 pins it to tracker.levels[1] (the level under the top), so ['release','epic','feature'] plans on epic, as hub/README.md's example expects. §3.10 says only 'the epic's item file'; it should name the rule. Settle when §3.10 is next amended; no v0.1 project uses a deeper ladder.
+
+### qa-17 · 2026-10-11T10:54:40.899Z
+
+verdict: qa
+result: clear
+by: qa-17 [qa]
+run: qa-2026-10-11-17-114
+commit: fa139c8158ec383943ad36742e06805462b59451
+
+| Case | Surface | Result | Observation / evidence |
+| --- | --- | --- | --- |
+| M0 | hub-api | PASS | All six children closed; T-130 release; eight positional criteria. T-113 open at start, explicitly allowed; now closed. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M0.txt) |
+| M1 | hub-api | PASS | per-group draft helper chains T-3/T-4 and separates cross-lane dependent T-6; valid plan accepted pending approval. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M1.txt) |
+| M2 | hub-api | PASS | Curated plan set/show/view agrees; journal stores previous and new plans. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M2.txt) |
+| M3 | hub-api | PASS | Invalid scope, foreign item and malformed YAML refused; accepted plan unchanged. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M3.txt) |
+| M4 | hub-api | PASS | Broken hand save retains last valid plan and journals refusal; restoring clears planError. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M4.txt) |
+| M5 | hub-api | PASS | Coordinator approval forbidden; task approval refused; epic remains pending. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M5.txt) |
+| M6 | hub-api | PASS | Legacy label migration produces T-8 override and T-9 default fallback; journal records both; rerun idempotent. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M6.txt) |
+| M7 | hub-api | PASS | Outside-plan T-9 uses affected/per-item default; review alone is not ready and merge reports qa-missing. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M7.txt) |
+| M8 | hub-api | PASS | Approval hold rejects launch before creating a process or worktree. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M8.txt) |
+| M9 | headless-grid | PASS | gp, palette, graph and command open plan; lanes, QA lines, scoped stage tags, Lead metadata and approval card checked. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M9.txt) |
+| M10 | headless-grid | PASS | d composes to Lead without sending; e opens the epic source at ## Plan without saving. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M10.txt) |
+| M11 | headless-grid | PASS | a approves as human; persistence/journal confirmed; held Implementer launch then succeeds. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M11.txt) |
+| M12 | hub-api | PASS | Three base items ready and merged on review alone; early stage QA refused; stage remains open until QA. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M12.txt) |
+| M13 | hub-api | PASS | Human stage verdict refused; live QA not-clear keeps open, clear closes stage with exact scratch dev and run; epic unmarked. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M13.txt) |
+| M14 | headless-grid | PASS | Mid-way closed/current/planned styling, stage QA round, lane session, progress and board tags verified. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M14.txt) |
+| M15 | hub-api | PASS | Lead moves T-8 with reason; journal/history updated, merged item bytes and closed stage preserved; unseen receipt unchanged. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M15.txt) |
+| M16 | headless-grid | PASS | First visit shows move marks in #c2a15e; second visit consumes marks, retains history and saves receipt. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M16.txt) |
+| M17 | hub-api | PASS | Aide launched without item and approved through CLI; approved-by-aide card updated. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M17.txt) |
+| M18 | hub-api | PASS | Per-item QA verdict and QA-specific C1 verification each block merge/ready until supplied by QA. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M18.txt) |
+| M19 | hub-api | PASS | Six targeted files passed: task-plan 10, plan-gate 8, stage-qa 11, plan-approval 2, Neovim plan 11, selected graph case 1. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19.txt) |
+| M20 | hub-api | PASS | QA/merge docs and skills, stage brief template, default/generated role clauses and Neovim plan-view docs checked. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M20.txt) |
+| BUILD-DELTA | hub-api | PASS | T-217 delta inspected; approval/launch tests rerun on current code: 2/2. [capture](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/BUILD-DELTA.txt) |
+| D1 | deferred | BLOCKED | Deferred to v0.1.1 under D19. [scope](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/D1.txt) |
+| D2 | deferred | BLOCKED | Deferred to v0.1.1 under D19. [scope](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/D2.txt) |
+| D3 | deferred | BLOCKED | Deferred to v0.1.1 under D19. [scope](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/D3.txt) |
+| D4 | deferred | BLOCKED | Deferred to v0.1.1 under D19. [scope](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/D4.txt) |
+
+No high, medium or low product findings. Known brief soft spots caused no failure: M5 returns “forbidden: task.plan:approve (only the human or an Aide approves a plan)” and “approve needs a valid epic plan”; T-9 remains backlog after review but is correctly not ready; M17's Aide launch without --item succeeds. Screen driving used one persistent Neovim process and one attached UI, with nvim_input, screenstring, plan/panel buffer reads and extmark inspection. No fresh per-step attach was needed.
+
+**QA clear.** M0–M20 passed, with **43 tests passed, 0 failed, 0 skipped** across the six requested single-file invocations. The selected graph stage test ran through the specified name filter. A further **2 approval/launch tests passed** after dev moved: **45 passing test executions** total. All test files ran one at a time. Raw passing test names are in [M19-1](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19-1.txt), [M19-2](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19-2.txt), [M19-3](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19-3.txt), [M19-4](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19-4.txt), [M19-5](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19-5.txt), [M19-6](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/M19-6.txt).
+
+**Build provenance.** The complete demo and six corroborating files ran at requested dev **25756cf464c4249d56b8123e43cac9850dafd509**. After they finished, T-217 merged at **21b1dddb75adc4042d888b34bde9afd6db9862fe**. Per Coordinator priority, T-113 was re-recorded first as qa-2026-10-11-17-r2 ([A-1191](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1191-t-113-qa-re-record-after-t-217-merge.md)) and closed. A tracker-only commit then made current dev **fa139c8158ec383943ad36742e06805462b59451**.
+
+The only intervening product change is T-217's matching offline-claim launch/adoption logic in hub/src/hub/worktrees.ts, its tests and README. No plan parser, QA policy, stage gate, approval or UI implementation changed. I inspected this delta and reran hub/test/plan-approval.test.ts at **fa139c8158ec383943ad36742e06805462b59451**; both tests passed. The unchanged plan evidence is explicitly carried forward to this current-tip verdict. This is not a claim that the entire demo was freshly rerun on fa139c8158ec383943ad36742e06805462b59451. The BUILD-DELTA method labels the product merge as 21b1ddd; its recorded build is fa139c8, including the subsequent tracker-only commit.
+
+Run: **qa-2026-10-11-17-114**. Root tracked changes stayed within .cland tracker state. Scratch commands cleared inherited CLAND_* and NVIM* variables; only scratch identity overrides and fake-harness settings were supplied intentionally. Every session launch explicitly used --harness claude-code with the fake first on PATH. [Plan configuration](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/scratch-config.toml) was edited before hub start. Root sessions were never launched or stopped. All scratch sessions, hub and Neovim stopped; scratch directories removed after captures. [Cleanup](/Users/evgeniyivanov/Projects/cland/v0/.cland/qa/T-114/qa-2026-10-11-17-114/cleanup.txt). No product files changed.
+
+**Criterion marks:** C1,C2,C3,C4,C5,C6,C7,C8 verified; failed: none. Mapping: C1 M2–M5, M11/M15/M17/M19; C2 M6/M7/M18(T-6); C3 M12/M13; C4 M18(T-7); C5 M1/M5/M8/M11/M17; C6 M9/M10/M14/M16; C7 M15/M16; C8 M20. Positional legacy IDs C1–C8 are stamped by the structured verdict.
+
+**Deferred to v0.1.1 under D19:** D1 real-model plan judgement and rationale; D2 real Lead per-group lane reuse and stage sequencing; D3 a real QA session executing a committed stage brief on a detached dev worktree; D4 real-terminal readability and human colour judgement. These are recorded BLOCKED and exempt from this verdict; every criterion has runnable proof.
+
+Executed using the [qa skill](/Users/evgeniyivanov/Projects/cland/v0/.agents/skills/qa/SKILL.md). Every check has a qa-record.sh line in .cland/qa/runs.jsonl; evidence is durable under this run directory.
+
+Report artifact: A-1193, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1193-t-114-qa-clear-epic-plan-demo-and-45-passing-test-executions.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-11T10:54:45.631Z
+
+Closed on QA run qa-2026-10-11-17-114 (A-1193): clear at dev fa139c8, C1–C8 verified (D16). The full demo ran at 25756cf; the only product change since, T-217, was inspected and its boundary tests were rerun at the tip. D1–D4 are deferred to v0.1.1 (D19).

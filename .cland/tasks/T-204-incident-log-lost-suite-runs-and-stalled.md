@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-11T10:15:18.390Z
+updated: 2026-10-11T14:15:13.741Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -167,3 +167,19 @@ Hourly check 09:15Z. No lost runs. T-188, T-174, T-217 and T-208 each have a liv
 ### coord · 2026-10-11T10:15:18.390Z
 
 Hourly check 10:15Z. No lost runs. T-188, T-217 and T-195 each have a live runner. T-174 is waiting on C1, its slow-test inventory, not on a run. T-188 holds both locks; it took them at about 10:11Z. One wait over 30 min: T-217 (ticket from 09:37Z, 37 min, next). T-195's re-run at 5db950d follows (09:59Z). Cause: queue depth. T-208 merged at 09:58Z on the T-213 exception without a retry, which freed one slot. T-174 (merging soon) cuts the hub phase from about 17 min to about 11 min. No nudge.
+
+### coord · 2026-10-11T11:15:27.787Z
+
+Hourly check 11:15Z. No lost runs. T-214 holds both locks; it took them at about 11:07Z after the integrated dev suite, which was green (A-1204). T-166 (ticket from 10:59Z), T-171 (11:11Z) and T-199 (11:11Z, re-queued after a review fix) are queued, all under 30 min. One false positive in my own tooling: a background wait loop matched itself on 'pgrep -f run-suite.ts' and showed up as a phantom suite process in the root checkout. Fixed with a self-excluding pattern. Lesson for any check script: use pgrep -f 'run-suit[e].ts'. No nudge.
+
+### coord · 2026-10-11T12:15:13.569Z
+
+Hourly check 12:15Z. No lost runs. All five open items (T-171, T-166, T-192, T-219, T-221) have a live runner or queue ticket. T-221's 6-worker timing run holds both locks. Two waits over 30 min: the Coordinator's paired dev run (ticket from 11:30Z, 44 min, next, kept right behind T-221 for the timing pair) and T-171 (11:41Z, 34 min). T-166, T-219 and T-192 were cancelled and requeued at 12:12–12:13Z to pick up the shared fix for a defect on dev: T-195's moved-draft tests in nvim/test/artifacts.test.ts fail even alone on dev 1697ced (A-1242), fixed by T-171's 7eb519c, cherry-picked into each branch. Cost: three queue slots and about 40 min of queue position each. No nudge.
+
+### coord · 2026-10-11T13:15:21.979Z
+
+Hourly check 13:15Z. No lost runs. T-221's final run at 4 workers holds both locks. The Coordinator's paired dev run (ticket from 12:22Z, 53 min) is next, right behind it by design. T-166 (12:51Z) and T-219 (13:04Z, re-queued after the PANELS-012 repair d114dc0) follow. T-192's run finished at about 13:13Z: hub 1217/1217, Neovim 276/281, 5 failures, handed to its lead and rev-13 (A-1268). Its lock wait was 2852 s for an 826 s run. No nudge.
+
+### coord · 2026-10-11T14:15:13.741Z
+
+Hourly check 14:15Z. No lost runs. Only one item is open in review: T-192, whose full run holds both locks (ticket from 13:24Z). The Coordinator's integrated dev suite at 405165d (T-171, T-166, T-219) is next (14:07Z). No waits over 30 min, the shortest queue of the day. T-166 and T-219 merged; T-221 closed without a merge (gate not met). No nudge.

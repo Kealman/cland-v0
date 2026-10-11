@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T10:48:25.372Z
-updated: 2026-10-11T10:48:25.372Z
+updated: 2026-10-11T14:46:08.431Z
 ---
 
 ## What happened
@@ -34,3 +34,17 @@ Find out why the process identity check fails for these Codex sessions: pid reus
 - [ ] A protocol test: a Codex fake Implementer, stopped after its item merges, logs `session-stopped` with no death event.
 - [ ] `cland session stop` on a live Codex Implementer succeeds, or names a real cause when it refuses.
 - [ ] `npm run typecheck && npm test` pass.
+
+## Comments
+
+### coord · 2026-10-11T13:41:34.737Z
+
+More data (2026-10-11 13:46Z): impl-221 was idle and mid-session, with no merge. The first 'cland session stop impl-221' refused with 'process identity cannot be verified; it is still watched'. A retry 5 s later stopped it cleanly. So the refusal looks transient (an identity probe racing something), not specific to post-merge.
+
+### coord · 2026-10-11T14:20:11.674Z
+
+Another case (2026-10-11 14:07Z): stopping impl-219 for its merge logged 'impl-219 died' at 14:07:12, then 'stopped' at 14:07:17. The stop was classified as a death first.
+
+### coord · 2026-10-11T14:46:08.431Z
+
+Related: T-147 ('Session stop refuses under load: process identity cannot be verified') already covers the stop-refusal half of this item. Treat them together when either is picked up.
