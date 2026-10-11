@@ -31,7 +31,7 @@ cp.spawn = (bin, args) => {
         p.pid + ' ' + p.parent + ' ' + p.group + ' ' + p.started + ' ' + p.state + ' ' + p.command).join('\\n');
     } else {
       const pid = Number(args[args.indexOf('-p') + 1]);
-      const verified = await onProbe(pid);
+      const verified = pid === process.pid ? undefined : await onProbe(pid);
       const started = verified === false ? undefined : pid === process.pid ? start : rows.find(p => p.pid === pid)?.started;
       output = started ?? '';
     }
@@ -366,5 +366,61 @@ assert.equal(await endProcess({ pid: 420100, pidStarted: start }, log, 0, undefi
 assert.ok(signals.some(p => p.pid === 420101 && p.signal === 'SIGCONT'));
 assert.equal(rows.find(p => p.pid === 420101).state, 'S');
 assert.equal(signals.some(p => p.signal === 'SIGKILL'), false);
+`);
+});
+
+test('a transient reservation release failure cannot block a later stop in the live caller', async () => {
+  await probe(`
+import fs from 'node:fs/promises';
+const rm = fs.rm;
+const reservation = '/tmp/cland-termination-' + process.getuid() + '/420100';
+let failedReleases = 0;
+fs.rm = async (path, options) => {
+  if (String(path) === reservation && ++failedReleases <= 2) throw new Error('transient reservation unlink failure');
+  return rm(path, options);
+};
+rows = [row(420100, 1, 420100)];
+onSignal = (pid, signal) => signal === 'SIGTERM' ? false : undefined;
+try {
+  await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
+    canSignal: current => !current.some(p => p.pid === 420100 && p.state === 'T')
+  }), /transient reservation unlink failure/);
+  assert.equal(rows[0].state, 'S', 'release failure cannot skip recovery thaw');
+  // The first operation is gone, but its process is still alive. Recovery must retain
+  // the nonce-owned reservation and retry after another transient failure.
+  assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
+    deadline: Date.now() + 2000
+  }), true);
+  assert.deepEqual(rows, []);
+  assert.ok(failedReleases >= 3, 'failed release is retried after the local call returns');
+} finally { fs.rm = rm; await rm(reservation, { force: true }); }
+`);
+});
+
+test('a failed tree acquisition retains and releases earlier reservations without hiding the primary failure', async () => {
+  await probe(`
+import fs from 'node:fs/promises';
+const rm = fs.rm, writeFile = fs.writeFile;
+const directory = '/tmp/cland-termination-' + process.getuid() + '/';
+let failedReleases = 0;
+fs.rm = async (path, options) => {
+  if (String(path) === directory + '420100' && ++failedReleases <= 2) throw new Error('temporary release failure');
+  return rm(path, options);
+};
+fs.writeFile = async (path, ...args) => {
+  if (String(path).startsWith(directory + '420101.')) throw new Error('initial tree acquisition failure');
+  return writeFile(path, ...args);
+};
+rows = [row(420100, 1, 420100), row(420101, 420100, 420100)];
+try {
+  await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0),
+    /initial tree acquisition failure; cleanup failed: temporary release failure/);
+  assert.deepEqual(signals, [], 'no signal before the whole initial tree is reserved');
+  fs.writeFile = writeFile;
+  assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
+    deadline: Date.now() + 2000
+  }), true);
+  assert.deepEqual(rows, []);
+} finally { fs.rm = rm; fs.writeFile = writeFile; await rm(directory + '420100', { force: true }); }
 `);
 });

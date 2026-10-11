@@ -227,7 +227,9 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
       }
       return ![...tree].some(pid => protectedPids.has(pid));
     };
-    if (await endProcess({ pid: candidate.process.pid, pidStarted: candidate.process.started }, () => {}, 1000, undefined, { deadline, canSignal, claim })) {
+    let terminated = false;
+    if (await endProcess({ pid: candidate.process.pid, pidStarted: candidate.process.started }, entry => { if (entry.event === 'harness-ended') terminated = true; }, 1000, undefined, { deadline, canSignal, claim })) {
+      if (!terminated) return; // another owner settled it; only that owner reports completion
       log({ event: 'orphan-ended', pid: candidate.process.pid, kind: candidate.kind, root: candidate.root, reason: candidate.reason });
       ended.push(candidate);
     } else log({ event: 'orphan-preserved', pid: candidate.process.pid, reason: 'a running session or pending launch protects it, or its identity cannot be verified' });
