@@ -361,7 +361,7 @@ export class Dispatcher {
   #leadRefusal(connection: Caller, frame: Record<string, unknown>): string | null {
     if (connection.role !== 'lead') return null;
     const type = String(frame.type);
-    if (['release', 'sync', 'push', 'hub.stop', 'role.handover', 'rename', 'session.resume'].includes(type)) {
+    if (['release', 'sync', 'push', 'hub.stop', 'rename', 'session.resume'].includes(type)) {
       return `root level: only the Coordinator may use ${type}`;
     }
     const request = type === 'send' && typeof frame.text === 'string' ? /^(?:review|qa) request (T-[1-9]\d*)\s*(?:\n|$)/.exec(frame.text) : null;
@@ -930,7 +930,7 @@ export class Dispatcher {
               peer.send({ type: 'result', id: frame.id, ok: false, error: `forbidden: role.state (${reason})`, code: 'forbidden', permission: 'role.state', role: connection?.role ?? null, reason });
               break;
             }
-            peer.send({ type: 'result', id: frame.id, ok: true, value: roleState(this.#handover(), role) });
+            peer.send({ type: 'result', id: frame.id, ok: true, value: roleState(this.#handover(), role, me) });
             break;
           }
           case 'status':
@@ -1033,9 +1033,10 @@ export class Dispatcher {
           case 'role.set': {
             // with a note, or `move`: the role moves to the session from its holder, as a handover (#31); the note is optional
             const assign = () => {
+              if (frame.item !== undefined && (frame.role !== 'lead' || (frame.note === undefined && frame.move !== true))) throw new Error('item requires a Lead move or handover note');
               if (frame.note !== undefined || frame.move === true) {
-                const from = core.holderOf(frame.role, frame.session);
-                return { session: handOver(this.#handover(), { role: frame.role, from, to: frame.session, by: 'human', note: frame.note, noteRequired: false, requireKnown: false }) };
+                const from = frame.role === 'lead' ? (frame.item ? this.#options.tracker?.claimOf(frame.item)?.session ?? null : null) : core.holderOf(frame.role, frame.session);
+                return { session: handOver(this.#handover(), { role: frame.role, from, to: frame.session, by: 'human', note: frame.note, noteRequired: false, requireKnown: false, ...(frame.item ? { item: frame.item } : {}) }) };
               }
               return { session: core.assignRole(frame.session, frame.role) };
             };
@@ -1061,7 +1062,7 @@ export class Dispatcher {
             return answer(assign());
           }
           case 'role.state':
-            return answer(roleState(this.#handover(), frame.role));
+            return answer(roleState(this.#handover(), frame.role, frame.session));
           case 'role.clear':
             return answer({ session: core.clearRole(frame.session) });
           case 'role.list':

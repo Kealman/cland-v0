@@ -402,7 +402,12 @@ export class Store implements HygieneMemory {
       if (sessionId === 'unknown') return;
       const names = new Set([name, ...this.sessionAliases().filter(a => a.id === sessionId).map(a => a.name)]);
       const adopt = this.#db.prepare("update asks set to_session_id = case when to_session_id = ? then ? else to_session_id end, from_session_id = case when from_session_id = ? then ? else from_session_id end where state = 'open' and (to_session_id = ? or from_session_id = ?)");
-      for (const n of names) adopt.run(`name:${n}`, sessionId, `name:${n}`, sessionId, `name:${n}`, `name:${n}`);
+      for (const n of names) {
+        adopt.run(`name:${n}`, sessionId, `name:${n}`, sessionId, `name:${n}`, `name:${n}`);
+        // Node notes and ownership also start provisional for human moves to unseen Leads.
+        this.#db.prepare("update role_state set value = json_set(value, '$.holderId', ?) where json_extract(value, '$.holderId') = ?").run(sessionId, `name:${n}`);
+        this.#db.prepare("update role_state set value = json_set(value, '$.noteToId', ?) where json_extract(value, '$.noteToId') = ?").run(sessionId, `name:${n}`);
+      }
     });
   }
 
@@ -517,6 +522,11 @@ export class Store implements HygieneMemory {
   roleRecord(role: string): unknown {
     const row = this.#db.prepare('select value from role_state where role = ?').get(role) as Row | undefined;
     return row ? (JSON.parse(row.value as string) as unknown) : null;
+  }
+
+  /** Node-scoped Lead records also need replay after a crash. */
+  roleRecords(): Array<{ key: string; value: unknown }> {
+    return (this.#db.prepare('select role, value from role_state').all() as Row[]).map(row => ({ key: row.role as string, value: JSON.parse(row.value as string) as unknown }));
   }
 
   saveRoleRecord(role: string, value: unknown): void {

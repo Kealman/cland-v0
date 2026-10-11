@@ -1464,6 +1464,25 @@ export class HubCore {
     return this.#store.sessionsWithRole(role, since).find((n) => n !== except && !this.#live.has(n)) ?? null;
   }
 
+  /** A Lead has one live node; a missing or ambiguous claim cannot be handed over. */
+  leadNode(session: string): string {
+    const id = this.sessionIdentity(`name:${session}`);
+    const nodes = (this.#items?.list?.() ?? []).filter(item => item.state !== 'closed' && item.claim?.role === 'lead' && this.sessionIdentity(item.claim.sessionId) === id);
+    if (nodes.length !== 1) throw new Error(`${session} needs exactly one live Lead node to hand over`);
+    return nodes[0]!.id;
+  }
+
+  /** Lead notes are scoped to nodes. Identity resolution preserves them across a rename. */
+  roleRecord(role: string, session?: string): unknown {
+    if (role !== 'lead') return this.#store.roleRecord(role);
+    if (!session) throw new Error('Lead role state needs a session');
+    const id = this.sessionIdentity(`name:${session}`);
+    const node = (this.#items?.list?.() ?? []).find(item => item.claim?.role === 'lead' && this.sessionIdentity(item.claim.sessionId) === id);
+    if (node) return this.#store.roleRecord(`lead:${node.id}`);
+    // The clause is recorded before the tracker connection settles the committed transfer.
+    return this.#store.roleRecords().map(r => r.value).find(record => isRoleRecord(record) && record.item && record.claims && record.handover && this.sessionIdentity(record.holderId ?? `name:${record.handover.to}`) === id) ?? null;
+  }
+
   /**
    * A role moves to `to` (#31): from its holder `from` (a handover by the holder, or the human's reassignment), or
    * from nobody. In one store transaction `from` loses it (or keeps `then`, an Implementer) and `to` takes it, with
@@ -1474,7 +1493,7 @@ export class HubCore {
    * notices, the `session.role` events and the Coordinator's `role.filled`. All synchronous: no frame is read between
    * the checks and the last event.
    */
-  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; claims?: PendingClaims | null }): RoleHolder {
+  moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; claims?: PendingClaims | null; item?: string }): RoleHolder {
     const { role, from, to, by, note, then } = move;
     for (const name of from === null ? [to] : [from, to]) {
       const launch = this.#launchMutationRefusal(name);
@@ -1497,11 +1516,19 @@ export class HubCore {
     const fromId = from !== null ? this.sessionIdentity(`name:${from}`) : null;
     const toId = this.sessionIdentity(`name:${to}`);
     const at = this.#now().toISOString();
-    const stored = this.#store.roleRecord(role);
+    if (role === 'lead') {
+      if (from === null || move.item !== this.leadNode(from)) throw new Error('Lead handover needs the current holder and its claimed node');
+      const occupied = (this.#items?.list?.() ?? []).find(item => item.claim && this.sessionIdentity(item.claim.sessionId) === toId);
+      if (occupied) throw new Error(`${to} already claims ${occupied.id}: a Lead holds one node; release the receiver's claim first`);
+      if (previous === COORDINATOR) throw new Error('a Lead handover cannot replace the root Coordinator');
+    }
+    const recordKey = role === 'lead' ? `lead:${move.item}` : role;
+    const stored = this.#store.roleRecord(recordKey);
     const before: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
     // every holder the role passed through: what waited for any of them waits for the role (role.state)
     const chain = [...(before.chain ?? (before.handover?.from ? [before.handover.from] : [])), ...(before.handover ? [before.handover.to] : []), ...(from !== null ? [from] : [])].filter((n, i, all) => n !== to && all.indexOf(n) === i).slice(-20);
     const record: RoleRecord = {
+      ...(move.item ? { item: move.item, holderId: toId, ...(note ? { noteToId: toId } : before.noteToId ? { noteToId: before.noteToId } : {}) } : {}),
       note: note ? { sections: note, from: by, to, at } : before.note,
       handover: { from, to, by, at },
       chain,
@@ -1516,7 +1543,7 @@ export class HubCore {
       if (from !== null) this.#store.rememberRole(from, then);
       if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
       this.#store.rememberRole(to, role);
-      this.#store.saveRoleRecord(role, record);
+      this.#store.saveRoleRecord(recordKey, record);
       if (fromId !== null) this.#store.moveAgentAsks(fromId, to, toId);
       return [
         this.#recordNotice(AGENTS.id, { kind: 'handover', text: note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`, detail: { role, from, to, by, note: note !== null } }),
@@ -1587,8 +1614,8 @@ export class HubCore {
     Object.assign(clause, extra);
     let text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
     // the role came with a note for this holder (#31): it rides with the clause, at the handover and on every reconnect
-    const stored = c.role !== null ? this.#store.roleRecord(c.role) : null;
-    const note = isRoleRecord(stored) && stored.note?.to === c.name ? stored.note : null;
+    const stored = c.role !== null ? this.roleRecord(c.role, c.name) : null;
+    const note = isRoleRecord(stored) && stored.note && this.sessionIdentity(stored.noteToId ?? `name:${stored.note.to}`) === this.sessionIdentity(`name:${c.name}`) ? stored.note : null;
     if (note) {
       clause.note = note.sections;
       clause.from = note.from;

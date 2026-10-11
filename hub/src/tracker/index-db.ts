@@ -471,10 +471,10 @@ export class TrackerIndex {
 
   /** Every claim held by one session (by id) is held by another, in one statement (a role's handover, #31).
    *  Returns the items moved with their claims as they were. */
-  moveClaims(fromSessionId: string, to: { session: string; sessionId: string; role: string | null }): Array<{ item: string; was: Claim }> {
-    const was = [...this.claims()].filter(([, c]) => c.sessionId === fromSessionId);
+  moveClaims(fromSessionId: string, to: { session: string; sessionId: string; role: string | null }, item?: string): Array<{ item: string; was: Claim }> {
+    const was = [...this.claims()].filter(([id, c]) => c.sessionId === fromSessionId && (item === undefined || id === item));
     if (!was.length) return [];
-    this.#db.prepare('update tracker_claims set session = ?, session_id = ?, role = ? where session_id = ?').run(to.session, to.sessionId, to.role, fromSessionId);
+    this.#db.prepare('update tracker_claims set session = ?, session_id = ?, role = ? where session_id = ? and (? is null or item_id = ?)').run(to.session, to.sessionId, to.role, fromSessionId, item ?? null, item ?? null);
     return was.map(([item, c]) => ({ item, was: c }));
   }
 

@@ -169,7 +169,7 @@ const TOOLS = [
   {
     name: 'role.handover',
     description:
-      'Hand your role (the Coordinator) to another session, live or launched, with a handover note: the next holder continues from the note and the hub, never from your transcript. The note needs four non-empty sections: goals now, work in flight, open decisions, waiting on (an object with those keys, or Markdown with those headings; the `handover` skill drafts it). The role moves at once, your claims move with it, and you get a "role revoked" event: from then on stop acting in the role.',
+      'Hand your Coordinator role or your claimed Lead node to another session, live or launched, with a handover note: the next holder continues from the note and the hub, never from your transcript. The note needs four non-empty sections: goals now, work in flight, open decisions, waiting on (an object with those keys, or Markdown with those headings; the `handover` skill drafts it). The role moves at once; a Lead receiver must be unclaimed, and its node claim and default subscriptions follow the note, and you get a "role revoked" event: from then on stop acting in the role.',
     inputSchema: {
       type: 'object',
       properties: {

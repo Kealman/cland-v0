@@ -9,6 +9,7 @@ import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import { ROLE_LABELS, ROLE_NAMES } from '../names.ts';
 import type { RoleHolder, RoleState } from '../protocol.ts';
 import { isRoleRecord, parseNote, renderNote, type PendingClaims, type RoleRecord } from './note.ts';
+import { normalizeId } from '../tracker/item.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 
 const label = (role: string) => ROLE_LABELS[role] ?? role;
@@ -37,27 +38,31 @@ function sessionIdOf(ctx: HandoverContext, name: string): string | null {
  */
 export function handOver(
   ctx: HandoverContext,
-  args: { role: string; from: string | null; to: string; by: string; note: unknown; noteRequired: boolean; then?: string | null; requireKnown: boolean },
+  args: { role: string; from: string | null; to: string; by: string; note: unknown; noteRequired: boolean; then?: string | null; requireKnown: boolean; item?: string },
 ): RoleHolder {
+  if (args.item !== undefined && args.role !== 'lead') throw new Error('a node item is only valid for Lead handover');
   const note = args.note === undefined && !args.noteRequired ? null : parseNote(args.note);
   if (!ROLE_NAMES.includes(args.role)) throw new Error(`unknown role "${args.role}" (roles: ${ROLE_NAMES.join(', ')})`);
-  const toId = sessionIdOf(ctx, args.to);
+  const toId = args.role === 'lead' ? ctx.core.sessionIdentity(`name:${args.to}`) : sessionIdOf(ctx, args.to);
   if (args.requireKnown && !ctx.core.presence().some((p) => p.name === args.to) && !ctx.launched?.(args.to)) {
     throw new Error(`"${args.to}" is not a session the hub knows: hand the ${label(args.role)} role to a live session, or to one launched with \`session.launch\``);
   }
-  const fromId = args.from !== null ? sessionIdOf(ctx, args.from) : null;
+  const fromId = args.from !== null ? args.role === 'lead' ? ctx.core.sessionIdentity(`name:${args.from}`) : sessionIdOf(ctx, args.from) : null;
   // the claims to move are part of the move's record (one store transaction); the tracker moves them right after the
   // commit, from that record, and again at the next start if the hub died in between (the move is idempotent)
   // a transfer still pending from an earlier move (its receiver never connected) is carried along, never dropped
-  const stored = ctx.core.store.roleRecord(args.role);
+  const item = args.role === 'lead' && args.from !== null ? ctx.core.leadNode(args.from) : args.item;
+  if (args.item && normalizeId(args.item) !== item) throw new Error('Lead handover must name the current holder’s node');
+  const recordKey = args.role === 'lead' ? `lead:${item}` : args.role;
+  const stored = ctx.core.store.roleRecord(recordKey);
   const prior = isRoleRecord(stored) ? stored.claims : null;
   const sources = [...new Set([...(prior ? [prior.from, ...(prior.also ?? [])] : []), ...(fromId !== null ? [fromId] : [])])].filter((id) => id !== toId);
   const [first, ...also] = sources;
-  const claims: PendingClaims | null = ctx.tracker && first !== undefined ? { from: first, ...(also.length ? { also } : {}), to: { name: args.to, id: toId, role: args.role } } : null;
-  const holder = ctx.core.moveRole({ role: args.role, from: args.from, to: args.to, by: args.by, note, then: args.then ?? null, claims });
+  const claims: PendingClaims | null = ctx.tracker && first !== undefined ? { from: first, ...(also.length ? { also } : {}), to: { name: args.to, id: toId, role: args.role }, ...(item ? { item } : {}) } : null;
+  const holder = ctx.core.moveRole({ role: args.role, from: args.from, to: args.to, by: args.by, note, then: args.then ?? null, claims, ...(item ? { item } : {}) });
   // a test's crash between the commit and the claims' move (the replay at the next start finishes it)
   if (process.env.CLAND_TEST_CRASH_AT === 'handover-committed') process.kill(process.pid, 'SIGKILL');
-  settleClaims(ctx, args.role);
+  settleClaims(ctx, recordKey);
   return holder;
 }
 
@@ -79,14 +84,17 @@ export function settleClaims(ctx: HandoverContext, role: string, hello?: { name:
     if (!hello || hello.name !== pending.to.name) return;
     toId = hello.sessionId === UNKNOWN_SESSION ? `name:${hello.name}` : hello.sessionId;
   }
-  for (const from of [pending.from, ...(pending.also ?? [])]) if (toId !== from) tracker.moveClaims(from, { name: pending.to.name, id: toId, role: pending.to.role });
+  const destination = core.sessionIdentity(toId);
+  for (const from of new Set([pending.from, ...(pending.also ?? [])].flatMap(id => [id, core.sessionIdentity(id)]))) {
+    if (destination !== from) tracker.moveClaims(from, { name: core.store.nameOfSession(destination) ?? pending.to.name, id: destination, role: pending.to.role }, pending.item);
+  }
   core.store.saveRoleRecord(role, { ...stored, claims: null } satisfies RoleRecord);
 }
 
 /** Every role's pending claims: at the hub's start, and at each hello. */
 export function settleAllClaims(ctx: HandoverContext, hello?: { name: string; sessionId: string }): void {
   // a failure leaves the record pending: the next start or hello tries again
-  for (const role of ROLE_NAMES) settleClaims(ctx, role, hello);
+  for (const { key } of ctx.core.store.roleRecords()) settleClaims(ctx, key, hello);
 }
 
 /** How far back `role.state` reads a topic for messages waiting for the role. */
@@ -97,16 +105,23 @@ const WAITING_WINDOW = 200;
  * #32) and the human's latest message in it was delivered to the role's holders, or when a message addressed to the role or to one of its holders, the current ones and the one it moved from,
  * is newer than their last word in the topic.
  */
-export function roleState(ctx: HandoverContext, role: string): RoleState {
+export function roleState(ctx: HandoverContext, role: string, session?: string): RoleState {
   if (!ROLE_NAMES.includes(role)) throw new Error(`unknown role "${role}" (roles: ${ROLE_NAMES.join(', ')})`);
   const { core } = ctx;
-  const holders = core.roleList().roles.find((r) => r.role === role)?.holders ?? [];
-  const stored = core.store.roleRecord(role);
+  const allHolders = core.roleList().roles.find((r) => r.role === role)?.holders ?? [];
+  if (role === 'lead' && !session) {
+    if (allHolders.length !== 1) throw new Error('Lead role state needs a session when more than one Lead exists');
+    session = allHolders[0]!.name;
+  }
+  const holders = role === 'lead' ? allHolders.filter(h => h.name === session) : allHolders;
+  if (role === 'lead' && !holders.length) throw new Error(`${session} does not hold the Lead role`);
+  const stored = core.roleRecord(role, session);
   const record: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
-  const names = new Set([role, ...holders.map((h) => h.name)]);
+  const names = new Set([...(role === 'lead' ? [] : [role]), ...holders.map((h) => h.name)]);
   // every holder the role passed through, not only the latest one it moved from
   for (const n of record.chain ?? []) names.add(n);
   if (record.handover?.from) names.add(record.handover.from);
+  if (record.handover?.to) names.add(record.handover.to);
   if (record.note && record.note.from !== 'human') names.add(record.note.from);
 
   const waiting: RoleState['waiting'] = [];
@@ -137,8 +152,10 @@ export function roleState(ctx: HandoverContext, role: string): RoleState {
     }
   }
 
+  const item = record.item ?? (role === 'lead' ? claims[0]?.item : undefined);
   return {
     role,
+    ...(item ? { item } : {}),
     label: label(role),
     holders,
     note: record.note ? { ...record.note, markdown: renderNote(record.note.sections) } : null,

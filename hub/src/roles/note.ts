@@ -12,6 +12,11 @@ export const NOTE_SECTIONS: ReadonlyArray<{ key: keyof HandoverNote; heading: st
 
 /** A role's state as the store keeps it (`role_state`): its latest note and its latest move. */
 export type RoleRecord = {
+  /** Lead state belongs to this node, independently of other Lead holders. */
+  item?: string;
+  /** Durable identities keep the current holder and note attached across renames. */
+  holderId?: string;
+  noteToId?: string;
   note: { sections: HandoverNote; from: string; to: string; at: string } | null;
   handover: { from: string | null; to: string; by: string; at: string } | null;
   /** Every session that held the role through its handovers, oldest first (the latest moves at most 20 kept): what
@@ -24,7 +29,7 @@ export type RoleRecord = {
 
 /** Claims held by the previous holder's session id (`from`), and by earlier holders whose transfer was still pending
  *  when the role moved on (`also`: a receiver that never connected), to be re-pointed to the receiver's. */
-export type PendingClaims = { from: string; also?: string[]; to: { name: string; id: string | null; role: string } };
+export type PendingClaims = { from: string; also?: string[]; to: { name: string; id: string | null; role: string }; item?: string };
 
 export const isRoleRecord = (v: unknown): v is RoleRecord => typeof v === 'object' && v !== null && 'note' in v && 'handover' in v;
 

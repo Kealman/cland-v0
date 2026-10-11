@@ -9,6 +9,7 @@ export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordina
                   --note-file <file>  with a handover note (Markdown: Goals now, Work in flight, Open decisions,
                                       Waiting on); the Coordinator moves from its holder, who is told to stop
                   --move              move the Coordinator from its holder without a note
+                  --item T-n         move this Lead node to the receiver (with --move or --note-file)
   role clear <session>        revoke the session's role
   role list       the roles, their launch defaults and holders (--json for JSON)
 `;
@@ -40,14 +41,18 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
   const noteAt = rest.indexOf('--note-file');
   const noteFile = noteAt >= 0 ? rest[noteAt + 1] : undefined;
   if (noteAt >= 0 && (!noteFile || noteFile.startsWith('--'))) throw new Error('--note-file needs a file');
-  const [first, second] = rest.filter((a, i) => !a.startsWith('--') && !(noteAt >= 0 && i === noteAt + 1));
+  const itemAt = rest.indexOf('--item');
+  const item = itemAt >= 0 ? rest[itemAt + 1] : undefined;
+  if (itemAt >= 0 && (!item || item.startsWith('--'))) throw new Error('--item needs an item id');
+  const [first, second] = rest.filter((a, i) => !a.startsWith('--') && !(noteAt >= 0 && i === noteAt + 1) && !(itemAt >= 0 && i === itemAt + 1));
   const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
     case 'set': {
       if (!first || !second) throw new Error('usage: cland role set <session> <role> [--note-file <file>] [--move]');
       const note = noteFile !== undefined ? readFileSync(noteFile, 'utf8') : undefined;
       const move = rest.includes('--move');
-      const v = (await askHubFrame(d, { type: 'role.set', session: first, role: second, ...(note !== undefined ? { note } : {}), ...(move ? { move } : {}) })) as { session: RoleHolder };
+      if (item && (second !== 'lead' || (!move && note === undefined))) throw new Error('--item requires role lead and --move or --note-file');
+      const v = (await askHubFrame(d, { type: 'role.set', session: first, role: second, ...(note !== undefined ? { note } : {}), ...(move ? { move } : {}), ...(item ? { item } : {}) })) as { session: RoleHolder };
       out(v, `${holderLine(v.session)}: role set${note !== undefined ? ', with the handover note' : ''}`);
       return 0;
     }

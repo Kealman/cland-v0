@@ -2049,8 +2049,8 @@ export class Tracker {
    * A role moved (#31): the claims its previous holder held (by session id) are held by the new one, keeping their
    * time. Returns an undo that puts them back, for a move that did not complete.
    */
-  moveClaims(fromSessionId: string, to: { name: string; id: string; role: string | null }): { items: string[]; undo: () => void } {
-    const moved = this.#index.moveClaims(fromSessionId, { session: to.name, sessionId: to.id, role: to.role });
+  moveClaims(fromSessionId: string, to: { name: string; id: string; role: string | null }, item?: string): { items: string[]; undo: () => void } {
+    const moved = this.#index.moveClaims(fromSessionId, { session: to.name, sessionId: to.id, role: to.role }, item);
     if (moved.length) this.#log({ event: 'task-claims-moved', items: moved.map((m) => m.item), from: moved[0]?.was.session, to: to.name, sessionId: to.id });
     // the UI hears each moved claim as a `task` event (#36), and again if the move is undone
     for (const m of moved) this.#changed(m.item);

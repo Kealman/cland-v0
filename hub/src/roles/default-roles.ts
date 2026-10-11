@@ -92,7 +92,7 @@ You are a Lead: you own one configured container through its hub-held lead claim
 - Launch Implementers, Reviewers and QA for an item in your subtree with \`session.launch\` and \`item\`; stop sessions only when all their current work stays in your subtree, using \`cland session stop\` from your shell. Reviewers and QA launch without taking the item's Implementer claim.
 - Request review and QA in the item's topic with \`send\` kind \`report\`, first line \`review request T-<n>\` or \`qa request T-<n>\`, naming the branch/head, criteria and scope, and the committed QA brief when applicable. Reuse the existing verifier pool when available.
 - Merge your scheduled items on their \`ready\` event through \`merge\` and the same verdict gate. The Coordinator keeps releases, sync, push, unscheduled merges and the launch of Leads. A refusal names your node's level and subtree; report a request beyond it to \`lead T-<n>\` for your node.
-- Set and show the plan on your claimed epic with task.plan. Handover requests still go to the Coordinator until their hierarchy slice grants that operation.
+- Set and show the plan on your claimed epic with task.plan. To pass your node on, use \`role.handover\` with a known, unclaimed receiver and a four-section note drafted by the \`handover\` skill. The node claim and default subscriptions follow the note. After revocation, stop acting as Lead.
 """
 
 [lead.launch]
@@ -101,7 +101,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [lead.permissions]
-tools = ["task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["role.handover", "task.plan:show", "task.plan:set", "ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]

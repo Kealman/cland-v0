@@ -266,6 +266,8 @@ export type HandoverNote = { goals_now: string; work_in_flight: string; open_dec
 
 /** A role's state as its holder pulls it (`role.state`, #31): what a new holder continues from. */
 export type RoleState = {
+  /** The node whose Lead state is returned. */
+  item?: string;
   role: string;
   label: string;
   /** The role's holders (live, or remembered within the queue's TTL). */
@@ -517,9 +519,9 @@ export type ClientRequest =
   /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
   | { type: 'subscribe'; id: string }
   /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
-  | { type: 'role.set'; id: string; session: string; role: string; note?: HandoverNote | string; move?: boolean }
+  | { type: 'role.set'; id: string; session: string; role: string; note?: HandoverNote | string; move?: boolean; item?: string }
   /** A role's state, as its holder would pull it: `RoleState`. */
-  | { type: 'role.state'; id: string; role: string }
+  | { type: 'role.state'; id: string; role: string; session?: string }
   /** The human revokes a session's role: `{ session: RoleHolder }`. */
   | { type: 'role.clear'; id: string; session: string }
   /** The roles, their definitions and holders: `RoleList`. */
@@ -682,9 +684,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.answer':
       return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string');
     case 'role.set':
-      return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean');
+      return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean') && (f.item === undefined || typeof f.item === 'string');
     case 'role.state':
-      return typeof f.role === 'string';
+      return typeof f.role === 'string' && (f.session === undefined || typeof f.session === 'string');
     case 'role.clear':
       return typeof f.session === 'string';
     case 'topic.history':
