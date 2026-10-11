@@ -449,7 +449,10 @@ export type ClientHello = {
   client: string;
 };
 
+export type SuiteStart = { type: 'suite.start'; id: string; mode: 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[] };
+
 export type ClientRequest =
+  | SuiteStart
   | ReleaseRequest
   | { type: 'sync'; id: string }
   | { type: 'push'; id: string }
@@ -529,6 +532,7 @@ export type RoleList = {
 };
 
 export type HubStatus = {
+  suites?: Array<{ id: string; pid: number | null; topic: string; reported: boolean; outcome: { code: number; cause: string } | null; error: string | null }>;
   crew?: { config: import('./crew.ts').CrewConfig; summary: string };
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
   keys?: { layouts: string[] };
@@ -612,6 +616,8 @@ export function isClientHello(f: Record<string, unknown>): f is ClientHello {
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'suite.start':
+      return ['all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'push':
     case 'sync':
       return true;

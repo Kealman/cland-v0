@@ -1059,6 +1059,10 @@ node hub/bin/cland.ts --version
 
 ### Tests
 
+Implementers use `cland suite` for full runs and wait for its artifact-backed result;
+see [the agent test workflow](../docs/agents/tests.md). The package commands below
+are also available for humans and isolated CI.
+
 Run one full suite at a time, using `npm test` at the root (hub, then Neovim),
 `npm test --workspace hub`, or `npm run test:nvim`. A hub-only run takes
 `/tmp/cland-suite.lock`; a Neovim-only run queues once for joint admission to

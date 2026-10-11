@@ -1918,7 +1918,7 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. The topic then waits for an agent, and the human has read it.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[]): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -1952,7 +1952,7 @@ export class HubCore {
     // a role with no holder: held for the role, not refused
     const placeholders = empty.map(({ tag }) => tag);
     const message: Message = {
-      id: randomUUID(),
+      id: messageId ?? randomUUID(),
       from: HUMAN,
       fromKind: 'human',
       via: 'hub',
@@ -1995,7 +1995,7 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report'): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
     if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question or decision');
     const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
@@ -2006,6 +2006,16 @@ export class HubCore {
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });
     const self = this.#identity(from);
+    if (requireAllRecipients) {
+      const intended = this.#resolveAddressees(to, from, 'offline-holders');
+      if (intended.unknown.length || intended.empty.length) throw new Error('result recipients unavailable; delivery remains pending');
+      // A running mute is checked before consuming any outbound or pair allowance on retry.
+      for (const name of intended.sessions) {
+        const other = this.#identity(name);
+        const reason = this.#hygiene.muteRefusal(self, other, nowMs, [from, name]);
+        if (reason) throw new HygieneError(reason, { code: 'hygiene', rule: 'loop' });
+      }
+    }
     const rate = this.#hygiene.rateRefusal(self, nowMs);
     if (rate) {
       this.#log({ event: 'rate-limited', session: from });
@@ -2043,9 +2053,12 @@ export class HubCore {
         });
       }
     }
+    // Suite results commit only when every intended recipient passed hygiene. A refusal
+    // retains the job for retry; neither its topic post nor any accepted delivery is duplicated.
+    if (requireAllRecipients && refused.size) throw new HygieneError([...refused.values()][0]!.reason, [...refused.values()][0]!.refusal);
     for (const n of refused.keys()) sessions.delete(n);
     const message: Message = {
-      id: randomUUID(),
+      id: messageId ?? randomUUID(),
       from,
       fromKind: 'agent',
       kind,

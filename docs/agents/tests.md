@@ -1,6 +1,19 @@
 # Running tests
 
-Run full suites through the package scripts, one invocation at a time per session:
+Implementers run full suites through the hub, one invocation at a time per session:
+
+```sh
+cland suite all --report <item-topic> --to <reviewer-name> --to <your-name>
+```
+
+Send the review request first. Before the final suite, fetch and merge `origin/dev` into the task branch. The CLI prints the run id, worker PID and project queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact. The worker survives the caller's shell exiting. The hub keeps its run record across restart; a killed worker produces a result naming the signal while the hub is live, or a missing-exit-receipt crash report after restart. A permission change can hold reporting: `cland hub status --json` exposes pending runs and their reporting error; restoring permission lets the hub retry without duplicating a committed result. A recipient hygiene refusal holds the whole result until every intended recipient is admissible, so a partially muted recipient cannot lose its report.
+
+`all` is the default. `hub` and `nvim` choose the corresponding phase. Each run first executes `npm run typecheck`, then the package test script from the calling worktree. `--report` names the result topic; repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
+
+The project queue position counts this hub's unfinished jobs when submitted. Cross-project lock waiting remains in the log, with the lock holder's PID and start time.
+
+The underlying package scripts remain available for humans and isolated CI:
+
 
 - `npm test`: hub, then Neovim under one machine-queue ticket. The run takes both locks jointly before starting and retains them through both phases; each phase cleans up its processes and temporary root before the next starts.
 - `npm test --workspace hub`: hub only, with the machine lock `/tmp/cland-suite.lock`.

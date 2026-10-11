@@ -116,7 +116,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     close: async () => {
       closing = true;
       clearImmediate(cleanupStart);
-      dispatcher.close();
+      await dispatcher.close();
       clearInterval(pruneTimer);
       await cleanup;
       unwatchEvents?.();

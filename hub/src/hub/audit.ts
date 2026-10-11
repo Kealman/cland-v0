@@ -31,6 +31,9 @@ export type AuditRecord = {
 /** The fields that say what a call was about, copied as they are (strings capped). */
 const KEPT = [
   'item',
+  'mode',
+  'report',
+  'cwd',
   'to',
   'topic',
   'replyTo',

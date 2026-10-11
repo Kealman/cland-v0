@@ -18,6 +18,7 @@ import { WORKTREE_USAGE, runWorktree } from '../src/cli/worktree.ts';
 import { MERGE_USAGE, runMerge } from '../src/cli/merge.ts';
 import { RELEASE_USAGE, runRelease, runSync } from '../src/cli/release.ts';
 import { PUSH_USAGE, runPush } from '../src/cli/push.ts';
+import { SUITE_USAGE, runSuiteCommand } from '../src/cli/suite.ts';
 import { VERSION } from '../src/version.ts';
 
 const usage = `cland ${VERSION}
@@ -26,7 +27,7 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${OPEN_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
+${OPEN_USAGE}${SUITE_USAGE}${QA_USAGE}${INIT_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -44,6 +45,10 @@ switch (command) {
   case '-h':
   case 'help':
     process.stdout.write(usage);
+    break;
+  case 'suite':
+    try { process.exitCode = await runSuiteCommand(rest); }
+    catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
     break;
   case 'open':
     try {

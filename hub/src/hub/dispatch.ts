@@ -12,6 +12,8 @@
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
+import { Suites, suiteSummary, type SuiteJob } from './suites.ts';
+import { isAbsolute } from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
@@ -102,7 +104,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -128,6 +130,7 @@ export class Dispatcher {
   readonly #processHolds = new Map<string, string>();
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
+  readonly #suites: Suites | null;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
@@ -138,6 +141,8 @@ export class Dispatcher {
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles);
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
+    const root = options.control?.status().root;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact)) : null;
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
@@ -176,7 +181,7 @@ export class Dispatcher {
     }
   }
 
-  close(): void { this.#merges?.stop(); }
+  async close(): Promise<void> { this.#merges?.stop(); await this.#suites?.close(); }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
@@ -397,6 +402,71 @@ export class Dispatcher {
     };
   }
 
+  #artifactTopic(caller: Caller | null, topicId: string) {
+    const core = this.#options.core;
+    const topic = typeof topicId === 'string' ? core.store.topic(topicId) : null;
+    if (!topic) throw new ArtifactError('artifact-topic', 'no such artifact topic');
+    if (caller !== null && caller.role !== 'coordinator' && caller.role !== 'aide') {
+      const own = topic.item !== null && this.#toolCall(caller, { type: 'task.claim', item: topic.item })?.own?.() === true;
+      if (topic.id === GENERAL.id || topic.id === AGENTS.id || !(own || core.store.addressedInTopic(caller.sessionId, topic.id))) {
+        throw new ToolForbidden(caller.role, 'artifact.create', 'artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s');
+      }
+    }
+    return topic;
+  }
+
+  #suitePermissions(actor: SuiteJob['actor'], topic: string, to: string[], quiet = false): Caller | null {
+    const core = this.#options.core;
+    const caller = actor ? this.#asSession({ as: actor }) : null;
+    if (actor && !caller) throw new Error('suite caller identity is unavailable');
+    if (caller) {
+      const peer: Peer = { isOpen: () => true, close: () => {}, send: () => {} };
+      for (const frame of [{ type: 'artifact.create', id: 'suite-permission', topic }, { type: 'send', id: 'suite-permission', topic, to }]) {
+        const call = this.#toolCall(caller, frame)!;
+        const decision = decide(caller.role, core.roles?.get().get(caller.role ?? '')?.permissions.tools, call);
+        if (!decision.ok) {
+          if (!quiet) this.#refuse(caller, frame, peer, decision.permission, decision.reason, '', false);
+          throw new ToolForbidden(caller.role, decision.permission, decision.reason);
+        }
+      }
+    }
+    this.#artifactTopic(caller, topic);
+    const names = new Set([...core.presence().map(p => p.name), ...core.store.knownSessions().map(p => p.name)]);
+    for (const target of to) {
+      if (!names.has(target) && !ROLE_NAMES.includes(target) && target !== 'all' && !target.includes('*') && !/^lead T-\d+$/.test(target)) throw new Error(`no suite recipient named ${target}`);
+    }
+    return caller;
+  }
+
+  async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
+    const core = this.#options.core;
+    const messageId = `suite:${job.id}`;
+    if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
+    const callerNow = () => this.#suitePermissions(job.actor, job.topic, job.to, true);
+    callerNow();
+    const title = `Suite ${job.id} · ${job.mode} at ${job.head.slice(0, 7)}`;
+    // Artifact registration may have committed just before the hub died.
+    const prior = core.store.artifacts(job.topic).find(a => a.title === title);
+    let artifactId = job.artifact ?? prior?.id ?? null;
+    if (!job.artifact && prior) checkpointArtifact(prior.id);
+    if (!artifactId) {
+      const create = () => this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work());
+      const operation = this.#artifactQueue.then(create);
+      this.#artifactQueue = operation.catch(() => {});
+      const result = await operation as { id: string };
+      artifactId = result.id; checkpointArtifact(artifactId);
+    }
+    const artifact = core.store.artifact(artifactId);
+    if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');
+    const log = await readFile(artifact.path, 'utf8');
+    const caller = callerNow(); // all checks after the final file read, then synchronous publication
+    const outcome = job.outcome!;
+    const text = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\nLog ${artifact.id}: ${artifact.path}`;
+    const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
+      : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
+    if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
+    this.#log({ event: 'audit', session: caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
+  }
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
     const caller = callerNow();
     const core = this.#options.core;
@@ -404,18 +474,7 @@ export class Dispatcher {
       if (frame.topic !== undefined && (typeof frame.topic !== 'string' || !core.store.topic(frame.topic))) throw new ArtifactError('artifact-topic', 'no such artifact topic');
       return { artifacts: core.store.artifacts(frame.topic) };
     }
-    const authorize = () => {
-      const caller = callerNow();
-      const topic = typeof frame.topic === 'string' ? core.store.topic(frame.topic) : null;
-      if (!topic) throw new ArtifactError('artifact-topic', 'no such artifact topic');
-      if (caller !== null && caller.role !== 'coordinator' && caller.role !== 'aide') {
-        const own = topic.item !== null && this.#toolCall(caller, { type: 'task.claim', item: topic.item })?.own?.() === true;
-        if (topic.id === GENERAL.id || topic.id === AGENTS.id || !(own || core.store.addressedInTopic(caller.sessionId, topic.id))) {
-          throw new ToolForbidden(caller.role, 'artifact.create', 'artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s');
-        }
-      }
-      return topic;
-    };
+    const authorize = () => this.#artifactTopic(callerNow(), frame.topic);
     const topic = authorize();
     const root = this.#options.control?.status().root;
     const name = caller?.name ?? 'human';
@@ -951,7 +1010,7 @@ export class Dispatcher {
           peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
           break;
         case 'hub.status': {
-          const status = (): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
+          const status = (): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), suites: this.#suites?.status() ?? [], coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
           if (frame.flushLogs === true && control.flushLogs) {
             const resumed = this.#guard.resumer(frame.type, client);
             let timer: NodeJS.Timeout;
@@ -1058,6 +1117,19 @@ export class Dispatcher {
             () => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: value() })),
             err => resumed(() => Dispatcher.#failure(frame.id, err)),
           ));
+        }
+        if (frame.type === 'suite.start' && isClientRequest(frame)) {
+          if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for suites')));
+          const request = frame as import('../protocol.ts').SuiteStart;
+          if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(frame.id, new Error('suite cwd must be absolute')));
+          const topic = core.store.topic(request.report)?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic : GENERAL.id);
+          if (!topic) return peer.send(Dispatcher.#failure(frame.id, new Error('a session report needs your claimed item topic; use --report <topic>')));
+          const to = core.store.topic(request.report) ? request.to ?? [] : request.to ?? [request.report];
+          const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
+          const authorize = () => { this.#suitePermissions(actor, topic, to); };
+          try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
+          later('suite.start', this.#suites.start({ mode: request.mode, cwd: request.cwd, topic, to, actor }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+          return;
         }
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
         if (isSessionRequest(frame)) return session(frame);
