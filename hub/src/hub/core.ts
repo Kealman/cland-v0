@@ -1674,7 +1674,8 @@ export class HubCore {
 
   /** A role notice goes out as a `role` frame, everything else as a `deliver`. */
   #resolveAttachments<T extends Message | TopicMessage>(message: T): T {
-    const resolve = (a: Artifact) => this.#store.artifact(a.id)?.movedTo ? this.#store.resolveArtifact(a.id) ?? a : a;
+    // Creation chips follow current placement; sent attachments retain their publication facts.
+    const resolve = (a: Artifact) => !message.artifacts || this.#store.artifact(a.id)?.movedTo ? this.#store.resolveArtifact(a.id) ?? a : a;
     return { ...message, ...(message.artifact ? { artifact: resolve(message.artifact) } : {}),
       ...(message.artifacts ? { artifacts: message.artifacts.map(resolve) } : {}) };
   }

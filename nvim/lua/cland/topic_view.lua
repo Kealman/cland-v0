@@ -42,8 +42,12 @@ function M.new(client, topic)
     end,
   })
 
+  local generation = 0
   local function load()
+    generation = generation + 1
+    local current = generation
     client:snapshot({ type = 'topic.history', topic = topic.id, limit = M.HISTORY_LIMIT }, function(err, value, events)
+      if current ~= generation then return end
       if err then
         return view.thread:set_notice('no history: ' .. err)
       end
@@ -91,6 +95,9 @@ function M.new(client, topic)
     if event.topic and event.topic.id == topic.id then
       view.thread:add(event.message)
     end
+  end)
+  client:on('artifact', function(event)
+    if event.artifact and event.artifact.topic == topic.id then load() end
   end)
   client:on('delivery', function(event)
     if event.topic == topic.id then

@@ -8,7 +8,7 @@ import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
 import { createConnection } from 'node:net';
-import { spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { eventually, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -393,6 +393,7 @@ test('a failed live palette render closes it and reports one status-line notice'
   await c.waitScreen(s => s.includes('palette ›'), 'palette before malformed event');
   await c.control({emit:{type:'artifact',artifact:{id:'A-1',kind:'note',title:'Incomplete hub artifact',topic:'general'}}});
   await c.waitScreen(s => !s.includes('palette ›') && s.includes('palette:'), 'visible render failure');
+  await eventually('palette recovery finishes stopinsert', async () => await c.mode() === 'n' ? true : undefined);
   assert.equal(await c.mode(), 'n');
 });
 

@@ -9,7 +9,7 @@ export const DEFAULT_VISIBILITY = {
   inbox: { plan: 'watch', ask: 'now', approval: 'now', waiting: 'now', not_clear: 'watch', death: 'watch', clear: 'watch', release: 'watch', import: 'watch', idle: 'watch', other: 'background' },
   sessions: { aide: 'now', waiting: 'now', busy: 'now', idle: 'watch', stopped: 'background' },
   items: { active: 'now', planned: 'watch', backlog: 'background', unscheduled: 'background', done: 'background', closed_release: 'archive' },
-  artifacts: { human: 'watch', coordinator: 'watch', agent: 'background', archived: 'archive' },
+  artifacts: { human: 'watch', coordinator: 'watch', kept: 'watch', agent: 'background', archived: 'archive' },
   // Topics are palette entries, too; their status supplies the same four-layer vocabulary.
   topics: { waiting: 'now', open: 'watch', closed: 'archive' },
 } as const;
@@ -94,7 +94,10 @@ export class Visibility {
 
   place<T extends object>(surface: Surface, object: T, kind?: string): T & { layer: Layer } {
     const r = object as Row;
-    return { ...object, layer: this.layer(surface, kind ?? this.#kind(surface, r)) };
+    const cell = kind ?? this.#kind(surface, r);
+    const layer = surface === 'messages' && cell === 'artifact'
+      ? this.place('artifacts', row(r.artifact)!).layer : this.layer(surface, cell);
+    return { ...object, layer };
   }
 
   #kind(surface: Surface, r: Row, activeItems?: Set<unknown>): string {
@@ -106,6 +109,8 @@ export class Visibility {
         // Preserve T-134's verdict-message exception, including agent recipients; T-171 settles its policy.
         const verdict = messageVerdict(r);
         if (verdict) return verdict === 'clear' ? 'clear' : 'not_clear';
+        // Creation chips share artifact policy; a message with attachments keeps message policy.
+        if (row(r.artifact) && !Array.isArray(r.artifacts)) return 'artifact';
         const to = Array.isArray(r.to) ? r.to : [];
         const toHuman = to.includes('human') || to.includes('aide') || to.some(n => typeof n === 'string' && this.#role(n) === 'aide') || (r.fromKind === 'agent' && to.length === 0 && (!r.artifact || Array.isArray(r.artifacts)) && !['progress', 'event'].includes(String(r.kind)));
         if (r.fromRole === 'coordinator' && (r.kind === undefined || r.kind === 'report') && toHuman) return 'coordinator_report';
@@ -129,6 +134,7 @@ export class Visibility {
         const authorRole = Object.hasOwn(r, 'creatorRole') ? r.creatorRole : this.#role(String(r.creator));
         if (r.status === 'archived') return 'archived';
         if (r.creator === 'human' || authorRole === 'aide') return 'human';
+        if (r.kept === true) return 'kept';
         return authorRole === 'coordinator' && ['shared', 'sent'].includes(String(r.status)) ? 'coordinator' : 'agent';
       }
       case 'topics': return r.status === 'closed' ? 'closed' : r.status === 'waiting for human' ? 'waiting' : 'open';
@@ -184,7 +190,7 @@ export class Visibility {
       if (surface === 'topics' && typeof r.status !== 'string') return r;
       if (surface === 'items') activeItems ??= this.#currentItems(itemRows ??= this.#items());
       const object = surface === 'messages' ? project(r) : r;
-      return { ...object, layer: this.layer(surface, this.#kind(surface, object, activeItems)) };
+      return this.place(surface, object, this.#kind(surface, object, activeItems));
     };
     return project(frame as Row) as T;
   }

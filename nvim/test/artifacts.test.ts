@@ -9,6 +9,49 @@ const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 
+test('keeping an agent artifact updates the thread and palette across unkeep and hub restart', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  let ui = await connectUi(t, discovery);
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Reports' })).value as { topic: { id: string } }).topic.id;
+  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  t.after(() => impl.close()); await impl.waitForPresence(['impl']);
+  await ui.request({ type: 'topic.send', topic, text: '@impl share your report' });
+  const result = await impl.call<{ ok: boolean; artifact: { id: string } }>('artifact.create', { kind: 'note', title: 'Agent report', topic, content: 'Report bytes' });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const a = result.artifact;
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.lua(`require('cland.layout').show({kind='thread', id=${JSON.stringify(topic)}}, {insert=false})`);
+  await c.waitScreen(s => s.includes('1 artifacts'), 'thread history loaded');
+  await c.input('zR');
+  await c.waitScreen(s => s.includes(a.id) && s.includes('Agent report'), 'artifact chip');
+  const placement = async () => await c.lua(`
+    local a = require('cland.artifacts').get(${JSON.stringify(a.id)})
+    local thread = require('cland.views').topic(${JSON.stringify(topic)}).thread
+    for _,m in ipairs(thread.messages) do if m.artifact and m.artifact.id == ${JSON.stringify(a.id)} then
+      return {a.layer, require('cland.thread').layer(m), require('cland.palette').dim('artifacts', a)}
+    end end
+  `);
+  assert.deepEqual(await placement(), ['background', 'background', true]);
+  const change = async (kept: boolean) => {
+    assert.equal((await ui.request({ type: 'artifact.keep', artifact: a.id, kept })).ok, true);
+    const expected = kept ? ['watch', 'watch', false] : ['background', 'background', true];
+    await eventually('thread and palette share the updated layer', async () => {
+      const actual = await placement();
+      return JSON.stringify(actual) === JSON.stringify(expected) ? actual : undefined;
+    });
+  };
+  await change(true);
+  await impl.close();
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  const restarted = await startDaemon(t, root);
+  ui = await connectUi(t, restarted.discovery);
+  await c.waitScreen(s => s.includes('hub: connected'), 'reconnected');
+  await eventually('kept placement restored', async () => JSON.stringify(await placement()) === JSON.stringify(['watch', 'watch', false]) ? true : undefined);
+  await change(false);
+});
+
 test('Coordinator artifacts in Agents open from the log and its topic list', { skip }, async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root);

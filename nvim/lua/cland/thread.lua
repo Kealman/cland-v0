@@ -878,14 +878,18 @@ end
 
 --- Merge a history snapshot: new messages join in time order, known ones advance their stage and take the hub's
 --- ask card (an ask answered, withdrawn or cancelled while the client was away is no longer open). Only a message
---- older than the latest shown rewrites the buffer; otherwise each change touches its own lines.
+--- older than the latest shown or a changed layer rewrites the buffer; otherwise each change touches its own lines.
 function Thread:merge(messages)
   local latest = self.messages[#self.messages]
   local fresh, cards, stages = {}, {}, {}
-  local older = false
+  local older, placement_changed = false, false
   for _, m in ipairs(messages or {}) do
     local existing = self.by_id[m.id]
     if existing then
+      if existing.layer ~= m.layer or not vim.deep_equal(existing.artifact, m.artifact) then
+        existing.layer, existing.artifact = m.layer, vim.deepcopy(m.artifact)
+        placement_changed = true
+      end
       local before = existing.stage
       advance(existing, m.stage)
       if existing.stage ~= before then
@@ -917,7 +921,7 @@ function Thread:merge(messages)
     self.by_id[m.id] = m
     table.insert(self.messages, m)
   end
-  if older or #self.blocks == 0 then
+  if older or placement_changed or #self.blocks == 0 then
     -- ISO timestamps sort as text; equal ones keep their arrival order
     for i, m in ipairs(self.messages) do
       m._seq = i

@@ -5,6 +5,63 @@ import { join } from 'node:path';
 import { connectUi, eventually, fakeClaude, startDaemon, tempProject } from './harness.ts';
 import type { Inbox } from '../src/protocol.ts';
 
+test('artifact creation chips follow keep and unkeep in frames, history and restart', async t => {
+  const { cland, spawnSpoke } = await import('./harness.ts');
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  let ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  const aide = await spawnSpoke({ discover: true, cwd: root, name: 'helper', role: 'aide' });
+  t.after(() => impl.close()); t.after(() => aide.close());
+  await impl.waitForPresence(['impl', 'helper']);
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Reports' })).value as { topic: { id: string } }).topic.id;
+  await ui.request({ type: 'topic.send', topic, text: '@impl share your report' });
+  const request = { kind: 'note', title: 'Report', topic, content: 'Notes' };
+  type PlacedArtifact = { id: string; layer: string; kept?: boolean };
+  const createdAgent = await impl.call<{ ok: boolean; error?: string; reason?: string; artifact: PlacedArtifact }>('artifact.create', request);
+  assert.equal(createdAgent.ok, true, JSON.stringify(createdAgent));
+  const agent = createdAgent.artifact;
+  const human = ((await ui.request({ type: 'artifact.create', ...request })).value as { artifact: PlacedArtifact }).artifact;
+  const createdAide = await aide.call<{ ok: boolean; artifact: PlacedArtifact }>('artifact.create', request);
+  assert.equal(createdAide.ok, true, JSON.stringify(createdAide));
+  const theirs = createdAide.artifact;
+  const checkHistory = async (id: string, layer: string) => {
+    const history = (await ui.request({ type: 'topic.history', topic })).value as { messages: Array<{ layer: string; artifact?: PlacedArtifact }> };
+    const chip = history.messages.find(m => m.artifact?.id === id)!;
+    assert.equal(chip.artifact?.layer, layer);
+    assert.equal(chip.layer, layer, 'a creation chip shares the artifact placement');
+  };
+  for (const [a, layer] of [[agent, 'background'], [human, 'watch'], [theirs, 'watch']] as const) {
+    assert.equal(a.layer, layer);
+    const created = await ui.waitFor(f => f.type === 'message' && (f.message as { artifact?: PlacedArtifact }).artifact?.id === a.id);
+    assert.equal((created.message as { layer: string }).layer, layer);
+    await checkHistory(a.id, layer);
+  }
+  const change = async (kept: boolean) => {
+    const mark = ui.frames.length;
+    const result = await ui.request({ type: 'artifact.keep', artifact: agent.id, kept });
+    assert.equal(result.ok, true, result.error);
+    const expected = kept ? 'watch' : 'background';
+    assert.equal((result.value as { artifact: PlacedArtifact }).artifact.layer, expected);
+    const event = await ui.waitFor(f => f.type === 'artifact' && (f.artifact as PlacedArtifact).id === agent.id && ui.frames.indexOf(f) >= mark);
+    assert.equal((event.artifact as PlacedArtifact).layer, expected);
+    await checkHistory(agent.id, expected);
+  };
+  await change(true);
+  await impl.close(); await aide.close();
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  const restarted = await startDaemon(t, root);
+  ui = await connectUi(t, restarted.discovery);
+  await ui.request({ type: 'subscribe' });
+  const list = (await ui.request({ type: 'artifact.list' })).value as { artifacts: PlacedArtifact[] };
+  assert.equal(list.artifacts.find(a => a.id === agent.id)?.layer, 'watch');
+  await checkHistory(agent.id, 'watch');
+  await checkHistory(human.id, 'watch');
+  await checkHistory(theirs.id, 'watch');
+  await change(false);
+});
+
 for (const [terminal, role, expected] of [['stopped', 'implementer', 'background'], ['exited', 'implementer', 'background'], ['stopped', 'aide', 'now']] as const) {
   test(`live ${role} ${terminal} state keeps terminal placement under an idle-now override`, async t => {
     const root = await tempProject(t);

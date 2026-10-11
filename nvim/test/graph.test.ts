@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { setTimeout as poll } from 'node:timers/promises';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
+import { eventually } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
 
@@ -89,7 +90,14 @@ test('a deeper configured container uses its owning epic plan for tags, grouping
   const scenario: Scenario = { ...structuredClone(staged), tracker: { levels: ['release', 'epic', 'phase'] } };
   scenario.items = scenario.items!.map(it => it.parent === 'T-3' ? { ...it, parent: 'T-7' } : it);
   scenario.items.push({ id: 'T-7', kind: 'phase', title: 'Nested phase', state: 'open', parent: 'T-3' });
+  const itemCount = scenario.items.length;
   const c = await start(t, scenario);
+  await eventually('configured levels and task list loaded', async () => await c.lua(`
+    local state = require('cland.state')
+    return vim.deep_equal(state.S.tracker.levels, {'release', 'epic', 'phase'})
+      and #state.S.items == ${itemCount}
+      and state.item('T-7') ~= nil
+  `) || undefined);
   await c.input('<Esc>:Cland graph T-7<CR>');
   await c.waitScreen(s => s.includes('Graph · T-7 Nested phase') && s.includes('T-10 S1') && s.includes('T-12 S2'), 'nested tags from epic plan');
   await c.input('s');

@@ -60,7 +60,7 @@ managed-file updates keep invalid files for the human to correct.
 | `inbox` | `ask`, `approval`, `waiting`: now; `not_clear`, `death`, `clear`, `release`, `import`, `idle`: watch; `other`: background |
 | `sessions` | `aide`, `waiting`, `busy`: now; `idle`: watch (unknown states also use this cell); `stopped`: background |
 | `items` | `active`: now; `planned`: watch; `backlog`, `unscheduled`, `done`: background; `closed_release`: archive |
-| `artifacts` | `human`, `coordinator`: watch; `agent`: background; `archived`: archive |
+| `artifacts` | `human`, `coordinator`, `kept`: watch; `agent`: background; `archived`: archive |
 | `topics` | `waiting`: now; `open`: watch; `closed`: archive (for palette entries) |
 
 Message age takes precedence: `old` means strictly older than seven days. Asks,
@@ -72,3 +72,8 @@ ties. Planned items use watch; work outside that release is unscheduled/backgrou
 Aides use the aide cell even when stopped. Human/Aide artifacts use the human cell;
 shared or sent Coordinator artifacts use the coordinator cell. Archived artifacts
 use archived before considering their author.
+Kept agent artifacts use the kept cell before the coordinator or agent cell.
+Creation chips share their artifact's current placement, including keep and unkeep;
+ordinary messages with attachments keep message policy. Message age still takes
+precedence over creation-chip placement. Open threads refresh that projection on
+artifact changes, and history resolves current artifact metadata after restart.
