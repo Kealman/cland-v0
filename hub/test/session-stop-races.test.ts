@@ -1,11 +1,98 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { fileURLToPath } from 'node:url';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import type { HarnessProcessView, Inbox } from '../src/protocol.ts';
 
-test('Codex: forced stop succeeds when a captured descendant exits before its final identity probe', { skip: NO_PS }, async t => {
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+
+async function initGitProject(root: string) {
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'config', 'user.name', 'Test');
+  git(root, 'config', 'user.email', 'test@example.com');
+  git(root, 'config', 'commit.gpgsign', 'false');
+  await writeFile(join(root, 'README.md'), 'project\n');
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'Initial');
+  assert.equal((await cland(root, 'init')).code, 0);
+}
+
+async function assertStopped(ui: Awaited<ReturnType<typeof connectUi>>, root: string) {
+  const list = await ui.request({ type: 'session.list' });
+  assert.equal((list.value as { processes: HarnessProcessView[] }).processes.find(p => p.name === 'impl')?.status, 'stopped');
+  await ui.request({ type: 'hub.status', flushLogs: true });
+  const log = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
+  assert.match(log, /"event":"session-stopped","session":"impl"/);
+  assert.doesNotMatch(log, /"event":"harness-exited"|"kind":"death"|its harness exited/);
+  const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
+  assert.match(journal, /"event":"session-stopped","session":"impl"/);
+  assert.doesNotMatch(journal, /"event":"harness-exited"/);
+  const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+  const messages = (history.value as { messages: Array<{ kind: string; text: string }> }).messages;
+  assert.equal(messages.some(m => m.kind === 'session-death'), false);
+  assert.ok(messages.some(m => m.kind === 'role-revoke' && m.text.includes('its session was stopped')));
+  const inbox = await ui.request({ type: 'inbox.list' });
+  assert.equal((inbox.value as Inbox).notifications.some(n => n.kind === 'death'), false);
+}
+
+for (const harness of ['codex', 'claude-code', 'opencode'] as const)
+for (const stop of ['manual', 'post-merge'] as const)
+for (const forced of [false, true])
+test(`${harness}: ${stop} ${forced ? 'forced' : 'graceful'} stop emits stopped without a death or warn notification`, { skip: NO_PS }, async t => {
   const root = await tempProject(t);
+  await initGitProject(root);
+  const fake = harness === 'codex' ? await fakeCodex(t) : harness === 'claude-code' ? await fakeClaude(t) : {
+    env: {
+      CLAND_OPENCODE_BIN: fileURLToPath(new URL('./fakes/opencode/opencode', import.meta.url)),
+      FAKE_OPENCODE_HOME: await tempProject(t, 'fake-opencode-'),
+      FAKE_OPENCODE_TURN_MS: '100',
+      CLAND_ADAPTER_POLL_MS: '200',
+    },
+  };
+  const { discovery } = await startDaemon(t, root, { ...fake.env, ...(forced ? {
+    CLAND_STOP_GRACE_MS: '100',
+    FAKE_CODEX_TERM_DELAY_MS: '60000',
+    FAKE_CLAUDE_IGNORE_TERM: '1',
+    FAKE_OPENCODE_IGNORE_TERM: '1',
+    FAKE_OPENCODE_CHILD: '1',
+  } : {}) });
+  const ui = await connectUi(t, discovery);
+  const created = await ui.request({ type: 'task.create', title: `${stop} stop` });
+  assert.equal(created.ok, true, created.error);
+  const item = (created.value as { item: { id: string } }).item.id;
+  const launched = await ui.request({ type: 'session.launch', name: 'impl', harness, role: 'implementer', item }, 30_000);
+  assert.equal(launched.ok, true, launched.error);
+  const { process: row, worktree } = launched.value as { process: HarnessProcessView; worktree: { path: string } };
+  await eventually('Implementer idle', async () => {
+    const list = await ui.request({ type: 'session.list' });
+    return (list.value as { processes: HarnessProcessView[] }).processes.some(p => p.sessionId === row.sessionId && p.state === 'idle') || undefined;
+  });
+  if (stop === 'post-merge') {
+    await writeFile(join(worktree.path, 'shipped.txt'), 'shipped\n');
+    git(worktree.path, 'add', 'shipped.txt');
+    git(worktree.path, 'commit', '-qm', 'Ship');
+    const merged = await ui.request({ type: 'merge', item, override: 'Exercise post-merge stop classification' }, 30_000);
+    assert.equal(merged.ok, true, merged.error);
+    assert.equal((merged.value as { followUp?: unknown }).followUp, undefined, JSON.stringify(merged));
+    const view = await ui.request({ type: 'task.view', item });
+    assert.equal((view.value as { item: { status: string } }).item.status, 'done');
+  } else {
+    const stopped = await cland(root, 'session', 'stop', 'impl', '--json');
+    assert.equal(stopped.code, 0, stopped.stderr || stopped.stdout);
+  }
+  const list = await ui.request({ type: 'session.list' });
+  assert.equal((list.value as { processes: HarnessProcessView[] }).processes.find(p => p.sessionId === row.sessionId)?.status, 'stopped');
+  assert.equal(pidAlive(row.pid!), false);
+  await assertStopped(ui, root);
+});
+
+for (const stop of ['manual', 'post-merge'] as const)
+test(`Codex: ${stop} forced stop succeeds when a captured descendant exits before its final identity probe`, { skip: NO_PS }, async t => {
+  const root = await tempProject(t);
+  if (stop === 'post-merge') await initGitProject(root);
   const fake = await fakeCodex(t, { env: { FAKE_CODEX_TERM_DELAY_MS: '60000', CLAND_STOP_GRACE_MS: '100' } });
   const bin = join(root, 'bin');
   await mkdir(bin);
@@ -44,7 +131,10 @@ process.exitCode = result.status ?? 1;
 `, { mode: 0o755 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${bin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
-  const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex', role: 'implementer' }, 30_000);
+  const created = await ui.request({ type: 'task.create', title: 'Stop during descendant exit' });
+  assert.equal(created.ok, true, created.error);
+  const item = (created.value as { item: { id: string } }).item.id;
+  const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'codex', role: 'implementer', ...(stop === 'post-merge' ? { item } : {}) }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const pid = (launched.value as { process: { pid: number } }).process.pid;
   await writeFile(leaderFile, String(pid));
@@ -52,16 +142,21 @@ process.exitCode = result.status ?? 1;
     const list = await ui.request({ type: 'session.list' });
     return (list.value as { processes: Array<{ name: string; state: string }> }).processes.some(p => p.name === 'impl' && p.state === 'idle') || undefined;
   });
-  const stopped = await ui.request({ type: 'session.stop', session: 'impl' }, 15_000);
+  if (stop === 'post-merge') {
+    const { worktree } = launched.value as { worktree: { path: string } };
+    await writeFile(join(worktree.path, 'shipped.txt'), 'shipped\n');
+    git(worktree.path, 'add', 'shipped.txt');
+    git(worktree.path, 'commit', '-qm', 'Ship');
+  }
+  const stopped = await ui.request(stop === 'manual' ? { type: 'session.stop', session: 'impl' } : { type: 'merge', item, override: 'Exercise descendant exit during post-merge stop' }, 30_000);
   const probe = JSON.parse(await readFile(evidence, 'utf8')) as { before: string; after: string; code: number };
   assert.ok(probe.before, 'the captured descendant had a real start time');
   assert.equal(probe.after, '', 'the descendant exited before its final identity read');
   assert.equal(probe.code, 1, 'ps reports that the captured descendant is gone');
   assert.equal(stopped.ok, true, `${stopped.error}; probe=${JSON.stringify(probe)}`);
+  assert.equal((stopped.value as { followUp?: unknown }).followUp, undefined, JSON.stringify(stopped));
   assert.equal(pidAlive(pid), false);
-  await ui.request({ type: 'hub.status', flushLogs: true });
+  await assertStopped(ui, root);
   const log = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
-  assert.match(log, /"event":"session-stopped","session":"impl"/);
   assert.match(log, /"event":"signal-skipped"[^\n]+"signal":"SIGKILL"/);
-  assert.doesNotMatch(log, /"event":"harness-exited"|"kind":"death"/);
 });
