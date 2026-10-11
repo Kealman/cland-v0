@@ -10,6 +10,21 @@ import type { ProcessIdentity } from '../test/process-cleanup.ts';
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
+/** Read-only view of the compatibility slot; never reap or take a lease to display it. */
+export async function compatibilityHolder(dirs: string[]): Promise<{ holder: Holder | null; since: string | null } | null> {
+  for (const dir of dirs) {
+    const info = await stat(dir).catch(() => null);
+    const holder = await holderAt(`${dir}.owner`) ?? await holderAt(join(dir, 'holder.json'));
+    // Display must stay responsive even when the OS identity probe is stalled.
+    // A failed probe preserves a live unknown; admission still performs its own checks.
+    if (holder && pidAlive(holder.pid)) {
+      const current = readableStart(holder.started) ? await processStartedAsync(holder.pid, 100) : null;
+      if (current === null || current === holder.started) return { holder, since: holder.since };
+    }
+    if (info && !holder) return { holder: null, since: new Date(info.mtimeMs).toISOString() };
+  }
+  return null;
+}
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
   try {

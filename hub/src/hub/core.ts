@@ -32,6 +32,7 @@ import {
   type TopicMessage,
   type TopicRef,
   type TopicStatus,
+  type VerificationQueue,
 } from '../protocol.ts';
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole, isNodeLeadRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
@@ -315,6 +316,8 @@ export class HubCore {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   }
+
+  publishVerification(queue: VerificationQueue): void { this.#emit({ type: 'verification.queue', queue }); }
 
   #emit(event: HubEvent): void {
     for (const listener of [...this.#listeners]) {

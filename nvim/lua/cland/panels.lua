@@ -273,6 +273,18 @@ local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l laun
 
 local function render_sessions(c)
   local list = state.sessions()
+  local queue = state.S.verification
+  if type(queue) == 'table' then
+    local function seconds(ms) return type(ms) == 'number' and (math.ceil(ms / 1000) .. 's') or 'unknown' end
+    local holder = type(queue.holder) == 'table' and queue.holder or nil
+    local waiters = queue.waiters or {}
+    local names = {}
+    for _, w in ipairs(waiters) do names[#names + 1] = w.session .. ' (' .. seconds(w.waitMs) .. ')' end
+    local line = 'verify: ' .. (holder and (holder.kind == 'hand run' and 'hand run' or holder.session) or (#waiters == 0 and 'idle' or 'free'))
+    if #names > 0 then line = line .. ' · waiting ' .. table.concat(names, ' → ') .. ' · next ETA ' .. seconds(waiters[1].etaMs) end
+    wrapped(c, line, 'ClandDim')
+    c:add({})
+  end
   local confirm = state.S.ui.confirm
   if confirm then
     wrapped(c, 'stop ' .. confirm.session .. '? y stops it · n keeps it', 'ClandAmber')

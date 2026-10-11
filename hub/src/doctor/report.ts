@@ -65,6 +65,7 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
     let stdout = '';
     let stderr = '';
     let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = (r: RunResult) => {
       if (settled) return;
       settled = true;
@@ -78,7 +79,7 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err) });
       return;
     }
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       try {
         if (child.pid !== undefined) process.kill(-child.pid, 'SIGKILL');
       } catch {

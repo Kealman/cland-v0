@@ -107,7 +107,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -145,7 +145,7 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, requesterDead: actor => this.#sessions?.list().some(p => p.sessionId === actor.sessionId && p.status !== 'running') ?? false }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, onQueue: queue => options.core.publishVerification(queue), requesterDead: actor => this.#sessions?.list().some(p => p.sessionId === actor.sessionId && p.status !== 'running') ?? false }) : null;
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
@@ -1178,17 +1178,24 @@ export class Dispatcher {
         return;
       }
       switch (frame.type) {
+        case 'suite.queue':
+          if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
+          later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          break;
         case 'hub.subscriptions':
           peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
           break;
         case 'hub.status': {
-          const status = (): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), suites: this.#suites?.status() ?? [], coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus });
+          const status = (): HubFrame => {
+            const verification = this.#suites?.snapshot();
+            return { type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+          };
           if (frame.flushLogs === true && control.flushLogs) {
             const resumed = this.#guard.resumer(frame.type, client);
             let timer: NodeJS.Timeout;
             const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('log drain exceeded 5000 ms')), 5000); timer.unref(); });
             const draining = Promise.race([control.flushLogs(), deadline]);
-            return later(frame.type, draining.then(() => resumed(() => { clearTimeout(timer); return status(); }), err => resumed(() => { clearTimeout(timer); return Dispatcher.#failure(frame.id, err); })));
+            return later(frame.type, draining.then(() => resumed(() => { clearTimeout(timer); return status(); })).catch(err => resumed(() => { clearTimeout(timer); return Dispatcher.#failure(frame.id, err); })));
           }
           peer.send(status());
           break;

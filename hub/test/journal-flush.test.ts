@@ -14,26 +14,29 @@ test('a log drain barrier waits, drains again on repetition, and times out while
   t.after(() => release());
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const answers: Array<Record<string, unknown>> = [];
-  const conversation = hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
+  const pending = new Map<string, (frame: Record<string, unknown>) => void>();
+  const conversation = hub.dispatcher.open({ send: frame => {
+    answers.push(frame);
+    if (frame.type === 'result') { pending.get(frame.id)?.(frame); pending.delete(frame.id); }
+  }, close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
   t.after(() => conversation.closed());
   conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'test' }));
-  const request = (id: string, flushLogs = false) => conversation.receive(JSON.stringify({ type: 'hub.status', id, flushLogs }));
-  request('barrier', true);
+  const request = (id: string, flushLogs = false) => new Promise<Record<string, unknown>>(resolve => {
+    pending.set(id, resolve);
+    conversation.receive(JSON.stringify({ type: 'hub.status', id, flushLogs }));
+  });
+  const barrier = request('barrier', true);
   assert.equal(answers.find(frame => frame.id === 'barrier'), undefined);
-  request('ordinary');
-  assert.equal(answers.find(frame => frame.id === 'ordinary')?.ok, true);
+  assert.equal((await request('ordinary')).ok, true);
   release();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(answers.find(frame => frame.id === 'barrier')?.ok, true);
+  assert.equal((await barrier).ok, true);
   gate = new Promise<void>(resolve => { release = resolve; });
-  request('repeat', true);
+  const repeat = request('repeat', true);
   assert.equal(drains, 2, 'a repeated barrier never replays a cached status');
   assert.equal(answers.find(frame => frame.id === 'repeat'), undefined);
   t.mock.timers.tick(5000);
-  await new Promise(resolve => setImmediate(resolve));
-  const result = answers.find(frame => frame.id === 'repeat');
+  const result = await repeat;
   assert.equal(result?.ok, false);
   assert.match(String(result?.error), /log drain exceeded 5000 ms/);
-  request('after-timeout');
-  assert.equal(answers.find(frame => frame.id === 'after-timeout')?.ok, true);
+  assert.equal((await request('after-timeout')).ok, true);
 });

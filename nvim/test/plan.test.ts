@@ -253,7 +253,7 @@ test('a moved item keeps watch marks and its reason until the next plan visit, w
   const saved = JSON.parse(await readFile(join(root, '.cland/ui.json'), 'utf8'));
   assert.ok(saved.plan_seen[epic.id]);
   const reconnected = await startClient(t, bin, root);
-  await reconnected.waitScreen(s => s.includes('hub: connected'), 'second client connected');
+  await reconnected.waitScreen(s => s.includes('hub: connected') && s.includes('Panels'), 'second client has the epic before navigation');
   await reconnected.input(`<Esc>:Cland view plan ${epic.id}<CR>`);
   await waitPlan(reconnected, epic.id, 'Keep panel work together');
   assert.ok(!(await planText(reconnected, epic.id)).includes('△ changed'), 'saved receipt survives a new workbench');

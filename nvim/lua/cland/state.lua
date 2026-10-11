@@ -18,6 +18,7 @@ function M.reset(opts)
     adapters = {}, -- harness → capability table
     hub_coordinator = nil, -- { name = <live holder> | nil } once the hub said (hub.status, role.vacant, role.filled)
     crew = nil, -- effective staffing snapshot and summary
+    verification = nil, -- versioned queue snapshot, from hub.status and verification.queue
     roles = {}, -- role.list's roles: {role, label, exclusive, launch = {harness, model, effort}, holders}
     sessions_note = nil, -- { text, group }: the last launch or stop outcome, shown atop the sessions panel
     items = {}, -- task.list summaries

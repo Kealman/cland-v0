@@ -220,6 +220,7 @@ export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Top
 
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
+  | { type: 'verification.queue'; queue: VerificationQueue }
   | { type: 'visibility' }
   | { type: 'crew'; config: import('./crew.ts').CrewConfig; summary: string }
   | { type: 'artifact'; artifact: Artifact }
@@ -488,6 +489,7 @@ export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all'
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
+  | { type: 'suite.queue'; id: string }
   | { type: 'visibility.set'; id: string; surface: 'topics' | 'sessions' | 'artifacts'; target: string; mode: 'pin' | 'mute' }
   | SuiteStart
   | SuiteCancel
@@ -581,9 +583,27 @@ export type SuiteStatus = {
   priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
   selection?: import('./suite-selection.ts').SuiteSelection;
   tree?: string | null; finished?: string | null; cached?: { run: string; head: string; tree: string };
+  admittedAt?: string | null; completedAt?: string | null; waitMs?: number | null; runMs?: number | null;
+  timingEstimated?: boolean;
+};
+
+/** Milliseconds throughout. Null means there is no duration evidence yet. ETA is time until admission. */
+export type VerificationWaiter = {
+  id: string; session: string; item: string | null; mode: string; worktree: string;
+  position: number; queuedAt: string | null; waitMs: number; etaMs: number | null; expectedRunMs: number | null;
+};
+export type VerificationHolder = {
+  kind: 'run' | 'hand run'; id: string | null; session: string | null; item: string | null; mode: string | null;
+  pid: number | null; worktree: string | null; since: string | null; runMs: number | null; etaMs: number | null;
+};
+export type DurationStats = { count: number; medianMs: number | null; p90Ms: number | null };
+export type VerificationQueue = {
+  version: 1; at: string; holder: VerificationHolder | null; waiters: VerificationWaiter[];
+  metrics: { window: number; count: number; wait: DurationStats; run: DurationStats };
 };
 
 export type HubStatus = {
+  verification?: VerificationQueue;
   suites?: SuiteStatus[];
   crew?: { config: import('./crew.ts').CrewConfig; summary: string };
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
@@ -674,6 +694,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
+    case 'suite.queue':
+      return true;
     case 'push':
     case 'sync':
       return true;

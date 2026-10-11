@@ -162,7 +162,8 @@ test('a delayed journal append is outside request blocking time, and daemon stop
   await writing;
   assert.equal(answers.find(frame => frame.id === 'first')?.ok, true);
   conversation.receive(JSON.stringify({ type: 'hub.status', id: 'other' }));
-  assert.equal(answers.find(frame => frame.id === 'other')?.ok, true, 'another request answers while the journal disk operation waits');
+  const other = await eventually('status answers while the journal disk operation waits', () => answers.find(frame => frame.id === 'other'));
+  assert.equal(other.ok, true, 'another request answers while the journal disk operation waits');
   assert.ok(performance.now() - began < BUDGET_MS, 'enqueuing two audit records stays inside the request budget');
   assert.deepEqual(records.filter(r => r.event === 'slow-request'), []);
   conversation.closed();
@@ -236,7 +237,7 @@ test('the daemon shares journal continuation costs with dispatch counters shown 
   assert.equal(slow[0]?.phase, 'resumed');
   assert.equal(slow[0]?.client, 'review-probe');
   conversation.receive(JSON.stringify({ type: 'hub.status', id: 'status' }));
-  const result = answers.find(frame => frame.id === 'status');
+  const result = await eventually('status exposes journal continuation counters', () => answers.find(frame => frame.id === 'status'));
   assert.ok((result?.value as { requests: { slow: number } }).requests.slow >= 1);
 });
 

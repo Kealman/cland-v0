@@ -12,6 +12,12 @@ Omitting the mode selects phases from the branch diff against freshly fetched `o
 
 The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then the item rank captured at submission, then enqueue order. One run is admitted at a time. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
+`cland verify queue [--json]` shows the holder, ordered waiters, elapsed waits and
+estimated time until admission. The sessions panel follows hub queue events live.
+`hub status --json` includes per-run wait/run timings and median/p90 over the last
+20 completions. Cache hits record zero timing; executed-run estimates use recent
+successful durations for the effective mode. Unknown history gives a null ETA.
+
 A green run may be reused for the identical committed candidate tree and effective
 mode. The candidate excludes only `.cland/tasks`, so tracker-only dev merges hit;
 other paths and dirty working changes do not. `--fresh` forces execution, and

@@ -1151,6 +1151,34 @@ The merge gate and T-209 criterion freshness remain exact-head: a cache hit alon
 never refreshes a stale mark. The Reviewer must verify the new head using the posted
 cached result as evidence; no tree equivalence is applied to review or QA marks.
 
+`cland verify queue [--json]` shows the holder (including compatibility **hand run**
+holders), the scheduler's ordered waiters, elapsed waits and estimated time until
+admission. The sessions panel renders the same queue live from `verification.queue`
+events; `hub status --json` includes it as `verification`, with the scheduler's
+latest compatibility-holder observation (refreshed each second). An explicit CLI
+queue read refreshes ownership immediately. Status metadata and recorded timing
+metrics never wait for OS probes. JSON `version: 1` uses
+milliseconds, explicit nulls for unknown estimates, and ordered `waiters` with
+one-based positions. `holder.etaMs` estimates remaining execution;
+`waiters[].etaMs` estimates time until each admission. A cache hit completes
+without entering this queue even when a hand run occupies the compatibility slot.
+
+Each run's status includes `admittedAt`, `completedAt`, `waitMs` and `runMs`.
+Admission is worker launch; running time includes typecheck, all package phases and
+cleanup. A cancellation before admission records its elapsed wait and zero run time.
+Cache hits record zero wait and run time; their separate `completedAt` never changes
+the original `finished` used for cache expiry. The journal records `verification-timing`
+once per measured request. Existing T-232 receipt/start records seed estimates at
+second resolution and are labelled `timingEstimated` in status (`estimated` in the
+journal); unavailable timestamps remain null.
+
+`metrics` reports median and nearest-rank p90 wait/run durations over the last 20
+completed requests, including hits and failures, with counts of available values.
+ETAs use successful executed runs in that window matching the effective mode,
+subtract the holder's elapsed run time, then accumulate preceding waiters' durations.
+Hand runs use the window's successful execution median across modes. Missing history
+or an ownerless manual lock yields an unknown ETA. These are estimates, not reservations.
+
 `cland verify cancel [<suite id>]` requests cancellation through the hub and exits.
 Without an id it selects the caller's latest active run. A session can cancel only
 runs submitted by its own stable session identity; the human can cancel any run

@@ -28,6 +28,7 @@ import { Visibility, warningSeverity } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
+  verification?: import('../../hub/src/protocol.ts').VerificationQueue;
   topics?: Array<Record<string, unknown>>;
   messages?: Record<string, Array<Record<string, unknown>>>;
   processes?: Array<Record<string, unknown>>;
@@ -271,7 +272,7 @@ function answer(f: Frame) {
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status': {
       const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
-      return ok(f.id, { keys: config.keys, tracker: scenario.tracker ?? config.tracker, sessions: scenario.presence ?? [], ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+      return ok(f.id, { keys: config.keys, tracker: scenario.tracker ?? config.tracker, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
     }
     case 'inbox.list':
       return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');

@@ -7,12 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { candidateTree } from '../verification-tree.ts';
 import { pidAlive } from '../project.ts';
 import { promisify } from 'node:util';
-import type { SuiteStatus } from '../protocol.ts';
+import type { SuiteStatus, VerificationQueue, VerificationHolder, DurationStats } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
 import { systemProcesses, endProcess } from '../system-processes.ts';
 import { processStartedAsync } from './lock.ts';
-import { compatibilityOccupied } from '../suite-lock.ts';
+import { compatibilityOccupied, compatibilityHolder } from '../suite-lock.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
@@ -24,15 +24,27 @@ export type SuiteJob = {
   cancelled?: boolean;
   tree?: string | null; finished?: string;
   cached?: { run: string; head: string; tree: string };
+  admittedAt?: string; completedAt?: string; waitMs?: number | null; runMs?: number | null;
+  timingEstimated?: boolean;
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
-export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn };
+export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void };
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
+const METRICS_WINDOW = 20;
+function elapsed(since: string | undefined | null, now: number): number | null {
+  const start = Date.parse(since ?? '');
+  return Number.isFinite(start) ? Math.max(0, now - start) : null;
+}
+function durations(values: Array<number | null | undefined>): DurationStats {
+  const sorted = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0).sort((a, b) => a - b);
+  const n = sorted.length;
+  return { count: n, medianMs: n ? n % 2 ? sorted[Math.floor(n / 2)]! : (sorted[n / 2 - 1]! + sorted[n / 2]!) / 2 : null, p90Ms: n ? sorted[Math.ceil(n * 0.9) - 1]! : null };
+}
 export function suiteSummary(log: string): string {
   const text = log.replace(/\x1b\[[0-9;]*m/g, '');
   const counts = new Map<string, number>();
@@ -55,18 +67,43 @@ export class Suites {
   readonly #launching = new Set<string>();
   readonly #budget: number;
   readonly #options: SuiteSchedulerOptions;
+  #lastQueue = '';
+  #compatibility: Awaited<ReturnType<typeof compatibilityHolder>> = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
     this.#budget = Math.min(options.budget ?? 1, 1);
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
-    for (const job of this.#jobs) job.state ??= job.outcome || job.reported ? 'finished' : 'running';
+    for (const job of this.#jobs) {
+      job.state ??= job.outcome || job.reported ? 'finished' : 'running';
+      // T-232 stores the worker's ps start identity and exit receipt. Recover a
+      // second-resolution estimate without replacing the identity used for cleanup.
+      const started = Date.parse(job.started ?? '');
+      if (!job.admittedAt && job.pid && Number.isFinite(started)) {
+        job.admittedAt = new Date(Math.max(started, Date.parse(job.queued ?? '') || started)).toISOString();
+        job.timingEstimated = true;
+      }
+      const completion = job.cached ? store.message(`suite:${job.id}`)?.ts : job.finished ?? store.message(`suite:${job.id}`)?.ts;
+      if (job.reported && job.outcome && completion && !job.completedAt) {
+        job.timingEstimated = true;
+        this.#recordTiming(job, completion);
+      }
+    }
+    this.#save();
     this.#timer = setInterval(() => { void this.#check(); }, 1000);
     this.#timer.unref();
   }
   #save = () => { this.#store.setMeta(KEY, JSON.stringify(this.#jobs)); };
   #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.outcome.code !== 0 && !job.cleaned));
+  #recordTiming(job: SuiteJob, completedAt: string): void {
+    if (job.completedAt) return;
+    job.completedAt = completedAt;
+    const completed = Date.parse(completedAt);
+    job.waitMs = job.cached ? 0 : job.pid && !job.admittedAt ? null : elapsed(job.queued, Date.parse(job.admittedAt ?? completedAt));
+    job.runMs = job.cached || (!job.admittedAt && !job.pid) ? 0 : elapsed(job.admittedAt, completed);
+    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
+  }
   async cancel(id: string | undefined, actor: SuiteActor | null, authorize: () => void): Promise<{ id: string; topic: string; cancelled: true }> {
     if (this.#closed) throw new Error('hub is closing');
     authorize();
@@ -139,7 +176,7 @@ export class Suites {
   }
   async #launch(job: SuiteJob): Promise<void> {
     const dir = join(this.#root, '.cland', 'run', 'suites', job.id);
-    job.state = 'launching'; this.#launching.add(job.id); this.#save();
+    job.state = 'launching'; job.admittedAt = new Date().toISOString(); this.#launching.add(job.id); this.#save();
     const admit = () => { if (job.outcome) throw new Error('suite cancelled before worker admission'); };
     try {
       // A queued build cannot silently turn into a different tested head.
@@ -178,7 +215,13 @@ export class Suites {
   #check(): Promise<void> {
     if (this.#checking) return this.#checking;
     if (this.#closed) return Promise.resolve();
-    this.#checking = this.#tick().catch(error => { this.#options.log?.({ event: 'verification-admission-blocked', error: String(error) }); }).finally(() => { this.#checking = null; });
+    this.#checking = this.#tick().catch(error => { this.#options.log?.({ event: 'verification-admission-blocked', error: String(error) }); }).then(async () => {
+      if (this.#closed || !this.#options.onQueue) return;
+      const queue = await this.queue();
+      if (this.#closed) return;
+      const signature = JSON.stringify({ ...queue, at: undefined });
+      if (signature !== this.#lastQueue) { this.#lastQueue = signature; this.#options.onQueue(queue); }
+    }).catch(error => { this.#options.log?.({ event: 'verification-queue-failed', error: String(error) }); }).finally(() => { this.#checking = null; });
     return this.#checking;
   }
   async #tick(): Promise<void> {
@@ -219,7 +262,8 @@ export class Suites {
         }
         job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
       }
-      job.state = 'finished'; this.#save();
+      job.state = 'finished';
+      this.#save();
       if (job.outcome.code !== 0 && !job.cleaned) {
         if (job.pid && !job.started && pidAlive(job.pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
         if (job.pid && job.started) {
@@ -236,6 +280,8 @@ export class Suites {
         }
         job.cleaned = true; this.#save();
       }
+      this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
+      this.#save();
       await this.#report(job, id => {
         if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
         job.artifact = id; this.#save();
@@ -258,7 +304,47 @@ export class Suites {
       item: job.item ?? null, head: job.head, branch: job.branch, integrated: job.integrated ?? false,
       ...(job.selection ? { selection: job.selection } : {}),
       tree: job.tree ?? null, finished: job.finished ?? null, ...(job.cached ? { cached: job.cached } : {}),
+      admittedAt: job.admittedAt ?? null, completedAt: job.completedAt ?? null, waitMs: job.waitMs ?? null, runMs: job.runMs ?? null,
+      timingEstimated: job.timingEstimated ?? false,
     }));
+  }
+  async queue(): Promise<VerificationQueue> {
+    this.#compatibility = await compatibilityHolder(this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock']);
+    return this.snapshot();
+  }
+  /** Project metadata reads never wait for compatibility OS probes. The scheduler
+   * refreshes ownership each tick; explicit queue reads inspect it immediately. */
+  snapshot(): VerificationQueue {
+    const shim = this.#compatibility;
+    const now = Date.now();
+    const recent = this.#jobs.filter(j => j.completedAt).sort((a, b) => b.completedAt!.localeCompare(a.completedAt!)).slice(0, METRICS_WINDOW);
+    const metrics = { window: METRICS_WINDOW, count: recent.length, wait: durations(recent.map(j => j.waitMs)), run: durations(recent.map(j => j.runMs)) };
+    // Cache hits are already completed at submission. They count in the metrics but must
+    // not bias the estimate for an actual queued execution, which missed the cache.
+    const estimate = (mode: string | null) => durations(recent.filter(j => !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
+    const active = this.#jobs.find(j => j.state !== 'queued' && (j.pid !== null || j.state === 'launching') && this.#active(j));
+    let holder: VerificationHolder | null = null;
+    if (shim && (!active || shim.holder?.pid !== active.pid)) {
+      holder = { kind: 'hand run', id: null, session: null, item: null, mode: null, pid: shim.holder?.pid ?? null, worktree: shim.holder?.worktree ?? null, since: shim.since, runMs: elapsed(shim.since, now), etaMs: null };
+    } else if (active) {
+      holder = { kind: 'run', id: active.id, session: active.actor?.name ?? 'human', item: active.item ?? null, mode: active.selection?.mode ?? active.mode, pid: active.pid, worktree: active.cwd, since: active.admittedAt ?? null, runMs: elapsed(active.admittedAt, now), etaMs: null };
+    }
+    if (holder) {
+      const expected = estimate(holder.mode);
+      holder.etaMs = expected === null || holder.runMs === null || (holder.kind === 'hand run' && !shim?.holder) ? null : Math.max(0, expected - holder.runMs);
+    }
+    let eta = holder ? holder.etaMs : 0;
+    const queued = this.#queue();
+    // A racing hand run can own the shim while the admitted worker waits for it.
+    if (active && holder?.kind === 'hand run') queued.unshift(active);
+    return { version: 1, at: new Date(now).toISOString(), holder,
+      waiters: queued.map((j, i) => {
+        const mode = j.selection?.mode ?? j.mode;
+        const expectedRunMs = estimate(mode);
+        const waiter = { id: j.id, session: j.actor?.name ?? 'human', item: j.item ?? null, mode, worktree: j.cwd, position: i + 1, queuedAt: j.queued ?? null, waitMs: elapsed(j.queued, now) ?? 0, etaMs: eta, expectedRunMs };
+        eta = eta === null || expectedRunMs === null ? null : eta + expectedRunMs;
+        return waiter;
+      }), metrics };
   }
   async close(): Promise<void> { this.#closed = true; clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#inspecting.values()); }
 }

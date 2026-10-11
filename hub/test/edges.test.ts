@@ -3,9 +3,9 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from '../src/protocol.ts';
+import { MAX_FRAME_BYTES, PROTOCOL_VERSION, type VerificationQueue } from '../src/protocol.ts';
 import { CLI_ENTRY, connectSocket, frameClient, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 /** A valid `topic.list` request one byte under the frame limit (its newline not counted). */
@@ -107,8 +107,22 @@ const SANDBOX = existsSync('/usr/bin/sandbox-exec') && spawnSync('/usr/bin/sandb
 
 test('in a sandbox that forbids listening, `serve --stdio` still serves the UI over stdio, holding the lock and writing no hub.json', { skip: SANDBOX ? false : 'needs macOS sandbox-exec' }, async (t) => {
   const root = await tempProject(t);
+  const lock = join(root, 'hand.lock');
+  const started = spawnSync('ps', ['-o', 'lstart=', '-p', String(process.pid)], { encoding: 'utf8' }).stdout.trim().replace(/\s+/g, ' ');
+  assert.ok(started, 'the parent can publish a real process identity before sandboxing the hub');
+  mkdirSync(join(root, '.cland'));
+  writeFileSync(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(lock)}\n`);
+  mkdirSync(lock);
+  writeFileSync(join(lock, 'holder.json'), JSON.stringify({ pid: process.pid, started, since: new Date().toISOString(), token: 'hand', worktree: root }));
   const hub = spawnStdioHub(t, root, [], ['/usr/bin/sandbox-exec', '-p', '(version 1)(allow default)(deny network-bind)']);
   await driveUi(hub);
+  const result = await hub.ui.request({ type: 'suite.queue' });
+  assert.equal(result.ok, true, result.error);
+  const queue = result.value as VerificationQueue;
+  assert.equal(queue.holder?.kind, 'hand run');
+  assert.equal(queue.holder?.pid, process.pid);
+  assert.equal(queue.holder?.etaMs, null);
+  assert.ok(existsSync(lock), 'unavailable process discovery preserves the live hand holder');
   assert.match(hub.stderr(), /"event":"listen-failed"/);
   assert.equal(existsSync(join(root, '.cland', 'hub.json')), false, 'nobody can reach a hub with no listeners: no discovery file');
   assert.equal(existsSync(join(root, '.cland', 'hub.lock')), true, 'the store is still this hub\'s alone');
