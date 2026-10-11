@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-11T06:30:53.758Z
-updated: 2026-10-11T17:48:38.356Z
+updated: 2026-10-11T18:06:17.252Z
 ---
 
 ## What to build
@@ -34,3 +34,9 @@ Depends on T-174: fewer real-time waits shrink the locked shard.
 ## Notes
 
 Requested by the human via the stand-in, 2026-10-11. v0.1.1 backlog: do not launch in v0.1.
+
+## Comments
+
+### coord · 2026-10-11T18:06:17.252Z
+
+Input from T-232 (2026-10-11 18:06Z): cland verify ships with an admission budget capped at 1 full run; values above 1 are reserved. Overlapping V1 workers need a shared compatibility broker (for hand runs and pre-V1 branches holding /tmp/cland-suite.lock) and per-run recovery records. Both belong here, together with deciding which shards may run side by side.
