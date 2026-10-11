@@ -1,12 +1,17 @@
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { readFile, access, rename, writeFile } from 'node:fs/promises';
 import { setTimeout as pause } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
+import { processStartedAsync } from './lock.ts';
+import { acquire, sweepLease, type Lease } from '../suite-lock.ts';
 import type { SuiteSelection } from '../suite-selection.ts';
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string };
   let signal: NodeJS.Signals | null = null;
   let active: ReturnType<typeof spawn> | undefined;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
@@ -23,15 +28,34 @@ export async function suiteWorker(input: string): Promise<void> {
   }
   let code = 0;
   let cause = admitted ? '' : 'hub stopped before worker admission completed';
+  const leases: Lease[] = [];
+  const token = randomUUID();
+  const dirs = job.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'];
   try {
+    const started = await processStartedAsync(process.pid);
+    if (!started) throw new Error('cannot establish compatibility lease identity');
+    const holder = { pid: process.pid, started, token, since: new Date().toISOString(), worktree: job.cwd };
+    if (admitted && !signal) leases.push(...await acquire(dirs, () => signal !== null, holder));
+    const checkHead = async () => {
+      const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
+      if (job.head && head !== job.head) throw new Error(`cancelled: submitted head ${job.head} changed to ${head}; submit verification again`);
+    };
+    await checkHead();
+    // Pre-V1 branches do not know how to borrow a worker lease. Protect their typecheck,
+    // then let their unchanged package runner take the legacy locks itself.
+    const runner = await readFile(join(job.cwd, 'hub', 'test', 'run-suite.ts'), 'utf8').catch(() => null);
+    const borrowable = runner === null || runner.includes('inheritedLease');
     const commands = [['run', 'typecheck'], ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
     if (!admitted) code = 1;
-    for (const args of admitted ? commands : []) {
+    for (const [index, args] of (admitted ? commands : []).entries()) {
+      if (index === 1 && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
       if (signal) break;
       process.stdout.write(`\n$ npm ${args.join(' ')}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_SKIP_LOCK;
+      delete env.CLAND_SUITE_LEASE;
+      if (leases.length && borrowable) env.CLAND_SUITE_LEASE = JSON.stringify({ dirs, pid: holder.pid, started, token: holder.token });
       // One durable decision feeds the package runner and the result, even after restart.
       if (job.selection) env.CLAND_SUITE_SELECTION = JSON.stringify(job.selection);
       else delete env.CLAND_SUITE_SELECTION;
@@ -45,7 +69,14 @@ export async function suiteWorker(input: string): Promise<void> {
       if (outcome.signal) cause = `npm terminated by ${outcome.signal}`;
       if (code !== 0) break;
     }
+    if (admitted && !signal && code === 0) await checkHead();
   } catch (error) { code = 1; cause = error instanceof Error ? error.message : String(error); }
+  finally {
+    try {
+      if (leases.length) await sweepLease(dirs, token);
+      for (const lease of leases.reverse()) await lease.release();
+    } catch (error) { code = 1; cause = `compatibility cleanup failed: ${String(error)}`; }
+  }
   if (signal) { code = signal === 'SIGINT' ? 130 : 143; cause = `worker interrupted by ${signal}`; }
   process.stdout.write(`\nFinished: exit ${code}${cause ? `; ${cause}` : ''}\n`);
   await writeFile(`${job.result}.tmp`, JSON.stringify({ code, cause, finished: new Date().toISOString() }), { mode: 0o600 });

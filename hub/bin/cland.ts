@@ -46,6 +46,7 @@ switch (command) {
   case 'help':
     process.stdout.write(usage);
     break;
+  case 'verify':
   case 'suite':
     try { process.exitCode = await runSuiteCommand(rest); }
     catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }

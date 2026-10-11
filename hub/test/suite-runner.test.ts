@@ -156,7 +156,7 @@ test('SIGTERM during bootstrap preparation never spawns a suite child', async t 
   await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
   const code = `import fs from 'node:fs/promises'; import { appendFileSync } from 'node:fs'; import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
 const writeFile = fs.writeFile; const spawn = cp.spawn;
-cp.spawn = (...args) => { appendFileSync(${JSON.stringify(spawned)}, 'spawned'); return spawn(...args); };
+cp.spawn = (...args) => { if (args[0] === process.execPath && args[1]?.includes('--import')) appendFileSync(${JSON.stringify(spawned)}, 'spawned'); return spawn(...args); };
 fs.writeFile = async (...args) => {
   if (String(args[0]).split('/').at(-1).startsWith('bootstrap-')) {
     await writeFile(${JSON.stringify(marker)}, JSON.stringify({ root: String(args[0]).slice(0, String(args[0]).lastIndexOf('/')) }));
@@ -397,7 +397,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     await writeFile(file, `import test from 'node:test'; test('fixture', () => {});`);
     const code = `import fs from 'node:fs/promises'; import { appendFileSync } from 'node:fs'; import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
 const spawn = cp.spawn; const rm = fs.rm; let signalled = false;
-cp.spawn = (...args) => { appendFileSync(${JSON.stringify(spawned)}, 'spawned\\n'); return spawn(...args); };
+cp.spawn = (...args) => { if (args[0] === process.execPath && args[1]?.includes('--import')) appendFileSync(${JSON.stringify(spawned)}, 'spawned\\n'); return spawn(...args); };
 fs.rm = async (...args) => {
   const owner = await fs.readFile(${JSON.stringify(`${lockDirs.hub}.owner`)}, 'utf8').then(JSON.parse, () => null);
   if (!signalled && owner?.root === args[0]) {

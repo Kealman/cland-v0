@@ -1072,6 +1072,15 @@ export class HubCore {
     return message.id;
   }
 
+  /** A service notice to the same named/role targets as a session report, including offline holders. */
+  noticeTo(topicId: string, notice: TopicNotice): string | null {
+    const { sessions, direct } = this.#resolveAddressees(notice.to ?? [], 'hub', 'offline-holders');
+    const message = this.#recordNotice(topicId, { ...notice, to: [...sessions] }, direct);
+    if (!message) return null;
+    this.#afterCommit(() => this.#publishNotice(message));
+    return message.id;
+  }
+
   /** A topic notice written to the store (inside a caller's transaction, when there is one), not yet published. */
   #recordNotice(topicId: string, notice: TopicNotice, direct: ReadonlySet<string> = new Set()): Message | null {
     const topic = this.#store.topic(topicId);

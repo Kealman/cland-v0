@@ -11,6 +11,8 @@ On the hub’s `ready` status event, read the item with `task.view` and call the
 
 Default subscriptions give each Lead its subtree outside descendant leads and the Coordinator the remainder, plus the immediate `ready` exception. Other events are digested at the next turn; use `subscribe` for additional subjects and `subscriptions` to inspect them instead of polling. Send routine status updates as kind `progress`; blockers and actionable refusals use `question` or `report`.
 
+Verification uses `cland verify` (the transition alias is `cland suite`). Require its result at the exact reviewed head; queueing alone is not a pass. The gate still relies on current hub-written review/QA verdicts. See `docs/agents/tests.md`.
+
 Call `merge` when that evidence is present. No check command runs in the gate; review and QA supply the evidence. The hub merges the tree without rewriting the task branch, lands one squash commit, closes the item and its topic, releases the claim and removes its worktree and branch. Removal waits while a session stands inside; stop finished sessions so cleanup can complete.
 
 On refusal:

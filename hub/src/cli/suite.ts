@@ -3,9 +3,9 @@ import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const SUITE_USAGE = `  suite [all|hub|nvim] [--all] --report <topic|session> [--to <session>] [--json]
-                  run typecheck and the package suite detached; post one artifact-backed result
-  suite cancel [<suite id>] [--json]
+export const SUITE_USAGE = `  verify [all|hub|nvim] [--all] --report <topic|session> [--to <session>] [--json]
+  suite           alias for verify\n                  run typecheck and the package suite detached; post one artifact-backed result
+  verify cancel [<suite id>] [--json]
                   cancel your active suite (human: any explicit id); post its cancelled result
 `;
 
@@ -27,7 +27,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   const mode = values.all ? 'all' : requested;
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number; topic: string; position: number };
+  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number | null; topic: string; position: number };
   process.stdout.write((values.json ? JSON.stringify(result) : `suite ${result.id} submitted; worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
   return 0;
 }

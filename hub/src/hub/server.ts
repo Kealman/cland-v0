@@ -22,6 +22,7 @@ export type HubBaseOptions = CoreOptions & {
   guard?: DispatcherOptions['guard'];
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
+  verification?: DispatcherOptions['verification'];
   artifactFiles?: DispatcherOptions['artifactFiles'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
@@ -85,6 +86,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   });
   const dispatcher = new Dispatcher({
     core,
+    ...(options.verification ? { verification: options.verification } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,
     ...(options.log ? { log: options.log } : {}),

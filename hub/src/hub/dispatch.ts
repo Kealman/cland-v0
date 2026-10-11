@@ -12,7 +12,7 @@
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
-import { Suites, suiteSummary, type SuiteJob } from './suites.ts';
+import { Suites, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
 import { describeSelection } from '../suite-selection.ts';
 import { isAbsolute } from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
@@ -83,6 +83,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  verification?: SuiteSchedulerOptions;
   core: HubCore;
   secret: string;
   control?: Control;
@@ -144,11 +145,14 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact)) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, requesterDead: actor => this.#sessions?.list().some(p => p.sessionId === actor.sessionId && p.status !== 'running') ?? false }) : null;
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
-      if (event.type === 'session.process' && event.process.status !== 'running') options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
+      if (event.type === 'session.process' && event.process.status !== 'running') {
+        options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
+        this.#suites?.requesterExited(event.process.sessionId);
+      }
       if (event.type === 'session.cleanup' && event.state === 'settled') options.tracker?.releaseHolds(event.sessionId);
     });
     options.tracker?.onChange(() => {
@@ -479,6 +483,11 @@ export class Dispatcher {
     return topic;
   }
 
+  #suiteRank(item: string | null): number {
+    const value = this.#options.tracker?.list().find(i => i.id === item);
+    return value ? value.rank ?? Number(value.id.slice(2)) * 10 : Number.MAX_SAFE_INTEGER;
+  }
+
   #suitePermissions(actor: SuiteJob['actor'], topic: string, to: string[], quiet = false): Caller | null {
     const core = this.#options.core;
     const caller = actor ? this.#asSession({ as: actor }) : null;
@@ -505,6 +514,17 @@ export class Dispatcher {
   async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
     const core = this.#options.core;
     const messageId = `suite:${job.id}`;
+    if (job.requesterDied) {
+      // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
+      const key = `suite-death:${job.id}`;
+      if (core.store.meta(key)) return;
+      core.store.transaction(() => {
+        const id = core.noticeTo(job.topic, { kind: 'report', to: job.to, text: core.boundedText(`suite result ${job.id}\n${job.mode} exit ${job.outcome!.code}; ${job.outcome!.cause}\nBranch ${job.branch} · head ${job.head}`) });
+        if (!id) throw new Error('cancelled suite topic is unavailable');
+        core.store.setMeta(key, id);
+      });
+      return;
+    }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
     const callerNow = () => this.#suitePermissions(job.actor, job.topic, job.to, true);
     callerNow();
@@ -1290,7 +1310,7 @@ export class Dispatcher {
           const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
           const authorize = () => { this.#suitePermissions(actor, topic, to); };
           try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-          later('suite.start', this.#suites.start({ mode: request.mode, cwd: request.cwd, topic, to, actor }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+          later('suite.start', this.#suites.start({ mode: request.mode, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: caller?.role === 'coordinator' && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
           return;
         }
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);

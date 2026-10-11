@@ -14,6 +14,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
+  verification: { budget: number; lockPath: string };
   visibility: VisibilityOverrides;
   tracker: { levels: string[] };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
@@ -26,6 +27,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
+  verification: { budget: 1, lockPath: '/tmp/cland-suite.lock' },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
@@ -43,6 +45,11 @@ export function renderConfig(c: ProjectConfig): string {
 
 [project]
 name = ${JSON.stringify(c.name)}
+
+[verification]
+# Admission budget; the legacy compatibility lease remains an additional limit.
+budget = ${c.verification.budget}
+lock_path = ${JSON.stringify(c.verification.lockPath)}
 
 # Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
 [tracker]
@@ -88,6 +95,9 @@ const positive = (v: unknown): number | undefined => (typeof v === 'number' && N
 export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
+  const verification = (doc.verification ?? {}) as Record<string, unknown>;
+  if (typeof verification.budget === 'number' && Number.isSafeInteger(verification.budget) && verification.budget > 0) c.verification.budget = verification.budget;
+  if (typeof verification.lock_path === 'string' && verification.lock_path.startsWith('/')) c.verification.lockPath = verification.lock_path;
   c.visibility = visibilityOverrides(doc.visibility);
   const project = (doc.project ?? {}) as Record<string, unknown>;
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;

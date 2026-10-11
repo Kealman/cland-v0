@@ -1094,18 +1094,43 @@ record the reproduction, per-process-cache cost and upstream follow-up (T-220).
 Re-run it when a new Node 24.x is released or Node 25 support is added, before
 enabling a shared cache and validating that configuration with a full suite.
 
-Implementers use `cland suite` for full runs and wait for its artifact-backed result;
+Implementers use `cland verify` for full runs and wait for its artifact-backed result;
 see [the agent test workflow](../docs/agents/tests.md). The package commands below
 are also available for humans and isolated CI.
 
-`cland suite cancel [<suite id>]` requests cancellation through the hub and exits.
+`cland verify [all|hub|nvim] --report <topic|session> [--to <session>]…`
+persists requests in the hub database before admission. Waiting requests have no
+worker PID. The Coordinator's integrated dev runs go first, then item rank at
+submission, then enqueue order. The queue survives hub restart. A known dead
+requester's queued run is cancelled with one hub note to its original recipients;
+a disconnected spoke alone does not prove death. `cland suite` is a transition alias.
+
+`[verification].budget` defaults to 1. Higher values are retained in config but
+capped at 1 with a `verification-budget-capped` log note: resource-aware overlap
+is reserved for T-215. The compatibility shim keeps both legacy locks, and a hand
+`npm test` or pre-V1 holder occupies admission. The worker takes a verified lease
+before typecheck; V1 package runners borrow it through all phases and publish
+recovery metadata. Pre-V1 package runners take their own lease after protected
+typecheck. A racing hand run remains excluded by atomic lease acquisition.
+Admission identity probes are asynchronous and bounded. Stale process/root recovery
+runs in a bounded subprocess; failure retains ownership and logs
+`verification-admission-blocked` for retry.
+`verification.lock_path` defaults to `/tmp/cland-suite.lock`; isolated fixtures
+may select another absolute path (the Neovim lock then uses its `-nvim` suffix).
+Keep the default on a shared machine. Exact submitted heads remain in results;
+a head changed before admission or during the run fails verification. Merge gate
+semantics stay unchanged. Logs and ordinary results use T-203's artifact checkpoint
+and message id to prevent replay.
+
+`cland verify cancel [<suite id>]` requests cancellation through the hub and exits.
 Without an id it selects the caller's latest active run. A session can cancel only
 runs submitted by its own stable session identity; the human can cancel any run
 by id. Reporting topic and recipients stay those of the original submission.
 Cancellation reconciles only the selected run; unrelated submissions and cleanup
-do not hold up its cancellation or FIFO removal.
+do not hold up its cancellation. A queued request has no worker or FIFO ticket;
+cancellation removes it from admission immediately.
 The hub persists cancellation before sending SIGTERM to the identity-verified
-worker. The worker forwards it to npm and the lock runner: a queued runner removes
+worker, when one exists. The worker forwards it to npm and the lock runner: a legacy queued runner removes
 its FIFO ticket without disturbing the holder, and a running runner cleans its
 children, temporary root and leases. Cleanup finishes before one `cancelled`
 result (exit 143) is posted with its log. Restart and reporting retries retain
@@ -1114,7 +1139,7 @@ cancel is harmless. A finished run cannot be newly cancelled. If cleanup or
 reporting cannot proceed, `cland hub status --json` shows the retained error and
 the hub retries without duplicating the result.
 
-`npm test` and `cland suite --report <topic>` default to diff selection. They fetch
+`npm test` and `cland verify --report <topic>` default to diff selection. They fetch
 `origin/dev`, compare the branch from its merge base with fetched dev, and include
 staged, unstaged and untracked files. Renames include both old and new paths.
 The pure `chooseSuiteMode` in `src/suite-selection.ts` uses conservative allowlists:
@@ -1124,7 +1149,7 @@ roles/crew, test harness, runner, package/lockfile/tsconfig, mixed-package and
 unknown paths run `full`. Tracker-only `.cland/tasks/` changes also run full.
 Neovim's hub transport/event-state modules and the adapter event contract run full.
 An empty diff or a failed fetch/diff runs full with its reason. Integrated `dev`
-always runs full. `cland suite all` / `cland suite --all` and `npm test -- --all`
+always runs full. `cland verify all` / `cland verify --all` and `npm test -- --all`
 force full. The runner CLI's `--all` overrides explicit test targets as well as the
 selected mode. Explicit `hub` / `nvim` requests reduce only a qualifying matching
 diff; otherwise they widen to full. The duration line and durable suite report name the

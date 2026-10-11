@@ -573,8 +573,17 @@ export type RoleList = {
   coordinator: string | null;
 };
 
+/** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
+export type SuiteStatus = {
+  id: string; pid: number | null; topic: string; reported: boolean;
+  outcome: { code: number; cause: string } | null; error: string | null;
+  state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;
+  priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
+  selection?: import('./suite-selection.ts').SuiteSelection;
+};
+
 export type HubStatus = {
-  suites?: Array<{ id: string; pid: number | null; topic: string; reported: boolean; outcome: { code: number; cause: string } | null; error: string | null }>;
+  suites?: SuiteStatus[];
   crew?: { config: import('./crew.ts').CrewConfig; summary: string };
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
   keys?: { layouts: string[] };

@@ -132,6 +132,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     await crew.start();
     hub = createHubBase({
       secret,
+      verification: { budget: config?.verification.budget ?? 1, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
       store: new Store(l.db),
       log,
       requestGuard,
