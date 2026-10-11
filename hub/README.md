@@ -1100,7 +1100,7 @@ Implementers use `cland verify` for full runs and wait for its artifact-backed r
 see [the agent test workflow](../docs/agents/tests.md). The package commands below
 are also available for humans and isolated CI.
 
-`cland verify [all|hub|nvim] --report <topic|session> [--to <session>]…`
+`cland verify [all|hub|nvim] [--fresh] --report <topic|session> [--to <session>]…`
 persists requests in the hub database before admission. Waiting requests have no
 worker PID. The Coordinator's integrated dev runs go first, then item rank at
 submission, then enqueue order. The queue survives hub restart. A known dead
@@ -1123,6 +1123,30 @@ Keep the default on a shared machine. Exact submitted heads remain in results;
 a head changed before admission or during the run fails verification. Merge gate
 semantics stay unchanged. Logs and ordinary results use T-203's artifact checkpoint
 and message id to prevent replay.
+
+Green results are cached by the Git tree of the submitted head **excluding
+`.cland/tasks`**, plus the selected effective mode (`full`, `hub-only`, or
+`nvim-only`). A private Git index constructs this canonical tree without changing
+the worktree's staged contents. Tracker-only dev merges and rebases that reproduce this tree
+reuse the original run; every other committed path, including `.cland/config.toml`,
+still participates. Dirty tracked/staged files or nonignored untracked files outside
+the tracker bypass caching and cannot seed it. Clean cache candidates are checked
+again before and after execution; head changes still fail verification.
+
+`--fresh` bypasses reuse. `[verification].cache_max_age_minutes` defaults to 1440
+(one day); 0 disables caching. Age starts at the original successful completion,
+not at subsequent hits. Only successful completed, reported runs with an available
+log artifact qualify; old pre-cache jobs, failures and cancelled runs do not. A
+new failed or pending fresh attempt supersedes older green evidence for its key.
+The cache survives restart and may reuse evidence from another worktree in this
+project. Requests from a repository subdirectory bypass caching, since their npm
+scripts can differ from those at the worktree root. A hit creates its own durable request and posts once to the usual topic
+and recipients, with the requested head, `cached`, original run/head and identical
+canonical tree hash. Its log artifact carries the original log and provenance.
+
+The merge gate and T-209 criterion freshness remain exact-head: a cache hit alone
+never refreshes a stale mark. The Reviewer must verify the new head using the posted
+cached result as evidence; no tree equivalence is applied to review or QA marks.
 
 `cland verify cancel [<suite id>]` requests cancellation through the hub and exits.
 Without an id it selects the caller's latest active run. A session can cancel only

@@ -16,17 +16,24 @@ const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd,
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 
-async function project(t: TestContext, env: Record<string, string> = {}) {
+async function project(t: TestContext, env: Record<string, string> = {}, verification = false) {
   const root = await tempProject(t, 'cland-merge-');
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.name', 'Test');
   git(root, 'config', 'user.email', 'test@example.com');
   git(root, 'config', 'commit.gpgsign', 'false');
   await writeFile(join(root, 'README.md'), 'project\n');
+  if (verification) await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e \"process.exit(0)\"', test: 'node -e \"process.exit(0)\"' } }));
   git(root, 'add', '.');
   git(root, 'commit', '-qm', 'Initial');
   ok(await cland(root, 'init'));
+  if (verification) {
+    const config = join(root, '.cland', 'config.toml');
+    await writeFile(config, (await readFile(config, 'utf8')).replace(/^lock_path = .*$/m, `lock_path = ${JSON.stringify(join(root, '.cland', 'suite.lock'))}`));
+    git(root, 'add', '.cland/config.toml'); git(root, 'commit', '-qm', 'isolated verification locks');
+  }
   const { discovery } = await startDaemon(t, root, env);
+  if (verification) ok(await cland(root, 'push'));
   const ui = await connectUi(t, discovery);
   const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
   t.after(() => rev.close());
@@ -1091,4 +1098,47 @@ test('retrying a completed merge preserves staged deletion and reversion of its 
     if (file === 'parser.txt') assert.equal(existsSync(join(root, file)), false);
     else assert.equal(await readFile(join(root, file), 'utf8'), 'project\n');
   });
+});
+
+test('a cached green suite at a new identical tree never revives a stale criterion mark', async t => {
+  const { root, ui, rev } = await project(t, {}, true);
+  const work = await task(root);
+  ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Full suite passes'));
+  ok(await cland(root, 'task', 'criterion', work.id, 'done', 'C1'));
+  const made = await ui.request({ type: 'topic.create', title: 'Cache gate', item: work.id });
+  const topic = (made.value as { topic: { id: string } }).topic.id;
+  const run = async () => json<{ id: string; cached?: { run: string; head: string; tree: string } }>(await cland(work.path, 'verify', 'all', '--report', topic, '--to', 'rev', '--json'));
+  const completion = async (id: string) => eventually('posted suite result', async () => {
+    const history = await ui.request({ type: 'topic.history', topic });
+    return (history.value as { messages: Array<{ id: string; text: string }> }).messages.find(m => m.id === `suite:${id}`);
+  });
+  const a = git(work.path, 'rev-parse', 'HEAD');
+  const original = await run();
+  assert.match((await completion(original.id)).text, /exit 0/);
+  const verify = async (commit: string, run: string) => {
+    const result = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: work.id, verdict: 'review', result: 'clear', run, commit, verified: 'all' });
+    assert.equal(result.ok, true, result.error);
+  };
+  await verify(a, 'review-a');
+  git(work.path, 'commit', '--allow-empty', '-qm', 'same tree new head');
+  git(work.path, 'push', 'origin', work.branch);
+  const b = git(work.path, 'rev-parse', 'HEAD');
+  const hit = await run();
+  assert.equal(hit.cached?.run, original.id);
+  const evidence = await completion(hit.id);
+  assert.ok(evidence.text.includes(`head ${b}`) && evidence.text.includes(`Original run ${original.id}`));
+  await refused(ui, root, work.id, 'criteria-incomplete');
+  const stale = json<{ item: ItemView }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  assert.ok(stale.criteria[0]?.marks.some(m => m.kind === 'verified' && m.commit === a && m.current === false));
+  await verify(b, 'review-b-with-cache');
+  await eventually('new-head verification ready', async () => json<{ item: ItemView }>(await cland(root, 'task', 'view', work.id, '--json')).item.status === 'ready' ? true : undefined);
+  // A source change cannot inherit the cached green result, or the B criterion mark.
+  await writeFile(join(work.path, 'parser.txt'), 'changed after cache');
+  git(work.path, 'commit', '-qam', 'different tree'); git(work.path, 'push', 'origin', work.branch);
+  const changed = await run();
+  assert.equal(changed.cached, undefined);
+  assert.match((await completion(changed.id)).text, /exit 0/);
+  await refused(ui, root, work.id, 'criteria-incomplete');
+  await verify(git(work.path, 'rev-parse', 'HEAD'), 'review-changed');
+  json(await cland(root, 'merge', work.id, '--json'));
 });

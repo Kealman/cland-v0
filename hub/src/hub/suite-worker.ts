@@ -6,12 +6,13 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquire, sweepLease, type Lease } from '../suite-lock.ts';
 import type { SuiteSelection } from '../suite-selection.ts';
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string; tree?: string | null };
   let signal: NodeJS.Signals | null = null;
   let active: ReturnType<typeof spawn> | undefined;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
@@ -39,6 +40,7 @@ export async function suiteWorker(input: string): Promise<void> {
     const checkHead = async () => {
       const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
       if (job.head && head !== job.head) throw new Error(`cancelled: submitted head ${job.head} changed to ${head}; submit verification again`);
+      if (job.tree && await candidateTree(job.cwd, head) !== job.tree) throw new Error('cancelled: candidate tree changed or worktree became dirty; submit verification again');
     };
     await checkHead();
     // Pre-V1 branches do not know how to borrow a worker lease. Protect their typecheck,

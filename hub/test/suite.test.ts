@@ -13,10 +13,10 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
-async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '', daemonEnv: Record<string, string> = {}, budget = 1) {
+async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440) {
   const root = await tempProject(t, 'cland-suite-cli-');
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland', 'config.toml'), `${config}\n[verification]\nbudget = ${budget}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
+  await writeFile(join(root, '.cland', 'config.toml'), `${config}\n[verification]\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
   await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck, test: testScript } }));
   const { discovery } = await startDaemon(t, root, daemonEnv);
   const ui = await connectUi(t, discovery, 'cli');
@@ -35,10 +35,10 @@ async function fixture(t: import('node:test').TestContext, testScript: string, t
     assert.equal(history.ok, true, history.error);
     return (history.value as { messages: ResultMessage[] }).messages.filter(m => m.text.startsWith('suite result '));
   };
-  const launch = async (mode = 'all') => {
-    const r = await clandWithEnv(root, env, 'suite', mode, '--report', topic, '--to', 'rev', '--to', 'impl', '--json');
+  const launch = async (mode = 'all', ...options: string[]) => {
+    const r = await clandWithEnv(root, env, 'suite', mode, '--report', topic, '--to', 'rev', '--to', 'impl', '--json', ...options);
     assert.equal(r.code, 0, r.stderr);
-    const job = JSON.parse(r.stdout) as { id: string; pid: number | null; position: number };
+    const job = JSON.parse(r.stdout) as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
     if (job.pid) ownProcess(t, job.pid);
     return job;
   };
@@ -52,7 +52,7 @@ test('auto suite reports the fetched diff decision and transports it to the pack
   const remote = join(f.root, 'origin.git');
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Suite report test'); await git('config', 'user.email', 'suite@example.invalid');
-  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\n');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\nsuite.lock*\n');
   await git('add', '.'); await git('commit', '-m', 'base');
   await git('init', '--bare', remote); await git('remote', 'add', 'origin', remote); await git('push', 'origin', 'dev');
   await git('checkout', '-b', 't/T-214');
@@ -78,7 +78,7 @@ test(`a broad deciding-file list publishes once below the ${cap}-byte cap and st
   const remote = join(f.root, 'origin.git');
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Suite report test'); await git('config', 'user.email', 'suite@example.invalid');
-  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\n');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\nsuite.lock*\n');
   await git('add', '.'); await git('commit', '-m', 'base');
   await git('init', '--bare', remote); await git('remote', 'add', 'origin', remote); await git('push', 'origin', 'dev');
   await git('checkout', '-b', 't/T-214');
@@ -492,7 +492,7 @@ for (const budget of [1, 2]) test(`verify queues a second requester without a wa
   // Human fixtures can address an existing topic; each request still has a distinct session identity.
   const queued = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'other', CLAND_SESSION_ID: 'other-caller', CLAND_ROLE: 'implementer' }, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
   assert.equal(queued.code, 0, queued.stderr);
-  const second = JSON.parse(queued.stdout) as { id: string; pid: number | null; position: number };
+  const second = JSON.parse(queued.stdout) as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
   assert.equal(second.pid, null);
   assert.equal(second.position, 1);
   if (budget > 1) assert.match(await readFile(join(f.root, '.cland', 'log', 'hub.log'), 'utf8'), /verification-budget-capped.*\"configured\":2.*\"effective\":1.*T-215/);
@@ -824,4 +824,179 @@ process.exitCode = result.status ?? 1;
   assert.equal((await stat(lock)).isDirectory(), true);
   await assert.rejects(stat(join(f.root, 'admitted')), { code: 'ENOENT' });
   assert.equal((await f.results()).filter(m => m.id === `suite:${job.id}`).length, 1);
+});
+
+async function cacheRepository(f: Awaited<ReturnType<typeof fixture>>) {
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: f.root })).stdout.trim();
+  await git('init', '--initial-branch=dev');
+  await git('config', 'user.name', 'Cache test'); await git('config', 'user.email', 'cache@example.invalid');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\nexecutions\nsuite.lock*\n');
+  await git('add', '.'); await git('commit', '-m', 'candidate');
+  await git('init', '--bare', join(f.root, 'origin.git')); await git('remote', 'add', 'origin', join(f.root, 'origin.git'));
+  await git('push', 'origin', 'dev');
+  await git('checkout', '-b', 'candidate');
+  return git;
+}
+
+test('verify reuses a green candidate tree after a tracker-only commit and reports original provenance', async t => {
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n')"`);
+  const git = await cacheRepository(f);
+  const a = await git('rev-parse', 'HEAD');
+  const original = await f.launch();
+  const green = await eventually('original green', async () => (await f.results())[0]);
+  assert.match(green.text, /exit 0/, green.text);
+  const status = await f.ui.request({ type: 'hub.status' });
+  assert.ok((status.value as { suites: Array<{ tree?: string }> }).suites[0]?.tree, JSON.stringify(status.value));
+  const same = await f.launch();
+  assert.equal(same.pid, null);
+  assert.equal(same.cached?.run, original.id);
+  const repeated = await eventually('same-head cached result', async () => (await f.results())[1]);
+  assert.match(repeated.text, /cached/);
+  assert.ok(repeated.text.includes(original.id) && repeated.text.includes(a));
+  await git('checkout', 'dev');
+  await writeFile(join(f.root, '.cland', 'tasks', 'cache-note.md'), 'tracker-only');
+  await git('add', '-f', '.cland/tasks/cache-note.md'); await git('commit', '-m', 'tracker only');
+  await git('push', 'origin', 'dev'); await git('checkout', 'candidate'); await git('merge', 'dev', '--no-edit');
+  const b = await git('rev-parse', 'HEAD');
+  assert.notEqual(a, b);
+  const tracker = await f.launch();
+  assert.equal(tracker.cached?.run, original.id);
+  assert.equal(tracker.cached?.tree, same.cached?.tree);
+  const result = await eventually('tracker cache result', async () => (await f.results())[2]);
+  assert.ok(result.text.includes(`head ${b}`));
+  assert.ok(result.text.includes(`Original run ${original.id}`) && result.text.includes(`head ${a}`));
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\n');
+  await writeFile(join(f.root, 'source.txt'), 'changed source');
+  await git('add', 'source.txt'); await git('commit', '-m', 'source change');
+  const changed = await f.launch();
+  assert.equal(changed.cached, undefined);
+  await eventually('changed tree ran', async () => (await f.results())[3]);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\nrun\n');
+});
+
+test('verify --fresh runs despite a green cache and cache hits do not extend expiry', async t => {
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n')"`, undefined, '', {}, 1, 0.1);
+  await cacheRepository(f);
+  const first = await f.launch();
+  await eventually('first completion', async () => (await f.results())[0]);
+  const forced = await f.launch('all', '--fresh');
+  assert.equal(forced.cached, undefined);
+  assert.notEqual(forced.id, first.id);
+  await eventually('fresh completion', async () => (await f.results())[1]);
+  const cached = await f.launch();
+  assert.equal(cached.cached?.run, forced.id);
+  await eventually('cached completion', async () => (await f.results())[2]);
+  await new Promise(resolve => setTimeout(resolve, 6100));
+  const expired = await f.launch();
+  assert.equal(expired.cached, undefined);
+  await eventually('expired completion', async () => (await f.results())[3]);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\nrun\nrun\n');
+});
+
+test('dirty candidates bypass green cache and cannot seed a later clean result', async t => {
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n')"`);
+  const git = await cacheRepository(f);
+  await writeFile(join(f.root, 'source.txt'), 'untracked');
+  const dirty = await f.launch();
+  assert.equal(dirty.cached, undefined);
+  await eventually('dirty completion', async () => (await f.results())[0]);
+  await git('add', 'source.txt'); await git('commit', '-m', 'clean candidate');
+  const clean = await f.launch();
+  assert.equal(clean.cached, undefined);
+  await eventually('clean completion', async () => (await f.results())[1]);
+  await writeFile(join(f.root, 'source.txt'), 'unstaged');
+  const unstaged = await f.launch();
+  assert.equal(unstaged.cached, undefined);
+  await eventually('unstaged completion', async () => (await f.results())[2]);
+  await git('add', 'source.txt');
+  const staged = await f.launch();
+  assert.equal(staged.cached, undefined);
+  await eventually('staged completion', async () => (await f.results())[3]);
+  await git('restore', '--staged', '--worktree', 'source.txt');
+  const restored = await f.launch();
+  assert.equal(restored.cached?.run, clean.id);
+  await eventually('restored cache', async () => (await f.results())[4]);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\nrun\nrun\nrun\n');
+});
+
+test('cache survives hub restart, separates effective modes, and never reuses a failed run', async t => {
+  const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n');process.exit(require('fs').existsSync('.cland/fail')?1:0)"`);
+  const pkg = JSON.parse(await readFile(join(f.root, 'package.json'), 'utf8'));
+  pkg.workspaces = ['hub'];
+  await writeFile(join(f.root, 'package.json'), JSON.stringify(pkg));
+  await mkdir(join(f.root, 'hub'));
+  await writeFile(join(f.root, 'hub', 'package.json'), JSON.stringify({ name: 'hub', scripts: { test: `node -e "require('fs').appendFileSync('../executions','run\\n')"` } }));
+  const git = await cacheRepository(f);
+  await mkdir(join(f.root, 'hub', 'src', 'tracker'), { recursive: true });
+  await writeFile(join(f.root, 'hub', 'src', 'tracker', 'example.ts'), '// change');
+  await git('add', 'hub'); await git('commit', '-m', 'hub-only change');
+  await writeFile(join(f.root, '.cland', 'fail'), 'fail');
+  const failed = await f.launch();
+  assert.match((await eventually('failed run', async () => (await f.results())[0])).text, /exit 1/);
+  await rm(join(f.root, '.cland', 'fail'));
+  const green = await f.launch();
+  assert.equal(green.cached, undefined);
+  assert.notEqual(green.id, failed.id);
+  assert.match((await eventually('green run', async () => (await f.results())[1])).text, /exit 0/);
+  await writeFile(join(f.root, '.cland', 'fail'), 'fail');
+  const freshFailure = await f.launch('all', '--fresh');
+  assert.equal(freshFailure.cached, undefined);
+  assert.match((await eventually('fresh failure', async () => (await f.results())[2])).text, /exit 1/);
+  await rm(join(f.root, '.cland', 'fail'));
+  const recoveredGreen = await f.launch();
+  assert.equal(recoveredGreen.cached, undefined, 'a fresh failure supersedes the old green');
+  await eventually('recovered green', async () => (await f.results())[3]);
+  const reduced = await f.launch('hub');
+  assert.equal(reduced.cached, undefined, 'full and hub-only have separate keys');
+  await eventually('reduced run', async () => (await f.results())[4]);
+  const reducedAgain = await f.launch('auto');
+  assert.equal(reducedAgain.cached?.run, reduced.id, 'auto resolves to the same effective mode');
+  await eventually('reduced cache', async () => (await f.results())[5]);
+  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  const next = await startDaemon(t, f.root);
+  const ui = await connectUi(t, next.discovery, 'cli');
+  await f.spoke.waitForPresence(['impl']);
+  const recovered = await f.launch();
+  assert.equal(recovered.cached?.run, recoveredGreen.id);
+  const result = await eventually('recovered cache result', async () => {
+    const history = await ui.request({ type: 'topic.history', topic: f.topic });
+    return (history.value as { messages: ResultMessage[] }).messages.find(m => m.id === `suite:${recovered.id}`);
+  });
+  assert.match(result.text, /cached/);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'run\nrun\nrun\nrun\nrun\n');
+});
+
+test('a bounded cached report retains both heads, original run and candidate tree', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '[hygiene]\nmax_text_bytes = 384\n');
+  const git = await cacheRepository(f);
+  const original = await f.launch();
+  await eventually('bounded original', async () => (await f.results())[0]);
+  await git('commit', '--allow-empty', '-m', 'same tree');
+  const head = await git('rev-parse', 'HEAD');
+  const hit = await f.launch();
+  assert.equal(hit.cached?.run, original.id);
+  const result = await eventually('bounded cache', async () => (await f.results())[1]);
+  assert.ok(Buffer.byteLength(result.text) <= 384);
+  assert.ok(result.text.includes('cached') && result.text.includes(head) && result.text.includes(original.id) && result.text.includes(hit.cached!.head) && result.text.includes(hit.cached!.tree));
+  assert.equal(result.artifacts.length, 1);
+  await eventually('bounded cache settled', async () => {
+    const status = await f.ui.request({ type: 'hub.status' });
+    return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(j => j.reported) ? true : undefined;
+  });
+  assert.equal((await f.results()).length, 2);
+});
+
+test('a package subdirectory cannot borrow root-tree cache evidence for different npm scripts', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  await mkdir(join(f.root, 'other-package'));
+  await writeFile(join(f.root, 'other-package', 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: 'node -e "process.exit(1)"' } }));
+  await cacheRepository(f);
+  await f.launch();
+  assert.match((await eventually('root green', async () => (await f.results())[0])).text, /exit 0/);
+  const response = await clandWithEnv(join(f.root, 'other-package'), f.env, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
+  assert.equal(response.code, 0, response.stderr);
+  const subdirectory = JSON.parse(response.stdout) as { id: string; cached?: unknown; pid?: number };
+  if (subdirectory.pid) ownProcess(t, subdirectory.pid);
+  assert.equal(subdirectory.cached, undefined);
+  assert.match((await eventually('package failure', async () => (await f.results())[1])).text, /exit 1/);
 });

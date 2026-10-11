@@ -14,7 +14,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  verification: { budget: number; lockPath: string };
+  verification: { budget: number; lockPath: string; cacheMaxAgeMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: string[] };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
@@ -27,7 +27,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  verification: { budget: 1, lockPath: '/tmp/cland-suite.lock' },
+  verification: { budget: 1, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
@@ -50,6 +50,8 @@ name = ${JSON.stringify(c.name)}
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = ${c.verification.budget}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
+# Reuse green candidate trees for this many minutes; 0 disables caching.
+cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
 
 # Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
 [tracker]
@@ -98,6 +100,7 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
   if (typeof verification.budget === 'number' && Number.isSafeInteger(verification.budget) && verification.budget > 0) c.verification.budget = verification.budget;
   if (typeof verification.lock_path === 'string' && verification.lock_path.startsWith('/')) c.verification.lockPath = verification.lock_path;
+  if (typeof verification.cache_max_age_minutes === 'number' && Number.isFinite(verification.cache_max_age_minutes) && verification.cache_max_age_minutes >= 0) c.verification.cacheMaxAgeMs = verification.cache_max_age_minutes * MINUTE;
   c.visibility = visibilityOverrides(doc.visibility);
   const project = (doc.project ?? {}) as Record<string, unknown>;
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;

@@ -484,7 +484,7 @@ export type ClientHello = {
   client: string;
 };
 
-export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[] };
+export type SuiteStart = { type: 'suite.start'; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report: string; to?: string[]; fresh?: boolean };
 export type SuiteCancel = { type: 'suite.cancel'; id: string; suite?: string };
 
 export type ClientRequest =
@@ -580,6 +580,7 @@ export type SuiteStatus = {
   state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;
   priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
   selection?: import('./suite-selection.ts').SuiteSelection;
+  tree?: string | null; finished?: string | null; cached?: { run: string; head: string; tree: string };
 };
 
 export type HubStatus = {
@@ -670,7 +671,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'visibility.set':
       return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
     case 'suite.start':
-      return ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+      return (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.report === 'string' && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'push':

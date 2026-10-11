@@ -545,7 +545,8 @@ export class Dispatcher {
     const log = await readFile(artifact.path, 'utf8');
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const outcome = job.outcome!;
-    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\nLog ${artifact.id}: ${artifact.path}`;
+    const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
+    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}${provenance}\nLog ${artifact.id}: ${artifact.path}`;
     let text = report(2048);
     // File counts and the artifact retain the complete decision when a broad diff
     // or a smaller configured cap cannot fit every path in the topic message.
@@ -553,7 +554,7 @@ export class Dispatcher {
     if (!core.textFits(text)) {
       // Long branch names, failures or log paths can exhaust even the no-files
       // report. Keep the result/mode/log pointer first and respect any byte cap.
-      text = core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
+      text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached\nRequested head ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}: ${artifact.path}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
@@ -1310,7 +1311,7 @@ export class Dispatcher {
           const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
           const authorize = () => { this.#suitePermissions(actor, topic, to); };
           try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-          later('suite.start', this.#suites.start({ mode: request.mode, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: caller?.role === 'coordinator' && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+          later('suite.start', this.#suites.start({ mode: request.mode, fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: caller?.role === 'coordinator' && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
           return;
         }
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);

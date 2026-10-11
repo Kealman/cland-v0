@@ -12,6 +12,14 @@ Omitting the mode selects phases from the branch diff against freshly fetched `o
 
 The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then the item rank captured at submission, then enqueue order. One run is admitted at a time. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
+A green run may be reused for the identical committed candidate tree and effective
+mode. The candidate excludes only `.cland/tasks`, so tracker-only dev merges hit;
+other paths and dirty working changes do not. `--fresh` forces execution, and
+`[verification].cache_max_age_minutes` defaults to 1440 (0 disables reuse). Hits
+name the requested head, original run/head and tree hash and post once as usual.
+The Reviewer still verifies criteria at the requested exact head using that
+result; a cached result never revives an old criterion mark automatically.
+
 `[verification].budget` in `.cland/config.toml` defaults to 1. Values above 1 log `verification-budget-capped` and use 1; resource-aware overlap is reserved for T-215. `cland suite` remains an alias, including cancellation.
 
 The compatibility shim retains `/tmp/cland-suite.lock` and `/tmp/cland-suite-nvim.lock` for hand-run `npm test` and pre-V1 branches. A holder or earlier live legacy ticket blocks hub admission. The worker atomically takes both leases before typecheck to cover a racing hand run. A V1 package runner borrows that verified lease and publishes its recovery metadata through both phases; a pre-V1 package runner takes its own legacy lease after protected typecheck. A queued head change cancels the request; successful results keep the submitted exact head. The merge gate's rules are unchanged.

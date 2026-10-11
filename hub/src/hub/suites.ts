@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { open, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { candidateTree } from '../verification-tree.ts';
 import { pidAlive } from '../project.ts';
 import { promisify } from 'node:util';
 import type { SuiteStatus } from '../protocol.ts';
@@ -21,13 +22,15 @@ export type SuiteJob = {
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   cancelled?: boolean;
+  tree?: string | null; finished?: string;
+  cached?: { run: string; head: string; tree: string };
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
-export type SuiteSchedulerOptions = { budget?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn };
+export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn };
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
 export function suiteSummary(log: string): string {
@@ -82,14 +85,14 @@ export class Suites {
     void this.#inspectJob(job);
     return { id: job.id, topic: job.topic, cancelled: true };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number }> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number }> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] }> {
     const identity = input.actor?.sessionId ?? 'human';
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
@@ -97,18 +100,38 @@ export class Suites {
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const git = async (args: string[]) => exec('git', args, { cwd: input.cwd }).then(r => r.stdout.trim(), () => 'unknown');
     const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
+    const tree = await candidateTree(input.cwd, head);
+    const cached = !input.fresh && tree ? this.#cached(tree, selection.mode) : undefined;
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    const job: SuiteJob = { ...input, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    if (cached) {
+      const artifact = this.#store.resolveArtifact(cached.artifact!)!;
+      const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
+      if (originalLog !== null && await candidateTree(input.cwd, head) === tree) {
+        job.cached = { run: cached.id, head: cached.head, tree: tree! };
+        job.finished = cached.finished!;
+        job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
+        await writeFile(job.log, `Cached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nRequested head ${head}\n\n${originalLog}`, { mode: 0o600 });
+      }
+    }
     authorize();
     if (this.#closed) throw new Error('hub is closing');
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     this.#jobs.push(job); this.#save();
     await this.#check();
-    return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#queue().findIndex(j => j.id === id) + 1 : 1 };
+    return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#queue().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
+  }
+  #cached(tree: string, mode: SuiteSelection['mode']): SuiteJob | undefined {
+    // A failed or pending fresh attempt supersedes earlier green evidence for this key.
+    const job = this.#jobs.findLast(j => !j.cached && j.tree === tree && j.selection?.mode === mode);
+    if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
+    const age = Date.now() - Date.parse(job.finished);
+    const artifact = this.#store.resolveArtifact(job.artifact);
+    return age >= 0 && age < (this.#options.cacheMaxAgeMs ?? 86400000) && artifact && artifact.status !== 'archived' && !artifact.fileDeleted ? job : undefined;
   }
   #queue(): SuiteJob[] {
     return this.#jobs.filter(j => j.state === 'queued' && !j.outcome).sort((a, b) => Number(b.integrated === true) - Number(a.integrated === true) || (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER) || (a.queued ?? '').localeCompare(b.queued ?? ''));
@@ -180,8 +203,14 @@ export class Suites {
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
     }
     try {
-      const receipt = await readFile(job.result, 'utf8').then(text => JSON.parse(text) as { code: number; cause: string }, () => null);
-      if (receipt && !job.cancelled && !job.requesterDied) job.outcome = receipt;
+      const receipt = await readFile(job.result, 'utf8').then(text => JSON.parse(text) as { code: number; cause: string; finished?: string }, () => null);
+      if (receipt && !job.cancelled && !job.requesterDied) {
+        job.outcome = { code: receipt.code, cause: receipt.cause };
+        if (receipt.finished) job.finished = receipt.finished;
+      }
+      if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.head) !== job.tree) {
+        delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
+      }
       if (!job.outcome) {
         if (job.pid && pidAlive(job.pid)) {
           const current = await processStartedAsync(job.pid);
@@ -227,6 +256,7 @@ export class Suites {
       state: job.state ?? 'running', queued: job.queued ?? null, priority: job.priority ?? null,
       item: job.item ?? null, head: job.head, branch: job.branch, integrated: job.integrated ?? false,
       ...(job.selection ? { selection: job.selection } : {}),
+      tree: job.tree ?? null, finished: job.finished ?? null, ...(job.cached ? { cached: job.cached } : {}),
     }));
   }
   async close(): Promise<void> { this.#closed = true; clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#inspecting.values()); }
