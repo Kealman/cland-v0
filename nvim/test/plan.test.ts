@@ -47,8 +47,19 @@ async function setup(t: test.TestContext) {
 async function planText(client: Client, id: string) {
   return client.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.plan').bufs[...],0,-1,false),'\\n')", id);
 }
+async function waitFor(predicate: () => Promise<boolean>, what: string) {
+  // Yield to Neovim between lookups so queued navigation and receipt frames can run.
+  const until = Date.now() + 5000;
+  let ready = false;
+  while (Date.now() < until) {
+    ready = await predicate();
+    if (ready) break;
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  assert.ok(ready, `${what} not ready within 5000 ms`);
+}
 async function waitPlan(client: Client, id: string, text: string) {
-  await client.lua("local id,text=...; return vim.wait(5000,function() local b=require('cland.plan').bufs[id]; return b and table.concat(vim.api.nvim_buf_get_lines(b,0,-1,false),'\\n'):find(text,1,true) end,20)", id, text);
+  await waitFor(() => client.lua<boolean>("local id,text=...; local view=require('cland.state').S.ui.view; local p=require('cland.plan'); local b,v=p.bufs[id],p.visits[id]; return view.kind == 'plan' and view.id == id and v ~= nil and not v.acknowledge and b ~= nil and vim.api.nvim_buf_is_valid(b) and table.concat(vim.api.nvim_buf_get_lines(b,0,-1,false),'\\n'):find(text,1,true) ~= nil", id, text), `plan showing ${text}`);
   assert.ok((await planText(client, id)).includes(text), text);
 }
 
@@ -231,7 +242,9 @@ test('a moved item keeps watch marks and its reason until the next plan visit, w
   const watch = await client.lua<Array<[number, number, number, { hl_group: string }]>>("return vim.api.nvim_buf_get_extmarks(require('cland.plan').bufs[...],vim.api.nvim_get_namespaces()['cland.plan'],0,-1,{details=true})", epic.id);
   assert.ok(watch.some(m => m[3].hl_group === 'ClandPlanChange'));
   assert.equal(await client.lua("return vim.api.nvim_get_hl(0,{name='ClandPlanChange'}).fg"), 0xc2a15e);
-  await client.input(`<Esc>:Cland view item ${epic.id}<CR>gp`);
+  await client.input(`<Esc>:Cland view item ${epic.id}<CR>`);
+  await waitFor(() => client.lua<boolean>("local view=require('cland.state').S.ui.view; return view.kind == 'item' and view.id == ...", epic.id), 'item before next plan visit');
+  await client.input('gp');
   await waitPlan(client, epic.id, 'plan view');
   text = await planText(client, epic.id);
   assert.ok(!text.includes('△ changed'), 'next visit clears the attention marks');
