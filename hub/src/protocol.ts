@@ -307,7 +307,7 @@ export type Hello = {
   role?: string;
 };
 
-export type ReleaseRequest = { type: 'release'; id: string; version?: string; dryRun?: boolean };
+export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
 
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string };
 
@@ -664,7 +664,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'sync':
       return true;
     case 'release':
-      return (f.version === undefined || typeof f.version === 'string') && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
+      return (f.version === undefined || typeof f.version === 'string') && (f.item === undefined || typeof f.item === 'string') && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'merge':
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
     case 'artifact.delete':

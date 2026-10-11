@@ -1,4 +1,4 @@
-export type ReleaseCode = 'release-version' | 'release-tag' | 'release-empty' | 'release-github' | 'release-behind'
+export type ReleaseCode = 'release-item' | 'release-version' | 'release-tag' | 'release-empty' | 'release-github' | 'release-behind'
   | 'release-state' | 'release-territory' | 'release-changed' | 'sync-dirty' | 'sync-conflict' | 'sync-behind' | 'sync-recovery';
 
 export class ReleaseError extends Error {

@@ -7,6 +7,26 @@ import type { Store } from './store.ts';
 import { landedTask, withTerritoryLockAsync, territoryGitAsync, territoryPath, TerritoryGitError } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
 
+/** Read a level-two section, keeping nested headings and ignoring headings inside code fences. */
+function section(body: string, name: string): string {
+  const lines = body.split(/\r?\n/);
+  let start = -1, fence: { char: string; size: number } | undefined;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const marker = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      if (marker && marker[1]![0] === fence.char && marker[1]!.length >= fence.size && !marker[2]!.trim()) fence = undefined;
+      continue;
+    }
+    if (marker) { fence = { char: marker[1]![0]!, size: marker[1]!.length }; continue; }
+    const heading = /^ {0,3}(#{1,2})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (!heading) continue;
+    if (start >= 0) return lines.slice(start, i).join('\n').trim();
+    if (heading[1] === '##' && heading[2] === name) start = i + 1;
+  }
+  return start < 0 ? '' : lines.slice(start).join('\n').trim();
+}
+
 export class Releases {
   readonly tracker: Tracker;
   readonly worktrees: TaskWorktrees;
@@ -53,14 +73,40 @@ export class Releases {
     }));
   }
 
-  release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void) {
+  release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void, item?: string) {
     return this.worktrees.serial(() => withTerritoryLockAsync(this.tracker.root, async () => {
+      let notesPrefix: string | undefined;
+      if (item !== undefined) {
+        resumed(authorize);
+        const view = await this.tracker.viewAsync(item, resumed);
+        version = resumed(() => {
+          authorize();
+          if (view.kind !== this.tracker.levels[0]) throw new ReleaseError('release-item', `${view.id} is not a release item (kind: ${view.kind})`);
+          if (!view.version) throw new ReleaseError('release-version', `${view.id} has no version; set its release version first`);
+          if (version !== undefined && version !== `v${view.version}`) throw new ReleaseError('release-version', `${version} disagrees with ${view.id}'s version v${view.version}`);
+          const open = this.tracker.list({ under: view.id, state: 'open' });
+          if (open.length) throw new ReleaseError('release-item', `${view.id} has open children: ${open.map(child => `${child.id} ${child.title}`).join(', ')}; close or move them first`);
+          if (!dryRun) throw new ReleaseError('release-item', `${view.id}: item releases currently require --dry-run; publication and close are not available yet`);
+          return `v${view.version}`;
+        });
+        const epics = resumed(() => this.tracker.list().filter(child => child.parent === view.id && child.kind === this.tracker.levels[1]));
+        const deliverables: string[] = [];
+        for (const epic of epics) {
+          const child = await this.tracker.viewAsync(epic.id, resumed);
+          resumed(() => {
+            const goal = section(child.body, 'Goal').replace(/\s+/g, ' ').trim();
+            const sentence = goal.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? goal;
+            deliverables.push(`${child.id} ${child.title}${sentence ? `: ${sentence}` : ''}`);
+          });
+        }
+        notesPrefix = resumed(() => [section(view.body, 'Notes'), deliverables.join('\n')].filter(Boolean).join('\n\n'));
+      }
       const result = await releaseGit(this.tracker.root, version, dryRun, async id => {
         try { const view = await this.tracker.viewAsync(id, resumed); return resumed(() => view.title); }
         catch { return null; }
-      }, resumed, authorize);
+      }, resumed, authorize, notesPrefix);
       try {
-        resumed(() => this.log({ event: dryRun ? 'release-preview' : 'released', ...result }));
+        resumed(() => this.log({ event: dryRun ? 'release-preview' : 'released', ...(item === undefined ? {} : { item }), ...result }));
         if (!dryRun && !result.followUp) await clearPublicationReceipt(this.tracker.root, 'release');
       }
       catch (err) {

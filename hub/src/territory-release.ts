@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { hasTerritory, territoryGitAsync as git, territoryPath } from './territory.ts';
 import { ReleaseError, type ReleaseResult, type SyncResult } from './release.ts';
 import type { Resumed } from './hub/worktrees.ts';
+import { isSemverVersion } from './tracker/item.ts';
 
 type Receipt = { version: string; commit: string; main: string; tag: string; notes: string; github: string };
 const receiptPath = (root: string) => join(root, '.cland', 'release.tmp');
@@ -79,14 +80,18 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed): Promise
 /** Remove recovery state only after the hub has recorded the successful result. */
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
-export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void): Promise<ReleaseResult> {
+export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, notesPrefix?: string): Promise<ReleaseResult> {
   const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
   resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
   const state = await releaseState(root, resumed);
   const github = await fetchGithub(root, resumed, true);
   resumed(() => {
     authorize();
-    if (!version || !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) throw new ReleaseError('release-version', 'give a version as vX.Y.Z (for example v0.1.0)');
+    // An item version is already validated as SemVer by the tracker; keep the legacy CLI version rule.
+    const valid = version && (notesPrefix === undefined
+      ? /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)
+      : version.startsWith('v') && isSemverVersion(version.slice(1)));
+    if (!valid) throw new ReleaseError('release-version', 'give a version as vX.Y.Z (for example v0.1.0)');
   });
   const name = version!;
   const prior = await readReceipt(root, resumed);
@@ -128,7 +133,8 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     resumed(() => titled.push(`${item.id} ${found ?? item.subject}`));
   }
   const { notes, preview } = resumed(() => {
-    const notes = [...titled, ...other].join('\n');
+    const commits = [...titled, ...other].join('\n');
+    const notes = notesPrefix === undefined ? commits : [notesPrefix, commits].filter(Boolean).join('\n\n');
     return { notes, preview: dryRun ? { version: name, commit: state.dev, notes, refs: [`${state.dev}:refs/heads/main`, `refs/tags/${name}:refs/tags/${name}`], dryRun } : null };
   });
   if (preview) return preview;

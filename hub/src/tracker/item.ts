@@ -122,9 +122,10 @@ export function withReleaseNotes(body: string): string {
 
 // SemVer 2.0: core and numeric prerelease identifiers have no leading zero; build identifiers may.
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+export const isSemverVersion = (version: unknown): version is string => typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version);
 export function versionRefusal(kind: Kind, version: unknown, levels: readonly string[] = DEFAULT_LEVELS): string | null {
   if (kind !== levels[0]) return `version belongs only to ${kindWithArticle(levels[0] ?? 'top-level container')} item`;
-  return typeof version === 'string' && SEMVER.test(version) && !/\s/.test(version) ? null : 'version must be semver without the v (for example 0.1.0)';
+  return isSemverVersion(version) ? null : 'version must be semver without the v (for example 0.1.0)';
 }
 
 /** Tasks and containers below the configured top level are ranked among siblings. */

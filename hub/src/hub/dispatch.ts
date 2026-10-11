@@ -1317,7 +1317,7 @@ export class Dispatcher {
               throw new ToolForbidden(now?.role ?? null, tool, reason);
             }
           };
-          const operation = frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
+          const operation = frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize, frame.item) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
           later(tool, operation.then(
             (value): HubFrame => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
             (err: unknown) => resumed(() => Dispatcher.#failure(frame.id, err)),
