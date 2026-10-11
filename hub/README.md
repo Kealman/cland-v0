@@ -450,6 +450,8 @@ loop_breaker_max = 20             # messages between one pair within the window 
 loop_breaker_window_minutes = 5
 loop_breaker_mute_minutes = 10    # the hard cool-down
 max_text_bytes = 8192
+event_limit_max = 120             # hub event deliveries one recipient may receive within the window, separate from messages (see Events below)
+event_limit_window_minutes = 10
 ```
 
 A refusal is typed, `{"code":"hygiene","rule":"size"|"rate"|"loop","until"?:"<ISO>"}`: the size cap and the rate limit refuse the `send` itself (the result's `error` and `refusal`; the spoke's tool answer carries both), the loop breaker refuses the outcome for the muted addressee (`outcome` `refused`, `reason`, `refusal` with `until`). When the breaker trips, both sessions get the `mute` notice (its `detail` is the refusal and the `pair`; a spoke shows `kind` and `detail` in the channel event's meta) and Agents shows it. Rate windows, pair counts and mutes persist in the `hygiene` table of `hub.db`, keyed by session id: a restart keeps a mute running. `cland hub unmute <a> <b>`, or the UI's `hygiene.unmute`, lifts a mute early and clears the pair's count.

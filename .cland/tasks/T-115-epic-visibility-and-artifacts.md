@@ -2,7 +2,7 @@
 id: T-115
 kind: epic
 title: "Epic: Visibility and artifacts"
-state: open
+state: closed
 criterion_seq: 9
 labels:
   - epic
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-136
 branch: null
 created: 2026-10-09T21:51:34.527Z
-updated: 2026-10-11T15:16:31.550Z
+updated: 2026-10-11T15:18:35.367Z
 ---
 
 ## Goal
@@ -49,22 +49,30 @@ The human starts the day. The inbox shows an ask and a not-clear verdict on top,
 
 - [ ] C1. One classifier places every message, inbox event, session, item and artifact by the default table and `[visibility]`.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:34.780Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.160Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C2. Each surface shows now and watch, folds background behind a count, and reaches archive only on an action; the inbox never shows background.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:34.944Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C3. Pins and mutes on topics, sessions and artifacts persist in `.cland/ui.json`.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.099Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C4. Messages older than 7 days leave the thread until the human asks for them.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.253Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C5. A folder artifact has one id and an entry file, and its files are listed on request.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.427Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C6. The human's and Aides' artifacts are never archived or deleted automatically; `kept` exempts an agent's artifact from the sweep and raises it to watch.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.603Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C7. `artifact.keep`, `artifact.move`, `artifact.archive` and the `cland artifact` commands work; agents cannot change the human's or an Aide's artifacts.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.769Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C8. The Artifacts browser has the sections and keys of §3.6, and saving a buffer saves the artifact.
   - verified: qa-18 [qa] · run qa-2026-10-11-18 · 2026-10-11T15:15:35.960Z · commit 36a4860b4e5b56e785b933a40702b3ede50ba53f
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 - [ ] C9. `hub/README.md` and `nvim/README.md` describe the layers, the overrides and the artifacts.
-  - failed: qa-18 [qa] · 2026-10-11T15:15:57.535Z · note M19-AIDE: nvim/README.md:56 says stopped Aides fold, but they remain Now under STOPPED.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-c9-2 · 2026-10-11T15:18:30.161Z · commit 6ae47300386e4a86c69e82751aa02c8cea57beac
 
 ## Dogfooding
 
@@ -146,3 +154,56 @@ commit: 36a4860b4e5b56e785b933a40702b3ede50ba53f
 Evidence artifact A-1298: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/report.md
 
 Criteria: C9 failed (M19-AIDE: nvim/README.md:56 says stopped Aides fold, but they remain Now under STOPPED.).
+
+### qa-18 · 2026-10-11T15:17:37.196Z
+
+verdict: qa
+result: not clear
+by: qa-18 [qa]
+run: qa-2026-10-11-18-c9
+commit: 55ba1dcf4ce40eaf6971f976e606bdeecf2323dc
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| M19 | FAIL | M19.log; prior A-1298/M3-dismiss-all.screen.txt |
+| M19-AIDE | PASS | Updated nvim/README.md:56 matches prior stopped-Aide screen |
+
+Low — C9, hub/README.md:171,179–180: the notifications row calls the entire category dismissable and the dismiss_all row says its notifications are gone, with only asks and approvals staying. Original run M3 pressed D and retained both not-clear/death warning rows, as required by D17 and correctly documented in nvim/README.md:34/52. The single-dismiss row also omits the warning refusal. Update these protocol/table descriptions to distinguish ordinary notifications from warnings.
+
+The requested stopped-Aide correction and inbox.plan addition both pass. Delta 36a4860→55ba1dc consists of two documentation files and four tracker files; no product changes. C1–C8 evidence remains qa-2026-10-11-18 (A-1298, 62 passing tests); D1–D3 remain deferred per D19.
+
+Verdict: not clear at 55ba1dcf4ce40eaf6971f976e606bdeecf2323dc, run qa-2026-10-11-18-c9. C9 failed for warning-dismissal table contradictions.
+
+Evidence A-1299: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1299-t-115-c9-documentation-recheck-qa-2026-10-11-18-c9/report.md
+
+Criteria: C9 failed (M19: hub/README.md:171/180 incorrectly says all notifications are dismissable/removed; warnings remain under D17.).
+
+### qa-18 · 2026-10-11T15:18:30.161Z
+
+verdict: qa
+result: clear
+by: qa-18 [qa]
+run: qa-2026-10-11-18-c9-2
+commit: 6ae47300386e4a86c69e82751aa02c8cea57beac
+
+| Case / criteria | Result | Evidence |
+| --- | --- | --- |
+| M0–M18 / C1–C8 | PASS, carried forward | qa-2026-10-11-18, A-1298; 62 targeted tests passed |
+| M19 including M19-AIDE / C9 | PASS | M19.log; corrected README lines match prior observed runtime behavior |
+| D1–D3 | Deferred under D19 | Real time, real models and human visual judgement deferred to v0.1.1 |
+
+No unresolved findings in the recheck scope. The stopped-Aide description in nvim/README.md:56 now matches Now → STOPPED. The notification and dismissal descriptions in hub/README.md:171/179–180 now distinguish ordinary notifications from retained warnings, including the single-dismiss refusal. docs/visibility.md includes inbox.plan in Watch. Other layer, override and artifact documentation checked in the initial M19 remains unchanged.
+
+Build: 6ae47300386e4a86c69e82751aa02c8cea57beac. Verified `git diff --stat 36a4860 6ae4730`: hub/README.md, nvim/README.md, docs/visibility.md and four tracker files (T-115, T-189, T-204, T-223), 128 insertions and 27 deletions. No product or test code changed. Per Coordinator authorization, C1–C8 carry forward from qa-2026-10-11-18 at 36a4860 (A-1298). That initial run started at 2d231f9; its only intervening code delta was the excluded T-223 plan-test readiness change.
+
+Structured verdict: clear, run qa-2026-10-11-18-c9-2, commit 6ae47300386e4a86c69e82751aa02c8cea57beac, verified C1,C2,C3,C4,C5,C6,C7,C8,C9. Original brief-only observations remain in A-1298; no additional product test run was needed for this documentation-only recheck.
+
+Prior evidence: A-1298 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1298-t-115-qa-demo-evidence-qa-2026-10-11-18/report.md.
+
+Recheck evidence A-1300: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1300-t-115-c9-clear-recheck-qa-2026-10-11-18-c9-2/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-11T15:18:35.367Z
+
+Closed on QA run qa-2026-10-11-18 (A-1298: M0–M19, 62 tests, C1–C8 verified), with a C9 docs recheck clear at dev 6ae4730 as qa-2026-10-11-18-c9-2 (A-1300) after the docs-only fixes 55ba1dc and 6ae4730: the stopped-Aide sentence, inbox.plan, and the D17 dismiss rows (D16). D1–D3 are deferred to v0.1.1 (D19).
