@@ -666,3 +666,97 @@ for (const boundary of ['before root removal', 'after next root creation'] as co
     assert.deepEqual(await readdir(machine + '.queue'), []);
   });
 }
+
+test('package admission rejects a new unclassified hub test before executing it', async t => {
+  const dir = await fixture(t);
+  await mkdir(join(dir, 'hub', 'test'), { recursive: true });
+  await writeFile(join(dir, 'hub', 'test', 'unclassified.test.ts'), "import test from 'node:test'; test('must not run', () => { throw new Error('test executed'); });");
+  const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } })});`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' } });
+  let output = '';
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  const codeResult = await new Promise(resolve => child.on('close', resolve));
+  assert.equal(codeResult, 1);
+  assert.match(output, /unclassified hub test.*unclassified\.test\.ts/);
+  assert.doesNotMatch(output, /test executed/);
+});
+
+for (const [resource, source] of [
+  ['real-time waits', "import test from 'node:test'; test('wait', async () => new Promise(r => setTimeout(r, 1)));"],
+  ['the shared machine lock', "import { existsSync } from 'node:fs'; existsSync('/tmp/cland-suite.lock');"],
+  ['the shared Neovim lock', "import { existsSync } from 'node:fs'; existsSync('/tmp/cland-suite-nvim.lock');"],
+]) test(`package shard lint refuses a free test with ${resource}`, async t => {
+  const dir = await fixture(t);
+  await mkdir(join(dir, 'hub', 'test'), { recursive: true });
+  await writeFile(join(dir, 'hub', 'test', 'shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/wait.test.ts': 'free' } }));
+  await writeFile(join(dir, 'hub', 'test', 'wait.test.ts'), source!);
+  const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir })});`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '' } });
+  let output = '';
+  child.stderr.on('data', chunk => { output += String(chunk); });
+  assert.equal(await new Promise(resolve => child.on('close', resolve)), 1);
+  assert.match(output, /free hub test touches machine resources.*wait\.test\.ts/);
+});
+
+for (const admission of ['standalone', 'old V1 worker'] as const) test(`sharded package runs keep a recovery record and take the machine lease only for machine phases (${admission})`, async t => {
+  // Always exercise the managed runner's private-root naming, even in a targeted run.
+  const dir = await mkdtemp(join(await realpath('/tmp'), 'cland-suite-runner-fixture-'));
+  ownDirectory(t, dir);
+  const locks = { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') };
+  const journal = join(dir, 'shards-ran');
+  for (const [path, machine] of [['hub/test/free.test.ts', false], ['hub/test/machine.test.ts', true], ['nvim/test/fixture.test.ts', true]] as const) {
+    await mkdir(join(dir, path, '..'), { recursive: true });
+    await writeFile(join(dir, path), `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readdirSync, readFileSync, appendFileSync } from 'node:fs'; test('resource lease', () => {
+      assert.equal(existsSync(${JSON.stringify(locks.hub + '.machine')}), ${machine});
+      const records = readdirSync(${JSON.stringify(locks.hub + '.runs')}).filter(p => p.endsWith('.json'));
+      assert.equal(records.length, 1);
+      const record = JSON.parse(readFileSync(${JSON.stringify(locks.hub + '.runs')} + '/' + records[0], 'utf8'));
+      assert.equal(record.root, process.env.TMPDIR);
+      assert.equal(record.runner.pid, process.ppid);
+      appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(path + '\n')});
+    });`);
+  }
+  await writeFile(join(dir, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/free.test.ts': 'free', 'hub/test/machine.test.ts': 'machine' } }));
+  let code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: locks })});`;
+  if (admission === 'old V1 worker') {
+    const lockModule = fileURLToPath(new URL('../src/suite-lock.ts', import.meta.url));
+    const identityModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
+    code = `import { acquire } from ${JSON.stringify(lockModule)}; import { processStarted } from ${JSON.stringify(identityModule)};
+      const dirs = ${JSON.stringify(Object.values(locks))}; const holder = { pid: process.pid, started: processStarted(process.pid), token: 'old-v1-' + process.pid, since: new Date().toISOString() };
+      const leases = await acquire(dirs, () => false, holder); process.env.CLAND_SUITE_LEASE = JSON.stringify({dirs, ...holder});
+      try { ${code} } finally { for (const lease of leases.reverse()) await lease.release(); }`;
+    // Imports cannot be nested in try: use a dynamic import for the package runner.
+    code = code.replace(`import { runPackageSuite } from ${JSON.stringify(runner)};`, `const { runPackageSuite } = await import(${JSON.stringify(runner)});`);
+  }
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' } });
+  let output = '';
+  child.stdout.on('data', chunk => { output += String(chunk); }); child.stderr.on('data', chunk => { output += String(chunk); });
+  assert.equal(await new Promise(resolve => child.on('close', resolve)), 0, output);
+  assert.equal(await readFile(journal, 'utf8'), 'hub/test/free.test.ts\nhub/test/machine.test.ts\nnvim/test/fixture.test.ts\n');
+  assert.match(output, /shard duration hub free [\d.]+s; workers 1; resource free/);
+  assert.match(output, /shard duration hub machine [\d.]+s; workers 4; resource machine/);
+  assert.deepEqual(await readdir(locks.hub + '.runs'), []);
+  assert.equal(await import('node:fs/promises').then(fs => fs.stat(locks.hub + '.machine')).catch(() => null), null);
+});
+
+test('stale broker recovery uses the newer per-run root record before admitting a successor', async t => {
+  const dir = await fixture(t);
+  const lock = lockPath(dir);
+  const token = `broker-${dir.split('/').at(-1)}`;
+  const root = join(await realpath('/tmp'), `cland-suite-${token}`);
+  await mkdir(root);
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(lock);
+  const holder = { pid: 2147483647, started: null, since: 'before crash', token, records: `${lock}.runs` };
+  await mkdir(holder.records);
+  await writeFile(`${lock}.owner`, JSON.stringify(holder));
+  const info = await import('node:fs/promises').then(fs => fs.stat(root));
+  await writeFile(join(holder.records, `${token}.json`), JSON.stringify({ ...holder, root, device: info.dev, inode: info.ino }));
+  const old = new Date(Date.now() - 5000);
+  await utimes(`${lock}.owner`, old, old);
+  const file = join(dir, 'successor.mjs');
+  await writeFile(file, `import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; assert.equal(existsSync(${JSON.stringify(root)}), false);`);
+  const next = run(t, dir, file);
+  assert.equal(await next.done, 0, next.output());
+  assert.deepEqual(await readdir(holder.records), []);
+});

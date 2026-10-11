@@ -8,7 +8,7 @@ import { run } from './doctor/report.ts';
 import { fileURLToPath } from 'node:url';
 import type { ProcessIdentity } from '../test/process-cleanup.ts';
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-export type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity };
+export type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
@@ -77,6 +77,20 @@ async function liveTickets(queueDir: string, deadline?: number): Promise<Array<H
   return tickets.sort((a, b) => BigInt(a.queued) < BigInt(b.queued) ? -1 : BigInt(a.queued) > BigInt(b.queued) ? 1 : a.token.localeCompare(b.token));
 }
 
+// A record can precede legacy sidecar publication. Recover its newer metadata only
+// when the original worker identity agrees; malformed records keep ownership held.
+async function recoveryHolder(holder: Holder, dirs: string[]): Promise<Holder> {
+  if (holder.records !== `${dirs[0]}.runs`) return holder;
+  const record = join(holder.records, `${holder.token}.json`);
+  const latest = await holderAt(record);
+  if (latest) {
+    if (latest.token !== holder.token || latest.pid !== holder.pid || latest.started !== holder.started) throw new Error('broker recovery record identity changed; ownership preserved');
+    return latest;
+  }
+  if (await stat(record).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) throw new Error('invalid broker recovery record; ownership preserved');
+  return holder; // Death before the initial record: the legacy sidecar still owns the run.
+}
+
 // Call only while holding every recovery guard. A blocked lock remains owned through cleanup.
 async function inspectLocks(dirs: string[], deadline?: number, recover = sweep): Promise<{ previous: Holder | null; info: Stats | null; blockedDir: string | null }> {
   for (const dir of dirs) {
@@ -86,7 +100,9 @@ async function inspectLocks(dirs: string[], deadline?: number, recover = sweep):
     if (holder && !await liveHolder(holder, deadline)) {
       const owner = await stat(ownerPath).catch(() => null);
       if (Date.now() - (owner?.mtimeMs ?? info?.mtimeMs ?? 0) >= RECOVERY_GRACE_MS) {
-        await recover(holder);
+        await recover(await recoveryHolder(holder, dirs));
+        // Records belong to the compatibility fence, not the phase root.
+        if (holder.records === `${dirs[0]}.runs`) await rm(join(holder.records, `${holder.token}.json`), { force: true });
         await rm(dir, { recursive: true, force: true });
         await rm(ownerPath, { force: true });
         await rm(`${ownerPath}.${holder.token}`, { force: true });
@@ -224,6 +240,33 @@ export async function compatibilityOccupied(dirs: string[]): Promise<boolean> {
   finally { for (const guard of guards.reverse()) await guard.release(); }
 }
 
+/** Budget-one compatibility broker. Legacy locks remain a fence for the whole run;
+ * machine phase leases are independent. Each admitted run has its own recovery record.
+ * Keeping the fence owner equal to the worker preserves pre-V1 recovery semantics.
+ */
+export async function acquireBroker(dirs: string[], interrupted: () => boolean, holder: Holder): Promise<Lease[]> {
+  const borrowed = await borrowLease(dirs, holder);
+  if (borrowed && holder.records) return borrowed;
+  if (!dirs.length) return [];
+  holder.records = `${dirs[0]}.runs`;
+  // An older V1 worker has a verified fence but no record. Its borrower owns
+  // this record through package cleanup; newer worker records stay worker-owned.
+  const leases = borrowed ?? await acquire(dirs, interrupted, holder);
+  let remaining = leases.length;
+  const record = join(holder.records, `${holder.token}.json`);
+  try {
+    await mkdir(holder.records, { recursive: true, mode: 0o700 });
+    await publish(record, holder);
+  } catch (error) {
+    for (const lease of leases.reverse()) await lease.release();
+    throw error;
+  }
+  return leases.map(lease => ({
+    publish: async () => { await publish(record, holder); await lease.publish(); },
+    release: async () => { await lease.release(); if (--remaining === 0) await rm(record, { force: true }); },
+  }));
+}
+
 export type InheritedLease = { dirs: string[]; pid: number; started: string; token: string };
 export function inheritedLease(): InheritedLease | null {
   if (!process.env.CLAND_SUITE_LEASE) return null;
@@ -240,8 +283,11 @@ export async function borrowLease(dirs: string[], holder: Holder): Promise<Lease
     if (!owner || owner.pid !== inherited.pid || owner.started !== inherited.started || owner.token !== inherited.token || !await liveHolder(owner)) throw new Error('inherited suite lease is no longer held');
   }
   holder.pid = inherited.pid; holder.started = inherited.started; holder.token = inherited.token;
+  const owner = await holderAt(`${dirs[0]}.owner`);
+  if (owner?.records === `${dirs[0]}.runs`) holder.records = owner.records;
   holder.root = join(await realpath('/tmp'), `cland-suite-${holder.token}`);
   const leases = dirs.map(dir => ({ publish: async () => {
+    if (holder.records) await publish(join(holder.records, `${holder.token}.json`), holder);
     await publish(`${dir}.owner`, holder);
     await publish(join(dir, 'holder.json'), holder);
   }, release: async () => {} }));
@@ -254,6 +300,6 @@ export async function borrowLease(dirs: string[], holder: Holder): Promise<Lease
 export async function sweepLease(dirs: string[], token: string): Promise<void> {
   for (const dir of dirs) {
     const holder = await holderAt(`${dir}.owner`);
-    if (holder?.token === token) { await sweep(holder); return; }
+    if (holder?.token === token) { await sweep(await recoveryHolder(holder, dirs)); return; }
   }
 }

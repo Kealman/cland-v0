@@ -8,11 +8,11 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
-import { acquire, sweepLease, type Lease } from '../suite-lock.ts';
+import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import type { SuiteSelection } from '../suite-selection.ts';
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string; tree?: string | null };
+  const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string; queued?: string; tree?: string | null };
   let signal: NodeJS.Signals | null = null;
   let active: ReturnType<typeof spawn> | undefined;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
@@ -27,6 +27,7 @@ export async function suiteWorker(input: string): Promise<void> {
     if (signal || Date.now() >= admissionDeadline) break;
     await pause(25);
   }
+  if (admitted && job.queued) process.stdout.write(`verification queue wait ${((Date.now() - Date.parse(job.queued)) / 1000).toFixed(2)}s\n`);
   let code = 0;
   let cause = admitted ? '' : 'hub stopped before worker admission completed';
   const leases: Lease[] = [];
@@ -36,7 +37,7 @@ export async function suiteWorker(input: string): Promise<void> {
     const started = await processStartedAsync(process.pid);
     if (!started) throw new Error('cannot establish compatibility lease identity');
     const holder = { pid: process.pid, started, token, since: new Date().toISOString(), worktree: job.cwd };
-    if (admitted && !signal) leases.push(...await acquire(dirs, () => signal !== null, holder));
+    if (admitted && !signal) leases.push(...await acquireBroker(dirs, () => signal !== null, holder));
     const checkHead = async () => {
       const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
       if (job.head && head !== job.head) throw new Error(`cancelled: submitted head ${job.head} changed to ${head}; submit verification again`);

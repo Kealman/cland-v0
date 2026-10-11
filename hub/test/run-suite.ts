@@ -8,11 +8,12 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { processStarted } from '../src/hub/lock.ts';
-import { acquire, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
-import { describeSelection, selectPackageSuite, selectionFromEnv, suitePhases, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
+import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
+import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
+import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
-export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[] } = {}): Promise<number> {
+export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[] } = {}): Promise<number> {
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
   let runId = randomBytes(10).toString('base64url');
@@ -29,6 +30,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   if (!startedIdentity) throw new Error('cannot establish suite holder process identity');
   const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId, worktree: await realpath(options.cwd ?? process.cwd()), root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
   const leases: Lease[] = [];
+  let machine: Lease[] = [];
   let root: string | undefined;
   const invoked = Date.now();
   let started = invoked;
@@ -38,7 +40,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     if (process.env.CLAND_TEST_SKIP_LOCK !== '1') {
       const dirs = options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'];
-      leases.push(...await borrowLease(dirs, holder) ?? await acquire(dirs, () => interruption.signal !== null, holder));
+      leases.push(...(options.resources ? await acquireBroker(dirs, () => interruption.signal !== null, holder) : await borrowLease(dirs, holder) ?? await acquire(dirs, () => interruption.signal !== null, holder)));
       runId = holder.token;
     }
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
@@ -72,6 +74,13 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         for (const lease of leases) await lease.publish();
         if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       }
+      const phaseStarted = Date.now();
+      let machineWait = 0;
+      if (options.resources?.[index] === 'machine' && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
+        const machineDir = `${(options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'])[0]}.machine`;
+        machine = await acquire([machineDir], () => interruption.signal !== null, holder);
+        machineWait = Date.now() - phaseStarted;
+      }
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
       delete env.NODE_TEST_CONTEXT;
       const gate = join(root, `start-${index}`);
@@ -95,13 +104,16 @@ process.chdir(cwd);`);
       activeIdentity = captureProcess(active.pid);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
       holder.runner = activeIdentity;
-      for (const lease of leases) await lease.publish();
+      for (const lease of [...leases, ...machine]) await lease.publish();
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const code = await done;
       await cleanupProcesses(root, [...captureRunProcesses(holder.token), activeIdentity], (line) => process.stderr.write(`${line}\n`), holder.token, [activeIdentity]);
       active = undefined; activeIdentity = null;
+      for (const lease of machine.reverse()) await lease.release();
+      machine = [];
+      if (options.phaseNames?.[index]) process.stderr.write(`shard duration ${options.phaseNames[index]} ${((Date.now() - phaseStarted) / 1000).toFixed(2)}s; workers ${options.workers?.[index] ?? 4}; resource ${options.resources?.[index] ?? 'machine'}; machine wait ${(machineWait / 1000).toFixed(2)}s\n`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
     }
@@ -113,6 +125,7 @@ process.chdir(cwd);`);
     clearInterval(sample);
     try {
       if (root) await sweep(holder);
+      for (const lease of machine.reverse()) await lease.release();
       for (const lease of leases.reverse()) await lease.release();
     } finally {
       for (const { signal, handler } of handlers) process.off(signal, handler);
@@ -129,8 +142,8 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
   let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv() ?? await selectPackageSuite(cwd, mode as SuiteRequest);
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
-  const phases = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra })) : suitePhases(selection.mode);
-  const suites = phases.map(phase => ['--test', '--test-concurrency=4', ...phase.targets]);
+  const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers: 4 })) : await packageShards(cwd, selection.mode);
+  const suites = phases.map(phase => ['--test', `--test-concurrency=${phase.workers}`, ...phase.targets]);
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.
   // A single ticket/lease spans both phases; single-phase admission is unchanged.
@@ -143,7 +156,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
     return { signal, handler };
   });
   try {
-    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, phaseNames: phases.map(phase => phase.name) });
+    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, phaseNames: phases.map(phase => phase.name), ...(!extra.length ? { resources: phases.map(phase => phase.resource), workers: phases.map(phase => phase.workers) } : {}) });
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
   } finally {
     for (const { signal, handler } of handlers) process.off(signal, handler);

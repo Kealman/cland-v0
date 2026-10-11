@@ -508,6 +508,10 @@ test('the compatibility lease spans typecheck and tests, so a hand runner waits 
   await eventually('typecheck entered', () => stat(join(f.root, 'typecheck-entered')).then(() => true, () => undefined));
   const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
   assert.ok(await stat(locks[0]!).then(() => true, () => false), 'typecheck holds the compatibility lock');
+  const records = await readdir(`${locks[0]}.runs`);
+  assert.equal(records.length, 1, 'one durable record per admitted run');
+  const record = JSON.parse(await readFile(join(`${locks[0]}.runs`, records[0]!), 'utf8')) as { pid: number; token: string };
+  assert.equal(record.pid, JSON.parse(await readFile(`${locks[0]}.owner`, 'utf8')).pid);
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const hand = spawn(process.execPath, ['--input-type=module', '-e', `import { runSuite } from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e', ${JSON.stringify("require('fs').writeFileSync('hand-entered','')")}]], {cwd:${JSON.stringify(f.root)},lockDirs:${JSON.stringify(locks)}})`], {cwd:f.root, stdio:['ignore','ignore','pipe']});
   ownProcess(t, hand.pid!);
@@ -584,7 +588,7 @@ test('priority admits integrated dev first, then item rank, preserving the queue
   await cland(f.root, 'hub', 'stop');
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
-  type Job = {id:string; state:string; head:string; priority:number};
+  type Job = {id:string; state:string; head:string; priority:number; reported:boolean};
   const jobs = async () => (await ui.request({type:'hub.status'})).value as {suites:Job[]};
   assert.equal((await jobs()).suites.filter(j => j.state === 'queued').length, 3);
   await rm(join(f.root, 'suite.lock'), {recursive:true});
@@ -594,7 +598,7 @@ test('priority admits integrated dev first, then item rank, preserving the queue
     assert.equal(records.filter(j => j.state === 'running').length, 1);
     assert.equal(records.find(j => j.id === id)!.head, head);
     await writeFile(join(f.root, 'finish'), '');
-    await eventually('priority result settled', async () => (await jobs()).suites.find(j => j.id === id && j.state === 'finished'));
+    await eventually('priority result settled', async () => (await jobs()).suites.find(j => j.id === id && j.state === 'finished' && j.reported));
   };
   await running(integrated.id);
   await running(high.id);
@@ -710,6 +714,7 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
     await assert.rejects(stat(lock), { code: 'ENOENT' });
     await assert.rejects(stat(`${lock}.owner`), { code: 'ENOENT' });
   }
+  assert.deepEqual(await readdir(`${locks[0]}.runs`), [], 'crashed package record is removed after cleanup');
   const next = await f.launch();
   const passed = await eventually('successor borrows a clean lease', async () => (await f.results()).find(m => m.id === `suite:${next.id}`));
   assert.match(passed.text, /all exit 0/);
@@ -785,6 +790,7 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
   assert.match(passed.text, /all exit 0/);
   await assert.rejects(stat(root), { code: 'ENOENT' });
   for (const lock of locks) await assert.rejects(stat(`${lock}.owner`), { code: 'ENOENT' });
+  assert.deepEqual(await readdir(`${locks[0]}.runs`), [], 'stale and successful records are removed');
 });
 
 test('cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder', async t => {
@@ -824,6 +830,14 @@ process.exitCode = result.status ?? 1;
   assert.equal((await stat(lock)).isDirectory(), true);
   await assert.rejects(stat(join(f.root, 'admitted')), { code: 'ENOENT' });
   assert.equal((await f.results()).filter(m => m.id === `suite:${job.id}`).length, 1);
+});
+
+test('suite report includes locked shard duration, free duration and queue waits', () => {
+  const summary = suiteSummary('ℹ tests 2\nℹ pass 2\nverification queue wait 12.30s\nshard duration hub free 1.00s; workers 1; resource free; machine wait 0.00s\nshard duration hub machine 55.00s; workers 4; resource machine; machine wait 0.03s\nsuite duration 57.00s; lock wait 0.10s; peak 1m load 8.00\n');
+  assert.match(summary, /verification queue wait 12.30s/);
+  assert.match(summary, /shard duration hub machine 55.00s/);
+  assert.match(summary, /shard duration hub free 1.00s/);
+  assert.match(summary, /suite duration 57.00s; lock wait 0.10s/);
 });
 
 async function cacheRepository(f: Awaited<ReturnType<typeof fixture>>) {

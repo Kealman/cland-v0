@@ -96,6 +96,7 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
       appendFileSync(${JSON.stringify(journal)}, JSON.stringify({ file: ${JSON.stringify(path)}, token: owner.token }) + '\\n');
     });`);
   }
+  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(files.filter(path => path.startsWith('hub/')).map(path => [path, 'machine'])) }));
   await writeFile(join(root, '.gitignore'), 'journal.jsonl\n*.lock*\n');
   await git('checkout', 'dev'); await git('add', '.'); await git('commit', '-m', 'fixture tests'); await git('push', 'origin', 'dev');
   await git('checkout', 't/T-214'); await git('merge', 'dev');
@@ -112,7 +113,7 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
   assert.deepEqual(rows.map(row => row.file).sort(), mode === 'hub-only' ? ['hub/test/daemon.test.ts', 'hub/test/local.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'] : ['hub/test/daemon.test.ts', 'hub/test/tracer.test.ts', 'nvim/test/client.test.ts', 'nvim/test/other.test.ts', 'nvim/test/sessions.test.ts']);
   assert.equal(new Set(rows.map(row => row.token)).size, 1, 'one admission spans hub and smoke');
   assert.ok(reduced.stderr.split('\n').some(line => line.startsWith('suite duration ') && line.includes(`mode ${mode}`) && line.includes(changed)), reduced.stderr);
-  assert.ok(reduced.stderr.includes(`suite phase ${mode === 'hub-only' ? 'Neovim smoke' : 'hub smoke'}; locks held`), reduced.stderr);
+  assert.ok(reduced.stderr.includes(`suite phase ${mode === 'hub-only' ? 'Neovim smoke' : 'hub machine smoke'}; locks held`), reduced.stderr);
   // Both force-full CLI spellings override targets and transported selections.
   for (const force of ['--all', 'all']) {
     await writeFile(journal, '');

@@ -1108,11 +1108,14 @@ requester's queued run is cancelled with one hub note to its original recipients
 a disconnected spoke alone does not prove death. `cland suite` is a transition alias.
 
 `[verification].budget` defaults to 1. Higher values are retained in config but
-capped at 1 with a `verification-budget-capped` log note: resource-aware overlap
-is reserved for T-215. The compatibility shim keeps both legacy locks, and a hand
+capped at 1 with a `verification-budget-capped` log note. T-215 retains this
+conservative budget: only five hermetic hub files qualify for overlap, too little
+to justify overlapping process-heavy runs. The compatibility broker keeps both legacy locks as a fence, and a hand
 `npm test` or pre-V1 holder occupies admission. The worker takes a verified lease
 before typecheck; V1 package runners borrow it through all phases and publish
-recovery metadata. Pre-V1 package runners take their own lease after protected
+recovery metadata in a unique `<lock>.runs/<token>.json` record as well as the
+legacy ownership sidecars. Records track the planned root, inode/device and
+runner PID/start identity and are removed only after cleanup. Pre-V1 package runners take their own lease after protected
 typecheck. A racing hand run remains excluded by atomic lease acquisition.
 Admission identity probes are asynchronous and bounded. Stale process/root recovery
 runs in a bounded subprocess; failure retains ownership and logs
@@ -1196,13 +1199,30 @@ in `src/suite-selection.ts`:
 Per-item targeted hub tests are a possible follow-up; the fixed baseline applies
 to every Neovim-only run today.
 
+`hub/test/shards.json` explicitly classifies every hub test file as `free` or
+`machine`. `npm run test:shards` checks the manifest; normal package runs perform
+the same lint before admission. Missing/unknown entries and entries for absent
+files fail. A free file importing process/port/timer APIs or process-fixture
+helpers, using wall-clock waits, naming the legacy lock paths or Neovim also fails.
+Keep new process fixtures in `machine`; private project directories alone do not
+remove their load and real-time dependencies.
+
+The hub free shard runs on one worker. The hub machine shard and Neovim run on
+four workers. Smoke targets use the same classification. Only machine phases
+acquire `<lock>.machine`; the legacy lock pair stays held as the compatibility
+fence for the complete invocation, including typecheck. Production invocations
+remain serialized by budget one and this fence. This preserves hand-run and
+pre-V1 exclusion; it does not enable production free-shard overlap yet.
+Logs and suite reports include each shard's wall time, resource, workers and
+machine wait, plus the hub queue wait and total suite/compatibility wait.
+
 All package runs queue once for joint admission to `/tmp/cland-suite.lock` and
 `/tmp/cland-suite-nvim.lock`, and retain both locks through the chosen phases,
 including smoke. Each phase cleans up its processes and temporary root before
 the next starts. Explicit test targets passed to `runPackageSuite` retain the
 single-phase targeted/fixture interface; a hub target run needs only the machine
-lock. Every phase takes the machine lock, so runs serialize across projects and
-worktrees. Joint waiters hold neither lock until both are free under their recovery
+lock. Compatibility admission serializes runs across projects and worktrees;
+the separate machine lease is held only during machine shards. Joint waiters hold neither lock until both are free under their recovery
 guards, so live legacy Neovim-first waiters can drain without an opposite-order cycle.
 See [agent test notes](../docs/agents/tests.md). A second run prints the holder's
 pid, start time, worktree and its own queue position. Atomic PID/start-time
@@ -1241,7 +1261,7 @@ cwd check covers captured targets only, and empty target sets return immediately
 Environment-marker scans are needed only when teardown diagnostics are requested;
 markers remain hints, never ownership proof.
 
-The suites run at concurrency 4. Targeted single-file runs are free:
+The machine shards run at concurrency 4; hermetic shards run at 1. Targeted single-file runs are free:
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
 `node --test` is reserved for targeted runs.
