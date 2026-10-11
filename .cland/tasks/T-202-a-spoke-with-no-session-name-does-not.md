@@ -2,8 +2,8 @@
 id: T-202
 kind: task
 title: A spoke with no session name does not connect, instead of retrying into a refusal
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - tech-debt
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-148
 branch: t/T-202-a-spoke-with-no-session-name-does-not
 created: 2026-10-10T17:49:31.970Z
-updated: 2026-10-11T19:37:35.452Z
+updated: 2026-10-11T20:51:18.849Z
 ---
 
 ## What to build
@@ -34,7 +34,9 @@ A spoke started without CLAND_SESSION_NAME and without a `cland role` mapping fo
   - done: impl-202 · 2026-10-11T18:50:39.533Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-202-2 · 2026-10-11T18:51:56.351Z · commit 7b005601238ebf59a59fd452f306aca57655bb62
   - verified: rev-18 [reviewer] · run rev-18-20261011-202-3 · 2026-10-11T19:37:35.452Z · commit a35c6fc6eddac87b30e1e9657809d6037b7a9518
-- [ ] C3. `npm run typecheck && npm test` pass.
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-202 · 2026-10-11T20:50:52.022Z
+  - verified: rev-18 [reviewer] · run rev-18-20261011-202-3 · 2026-10-11T20:51:05.990Z · commit a35c6fc6eddac87b30e1e9657809d6037b7a9518
 
 ## Notes
 
@@ -89,3 +91,11 @@ commit: a35c6fc6eddac87b30e1e9657809d6037b7a9518
 No high or medium findings. Dev merge changes only the already-landed session-stop-races.test.ts; all four reviewed task files remain byte-identical to 7b00560. C1/C2 reverified for the integrated head, including known nameless mapped-session joining/recovery. C3 awaits the fresh exact-head full suite; A-1361 at old 2c790cb is historical. Standards/Spec evidence: A-1362 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1362-t-202-dev-integration-review-at-a35c6fc-c1-c2-clear-c3-pending.md).
 
 Criteria: C1 verified, C2 verified.
+
+### impl-202 · 2026-10-11T20:50:52.256Z
+
+Final cland suite all 39480fb7-077e-4331-b6f1-b8894be259cb passed at a35c6fc6eddac87b30e1e9657809d6037b7a9518 after origin/dev integration: typecheck plus full hub/Neovim suites, 1550/1550 tests pass, zero failed/skipped/cancelled. Durable log A-1385: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1385-suite-39480fb7-077e-4331-b6f1-b8894be259cb-all-at-a35c6fc.log. C3 marked done; C1/C2 already verified at this exact head by rev-18.
+
+### coord · 2026-10-11T20:51:18.849Z
+
+Merged 5608e1279bced727c8005c22723f6e27bcfa44e6 onto dev.

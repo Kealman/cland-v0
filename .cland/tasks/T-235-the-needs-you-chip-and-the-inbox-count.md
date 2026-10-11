@@ -2,8 +2,8 @@
 id: T-235
 kind: task
 title: The needs-you chip and the inbox count the same entries in every layer configuration
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - v0.1.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-149
 branch: t/T-235-the-needs-you-chip-and-the-inbox-count
 created: 2026-10-11T17:48:35.582Z
-updated: 2026-10-11T19:35:14.690Z
+updated: 2026-10-11T20:36:05.178Z
 ---
 
 ## What happened
@@ -33,7 +33,9 @@ Make the chip and the inbox read one count from the hub, and prove it.
 - [x] C2. A headless test reproduces the configurations and asserts that the two agree.
   - done: impl-235 · 2026-10-11T19:33:40.081Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-235-1 · 2026-10-11T19:35:14.690Z · commit 999e79363f718a6f78cb5b1750842b5e0d6327a9
-- [ ] C3. `npm run typecheck && npm test` (or `npm run test:nvim` for a Neovim-only change) pass.
+- [x] C3. `npm run typecheck && npm test` (or `npm run test:nvim` for a Neovim-only change) pass.
+  - done: impl-235 · 2026-10-11T20:35:37.451Z
+  - verified: rev-18 [reviewer] · run rev-18-20261011-235-1 · 2026-10-11T20:35:51.176Z · commit 999e79363f718a6f78cb5b1750842b5e0d6327a9
 
 ## Comments
 
@@ -60,3 +62,7 @@ commit: 999e79363f718a6f78cb5b1750842b5e0d6327a9
 No high or medium findings. InboxBoard now includes response placement in publication equality and computes needsYou from the same classified rows; notification overrides cannot inflate the response count. The real headless matrix checks both shared UI counts and rendered response layers across overrides, pins/mutes, reset and cold snapshots, including unchanged-zero-count invalidation. C1/C2 verified; C3 awaits the exact-head full suite. Standards/Spec evidence: A-1360 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1360-t-235-review-at-999e793-c1-c2-clear-c3-pending.md).
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-11T20:36:05.178Z
+
+Merged 35cd9228780e2f45e59d3d32ae16bdc85ba9a263 onto dev.

@@ -3,18 +3,18 @@ id: T-234
 kind: task
 title: "cland verify queue view and metrics: holder, waiters, waits, ETA, in the CLI and the workbench"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1.1
   - ready-for-agent
-assignee: null
+assignee: impl-234
 parent: T-230
 blocked_by:
   - T-232
 topic: null
 branch: null
 created: 2026-10-11T17:48:35.460Z
-updated: 2026-10-11T17:48:36.316Z
+updated: 2026-10-11T20:36:10.480Z
 ---
 
 ## What to build

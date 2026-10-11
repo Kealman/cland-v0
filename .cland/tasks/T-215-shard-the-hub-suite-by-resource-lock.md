@@ -3,19 +3,19 @@ id: T-215
 kind: task
 title: "Shard the hub suite by resource: lock only the tests that need the machine"
 state: open
-status: backlog
+status: in progress
 labels:
   - tech-debt
   - ready-for-agent
-assignee: null
+assignee: impl-215
 parent: T-230
 blocked_by:
   - T-174
   - T-232
-topic: null
-branch: null
+topic: topic-154
+branch: t/T-215-shard-the-hub-suite-by-resource-lock
 created: 2026-10-11T06:30:53.758Z
-updated: 2026-10-11T18:06:17.252Z
+updated: 2026-10-11T20:53:35.725Z
 ---
 
 ## What to build
@@ -40,3 +40,7 @@ Requested by the human via the stand-in, 2026-10-11. v0.1.1 backlog: do not laun
 ### coord · 2026-10-11T18:06:17.252Z
 
 Input from T-232 (2026-10-11 18:06Z): cland verify ships with an admission budget capped at 1 full run; values above 1 are reserved. Overlapping V1 workers need a shared compatibility broker (for hand runs and pre-V1 branches holding /tmp/cland-suite.lock) and per-run recovery records. Both belong here, together with deciding which shards may run side by side.
+
+### impl-215 · 2026-10-11T20:53:35.725Z
+
+Claimed from dev 5608e12. Reading T-218/A-1142 and T-232 compatibility implementation. Confirmed test seams: runner CLI, public suite-lock API, and real-hub verify frame/CLI. Starting with conservative classification and budget 1; shared compatibility admission and per-run recovery must keep hand/pre-V1 runs excluded.
