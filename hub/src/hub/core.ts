@@ -205,6 +205,7 @@ export class HubCore {
   /** Each session's state by its session id (a rename moves nothing), set only by adapters (spec 4.2). */
   readonly #states = new Map<string, SessionState>();
   readonly #approvalCommands = new Map<string, string>();
+  #drainingVerifierRequests = false;
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
@@ -399,6 +400,7 @@ export class HubCore {
   }
 
   publishTask(change: ItemChange): void {
+    this.#afterCommit(() => this.#drainVerifierRequests());
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
       this.#defaultItems.delete(change.id);
@@ -856,6 +858,7 @@ export class HubCore {
     const ordered = [...notices.filter(hasClause), ...deliver.filter(hasClause), ...notices.filter(m => !hasClause(m)), ...deliver.filter(m => !hasClause(m))];
     for (const message of ordered) this.#sendTo(connection, message);
     if (deliver.length) this.#log({ event: 'flushed', session: name, count: deliver.length });
+    this.#drainVerifierRequests();
   }
 
   /** The spoke accepted a message: its delivery moves from queued to delivered. A stale connection acks nothing. */
@@ -867,6 +870,7 @@ export class HubCore {
       this.#emitStage(id);
     }
     this.#onDelivered?.(messageId, connection.name, connection.sessionId);
+    this.#drainVerifierRequests();
   }
 
   artifactChanged(artifact: Artifact): void {
@@ -945,6 +949,7 @@ export class HubCore {
       this.#log({ event: 'injected', id, session });
       this.#emitStage(id);
     }
+    this.#drainVerifierRequests();
     return true;
   }
 
@@ -981,6 +986,7 @@ export class HubCore {
     this.#log({ event: 'session-state', session: name, state, source });
     if (changed && state !== 'unknown') this.publishEvent({ session: name }, 'session.state', `${name} ${state}`, state === 'waiting for approval' ? { lifecycle: state } : {});
     this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString(), ...(command !== undefined ? { approvalCommand: command } : {}) });
+    this.#drainVerifierRequests();
     return true;
   }
 
@@ -1042,7 +1048,7 @@ export class HubCore {
   }
 
   /** Tracker changes may alter work even when a session's role and state stay the same. */
-  refreshPresence(): void { this.#publishPresence(); }
+  refreshPresence(): void { this.#publishPresence(); this.#drainVerifierRequests(); }
 
   /** A hub-kind message to one session: delivered now or queued, and recorded. */
   notify(name: string, text: string): void {
@@ -1226,6 +1232,7 @@ export class HubCore {
 
   /** Delete what is older than the retention window. */
   prune(): number {
+    this.#drainVerifierRequests();
     for (const session of this.#store.queuedSessions()) this.#dropExpired(session);
     const { gone, released } = this.#store.prune(this.#now().getTime(), this.#retentionMs);
     this.#logReleased(released);
@@ -1849,8 +1856,62 @@ export class HubCore {
     const reserved = live.find(c => this.#store.meta(`pool-handoff:${c.sessionId}`) === item.id);
     if (reserved) return reserved.name;
     return live.find(c => ['idle', 'unknown'].includes(this.sessionState(c.sessionId))
-      && !this.sessionHolds(c).length && !this.#store.hasPendingWork(c.name)
+      && !this.sessionHolds(c).length && !this.#store.hasPendingWork(c.name, this.#processFacts.get(c.sessionId)?.status === 'running')
       && !this.#store.meta(`pool-handoff:${c.sessionId}`))?.name;
+  }
+
+  /** Durable role requests retry only at eligibility changes, never by asking the lead to resend. */
+  #drainVerifierRequests(): void {
+    if (this.#drainingVerifierRequests) return;
+    this.#drainingVerifierRequests = true;
+    try {
+      for (const queued of this.#store.queuedVerifierRequests()) {
+        const { message, role } = queued;
+        const senderId = queued.senderId && this.sessionIdentity(queued.senderId);
+        const from = senderId ? this.#store.nameOfSession(senderId) : null;
+        const topic = this.#store.topic(message.topic!);
+        const senderRole = from ? this.#store.roleOf(from) : null;
+        const permission = decide(senderRole, senderRole === null ? undefined : this.roleDefinition(senderRole)?.permissions.tools ?? DEFAULT_PERMISSIONS[senderRole], { tool: 'send', to: [role] });
+        const request = from && topic && this.#verifierRequest(from, senderRole, message.text, topic);
+        const now = this.#now().getTime();
+        let reason = now - queued.queuedAt > this.#queueTtlMs ? 'queue TTL expired; send a fresh request'
+          : !permission.ok ? `${permission.reason}; restore send authority and send a fresh request`
+          : !request ? `${queued.item} is closed, removed, or no longer led by the sender; send a fresh request from its current lead`
+          : topic?.status === 'closed' ? 'request topic closed; send a fresh request in an open topic' : undefined;
+        const name = !reason && request ? this.#requestVerifier(request.item, role, from!) : undefined;
+        if (!reason && !name) continue;
+        if (name) {
+          const self = this.#identity(from!);
+          const other = this.#identity(name);
+          reason = this.#hygiene.muteRefusal(self, other, now, [from!, name]) ?? undefined;
+          if (!reason && this.#hygiene.countPair(self, other, now) !== null) reason = this.#hygiene.muteRefusal(self, other, now, [from!, name]) ?? 'loop breaker refused delivery';
+          if (reason) reason += '; send a fresh request after the mute is lifted';
+        }
+        this.#store.transaction(() => {
+          if (reason) this.#store.dropVerifierRequest(message.id, role);
+          else {
+            const assigned = this.#store.assignVerifierRequest(message.id, role, name!);
+            const selected = this.#live.get(name!)!;
+            this.#store.setMeta(`verifier-request:${queued.item}:${role}`, JSON.stringify({ sessionId: selected.sessionId, at: this.#now().toISOString() }));
+            this.#afterCommit(() => {
+              this.#emitMessage(assigned);
+              this.#send(assigned, name!);
+            });
+          }
+          const notice = this.#recordNotice(message.topic!, {
+            kind: 'verifier-request', to: from ? [from] : [],
+            text: reason ? `Queued ${role} request for ${queued.item} refused: ${reason}` : `Queued ${role} request for ${queued.item} assigned to ${name}`,
+            detail: { request: message.id, item: queued.item, role, outcome: reason ? 'refused' : 'delivered', ...(name && !reason ? { resolvedTo: name } : {}), ...(reason ? { reason } : {}) },
+          }, new Set(from ? [from] : []));
+          this.#afterCommit(() => {
+            this.#emitStage(message.id);
+            if (notice) this.#publishNotice(notice);
+            this.#publishTopics();
+            this.#log({ event: 'verifier-request-settled', id: message.id, item: queued.item, role, ...(reason ? { reason } : { session: name }) });
+          });
+        });
+      }
+    } finally { this.#drainingVerifierRequests = false; }
   }
 
   // ---------------------------------------------------------------- topics
@@ -2146,6 +2207,7 @@ export class HubCore {
     if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question or decision');
     const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
+    this.#drainVerifierRequests();
     const toHuman = to.length === 0;
     const topic = this.#topicOrThrow(topicId ?? (toHuman ? GENERAL.id : AGENTS.id));
     const topicRef: TopicRef = { id: topic.id, title: topic.title };
@@ -2171,7 +2233,10 @@ export class HubCore {
     }
     const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders', verifier);
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
-    for (const { tag, reason } of empty) outcomes.push({ to: tag, outcome: 'empty', reason });
+    const waiting = empty.filter(({ tag }) => verifier && tag === verifier.role);
+    for (const { tag, reason } of empty) outcomes.push(waiting.some(w => w.tag === tag)
+      ? { to: tag, outcome: 'queued', reason: `waiting for the next free live verifier for ${verifier!.item.id}; the hub will deliver automatically (up to ${Math.round(this.#queueTtlMs / 3_600_000)} h)` }
+      : { to: tag, outcome: 'empty', reason });
     // the loop breaker: a muted pair refuses; a pair crossing the threshold gets muted and refuses
     const refused = new Map<string, { reason: string; refusal: HygieneRefusal }>();
     const loopRefusal = (other: string): HygieneRefusal => {
@@ -2211,7 +2276,7 @@ export class HubCore {
       fromKind: 'agent',
       kind,
       via: 'session',
-      to: [...sessions],
+      to: [...sessions, ...waiting.map(w => w.tag)],
       text,
       ts: this.#now().toISOString(),
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
@@ -2222,11 +2287,13 @@ export class HubCore {
       ...messageArtifacts(artifacts, a => (actor?.role ?? this.#store.roleOf(from)) === 'aide' || !this.#store.humanArtifact(a)),
     };
     // recorded before it is sent: an ack can never arrive for a delivery the store does not know
-    if (sessions.size > 0 || toHuman) {
+    if (sessions.size > 0 || waiting.length || toHuman) {
       // who the human's latest message here waited for, read before this one is recorded
       const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
       this.#store.transaction(() => {
-        this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), nowMs);
+        this.#record(message, [...[...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })),
+          ...waiting.map(({ tag }) => ({ session: `@verifier:${tag}`, state: 'queued' as const }))], nowMs);
+        for (const { tag } of waiting) this.#store.queueVerifierRequest(message.id, verifier!.item.id, tag as 'reviewer' | 'qa');
         if (verifier) {
           const selected = [...sessions].filter(name => this.#live.get(name)?.role === verifier.role);
           if (selected.length === 1) this.#store.setMeta(`verifier-request:${verifier.item.id}:${verifier.role}`, JSON.stringify({ sessionId: this.#live.get(selected[0]!)!.sessionId, at: message.ts }));
@@ -2242,7 +2309,7 @@ export class HubCore {
       // every agent-to-agent message is in the Agents record (spec 4.5, #34): one sent into another topic is
       // referenced there (who to whom, where, which message), its text left where it was written
       if (!toHuman && topic.id !== AGENTS.id) {
-        const addressees = [...sessions];
+        const addressees = message.to;
         const verdict = messageVerdict(message);
         this.noticeInTopic(AGENTS.id, {
           kind: 'agent-message',
@@ -2269,7 +2336,7 @@ export class HubCore {
       const name = outcome.to === verifier.role ? tagOf.get(outcome.to)?.[0] : undefined;
       if (name) outcome.resolvedTo = name;
     }
-    if (sessions.size === 0 && !toHuman) {
+    if (sessions.size === 0 && !waiting.length && !toHuman) {
       this.#log({ event: 'send-refused', from, to, outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
       return { message, outcomes, topic: topicRef };
     }

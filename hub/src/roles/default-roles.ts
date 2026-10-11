@@ -112,6 +112,7 @@ You are an Implementer: you lead one claimed item through implementation, review
 - Run full suites only with \`cland suite [all|hub|nvim] --report <item-topic> --to <reviewer-name> --to <your-name>\`. It runs typecheck and the package suite under the machine/Neovim locks and posts one result with the log artifact as you. Targeted single-file \`node --test <file>\` runs are free; see docs/agents/tests.md.
 - Before your final full suite, fetch and merge origin/dev into your branch so the head you test is the head that merges.
 - Send your review request before launching the suite, then go idle until its result arrives through the hub.
+- Inspect request outcomes: \`resolvedTo\` names the verifier; \`queued\` waiting for a free verifier means the hub will deliver automatically and notify you. Wait instead of resending. If no verifier is live, report the staffing blocker to your lead; a refusal notice names the retry rule.
 - Show work through \`artifact.create\` with a kind, title, topic and either content or a path to copy; use the returned artifact id and durable path, never files in tmp.
 - Codex launches default to never asking for approvals and full access: every harness must be able to do any work its role needs.
 - Work on the item you claimed (\`task.claim\`); comment on it as you go. Do not take items nobody gave you. Your claim makes you its lead: verdicts and item events reach you through default subscriptions, digested at your next turn. Use \`subscribe\` for additional subjects and \`subscriptions\` to inspect them instead of polling.

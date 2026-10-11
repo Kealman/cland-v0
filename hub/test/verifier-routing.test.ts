@@ -2,8 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
+
+test('a free bare Reviewer can receive its first role request after accepting its clause', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  t.after(() => coord.close());
+  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev-d', role: 'reviewer', sessionId: 'rev-id' });
+  t.after(() => rev.close());
+  await rev.waitForPresence(['coord', 'rev-d']);
+  await rev.waitForEvent(e => e.params.meta?.kind === 'role');
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'First bare review' });
+  const text = `review request ${item.id}\nFirst build`;
+  const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text });
+  assert.equal(result.outcomes[0]?.outcome, 'delivered');
+  assert.equal(result.outcomes[0]?.resolvedTo, 'rev-d');
+  await rev.waitForEvent(e => e.params.content === text);
+});
 
 test('three live Reviewers receive one request, and a repeat returns to the same reviewer', async t => {
   const root = await tempProject(t);
@@ -62,10 +79,59 @@ test('three live Reviewers receive one request, and a repeat returns to the same
   await reviewers[2]!.call('task.hold', { id: item.id });
   const { item: waiting } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Waiting review' });
   const unavailable = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text: `review request ${waiting.id}\nAll holders occupied` });
-  assert.equal(unavailable.outcomes[0]?.outcome, 'empty');
-  assert.match(unavailable.outcomes[0]!.reason!, /no free live verifier/);
+  assert.equal(unavailable.outcomes[0]?.outcome, 'queued');
+  assert.match(unavailable.outcomes[0]!.reason!, /next free live verifier/);
   await reviewers[1]!.call('task.hold', { id: other.id, release: true });
+  await reviewers[1]!.waitForEvent(e => e.params.content === `review request ${waiting.id}\nAll holders occupied`);
+  await coord.waitForEvent(e => e.params.meta?.kind === 'verifier-request' && e.params.content.includes(`for ${waiting.id} assigned to rev-2`));
+  const waitingHistory = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] };
+  assert.deepEqual(waitingHistory.messages.find(m => m.text === `review request ${waiting.id}\nAll holders occupied`)?.to, ['rev-2']);
+  assert.equal(reviewers[1]!.events.filter(e => e.params.content === `review request ${waiting.id}\nAll holders occupied`).length, 1);
   assert.equal((await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['@reviewer'], text: `review request ${waiting.id}\nA holder freed` })).outcomes[0]?.resolvedTo, 'rev-2');
+});
+
+test('queued QA requests survive sender rename and hub restart, and closed items are refused explicitly', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Queued QA' });
+  const { topic } = await coord.call<{ topic: { id: string } }>('topic.create', { title: 'Queued QA', item: item.id });
+  const text = `qa request ${item.id}\nCommitted QA brief`;
+  const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['@qa'], text, topic: topic.id });
+  assert.equal(result.outcomes[0]?.outcome, 'queued');
+  assert.equal(result.outcomes[0]?.resolvedTo, undefined);
+  const topics = (await ui.request({ type: 'topic.list' })).value as { topics: Array<{ id: string; warning?: string }> };
+  assert.equal(topics.topics.find(t => t.id === topic.id)?.warning, 'waiting for free qa');
+  const renamed = await coord.call<{ ok: boolean; error?: string }>('rename', { name: 'coord-renamed' });
+  assert.equal(renamed.ok, true, renamed.error);
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  const restarted = await startDaemon(t, root);
+  const nextUi = await connectUi(t, restarted.discovery);
+  assert.equal((await nextUi.request({ type: 'subscribe' })).ok, true);
+  await coord.waitForPresence(['coord-renamed']);
+  const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-d', role: 'qa', sessionId: 'qa-id' });
+  t.after(() => qa.close());
+  await qa.waitForPresence(['coord-renamed', 'qa-d']);
+  await qa.waitForEvent(e => e.params.content === text);
+  await coord.waitForEvent(e => e.params.meta?.kind === 'verifier-request' && e.params.content.includes(`for ${item.id} assigned to qa-d`));
+  await nextUi.waitFor(f => f.type === 'topic' && (f.topic as { id: string; warning?: string }).id === topic.id
+    && !(f.topic as { warning?: string }).warning);
+  const history = (await nextUi.request({ type: 'topic.history', topic: topic.id })).value as { messages: Message[] };
+  assert.deepEqual(history.messages.find(m => m.text === text)?.to, ['qa-d']);
+  assert.equal(qa.events.filter(e => e.params.content === text).length, 1);
+  await qa.call('task.hold', { id: item.id });
+  const { item: cancelled } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Cancelled QA' });
+  const cancelledText = `qa request ${cancelled.id}\nBuild closed before selection`;
+  assert.equal((await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['qa'], text: cancelledText })).outcomes[0]?.outcome, 'queued');
+  assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: cancelled.id })).ok, true);
+  await coord.waitForEvent(e => e.params.meta?.kind === 'verifier-request' && e.params.content.includes(`for ${cancelled.id} refused:`));
+  await qa.call('task.hold', { id: item.id, release: true });
+  const cancelledHistory = (await nextUi.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<Message & { stage?: string }> };
+  assert.equal(cancelledHistory.messages.find(m => m.text === cancelledText)?.stage, 'dropped');
+  assert.equal(qa.events.filter(e => e.params.content === cancelledText).length, 0);
 });
 
 test('QA affinity survives copied and reordered verdict headers, including stage requests', async t => {

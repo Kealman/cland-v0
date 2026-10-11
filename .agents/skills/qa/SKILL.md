@@ -32,6 +32,8 @@ After committing and pushing the work to `origin`, send kind `report` to `qa` in
 
 Default item subscriptions deliver status/verdict and verifier death or long idle to the lead at its next turn. Use `subscribe` for additional subjects and `subscriptions` to inspect them; routine updates use kind `progress`, requests and verdicts use `report`, blockers use `question` or `report`. `lead T-<n>` falls back to the nearest container Lead, then the Coordinator, for an unclaimed item; for a closed or unknown item address `coordinator` directly.
 
+Inspect the request's send outcomes. `resolvedTo` names the selected QA session. A `queued` outcome waiting for the next free verifier means the hub will assign the request automatically and notify you; wait instead of resending it. If none is live, report the staffing blocker so a QA session can be launched. A later refusal notice names the retry rule.
+
 ## If you are the QA role
 
 Accept `qa request T-<n>` from the item’s lead (the live claimant in `task.view`), a supervising Lead within its subtree, or the Coordinator; the Coordinator-authored brief it names is the whole job. Questions about the build or findings go to `lead T-<n>`; a missing brief blocks the run. Do not fix what you find.

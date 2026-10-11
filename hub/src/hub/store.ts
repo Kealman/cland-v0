@@ -170,6 +170,9 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'deliveries', column: 'launch_brief', type: 'text' },
   { table: 'deliveries', column: 'launch_brief_ready', type: 'integer not null default 0' },
   { table: 'deliveries', column: 'event_count', type: 'integer not null default 1' },
+  /** A lead's request waiting for selection, separate from ordinary vacant-role broadcasts. */
+  { table: 'deliveries', column: 'verifier_item', type: 'text' },
+  { table: 'deliveries', column: 'verifier_role', type: 'text' },
   { table: 'subscriptions', column: 'digest', type: "text not null default 'turn'" },
   { table: 'subscriptions', column: 'threshold_json', type: 'text' },
   /** The sender's session id, for an agent's message: a reply finds the sender after a rename. */
@@ -182,6 +185,7 @@ create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
 create index if not exists messages_seq on messages (topic, seq);
 create index if not exists deliveries_digest on deliveries (session, digest_id);
+create index if not exists deliveries_verifier_queue on deliveries (verifier_item) where verifier_item is not null and state = 'queued';
 `;
 
 /**
@@ -262,7 +266,10 @@ const toNotification = (row: Row): InboxNotification => ({
 });
 
 const toTopic = (row: Row): Topic => {
-  const warning = vacancyWarning(typeof row.vacant_roles === 'string' && row.vacant_roles ? row.vacant_roles.split(',') : []);
+  const vacant = vacancyWarning(typeof row.vacant_roles === 'string' && row.vacant_roles ? row.vacant_roles.split(',') : []);
+  const waiting = typeof row.verifier_roles === 'string' && row.verifier_roles
+    ? row.verifier_roles.split(',').map(role => `waiting for free ${role}`).join(', ') : undefined;
+  const warning = [vacant, waiting].filter(Boolean).join(', ');
   return {
     id: row.id as string,
     title: row.title as string,
@@ -284,7 +291,9 @@ select t.*, t.rowid as rid,
   (select count(*) from messages m where m.topic = t.id and m.seq > t.read_seq and m.from_kind != 'human') as unread,
   (select max(m.ts) from messages m where m.topic = t.id) as last_message_at,
   (select group_concat(distinct substr(d.session, 2)) from deliveries d join messages m on m.id = d.message_id
-     where m.topic = t.id and d.session like '@%' and d.state = 'queued') as vacant_roles
+     where m.topic = t.id and d.session like '@%' and d.verifier_item is null and d.state = 'queued') as vacant_roles,
+  (select group_concat(distinct d.verifier_role) from deliveries d join messages m on m.id = d.message_id
+     where m.topic = t.id and d.verifier_item is not null and d.state = 'queued') as verifier_roles
 from topics t`;
 
 /** A message's stage from its deliveries' states: queued while any waits; dropped only when all were; injected
@@ -782,12 +791,50 @@ export class Store implements HygieneMemory {
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
   }
 
-  /** Idle staffing must not take a session with ordinary work still awaiting delivery or confirmation. */
-  hasPendingWork(session: string): boolean {
+  /** Bare spokes have no adapter to confirm injection: their accepted deliveries have finished staffing work. */
+  hasPendingWork(session: string, awaitsInjection = true): boolean {
     return this.#db.prepare(`select 1 from deliveries d join messages m on m.id = d.message_id
       where d.session = ? and d.state in ('queued', 'delivered', 'uncertain')
+      and (? or d.state != 'delivered')
       and coalesce(m.notice, '') != 'progress'
-      and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') limit 1`).get(session) !== undefined;
+      and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') limit 1`).get(session, Number(awaitsInjection)) !== undefined;
+  }
+
+  queueVerifierRequest(messageId: string, item: string, role: 'reviewer' | 'qa'): void {
+    this.#db.prepare('update deliveries set verifier_item = ?, verifier_role = ? where message_id = ? and session = ?')
+      .run(item, role, messageId, `@verifier:${role}`);
+  }
+
+  queuedVerifierRequests(): Array<{ message: Message; item: string; role: 'reviewer' | 'qa'; senderId: string | null; queuedAt: number }> {
+    return (this.#db.prepare(`select m.*, d.verifier_item, d.verifier_role, d.queued_at from deliveries d join messages m on m.id = d.message_id
+      where d.verifier_item is not null and d.state = 'queued' order by m.seq`).all() as Row[]).map(row => ({
+      message: toMessage(row), item: row.verifier_item as string, role: row.verifier_role as 'reviewer' | 'qa',
+      senderId: row.from_session_id as string | null, queuedAt: row.queued_at as number,
+    }));
+  }
+
+  /** Selection and the recipient's held digest bind before any transport can acknowledge the request. */
+  assignVerifierRequest(messageId: string, role: 'reviewer' | 'qa', session: string): Message {
+    return this.#transaction(() => {
+      const message = this.message(messageId)!;
+      message.to = [...new Set(message.to.map(name => name === role ? session : name))];
+      this.#db.prepare('update messages set to_json = ? where id = ?').run(JSON.stringify(message.to), messageId);
+      const existing = this.#db.prepare('select 1 from deliveries where message_id = ? and session = ?').get(messageId, session);
+      if (existing) this.dropVerifierRequest(messageId, role);
+      else this.#db.prepare(`update deliveries set session = ?, session_id = (select session_id from sessions where name = ?),
+        direct = 1, verifier_item = null, verifier_role = null where message_id = ? and session = ? and state = 'queued'`)
+        .run(session, session, messageId, `@verifier:${role}`);
+      if (!isHeldDelivery(message)) {
+        const { seq } = this.#db.prepare('select seq from messages where id = ?').get(messageId) as Row;
+        this.#bindProgress(messageId, session, seq as number);
+      }
+      return message;
+    });
+  }
+
+  dropVerifierRequest(messageId: string, role: 'reviewer' | 'qa'): void {
+    this.#db.prepare("update deliveries set state = 'dropped' where message_id = ? and session = ? and state = 'queued'")
+      .run(messageId, `@verifier:${role}`);
   }
 
   deliveryRoot(messageId: string, session: string): string {
