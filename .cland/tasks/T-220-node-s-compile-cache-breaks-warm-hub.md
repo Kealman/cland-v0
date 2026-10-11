@@ -5,14 +5,16 @@ title: "Node's compile cache breaks warm hub loads on Node 24: re-enable it only
 state: open
 status: backlog
 labels:
-  - needs-triage
+  - ready-for-agent
+  - tech-debt
+  - low
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T09:22:48.031Z
-updated: 2026-10-11T09:22:48.031Z
+updated: 2026-10-11T15:30:42.072Z
 ---
 
 ## What happened

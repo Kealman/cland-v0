@@ -6,14 +6,14 @@ state: open
 status: backlog
 labels:
   - tech-debt
-  - needs-triage
+  - ready-for-agent
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T01:26:12.435Z
-updated: 2026-10-11T06:35:53.565Z
+updated: 2026-10-11T15:30:41.833Z
 ---
 
 ## Parent

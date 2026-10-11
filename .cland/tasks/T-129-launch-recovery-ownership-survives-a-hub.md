@@ -5,16 +5,16 @@ title: "Launch recovery ownership survives a hub restart: a failed spawn's pendi
 state: open
 status: backlog
 labels:
-  - needs-triage
   - hub
   - tech-debt
+  - ready-for-agent
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T22:17:07.427Z
-updated: 2026-10-11T06:35:53.264Z
+updated: 2026-10-11T15:30:41.716Z
 ---
 
 ## Parent

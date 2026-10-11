@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-11T13:41:50.605Z
+updated: 2026-10-11T15:39:22.556Z
 ---
 
 ## Goal
@@ -21,13 +21,19 @@ v0.1 makes cland scale past one Coordinator over a flat crew and makes the workb
 
 ## Notes
 
-Everything in docs/spec/v0.1.md section 3 is in v0.1; nothing is deferred. The release covers eleven epics: release and status; a quiet Coordinator; workbench basics; threads that read; the human's own session; criteria that live; leads and the crew; the epic plan; visibility and artifacts; the task graph; and release from the item.
+cland v0.1.0 ships everything in docs/spec/v0.1.md section 3 across eleven epics: release and status; a quiet Coordinator; workbench basics; threads that read; the human's own session; criteria that live; leads and the crew; the epic plan; visibility and artifacts; the task graph; and release from the item. Each epic closed on a QA-run demo of its definition of done on `dev` (decision D16); the human accepts the release without a separate acceptance pass (D19).
 
-Two lanes run in parallel: the hub lane 1 → 2 → 6 → 7 → 8 → 11 and the Neovim lane 3 → 4 → 5 → 10 → 9. Epic 5 also waits for 2; epic 11 waits for every other. The blocking edges stay on the epics.
+The build used what it shipped: this release item, item leads requesting their own reviews, an Aide, a committed crew.toml enforced at launch, and an epic plan.
 
-The build uses what it has shipped: the release item first, item leads after epic 2, an Aide after epic 5, crew.toml after epic 7, and the epic plan for epics 8 to 11 after epic 8. The v0 tail is not a prerequisite and stays unscheduled.
+Verified in v0.1.1 (D19): two checks from the epic demos need what a scratch QA run cannot provide and move to the next release:
+- T-109 C1: the key-encoding matrix in real Ghostty and tmux terminals.
+- T-111 M7: the Coordinator following through on an Aide's decision with a real model.
 
-Done means the human has run each epic's demo on v0.1; v0.1.0 ships with cland release --item, using this item's notes and its epics; and the run retrospective is an artifact.
+Known tech debt is triaged under T-216 and none of it blocks this release; first after the release come the suite-queue work (T-215, T-218) and session-stop classification (T-222, T-147).
+
+## Post-release check
+
+Moved here from T-117 (C8) on 2026-10-11, because T-117 must close before the release can run: after `cland release --item T-130`, QA confirms `v0.1.0` is tagged on GitHub's `main` and this item is closed with the tag comment.
 
 ## Comments
 

@@ -1287,7 +1287,7 @@ or `subscribe({ subject: { item: "T-58" }, events: ["task"] })`. It gets a subsc
 with an `id`, `subject`, `events` and `digest: "turn"`. Repeating the same request returns
 the same id. `subscriptions()` lists only the caller's subscriptions;
 `unsubscribe({ subscription: "<id>" })` removes one of its subscriptions. These tools
-are available to the four crew roles (Coordinator, Implementer, Reviewer and QA). Aides cannot subscribe; retained explicit subscriptions from a previous role do not deliver events while the session is an Aide. An Aide claimant receives its item's default subscriptions as direct lead deliveries. Existing projects can grant `subscribe`,
+are available to the crew roles (Coordinator, Lead, Implementer, Reviewer and QA). Aides cannot subscribe; retained explicit subscriptions from a previous role do not deliver events while the session is an Aide. An Aide claimant receives its item's default subscriptions as direct lead deliveries. Existing projects can grant `subscribe`,
 `unsubscribe` and `subscriptions` in each role's `permissions.tools` list.
 
 The CLI uses the same subscriptions and the session identity of a launched shell:
@@ -1384,7 +1384,7 @@ They follow claims, handovers, renames and reconnects; `unsubscribe` removes onl
 explicit requests. Closing an item delivers its final event and removes its default.
 
 Default task events cover status changes, verdicts and final close/removal events.
-A transition to `ready` also reaches the Coordinator with `digest: "now"`, even without an explicit subscription; it starts a turn through the ordinary queue on adapters without steering. Intermediate claimed-item events stay lead-only and digested. Explicit subscriptions may widen this traffic, and overlap still delivers once per recipient;
+A transition to `ready` also reaches the item's supervising lead (the nearest node Lead above the item, else the Coordinator) with `digest: "now"`, even without an explicit subscription; it starts a turn through the ordinary queue on adapters without steering. Intermediate claimed-item events stay lead-only and digested. Explicit subscriptions may widen this traffic, and overlap still delivers once per recipient;
 claim events require explicit subscriptions. Default session events cover death/stop, waiting for approval and idle beyond
 `[inbox] idle_minutes` (30 minutes by default, zero disables idle events). Launched
 item membership and current claims or Reviewer/QA holds identify which items a

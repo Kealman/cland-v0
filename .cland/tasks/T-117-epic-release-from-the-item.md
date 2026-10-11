@@ -3,6 +3,7 @@ id: T-117
 kind: epic
 title: "Epic: Release from the item"
 state: open
+criterion_seq: 8
 labels:
   - epic
   - v0.1
@@ -23,7 +24,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.973Z
-updated: 2026-10-11T06:36:59.151Z
+updated: 2026-10-11T15:39:08.841Z
 ---
 
 ## Goal
@@ -58,14 +59,13 @@ QA runs this epic's walkthrough on `dev` and closes it on a clear verdict with i
 
 The Coordinator runs `cland release --item T-<v0.1> --dry-run`: it shows `v0.1.0`, the Notes, the ten other epics with their one-line deliverables, and the commit subjects. After the clear QA verdict it runs the release: `main` moves to `dev`, is tagged `v0.1.0` and pushed to GitHub; the hub comments the tag on the release item and closes it; the items panel folds v0.1 as a closed release.
 
-- [ ] `cland release --item` refuses an item with open children or no version, and names the reason.
-- [ ] The notes hold the item's Notes, its epics with their one-line deliverables, then the commit subjects.
-- [ ] A successful release comments the tag on the item and closes it; a release without `--item` behaves as before.
-- [ ] The `release` skill and the Coordinator's clause release from the item after the human's approval.
-- [ ] Every v0.1 epic's definition-of-done demo passes on `dev`, recorded in a QA report artifact.
-- [ ] The v0.1 release item has no open children, and the open `tech-debt` items are triaged.
-- [ ] The build used what it shipped: the release item, item leads, an Aide, `crew.toml` and epic plans each show in the tracker or the journal.
-- [ ] `v0.1.0` is tagged on GitHub's `main`, and the v0.1 release item is closed.
+- [ ] C1. `cland release --item` refuses an item with open children or no version, and names the reason.
+- [ ] C2. The notes hold the item's Notes, its epics with their one-line deliverables, then the commit subjects.
+- [ ] C3. A successful release comments the tag on the item and closes it; a release without `--item` behaves as before.
+- [ ] C4. The `release` skill and the Coordinator's clause release from the item after the human's approval.
+- [ ] C5. Every v0.1 epic's definition-of-done demo passes on `dev`, recorded in a QA report artifact.
+- [ ] C6. The v0.1 release item has no open children, and the open `tech-debt` items are triaged.
+- [ ] C7. The build used what it shipped: the release item, item leads, an Aide, `crew.toml` and epic plans each show in the tracker or the journal.
 
 ## Dogfooding
 
@@ -89,6 +89,19 @@ v0.1 ships from its own release item. The next release starts as a release item 
 - ADRs: `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0001-roles-are-hub-held-state.md`.
 - Branches: `research/git-engines`, `research/qa-astra`.
 
+## Plan
+
+```yaml
+stages:
+  - name: release from the item
+    qa:
+      scope: none
+      when: per-item
+    lanes:
+      - - T-224
+        - T-225
+```
+
 ## Comments
 
 ### coord · 2026-10-10T16:54:24.008Z
@@ -98,3 +111,7 @@ Deferred to the acceptance walkthrough (D16): T-109 C1, the real Ghostty and tmu
 ### coord · 2026-10-10T17:03:43.026Z
 
 Deferred to the acceptance walkthrough (D16): T-111 M7, the Coordinator following through on an Aide's decision with a real model (qa-2026-10-10-15-111-c; the decision delivery itself passed).
+
+### coord · 2026-10-11T15:39:08.841Z
+
+C8 ('v0.1.0 is tagged on GitHub's main, and the v0.1 release item is closed') moved to T-130 as the release's post-check (cland-impl, 2026-10-11 15:42Z). The close gate needs every criterion verified at the dev tip, and C8 can only hold after T-117 closes. Order: QA verifies C1–C7 at the tip, T-117 closes, the Coordinator releases from T-130, then QA post-checks the tag and T-130 closes. No human override.

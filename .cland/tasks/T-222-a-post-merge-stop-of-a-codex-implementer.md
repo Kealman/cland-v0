@@ -5,14 +5,15 @@ title: A post-merge stop of a Codex Implementer is recorded as a death, and `cla
 state: open
 status: backlog
 labels:
-  - needs-triage
+  - ready-for-agent
+  - tech-debt
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T10:48:25.372Z
-updated: 2026-10-11T14:46:08.431Z
+updated: 2026-10-11T15:30:42.190Z
 ---
 
 ## What happened

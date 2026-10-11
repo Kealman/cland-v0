@@ -5,16 +5,16 @@ title: "Tracker storage queue has no deadline: a hung write stalls all tracker w
 state: open
 status: backlog
 labels:
-  - needs-triage
   - hub
   - tech-debt
+  - ready-for-agent
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T19:23:07.021Z
-updated: 2026-10-11T06:35:52.990Z
+updated: 2026-10-11T15:30:41.596Z
 ---
 
 ## Parent

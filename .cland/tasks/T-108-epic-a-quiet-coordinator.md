@@ -11,10 +11,10 @@ assignee: null
 parent: T-130
 blocked_by:
   - T-107
-topic: null
+topic: topic-137
 branch: null
 created: 2026-10-09T21:51:33.253Z
-updated: 2026-10-10T16:43:26.341Z
+updated: 2026-10-11T15:30:16.745Z
 ---
 
 ## Goal

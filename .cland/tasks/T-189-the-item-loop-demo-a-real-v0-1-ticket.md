@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T15:56:11.386Z
-updated: 2026-10-11T15:09:07.948Z
+updated: 2026-10-11T15:29:56.670Z
 ---
 
 ## Parent
@@ -77,3 +77,7 @@ Demo run started: impl-223 was launched on T-223 at 14:47:06Z, with its brief de
 ### coord · 2026-10-11T15:09:07.948Z
 
 Done. C1: T-223 ran claim → own review request (routed to rev-16 alone) → not clear (rev-20261011-223-1) → fix → re-review → clear → ready, with exactly one Coordinator delivery about it after the launch, the ready event at 15:08:07Z. C2: the measurement and journal excerpt are in A-1297 (from the hub journal; analyse.py reads v0 transcripts, method note in the artifact). C3: nothing broken. The run's only Coordinator action was editing an unreachable criterion (no delivery). Earlier failures from the T-196 attempt (nohup suites, hand-made reporters, stale ready) are fixed by T-203, T-209 and the clause lines. T-223 merged at 36a4860.
+
+### coord · 2026-10-11T15:29:56.670Z
+
+Corrections to A-1297, from the T-108 brief draft. (1) T-82's analyse.py reads copies of journal.jsonl and hub.db, not v0 transcripts; the count was still taken directly from the hub journal. (2) The deliveries after ready came from the Coordinator's own session.stop of impl-223, which first errored and was recorded as 'impl-223 died' (the T-222 class), not from the merge. The C1 count (exactly one Coordinator delivery between launch and ready) stands and was reproduced independently: one delivery, the ready event, between 14:47:06.287 and 15:08:07.124.

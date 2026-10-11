@@ -5,15 +5,15 @@ title: "Incident log: lost suite runs and stalled leads waiting on them"
 state: open
 status: backlog
 labels:
-  - needs-triage
   - tech-debt
+  - ready-for-human
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-11T15:15:15.720Z
+updated: 2026-10-11T15:30:41.954Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
