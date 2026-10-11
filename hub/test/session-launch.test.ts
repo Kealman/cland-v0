@@ -6,9 +6,11 @@ import { join } from 'node:path';
 import { clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-for (const preassigned of [false, true]) test(`a Coordinator launches an Implementer with a launch brief after its role clause, without another send (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
+for (const preassigned of [false, true]) test(`a Coordinator launches an Implementer with a launch brief exactly once after its role clause, without inherited launch environment (${preassigned ? 'preassigned role' : 'explicit role'})`, async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
+  // The native background child loses ambient CLAND_*; identity must survive in MCP config.
+  // Exercise a hello before --bg returns as well as the ordinary launch ordering.
+  const fake = await fakeClaude(t, { lateBg: preassigned });
   const { discovery } = await startDaemon(t, root, fake.env);
   const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
@@ -40,6 +42,16 @@ for (const preassigned of [false, true]) test(`a Coordinator launches an Impleme
   });
   const sent = journal.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief'))!;
   assert.ok(journal.some(event => event.event === 'acked' && event.id === sent.id));
+
+  // A later turn must not submit the brief again when hooks report another idle boundary.
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const followup = await ui.request({ type: 'topic.send', topic: 'general', to: ['impl-brief'], text: 'A later turn.' });
+  assert.equal(followup.ok, true, followup.error);
+  const followupId = (followup.value as { message: { id: string } }).message.id;
+  await ui.waitFor(frame => frame.type === 'message' && (frame.message as { replyTo?: string }).replyTo === followupId);
+  const after = await fake.log(launched.process.harnessId!);
+  assert.equal(after.split('\n').filter(line => line === brief).length, 1, 'one native submission of the brief across both turns');
 });
 
 test('launch resolves an artifact brief at launch and refuses an unknown artifact before starting a harness', async t => {

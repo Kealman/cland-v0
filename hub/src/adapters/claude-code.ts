@@ -239,13 +239,16 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. `worktree`:
    *  the session's own task worktree, where the harness's own worktrees are refused. */
-  #sessionFlags(name: string, role: string | null, sessionId: string, worktree: string | null): string[] {
+  #sessionFlags(name: string, role: string | null, sessionId: string, worktree: string | null, launchToken?: string): string[] {
     const spokeEnv: Record<string, string> = {
       CLAND_HUB_FILE: this.#host.discoveryFile,
       CLAND_SESSION_ID: sessionId,
       CLAND_SESSION_NAME: name,
       // the adapter injects: the spoke only accepts deliveries
       CLAND_DELIVERY: 'adapter',
+      // --bg starts a supervised process that does not inherit the launching CLI's environment.
+      // The spoke's accepted hello must prove which pending launch owns its brief.
+      ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
       ...(role ? { CLAND_ROLE: role } : {}),
     };
     const mcp = { mcpServers: { cland: { type: 'stdio', command: this.#host.node, args: [this.#host.spoke], env: spokeEnv } } };
@@ -281,7 +284,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         p.name,
         ...(p.model ? ['--model', p.model] : []),
         ...(effort ? ['--effort', effort] : []),
-        ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree),
+        ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree, launchToken),
       ];
       authorize();
       const r = yield* wait(this.#run(args, p.cwd, undefined, resumed, launchToken));

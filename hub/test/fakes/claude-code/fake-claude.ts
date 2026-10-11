@@ -148,7 +148,12 @@ async function startBackground(args: string[]): Promise<number> {
     pluginDir: flag(args, '--plugin-dir') ?? null,
   };
   writeJson(join(JOBS, `${id}.json`), job);
-  const child = spawn(process.execPath, [SELF, '__session', id], { cwd: job.cwd, detached: true, stdio: 'ignore', env: process.env });
+  // Native background sessions do not retain the launching CLI's cland environment.
+  // Session settings and MCP config must carry every identity field they need.
+  const child = spawn(process.execPath, [SELF, '__session', id], {
+    cwd: job.cwd, detached: true, stdio: 'ignore',
+    env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))),
+  });
   child.unref();
   // the supervisor has the session once its file names a live pid
   const deadline = Date.now() + 10_000;
