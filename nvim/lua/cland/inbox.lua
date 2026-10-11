@@ -15,6 +15,9 @@ local ask_card = require('cland.ask_card')
 
 local M = {}
 
+-- A shared budget across the displayed layers, in both inbox views (nvim/README.md).
+M.NOTIFICATION_LIMIT = 50
+
 --- Each notification kind's glyph and colour.
 M.GLYPH = {
   verdict = { '✓', 'ClandGreen' },
@@ -103,11 +106,24 @@ function M.render(c, full)
   end
   local layers = { 'now', 'watch' }
   if state.S.ui.inbox_archive then table.insert(layers, 'archive') end
+  -- The hub sends notifications oldest first, breaking equal timestamps by insertion order.
+  -- Reverse only the display copy; hidden Background/Archive entries spend no row budget.
+  local notifications, earlier = {}, 0
+  for i = #state.S.inbox.notifications, 1, -1 do
+    local note = state.S.inbox.notifications[i]
+    if vim.tbl_contains(layers, visibility.layer(note) or 'now') then
+      if #notifications < M.NOTIFICATION_LIMIT then
+        table.insert(notifications, note)
+      else
+        earlier = earlier + 1
+      end
+    end
+  end
   for _, layer in ipairs(layers) do
     local ib, count = {}, 0
     for _, kind in ipairs({ 'asks', 'approvals', 'waiting', 'notifications' }) do
       ib[kind] = {}
-      for _, entry in ipairs(state.S.inbox[kind]) do
+      for _, entry in ipairs(kind == 'notifications' and notifications or state.S.inbox[kind]) do
         if (visibility.layer(entry) or 'now') == layer then
           table.insert(ib[kind], entry)
           count = count + 1
@@ -120,10 +136,26 @@ function M.render(c, full)
       render_layer(c, ib)
     end
   end
+  if earlier > 0 then
+    c:add({})
+    c:add({ { ' ' .. earlier .. ' earlier · Agents log (␣L)', 'ClandDim' } }, nil, { earlier_notifications = true })
+  end
   if full then
     return { ' 1-9 answer · i free answer · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
   end
   return { ' 1-9 answer · i free · ↵ act · d/D dismiss · A archive · ␣N full width' }
+end
+
+--- Follow a selected notification across redraws; a capped-out selection lands on the inert footer.
+function M.notification_row(c, id)
+  if not id then return nil end
+  local earlier
+  for r = 1, #c.lines do
+    local info = c.info[r]
+    if info and info.notification == id then return r end
+    if info and info.earlier_notifications then earlier = r end
+  end
+  return earlier
 end
 
 -- Acting from a row ------------------------------------------------------------------------------------------
@@ -252,6 +284,12 @@ function M.render_full()
   end
   local wins = vim.fn.win_findbuf(b)
   local panels = require('cland.panels')
+  local cursors = {}
+  for _, w in ipairs(wins) do
+    local cur = api.nvim_win_get_cursor(w)
+    local info = panels.row_at(b, cur[1])
+    cursors[w] = { row = cur[1], notification = info and info.notification }
+  end
   local width = #wins > 0 and api.nvim_win_get_width(wins[1]) or 80
   local c = panels.canvas(math.min(width, 120))
   local footer = M.render(c, true)
@@ -261,8 +299,9 @@ function M.render_full()
   end
   panels.rows[b] = c:apply(b)
   for _, w in ipairs(wins) do
-    local cur = api.nvim_win_get_cursor(w)
-    pcall(api.nvim_win_set_cursor, w, { math.min(cur[1], #c.lines), 0 })
+    local cur = cursors[w]
+    local target = M.notification_row(c, cur.notification) or cur.row
+    pcall(api.nvim_win_set_cursor, w, { math.min(target, #c.lines), 0 })
   end
 end
 

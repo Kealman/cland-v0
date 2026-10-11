@@ -115,6 +115,139 @@ const session = (name: string, state: string, status = 'running') => ({
   name, sessionId: name + '-id', role: 'reviewer', harness: 'codex', state, status,
 });
 
+/** Read every rendered row, including those below the attached UI's viewport. */
+async function inboxRows(c: Awaited<ReturnType<typeof start>>) {
+  return c.lua<{ ids: string[]; text: string }>(`
+    local buf = vim.api.nvim_get_current_buf()
+    local ids = {}
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    for i = 1, #lines do
+      local row = require('cland.panels').row_at(buf, i)
+      if row and row.notification then table.insert(ids, row.notification) end
+    end
+    return { ids = ids, text = table.concat(lines, '\\n') }
+  `);
+}
+
+test('both inbox views show newest notifications first with a 50-row cap and earlier-count footer', { skip }, async t => {
+  // Equal timestamps also exercise the hub's insertion-order tie break.
+  const ts = new Date().toISOString();
+  const notes = (count: number) => Array.from({ length: count }, (_, i) => ({
+    id: `note-${i}`, kind: 'idle', text: `notification ${i}`, ts,
+  }));
+  const c = await start(t, { inbox: { notifications: notes(57), needsYou: 0 } });
+  await c.input('<Esc><Space>n');
+  await c.waitScreen(s => s.includes('notification 56'), 'newest notification in panel');
+  const expected = Array.from({ length: 50 }, (_, i) => `note-${56 - i}`);
+  let rows = await inboxRows(c);
+  assert.deepEqual(rows.ids, expected);
+  assert.match(rows.text, /7 earlier · Agents log \(␣L\)/);
+  assert.ok(rows.text.indexOf('7 earlier') > rows.text.indexOf('notification 7'), 'footer follows the retained list');
+  assert.equal(await c.lua('return #require("cland.state").S.inbox.notifications'), 57, 'rendering retains all notifications');
+  assert.equal(await c.lua('return require("cland.state").needs_you()'), 0, 'the cap leaves the hub count unchanged');
+  await c.input('<Space>N');
+  await c.waitScreen(s => s.includes('Inbox · full width') && s.includes('notification 56'), 'full-width newest notification');
+  rows = await inboxRows(c);
+  assert.deepEqual(rows.ids, expected);
+  assert.match(rows.text, /7 earlier · Agents log \(␣L\)/);
+
+  await c.input('gg/notification 56<CR>d');
+  await c.lua(`assert(vim.wait(5000, function()
+    return not table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('notification 56', 1, true)
+  end))`);
+  rows = await inboxRows(c);
+  assert.deepEqual(rows.ids, Array.from({ length: 50 }, (_, i) => `note-${55 - i}`), 'dismissal brings the next earlier notification into view');
+  assert.match(rows.text, /6 earlier · Agents log/);
+
+  // D dismisses the whole snapshot, not just the displayed 50.
+  await c.input('D');
+  await c.lua(`assert(vim.wait(5000, function()
+    return not table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('NOTIFICATIONS', 1, true)
+  end))`);
+  assert.equal(await c.lua('return #require("cland.state").S.inbox.notifications'), 0);
+  assert.doesNotMatch((await inboxRows(c)).text, /earlier · Agents log/);
+
+  for (const count of [49, 50, 51]) {
+    await c.control({ emit: { type: 'inbox', inbox: { notifications: notes(count), needsYou: 0 } } });
+    await c.waitScreen(s => s.includes(`notification ${count - 1}`), `updated ${count}-notification snapshot`);
+    rows = await inboxRows(c);
+    assert.deepEqual(rows.ids, Array.from({ length: Math.min(count, 50) }, (_, i) => `note-${count - 1 - i}`));
+    if (count > 50) assert.match(rows.text, /1 earlier · Agents log/);
+    else assert.doesNotMatch(rows.text, /earlier · Agents log/);
+  }
+});
+
+test('the notification cap is shared by visible layers and excludes hidden Background and Archive', { skip }, async t => {
+  const ts = new Date().toISOString();
+  const notifications = Array.from({ length: 60 }, (_, i) => ({
+    id: `note-${i}`, kind: i % 2 ? 'idle' : 'plan', text: `visible notification ${i}`, ts,
+  }));
+  const c = await start(t, {
+    visibility: { inbox: { plan: 'now', clear: 'archive' } },
+    inbox: { notifications: [...notifications,
+      { id: 'book', kind: 'role', text: 'hidden bookkeeping', ts },
+      { id: 'archived', kind: 'verdict', result: 'clear', text: 'archived notification', ts },
+    ] },
+  });
+  await c.input('<Esc><Space>N');
+  await c.waitScreen(s => s.includes('visible notification 58'), 'mixed notification layers');
+  let rows = await inboxRows(c);
+  const now = Array.from({ length: 25 }, (_, i) => `note-${58 - i * 2}`);
+  const watch = Array.from({ length: 25 }, (_, i) => `note-${59 - i * 2}`);
+  assert.deepEqual(rows.ids, [...now, ...watch]);
+  assert.match(rows.text, /10 earlier · Agents log/);
+  assert.doesNotMatch(rows.text, /hidden bookkeeping|archived notification/);
+  await c.input('A');
+  await c.lua(`assert(vim.wait(5000, function()
+    return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('archived notification', 1, true) ~= nil
+  end))`);
+  rows = await inboxRows(c);
+  assert.deepEqual(rows.ids, [...now.slice(0, -1), ...watch, 'archived']);
+  assert.match(rows.text, /11 earlier · Agents log/);
+  assert.doesNotMatch(rows.text, /hidden bookkeeping/);
+});
+
+for (const view of ['panel', 'full width']) {
+  test(`the ${view} inbox keeps the selected notification on live insertion`, { skip }, async t => {
+    const ts = new Date().toISOString();
+    const note = (id: string) => ({ id, kind: 'idle', text: `notification ${id}`, ts, item: 'T-1', session: 'same-session' });
+    const c = await start(t, { inbox: { notifications: [note('A'), note('B')], needsYou: 0 } });
+    await c.input(view === 'panel' ? '<Esc><Space>n' : '<Esc><Space>N');
+    await c.waitScreen(s => s.includes('notification B'), 'initial newest notification');
+    await c.input('gg/notification B<CR>');
+    const selected = () => c.lua<string | null>(`
+      local buf = vim.api.nvim_get_current_buf()
+      local row = require('cland.panels').row_at(buf, vim.api.nvim_win_get_cursor(0)[1])
+      return row and row.notification
+    `);
+    assert.equal(await selected(), 'B');
+    const inserted = { notifications: [note('A'), note('B'), note('C')], needsYou: 0 };
+    await c.control({ set: { inbox: inserted }, emit: { type: 'inbox', inbox: inserted } });
+    await c.waitScreen(s => s.includes('notification C'), 'live insertion');
+    assert.equal(await selected(), 'B', 'the cursor follows its notification ID');
+    await c.input('d');
+    await c.lua(`assert(vim.wait(5000, function()
+      return not table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('notification B', 1, true)
+    end))`);
+    assert.deepEqual((await inboxRows(c)).ids, ['C', 'A'], 'd dismissed B, not the newly inserted C');
+
+    await c.input('gg/notification A<CR>');
+    assert.equal(await selected(), 'A');
+    const capped = {
+      notifications: [note('A'), ...Array.from({ length: 50 }, (_, i) => note(`new-${i}`))], needsYou: 0,
+    };
+    await c.control({ set: { inbox: capped }, emit: { type: 'inbox', inbox: capped } });
+    await c.lua(`assert(vim.wait(5000, function()
+      return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('1 earlier', 1, true) ~= nil
+    end))`);
+    assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /1 earlier · Agents log/, 'an evicted selection lands on the non-actionable footer');
+    assert.equal(await selected(), null);
+    await c.input('d');
+    await c.waitScreen(s => s.includes('d dismisses a notification'), 'footer cannot dismiss another notification');
+    assert.equal(await c.lua('return #require("cland.state").S.inbox.notifications'), 51);
+  });
+}
+
 test('sessions show now and watch while background folds behind more (N)', { skip }, async t => {
   const c = await start(t, { processes: [session('working', 'busy'), session('resting', 'idle'), session('finished', 'unknown', 'stopped')] });
   const s = await c.waitScreen(s => s.includes('working [Reviewer]') && s.includes('resting [Reviewer]'), 'visible sessions');

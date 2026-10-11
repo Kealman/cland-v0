@@ -1990,9 +1990,9 @@ test('the inbox lists asks, approvals, waiting topics and notifications in that 
     'WAITING FOR YOU · TOPICS',
     '● Spoke reconnect: flaky te',
     'NOTIFICATIONS · d dismiss · D all',
-    '⚠ T-19 review not clear · rev-1',
-    '✓ T-19 QA clear: rev-1',
     '⚠ impl-3 [Implementer] died',
+    '✓ T-19 QA clear: rev-1',
+    '⚠ T-19 review not clear · rev-1',
   ].map((w) => panel.indexOf(w));
   assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order, `in the design's order:\n${panel}`);

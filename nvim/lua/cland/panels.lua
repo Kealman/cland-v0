@@ -590,9 +590,14 @@ function M.render(kind, win)
   end
   c:footer_at(vim.fn.winheight(win), #(footer or {}))
   local cur = api.nvim_win_get_cursor(win)
+  local info = M.row_at(b, cur[1])
+  local notification = kind == 'inbox' and info and info.notification
   local follow = (kind == 'sessions' or kind == 'items') and M.row_key((M.rows[b] or {})[cur[1]]) or nil
   M.rows[b] = c:apply(b)
   local target = c.cursor_to
+  if notification then
+    target = require('cland.inbox').notification_row(c, notification)
+  end
   if not target and follow then
     for r = 1, #c.lines do
       if M.row_key(c.info[r]) == follow then
