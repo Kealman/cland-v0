@@ -674,7 +674,7 @@ export class Store implements HygieneMemory {
   }
 
   /** Only the latest event for this subject can extend a run. Direct provenance is a union; bound batches and other recipients are immutable. */
-  coalesceEvent(session: string, subject: SubscriptionSubject, key: string, now: number, direct = false): { id: string; count: number } | null {
+  coalesceEvent(session: string, subject: SubscriptionSubject, key: string, now: number, direct = false, windowMs = 60_000): { id: string; count: number } | null {
     const row = this.#db.prepare(`select * from (
       select m.id, m.created_at, m.notice_detail, d.event_count, d.state, d.digest_id
       from messages m join deliveries d on d.message_id = m.id
@@ -682,7 +682,7 @@ export class Store implements HygieneMemory {
       order by m.seq desc limit 1
     ) where state = 'queued' and digest_id is null and created_at > ?
       and json_extract(notice_detail, '$.digest') = 'turn' and json_extract(notice_detail, '$.key') = ?`)
-      .get(session, JSON.stringify(subject), now - 60_000, key) as Row | undefined;
+      .get(session, JSON.stringify(subject), now - windowMs, key) as Row | undefined;
     if (!row) return null;
     const count = (row.event_count as number) + 1;
     this.#db.prepare('update deliveries set event_count = ?, direct = max(direct, ?) where message_id = ? and session = ?').run(count, direct ? 1 : 0, row.id as string, session);

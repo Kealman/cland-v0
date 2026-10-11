@@ -11,15 +11,24 @@ export const RUN_ID = process.env.TEST_SUITE_RUN_ID ??= randomUUID();
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 const recorded = new Map<number, ProcessIdentity>();
 
-function processes(): ProcessRow[] {
-  return execFileSync('ps', ['ww', '-axo', 'pid=,ppid=,pgid=,lstart=,stat=,command='], { encoding: 'utf8' }).split('\n').flatMap(line => {
+function processes(pids?: number[]): ProcessRow[] {
+  if (pids?.length === 0) return [];
+  const selection = pids ? ['-p', pids.join(','), '-o'] : ['-axo'];
+  let output: string;
+  try { output = execFileSync('ps', ['ww', ...selection, 'pid=,ppid=,pgid=,lstart=,stat=,command='], { encoding: 'utf8' }); }
+  catch (error) {
+    if (!pids || (error as { status?: number }).status !== 1) throw error;
+    output = String((error as { stdout?: string }).stdout ?? '');
+  }
+  return output.split('\n').flatMap(line => {
     const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+\s+\S+\s+\d+\s+\S+\s+\d+)\s+(\S+)\s+(.*)$/.exec(line);
     return match && !match[5]!.startsWith('Z') ? [{ pid: Number(match[1]), parent: Number(match[2]), group: Number(match[3]), started: match[4]!.replace(/\s+/g, ' '), command: match[6]! }] : [];
   });
 }
 /** Capture at spawn/first API observation, never after a remembered child has exited. */
 export function captureProcess(pid: number | undefined): ProcessIdentity | null {
-  const row = processes().find(row => row.pid === pid);
+  if (pid === undefined) return null;
+  const row = processes([pid]).find(row => row.pid === pid);
   return row ? { pid: row.pid, started: row.started } : null;
 }
 export function rememberProcess(pid: number | undefined): void {
@@ -37,15 +46,16 @@ const within = (path: string, root: string) => path === root || path.startsWith(
 function commandNamesRoot(command: string, root: string): boolean {
   return command.split(/[\s"'=,]+/).some(part => within(part.replace(/^(?:file|unix):\/\//, ''), root));
 }
-function cwdPaths(): Map<number, string> {
+function cwdPaths(pids?: number[]): Map<number, string> {
   const result = new Map<number, string>();
+  if (pids?.length === 0) return result;
   if (process.platform === 'linux') {
-    for (const name of readdirSync('/proc')) {
+    for (const name of pids ?? readdirSync('/proc')) {
       try { result.set(Number(name), readlinkSync(`/proc/${name}/cwd`).replace(/ \(deleted\)$/, '')); } catch { /* exited */ }
     }
   } else {
     let output: string;
-    try { output = execFileSync('lsof', ['-n', '-P', '-d', 'cwd', '-Fpn'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
+    try { output = execFileSync('lsof', ['-n', '-P', ...(pids ? ['-a', '-p', pids.join(',')] : []), '-d', 'cwd', '-Fpn'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
     catch (error) {
       if ((error as { status?: number }).status !== 1) throw error;
       output = String((error as { stdout?: string }).stdout ?? '');
@@ -70,9 +80,10 @@ function runMarkers(rows: ProcessRow[]): Map<number, string> {
   } else {
     // Never log this output: OS environments may contain secrets.
     const output = execFileSync('ps', ['eww', '-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+    const byPid = new Map(rows.map(row => [row.pid, row]));
     for (const line of output.split('\n')) {
       const match = /^\s*(\d+)\s+(.*)$/.exec(line);
-      const row = rows.find(row => row.pid === Number(match?.[1]));
+      const row = byPid.get(Number(match?.[1]));
       // ps eww appends environments to argv. Strip the exact independently observed argv first;
       // a command quoting a marker never establishes environment ownership.
       if (!row || !match?.[2]?.startsWith(`${row.command} `)) continue;
@@ -115,10 +126,16 @@ function ownership(rows: ProcessRow[], cwd: Map<number, string>, roots: string[]
  * Environment markers are hints only: macOS flattens other values into marker-looking text.
  * `root` must be verified by the caller; helper-registered roots also retain device/inode proof.
  */
-export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report: (line: string) => void = () => {}, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : []): Promise<number> {
+export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] = [], report?: (line: string) => void, runId = RUN_ID, anchors: ProcessIdentity[] = self ? [self] : []): Promise<number> {
   const rows = processes();
-  const cwd = cwdPaths();
-  const markers = runMarkers(rows);
+  // Seed cleanup needs cwd proof only for the seeds and their descendants. Root
+  // sweeps still inspect every cwd, including an unrecorded/reparented child.
+  const candidates = new Set(seeds.map(seed => seed.pid));
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const row of rows) if (candidates.has(row.parent) && !candidates.has(row.pid)) { candidates.add(row.pid); changed = true; }
+  }
+  const cwd = cwdPaths(root ? undefined : [...candidates]);
   const roots = [...directories].filter(([path, identity]) => directoryStillOwned(path, identity)).map(([path]) => path);
   if (root) roots.push(root);
   const owned = ownership(rows, cwd, roots, anchors);
@@ -144,14 +161,19 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
       expected.set(row.pid, row); changed = true;
     }
   }
-  for (const row of rows) {
-    const candidate = markers.get(row.pid) === runId || seeds.some(seed => seed.pid === row.pid) || (root && commandNamesRoot(row.command, root));
-    if (candidate && !protectedPids.has(row.pid) && !expected.has(row.pid)) report(`preserved pid ${row.pid}: ambiguous ownership; ${row.command}`);
+  if (report) {
+    const markers = runMarkers(rows);
+    for (const row of rows) {
+      const candidate = markers.get(row.pid) === runId || seeds.some(seed => seed.pid === row.pid) || (root && commandNamesRoot(row.command, root));
+      if (candidate && !protectedPids.has(row.pid) && !expected.has(row.pid)) report(`preserved pid ${row.pid}: ambiguous ownership; ${row.command}`);
+    }
   }
+  // With no captured target there is nothing to revalidate or signal.
+  if (expected.size === 0) return 0;
   const current = processes();
   const currentRoots = [...directories].filter(([path, identity]) => directoryStillOwned(path, identity)).map(([path]) => path);
   if (root) currentRoots.push(root);
-  const stillOwned = ownership(current, cwdPaths(), currentRoots, anchors);
+  const stillOwned = ownership(current, cwdPaths([...expected.keys()]), currentRoots, anchors);
   const verified = (row: ProcessRow) => expected.get(row.pid)?.started === row.started && stillOwned(row);
   const targets = current.filter(verified);
   const groups = new Set<number>();
@@ -160,7 +182,7 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
     const leader = current.find(member => member.pid === row.group);
     const members = current.filter(member => member.group === row.group);
     const wholeGroup = !protectedGroups.has(row.group) && leader !== undefined && verified(leader) && members.every(verified);
-    report(`cleanup pid ${row.pid}: ${row.command}`);
+    report?.(`cleanup pid ${row.pid}: ${row.command}`);
     try {
       // A group is attempted once even when kill reports that it vanished. Its other
       // captured members cannot establish ownership for a later replacement group.
@@ -179,7 +201,7 @@ export async function cleanupProcesses(root?: string, seeds: ProcessIdentity[] =
   }
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
-    const remaining = processes().filter(row => targets.some(target => target.pid === row.pid && target.started === row.started));
+    const remaining = processes(targets.map(target => target.pid)).filter(row => targets.some(target => target.pid === row.pid && target.started === row.started));
     if (remaining.length === 0) return targets.length;
     await pause(50);
   }

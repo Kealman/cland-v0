@@ -125,6 +125,8 @@ export type CoreOptions = {
   /** The hub's memory; `:memory:` when absent. */
   store?: Store;
   queueTtlMs?: number;
+  /** Equal queued events coalesce inside this window (default 60 seconds); short in tests. */
+  eventWindowMs?: number;
   retentionMs?: number;
   rateLimit?: RateLimit;
   eventLimit?: RateLimit;
@@ -192,6 +194,7 @@ export class HubCore {
   readonly #log: LogFn;
   readonly #store: Store;
   readonly #queueTtlMs: number;
+  readonly #eventWindowMs: number;
   readonly #retentionMs: number;
   readonly #hygiene: Hygiene;
   readonly #listeners = new Set<(event: HubEvent) => void>();
@@ -242,6 +245,7 @@ export class HubCore {
     this.#now = options.now ?? (() => new Date());
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
+    this.#eventWindowMs = options.eventWindowMs ?? 60_000;
     this.#roles = options.roles ?? null;
     this.crew = options.crew;
     this.#items = options.items ?? null;
@@ -546,7 +550,7 @@ export class HubCore {
           continue;
         }
         this.#dropExpired(name);
-        const coalesced = digest === 'turn' && this.#store.coalesceEvent(name, subject, key, now, defaultRecipients.has(name));
+        const coalesced = digest === 'turn' && this.#store.coalesceEvent(name, subject, key, now, defaultRecipients.has(name), this.#eventWindowMs);
         if (coalesced) {
           this.#afterCommit(() => this.#log({ event: 'event-delivery', id: coalesced.id, subject, kind: event, to: [name], count: coalesced.count, coalesced: true }));
           continue;

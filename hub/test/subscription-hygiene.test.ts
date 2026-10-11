@@ -7,6 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import { fixedRoles } from '../src/roles/config.ts';
 import { projectSessions } from '../src/adapters/index.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { writeDiscovery } from '../src/project.ts';
@@ -51,10 +53,10 @@ test('launched, died and launched within sixty seconds preserve every transition
   assert.doesNotMatch(digest.params.content, /×/);
 });
 
-async function setup(t: test.TestContext, config?: string) {
+async function setup(t: test.TestContext, config?: string, env: Record<string, string> = {}) {
   const root = await tempProject(t);
   if (config) { await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland', 'config.toml'), config); }
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -302,13 +304,41 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
   assert.doesNotMatch(delivered.params.content, /×2/);
 });
 
-test('equal events outside the fixed sixty-second window remain separate', async t => {
-  const { ui, coord } = await setup(t);
+test('the default coalescing window includes 59999 ms and excludes 60000 ms', async t => {
+  const root = await tempProject(t);
+  let now = Date.now();
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  t.after(() => tracker.stop());
+  const hub = await startHub({ tracker, roles: fixedRoles(), now: () => new Date(now) });
+  t.after(() => hub.close());
+  const ui = await connectWsUi(t, hub);
+  assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+  const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const item = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Default window' })).item.id;
+  await coord.call('subscribe', { subject: { item }, events: ['task'] });
+  await coord.call('task.claim', { id: item });
+  await coord.call('task.claim', { id: item, release: true });
+  now += 59_999;
+  await coord.call('task.claim', { id: item });
+  await coord.call('task.claim', { id: item, release: true });
+  now += 1;
+  await coord.call('task.claim', { id: item });
+  await ui.request({ type: 'topic.send', topic: 'general', text: '@coord default boundary' });
+  const delivered = await coord.waitForEvent(e => e.params.content.includes('default boundary'));
+  assert.equal(delivered.params.content.match(/claimed by coord/g)?.length, 2);
+  assert.equal(delivered.params.content.match(/claimed by coord \(×2\)/g)?.length, 1);
+  assert.match(delivered.params.content, /claimed by coord \(×2\)[\s\S]*claimed by coord/);
+});
+
+test('equal events outside the configured coalescing window remain separate', async t => {
+  const { ui, coord } = await setup(t, undefined, { CLAND_TEST_EVENT_WINDOW_MS: '250' });
   const item = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Coalescing window' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   await coord.call('task.claim', { id: item });
   await coord.call('task.claim', { id: item, release: true });
-  await sleep(61_000);
+  await sleep(300);
   await coord.call('task.claim', { id: item });
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord window boundary' });
   const delivered = await coord.waitForEvent(e => e.params.content.includes('window boundary'));

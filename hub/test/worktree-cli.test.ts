@@ -35,7 +35,8 @@ test('CLI commands from linked worktrees find the main project hub and write onl
       assert.equal(status.root, root);
       assert.equal(status.pid, discovery.pid);
       for (const args of [['task', 'view', 'T-1', '--json'], ['session', 'list', '--json'], ['role', 'list', '--json'], ['inbox', '--json']]) {
-        assert.equal(ok(await cland(cwd, ...args)).stdout, ok(await cland(root, ...args)).stdout, args.join(' '));
+        const [fromWorktree, fromRoot] = await Promise.all([cland(cwd, ...args), cland(root, ...args)]);
+        assert.equal(ok(fromWorktree).stdout, ok(fromRoot).stdout, args.join(' '));
       }
     }
     ok(await cland(worktree, 'task', 'comment', 'T-1', `Written from ${worktree}`));

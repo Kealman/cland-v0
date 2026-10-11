@@ -1109,6 +1109,24 @@ abandoned manual lock with the `rmdir` command printed by the waiter, naming
 either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
+`CLAND_TEST_EVENT_WINDOW_MS` is a test-only daemon knob: a finite positive number
+sets the equal-event coalescing window in milliseconds. Without it (or with an
+invalid value), the production window remains 60 seconds. The window-boundary
+test uses 250 ms and waits 300 ms, retaining its separate-event/count assertions;
+other coalescing tests retain the default window. An injected-clock test checks
+that the production default includes 59,999 ms and excludes 60,000 ms without
+waiting a minute. In-process hubs can instead
+use `eventWindowMs` or their existing injectable `now` clock. Timing fixtures
+retain generous failure deadlines: shortening a window does not shorten how long
+a loaded machine has to become ready.
+
+Test teardown still checks PID/start identity, cwd containment, ancestry and
+whole-group ownership before signalling. Seed-only teardown reads cwd only for
+the captured seeds and descendants; root sweeps inspect all cwd paths. A second
+cwd check covers captured targets only, and empty target sets return immediately.
+Environment-marker scans are needed only when teardown diagnostics are requested;
+markers remain hints, never ownership proof.
+
 The suites run at concurrency 4. Targeted single-file runs are free:
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw

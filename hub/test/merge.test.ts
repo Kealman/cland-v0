@@ -530,7 +530,16 @@ test('a failed integration ref update restores the root index and worktree and p
 async function indexLockProject(t: TestContext, failure: 'transient-lock' | 'persistent-lock' | 'crash-before-ref' = 'transient-lock') {
   const bin = await tempProject(t, 'cland-index-lock-bin-');
   const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
-  await writeFile(join(bin, 'git'), `#!${process.execPath}\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync, rmSync } from 'node:fs';\nconst args = process.argv.slice(2);\nconst marker = '.cland/checkout-mutated';\nconst failed = '.cland/write-tree-failed';\nif (process.env.CLAND_TEST_KILL_BEFORE_REF === '1' && args[0] === 'update-ref' && args[1] === 'refs/heads/dev') { writeFileSync('.cland/before-ref-crash', 'crashed'); process.kill(process.ppid, 'SIGKILL'); process.exit(1); }\nconst fail = process.env.CLAND_TEST_KILL_BEFORE_REF !== '1' && args[0] === 'write-tree' && existsSync(marker) && !existsSync(failed);\nif (fail) { writeFileSync('.git/index.lock', 'held'); writeFileSync(failed, 'failed'); }\nconst result = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' });\nif (args[0] === 'read-tree' && args[1] === '-m' && result.status === 0) writeFileSync(marker, 'changed');\nif (fail && process.env.CLAND_TEST_KEEP_INDEX_LOCK !== '1') rmSync('.git/index.lock');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
+  await writeFile(join(bin, 'index-lock.mjs'), `#!${process.execPath}\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync, rmSync } from 'node:fs';\nconst args = process.argv.slice(2);\nconst marker = '.cland/checkout-mutated';\nconst failed = '.cland/write-tree-failed';\nif (process.env.CLAND_TEST_KILL_BEFORE_REF === '1' && args[0] === 'update-ref' && args[1] === 'refs/heads/dev') { writeFileSync('.cland/before-ref-crash', 'crashed'); process.kill(process.ppid, 'SIGKILL'); process.exit(1); }\nconst fail = process.env.CLAND_TEST_KILL_BEFORE_REF !== '1' && args[0] === 'write-tree' && existsSync(marker) && !existsSync(failed);\nif (fail) { writeFileSync('.git/index.lock', 'held'); writeFileSync(failed, 'failed'); }\nconst result = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' });\nif (args[0] === 'read-tree' && args[1] === '-m' && result.status === 0) writeFileSync(marker, 'changed');\nif (fail && process.env.CLAND_TEST_KEEP_INDEX_LOCK !== '1') rmSync('.git/index.lock');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
+  // Only intercepted operations pay for a Node process. Other commands still
+  // execute real Git, without compiling the fault-injection fixture each time.
+  const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
+  await writeFile(join(bin, 'git'), `#!/bin/sh
+case "$1" in
+  read-tree|write-tree|update-ref) exec ${quote(process.execPath)} ${quote(join(bin, 'index-lock.mjs'))} "$@" ;;
+esac
+exec ${quote(realGit)} "$@"
+`, { mode: 0o755 });
   return project(t, { PATH: `${bin}:${process.env.PATH ?? ''}`, CLAND_TEST_KEEP_INDEX_LOCK: failure === 'persistent-lock' ? '1' : '0', CLAND_TEST_KILL_BEFORE_REF: failure === 'crash-before-ref' ? '1' : '0' });
 }
 
