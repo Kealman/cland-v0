@@ -164,6 +164,12 @@ export class TaskWorktrees {
     if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.levels.includes(view.kind))) {
       throw new Error('a Lead needs an open configured container');
     }
+    if (request.role === 'implementer') resumed(() => this.#tracker.assertPlanLaunch(view.id));
+    const originalAuthorize = authorize;
+    authorize = () => resumed(() => {
+      originalAuthorize?.();
+      if (request.role === 'implementer') this.#tracker.assertPlanLaunch(view.id);
+    });
     // a claim the launch may take over: none, the Coordinator's, the human's, or one under the new session's name
     const yields = (held: Claim | null): boolean => !held || (request.role !== 'lead' && held.session === request.name) || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;

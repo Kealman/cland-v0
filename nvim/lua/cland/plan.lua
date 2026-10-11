@@ -246,10 +246,13 @@ function M.compose(id, w)
     if d.error then prose('not current: ' .. d.error, 'ClandRed') end
     if d.planError then prose('Previous accepted plan kept: ' .. d.planError, 'ClandAmber') end
     local plan = d.plan
-    -- T-183 does not report approval mode/state. This card is deliberately honest about that boundary.
+    local approval = d.approval or {}
+    local approval_text = approval.state == 'approved' and ('✓ approved by ' .. (approval.by or 'human') .. ' · ' .. (approval.at or ''))
+      or approval.state == 'pending' and '▲ awaiting your approval · no session launched'
+      or approval.state == 'not required' and 'Approval not required' or '▲ approval state unavailable from this hub'
     add(' ┌' .. ('─'):rep(math.max(0, bw - 4)) .. '┐', 'ClandAmber')
     boxed = true
-    prose('▲ approval state unavailable from this hub', 'ClandAmber')
+    prose(approval_text, 'ClandAmber')
     prose('a approve · d discuss with the Lead · e edit plan', 'ClandAmber')
     boxed = false
     add(' └' .. ('─'):rep(math.max(0, bw - 4)) .. '┘', 'ClandAmber')
@@ -296,7 +299,7 @@ function M.compose(id, w)
       and ('On approval: the Lead launches ' .. #plan.stages[1].lanes .. ' sessions, one per S1 lane.')
       or ('On approval: the Lead starts S1 under the ' .. (staffing or 'unknown') .. ' crew policy.')
     local fields = {
-      'PLAN · approval state unavailable',
+      'PLAN · ' .. (approval.state or 'approval state unavailable'),
       on_approve,
       'First stage: ' .. #plan.stages[1].lanes .. ' lanes',
       'Items · stages: ' .. total .. ' items in ' .. #plan.stages .. ' stages',

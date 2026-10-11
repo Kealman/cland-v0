@@ -122,6 +122,9 @@ export class InboxBoard {
         if (!DEATH_REASONS.has(event.reason) && event.reason !== 'handover') this.#roleChange(event);
         break;
       case 'message':
+        if (event.message.fromKind === 'hub' && event.message.kind === 'plan') {
+          this.#notify('plan', event.message.text, typeof event.message.detail?.item === 'string' ? { item: event.message.detail.item } : {});
+        }
         if (event.message.fromKind === 'hub') {
           const result = messageVerdict(event.message);
           if (result) {

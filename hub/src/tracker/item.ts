@@ -28,6 +28,7 @@ export type Frontmatter = {
   rank?: number;
   /** Highest criterion id allocated, including removed criteria. */
   criterion_seq?: number;
+  plan_approval?: { hash: string; by: string; at: string };
   labels: string[];
   assignee: string | null;
   parent: string | null;
@@ -204,6 +205,11 @@ export function parseItem(text: string, fileName?: string, levels: readonly stri
     if (!Number.isSafeInteger(r.criterion_seq) || Number(r.criterion_seq) < 0) throw new ItemParseError('criterion_seq must be a nonnegative safe integer');
     fm.criterion_seq = r.criterion_seq as number;
   }
+  const approval = r.plan_approval as Record<string, unknown> | undefined;
+  if (approval !== undefined) {
+    if (!approval || typeof approval !== 'object' || typeof approval.hash !== 'string' || typeof approval.by !== 'string' || typeof approval.at !== 'string') throw new ItemParseError('invalid plan_approval record');
+    fm.plan_approval = { hash: approval.hash, by: approval.by, at: approval.at };
+  }
   const github = githubOf(r.github);
   if (github) fm.github = github;
 
@@ -286,6 +292,7 @@ export function serializeItem(item: Item): string {
     ...(fm.status !== undefined ? { status: fm.status } : {}),
     ...(fm.rank !== undefined ? { rank: fm.rank } : {}),
     ...(fm.criterion_seq !== undefined ? { criterion_seq: fm.criterion_seq } : {}),
+    ...(fm.plan_approval ? { plan_approval: fm.plan_approval } : {}),
     labels: fm.labels,
     assignee: fm.assignee,
     parent: fm.parent,

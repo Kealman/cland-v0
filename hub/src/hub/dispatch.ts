@@ -441,7 +441,7 @@ export class Dispatcher {
       item,
       own,
       ...(type === 'session.launch' ? { launchRole: typeof frame.role === 'string' ? frame.role : typeof frame.name === 'string' ? this.#options.core.store.roleOf(frame.name) : null } : {}),
-      ...(tool === 'task.edit' || tool === 'task.criterion' ? {
+      ...(tool === 'task.edit' || tool === 'task.criterion' || tool === 'task.plan' ? {
         criterionOp: frame.op,
         status: frame.status,
         statusOnly: Object.keys(frame).every(key => ['type', 'id', 'item', 'as', 'status'].includes(key)),

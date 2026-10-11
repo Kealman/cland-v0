@@ -48,10 +48,12 @@ test('init adds qa_default and update keeps a configured QA policy', async t => 
   await run(root, 'init');
   const path = join(root, '.cland/config.toml');
   const initial = await readFile(path, 'utf8');
+  assert.match(initial, /approval = "none"/);
   assert.match(initial, /qa_default = \{ scope = "none", when = "per-item" \}/);
-  await writeFile(path, initial.replace('scope = "none", when = "per-item"', 'scope = "full", when = "after-stage"'));
+  await writeFile(path, initial.replace('scope = "none", when = "per-item"', 'scope = "full", when = "after-stage"').replace('approval = "none"', 'approval = "human"'));
   await run(root, 'update');
   const updated = await readFile(path, 'utf8');
+  assert.match(updated, /approval = "human"/);
   assert.match(updated, /qa_default = \{ scope = "full", when = "after-stage" \}/);
   await run(root, 'update');
   assert.equal(await readFile(path, 'utf8'), updated);

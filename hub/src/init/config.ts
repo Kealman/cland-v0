@@ -16,7 +16,7 @@ export type ProjectConfig = {
   name: string;
   visibility: VisibilityOverrides;
   tracker: { levels: string[] };
-  plan: { qaDefault: QaPolicy };
+  plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
   hygiene: { eventLimit: RateLimit; rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
@@ -28,7 +28,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
-  plan: { qaDefault: { scope: 'none', when: 'per-item' } },
+  plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
   artifacts: { retentionDays: 30 },
   keys: { layouts: [] },
   hygiene: { eventLimit: { ...EVENT_LIMIT }, rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
@@ -49,6 +49,7 @@ name = ${JSON.stringify(c.name)}
 levels = ${JSON.stringify(c.tracker.levels)}
 
 [plan]
+approval = "${c.plan.approval}"
 # QA for tasks outside any plan. Review is always required.
 qa_default = { scope = "${c.plan.qaDefault.scope}", when = "${c.plan.qaDefault.when}" }
 
@@ -93,6 +94,10 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   const tracker = (doc.tracker ?? {}) as Record<string, unknown>;
   if (tracker.levels !== undefined) c.tracker.levels = configuredLevels(tracker.levels);
   const plan = (doc.plan ?? {}) as Record<string, unknown>;
+  if (plan.approval !== undefined) {
+    if (plan.approval !== 'none' && plan.approval !== 'human') throw new Error('plan.approval must be none or human');
+    c.plan.approval = plan.approval;
+  }
   if (plan.qa_default !== undefined) c.plan.qaDefault = qaPolicy(plan.qa_default, 'plan.qa_default');
   const keys = (doc.keys ?? {}) as Record<string, unknown>;
   if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];

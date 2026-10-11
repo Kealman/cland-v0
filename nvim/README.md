@@ -504,3 +504,5 @@ The centre reads the accepted plan through `task.plan show`. Its header shows th
 
 
 Folder artifacts open their entry file from their chip or the artifact picker. An absorbed file disappears from ordinary lists, and its old chip still opens that file inside the destination folder. An open draft moved while disconnected resolves its cached id on reconnect and preserves unsaved text at the new save path. Human and Aide artifacts survive topic closure and retention; kept agent artifacts also survive. These storage tools are exposed by the hub; the dedicated Artifacts browser and CLI commands are covered by their own slices.
+
+With `[plan] approval = "human"`, the `gp` plan card shows “awaiting your approval”. Press `a` to approve through the real hub; it refreshes to the approver and time. A revised accepted plan returns to pending approval. With the default `"none"`, the card shows that approval is not required.

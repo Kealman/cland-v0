@@ -6,7 +6,7 @@ export type Layer = 'now' | 'watch' | 'background' | 'archive';
 export const DEFAULT_VISIBILITY = {
   messages: { human: 'now', ask: 'now', not_clear: 'now', clear: 'watch', coordinator_report: 'watch', agent: 'background', old: 'archive' },
   // T-171 owns actionable notification resolution; until then they stay watch by default.
-  inbox: { ask: 'now', approval: 'now', waiting: 'now', not_clear: 'watch', death: 'watch', clear: 'watch', release: 'watch', import: 'watch', idle: 'watch', other: 'background' },
+  inbox: { plan: 'watch', ask: 'now', approval: 'now', waiting: 'now', not_clear: 'watch', death: 'watch', clear: 'watch', release: 'watch', import: 'watch', idle: 'watch', other: 'background' },
   sessions: { aide: 'now', waiting: 'now', busy: 'now', idle: 'watch', stopped: 'background' },
   items: { active: 'now', planned: 'watch', backlog: 'background', unscheduled: 'background', done: 'background', closed_release: 'archive' },
   artifacts: { human: 'watch', coordinator: 'watch', agent: 'background', archived: 'archive' },

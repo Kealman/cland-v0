@@ -18,7 +18,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused'] as const;
+export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -27,6 +27,10 @@ const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? 
 export function lifecycleNotice(entry: LogEntry, label: (name: string) => string): TopicNotice | null {
   const session = str(entry.session);
   switch (entry.event) {
+    case 'task-plan-changed':
+      return { kind: 'plan', text: `${String(entry.id)}: plan changed by ${String(entry.by)}`, detail: { item: entry.id } };
+    case 'task-plan-approved':
+      return { kind: 'plan', text: `${String(entry.id)}: plan approved by ${String(entry.by)}`, to: ['coordinator'], detail: { item: entry.id } };
     case 'task-plan-refused':
       return { kind: 'refusal', text: `${String(entry.id)}: plan refused: ${String(entry.error)}; keeping the last valid plan`, detail: { item: entry.id } };
     case 'task-unreadable':

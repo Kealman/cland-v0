@@ -218,7 +218,7 @@ test('body edits cannot bypass plan validation and section replacement preserves
   const leaf = await ui.request({ type: 'task.plan', op: 'set', item: a.id, yaml: stringify(plan) });
   assert.equal(leaf.ok, false);
   assert.match(leaf.error ?? '', /only to an epic/);
-  assert.equal((await ui.request({ type: 'task.plan', op: 'approve', item: epic.id })).ok, false);
+  assert.equal((await ui.request({ type: 'task.plan', op: 'unknown', item: epic.id })).ok, false);
   assert.equal((await ui.request({ type: 'task.plan', op: 'set', item: epic.id })).ok, false);
   assert.equal((await ui.request({ type: 'task.plan', op: 'set', item: epic.id, yaml: 42 })).ok, false);
 });

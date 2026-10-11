@@ -25,7 +25,7 @@ export type TaskRequest =
       branch?: string | null;
       as?: ActorField;
     }
-  | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate'; yaml?: string; as?: ActorField }
+  | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
   | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
@@ -98,11 +98,11 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
     case 'task.plan': {
       if (frame.op === 'migrate') return tracker.migrateQa(actor, resumed, authorize);
       optStr(f, 'yaml');
-      if (frame.op !== 'show' && frame.op !== 'set') throw new TrackerError('task.plan op must be set or show');
+      if (frame.op !== 'show' && frame.op !== 'set' && frame.op !== 'approve') throw new TrackerError('task.plan op must be set, show or approve');
       if (frame.op === 'set' && typeof frame.yaml !== 'string') throw new TrackerError('task.plan set needs yaml');
-      const item = frame.op === 'set' ? await tracker.setPlan(actor, needItem(f), frame.yaml!, resumed, authorize) : await tracker.viewAsync(needItem(f), resumed);
+      const item = frame.op === 'approve' ? await tracker.approvePlan(actor, needItem(f), resumed, authorize) : frame.op === 'set' ? await tracker.setPlan(actor, needItem(f), frame.yaml!, resumed, authorize) : await tracker.viewAsync(needItem(f), resumed);
       if (!tracker.isPlanContainer(item.kind)) throw new TrackerError('a plan belongs only to an epic');
-      return { id: item.id, plan: item.plan, ...(item.planError ? { planError: item.planError } : {}) };
+      return { id: item.id, plan: item.plan, approval: item.approval, ...(item.planError ? { planError: item.planError } : {}) };
     }
     case 'task.view':
       return { item: await tracker.viewAsync(needItem(f), resumed) };

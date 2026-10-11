@@ -14,7 +14,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [
                   [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
   task view <id>
   task plan migrate (retire qa-required labels, report policy fallbacks)
-  task plan <set|show> <epic-id> [--file plan.yaml]
+  task plan <set|show|approve> <epic-id> [--file plan.yaml]
   task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--verified C1,C3|all | --failed "C1=note"]…]
   task edit <id> [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--state s] [--status s] [--label l]…
@@ -104,9 +104,9 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
         if (item || extra.length || v.file !== undefined) throw new UsageError('task plan migrate takes no item or --file');
         return { type: 'task.plan', op };
       }
-      if ((op !== 'set' && op !== 'show') || !item || extra.length) throw new UsageError('task plan needs set|show and an epic id');
+      if ((op !== 'set' && op !== 'show' && op !== 'approve') || !item || extra.length) throw new UsageError('task plan needs set|show|approve and an epic id');
       if (op === 'set' && typeof v.file !== 'string') throw new UsageError('task plan set needs --file plan.yaml (or --file - for stdin)');
-      if (op === 'show' && v.file !== undefined) throw new UsageError('task plan show takes no --file');
+      if (op !== 'set' && v.file !== undefined) throw new UsageError(`task plan ${op} takes no --file`);
       return { type: 'task.plan', item, op, ...(op === 'set' ? { yaml: readFileSync(v.file === '-' ? 0 : String(v.file), 'utf8') } : {}) };
     }
     case 'view':
@@ -233,7 +233,9 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
   switch (sub) {
     case 'plan':
       if (typeof value.report === 'string') return value.report + '\n';
-      return (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
+      const approval = value.approval as { state?: string; by?: string; at?: string } | undefined;
+      const approvalLine = approval ? `# approval: ${approval.state}${approval.by ? ` by ${approval.by} at ${approval.at}` : ''}\n` : '';
+      return approvalLine + (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
     case 'list':
       return listText(value.items as ItemSummary[]);
     case 'hold':

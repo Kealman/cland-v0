@@ -192,7 +192,7 @@ export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: s
 /** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
 export type InboxApproval = { layer?: Layer; session: string; label: string; harness: string | null; since: string | null; attach: string | null };
 
-export type NotificationKind = 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
+export type NotificationKind = 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
 /** Something worth the human's eye from the journal (until #34, the hub's own events): dismissable, never blocking. */
 export type InboxNotification = {

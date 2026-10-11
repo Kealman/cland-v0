@@ -70,7 +70,7 @@ export const KNOWN_TOOLS: readonly string[] = [
 /** The scopes a tool can be granted in, beside the whole of it. */
 export const SCOPES: Readonly<Record<string, readonly string[]>> = {
   send: ['agents', 'human'],
-  'task.plan': ['show', 'set'],
+  'task.plan': ['show', 'set', 'approve'],
   'task.claim': ['own'],
   'task.edit': ['review'],
   'task.criterion': ['done', 'verify', 'manage'],
@@ -82,7 +82,7 @@ const READS = ['subscribe', 'unsubscribe', 'subscriptions', 'who', 'history', 's
 
 /** The table as the spec seeds it; `roles.toml` writes the same lists. */
 export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
-  aide: [ 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
+  aide: [ 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'],
   coordinator: [
     'send',
     'ask',
@@ -115,7 +115,7 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  lead: ['ask.forward', 'ask.answer', 'send:agents', 'session.launch', 'session.stop', 'merge', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
+  lead: ['task.plan:show', 'task.plan:set', 'ask.forward', 'ask.answer', 'send:agents', 'session.launch', 'session.stop', 'merge', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
   implementer: ['ask.forward', 'ask.answer', 'send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
@@ -184,6 +184,8 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   if (tool === 'session.launch' && call.launchRole === 'lead' && role !== 'coordinator') {
     return { ok: false, permission: tool, reason: 'root level: only the Coordinator launches Leads' };
   }
+  if (tool === 'task.plan' && role === 'lead' && call.planOp !== 'show' && call.claimed?.() !== true) return { ok: false, permission: 'task.plan:set', reason: 'a Lead sets only its claimed epic plan' };
+  if (tool === 'task.plan' && call.planOp === 'approve' && role !== 'aide') return { ok: false, permission: 'task.plan:approve', reason: 'only the human or an Aide approves a plan' };
   if (role === 'lead' && call.levelRefusal) return { ok: false, permission: tool, reason: call.levelRefusal };
   // v0.1 §3.3: an Aide's tool boundary and named addressing are fixed, even if its file grants more.
   if (role === 'aide') {
@@ -230,7 +232,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
       }
       return has('send:agents') ? { ok: true } : { ok: false, permission: 'send:agents', reason: `${who} may write only to the human` };
     case 'task.plan': {
-      const scope = call.planOp === 'show' ? 'show' : 'set';
+      const scope = call.planOp === 'show' ? 'show' : call.planOp === 'approve' ? 'approve' : 'set';
       return has(`task.plan:${scope}`) ? { ok: true } : { ok: false, permission: `task.plan:${scope}`, reason: `${who} is not granted plan ${scope}` };
     }
     case 'task.criterion': {

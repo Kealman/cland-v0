@@ -6,6 +6,7 @@
 // concurrent hand saves; other writes keep their last-writer-wins policy.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
+import { ToolForbidden } from '../roles/permissions.ts';
 import { PlanError, parsePlan, planInBody, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
@@ -84,6 +85,7 @@ export type ItemView = IndexedItem & {
   qaPolicy?: QaPolicy;
   qaCriteria?: string[];
   planError?: string;
+  approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
   criteriaWarnings: CriterionWarning[];
   comments: Comment[];
@@ -177,6 +179,7 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'li
 export class Tracker {
   readonly levels: readonly string[];
   readonly #qaDefault: QaPolicy;
+  readonly #planApproval: 'none' | 'human';
   get kinds(): string[] { return kindsFor(this.levels); }
   /** The default epic occupies the second configured container level. */
   isPlanContainer(kind: Kind): boolean { return this.levels[1] !== undefined && kind === this.levels[1]; }
@@ -229,7 +232,8 @@ export class Tracker {
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.#planApproval = options.planApproval ?? 'none';
     this.#qaDefault = options.qaDefault ?? { scope: 'none', when: 'per-item' };
     this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
     this.#files = options.files ?? files;
@@ -842,6 +846,45 @@ export class Tracker {
     }, resumed);
   }
 
+  approvePlan(actor: Actor, rawId: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
+    const check = () => {
+      authorize();
+      if (actor.human !== true && actor.role !== 'aide') throw new ToolForbidden(actor.role, 'task.plan:approve', 'only the human or an Aide approves a plan');
+    };
+    let record: NonNullable<Item['fm']['plan_approval']>;
+    return this.#serial(() => this.#mutate(rawId, actor, 'plan approved', item => {
+      check();
+      const state = this.#planState(item);
+      if (!this.isPlanContainer(item.fm.kind) || !state.plan || state.planError) throw new TrackerError('approve needs a valid epic plan');
+      const hash = this.#planHash(state.plan);
+      if (item.fm.plan_approval?.hash !== hash) item.fm.plan_approval = { hash, by: actor.name, at: this.#now().toISOString() };
+      record = item.fm.plan_approval!;
+    }, resumed, undefined, check, () => this.#log({ event: 'task-plan-approved', id: normalizeId(rawId), ...record }), undefined, true), resumed);
+  }
+
+  /** Launch approval is an indexed fact; safe to recheck after every lifecycle await. */
+  assertPlanLaunch(rawId: string): void {
+    if (this.#planApproval !== 'human') return;
+    const requested = this.#require(rawId).id;
+    const item = this.#index.get(requested);
+    for (const id of [requested, ...this.#ancestorIds(item?.parent ?? null)]) {
+      const epic = this.#index.get(id);
+      if (!epic || !this.isPlanContainer(epic.kind)) continue;
+      const plan = this.#index.plan(id);
+      const approval = this.#planCandidates.get(id)?.item.fm.plan_approval;
+      if (!plan || !approval || approval.hash !== this.#planHash(plan)) throw new TrackerError(`${id}: awaiting human plan approval; no session launched`);
+    }
+  }
+
+  #planHash(plan: EpicPlan): string { return createHash('sha256').update(JSON.stringify(plan)).digest('hex'); }
+
+  #approvalOf(item: Item): NonNullable<ItemView['approval']> {
+    const plan = this.#index.plan(item.fm.id);
+    const record = item.fm.plan_approval;
+    if (plan && record?.hash === this.#planHash(plan)) return { required: this.#planApproval === 'human', state: 'approved', by: record.by, at: record.at };
+    return { required: this.#planApproval === 'human', state: this.#planApproval === 'human' ? 'pending' : 'not required' };
+  }
+
   /** Explicit, resumable migration: write the plan before removing each legacy label. */
   migrateQa(actor: Actor, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ migrated: string[]; fallback: string[]; report: string }> {
     return this.#serial(async () => {
@@ -1000,6 +1043,7 @@ export class Tracker {
       // before showing it, so a following invalid save cannot restore an older version.
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
       ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
+      ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item) } : {}),
       ...parseCriteria(item.body, this.levels.includes(item.fm.kind)),
       ...this.#qaFor(item),
       comments: item.comments,
@@ -1225,7 +1269,7 @@ export class Tracker {
   }
 
   /** Called only with the tracker queue held: always read the latest committed file. */
-  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>): Promise<ItemView> {
+  async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, skipUnchanged = false): Promise<ItemView> {
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;
@@ -1246,6 +1290,7 @@ export class Tracker {
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         change(item);
+        if (skipUnchanged && serializeItem(item) === text) return Promise.resolve(item);
         item.fm.updated = this.#now().toISOString();
         return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename, actor);
       });

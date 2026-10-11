@@ -1,7 +1,7 @@
 // The plan view at the real hub frame and headless Neovim boundaries.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
@@ -14,6 +14,8 @@ const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 async function setup(t: test.TestContext) {
   const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind: string, parent?: string) => {
@@ -56,8 +58,8 @@ test('graph nodes show stages from a plan accepted by the real hub', { skip }, a
   await client.waitScreen(s => s.includes(`${a.id} S1`) && s.includes(`${b.id} S1`) && s.includes(`${c.id} S2`), 'real plan stage tags');
 });
 
-test('gp shows stages, lanes, overrides, gates and scoped stage tags; a keeps the real hub refusal visible', { skip }, async t => {
-  const { root, client, epic, a, b, c, outside } = await setup(t);
+test('gp shows stages, lanes, overrides, gates and scoped stage tags; a approves through the real hub', { skip }, async t => {
+  const { root, ui, client, epic, a, b, c, outside } = await setup(t);
   await client.input('gp');
   await client.waitScreen(s => s.includes('Plan of') && s.includes('registry and sessions'), 'plan opened by gp');
   await waitPlan(client, epic.id, 'QA criteria: C1');
@@ -72,9 +74,11 @@ test('gp shows stages, lanes, overrides, gates and scoped stage tags; a keeps th
   assert.ok(text.split('\n').some(line => line.includes(a.id) && line.includes(b.id)));
   const sourceBefore = await readFile(join(root, epic.path), 'utf8');
   await client.input('a');
-  await client.waitScreen(s => s.includes('task.plan op must be set or show'), 'approval refused by current hub');
-  assert.equal(await planText(client, epic.id), text, 'refused approval never changes the card');
-  assert.equal(await readFile(join(root, epic.path), 'utf8'), sourceBefore);
+  await waitPlan(client, epic.id, '✓ approved by human');
+  assert.ok(text.includes('awaiting your approval'));
+  assert.notEqual(await readFile(join(root, epic.path), 'utf8'), sourceBefore);
+  const approved = (await ui.request({ type: 'task.plan', op: 'show', item: epic.id })).value as { approval: { state: string } };
+  assert.equal(approved.approval.state, 'approved');
   assert.deepEqual(await client.lua("return require('cland.actions').audit()"), []);
   for (const columns of [80, 120, 200]) {
     await client.rpc.request('nvim_ui_try_resize', columns, 45);
