@@ -15,6 +15,26 @@ import { Report } from '../init/files.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 
+test('an offline Lead successor adopts its provisional claim before its first hello', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-worktrees-adopt-'));
+  let now = 0;
+  const tracker = new Tracker({ root, db: join(root, 'hub.db'), now: () => new Date(++now * 1000) });
+  t.after(async () => {
+    await tracker.stop();
+    await rm(root, { recursive: true, force: true });
+  });
+  await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Handed-over node', kind: tracker.levels[1]! });
+  const before = (await tracker.claim({ id: 'name:later', name: 'later', role: 'lead' }, 'T-1')).claim;
+  assert.ok(before);
+  const process = { name: 'later', role: 'lead', sessionId: 'sess-later', cwd: root, item: 'T-1' } as HarnessProcessView;
+  let published = false;
+  tracker.useSessionIdentity(id => published && id === 'name:later' ? process.sessionId : id);
+  // The adapter returns its proven identity without any spoke hello to adopt it first.
+  const sessions = { retainedPool: () => false, launch: async () => { published = true; return process; }, stop: async () => process } as unknown as Sessions;
+  const launched = await new TaskWorktrees({ tracker }).launch(sessions, { name: 'later', role: 'lead', item: 'T-1' });
+  assert.deepEqual(launched.claim, { ...before, sessionId: 'sess-later' });
+});
+
 test('a claim another session takes during the launch refuses it: the claim stays, the new session is stopped', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'cland-worktrees-unit-'));
   const tracker = new Tracker({ root, db: join(root, 'hub.db') });

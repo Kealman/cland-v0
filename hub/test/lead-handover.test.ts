@@ -167,9 +167,10 @@ test('a committed Lead handover recovers its node claim after a crash without to
   assert.equal((history.value as { messages: Message[] }).messages.filter(m => m.kind === 'handover').length, 1);
 });
 
-test('the human CLI moves an explicitly named Lead node to an unseen successor', async t => {
-  const { root, create, launch, claim, spoke } = await setup(t);
+test('the human hands a node to an offline successor, then launches it and the next verdict reaches it', async t => {
+  const { root, fake, coord, create, launch, claim, spoke, subjects } = await setup(t);
   const epic = await create('Human move', 'epic');
+  const task = await create('Work awaiting review', 'task', epic);
   await launch('lead-1', epic);
   const before = await claim(epic);
   const file = join(root, 'handover.md');
@@ -177,9 +178,23 @@ test('the human CLI moves an explicitly named Lead node to an unseen successor',
   const moved = await cland(root, 'role', 'set', 'later', 'lead', '--item', epic, '--note-file', file, '--json');
   assert.equal(moved.code, 0, moved.stderr);
   assert.deepEqual(await claim(epic), { ...before, session: 'later', sessionId: 'name:later' });
-  const later = await spoke('later');
-  await eventually('the provisional node claim adopts the real identity', async () => (await claim(epic)).sessionId === 'id-later' || undefined);
-  assert.deepEqual(await claim(epic), { ...before, session: 'later', sessionId: 'id-later' });
-  const state = await later.call<Result & RoleState>('role.state');
+  const refused = await coord.call<Result>('session.launch', { name: 'different', role: 'lead', harness: 'claude-code', item: epic });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error ?? '', /claimed by later/);
+  const wrongRole = await coord.call<Result>('session.launch', { name: 'later', role: 'implementer', harness: 'claude-code', item: epic });
+  assert.equal(wrongRole.ok, false);
+  assert.match(wrongRole.error ?? '', /claimed by later/);
+  const later = await launch('later', epic);
+  assert.deepEqual(await claim(epic), { ...before, session: 'later', sessionId: later.sessionId });
+  const live = await coord.call<Result>('session.launch', { name: 'later', role: 'lead', harness: 'claude-code', item: epic });
+  assert.equal(live.ok, false);
+  assert.match(live.error ?? '', /already running|live session/);
+  assert.deepEqual(await claim(epic), { ...before, session: 'later', sessionId: later.sessionId });
+  assert.deepEqual(await subjects(later.s), [{ item: epic }, { item: task }]);
+  const state = await later.s.call<Result & RoleState>('role.state');
   assert.equal(state.note?.sections.goals_now, 'Human move');
+  const rev = await spoke('rev', 'reviewer');
+  assert.equal((await rev.call<Result>('task.comment', { id: task, verdict: 'review', result: 'not clear', run: 'after-offline-handover' })).ok, true);
+  await rev.call('send', { to: [`lead ${task}`], text: 'Inspect the successor verdict.' });
+  await eventually('the next verdict reaches the launched successor', async () => (await fake.log(later.harnessId)).includes(`${task} verdict posted review not clear`) || undefined);
 });

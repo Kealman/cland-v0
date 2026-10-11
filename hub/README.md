@@ -319,6 +319,8 @@ A role moves between sessions as hub state, never as a transcript (spec 4.4, ADR
 
 For a Lead, `role.state` returns its own holder, node (`item`), note, waiting topics and claim. On the UI socket, add `session: "lead-2"` to `role.state` when multiple Leads exist. Reconnects and renames preserve the node's note; a handover on another node cannot replace it.
 
+After the human hands a node to an offline successor, `session.launch` with that claimant's name, role and `item` adopts the existing claim and attaches its default subscriptions. The claim keeps its original time and handover note. A different name or role is refused, and a live session of that name must be stopped before launching it.
+
 `waiting` lists the topics waiting for the role: first those whose status is `waiting for agent` (#32) and whose latest human message was delivered to the role's holders (`reason` `status`), else those where a message addressed to the role, or to one of its holders, the current ones and every one it passed through in its handovers, is newer than their last word in the topic (`reason` `addressed`, `pending` such messages). `asks` is empty until asks exist (#33). `claims` are the tracker claims held by the role's holders. `history` with a `topic` returns that topic's messages, so the new holder reads a waiting topic without the old session's transcript.
 
 ### Permissions

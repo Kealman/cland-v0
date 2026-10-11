@@ -170,8 +170,9 @@ export class TaskWorktrees {
       originalAuthorize?.();
       if (request.role === 'implementer') this.#tracker.assertPlanLaunch(view.id);
     });
-    // a claim the launch may take over: none, the Coordinator's, the human's, or one under the new session's name
-    const yields = (held: Claim | null): boolean => !held || (request.role !== 'lead' && held.session === request.name) || held.role === 'coordinator' || held.sessionId === 'human';
+    // A matching offline claimant can launch onto its own node; Sessions.launch still refuses a live name.
+    // Other claims yield only from the Coordinator or human, as before.
+    const yields = (held: Claim | null): boolean => !held || (held.session === request.name && held.role === request.role) || held.role === 'coordinator' || held.sessionId === 'human';
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
     if (!verifier && !yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
     const token = Symbol(request.name);
@@ -239,6 +240,8 @@ export class TaskWorktrees {
     let taken: { claim: Claim | null };
     try {
       const actor: Actor = { id: process.sessionId, name: process.name, role: process.role };
+      // The adapter can settle before its first hello. Adopt provisional ownership before claim() reads it.
+      resumed(() => this.#tracker.adoptSession(process.name, process.sessionId));
       taken = await this.#tracker.claim(actor, id, { force: true }, resumed, () => {
         authorize?.();
         const held = this.#tracker.claimOf(id);
