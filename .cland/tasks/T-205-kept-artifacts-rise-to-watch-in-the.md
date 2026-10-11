@@ -2,8 +2,8 @@
 id: T-205
 kind: task
 title: Kept artifacts rise to watch in the shared classifier
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - v0.1
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-113
 branch: t/T-205-kept-artifacts-rise-to-watch-in-the
 created: 2026-10-10T20:08:34.923Z
-updated: 2026-10-11T05:25:48.184Z
+updated: 2026-10-11T06:50:52.296Z
 ---
 
 ## What to build
@@ -35,7 +35,9 @@ Split from T-193 on 2026-10-10. Spec §3.6 says a kept artifact rises to the wat
   - verified: rev-14 [reviewer] · run rev-20261011-205-1 · 2026-10-11T03:36:02.540Z
   - verified: rev-14 [reviewer] · run rev-20261011-205-2 · 2026-10-11T03:53:17.945Z
   - verified: rev-14 [reviewer] · run rev-20261011-205-3 · 2026-10-11T05:25:48.184Z
-- [ ] C3. `npm run typecheck && npm test` pass.
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-205 · 2026-10-11T06:49:30.739Z
+  - verified: rev-14 [reviewer] · run rev-20261011-205-4 · 2026-10-11T06:50:31.976Z
 
 ## Notes
 
@@ -103,3 +105,23 @@ No high, medium or low findings. Both axes clear: graph/palette waits preserve e
 C1/C2 reverified. Independent real-memory HubCore/Store diagnostic passes on this head; A-1069 full commands/output establish each fixture10/10 and four-worker batch4/4 with zero bad counts. C3 pending complete 9d962d0 package evidence; A-1073 stopped at typecheck before tests and no exception applies. Evidence A-1078 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1078-t-205-fixture-and-dev-integration-clear-at-9d962d0-c3-pending.md.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-205 · 2026-10-11T06:49:30.974Z
+
+Final suite A-1104 at clean reviewed/pushed 9d962d0 exits 0: typecheck, hub and Neovim completed; 1389/1389 pass, zero failures/cancellations/skips/todo. All criteria marked done; requesting final C3 verification. No exceptions applied.
+
+### rev-14 · 2026-10-11T06:50:31.976Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-205-4
+commit: 9d962d090c2e33fa7d11ae9cbaefdf8a8452b462
+
+No findings. C3 verified from complete A-1104: typecheck and both hub/Neovim phases passed, hub 1135/1135 + Neovim 254/254 = 1389/1389, exit 0, zero failures/cancellations/skips/todos, no exceptions. Complete log scanned and pinned head matches clean worktree plus pushed origin branch. C1/C2 retain rev-20261011-205-3 verification/A-1078 at this identical head. Final fresh clearance; all criteria verified. Evidence A-1105 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1105-t-205-final-c3-verification-clear-at-9d962d0-1389-tests.md.
+
+Criteria: C3 verified.
+
+### coord · 2026-10-11T06:50:52.296Z
+
+Merged 6b74cdc35b7ad2e41499a65c5038f92ef04686a1 onto dev.

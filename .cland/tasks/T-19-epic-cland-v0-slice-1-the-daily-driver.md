@@ -2,7 +2,7 @@
 id: T-19
 kind: epic
 title: "Epic: cland v0 slice 1, the daily driver"
-state: open
+state: closed
 labels:
   - ready-for-agent
   - epic
@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: null
 blocked_by: []
-topic: null
+topic: topic-121
 branch: null
 created: 2026-10-08T11:40:32Z
-updated: 2026-10-09T21:09:05.164Z
+updated: 2026-10-11T06:40:28.557Z
 github:
   repo: Kealman/cland-v0
   number: 19
@@ -129,3 +129,53 @@ Run note 20:58Z. The hub restarted on dev d7b821b (pid 61541), by the human's de
 ### coord · 2026-10-09T21:09:05.164Z
 
 Run note 21:09Z. First live refusal of T-74's gate: `cland merge T-105` refused with merge-unpublished, because the root's dev held 5c192d5, an unpushed v0.1 spec commit from the human's other session. No ref moved. `cland push` published it, and the merge was retried. The gate works as designed. That session still commits without pushing, so every merge now needs a push first.
+
+### qa-16 · 2026-10-11T06:39:09.116Z
+
+verdict: qa
+result: clear
+by: qa-16 [qa]
+run: qa-2026-10-11-16-t19-closure
+commit: 8ffd8cacb221ec5e941f428b153ff94f3081f1cb
+
+| Check | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| Release commit and tag | read-only Git | PASS | `git log --oneline -1 8ffd8ca`: “Tracker: T-76 filed; T-20 run note”; full commit 8ffd8cacb221ec5e941f428b153ff94f3081f1cb. Annotated v0.0.1 tag object e1aefa85c5d5f762f46773c8916e2e7fb717732b peels to this commit; local main is exactly this commit. |
+| Release acceptance | task.view T-64 / T-20 | PASS | Both closed. T-64's 2026-10-09 16:42:21Z record names T-62's launch, review/QA, merge db7b7d7 and release v0.0.1. Its 16:44:13Z comment records the human's instruction “ok comment instead of me, and close it” and confirmation that the release left from inside cland. T-20's 16:39:45Z release and 16:44:26Z closure records agree. |
+| Slice-1 history | task.view T-42 | PASS | Closed at the human's request on 2026-10-09 14:52:19Z. The record distinguishes the earlier rehearsal from the real run and explicitly waives the separate human-confirmation criterion. This is historical acceptance/waiver evidence, not a fresh demo. |
+| Closure authority | task.view T-130 | PASS | D20, recorded 2026-10-11 06:36:26Z, directs T-19 closure and moves its open tech debt to T-216. |
+| Remaining work and criteria | task.view T-19; task list --under T-19 --state open --json | PASS | Open-child query returns {"items":[]}. T-19 exposes criteria: []; there are no stable criterion ids to verify. |
+
+Findings: high none; medium none; low none for this closure audit.
+
+QA clear T-19 under D20. Run: qa-2026-10-11-16-t19-closure. Covered commit: 8ffd8cacb221ec5e941f428b153ff94f3081f1cb (v0.0.1). Verified: release ref identity, recorded release/human acceptance, historical slice-1 closure evidence, and absence of open children. No criterion marks requested: T-19 has no parsed criteria, so `verified: all` would add no meaningful verification.
+
+Not run: new product demo, test suite, fresh real-model/terminal exercise, and live GitHub ref query; this request is explicitly an audit of existing release evidence. The historical GitHub publication is supported by T-64/T-20's recorded release readback, with local tag/main verified now. T-64 and T-42's legacy checkboxes were not newly verified or modified.
+
+### qa-16 · 2026-10-11T06:40:12.605Z
+
+verdict: qa
+result: clear
+by: qa-16 [qa]
+run: qa-2026-10-11-16-t19-dev-closure
+commit: 6675043d1a35ace9dd7de12979f0fd81c38d6b01
+
+| Check | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| Requested dev build | read-only Git | PASS | git rev-parse dev = 6675043d1a35ace9dd7de12979f0fd81c38d6b01 |
+| Released build retained | read-only Git | PASS | git merge-base --is-ancestor 8ffd8ca dev exits 0; v0.0.1 peels to 8ffd8cacb221ec5e941f428b153ff94f3081f1cb |
+| Release demo items | task.view | PASS | T-64 and T-20 remain closed |
+| Open children | task list --under T-19 --state open --json | PASS | {"items":[]} |
+| Criterion inventory | task.view T-19 | PASS | criteria: []; no criterion ids to mark |
+
+Findings: high none; medium none; low none within this closure audit.
+
+QA clear T-19 under D20 at dev 6675043d1a35ace9dd7de12979f0fd81c38d6b01. Run: qa-2026-10-11-16-t19-dev-closure.
+
+Release acceptance evidence is retained in A-1099 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1099-t-19-closure-qa-v0-0-1-release-evidence.md) and the earlier QA verdict qa-2026-10-11-16-t19-closure, pinned to v0.0.1's 8ffd8cacb221ec5e941f428b153ff94f3081f1cb. That report records the tag/main identity, T-64's human acceptance confirmation, T-20 closure and T-42's historical acceptance/waiver.
+
+This second verdict verifies those closure conditions on current dev, as requested after the epic gate reported qa-stale for the historical release SHA. It is not a fresh behavioral regression verdict on all changes since v0.0.1. No new demo, suite, real-model/terminal exercise or live GitHub query ran; the Coordinator requested release-evidence closure only. No verified marks were added because T-19 has no criteria.
+
+### coord · 2026-10-11T06:40:28.557Z
+
+Closed by the human's decision D20 (T-130, 2026-10-11) on QA verdict qa-2026-10-11-16-t19-dev-closure (dev 6675043, A-1100), with release evidence qa-2026-10-11-16-t19-closure (v0.0.1, 8ffd8ca, A-1099). T-19 is no longer the catch-all parent; open tech debt moved to T-216 (Tech debt).

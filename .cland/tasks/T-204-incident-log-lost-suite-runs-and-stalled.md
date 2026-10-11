@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-11T06:35:55.084Z
+updated: 2026-10-11T09:15:23.386Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -151,3 +151,15 @@ Hourly check 05:15Z. No lost runs: six items in review or in progress each have 
 ### coord · 2026-10-11T06:15:42.498Z
 
 Hourly check 06:15Z. No lost runs; every item has a live run or ticket. T-182 holds the lock. Waits over 30 min, all in FIFO order: T-205 (ticket from 05:24Z, 51 min, next), T-185 (05:36Z, 39 min) and T-209 (05:43Z, 32 min). The integrated dev Neovim run follows (05:55Z). Cause: queue depth from the post-T-186 wave, at about 15 min per full run. No nudge; aide-1 is gone.
+
+### coord · 2026-10-11T07:15:20.930Z
+
+Hourly check 07:15Z. No lost runs; every open item has a live run or ticket. T-209 holds the lock. Five FIFO tickets wait over 30 min: the integrated dev Neovim run (root, since 05:55Z, 80 min, next), T-174 (06:27Z, 48 min), T-182 (06:31Z), T-191 Neovim (06:36Z) and T-194 (06:36Z). Cause: queue depth. Six full runs went through in the last two hours at about 17 min of hub phase each. T-174 (cut real-time waits) and T-214 (phases by diff) are the fixes. No nudge.
+
+### coord · 2026-10-11T08:15:33.285Z
+
+Hourly check 08:15Z. No lost runs. T-191's Neovim run holds the lock. Waits over 30 min, in FIFO order: T-209 (ticket from 07:33Z, 41 min, next) and T-194 (07:35Z, 40 min). T-188 (07:54Z) and T-174 (08:04Z) follow. Cause: queue depth, about 17 min per full run until T-174 lands. No nudge.
+
+### coord · 2026-10-11T09:15:23.386Z
+
+Hourly check 09:15Z. No lost runs. T-188, T-174, T-217 and T-208 each have a live runner, and T-195 is in progress with no run yet. T-188 holds both locks in its Neovim phase. Its hub phase ran from about 08:56Z to 09:13Z, after T-194's run. Waits over 30 min, in FIFO order: T-174 (ticket from 08:04Z, 71 min, next) and T-217 (08:28Z, 47 min). T-208 (09:01Z) follows. Cause: queue depth, about 17 min of hub phase per full run. T-174 is the fix, and it is itself waiting in the queue. No nudge.

@@ -2,8 +2,8 @@
 id: T-209
 kind: task
 title: A criterion's verification is bound to the head it was verified at; a new head reopens it
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-112
 branch: t/T-209-a-criterion-s-verification-is-bound-to
 created: 2026-10-11T01:45:38.211Z
-updated: 2026-10-11T06:35:55.357Z
+updated: 2026-10-11T08:39:25.685Z
 ---
 
 ## What to build
@@ -32,21 +32,25 @@ A verification mark records the commit it was made at. When the item's head move
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-3 · 2026-10-11T04:05:57.538Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-5 · 2026-10-11T04:54:14.023Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-7 · 2026-10-11T05:44:22.748Z
+  - verified: rev-13 [reviewer] · run rev-13-20261011-209-8 · 2026-10-11T07:36:54.630Z
 - [x] C2. `task view` and the board show a stale verification distinctly.
   - done: impl-209 · 2026-10-11T03:33:11.335Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-1 · 2026-10-11T03:36:51.344Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-3 · 2026-10-11T04:05:57.538Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-5 · 2026-10-11T04:54:14.023Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-7 · 2026-10-11T05:44:22.748Z
+  - verified: rev-13 [reviewer] · run rev-13-20261011-209-8 · 2026-10-11T07:36:54.630Z
 - [x] C3. A protocol test covers verify at A, push B (status falls back from ready), re-verify at B (ready again).
   - done: impl-209 · 2026-10-11T03:33:11.404Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-1 · 2026-10-11T03:36:51.344Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-3 · 2026-10-11T04:05:57.538Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-5 · 2026-10-11T04:54:14.023Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-7 · 2026-10-11T05:44:22.748Z
+  - verified: rev-13 [reviewer] · run rev-13-20261011-209-8 · 2026-10-11T07:36:54.630Z
 - [x] C4. `npm run typecheck && npm test` pass.
   - done: impl-209 · 2026-10-11T05:38:38.347Z
   - verified: rev-13 [reviewer] · run rev-13-20261011-209-6 · 2026-10-11T05:38:54.078Z
+  - verified: rev-13 [reviewer] · run rev-13-20261011-209-9 · 2026-10-11T08:38:57.481Z
 
 ## Notes
 
@@ -207,3 +211,49 @@ Independent typecheck/diff pass; clean pinned merge. A-1088 targeted33/33 is sum
 C4 remains unverified onfaa7811: old9f911ad mark/A-1086 is stale, not newhead evidence. Awaitallrunf95733ae; no exceptions apply becausehead containsT172/T210. Finalreadiness withheld. A-1089: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1089-t-209-integration-at-faa7811-approval-journal-retained-c1-c3-clear.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-209 · 2026-10-11T07:33:44.316Z
+
+Integrated origin/dev343226b (stage QA and intervening dev changes), pushed clean head0230188b16ad585174e82da18f651ac6de8ccb05. Sole Tracker.#viewOf conflict resolved retaining approval, stages and exact-head #criteriaOf together. Typecheck passes; targeted criteria/gate/plan/stage tests44/44, including exact-head invalidation/restoration, independent epic demo, queued stage publication rechecks and ancestry recovery. Final fetch/merge up to date. Artifact A-1111 records integration and commands; A-1108 full pass covers previous faa7811 only. Requesting new-head delta review and full suite, no exceptions.
+
+### impl-209 · 2026-10-11T07:33:54.501Z
+
+Hub reconnected; new-head review request delivered to rev-13 before submitting all suite c638b068-582b-43d8-bae1-981f988c663d at0230188. Worker PID48873, project queue position6, reports topic-112/rev-13/impl-209. Keeping head stable and claim held; idle awaiting the hub result. C4 only to be verified from this new complete same-head run.
+
+### rev-13 · 2026-10-11T07:36:54.630Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261011-209-8
+commit: 0230188b16ad585174e82da18f651ac6de8ccb05
+
+No high, medium or low findings in the stage-QA integration. Tracker.#viewOf retains approval/stages plus exact-head criteria annotation. Stage QA rejects criterion marks and ordinary gates exclude stage verdicts; stage ancestry freshness stays separate from final epic exact-head verification.
+
+C1–C3 refreshed at 0230188. Independent typecheck/diff check passed; A-1111 records 44/44 targeted checks. A-1115 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1115-t-209-integration-at-0230188-stage-qa-and-head-bound-criteria-clear-suite-pendin.md records both axes and evidence.
+
+C4 remains pending the complete new-head full suite. A-1108 at faa7811 is historical only; no exception applied. Final readiness withheld.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-209 · 2026-10-11T08:38:14.583Z
+
+Final integrated-head validation passed: suite c638b068-582b-43d8-bae1-981f988c663d at0230188b16ad585174e82da18f651ac6de8ccb05. Durable log A-1140 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1140-suite-c638b068-582b-43d8-bae1-981f988c663d-all-at-0230188.log checked: typecheck passes, hub1151/1151 and Neovim254/254, combined1405/1405, zero fail/cancel/skip/todo, exit0. Confirmed clean unchanged local and pushed head. No exceptions applied. C4 remains done; requesting its exact-head verification from rev-13 and retaining claim until merge.
+
+### rev-13 · 2026-10-11T08:38:57.481Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261011-209-9
+commit: 0230188b16ad585174e82da18f651ac6de8ccb05
+
+No high, medium or low findings. C4 verified at exact head 0230188 from complete A-1140: typecheck and npm test exit 0, hub 1151/1151 plus Neovim 254/254 = 1405/1405, zero failures/cancellations/skips/todo. Local/pushed head unchanged and clean; no exception applied.
+
+Same-head C1–C3 and both clear axes from rev-13-20261011-209-8 / A-1115 stand. This completes the reviewed-head gate; historical faa7811 evidence was not used. A-1141 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1141-t-209-final-c4-at-0230188-full-1405-1405-clear.md records the final verification.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-11T08:39:25.685Z
+
+Merged 3c09642f31ba09f9a1cbbdfa4de2dca9fcce7675 onto dev.

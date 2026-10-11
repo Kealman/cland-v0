@@ -3,7 +3,7 @@ id: T-199
 kind: task
 title: A lead's review or QA request reaches one verifier, not every holder of the role
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T17:03:52.868Z
-updated: 2026-10-10T17:03:52.868Z
+updated: 2026-10-11T07:13:43.462Z
 ---
 
 ## What to build

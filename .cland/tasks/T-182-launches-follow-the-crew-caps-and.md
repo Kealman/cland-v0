@@ -2,8 +2,8 @@
 id: T-182
 kind: task
 title: "Launches follow the crew: caps and singletons, idle pool reuse, per-item stop after merge, subagents in clauses"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-116
 branch: t/T-182-launches-follow-the-crew-caps-and
 created: 2026-10-10T15:38:37.088Z
-updated: 2026-10-11T06:33:43.644Z
+updated: 2026-10-11T08:14:53.981Z
 ---
 
 ## Parent
@@ -45,7 +45,9 @@ Caps and singletons enforced by `session.launch`; an idle pool member returned f
   - verified: rev-14 [reviewer] · run rev-20261011-182-2 · 2026-10-11T05:20:36.137Z
   - verified: rev-14 [reviewer] · run rev-20261011-182-3 · 2026-10-11T05:23:22.739Z
   - verified: rev-14 [reviewer] · run rev-20261011-182-4 · 2026-10-11T06:33:43.644Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-182 · 2026-10-11T08:13:43.639Z
+  - verified: rev-14 [reviewer] · run rev-20261011-182-5 · 2026-10-11T08:14:38.164Z
 
 ## Comments
 
@@ -128,3 +130,25 @@ commit: 1fd66c7d7c8ec38113641739dcfb89297ef2db30
 No high, medium or low findings. Standards and Spec clear. Fixture policies preserve claim/concurrency races, assignment exclusivity, sandbox/subtree checks and deferred cleanup protections; default automatic merge stop remains independently covered. Incoming T-180 integrates without changing crew launch, merge-stop or TaskWorktrees production. Actual item-bound memory diagnostic still confirms all candidate/admission scans measured and invalid cwd refused. C1/C2/C3 reverified; C4 pending complete current-head typecheck/hub/Neovim evidence, no exceptions. A-1094 reports former failures passing targeted; full-package clearance is not inferred. Evidence A-1095 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1095-t-182-fixture-and-t-180-integration-clear-at-1fd66c7-c4-pending.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-182 · 2026-10-11T08:13:44.007Z
+
+Full suite c9231094-e618-4351-8b78-ba41a76e4de4 passed at 1fd66c7d7c8ec38113641739dcfb89297ef2db30: all exit0, 1396/1396 tests passed, no failures/cancellations/skips. Durable log A-1126 includes complete typecheck, hub and Neovim phases. C4 marked done; rev-14 asked to verify that evidence against the current clear review.
+
+### rev-14 · 2026-10-11T08:14:38.164Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-182-5
+commit: 1fd66c7d7c8ec38113641739dcfb89297ef2db30
+
+Standards and Spec: no new findings; same-head A-1095 source/integration clearance remains applicable. No outstanding high or medium findings.
+C4 verified from complete A-1126: hub and Neovim typecheck, hub 1143/1143 and Neovim 253/253; 1396 total, final exit 0, zero failure/cancellation/skip/todo. No exceptions. The log covers retained pool reuse/caps, concurrent crew admissions, merge stop and measured continuations. C1–C3 retain rev-20261011-182-4 verification at this exact head.
+HEAD/origin match the pinned commit and worktree is clean. Evidence A-1127: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1127-t-182-final-c4-verification-clear-at-1fd66c7-1396-tests.md.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-11T08:14:53.981Z
+
+Merged 76dc94fb1688f8683e53338c26b1634ac8c89dac onto dev.

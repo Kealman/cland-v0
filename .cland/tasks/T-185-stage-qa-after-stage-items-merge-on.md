@@ -2,8 +2,8 @@
 id: T-185
 kind: task
 title: "Stage QA: after-stage items merge on review; one QA run on dev closes the stage with a verdict naming it"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-117
 branch: t/T-185-stage-qa-after-stage-items-merge-on
 created: 2026-10-10T15:38:37.751Z
-updated: 2026-10-11T05:37:57.440Z
+updated: 2026-10-11T07:13:15.111Z
 ---
 
 ## Parent
@@ -41,7 +41,9 @@ After-stage items merge on review alone; one QA run on `dev` closes the stage wi
   - verified: rev-14 [reviewer] · run rev-20261011-185-1 · 2026-10-11T05:17:38.167Z
   - verified: rev-14 [reviewer] · run rev-20261011-185-2 · 2026-10-11T05:31:25.010Z
   - verified: rev-14 [reviewer] · run rev-20261011-185-3 · 2026-10-11T05:37:57.440Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-185 · 2026-10-11T07:09:53.436Z
+  - verified: rev-14 [reviewer] · run rev-20261011-185-4 · 2026-10-11T07:12:16.764Z
 
 ## Comments
 
@@ -104,3 +106,25 @@ commit: 464561e2822645531bf002a2cf186eebe31d6cf9
 No high or medium findings remain. Standards and Spec are both clear. A-1079 same-SHA recovery is resolved: only thrown ancestry errors retry on the bounded background schedule, completed negatives stay false, waiting items receive recovery notifications, and stop/obsolete-tip pruning discard retries. The real subprocess regression restores Git without moving dev. Actual-Freshness memory diagnostic independently confirms the retry bound, same-SHA recovery, all waiters, negatives and cleanup. A-1082 recovery/rollback/demo 3/3 and A-1083 freshness 5/5 pass. C1/C2/C3 verified; C4 remains pending complete current-head typecheck/hub/Neovim evidence, with no exceptions. Evidence A-1085 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1085-t-185-same-sha-ancestry-recovery-clear-at-464561e-c4-pending.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-185 · 2026-10-11T07:09:53.308Z
+
+Complete final-head suite ee9e75be-ee70-484b-b897-10497cd00180 passed at unchanged pushed head 464561e2822645531bf002a2cf186eebe31d6cf9. Typecheck (hub and Neovim) passed; hub 1145/1145 and Neovim 253/253 passed, total 1398, zero failures/cancellations/skips/todos. Durable log A-1106 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1106-suite-ee9e75be-ee70-484b-b897-10497cd00180-all-at-464561e.log. Worktree remains clean. Marking C4 done and requesting rev-14 verification; C1–C3 already verified at this head. Holding the claim for the supervising merge gate.
+
+### rev-14 · 2026-10-11T07:12:16.764Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-185-4
+commit: 464561e2822645531bf002a2cf186eebe31d6cf9
+
+Standards: no new findings; prior A-1085 source clearance remains applicable at this unchanged head.
+Spec: no outstanding high/medium findings. C4 verified from complete A-1106: hub and Neovim typecheck, hub 1145/1145 and Neovim 253/253; 1398 total, exit 0, zero failure/cancellation/skip/todo. No exceptions. C1–C3 retain rev-20261011-185-3 verification at this exact commit.
+Review evidence A-1107: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1107-t-185-final-c4-verification-clear-at-464561e-1398-tests.md. HEAD/origin match the pinned commit and worktree is clean.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-11T07:13:15.111Z
+
+Merged 343226b4bf1cbe71040eaf0c537b6dd8e56bacf4 onto dev.

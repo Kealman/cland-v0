@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T05:55:12.001Z
-updated: 2026-10-11T06:35:56.185Z
+updated: 2026-10-11T07:33:10.348Z
 ---
 
 ## What to build
@@ -32,3 +32,9 @@ Make each wait on the event it means, or scale its wait to an unloaded baseline,
 ## Notes
 
 Size XS. Successor to T-172 and T-210.
+
+## Comments
+
+### coord · 2026-10-11T07:33:10.348Z
+
+Add a third case: nvim/test/thread.test.ts 'background fold reconstruction leaves the focused board alone and rejects non-thread windows' failed in the integrated dev Neovim phase at 438e53e (2026-10-11 07:3xZ, 253/254). It passes alone on the same head.
