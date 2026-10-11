@@ -1084,6 +1084,12 @@ node hub/bin/cland.ts --version
 
 ### Tests
 
+Automatic Node module compile-cache activation is disabled: warm loads fail on
+the supported Node 24 engine range. The [qualification check and measurements](../docs/node-compile-cache.md)
+record the reproduction, per-process-cache cost and upstream follow-up (T-220).
+Re-run it when a new Node 24.x is released or Node 25 support is added, before
+enabling a shared cache and validating that configuration with a full suite.
+
 Implementers use `cland suite` for full runs and wait for its artifact-backed result;
 see [the agent test workflow](../docs/agents/tests.md). The package commands below
 are also available for humans and isolated CI.
