@@ -2,8 +2,8 @@
 id: T-226
 kind: task
 title: A role-addressed review request with no free verifier returns "empty"; find why a live idle verifier wasn't eligible, and decide whether the request should queue
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - qa-found
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-146
 branch: t/T-226-a-role-addressed-review-request-with-no
 created: 2026-10-11T15:43:30.494Z
-updated: 2026-10-11T18:55:18.520Z
+updated: 2026-10-11T20:05:53.924Z
 ---
 
 ## What happened
@@ -34,9 +34,13 @@ This was an explicit non-delivery, not silent loss. After rev-d held another ite
 
 - [x] C1. The cause is identified with a protocol test that reproduces it.
   - done: impl-226 · 2026-10-11T18:21:45.287Z
+  - verified: rev-17 [reviewer] · run rev-20261011-17-T226-1 · 2026-10-11T20:05:35.772Z · commit fa592f725dbc33706909c64582e18336aa223c8b
 - [x] C2. Either a free verifier receives the request, or the request queues and is delivered when one frees up; the sender's outcome says which.
   - done: impl-226 · 2026-10-11T18:21:45.737Z
-- [ ] C3. `npm run typecheck && npm test` pass.
+  - verified: rev-17 [reviewer] · run rev-20261011-17-T226-1 · 2026-10-11T20:05:35.772Z · commit fa592f725dbc33706909c64582e18336aa223c8b
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-226 · 2026-10-11T20:05:19.441Z
+  - verified: rev-17 [reviewer] · run rev-20261011-17-T226-1 · 2026-10-11T20:05:35.772Z · commit fa592f725dbc33706909c64582e18336aa223c8b
 
 ## Comments
 
@@ -63,3 +67,23 @@ Reviewer found one low UI issue at 07e9ea0: queued request settlement cleared St
 ### impl-226 · 2026-10-11T18:54:35.550Z
 
 Suite 40626be5 passed at 07e9ea0: typecheck and all 1529 tests pass; log A-1351. Committed the reviewer's low warning-clearing fix as 4c3d758, with the subscribed-UI protocol regression previously verified red→green (routing file 4/4 and typecheck pass). Fetched and merged origin/dev fdb8c5c8558ce42f933bb4d296950ea03181e8f3 with no conflicts; pushed final head fa592f725dbc33706909c64582e18336aa223c8b. Preparing re-review and corrected-head full suite; C3 waits for that exact-head result.
+
+### impl-226 · 2026-10-11T20:05:19.617Z
+
+Final full suite 65dd3590-40af-4dfd-8217-fd288d1dc2ca passed at fa592f725dbc33706909c64582e18336aa223c8b: typecheck plus all 1535 tests passed, zero failures/cancellations/skips. Durable log A-1364. C3 marked done; all implementation criteria complete. Reviewer re-review A-1352 reported no remaining findings at the same head. Requesting final verdict; retaining claim until merge.
+
+### rev-17 · 2026-10-11T20:05:35.772Z
+
+verdict: review
+result: clear
+by: rev-17 [reviewer]
+run: rev-20261011-17-T226-1
+commit: fa592f725dbc33706909c64582e18336aa223c8b
+
+No remaining findings (high/medium/low); Standards and Spec clear. C1 verified by the bare-spoke accepted-clause eligibility protocol reproduction. C2 verified by singleton/affinity selection and durable automatic queued assignment, sender rename/restart and explicit refusal tests. The low stale-topic-warning finding A-1338 is corrected and covered by subscribed-UI protocol regression (A-1340, re-review A-1352). C3 verified from A-1364: exact reviewed head, typecheck and full suite pass 1535/1535, zero failures/cancellations/skips, exit 0. All criteria verified at fa592f725dbc33706909c64582e18336aa223c8b.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-11T20:05:53.924Z
+
+Merged 803a61bc9b06cfc8aead3a7032226b3e94866539 onto dev.

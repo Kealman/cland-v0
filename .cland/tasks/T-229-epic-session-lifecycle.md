@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:48:08.410Z
-updated: 2026-10-11T17:49:19.197Z
+updated: 2026-10-11T20:10:47.639Z
 ---
 
 ## Goal
@@ -47,6 +47,7 @@ stages:
         - T-222
       - - T-226
       - - T-202
+      - - T-249
   - name: ownership and recovery
     qa:
       scope: none

@@ -2,8 +2,8 @@
 id: T-232
 kind: task
 title: "cland verify: a hub-owned suite scheduler with admission by load budget and priority, replacing the lock file as the source of truth"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-143
 branch: t/T-232-cland-verify-a-hub-owned-suite-scheduler
 created: 2026-10-11T17:48:35.223Z
-updated: 2026-10-11T19:18:02.675Z
+updated: 2026-10-11T20:20:22.136Z
 ---
 
 ## What to build
@@ -46,8 +46,9 @@ updated: 2026-10-11T19:18:02.675Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-232-2 · 2026-10-11T18:33:08.743Z · commit 5db3e65b3d2b8d913d5a0e30536e65a80028d48b
   - verified: rev-18 [reviewer] · run rev-18-20261011-232-3 · 2026-10-11T19:18:02.675Z · commit cb1464715678345eca1dfca1cc3e2734eec62c4f
 - [x] C5. Protocol tests cover queueing, priority, restart, shim and death. `npm run typecheck && npm test` pass.
-  - done: impl-232 · 2026-10-11T19:08:18.020Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-232-2 · 2026-10-11T19:08:35.441Z · commit 5db3e65b3d2b8d913d5a0e30536e65a80028d48b
+  - done: impl-232 · 2026-10-11T20:19:51.438Z
+  - verified: rev-18 [reviewer] · run rev-18-20261011-232-3 · 2026-10-11T20:20:06.777Z · commit cb1464715678345eca1dfca1cc3e2734eec62c4f
 
 ## Comments
 
@@ -130,3 +131,11 @@ commit: cb1464715678345eca1dfca1cc3e2734eec62c4f
 No high or medium findings. Independently confirmed landed dev ancestry, byte-identical carried/landed T-212 implementation, and unchanged reviewed source after conflict resolution. The sole new 39-line public regression checks own cancellation removes the admitted worker's compatibility FIFO ticket, preserves the manual holder and posts exactly one cancelled result. Rechecked stable caller authorization, queued removal, verified worker termination, cleanup, shim exclusion and once-only reporting. C1–C4 verified at this head; C5 awaits a fresh full suite. Separate Standards/Spec evidence: A-1356 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1356-t-232-merge-re-review-at-cb14647-c1-c4-clear-c5-pending.md).
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-232 · 2026-10-11T20:19:51.808Z
+
+Fresh merged-head C5 evidence: suite a8e09f79-30dc-4c4c-8c7d-5d404dd62b3c at cb1464715678345eca1dfca1cc3e2734eec62c4f exits 0; typecheck and 1547/1547 tests pass with no failures or skipped tests. Durable log A-1368: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1368-suite-a8e09f79-30dc-4c4c-8c7d-5d404dd62b3c-all-at-cb14647.log. C1–C4 already verified at this head; claim held for final C5 verification and merge.
+
+### coord · 2026-10-11T20:20:22.136Z
+
+Merged 9b67aea7dbd306662fc46834c0dfa914650dc09e onto dev.
