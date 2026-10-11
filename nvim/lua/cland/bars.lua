@@ -327,7 +327,7 @@ function M.winbar(win)
     local n = state.needs_you()
     return head(win, 'INBOX', n == nil and {} or { n > 0 and { n .. ' need you', 'ClandAmberBar' } or { 'nothing needs you', 'ClandGreenBar' } })
   elseif role == 'artifacts' then
-    return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open/fold · n new · s attach · q back', 'ClandDimBar' } })
+    return head(win, 'ARTIFACTS · ' .. tostring(vim.b[buf].cland_topic), { { '↵ open/fold · n new · s attach · x delete · q back', 'ClandDimBar' } })
   elseif role == 'artifact' then
     local a = require('cland.artifacts').get(vim.b[buf].cland_artifact)
     if a and a.kind == 'prompt' and a.status == 'draft' then

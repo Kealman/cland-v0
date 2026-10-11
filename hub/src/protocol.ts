@@ -78,12 +78,15 @@ export type Artifact = {
   folder?: boolean; entry?: string; kept?: boolean;
   movedTo?: { folder: string; path: string }; explicitArchive?: boolean;
   promoted?: string; archivedAt?: string; fileDeleted?: boolean;
+  /** Owned manual-delete storage, recorded before any bytes move. */
+  deletion?: { path: string; backup: string };
 };
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
 export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
 export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string };
 export type ArtifactKeep = { type: 'artifact.keep'; id: string; artifact: string; kept?: boolean };
+export type ArtifactDelete = { type: 'artifact.delete'; id: string; artifact: string };
 export type ArtifactArchive = { type: 'artifact.archive'; id: string; artifact: string };
 export type ArtifactMove = { type: 'artifact.move'; id: string; artifact: string; folder: string; name?: string };
 /** Filters on the Agents record; when both are given they intersect. */
@@ -491,6 +494,7 @@ export type ClientRequest =
   | ArtifactCreate
   | ArtifactList
   | ArtifactKeep
+  | ArtifactDelete
   | ArtifactArchive
   | ArtifactMove
   | PromptSend
@@ -659,6 +663,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.version === undefined || typeof f.version === 'string') && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'merge':
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
+    case 'artifact.delete':
+      return typeof f.artifact === 'string' && /^A-[1-9][0-9]*$/.test(f.artifact);
     case 'artifact.create':
     case 'artifact.list':
     case 'artifact.keep':

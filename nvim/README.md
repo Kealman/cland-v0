@@ -543,12 +543,13 @@ artifact when it remains visible.
 | `p` | Promote the selected file or folder artifact into a project-relative destination. |
 | `k` | Keep/unkeep the artifact. Keeping raises it to watch and exempts it from retention. |
 | `d` | Archive the artifact; human and Aide bytes remain available. |
+| `x` | Delete the selected artifact after choosing Delete in the confirmation. Cancel leaves it untouched. Select the folder itself to delete all its files. |
 | `za` / `zo` / `zc` | Toggle/open/close the selected folder or section. |
 | `zR` / `zM` | Open background sections / close all folds. `zR` leaves archive closed. |
 | `A` | Show/hide Archived. |
 | `q` | Return to the previous centre view. |
 
-`x` deletion and confirmation are deferred to T-219 and are not bound yet.
+Deleted artifacts remain in Archived and topic history with a **file deleted** mark. Deletion removes artifact storage; a promoted project copy remains available.
 `␣a` and the palette's `~` prefix continue to open artifacts quickly.
 Text artifacts and folder files use normal editable buffers: `:w` saves directly
 to the durable artifact path, and `q` returns to the browser with edits retained.

@@ -94,7 +94,7 @@ group('artifact', {{'<leader>ps','Send prompt draft'}, {'<leader>pa','Attach pro
   {'q','Previous centre view'}, {'R','Render Mermaid in browser'}})
 group('artifacts', {{'<CR>','Open file or fold folder/section'}, {'q','Previous centre view'},
   {'n','Create file or folder'}, {'m','Move file into folder'}, {'s','Attach artifact to composer'},
-  {'p','Promote selected artifact to repository'}, {'k','Keep or unkeep artifact'}, {'d','Archive artifact'},
+  {'p','Promote selected artifact to repository'}, {'k','Keep or unkeep artifact'}, {'d','Archive artifact'}, {'x','Delete artifact (confirm)'},
   {'za','Toggle artifact fold'}, {'zo','Open artifact fold'}, {'zc','Close artifact fold'},
   {'zR','Open background sections'}, {'zM','Fold background sections'}, {'A','Show or hide archived artifacts'}})
 group('help', {{'q','Close keys'}, {'<Esc>','Close keys'}})

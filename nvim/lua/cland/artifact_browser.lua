@@ -188,6 +188,19 @@ local function bind(tree)
     local a = active(selected(b))
     if a then request({ type = 'artifact.archive', artifact = a.id }) end
   end)
+  map('x', function()
+    local row = selected(b)
+    local a = active(row)
+    if not a then return end
+    if row.file then return state.say('select the folder artifact to delete it', 'ClandRedBar') end
+    vim.ui.select({ 'Cancel', 'Delete' }, { prompt = 'Delete ' .. a.id .. ' · ' .. a.title .. '? This removes its files.' }, function(choice)
+      if choice == 'Delete' then
+        request({ type = 'artifact.delete', artifact = a.id }, function(value)
+          if value.followUp then state.say('Artifact deleted; cleanup failed: ' .. value.followUp.error, 'ClandRedBar') end
+        end)
+      end
+    end)
+  end)
   map('q', require('cland.layout').back)
 end
 

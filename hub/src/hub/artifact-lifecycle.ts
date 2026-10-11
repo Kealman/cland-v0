@@ -1,5 +1,6 @@
 // Artifact promotion and retention own their I/O reservations. Topic moves stay synchronous;
 // operations re-read the index after I/O, so a close/reopen is never overwritten by a stale artifact.
+import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -9,7 +10,7 @@ import { folderName } from './artifact-folder.ts';
 import { ArtifactError } from './artifacts.ts';
 
 export type Resumed = <T>(body: () => T) => T;
-export type ArtifactPromotion = { artifact: Artifact; followUp?: { error: string } };
+export type ArtifactOperationResult = { artifact: Artifact; followUp?: { error: string } };
 export type ArtifactFiles = Pick<typeof fs, 'copyFile' | 'mkdir' | 'lstat' | 'readdir' | 'realpath' | 'unlink' | 'link' | 'rename' | 'rm'>;
 const direct: Resumed = body => body();
 type IO<T> = Generator<Promise<unknown>, T, unknown>;
@@ -42,10 +43,15 @@ export class ArtifactLifecycle {
 
   #available(id: string, allowPromoted = false): Artifact {
     const a = this.#store.artifact(id);
+    if (this.#deleting(a)) throw new ArtifactError('artifact-busy', 'this artifact has an interrupted deletion; retry after recovery');
     if (!a || a.fileDeleted) throw new ArtifactError('artifact-unavailable', 'no artifact file is available');
     if (a.movedTo) throw new ArtifactError('artifact-path', 'this artifact was absorbed into a folder; edit its folder instead');
     if (a.promoted && !allowPromoted) throw new ArtifactError('artifact-path', `already promoted: ${a.promoted}`);
     return a;
+  }
+
+  #deleting(a: Artifact | null): boolean {
+    return !!a?.deletion || !!a?.folder && this.#store.movedArtifacts().some(child => child.movedTo?.folder === a.id && child.deletion);
   }
 
   *#destination(path: string): IO<{ root: string; path: string }> {
@@ -76,7 +82,7 @@ export class ArtifactLifecycle {
     }
   }
 
-  promote(id: string, path: string, authorize: () => void, resumed: Resumed = direct): Promise<ArtifactPromotion> {
+  promote(id: string, path: string, authorize: () => void, resumed: Resumed = direct): Promise<ArtifactOperationResult> {
     return run(this.#promote(id, path, authorize), resumed);
   }
 
@@ -100,7 +106,7 @@ export class ArtifactLifecycle {
     }
   }
 
-  *#promote(id: string, path: string, authorize: () => void): IO<ArtifactPromotion> {
+  *#promote(id: string, path: string, authorize: () => void): IO<ArtifactOperationResult> {
     authorize();
     const a = this.#available(id);
     if (this.#busy.has(id)) throw new ArtifactError('artifact-busy', 'this artifact has an operation in progress; retry');
@@ -164,11 +170,110 @@ export class ArtifactLifecycle {
     return next;
   }
 
-  move(id: string, folder: string, name: string | undefined, authorize: () => void, resumed: Resumed = direct): Promise<ArtifactPromotion> {
+  /** Human deletion keeps a tombstone for history. Reserve the owning folder too:
+   * moving, promoting and retention must not change its path during the delete. */
+  delete(id: string, authorize: () => void, resumed: Resumed = direct): Promise<ArtifactOperationResult> {
+    return run(this.#delete(id, authorize), resumed);
+  }
+
+  *#delete(id: string, authorize: () => void): IO<ArtifactOperationResult> {
+    authorize();
+    const source = this.#store.artifact(id), resolved = this.#store.resolveArtifact(id);
+    if (!source || !resolved || resolved.fileDeleted) throw new ArtifactError('artifact-unavailable', 'no artifact file is available');
+    const ids = [id, ...(source.movedTo ? [source.movedTo.folder] : [])];
+    if (ids.some(key => this.#busy.has(key) || this.#deleting(this.#store.artifact(key)))) throw new ArtifactError('artifact-busy', 'an artifact has an operation in progress; retry');
+    if (!this.#root) throw new ArtifactError('artifact-unavailable', 'this hub serves no project for artifacts');
+    for (const key of ids) this.#busy.add(key);
+    const storage = join(this.#root, '.cland', 'artifact-deletions');
+    const backup = join(storage, id + '-' + randomUUID());
+    let committed = false, intent = false;
+    try {
+      if (source.movedTo) {
+        const owner = this.#store.artifact(source.movedTo.folder)!;
+        const info = yield* wait(this.#files.lstat(owner.path));
+        if (!info.isDirectory() || info.isSymbolicLink()) throw new ArtifactError('artifact-path', 'the folder must be a real directory');
+      }
+      yield* wait(this.#files.mkdir(storage, { recursive: true }));
+      const storageInfo = yield* wait(this.#files.lstat(storage));
+      if (!storageInfo.isDirectory() || storageInfo.isSymbolicLink()) throw new ArtifactError('artifact-path', 'deletion storage must be a real directory');
+      authorize();
+      this.#store.updateArtifact({ ...this.#store.artifact(id)!, deletion: { path: resolved.path, backup } }); intent = true;
+      yield* wait(this.#files.rename(resolved.path, backup));
+      authorize();
+      const current = this.#store.artifact(id)!;
+      const next = { ...current, fileDeleted: true };
+      this.#store.updateArtifact(next); committed = true;
+      this.#changed(next);
+      if (source.movedTo) this.#changed(this.#store.artifact(source.movedTo.folder)!);
+      if (source.folder) {
+        for (const moved of this.#store.movedArtifacts()) {
+          if (moved.movedTo?.folder === id) this.#changed({ ...moved, fileDeleted: true });
+        }
+      }
+      yield* this.#finishDeletion(next);
+      return { artifact: this.#store.resolveArtifact(id)! };
+    } catch (err) {
+      if (committed) return { artifact: this.#store.resolveArtifact(id)!, followUp: { error: err instanceof Error ? err.message : String(err) } };
+      if (intent) {
+        try { yield* this.#recoverDeletion(this.#store.artifact(id)!); }
+        catch (recovery) { throw new AggregateError([err, recovery], `deletion failed and rollback could not restore ${resolved.path}; preserve the live path and ${backup}, and recover both before retrying`); }
+      }
+      throw err;
+    } finally { for (const key of ids) this.#busy.delete(key); }
+  }
+
+  #clearDeletion(id: string): void {
+    const next = { ...this.#store.artifact(id)! };
+    delete next.deletion;
+    this.#store.updateArtifact(next);
+  }
+
+  *#removeOriginal(moved: Artifact, bytes: string): IO<void> {
+    const original = yield* wait(this.#files.lstat(moved.path).catch(err => { if (hasCode(err, 'ENOENT')) return null; throw err; }));
+    if (!original || !original.isFile() || original.isSymbolicLink()) return;
+    const target = yield* wait(this.#files.lstat(bytes).catch(err => { if (hasCode(err, 'ENOENT')) return null; throw err; }));
+    if (target?.isFile() && original.dev === target.dev && original.ino === target.ino) yield* this.#unlinkIfPresent(moved.path);
+  }
+
+  *#finishDeletion(a: Artifact): IO<void> {
+    const backup = a.deletion!.backup;
+    // A committed move may still have its old hard link. Remove only the same inode;
+    // a new file recreated at the old path belongs to the human and must survive.
+    if (a.movedTo) yield* this.#removeOriginal(a, backup);
+    if (a.folder) {
+      for (const moved of this.#store.movedArtifacts()) {
+        if (moved.movedTo?.folder === a.id) yield* this.#removeOriginal(moved, join(backup, folderName(moved.movedTo.path)));
+      }
+    }
+    yield* wait(this.#files.rm(backup, { recursive: !!a.folder, force: true }));
+    this.#clearDeletion(a.id);
+  }
+
+  *#recoverDeletion(a: Artifact): IO<void> {
+    if (a.fileDeleted) { yield* this.#finishDeletion(a); return; }
+    const { backup, path } = a.deletion!;
+    const retained = yield* wait(this.#files.lstat(backup).catch(err => { if (hasCode(err, 'ENOENT')) return null; throw err; }));
+    if (retained) {
+      const live = yield* wait(this.#files.lstat(path).catch(err => { if (hasCode(err, 'ENOENT')) return null; throw err; }));
+      if (live) {
+        if (a.folder || live.dev !== retained.dev || live.ino !== retained.ino) throw new ArtifactError('artifact-busy', 'both live and deletion backup exist; recover them before retrying');
+        // A previous exclusive restoration may have committed before unlink failed.
+        yield* this.#unlinkIfPresent(backup);
+      } else if (a.folder) yield* wait(this.#files.rename(backup, path));
+      else {
+        // Exclusive restoration also protects a save arriving after the lstat.
+        yield* wait(this.#files.link(backup, path));
+        yield* this.#unlinkIfPresent(backup);
+      }
+    }
+    this.#clearDeletion(a.id);
+  }
+
+  move(id: string, folder: string, name: string | undefined, authorize: () => void, resumed: Resumed = direct): Promise<ArtifactOperationResult> {
     return run(this.#move(id, folder, name, authorize), resumed);
   }
 
-  *#move(id: string, folder: string, name: string | undefined, authorize: () => void): IO<ArtifactPromotion> {
+  *#move(id: string, folder: string, name: string | undefined, authorize: () => void): IO<ArtifactOperationResult> {
     authorize();
     const source = this.#available(id), target = this.#available(folder);
     if (source.folder) throw new ArtifactError('artifact-path', 'moving a folder into a folder is not supported');
@@ -256,20 +361,31 @@ export class ArtifactLifecycle {
    */
   *#cleanup(cutoff: number): IO<void> {
     const failures: unknown[] = [];
+    // Only indexed intent grants ownership of manual-delete backups. Never infer it
+    // from a filename inside a folder, where .retained is a valid human filename.
+    for (const a of [...this.#store.artifacts(), ...this.#store.movedArtifacts()]) {
+      if (!a.deletion) continue;
+      const ids = [a.id, ...(a.movedTo ? [a.movedTo.folder] : [])];
+      if (ids.some(id => this.#busy.has(id))) continue;
+      for (const id of ids) this.#busy.add(id);
+      try { yield* this.#recoverDeletion(a); }
+      catch (err) { failures.push(err); }
+      finally { for (const id of ids) this.#busy.delete(id); }
+    }
     for (const moved of this.#store.movedArtifacts()) {
-      if (this.#busy.has(moved.id)) continue;
+      const owner = moved.movedTo!.folder;
+      if (this.#busy.has(moved.id) || this.#busy.has(owner)) continue;
+      this.#busy.add(moved.id); this.#busy.add(owner);
       try {
         const target = this.#store.resolveArtifact(moved.id);
-        if (!target || target.fileDeleted) continue;
-        const original = yield* wait(this.#files.lstat(moved.path).catch(err => { if (hasCode(err, 'ENOENT')) return null; throw err; }));
-        if (!original) continue;
-        const destination = yield* wait(this.#files.lstat(target.path));
-        if (original.dev === destination.dev && original.ino === destination.ino) yield* this.#unlinkIfPresent(moved.path);
+        if (!target || target.fileDeleted || this.#deleting(this.#store.artifact(owner))) continue;
+        yield* this.#removeOriginal(moved, target.path);
       }
       catch (err) { failures.push(err); }
+      finally { this.#busy.delete(moved.id); this.#busy.delete(owner); }
     }
     for (const snapshot of this.#store.artifacts()) {
-      if (this.#busy.has(snapshot.id)) continue;
+      if (this.#deleting(snapshot) || this.#busy.has(snapshot.id)) continue;
       this.#busy.add(snapshot.id);
       if (snapshot.folder) {
         try { yield* this.#cleanupFolder(snapshot, cutoff); }

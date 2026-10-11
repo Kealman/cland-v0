@@ -1267,6 +1267,17 @@ export class Dispatcher {
         if (isSubscriptionRequest(frame)) return subscriptionRequest(frame, caller);
         if (isSessionRequest(frame)) return session(frame);
         if (frame.type === 'artifact.keep' || frame.type === 'artifact.archive' || frame.type === 'artifact.move') return artifactChange(frame as ArtifactKeep | ArtifactArchive | ArtifactMove, () => this.#asSession(frame));
+        if (isClientRequest(frame) && frame.type === 'artifact.delete') {
+          const resumed = this.#guard.resumer(frame.type, client);
+          const authorize = () => {
+            const current = this.#asSession(frame);
+            if (current) throw new ToolForbidden(current.role, frame.type, 'only the human may delete artifacts');
+          };
+          later(frame.type, this.artifacts.delete(frame.artifact, authorize, resumed).then(
+            value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value }) as HubFrame),
+            err => resumed(() => Dispatcher.#failure(frame.id, err)),
+          )); return;
+        }
         if (frame.type === 'artifact.promote') return promote(frame as ArtifactPromote, caller);
         if (frame.type === 'artifact.create' || frame.type === 'artifact.list') {
           return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));

@@ -27,7 +27,7 @@ return {
     qa.keys('<Esc><Space>i2/unscheduled (<CR>za')
     qa.wait_for(function() return qa.screen():find('in work · 6',1,true) end,5000,'in work filter')
     vim.api.nvim_win_set_width(require('cland.layout').win.left,60)
-    qa.wait_for(function() return qa.screen():find('Work in progress',1,true) end,5000,'parent-prefixed work titles')
+    qa.wait_for(function() return qa.screen():find('Work review',1,true) end,5000,'parent-prefixed work titles')
     local screen=qa.screen()
     for _, title in ipairs({'Work planned','Work in progress','Work review','Work qa','Work ready'}) do
       qa.expect(screen:find(title,1,true)~=nil,'in work contains '..title)

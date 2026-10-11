@@ -951,7 +951,7 @@ export class Store implements HygieneMemory {
 
   resolveArtifact(id: string): Artifact | null {
     const a = this.artifact(id);
-    if (!a?.movedTo) return a;
+    if (!a?.movedTo || a.fileDeleted) return a;
     const folder = this.artifact(a.movedTo.folder);
     if (!folder || folder.fileDeleted) return { ...a, fileDeleted: true };
     return { ...a, path: folder.path + '/' + a.movedTo.path, status: folder.status, topic: folder.topic, ...(folder.fileDeleted !== undefined ? { fileDeleted: folder.fileDeleted } : {}) };

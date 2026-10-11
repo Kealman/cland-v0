@@ -20,7 +20,7 @@ end
 function M.get(id)
   for _, a in ipairs(M.entries) do
     if a.id == id then
-      if not a.movedTo then return a end
+      if not a.movedTo or a.fileDeleted then return a end
       local folder = M.get(a.movedTo.folder)
       if not folder then return a end
       return vim.tbl_extend('force', a, { path = folder.path .. '/' .. a.movedTo.path,
@@ -35,7 +35,7 @@ end
 
 local function rebind(id)
   local b, a = M.bufs[id], M.get(id)
-  if b and a and api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) ~= entry_path(a) then
+  if b and a and not a.fileDeleted and api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) ~= entry_path(a) then
     local modified = vim.bo[b].modified
     local lines = modified and api.nvim_buf_get_lines(b, 0, -1, false) or nil
     local ok, err = pcall(function()
@@ -55,6 +55,7 @@ local function upsert(a)
   for i, old in ipairs(M.entries) do
     if old.id == a.id then
       if old.movedTo and not a.movedTo then return end
+      if old.fileDeleted then a.fileDeleted = true end
       M.entries[i] = a; rebind(a.id); return
     end
   end

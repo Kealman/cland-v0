@@ -331,7 +331,9 @@ function Thread:_build(m, prev, answer)
     add(text, { group = group, head = mm }, banded(hmarks))
 
     local function chip(a)
-      local text = '▣ ' .. tostring(a.id) .. ' ' .. tostring(a.kind) .. ' · ' .. tostring(a.title)
+      local current = require('cland.artifacts').get(a.id)
+      if current and current.fileDeleted then a = vim.tbl_extend('force', a, { fileDeleted = true }) end
+      local text = '▣ ' .. tostring(a.id) .. ' ' .. tostring(a.kind) .. ' · ' .. tostring(a.title) .. (a.fileDeleted and ' · file deleted' or '')
       add(text, { group = group, artifact = a }, banded({ { col = 0, opts = { end_col = #text, hl_group = 'ClandBlue', priority = 120 } } }))
     end
 
@@ -890,8 +892,8 @@ function Thread:merge(messages)
   for _, m in ipairs(messages or {}) do
     local existing = self.by_id[m.id]
     if existing then
-      if existing.layer ~= m.layer or not vim.deep_equal(existing.artifact, m.artifact) then
-        existing.layer, existing.artifact = m.layer, vim.deepcopy(m.artifact)
+      if existing.layer ~= m.layer or not vim.deep_equal(existing.artifact, m.artifact) or not vim.deep_equal(existing.artifacts, m.artifacts) then
+        existing.layer, existing.artifact, existing.artifacts = m.layer, vim.deepcopy(m.artifact), vim.deepcopy(m.artifacts)
         placement_changed = true
       end
       local before = existing.stage

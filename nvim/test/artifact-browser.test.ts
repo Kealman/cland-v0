@@ -347,3 +347,48 @@ test('a refused ordinary send restores artifacts when an ask was armed while its
     return true;
   });
 });
+
+test('x asks before deleting; cancel keeps bytes and confirm updates the browser and topic chips', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const a = ((await ui.request({type:'artifact.create',kind:'note',title:'Disposable notes',topic:'general',content:'# Keep until confirmed'})).value as {artifact:{id:string;path:string}}).artifact;
+  await ui.request({type:'topic.send',topic:'general',text:'Notes attached',artifacts:[a.id]});
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.input('<Esc>:Cland view artifacts general<CR>');
+  await c.waitScreen(s => s.includes('Disposable notes') && s.includes('Mine'), 'browser');
+  await row(c, 'Disposable notes');
+  // inputlist blocks synchronous RPC reads until answered; queue the choice with x.
+  await c.lua("local select = vim.ui.select; vim.ui.select = function(items, opts, done) vim.g.delete_prompt = opts.prompt; select(items, opts, done) end");
+  await c.input('x1<CR>');
+  await c.waitScreen(s => s.includes('Mine (1)'), 'cancelled deletion');
+  assert.match(await c.lua<string>('return vim.g.delete_prompt'), new RegExp('Delete ' + a.id));
+  assert.equal(await readFile(a.path, 'utf8'), '# Keep until confirmed');
+  await c.input('x2<CR>');
+  await c.waitScreen(s => s.includes('Mine (0)'), 'deleted artifact leaves active browser');
+  await assert.rejects(readFile(a.path), {code:'ENOENT'});
+  await c.input('A');
+  await c.waitScreen(s => s.includes('Disposable notes') && s.includes('file deleted'), 'deleted tombstone in archive');
+  await c.input(':Cland view thread general<CR>');
+  await c.waitScreen(s => s.includes('Disposable notes') && s.includes('file deleted'), 'topic chip marked deleted');
+  const lines = await c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.views').topic('general').thread.buf,0,-1,false)");
+  const chips = lines.filter(l => l.includes('▣ ' + a.id));
+  assert.equal(chips.length, 2);
+  assert.ok(chips.every(l => l.includes('file deleted')), 'creation and attachment chips reflect deletion');
+});
+
+test('deletion updates an already-open attachment-only chip when creation is outside retained history', { skip }, async t => {
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  const a = ((await ui.request({type:'artifact.create',kind:'note',title:'Older notes',topic:'general',content:'old'})).value as {artifact:{id:string}}).artifact;
+  for (let i = 0; i < 200; i++) await ui.request({type:'topic.send',topic:'general',text:'History padding ' + i});
+  await ui.request({type:'topic.send',topic:'general',text:'Latest attachment',artifacts:[a.id]});
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected') && s.includes('Older notes'), 'attachment-only history');
+  const chips = await c.lua<number>("local count = 0; for _, l in ipairs(vim.api.nvim_buf_get_lines(require('cland.views').topic('general').thread.buf,0,-1,false)) do if l:find('▣ ' .. ...,1,true) then count = count + 1 end end; return count", a.id);
+  assert.equal(chips, 1, 'the creation chip is not loaded');
+  assert.equal((await ui.request({type:'artifact.delete',artifact:a.id})).ok, true);
+  await c.waitScreen(s => s.includes('Older notes · file deleted'), 'live attachment-only deletion mark');
+});

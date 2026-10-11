@@ -534,3 +534,123 @@ test('an Aide losing its role during human folder promotion is refused and rolls
   await f.ui.request({ type: 'role.set', session: 'notes-aide', role: 'aide' });
   assert.equal((await f.ui.request({ type: 'artifact.promote', artifact: folder.id, path: 'docs/notes', as: { name: 'notes-aide' } })).ok, true, 'rollback releases the reservation for an authorized retry');
 });
+
+test('moved deletion recovers an interrupted rename and retries committed cleanup failures', async t => {
+  let failRemoval = true;
+  const f = await fixture(t, { ...fs, rm: async (...args) => {
+    if (failRemoval && String(args[0]).includes('/artifact-deletions/')) throw new Error('delete housekeeping failed');
+    return fs.rm(...args);
+  } });
+  const folder = ((await f.ui.request({type:'artifact.create',kind:'note',title:'Owner',topic:f.topic,folder:true,content:'entry'})).value as {artifact:Artifact}).artifact;
+  assert.equal((await f.ui.request({type:'artifact.move',artifact:f.a.id,folder:folder.id,name:'moved.md'})).ok, true);
+  const path = join(folder.path, 'moved.md');
+  const interruptedBackup = join(f.root, '.cland/artifact-deletions/interrupted');
+  await fs.mkdir(join(f.root, '.cland/artifact-deletions'), {recursive:true});
+  // Recreate the durable index/filesystem state left by a crash after rename.
+  f.hub.core.store.updateArtifact({ ...f.hub.core.store.artifact(f.a.id)!, deletion:{path,backup:interruptedBackup} });
+  await fs.rename(path, interruptedBackup);
+  assert.equal((await f.ui.request({type:'artifact.delete',artifact:folder.id})).ok, false, 'pending child recovery protects the owning folder');
+  f.hub.prune();
+  await eventually('interrupted moved deletion restored', async () => await fs.readFile(path, 'utf8').catch(() => '') === 'original bytes' ? true : undefined);
+  await assert.rejects(fs.readFile(interruptedBackup), {code:'ENOENT'});
+  const deleted = await f.ui.request({type:'artifact.delete',artifact:f.a.id});
+  assert.equal(deleted.ok, true);
+  assert.match((deleted.value as {followUp:{error:string}}).followUp.error, /housekeeping failed/);
+  const backup = f.hub.core.store.artifact(f.a.id)!.deletion!.backup;
+  assert.equal(await fs.readFile(backup, 'utf8'), 'original bytes');
+  failRemoval = false;
+  f.hub.prune();
+  await eventually('committed moved backup removed', async () => !(await fs.readdir(join(f.root, '.cland/artifact-deletions'))).includes(backup.split('/').pop()!) ? true : undefined);
+  await assert.rejects(fs.readFile(path), {code:'ENOENT'});
+  assert.equal(await fs.readFile(join(folder.path, folder.entry!), 'utf8'), 'entry');
+});
+
+test('prune preserves human folder files whose names end in .retained without any delete intent', async t => {
+  const f = await fixture(t);
+  const folder = ((await f.ui.request({type:'artifact.create',kind:'note',title:'Owner',topic:f.topic,folder:true,content:'entry'})).value as {artifact:Artifact}).artifact;
+  const other = ((await f.ui.request({type:'artifact.create',kind:'note',title:'Other',topic:f.topic,content:'second bytes'})).value as {artifact:Artifact}).artifact;
+  await f.ui.request({type:'artifact.move',artifact:f.a.id,folder:folder.id,name:'notes.md'});
+  await f.ui.request({type:'artifact.move',artifact:other.id,folder:folder.id,name:'notes.md.retained'});
+  await new ArtifactLifecycle(f.hub.core.store, f.root, () => {}).cleanup(0);
+  assert.equal(await fs.readFile(join(folder.path, 'notes.md.retained'), 'utf8'), 'second bytes');
+  assert.equal(await fs.readFile(join(folder.path, 'notes.md'), 'utf8'), 'original bytes');
+  assert.equal((await f.ui.request({type:'artifact.delete',artifact:f.a.id})).ok, true);
+  assert.equal(await fs.readFile(join(folder.path, 'notes.md.retained'), 'utf8'), 'second bytes');
+});
+
+test('deleting moved files or folders removes verified old hard links and preserves recreated old-path files', async t => {
+  for (const deleteFolder of [false, true]) for (const recreated of [false, true]) {
+    await t.test(`${deleteFolder ? 'folder' : 'file'}, ${recreated ? 'recreated' : 'original'} old path`, async t => {
+      let failUnlink = true;
+      const f = await fixture(t, {...fs, unlink: async path => {
+        if (failUnlink && String(path).endsWith('/A-1-design.md')) throw new Error('old unlink failed');
+        return fs.unlink(path);
+      }});
+      const folder = ((await f.ui.request({type:'artifact.create',kind:'note',title:'Owner',topic:f.topic,folder:true,content:'entry'})).value as {artifact:Artifact}).artifact;
+      const moved = await f.ui.request({type:'artifact.move',artifact:f.a.id,folder:folder.id,name:'notes.md'});
+      assert.equal(moved.ok, true);
+      assert.match((moved.value as {followUp:{error:string}}).followUp.error, /old unlink failed/);
+      failUnlink = false;
+      if (recreated) { await fs.unlink(f.a.path); await fs.writeFile(f.a.path, 'new independent content'); }
+      assert.equal((await f.ui.request({type:'artifact.delete',artifact:deleteFolder ? folder.id : f.a.id})).ok, true);
+      if (recreated) assert.equal(await fs.readFile(f.a.path, 'utf8'), 'new independent content');
+      else await assert.rejects(fs.readFile(f.a.path), {code:'ENOENT'});
+      await assert.rejects(fs.readFile(join(folder.path, 'notes.md')), {code:'ENOENT'});
+    });
+  }
+});
+
+test('a failed manual-delete tombstone write restores bytes and clears its durable intent', async t => {
+  const f = await fixture(t);
+  f.db.exec("create trigger reject_manual_deleted before update on artifacts when json_extract(new.value, '$.fileDeleted') = 1 begin select raise(ABORT, 'index failed'); end");
+  assert.equal((await f.ui.request({type:'artifact.delete',artifact:f.a.id})).ok, false);
+  assert.equal(await fs.readFile(f.a.path, 'utf8'), 'original bytes');
+  assert.equal(f.hub.core.store.artifact(f.a.id)?.deletion, undefined);
+  assert.deepEqual(await fs.readdir(join(f.root, '.cland/artifact-deletions')), []);
+  f.db.exec('drop trigger reject_manual_deleted');
+  assert.equal((await f.ui.request({type:'artifact.delete',artifact:f.a.id})).ok, true);
+});
+
+test('manual-delete rollback preserves an editor save at the live path and retains both copies for recovery', async t => {
+  let livePath = '';
+  const f = await fixture(t, {...fs, rename: async (...args) => {
+    await fs.rename(...args);
+    if (String(args[1]).includes('/artifact-deletions/')) await fs.writeFile(livePath, 'independent editor save');
+  }});
+  livePath = f.a.path;
+  f.db.exec("create trigger reject_conflicting_deleted before update on artifacts when json_extract(new.value, '$.fileDeleted') = 1 begin select raise(ABORT, 'index failed'); end");
+  const result = await f.ui.request({type:'artifact.delete',artifact:f.a.id});
+  assert.equal(result.ok, false);
+  assert.equal(await fs.readFile(livePath, 'utf8'), 'independent editor save');
+  const intent = f.hub.core.store.artifact(f.a.id)!.deletion!;
+  assert.ok(intent, 'durable intent survives the rollback conflict');
+  assert.equal(await fs.readFile(intent.backup, 'utf8'), 'original bytes');
+  const lifecycle = new ArtifactLifecycle(f.hub.core.store, f.root, () => {});
+  await assert.rejects(lifecycle.cleanup(0), /both live and deletion backup exist/);
+  assert.equal(await fs.readFile(livePath, 'utf8'), 'independent editor save');
+  assert.equal(await fs.readFile(intent.backup, 'utf8'), 'original bytes');
+  await fs.rename(livePath, livePath + '.editor-save');
+  f.db.exec('drop trigger reject_conflicting_deleted');
+  await lifecycle.cleanup(0);
+  assert.equal(await fs.readFile(livePath, 'utf8'), 'original bytes');
+  assert.equal(await fs.readFile(livePath + '.editor-save', 'utf8'), 'independent editor save');
+  assert.equal(f.hub.core.store.artifact(f.a.id)?.deletion, undefined);
+});
+
+test('manual-delete rollback retries failed backup housekeeping after exclusive file restoration', async t => {
+  let failUnlink = true;
+  const f = await fixture(t, {...fs, unlink: async path => {
+    if (failUnlink && String(path).includes('/artifact-deletions/')) throw new Error('restore housekeeping failed');
+    return fs.unlink(path);
+  }});
+  f.db.exec("create trigger reject_restore_deleted before update on artifacts when json_extract(new.value, '$.fileDeleted') = 1 begin select raise(ABORT, 'index failed'); end");
+  assert.equal((await f.ui.request({type:'artifact.delete',artifact:f.a.id})).ok, false);
+  const backup = f.hub.core.store.artifact(f.a.id)!.deletion!.backup;
+  assert.equal(await fs.readFile(f.a.path, 'utf8'), 'original bytes');
+  assert.equal(await fs.readFile(backup, 'utf8'), 'original bytes');
+  failUnlink = false;
+  await new ArtifactLifecycle(f.hub.core.store, f.root, () => {}).cleanup(0);
+  await assert.rejects(fs.readFile(backup), {code:'ENOENT'});
+  assert.equal(await fs.readFile(f.a.path, 'utf8'), 'original bytes');
+  assert.equal(f.hub.core.store.artifact(f.a.id)?.deletion, undefined);
+});
