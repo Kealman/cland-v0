@@ -3,7 +3,7 @@ id: T-195
 kind: task
 title: "The Artifacts browser: the centre view with mine, this topic, kept, by role and archived, editing in place, attaching with s"
 state: open
-status: backlog
+status: planned
 labels:
   - v0.1
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-10T16:25:07.170Z
-updated: 2026-10-10T16:25:07.170Z
+updated: 2026-10-11T06:27:08.933Z
 ---
 
 ## Parent

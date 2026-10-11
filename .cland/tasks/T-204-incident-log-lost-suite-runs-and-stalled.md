@@ -8,12 +8,12 @@ labels:
   - needs-triage
   - tech-debt
 assignee: null
-parent: T-19
+parent: T-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-10T21:27:00.239Z
+updated: 2026-10-11T06:35:55.084Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -103,3 +103,51 @@ Correction to the 20:19Z T-193 entry: impl-193's waiter (pid 19583) was live at 
 ### coord · 2026-10-10T21:27:00.239Z
 
 Correction to 21:26Z case (1): T-162's run had not vanished. It passed (Neovim 244/244, A-803) and its result was published at 21:26:16Z, a few seconds before my check read the topic. That is the third false flag today. A finished process looks the same as a lost one for a few seconds. The check should also read the newest artifacts and wait a minute after a process disappears before it flags.
+
+### coord · 2026-10-10T21:56:17.903Z
+
+2026-10-10 21:56Z, T-184, impl-184: its relaunched full run on 2dea9af finished at 21:33Z (hub 1050/1052, 2 failures; Neovim not run; log /tmp/cland-T-184-2dea9af-after-T201-full.log). No result reached topic-101 and no T-184 process remained. It stood unreported for 23 min until the Coordinator's check found the log, and impl-184 was nudged. Cause: the conditional relaunch wrapper from the fairness hold ran the suite but its reporter did not send. This is the T-203 case.
+
+### coord · 2026-10-10T22:15:27.926Z
+
+Hourly check 22:15Z. No lost runs: every item in review has a live process. One long wait: T-203 (impl-203) has its full run (pid 26269, old runner from its pre-T-201 worktree) waiting 38 min since its 21:36Z relaunch. T-193 holds the machine lock and is running. T-190's Neovim run holds the Neovim lock and waits on the machine lock (26 min). T-178, T-179 and T-184 are queued as FIFO tickets on dev's new runner. Cause: the transition period. Old-runner pollers (T-190, T-203) and new FIFO tickets share the locks, and the FIFO only orders new-runner waiters. No nudge sent; the owners cannot shorten it, and the old runners leave as their items merge.
+
+### coord · 2026-10-10T22:20:37.102Z
+
+Note on the 21:56Z T-184 entry: the callback did publish A-813 at 21:56:17Z, 23 minutes after the run ended at 21:33Z and seconds after my nudge, so the result was delayed, not lost. The slow path is the conditional wrapper's reporter, which waited for the T-201 dependency to settle before sending.
+
+### coord · 2026-10-10T22:48:26.359Z
+
+2026-10-10 22:48Z, T-193, impl-193: its full run (pid 25743, old runner from a pre-T-201 branch) waited 71 min, losing every round to the FIFO ticket holders (T-178 holds the lock; T-203, T-179 and T-184 hold tickets). cland-impl flagged it. Action: impl-193 merges dev to get the FIFO runner and relaunches with a ticket, after a delta review. Lesson: during the T-201 switchover, a pre-T-201 branch starves. Every branch should merge dev before its next full run.
+
+### coord · 2026-10-10T23:15:32.838Z
+
+Hourly check 23:15Z. No lost runs: every item in review has its runner and reporter live. Waits over 30 min, all in FIFO order on T-201's runner: T-203 holds a ticket from 22:35Z (40 min, next in line) and T-184 from 22:45Z (its Neovim phase, re-queued after its hub phase). T-193 (22:51Z) and T-178 (23:02Z) follow. T-179 holds the machine lock. Cause: T-201's per-phase re-queue, fixed by T-207 (merged 23:10Z, 01ea28d). These worktrees still run their pre-T-207 runner, so the slow cycle lasts until they merge. No nudge sent.
+
+### coord · 2026-10-10T23:48:35.296Z
+
+2026-10-10 23:49Z, T-184, impl-184: its final run on ddfe125 finished at 23:37Z (hub 1074/1074; Neovim 243/244, one plan-view failure; log /tmp/cland-T-184-ddfe125-final.log). No result reached topic-101 or rev-14, and no T-184 process remained. It stood unreported for 12 min until cland-impl flagged it and the Coordinator found the log, and impl-184 was nudged. Cause: the callback again failed to send. This is the second time on T-184; see T-203.
+
+### coord · 2026-10-11T00:15:31.089Z
+
+Hourly check 00:15Z. No lost runs; every item in review has a live runner. T-179 holds both locks. One wait over 30 min: T-203's Neovim-only run (ticket from 23:36Z, 39 min), now first in the FIFO queue. T-184 (23:56Z), T-193's Neovim run (00:02Z) and T-178 (00:08Z) follow. Cause: a full run on a pre-T-207 branch holds the locks for its whole duration (T-179 for about 51 min, including its wait). No nudge sent.
+
+### coord · 2026-10-11T01:15:27.489Z
+
+Hourly check 01:15Z. No lost runs: every item in review has a live process. The integrated dev suite (root, a619490) holds both locks and is running. FIFO tickets: T-172's gate repetitions at four workers (since 00:34Z, 41 min), T-184 Neovim (00:41Z, 34 min), T-178 Neovim (00:58Z), T-179 Neovim (01:12Z). The two waits over 30 min are in order behind the integrated run. No nudge.
+
+### coord · 2026-10-11T02:15:23.695Z
+
+Hourly check 02:15Z. No lost runs: T-178, T-179 and T-186 each have a live `cland suite` worker and runner. T-179 holds the lock. One wait over 30 min: T-186's full run (ticket from 01:41Z, 34 min), first in the FIFO queue. T-178's Neovim-only run follows (02:09Z). No nudge.
+
+### coord · 2026-10-11T04:48:59.522Z
+
+Note (04:48Z): the lock holder's 'since' is the ticket's queue time, not when it took the lock. T-209's holder showed since 04:05Z, but it took the lock at about 04:30Z after T-205's run. This misled a stall check. Suggested fix: holder.json also records 'acquired' (and the phase start). Not an incident.
+
+### coord · 2026-10-11T05:15:19.816Z
+
+Hourly check 05:15Z. No lost runs: six items in review or in progress each have a live process or ticket. T-210 holds the lock (Neovim phase). One wait over 30 min: T-205's Neovim-only run (ticket from 04:33Z, 42 min), first in the FIFO queue. Then T-209 (04:53Z), the integrated dev suite (04:55Z), T-182 (05:06Z), T-180 (05:08Z) and T-185 (05:10Z). Cause: seven queued runs after a wave of three new items, at about 15 min per full run. No nudge; aide-1 is gone, so there is no aide line.
+
+### coord · 2026-10-11T06:15:42.498Z
+
+Hourly check 06:15Z. No lost runs; every item has a live run or ticket. T-182 holds the lock. Waits over 30 min, all in FIFO order: T-205 (ticket from 05:24Z, 51 min, next), T-185 (05:36Z, 39 min) and T-209 (05:43Z, 32 min). The integrated dev Neovim run follows (05:55Z). Cause: queue depth from the post-T-186 wave, at about 15 min per full run. No nudge; aide-1 is gone.

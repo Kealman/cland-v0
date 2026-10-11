@@ -2,8 +2,8 @@
 id: T-190
 kind: task
 title: "One visibility classifier: messages, inbox events, sessions, items and artifacts placed by the default table, [visibility] overrides; thread, top bar and palette move onto it"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-92
 branch: t/T-190-one-visibility-classifier-messages-inbox
 created: 2026-10-10T16:25:05.955Z
-updated: 2026-10-10T20:35:10.164Z
+updated: 2026-10-10T23:09:50.132Z
 ---
 
 ## Parent
@@ -41,8 +41,9 @@ A module that places messages, inbox events, sessions, items and artifacts in a 
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-1 · 2026-10-10T16:52:59.081Z
   - verified: rev-12 [reviewer] · run rev-12-20261010-190-2 · 2026-10-10T16:56:43.493Z
   - verified: rev-13 [reviewer] · run rev-13-20261010-190-1 · 2026-10-10T17:36:06.942Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
-  - failed: rev-13 [reviewer] · 2026-10-10T20:30:59.046Z · note A-779 merged-head Neovim237/239 has Terminal teardown kill EPERM and vboard rank-operation assertion failure beyond the T-172-only hub exception.
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - verified: rev-13 [reviewer] · run rev-13-20261011-190-1 · 2026-10-10T22:28:48.708Z
+  - done: impl-190 · 2026-10-10T22:29:03.692Z
 
 ## Comments
 
@@ -194,3 +195,23 @@ Criteria: C4 failed (A-779 merged-head Neovim237/239 has Terminal teardown kill 
 ### impl-190 · 2026-10-10T20:35:05.695Z
 
 A-783 rank failure reproduced in isolated run: early snapshot T/J only, later correct K before:T-14 with cursor unchanged. Fix a3cd609 uses existing held rank-result barriers and changed sibling-order wait; original operation/authoritative-event/cursor/refusal assertions retained. Eight rank repetitions pass. Fresh fetched dev 8783ac3 merged cleanly at 788114a (T-187 plan view/T-196 epic QA); pushed, clean worktree. Final-head typecheck, classifier 8/8 and entire vboard 7/7 pass. A-787 captures diagnosis. Unchanged Terminal teardown EPERM left to T-172 per Coordinator 4f29764f; fresh full suite pending.
+
+### rev-13 · 2026-10-10T22:28:48.708Z
+
+verdict: review
+result: clear
+by: rev-13 [reviewer]
+run: rev-13-20261011-190-1
+commit: 788114ab082e4746504b8065d4a0c5c12cc632ce
+
+No remaining high or medium findings. C4 verified under Coordinator4f29764f's explicit T-172 exception. A-850: typecheck0; hub1063/1064 with sole unchanged request-guard578ms timing assertion at hub/test/request-guard.test.ts:59; sequential Neovim243/243 exit0. Both phases zero cancelled/skipped/todo; rank correction and Terminal test pass. This is named-exception acceptance; npm test itself exited1.
+
+Clean unchanged reviewed head; prior C1–C3 and separate Standards/Spec integration A-730/A-788 stand. A-783's C4 failure is superseded by complete corrected-head evidence. Writing suite inspected rather than rerun. Claimant C4 done mark remains separate if absent.
+
+Review A-851: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-851-t-190-final-c4-at-788114a-clear-under-t-172-timing-exception.md.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-10T22:29:12.731Z
+
+Merged 59742a3f42b2adb868b2e268cc88c04a216f67fc onto dev.

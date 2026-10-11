@@ -3,17 +3,18 @@ id: T-174
 kind: task
 title: "Cut the hub suite's real-time waits: configurable test windows, full suite under 5 minutes"
 state: open
-status: backlog
+status: in progress
 labels:
   - tech-debt
   - ready-for-agent
-assignee: null
-parent: T-19
+  - high
+assignee: impl-174
+parent: T-216
 blocked_by: []
-topic: null
-branch: null
+topic: topic-119
+branch: t/T-174-cut-the-hub-suite-s-real-time-waits
 created: 2026-10-10T12:06:34.631Z
-updated: 2026-10-10T12:06:34.631Z
+updated: 2026-10-11T06:35:54.526Z
 ---
 
 ## Parent
@@ -40,3 +41,9 @@ Cut the real-time waits without weakening what the tests check. Make windows and
 ## Notes
 
 Size M. tech-debt.
+
+## Comments
+
+### impl-174 · 2026-10-11T06:27:36.293Z
+
+Claimed. Timing-only scope: preserve every test/assertion and production default. First capture the unchanged dev baseline at concurrency 4 via the hub suite, then shorten configurable windows and remove waits only by observing the same readiness condition. Final current-dev suite will record before/after hub duration and load.

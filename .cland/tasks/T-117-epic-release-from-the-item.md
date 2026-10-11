@@ -23,7 +23,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-09T21:51:34.973Z
-updated: 2026-10-10T17:03:43.026Z
+updated: 2026-10-11T06:36:59.151Z
 ---
 
 ## Goal
@@ -54,9 +54,9 @@ Choices where the spec is silent:
 
 ## Definition of done
 
-The acceptance pass below is the human's, and the only human acceptance of v0.1: the version, the notes and one walkthrough on v0.1 (decision D16). Before it, QA replays the other ten epics' demos on `dev` as their own paragraphs say, through the `cland` CLI and a headless workbench, and each of those epics is closed on a clear verdict with its checkboxes verified by id; QA also runs this epic's `cland release --item --dry-run` and the checks that need no human, and records a clear verdict on this epic for them, leaving the approval of the version, the notes and the walkthrough, and the release itself, to the human.
+QA runs this epic's walkthrough on `dev` and closes it on a clear verdict with its checkboxes verified by id; the release goes out on that (decision D19, 2026-10-11: the human does no acceptance pass). Before it, the other ten epics close on their own QA verdicts as their paragraphs say (D16). The version is v0.1.0 (D18); the stand-in answers the version ask with it. The checks deferred from earlier epic demos (T-109 C1, real Ghostty/tmux keys; T-111 M7, real-model Aide follow-through) are not release blockers: the release notes list them as "verified in v0.1.1".
 
-The Coordinator runs `cland release --item T-<v0.1> --dry-run`: it shows `v0.1.0`, the Notes the human approved, the ten other epics with their one-line deliverables, and the commit subjects. After the human's approval it runs the release: `main` moves to `dev`, is tagged `v0.1.0` and pushed to GitHub; the hub comments the tag on the release item and closes it; the items panel folds v0.1 as a closed release.
+The Coordinator runs `cland release --item T-<v0.1> --dry-run`: it shows `v0.1.0`, the Notes, the ten other epics with their one-line deliverables, and the commit subjects. After the clear QA verdict it runs the release: `main` moves to `dev`, is tagged `v0.1.0` and pushed to GitHub; the hub comments the tag on the release item and closes it; the items panel folds v0.1 as a closed release.
 
 - [ ] `cland release --item` refuses an item with open children or no version, and names the reason.
 - [ ] The notes hold the item's Notes, its epics with their one-line deliverables, then the commit subjects.

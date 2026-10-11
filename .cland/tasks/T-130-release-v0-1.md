@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-09T23:02:37.189Z
-updated: 2026-10-10T16:40:36.821Z
+updated: 2026-10-11T06:36:26.364Z
 ---
 
 ## Goal
@@ -53,3 +53,15 @@ D16 (the human, via the stand-in, 2026-10-10 ~16:00Z): the human accepts the rel
 - An epic closes when all its children are closed and QA has run its definition-of-done demo on dev, with a clear verdict recorded on the epic (criteria verified by id, the same gate shape as items). There is no human step.
 - The human's one acceptance is T-117's pass: the version, the notes and one walkthrough on v0.1.
 Applied: spec §4 and the epics' Definition of done openings are amended; QA briefs written for T-107, T-109, T-110, T-111 and T-112; T-116 follows once T-162 lands. T-166 and T-171, the follow-ups filed under T-110, moved to T-115 (Visibility; the inbox and needsYou now belong to its classifier), so T-110 can close.
+
+### coord · 2026-10-11T01:28:27.618Z
+
+Integrated dev suite (batch rule) at a619490 green: hub 1099/1099, Neovim 252/252 (A-950). It covers T-187, T-162, T-177, T-190, T-201, T-207 and T-203 merged on their own runs; T-193 merged after with its own evidence. Hub restart requested.
+
+### coord · 2026-10-11T06:36:26.364Z
+
+Decisions from the human (direct, 2026-10-11 ~06:30Z, relayed by the stand-in):
+D17 (answers the open question on T-130): not-clear verdicts and session deaths are not needsYou. needsYou means 'I must react', and these are informational. They go into the event log and inbox as events with a warn marker, never into the top-panel counter. T-171 is rescoped: the hub tags them as warn-level events for the classifier, and the inbox shows them that way, with no resolution rules and no counter. T-171 is unblocked.
+D18 (release version, D11 satisfied): v0.1.0. The stand-in answers T-117's version ask with v0.1.0, citing this decision.
+D19 (T-117 acceptance): the human does no acceptance pass. QA runs the T-117 walkthrough and closes it on a clear verdict, and the release goes out on that. The deferred checks T-109 C1 (Ghostty and tmux keys) and T-111 M7 (real-model Aide follow-through) are not release blockers. The release notes list them as 'verified in v0.1.1'.
+D20 (tech debt leaves T-19): T-19 closes and stops being the catch-all parent. Tech debt lives in the standing container T-216 'Tech debt' (kind epic, no release parent, label tech-debt). The open tech-debt items moved there: T-102, T-103, T-129, T-137, T-147, T-170, T-174, T-202, T-204, T-209, T-211, T-212, T-213, T-214 and T-215.

@@ -2,8 +2,8 @@
 id: T-193
 kind: task
 title: "Folder artifacts and their lifetime: folder with an entry file, human and Aide artifacts never expire, kept, artifact.keep, move and archive"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-102
 branch: t/T-193-folder-artifacts-and-their-lifetime
 created: 2026-10-10T16:25:06.772Z
-updated: 2026-10-10T21:26:44.669Z
+updated: 2026-10-11T00:43:43.432Z
 ---
 
 ## Parent
@@ -31,18 +31,25 @@ T-115, slice 4 of 6. Read the epic's Contents, its choice where the spec is sile
   - done: impl-193 · 2026-10-10T20:17:42.260Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-2 · 2026-10-10T20:19:29.033Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-4 · 2026-10-10T20:47:54.834Z
+  - verified: rev-14 [reviewer] · run rev-20261011-193-8 · 2026-10-10T22:52:57.735Z
+  - verified: rev-14 [reviewer] · run rev-20261011-193-10 · 2026-10-11T00:01:26.088Z
 - [x] C2. Demo: an agent's report without `kept` is swept after the retention period, and the human's folder is not.
   - done: impl-193 · 2026-10-10T20:08:24.909Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-1 · 2026-10-10T20:14:08.387Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-2 · 2026-10-10T20:19:29.033Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-4 · 2026-10-10T20:47:54.834Z
+  - verified: rev-14 [reviewer] · run rev-20261011-193-8 · 2026-10-10T22:52:57.735Z
+  - verified: rev-14 [reviewer] · run rev-20261011-193-10 · 2026-10-11T00:01:26.088Z
 - [x] C3. Docs (hub/README.md, nvim/README.md or docs/) describe what changed; any role clause change lists the exact .cland/roles.toml lines in the handover.
   - done: impl-193 · 2026-10-10T20:08:24.982Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-1 · 2026-10-10T20:14:08.532Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-2 · 2026-10-10T20:19:29.033Z
   - verified: rev-14 [reviewer] · run rev-20261010-193-4 · 2026-10-10T20:47:54.834Z
-- [ ] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
-  - failed: rev-14 [reviewer] · 2026-10-10T20:46:54.409Z · note Typecheck passes, but npm test exits 1: hub 1063/1067 with four stale tool-inventory assertion failures; Neovim does not run.
+  - verified: rev-14 [reviewer] · run rev-20261011-193-8 · 2026-10-10T22:52:57.735Z
+  - verified: rev-14 [reviewer] · run rev-20261011-193-10 · 2026-10-11T00:01:26.088Z
+- [x] C4. `npm run typecheck && npm test` pass (or `npm run test:nvim` for a Neovim-only slice).
+  - done: impl-193 · 2026-10-11T00:42:49.283Z
+  - verified: rev-14 [reviewer] · run rev-20261011-193-12 · 2026-10-11T00:43:34.257Z
 
 ## Comments
 
@@ -139,3 +146,101 @@ run: rev-20261010-193-6
 commit: ded6d278acdfc79ecbdb1c8ea8a007ae0cfa3b30
 
 No new code findings; A-792 clearance and C1–C3 verified marks remain applicable. A-804 confirms typecheck exit 0, then only lock waiting followed by npm test exit 130; neither hub nor Neovim tests start. C4 remains unverified, with no regression established and no criterion marks changed. Evidence: A-807 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-807-t-193-a-804-validation-incomplete-unchanged-code-clearance.md
+
+### rev-14 · 2026-10-10T22:49:06.253Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-193-7
+commit: ded6d278acdfc79ecbdb1c8ea8a007ae0cfa3b30
+
+No new code findings for pinned ded6d27; A-792 Standards/Spec clearance and C1-C3 marks remain applicable. A-859 confirms typecheck exit0 and hub1067/1067, zero failures/cancelled/skipped/todo. Neovim only waits for its lock before npm test exit130, so C4 remains unverified and no marks change.
+Current worktree has an unfinished merge with unresolved artifacts.ts, dispatch.ts and protocol.ts; integration changes are outside this review. Supply a committed combined-head review request and complete passing package log after resolution.
+Evidence A-860 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-860-t-193-a-859-hub-passes-full-validation-incomplete.md.
+
+### impl-193 · 2026-10-10T22:51:35.350Z
+
+Merged dev59742a3 at639dab5, resolving three artifact/protocol conflicts with live publication role callback and folder/lifetime metadata retained. Fixed upgrade-shaped T190 Aide records lacking creatorKind: persisted creatorRole now protects lifetime/mutations before fallbacks. Red→green daemon restart/sweep regression passes; typecheck, visibility8, folder protocol6, headless artifacts8 pass. Two-axis integration review clear. Clean/pushed; FIFO runner final suite next, kept→watch remainsT205.
+
+### rev-14 · 2026-10-10T22:52:57.735Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-193-8
+commit: 639dab560a9611b93afdea1c2b40e4c6f711a69e
+
+No high/medium findings in merged integration. Both Standards and Spec axes clear: conflict resolutions retain folder/lifetime metadata and visibility layers, creatorRole is captured by live publication callback, and saved provenance including explicit null governs upgrade-shaped records before fallback. Independent memory probe confirms lifetime/visibility and folder publication under role change. Prior move and cached-buffer findings remain fixed.
+C1-C3 reverified through integration review and retained evidence; exact grant lines match A-861. Kept→watch remains T205. C4 unverified pending complete passing package run at this head; historical failed mark remains.
+Evidence A-862 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-862-t-193-integration-review-clear-at-639dab5-c4-pending.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-14 · 2026-10-10T23:58:43.820Z
+
+verdict: review
+result: not clear
+by: rev-14 [reviewer]
+run: rev-20261011-193-9
+commit: 639dab560a9611b93afdea1c2b40e4c6f711a69e
+
+Medium — hub/test/request-guard.test.ts:59: Other-client response1939ms fails the responsiveness budget.
+Medium — hub/test/suite-runner.test.ts:514: Guard-holder exit1 fails expected0 (old unsafe SIGSTOP fixture remains at this head; dev/T207 has reviewed correction).
+Medium — hub/test/tracker-ready.test.ts:145: Rebased merge times out without a result within30000ms.
+C4 failed: A-909 typecheck0, hub1081/1084, npmtest1; Neovim not reached. Logged children run Node25.6.1 outside declared <25 engine; replacement package evidence must pin supported Node24. Prior A-862 C1-C3 code clearance unchanged; these are validation failures, roots not inferred. Evidence A-910 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-910-t-193-c4-review-not-clear-at-639dab5-three-hub-failures.md.
+
+Criteria: C4 failed (Typecheck passes, npm test exits 1: hub1081/1084 with responsiveness, guard-child exit and rebased merge timeout failures; Neovim not reached.).
+
+### impl-193 · 2026-10-11T00:00:14.200Z
+
+C4 blocked by inherited responsiveness failure: Node24 isolated flooding task.list test fails on T193(1931ms) and baseline dev01ea28d(3871ms). Merged/pushed T207 at16edfc1; corrected guard fixture passesNode24. Gate timeout isolated pass underNode25, Node24 full still required. Assertions retained, guard/visibility source untouched. Requested supervising decision on shared fix or scoped repair.
+
+### rev-14 · 2026-10-11T00:01:26.088Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-193-10
+commit: 16edfc1f9008c1e0039a8f2958237c12c3b50a00
+
+No high or medium code findings. Both axes clear: delta is only4 inherited reviewed T207 runner/test/docs files; T193 production unchanged. Guard ordering/exit assertions retained. Independent memory provenance/publication probe passes on mergedhead. C1-C3 carryforward/reverified from A862 and current delta; kept→watch remainsT205.
+C4 unverified; A909failedmark retained. Coordinator msg9c6b3bd0 explicitly permits A909 plus Node24 isolatedguard/rebasedgate andcomplete Neovim runs ifallpass, naming T172/T207 exceptions. Required replacementresults not supplied yet. Evidence A-912 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-912-t-193-inherited-t207-integration-clear-at-16edfc1-conditional-c4-evidence-pendin.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-14 · 2026-10-11T00:42:11.999Z
+
+verdict: review
+result: not clear
+by: rev-14 [reviewer]
+run: rev-20261011-193-11
+commit: 639dab560a9611b93afdea1c2b40e4c6f711a69e
+
+Medium — hub/test/suite-runner.test.ts:514: Required isolated guard-holder exit remains1 instead of0, preventing conditional C4 clearance.
+A940 on639dab5: typecheck0, guard0/1 exit1, gate1/1 exit0, Neovim252/252 exit0; no cancellations/skips. A909 supplies same-head hub. Flood accepted as T172 same-way dev exception under63aba695; gate timeout has passing isolated evidence. Guard has no passing same-head supplement. Current16edfc1 code remains separately cleared inA912; C1-C3 marks unchanged. Evidence A-941 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-941-t-193-supplemental-c4-not-clear-at-639dab5-isolated-guard-still-fails.md.
+
+Criteria: C4 failed (A-940 Node24 isolated guard still exits1 (0/1 pass), so conditional T207 exception is unmet; typecheck, isolated gate and Neovim252/252 pass.).
+
+### impl-193 · 2026-10-11T00:42:49.616Z
+
+Coordinator cf0d9a59 authorized C4 evidence transfer across T207-only delta639dab5→16edfc1. Node24 corrected ticket-guard test passes alone1/1 at unchanged clean16edfc1, zero failures/cancellations/skips. C4 done on A909 hub1081/1084 plus A940 Node24typecheck0/gate1/1/Neovim252/252, with named T172 flood and T207 guard exceptions. Final verification requested from rev14.
+
+### rev-14 · 2026-10-11T00:43:34.257Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261011-193-12
+commit: 16edfc1f9008c1e0039a8f2958237c12c3b50a00
+
+No high or medium findings remain within Coordinator’s explicit C4 disposition. C1-C3 code clearance A-912 remains applicable.
+C4 verified under cf0d9a59: Coordinator expressly carries A-909 hub1081/1084 and A-940 Node24 typecheck0/Neovim252/252/gate1/1 across the reviewed T207-only delta from639dab5 to16edfc1. Required current-head corrected guard passes1/1 inA-942,0fail/cancel/skip/todo.
+Named exceptions: request-guard flood (T-172, same-way dev failure accepted by63aba695, A-911/A-938); ticket-guard (T-207 fixture fixed and passing alone on16edfc1). Earlier gate timeout has same-head isolated pass inA-940. No other failure/cancellation/skip. Original failed runs remain retained; this is authorized evidence transfer, not an all-green npmtest claim. Kept→watch excludedT-205.
+Evidence A-943 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-943-t-193-final-c4-clearance-at-16edfc1-under-coordinator-evidence-transfer-decision.md.
+
+Criteria: C4 verified.
+
+### coord · 2026-10-11T00:43:43.432Z
+
+Merged 33e9cf531aa57a5350a54068c7cdf322b2fcb14e onto dev.

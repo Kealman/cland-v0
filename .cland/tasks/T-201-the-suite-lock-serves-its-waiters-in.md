@@ -2,8 +2,8 @@
 id: T-201
 kind: task
 title: "The suite lock serves its waiters in order: the oldest waiter takes it next"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - tech-debt
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-105
 branch: t/T-201-the-suite-lock-serves-its-waiters-in
 created: 2026-10-10T17:49:08.493Z
-updated: 2026-10-10T21:36:33.130Z
+updated: 2026-10-10T21:37:18.559Z
 ---
 
 ## What to build
@@ -39,6 +39,7 @@ Give the lock a queue: each waiter writes a ticket (its pid, start time and work
   - verified: rev-14 [reviewer] · run rev-20261010-201-3 · 2026-10-10T20:34:35.289Z
 - [x] C4. `npm run typecheck && npm test` pass.
   - done: impl-201 · 2026-10-10T21:36:25.309Z
+  - verified: rev-14 [reviewer] · run rev-20261010-201-4 · 2026-10-10T21:36:58.055Z
 
 ## Notes
 
@@ -107,3 +108,19 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-201 · 2026-10-10T21:36:33.130Z
 
 Fresh full package validation passed at unchanged clean reviewed head 5adb8f7b8a01ac3864d7b7d8d5d9eadff4a5b8f5: Node 24 typecheck exit 0, npm test exit 0; hub 1061/1061 and Neovim 238/238, zero failures/cancellations/skips/todos. A-810 stores the complete log at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-810-t-201-full-suite-at-5adb8f7.log. The callback marked C4 done and requested rev-14 verification directly; C1-C3 already verified in rev-20261010-201-3. Keeping the unchanged head and claim for the readiness/merge gate.
+
+### rev-14 · 2026-10-10T21:36:58.055Z
+
+verdict: review
+result: clear
+by: rev-14 [reviewer]
+run: rev-20261010-201-4
+commit: 5adb8f7b8a01ac3864d7b7d8d5d9eadff4a5b8f5
+
+No outstanding high or medium findings. C4 verified from complete A-810: typecheck exits 0; npm test completes hub 1061/1061 and Neovim 238/238, both zero fail/cancelled/skipped/todo, final exit 0. Both admission regressions pass in the full run. HEAD/origin independently match reviewed 5adb8f7; clean worktree. Prior A-786 Standards/Spec clearance and C1–C3 verification remain applicable. Final evidence review: A-812 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-812-t-201-c4-verified-complete-full-suite-at-5adb8f7.md
+
+Criteria: C4 verified.
+
+### coord · 2026-10-10T21:37:18.559Z
+
+Merged 83f06985dbf9b5014faf00341704ac8834a0143e onto dev.
