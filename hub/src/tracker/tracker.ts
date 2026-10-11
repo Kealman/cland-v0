@@ -108,7 +108,7 @@ export type ItemView = IndexedItem & {
 export type ItemSummary = IndexedItem & { layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
-export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; previousAncestry?: string[] };
+export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
 
 const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null]);
 
@@ -441,6 +441,7 @@ export class Tracker {
     const previousAncestry: string[] = [];
     for (let ancestor: string | null | undefined = previous?.id; ancestor && !previousAncestry.includes(ancestor); ancestor = this.#announced.get(ancestor)?.parent) previousAncestry.push(ancestor);
     const events: string[] = [];
+    const postedVerdicts: Verdict[] = [];
     if (previous && item) {
       if (previous.status !== item.status) events.push(`status changed ${previous.status ?? 'none'} → ${item.status ?? 'none'}`);
       if (item.claim && (!previous.claim || !this.sameSession(previous.claim.sessionId, item.claim.sessionId))) events.push(`claimed by ${item.claim.session}`);
@@ -452,7 +453,10 @@ export class Tracker {
       for (const verdict of item.verdicts) {
         const key = verdictIdentity(verdict), count = remaining.get(key) ?? 0;
         if (count) remaining.set(key, count - 1);
-        else events.push(`verdict posted ${verdict.verdict} ${verdict.result}${verdict.stage ? ` · stage ${verdict.stage}` : ''} · ${verdict.run}`);
+        else {
+          postedVerdicts.push(verdict);
+          events.push(`verdict posted ${verdict.verdict} ${verdict.result}${verdict.stage ? ` · stage ${verdict.stage}` : ''} · ${verdict.run}`);
+        }
       }
       if (previous.state !== 'closed' && item.state === 'closed') events.push('closed');
     }
@@ -463,7 +467,7 @@ export class Tracker {
     if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
-        listener({ id, item, ...(previousAncestry.length ? { previousAncestry } : {}), ...(siblings ? { siblings } : {}), ...(events.length ? { events } : {}) });
+        listener({ id, item, ...(previousAncestry.length ? { previousAncestry } : {}), ...(siblings ? { siblings } : {}), ...(events.length ? { events } : {}), ...(postedVerdicts.length ? { postedVerdicts } : {}) });
       } catch (err) {
         this.#log({ event: 'task-change-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
       }

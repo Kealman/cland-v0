@@ -23,7 +23,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { parseCriteria } from '../../hub/src/tracker/criteria.ts';
-import { Visibility } from '../../hub/src/hub/visibility.ts';
+import { Visibility, warningSeverity } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
@@ -155,12 +155,10 @@ function inboxValue(): Record<string, unknown> {
   const asks = ib.asks ?? [];
   const approvals = ib.approvals ?? [];
   const waiting = ib.waiting ?? [];
-  const notifications = ib.notifications ?? [];
   const policy = visibility();
   const count = asks.filter(r => policy.place('inbox', r, 'ask').layer === 'now').length
     + approvals.filter(r => policy.place('inbox', r, 'approval').layer === 'now').length
-    + waiting.filter(r => policy.place('inbox', r, 'waiting').layer === 'now').length
-    + notifications.filter(r => policy.place('inbox', r).layer === 'now').length;
+    + waiting.filter(r => policy.place('inbox', r, 'waiting').layer === 'now').length;
   return { asks, approvals, waiting, notifications: ib.notifications ?? [],
     ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? count }) };
 }
@@ -271,9 +269,11 @@ function answer(f: Frame) {
     case 'inbox.dismiss_all': {
       const ib = (scenario.inbox ??= {});
       if (f.type === 'inbox.dismiss') {
-        if (!(ib.notifications ?? []).some((n) => n.id === f.notification)) return fail(f.id, `no notification "${String(f.notification)}"`);
+        const note = (ib.notifications ?? []).find(n => n.id === f.notification);
+        if (!note) return fail(f.id, `no notification "${String(f.notification)}"`);
+        if (warningSeverity('inbox', note)) return fail(f.id, 'warn events are informational and are not dismissed');
         ib.notifications = (ib.notifications ?? []).filter((n) => n.id !== f.notification);
-      } else ib.notifications = [];
+      } else ib.notifications = (ib.notifications ?? []).filter(n => warningSeverity('inbox', n));
       write({ type: 'inbox', inbox: inboxValue() });
       return ok(f.id, inboxValue());
     }

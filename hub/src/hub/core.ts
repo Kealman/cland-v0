@@ -43,10 +43,11 @@ import { Store } from './store.ts';
 import { Hygiene, HygieneError, type LoopBreaker, type RateLimit } from './hygiene.ts';
 import { mentions, nextStatus, TopicRefusal, type TopicItems, type TopicMove } from './topics.ts';
 import type { ItemChange, ItemSummary, TopicBinding } from '../tracker/tracker.ts';
+import type { Verdict } from '../tracker/item.ts';
 import { sessionActor } from '../tracker/requests.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
-import { Visibility, type VisibilityOverrides } from './visibility.ts';
+import { Visibility, messageVerdict, type VisibilityOverrides } from './visibility.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
 
 /** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
@@ -76,7 +77,7 @@ export const TOPIC_HISTORY_LIMIT = 200;
 
 type DefaultItem = Pick<ItemSummary, 'id' | 'state' | 'parent' | 'claim'>;
 
-type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; ready?: boolean; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' };
+type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; verdict?: Pick<Verdict, 'verdict' | 'result' | 'run'>; ready?: boolean; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' };
 
 export type Connection = {
   name: string;
@@ -408,9 +409,21 @@ export class HubCore {
       const selected = this.#store.allSubscriptions().filter(s => 'subtree' in s.subject && departed.includes(s.subject.subtree) && s.events.includes('task'));
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} left subtree`, {}, { selected, memberOnly: true });
     }
+    const postedVerdicts = [...(change.postedVerdicts ?? [])];
     for (const text of change.events ?? []) {
       if (text === 'closed') this.#terminalEvent({ item: change.id }, 'task', `${change.id} closed`);
-      else this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`, text.startsWith('status changed ') ? { taskChange: 'status', ready: change.item.status === 'ready' } : text.startsWith('verdict posted ') ? { taskChange: 'verdict' } : {});
+      else {
+        const context: EventContext = {};
+        if (text.startsWith('status changed ')) {
+          context.taskChange = 'status';
+          context.ready = change.item.status === 'ready';
+        } else if (text.startsWith('verdict posted ')) {
+          context.taskChange = 'verdict';
+          const verdict = postedVerdicts.shift();
+          if (verdict) context.verdict = verdict;
+        }
+        this.publishEvent({ item: change.id }, 'task', `${change.id} ${text}`, context);
+      }
     }
     if (change.item.state === 'closed') this.#defaultItems.delete(change.id);
   }
@@ -559,7 +572,7 @@ export class HubCore {
       }
       // All modes and recipient counts join the same commit before any observer can bind a digest.
       for (const [digest, to] of groups) {
-        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.final ? { final: true } : {}) } }, defaultRecipients);
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.verdict ? { verdict: context.verdict.verdict, result: context.verdict.result, run: context.verdict.run } : {}), ...(context.lifecycle ? { lifecycle: context.lifecycle } : {}), ...(context.final ? { final: true } : {}) } }, defaultRecipients);
         if (!message) continue;
         this.#afterCommit(() => this.#emitMessage(message));
         for (const name of to) this.#afterCommit(() => { this.#send(message, name); });
@@ -2223,10 +2236,11 @@ export class HubCore {
       // referenced there (who to whom, where, which message), its text left where it was written
       if (!toHuman && topic.id !== AGENTS.id) {
         const addressees = [...sessions];
+        const verdict = messageVerdict(message);
         this.noticeInTopic(AGENTS.id, {
           kind: 'agent-message',
           text: `${this.label(from)} → ${addressees.join(', ')} in "${topic.title}" (${topic.id}): message ${message.id}`,
-          detail: { from, to: addressees, topic: topic.id, message: message.id },
+          detail: { from, to: addressees, topic: topic.id, message: message.id, ...(verdict ? { result: verdict } : {}) },
         });
       }
     }

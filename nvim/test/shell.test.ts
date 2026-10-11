@@ -1990,9 +1990,9 @@ test('the inbox lists asks, approvals, waiting topics and notifications in that 
     'WAITING FOR YOU · TOPICS',
     '● Spoke reconnect: flaky te',
     'NOTIFICATIONS · d dismiss · D all',
-    '✗ T-19 review not clear · rev-1',
+    '⚠ T-19 review not clear · rev-1',
     '✓ T-19 QA clear: rev-1',
-    '! impl-3 [Implementer] died',
+    '⚠ impl-3 [Implementer] died',
   ].map((w) => panel.indexOf(w));
   assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order, `in the design's order:\n${panel}`);
@@ -2041,15 +2041,19 @@ test('Enter on an approval attaches the session in the centre', { skip }, async 
   assert.deepEqual((await requestsOf(c, 'session.attach')).map((f) => f.session), ['impl-1']);
 });
 
-test('d dismisses the notification under the cursor, D all of them; asks and approvals stay', { skip }, async (t) => {
+test('d dismisses ordinary notifications; D retains warnings, asks and approvals', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await openInbox(c);
   await c.input('gg/T-19 QA clear<CR>d');
   let s = await c.waitScreen((x) => !rightOf(x).includes('T-19 QA clear') && rightOf(x).includes('T-19 review not clear'), 'one dismissed');
   assert.deepEqual((await requestsOf(c, 'inbox.dismiss')).map((f) => f.notification), ['n2']);
+  await c.input('gg/T-19 review not clear<CR>d');
+  s = await c.waitScreen(x => statusLine(x).includes('warn events are informational and are not dismissed'), 'warning retained');
   await c.input('D');
-  s = await c.waitScreen((x) => !rightOf(x).includes('NOTIFICATIONS'), 'all dismissed');
-  assert.equal((await requestsOf(c, 'inbox.dismiss_all')).length, 1);
+  s = await c.waitScreen(x => statusLine(x).includes('warn events are informational and are not dismissed'), 'only warnings remain');
+  assert.equal((await requestsOf(c, 'inbox.dismiss_all')).length, 0);
+  assert.ok(rightOf(s).includes('T-19 review not clear'));
+  assert.ok(rightOf(s).includes('impl-3 [Implementer] died'));
   assert.match(rightOf(s), /Which should win\?/);
   assert.match(rightOf(s), /▲ impl-1 \[Implementer\]/);
   assert.match(topBar(s), /needs you {2}3 /, 'dismissing notifications never changes the hub count');
@@ -2179,7 +2183,7 @@ test('visibility overrides drive thread folds, palette dimming and session count
     s.messages!.general!.push({ id: 'raised', from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', to: ['coord-1'], kind: 'report', text: 'Raised agent report', topic: 'general', ts: ts(12) });
     s.processes![1]!.state = 'idle';
   });
-  await c.waitScreen(s =>  /needs you\s+1/.test(topBar(s)), 'the raised idle is counted by the stub hub');
+  await c.waitScreen(s => /needs you\s+0/.test(topBar(s)), 'a raised idle is informational even in Now');
   const values = await c.lua<{ message: string; idle: string; backlog: string; dim: boolean; now: number }>(`local s = require('cland.state'); local t = require('cland.views').topic('general').thread; return {message = t.blocks[#t.blocks].layer, idle = s.session('impl-1').layer, backlog = s.item('T-13').layer, dim = require('cland.palette').dim('items', s.item('T-13')), now = s.counts().now}`);
   assert.equal(values.message, 'now');
   assert.equal(values.idle, 'now');

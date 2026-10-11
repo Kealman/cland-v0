@@ -8,4 +8,9 @@ function M.dim(object)
   local layer = M.layer(object)
   return layer == 'background' or layer == 'archive'
 end
+-- Severity comes from the same hub classifier as placement.
+M.WARN = { '⚠', 'ClandAmber' }
+function M.warning(object)
+  return type(object) == 'table' and object.severity == 'warn'
+end
 return M

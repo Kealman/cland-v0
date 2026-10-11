@@ -229,6 +229,7 @@ test('moving an already-open prompt rebinds its editable buffer before the next 
   const source = await make(), folder = await make(true);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await eventually('source artifact list loaded', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}) ~= nil`) || undefined);
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
   await c.waitScreen(s => s.includes('Draft bytes'), 'editable draft');
   await c.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, {'Unsaved moved bytes'})");
@@ -248,6 +249,7 @@ test('a draft moved while disconnected resolves and rebinds on reconnect before 
   const source = await make(), folder = await make(true);
   const c = await startClient(t, bin, root);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await eventually('source artifact list loaded', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}) ~= nil`) || undefined);
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
   await c.waitScreen(s => s.includes('Draft bytes'), 'editable draft');
   await c.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, {'Unsaved moved bytes'})");

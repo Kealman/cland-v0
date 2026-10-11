@@ -4,13 +4,13 @@
 //   asks           the open asks, oldest first (the `asks` table)
 //   approvals      sessions in `waiting for approval`: the harness's own prompt, answered in the attached session
 //   waiting        topics `waiting for human` that carry no open ask
-//   notifications  dismissable: role changes and failed or uncertain turns; stored with a `dismissed` flag. Fed by the hub's own events
+//   notifications  informational warnings stay visible; ordinary notifications have a `dismissed` flag. Fed by the hub's own events
 //                  (`session.role`, `session.state`), the tracker's verdicts, and for a handover its one `handover`
 //                  notice in Agents (#31, #34) rather than its two `session.role` events.
 //
-// The "needs you" count is the number of inbox entries classified now. Subscribers get the whole inbox
+// The "needs you" count includes only now asks, approvals and waiting topics. Subscribers get the whole inbox
 // in an `inbox` event whenever any of it changed, coalesced to one per turn of the event loop.
-import { messageVerdict, type Visibility } from './visibility.ts';
+import { messageVerdict, warningSeverity, type Visibility } from './visibility.ts';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
@@ -247,8 +247,7 @@ export class InboxBoard {
     const notifications = p.store.notifications().map(n => p.visibility.place('inbox', n));
     const needsYou = asks.filter(a => p.visibility.place('inbox', a, 'ask').layer === 'now').length
       + approvals.filter(a => p.visibility.place('inbox', a, 'approval').layer === 'now').length
-      + waiting.filter(t => p.visibility.place('inbox', t, 'waiting').layer === 'now').length
-      + notifications.filter(n => n.layer === 'now').length;
+      + waiting.filter(t => p.visibility.place('inbox', t, 'waiting').layer === 'now').length;
     return { asks, approvals, waiting, notifications, needsYou };
   }
 
@@ -256,19 +255,25 @@ export class InboxBoard {
     return this.list().needsYou;
   }
 
-  /** Dismiss one notification; an ask, an approval or an unknown id is refused. */
+  /** Dismiss an ordinary notification; warnings, asks, approvals and unknown ids are refused. */
   dismiss(id: string): Inbox {
     if (!this.#port.store.notificationExists(id)) {
       if (this.#port.store.ask(id) || this.list().approvals.some((a) => a.session === id)) throw new Error('asks and approvals are not dismissed: answer them');
       throw new Error(`no notification "${id}"`);
     }
+    const note = this.#port.store.notifications().find(n => n.id === id);
+    if (note && warningSeverity('inbox', note)) throw new Error('warn events are informational and are not dismissed');
     this.#port.store.dismissNotifications(id);
     this.#changed();
     return this.list();
   }
 
   dismissAll(): Inbox {
-    if (this.#port.store.dismissNotifications() > 0) this.#changed();
+    let dismissed = 0;
+    for (const note of this.#port.store.notifications()) {
+      if (!warningSeverity('inbox', note)) dismissed += this.#port.store.dismissNotifications(note.id);
+    }
+    if (dismissed > 0) this.#changed();
     return this.list();
   }
 

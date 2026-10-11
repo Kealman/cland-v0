@@ -22,16 +22,21 @@ Live session-state frames use the process's status and launch role: a stop or ex
 stays background even when idle is overridden to now; stopped Aides retain the
 aide cell.
 
-`needsYou` counts the inbox's now entries: asks, approvals, waiting topics without
-an open ask, and undismissed now notifications. Not-clear verdicts, harness deaths, clear verdicts and long idles are watch by
-default. T-171 will define how actionable notifications resolve before the default
-count includes them. An explicit project override can raise them to now; such
-entries persist and count until dismissed. Role changes and other
-bookkeeping are background. Dismissing a now notification changes the hub count.
-Subscription deliveries to agent leads remain independent of inbox placement.
-Verdict messages retain T-134's exception: clear is watch and not-clear is now,
-including agent-to-agent messages. T-171 settles this divergence from §3.5;
-message placement does not itself add to the inbox's needs-you count.
+`needsYou` counts only now asks, approvals and waiting topics without an open
+ask. Notifications never contribute, even when a project override places one in
+Now. Subscription deliveries to agent leads remain independent of inbox placement.
+
+Not-clear verdicts (including agent-to-agent verdict reports) and hub session-death
+notices carry `severity: "warn"` from the shared classifier. Verdict task events
+carry structured verdict/result/run facts into the Agents log even when their report
+belongs to a bound item topic; death subscription events carry their lifecycle fact.
+Bound-topic agent verdict references retain the verdict result too. Their inbox entries
+and event-log messages show an amber `⚠` marker, sorted with the other events.
+Warnings stay in Watch even under a now override. Old messages still follow the
+seven-day archive policy and retain their severity. Warnings are information:
+there is no dismissal, acknowledgement or later-clear resolution rule. `d` refuses
+a warning and `D` retains warnings while dismissing ordinary notifications.
+Clear verdicts and long idles default to Watch; role bookkeeping is Background.
 
 The placement table and consumers land in T-190. The later T-115 slices add folds
 and filtering to the other panels, archive retrieval for threads, and pins/mutes.
@@ -42,7 +47,7 @@ T-190 does not implement those later panel controls or persisted overrides in
 
 The hub reads `.cland/config.toml` at startup. Restart it after editing visibility.
 Each `[visibility]` entry is `surface.kind = "layer"`; omitted cells use the defaults.
-For example, to count long idles as needing the human:
+For example, to place long idles in Now (without changing `needsYou`):
 
 ```toml
 [visibility]
@@ -56,7 +61,7 @@ managed-file updates keep invalid files for the human to correct.
 
 | Surface | Kind keys and default layers |
 |---|---|
-| `messages` | `human`, `ask`, `not_clear`: now; `coordinator_report`, `clear`: watch; `agent`: background; `old`: archive |
+| `messages` | `human`, `ask`: now; `not_clear`, `coordinator_report`, `clear`: watch; `agent`: background; `old`: archive |
 | `inbox` | `ask`, `approval`, `waiting`: now; `not_clear`, `death`, `clear`, `release`, `import`, `idle`: watch; `other`: background |
 | `sessions` | `aide`, `waiting`, `busy`: now; `idle`: watch (unknown states also use this cell); `stopped`: background |
 | `items` | `active`: now; `planned`: watch; `backlog`, `unscheduled`, `done`: background; `closed_release`: archive |

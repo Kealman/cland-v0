@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
+import { connectUi, fakeClaude, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import type { Scenario } from './stub-hub.ts';
 
@@ -40,28 +41,49 @@ async function start(t: TestContext, scenario: Scenario = {}) {
 }
 
 
-test('inbox places clear verdicts under watch and leaves bookkeeping in Agents', { skip }, async t => {
-  const ts = new Date().toISOString();
-  const c = await start(t, {
-    visibility: { inbox: { not_clear: 'now' } },
-    inbox: {
-      notifications: [
-        { id: 'clear', kind: 'verdict', result: 'clear', text: 'T-191 review clear', ts },
-        { id: 'book', kind: 'role', text: 'bookkeeping assigned', ts },
-        { id: 'failed', kind: 'verdict', result: 'not clear', text: 'T-192 review not clear', ts },
-      ],
-    },
-    messages: { agents: [{ id: 'book-message', topic: 'agents', from: 'hub', fromKind: 'hub', to: [], text: 'bookkeeping assigned', ts, kind: 'role' }] },
-  });
+test('real bound-topic verdict and death events show warning markers without changing the chip', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.not_clear = "now"\ninbox.death = "now"\nmessages.not_clear = "now"\n');
+  const fake = await fakeClaude(t, { pollMs: 50 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  const created = await ui.request({ type: 'task.create', title: 'Warning evidence' });
+  assert.equal(created.ok, true, created.error);
+  const item = (created.value as { item: { id: string } }).item.id;
+  const bound = await ui.request({ type: 'topic.create', title: 'Warning evidence', item });
+  assert.equal(bound.ok, true, bound.error);
+  const c = await startClient(t, bin, root);
+  await c.waitScreen(s => s.includes('hub: connected'), 'real hub connected');
+  const verdict = await ui.request({ type: 'task.comment', item, text: 'Fix the warning.', verdict: { verdict: 'review', result: 'not clear', run: 'headless-warning' }, as: { name: 'rev', role: 'reviewer' } });
+  assert.equal(verdict.ok, true, verdict.error);
+  const launch = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' }, 30_000);
+  assert.equal(launch.ok, true, launch.error);
+  const subscribed = await coord.call<{ ok: boolean }>('subscribe', { subject: { session: 'worker' }, events: ['session.state'] });
+  assert.equal(subscribed.ok, true);
+  process.kill((launch.value as { process: { pid: number } }).process.pid, 'SIGKILL');
   await c.input('<Esc><Space>N');
-  const s = await c.waitScreen(s => s.includes('T-191 review clear') && s.includes('T-192 review not clear'), 'verdict inbox');
-  const now = s.indexOf('NOW');
-  const watch = s.indexOf('WATCH');
-  assert.ok(now >= 0 && now < s.indexOf('T-192 review not clear') && s.indexOf('T-192 review not clear') < watch, s);
-  assert.ok(watch < s.indexOf('T-191 review clear'), s);
-  assert.ok(!s.includes('bookkeeping assigned'), 'background never appears in the inbox');
+  let s = await c.waitScreen(s => s.includes(`⚠ ${item} review not clear`) && s.includes('⚠ worker died'), 'real warnings in inbox');
+  const inbox = (await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0, 0, -1, false)")).join('\n');
+  assert.ok(!inbox.includes('NOW'), inbox);
+  assert.match(s, /WATCH/);
+  assert.match(s, /needs you\s+0/);
+  assert.match(s, /nothing needs you/);
+  await c.input(`gg/${item} review not clear<CR>d`);
+  await c.waitScreen(s => s.includes('warn events are informational and are not dismissed'), 'warning dismissal refused');
+  await c.input('D');
+  s = await c.waitScreen(s => s.includes(`⚠ ${item} review not clear`) && s.includes('⚠ worker died'), 'dismiss all retains warnings');
+  assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
   await c.input('<Space>L');
-  await c.waitScreen(s => s.includes('bookkeeping assigned'), 'bookkeeping remains in Agents');
+  await c.waitScreen(s => s.includes(`⚠ event · task · ${item} verdict posted review not clear`) && s.includes('⚠ event · session.state · worker died'), 'real warning subscription events in Agents');
+  const log = (await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0, 0, -1, false)")).join('\n');
+  assert.match(log, new RegExp(`⚠ event · task · ${item} verdict posted review not clear · headless-warning`));
+  assert.match(log, /⚠ event · session.state · worker died/);
+  assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
 });
 
 test('inbox archive is opt-in and stays separate from background in both views', { skip }, async t => {

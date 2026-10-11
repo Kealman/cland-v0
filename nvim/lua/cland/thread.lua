@@ -270,6 +270,10 @@ function Thread:_build(m, prev, answer)
         hmarks[#hmarks + 1] = { col = c, opts = vim.tbl_extend('force', opts, extra or {}) }
       end
     end
+    if require('cland.visibility').warning(mm) then
+      local warn = require('cland.visibility').WARN
+      put(warn[1] .. ' ', warn[2])
+    end
     local name = mine and 'you' or tostring(mm.from)
     put(name, watch and 'ClandWatch' or 'ClandBold')
     if not mine and mm.fromRole and mm.fromRole ~= vim.NIL then

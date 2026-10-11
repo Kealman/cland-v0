@@ -6,6 +6,7 @@
 -- goes into Agents with `replyTo`, which the hub resolves to that sender.
 local api = vim.api
 local state = require('cland.state')
+local visibility = require('cland.visibility')
 
 local M = { messages = {}, by_id = {}, rows = {}, buf = nil, reply = nil, filter = {}, generation = 0 }
 local ns = api.nvim_create_namespace('cland.agents_log')
@@ -131,7 +132,7 @@ function M.render()
       attachment_lines[#text_lines] = a
     end
     if m.fromKind == 'hub' then
-      local g = M.GLYPHS[m.kind] or M.OTHER_GLYPH
+      local g = visibility.warning(m) and visibility.WARN or M.GLYPHS[m.kind] or M.OTHER_GLYPH
       local head = time .. g[1] .. ' '
       line(head .. text_lines[1], m, { { 1, #time - 2, 'ClandDim' }, { #time, #time + #g[1], g[2] }, { #head, -1, m.kind == 'mute' and 'ClandRed' or 'ClandText' } })
     else
@@ -141,11 +142,13 @@ function M.render()
         to[#to + 1] = who(n)
       end
       local dest = #to > 0 and table.concat(to, ', ') or (m.artifact and 'you' or 'nobody')
-      local head = time .. from .. ' → ' .. dest .. '  '
-      local s_from = #time
+      local warning = visibility.warning(m) and (visibility.WARN[1] .. ' ') or ''
+      local head = time .. warning .. from .. ' → ' .. dest .. '  '
+      local s_from = #time + #warning
       local s_to = s_from + #from + #' → '
       line(head .. text_lines[1], m, {
         { 1, #time - 2, 'ClandDim' },
+        { #time, s_from, visibility.WARN[2] },
         { s_from, s_from + #from, m.fromKind == 'human' and 'ClandAmber' or 'ClandBold' },
         { s_from + #from, s_to, 'ClandDim' },
         { s_to, s_to + #dest, 'ClandTeal' },

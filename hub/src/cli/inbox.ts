@@ -29,7 +29,7 @@ function describe(v: Inbox): string {
   }
   for (const ap of v.approvals) lines.push(`approval: ${ap.label} waiting for approval`);
   for (const w of v.waiting) lines.push(`waiting: ${w.title} (${w.id})`);
-  for (const n of v.notifications) lines.push(`notification: ${n.text}`);
+  for (const n of v.notifications) lines.push(`notification: ${n.severity === 'warn' ? '⚠ ' : ''}${n.text}`);
   lines.push(`needs you: ${v.needsYou}`);
   return lines.join('\n');
 }

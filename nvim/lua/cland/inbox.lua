@@ -6,7 +6,7 @@
 --   WAITING FOR YOU topics waiting for the human without an open ask: ↵ opens the topic
 --   NOTIFICATIONS   verdicts, role changes, deaths, long idles: `d` dismisses one, `D` all; ↵ opens the item or
 --                   the session it names
--- Asks and approvals are never dismissed. Everything comes from the hub (`inbox.list`, the `inbox` event) and
+-- Warnings, asks and approvals are never dismissed. Everything comes from the hub (`inbox.list`, the `inbox` event) and
 -- renders through `state.changed()`, so no update ever raises a prompt.
 local api = vim.api
 local state = require('cland.state')
@@ -33,6 +33,7 @@ local function section(c, name, count, extra, amber)
 end
 
 local function notification_glyph(n)
+  if visibility.warning(n) then return visibility.WARN end
   if n.kind == 'verdict' and n.result == 'not clear' then
     return M.GLYPH['verdict not clear']
   end
@@ -83,10 +84,14 @@ local function render_layer(c, ib)
   end
   if #ib.notifications > 0 then
     c:add({})
-    section(c, 'notifications', #ib.notifications, ' · d dismiss · D all')
+    local dismissable = false
+    for _, note in ipairs(ib.notifications) do
+      if not visibility.warning(note) then dismissable = true end
+    end
+    section(c, 'notifications', #ib.notifications, dismissable and ' · d dismiss · D all' or nil)
     for _, note in ipairs(ib.notifications) do
       local g = notification_glyph(note)
-      c:add({ { ' ' .. g[1] .. ' ', g[2] }, { tostring(note.text) } }, { { clock(note.ts) .. ' ', 'ClandDim' } }, { notification = note.id, item = note.item, session = note.session })
+      c:add({ { ' ' .. g[1] .. ' ', g[2] }, { tostring(note.text) } }, { { clock(note.ts) .. ' ', 'ClandDim' } }, { notification = note.id, warning = visibility.warning(note), item = note.item, session = note.session })
     end
   end
 end
@@ -159,9 +164,12 @@ function M.open(buf)
   end
 end
 
---- d: dismiss the notification under the cursor; asks and approvals stay until they are answered.
+--- d: dismiss an ordinary notification; warnings stay visible, asks and approvals wait for answers.
 function M.dismiss(buf)
   local info = row(buf)
+  if info and info.warning then
+    return state.say('warn events are informational and are not dismissed', 'ClandAmberBar')
+  end
   if info and info.notification then
     -- gone at once; the hub's answer (and its `inbox` event) is the inbox as it now is
     local list = state.S.inbox.notifications
@@ -184,7 +192,14 @@ function M.dismiss_all()
   if #state.S.inbox.notifications == 0 then
     return state.say('no notifications to dismiss')
   end
-  state.S.inbox.notifications = {}
+  local keep = {}
+  for _, note in ipairs(state.S.inbox.notifications) do
+    if visibility.warning(note) then table.insert(keep, note) end
+  end
+  if #keep == #state.S.inbox.notifications then
+    return state.say('warn events are informational and are not dismissed', 'ClandAmberBar')
+  end
+  state.S.inbox.notifications = keep
   state.changed()
   request({ type = 'inbox.dismiss_all' })
 end

@@ -4,8 +4,8 @@ import type { HubFrame } from '../protocol.ts';
 
 export type Layer = 'now' | 'watch' | 'background' | 'archive';
 export const DEFAULT_VISIBILITY = {
-  messages: { human: 'now', ask: 'now', not_clear: 'now', clear: 'watch', coordinator_report: 'watch', agent: 'background', old: 'archive' },
-  // T-171 owns actionable notification resolution; until then they stay watch by default.
+  messages: { human: 'now', ask: 'now', not_clear: 'watch', clear: 'watch', coordinator_report: 'watch', agent: 'background', old: 'archive' },
+  // Warnings inform the human; asks, approvals and waiting topics need a response.
   inbox: { plan: 'watch', ask: 'now', approval: 'now', waiting: 'now', not_clear: 'watch', death: 'watch', clear: 'watch', release: 'watch', import: 'watch', idle: 'watch', other: 'background' },
   sessions: { aide: 'now', waiting: 'now', busy: 'now', idle: 'watch', stopped: 'background' },
   items: { active: 'now', planned: 'watch', backlog: 'background', unscheduled: 'background', done: 'background', closed_release: 'archive' },
@@ -46,6 +46,20 @@ export function messageVerdict(m: Row): 'clear' | 'not clear' | undefined {
   if (m.fromKind !== 'agent') return;
   const match = String(m.text ?? '').split(/[\r\n]/)[0]?.toLowerCase().match(/^(review|qa) (not clear|clear)(?=$|[^a-z])/);
   return match?.[2] as 'clear' | 'not clear' | undefined;
+}
+
+/** Warning facts are projected on snapshots and live events; they require no human action. */
+export function warningSeverity(surface: Surface, r: Row): 'warn' | undefined {
+  if (surface === 'messages') {
+    const detail = row(r.detail);
+    const eventWarning = r.fromKind === 'hub' && (
+      r.kind === 'session-death'
+      || (r.kind === 'event' && ((detail?.event === 'task' && detail.result === 'not clear') || (detail?.event === 'session.state' && detail.lifecycle === 'died')))
+      || (r.kind === 'agent-message' && detail?.result === 'not clear')
+    );
+    if (messageVerdict(r) === 'not clear' || eventWarning) return 'warn';
+  }
+  if (surface === 'inbox' && (r.kind === 'death' || (r.kind === 'verdict' && r.result === 'not clear'))) return 'warn';
 }
 
 // SemVer precedence, including numeric prerelease identifiers and ignoring build metadata.
@@ -92,12 +106,13 @@ export class Visibility {
     return this.#overrides[surface]?.[kind] ?? defaults[kind] ?? 'background';
   }
 
-  place<T extends object>(surface: Surface, object: T, kind?: string): T & { layer: Layer } {
+  place<T extends object>(surface: Surface, object: T, kind?: string): T & { layer: Layer; severity?: 'warn' } {
     const r = object as Row;
     const cell = kind ?? this.#kind(surface, r);
     const layer = surface === 'messages' && cell === 'artifact'
       ? this.place('artifacts', row(r.artifact)!).layer : this.layer(surface, cell);
-    return { ...object, layer };
+    const severity = warningSeverity(surface, r);
+    return { ...object, layer: severity && cell !== 'old' ? 'watch' : layer, ...(severity ? { severity } : {}) };
   }
 
   #kind(surface: Surface, r: Row, activeItems?: Set<unknown>): string {
@@ -106,7 +121,7 @@ export class Visibility {
         const ts = Date.parse(String(r.ts));
         if (Number.isFinite(ts) && this.#now().getTime() - ts > 7 * 86_400_000) return 'old';
         if (r.ask || r.answerTo) return 'ask';
-        // Preserve T-134's verdict-message exception, including agent recipients; T-171 settles its policy.
+        // Verdicts remain visible to the human even when addressed to an agent.
         const verdict = messageVerdict(r);
         if (verdict) return verdict === 'clear' ? 'clear' : 'not_clear';
         // Creation chips share artifact policy; a message with attachments keeps message policy.

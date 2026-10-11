@@ -271,9 +271,9 @@ test('on a project: closing the item cancels the ask; verdicts are watch and rol
       ['role', 'rev-1 is Reviewer: assigned'],
     ],
   );
-  assert.equal(listed.needsYou, 0, 'default notifications do not count until T-171 defines their resolution');
+  assert.equal(listed.needsYou, 0, 'notifications never require human action');
 
-  // asks are not dismissed, notifications are
+  // Ordinary notifications dismiss; asks and warnings remain.
   const b = await ask(coord, 'general', 'Anything else?', ['no']);
   assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: b.ask })).error), /asks and approvals are not dismissed/);
   const first = listed.notifications[0] as Notification;
@@ -282,9 +282,9 @@ test('on a project: closing the item cancels the ask; verdicts are watch and rol
   assert.equal(after.asks.length, 1);
   mark = ui.frames.length;
   const none = await ok<Inbox>(ui, { type: 'inbox.dismiss_all' });
-  assert.deepEqual(none.notifications, []);
+  assert.deepEqual(none.notifications.map(n => [n.kind, n.result]), [['verdict', 'not clear']]);
   assert.equal(none.asks.length, 1, 'dismiss-all leaves the asks');
-  await inboxEvent(ui, (i) => i.notifications.length === 0 && i.asks.length === 1, mark);
+  await inboxEvent(ui, (i) => i.notifications.length === 1 && i.notifications[0]?.result === 'not clear' && i.asks.length === 1, mark);
   assert.equal((await ui.request({ type: 'inbox.dismiss', notification: first.id })).ok, true, 'dismissing twice is harmless');
   assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: 'n-nope' })).error), /no notification "n-nope"/);
 });

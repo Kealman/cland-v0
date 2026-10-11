@@ -855,7 +855,7 @@ test('one message layer rule covers the Messages table and every never-fold boun
     [{ ...msg('ask'), to: ['reviewer'], ask: {state: 'open'} }, 'now'],
     [{ ...msg('answer', 'implementer'), to: ['reviewer'], answerTo: 'unknown' }, 'now'],
     [{ ...msg('clear', 'reviewer', 'review clear T-58'), to: ['implementer'] }, 'watch'],
-    [{ ...msg('not-clear', 'qa', 'qa not clear T-58'), to: ['implementer'] }, 'now'],
+    [{ ...msg('not-clear', 'qa', 'qa not clear T-58'), to: ['implementer'] }, 'watch'],
     [{ ...msg('aide', 'aide'), to: ['implementer'] }, 'now'],
     [{ ...msg('to-aide', 'implementer'), to: ['human-aide'] }, 'now'],
     [{ ...msg('exchange', 'implementer'), to: ['reviewer'] }, 'background'],

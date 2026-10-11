@@ -83,7 +83,7 @@ for (const [terminal, role, expected] of [['stopped', 'implementer', 'background
   });
 }
 
-test('project visibility raises a fake harness long idle to now in inbox events and hub.status', async t => {
+test('project visibility can raise an idle notification to now without changing needsYou', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.idle = "now"\n');
@@ -99,11 +99,11 @@ test('project visibility raises a fake harness long idle to now in inbox events 
     return value.notifications.some(n => n.kind === 'idle') ? value : undefined;
   });
   assert.equal(ib.notifications.find(n => n.kind === 'idle')?.layer, 'now');
-  assert.equal(ib.needsYou, 1);
+  assert.equal(ib.needsYou, 0);
   const status = await ui.request({ type: 'hub.status' });
-  assert.equal((status.value as { needsYou: number }).needsYou, 1);
+  assert.equal((status.value as { needsYou: number }).needsYou, 0);
   const pushed = await ui.waitFor(f => f.type === 'inbox' && (f.inbox as Inbox).notifications.some(n => n.kind === 'idle'));
-  assert.equal((pushed.inbox as Inbox).needsYou, 1);
+  assert.equal((pushed.inbox as Inbox).needsYou, 0);
   await ui.request({ type: 'inbox.dismiss', notification: ib.notifications.find(n => n.kind === 'idle')!.id });
   assert.equal(((await ui.request({ type: 'hub.status' })).value as { needsYou: number }).needsYou, 0);
 });
@@ -265,4 +265,84 @@ test('artifact placement keeps the author role at publication across a later rol
   const restarted = await connectUi(t, { socket, secret: TEST_SECRET });
   const after = (await restarted.request({ type: 'artifact.list' })).value as { artifacts: Array<{ id: string; layer: string }> };
   assert.equal(after.artifacts.find(a => a.id === result.artifact.id)?.layer, 'now');
+});
+
+test('D17 verdicts and deaths carry warn severity in inbox and event log, never needing the human', async t => {
+  const { cland, spawnSpoke } = await import('./harness.ts');
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.not_clear = "now"\ninbox.death = "now"\nmessages.not_clear = "now"\n');
+  const fake = await fakeClaude(t, { pollMs: 50 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const item = ((await ui.request({ type: 'task.create', title: 'Warning evidence' })).value as { item: { id: string } }).item.id;
+  const topic = ((await ui.request({ type: 'topic.create', title: 'Warning evidence', item })).value as { topic: { id: string } }).topic.id;
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  const ask = await coord.call<{ ok: boolean; error?: string }>('ask', { topic: 'general', question: 'Choose a direction', options: ['Continue'], free: true });
+  assert.equal(ask.ok, true, ask.error);
+  assert.equal(((await ui.request({ type: 'inbox.list' })).value as Inbox).needsYou, 1);
+  const verdict = await ui.request({ type: 'task.comment', item, text: 'Fix the regression.', verdict: { verdict: 'review', result: 'not clear', run: 'warn-review' }, as: { name: 'rev', role: 'reviewer' } });
+  assert.equal(verdict.ok, true, verdict.error);
+  type WarnMessage = { id: string; layer: string; severity?: string; kind: string; detail?: Record<string, unknown> };
+  const failed = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).detail?.run === 'warn-review' && (f.message as WarnMessage).kind === 'report');
+  assert.equal((failed.message as WarnMessage).layer, 'watch');
+  assert.equal((failed.message as WarnMessage).severity, 'warn');
+  const verdictEvent = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'event' && (f.message as WarnMessage).detail?.run === 'warn-review');
+  assert.equal((verdictEvent.topic as { id: string }).id, 'agents', 'a normal bound-topic verdict also reaches the event log');
+  assert.equal((verdictEvent.message as WarnMessage).detail?.event, 'task');
+  assert.equal((verdictEvent.message as WarnMessage).detail?.result, 'not clear');
+  assert.equal((verdictEvent.message as WarnMessage).layer, 'watch');
+  assert.equal((verdictEvent.message as WarnMessage).severity, 'warn');
+  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev-live', role: 'reviewer', sessionId: 'rev-live-id' });
+  t.after(() => rev.close());
+  const sent = await rev.call<{ ok: boolean; error?: string; message?: { id: string } }>('send', { topic, to: ['coord'], text: 'review not clear: follow-up evidence', kind: 'report' });
+  assert.equal(sent.ok, true, sent.error);
+  const reference = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'agent-message' && (f.message as WarnMessage).detail?.from === 'rev-live');
+  assert.equal((reference.message as WarnMessage).layer, 'watch');
+  assert.equal((reference.message as WarnMessage).severity, 'warn');
+  const launch = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' }, 30_000);
+  assert.equal(launch.ok, true, launch.error);
+  const subscribed = await coord.call<{ ok: boolean; error?: string }>('subscribe', { subject: { session: 'worker' }, events: ['session.state'] });
+  assert.equal(subscribed.ok, true, subscribed.error);
+  process.kill((launch.value as { process: { pid: number } }).process.pid, 'SIGKILL');
+  const deathEvent = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'event' && (f.message as WarnMessage).detail?.lifecycle === 'died');
+  assert.equal((deathEvent.message as WarnMessage).layer, 'watch');
+  assert.equal((deathEvent.message as WarnMessage).severity, 'warn');
+  const died = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'session-death');
+  assert.equal((died.message as WarnMessage).layer, 'watch');
+  assert.equal((died.message as WarnMessage).severity, 'warn');
+  const pushed = await ui.waitFor(f => f.type === 'inbox' && (f.inbox as Inbox).notifications.some(n => n.kind === 'death'));
+  assert.equal((pushed.inbox as Inbox).needsYou, 1);
+  for (const note of (pushed.inbox as Inbox).notifications.filter(n => n.kind === 'death' || n.result === 'not clear')) {
+    assert.equal(note.layer, 'watch');
+    assert.equal(note.severity, 'warn');
+    const dismissed = await ui.request({ type: 'inbox.dismiss', notification: note.id });
+    assert.equal(dismissed.ok, false);
+    assert.match(dismissed.error!, /warn events.*not dismissed/);
+  }
+  const clear = await ui.request({ type: 'task.comment', item, text: 'Fixed.', verdict: { verdict: 'review', result: 'clear', run: 'clear-review' }, as: { name: 'rev', role: 'reviewer' } });
+  assert.equal(clear.ok, true, clear.error);
+  const clearEvent = await ui.waitFor(f => f.type === 'message' && (f.message as WarnMessage).kind === 'event' && (f.message as WarnMessage).detail?.run === 'clear-review');
+  assert.equal((clearEvent.message as WarnMessage).severity, undefined, 'clear events are not warnings');
+  const dismissed = (await ui.request({ type: 'inbox.dismiss_all' })).value as Inbox;
+  assert.equal(dismissed.notifications.length, 2, 'clear verdicts can be dismissed; warnings have no resolution rule');
+  assert.ok(dismissed.notifications.every(n => n.severity === 'warn'));
+  assert.equal(dismissed.needsYou, 1);
+  const history = (await ui.request({ type: 'topic.history', topic })).value as { messages: WarnMessage[] };
+  assert.equal(history.messages.find(m => m.id === (failed.message as WarnMessage).id)?.severity, 'warn');
+  const log = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: WarnMessage[] };
+  assert.equal(log.messages.find(m => m.id === (died.message as WarnMessage).id)?.severity, 'warn');
+  assert.equal(log.messages.find(m => m.id === (deathEvent.message as WarnMessage).id)?.severity, 'warn');
+  assert.equal(log.messages.find(m => m.id === (verdictEvent.message as WarnMessage).id)?.severity, 'warn');
+  assert.equal(log.messages.find(m => m.id === (reference.message as WarnMessage).id)?.severity, 'warn');
+  assert.equal(((await ui.request({ type: 'hub.status' })).value as { needsYou: number }).needsYou, 1);
+  const cli = await cland(root, 'inbox', '--json');
+  assert.equal(cli.code, 0, cli.stderr);
+  assert.equal((JSON.parse(cli.stdout) as Inbox).needsYou, 1);
+  assert.ok((JSON.parse(cli.stdout) as Inbox).notifications.every(n => n.severity === 'warn'));
+  const plain = await cland(root, 'inbox');
+  assert.equal(plain.code, 0, plain.stderr);
+  assert.match(plain.stdout, /notification: ⚠ /);
 });

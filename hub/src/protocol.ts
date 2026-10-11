@@ -93,6 +93,8 @@ export type MarkedCriterion = { id: string; mark: 'verified' | 'failed'; note?: 
 
 export type Message = {
   layer?: Layer;
+  /** Informational warning, independent of actionability. */
+  severity?: 'warn';
   id: string;
   from: string;
   fromKind: FromKind;
@@ -194,9 +196,11 @@ export type InboxApproval = { layer?: Layer; session: string; label: string; har
 
 export type NotificationKind = 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
-/** Something worth the human's eye from the journal (until #34, the hub's own events): dismissable, never blocking. */
+/** Something worth the human's eye: informational, never blocking; warnings are not dismissable. */
 export type InboxNotification = {
   layer?: Layer;
+  /** Warn events stay visible without dismissal or a resolution rule. */
+  severity?: 'warn';
   id: string;
   kind: NotificationKind;
   text: string;
@@ -208,7 +212,7 @@ export type InboxNotification = {
   dismissed: boolean;
 };
 
-/** The inbox (§3.5): needsYou counts entries classified now by the hub. */
+/** The inbox (§3.5): needsYou counts now asks, approvals and waiting topics only. */
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
 
 /** What the hub pushes to a subscribed client. */
