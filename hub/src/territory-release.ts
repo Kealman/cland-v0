@@ -9,7 +9,7 @@ import { ReleaseError, type ReleaseResult, type SyncResult } from './release.ts'
 import type { Resumed } from './hub/worktrees.ts';
 import { isSemverVersion } from './tracker/item.ts';
 
-type Receipt = { version: string; commit: string; main: string; tag: string; notes: string; github: string };
+type Receipt = { version: string; commit: string; main: string; tag: string; notes: string; github: string; item?: string };
 const receiptPath = (root: string) => join(root, '.cland', 'release.tmp');
 const ref = (root: string, name: string) => git(root, ['rev-parse', '--verify', '--quiet', name]).catch(() => null);
 const ancestor = (root: string, older: string, newer: string) => git(root, ['merge-base', '--is-ancestor', older, newer]).then(() => true, () => false);
@@ -80,7 +80,7 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed): Promise
 /** Remove recovery state only after the hub has recorded the successful result. */
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
-export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, notesPrefix?: string): Promise<ReleaseResult> {
+export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, itemRelease?: { item: string; notesPrefix: string }): Promise<ReleaseResult> {
   const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
   resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
   const state = await releaseState(root, resumed);
@@ -88,13 +88,18 @@ export async function releaseGit(root: string, version: string | undefined, dryR
   resumed(() => {
     authorize();
     // An item version is already validated as SemVer by the tracker; keep the legacy CLI version rule.
-    const valid = version && (notesPrefix === undefined
+    const valid = version && (itemRelease === undefined
       ? /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)
       : version.startsWith('v') && isSemverVersion(version.slice(1)));
     if (!valid) throw new ReleaseError('release-version', 'give a version as vX.Y.Z (for example v0.1.0)');
   });
   const name = version!;
   const prior = await readReceipt(root, resumed);
+  resumed(() => {
+    if (prior && prior.item !== itemRelease?.item) {
+      throw new ReleaseError('release-changed', `finish pending release ${prior.version}${prior.item ? ` from ${prior.item}` : ' without --item'} first`);
+    }
+  });
   const result = (receipt: Receipt): ReleaseResult => ({ version: name, commit: receipt.commit, notes: receipt.notes, refs: [`${receipt.commit}:refs/heads/main`, `${receipt.tag}:refs/tags/${name}`], dryRun });
   // A retry after a lost push reply or a failed local follow-up recognizes the exact annotated object.
   if (prior && github.tags.get(`refs/tags/${prior.version}`) === prior.tag) {
@@ -134,13 +139,13 @@ export async function releaseGit(root: string, version: string | undefined, dryR
   }
   const { notes, preview } = resumed(() => {
     const commits = [...titled, ...other].join('\n');
-    const notes = notesPrefix === undefined ? commits : [notesPrefix, commits].filter(Boolean).join('\n\n');
+    const notes = itemRelease === undefined ? commits : [itemRelease.notesPrefix, commits].filter(Boolean).join('\n\n');
     return { notes, preview: dryRun ? { version: name, commit: state.dev, notes, refs: [`${state.dev}:refs/heads/main`, `refs/tags/${name}:refs/tags/${name}`], dryRun } : null };
   });
   if (preview) return preview;
   const ident = await git(root, ['var', 'GIT_COMMITTER_IDENT']);
   const tag = await git(root, ['mktag'], false, `object ${state.dev}\ntype commit\ntag ${name}\ntagger ${ident}\n\n${notes}\n`);
-  const receipt: Receipt = resumed(() => ({ version: name, commit: state.dev, main: state.main, tag, notes, github: github.url }));
+  const receipt: Receipt = resumed(() => ({ version: name, commit: state.dev, main: state.main, tag, notes, github: github.url, ...(itemRelease ? { item: itemRelease.item } : {}) }));
   const current = await releaseState(root, resumed);
   const text = resumed(() => {
     if (current.main !== state.main || current.dev !== state.dev) throw new ReleaseError('release-changed', 'main or dev moved while preparing the release; preview again');

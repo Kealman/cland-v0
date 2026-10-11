@@ -1,6 +1,6 @@
 import { pushDev, PushError, type PushResult } from '../territory-push.ts';
-import type { Tracker } from '../tracker/tracker.ts';
-import { ReleaseError } from '../release.ts';
+import type { Actor, Tracker } from '../tracker/tracker.ts';
+import { ReleaseError, type ReleaseResult } from '../release.ts';
 import type { LogFn } from '../log.ts';
 import { clearPublicationReceipt, releaseGit, syncGit } from '../territory-release.ts';
 import type { Store } from './store.ts';
@@ -73,48 +73,73 @@ export class Releases {
     }));
   }
 
-  release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void, item?: string) {
-    return this.worktrees.serial(() => withTerritoryLockAsync(this.tracker.root, async () => {
-      let notesPrefix: string | undefined;
-      if (item !== undefined) {
-        resumed(authorize);
-        const view = await this.tracker.viewAsync(item, resumed);
-        version = resumed(() => {
-          authorize();
-          if (view.kind !== this.tracker.levels[0]) throw new ReleaseError('release-item', `${view.id} is not a release item (kind: ${view.kind})`);
-          if (!view.version) throw new ReleaseError('release-version', `${view.id} has no version; set its release version first`);
-          if (version !== undefined && version !== `v${view.version}`) throw new ReleaseError('release-version', `${version} disagrees with ${view.id}'s version v${view.version}`);
-          const open = this.tracker.list({ under: view.id, state: 'open' });
-          if (open.length) throw new ReleaseError('release-item', `${view.id} has open children: ${open.map(child => `${child.id} ${child.title}`).join(', ')}; close or move them first`);
-          if (!dryRun) throw new ReleaseError('release-item', `${view.id}: item releases currently require --dry-run; publication and close are not available yet`);
-          return `v${view.version}`;
-        });
-        const epics = resumed(() => this.tracker.list().filter(child => child.parent === view.id && child.kind === this.tracker.levels[1]));
-        const deliverables: string[] = [];
-        for (const epic of epics) {
-          const child = await this.tracker.viewAsync(epic.id, resumed);
-          resumed(() => {
-            const goal = section(child.body, 'Goal').replace(/\s+/g, ' ').trim();
-            const sentence = goal.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? goal;
-            deliverables.push(`${child.id} ${child.title}${sentence ? `: ${sentence}` : ''}`);
+  release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void, actor: Actor, item?: string) {
+    let published: ReleaseResult | undefined;
+    return this.worktrees.serial(async () => {
+      const result = await withTerritoryLockAsync(this.tracker.root, async () => {
+        let notesPrefix: string | undefined;
+        let releaseItem = item;
+        if (item !== undefined) {
+          resumed(authorize);
+          const view = await this.tracker.viewAsync(item, resumed);
+          version = resumed(() => {
+            authorize();
+            if (view.kind !== this.tracker.levels[0]) throw new ReleaseError('release-item', `${view.id} is not a release item (kind: ${view.kind})`);
+            if (!view.version) throw new ReleaseError('release-version', `${view.id} has no version; set its release version first`);
+            if (version !== undefined && version !== `v${view.version}`) throw new ReleaseError('release-version', `${version} disagrees with ${view.id}'s version v${view.version}`);
+            const open = this.tracker.list({ under: view.id, state: 'open' });
+            if (open.length) throw new ReleaseError('release-item', `${view.id} has open children: ${open.map(child => `${child.id} ${child.title}`).join(', ')}; close or move them first`);
+            releaseItem = view.id;
+            return `v${view.version}`;
           });
+          const epics = resumed(() => this.tracker.list().filter(child => child.parent === view.id && child.kind === this.tracker.levels[1]));
+          const deliverables: string[] = [];
+          for (const epic of epics) {
+            const child = await this.tracker.viewAsync(epic.id, resumed);
+            resumed(() => {
+              const goal = section(child.body, 'Goal').replace(/\s+/g, ' ').trim();
+              const sentence = goal.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? goal;
+              deliverables.push(`${child.id} ${child.title}${sentence ? `: ${sentence}` : ''}`);
+            });
+          }
+          notesPrefix = resumed(() => [section(view.body, 'Notes'), deliverables.join('\n')].filter(Boolean).join('\n\n'));
         }
-        notesPrefix = resumed(() => [section(view.body, 'Notes'), deliverables.join('\n')].filter(Boolean).join('\n\n'));
-      }
-      const result = await releaseGit(this.tracker.root, version, dryRun, async id => {
-        try { const view = await this.tracker.viewAsync(id, resumed); return resumed(() => view.title); }
-        catch { return null; }
-      }, resumed, authorize, notesPrefix);
-      try {
-        resumed(() => this.log({ event: dryRun ? 'release-preview' : 'released', ...(item === undefined ? {} : { item }), ...result }));
-        if (!dryRun && !result.followUp) await clearPublicationReceipt(this.tracker.root, 'release');
-      }
-      catch (err) {
-        if (dryRun) throw err;
-        return { ...result, followUp: result.followUp ?? { step: 'record', error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } };
+        const result = await releaseGit(this.tracker.root, version, dryRun, async id => {
+          try { const view = await this.tracker.viewAsync(id, resumed); return resumed(() => view.title); }
+          catch { return null; }
+        }, resumed, authorize, releaseItem === undefined ? undefined : { item: releaseItem, notesPrefix: notesPrefix! });
+        if (!dryRun) published = result;
+        let step = 'record';
+        try {
+          resumed(() => this.log({ event: dryRun ? 'release-preview' : 'released', ...(item === undefined ? {} : { item }), ...result }));
+          if (!dryRun && !result.followUp) {
+            if (releaseItem !== undefined) {
+              step = 'close';
+              const comment = `Released ${result.version} at ${result.commit}.`;
+              const view = await this.tracker.viewAsync(releaseItem, resumed);
+              if (view.state !== 'closed' || !view.comments.some(entry => entry.text === comment)) {
+                await this.tracker.close(actor, releaseItem, comment, resumed, authorize);
+              }
+            }
+          }
+        }
+        catch (err) {
+          if (dryRun) throw err;
+          published = { ...result, followUp: result.followUp ?? { step, error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } };
+          return published;
+        }
+        return result;
+      }, resumed);
+      // Keep recovery identity until lock cleanup succeeds, still inside the hub's territory-operation queue.
+      if (!dryRun && !result.followUp) {
+        try { await clearPublicationReceipt(this.tracker.root, 'release'); }
+        catch (err) {
+          return resumed(() => ({ ...result, followUp: { step: 'receipt', error: `released; follow-up failed: ${String(err)}` } }));
+        }
       }
       return result;
-    }, resumed)).catch((err: unknown) => resumed(() => {
+    }).catch((err: unknown) => resumed(() => {
+      if (published) return { ...published, followUp: published.followUp ?? { step: 'lock-release', error: `released; follow-up failed: ${String(err)}` } };
       try { this.log({ event: 'release-refused', error: err instanceof Error ? err.message : String(err), code: err instanceof ReleaseError ? err.code : 'release-git' }); } catch { /* preserve the original error */ }
       throw err;
     }));
