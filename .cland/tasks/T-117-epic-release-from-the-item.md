@@ -2,7 +2,7 @@
 id: T-117
 kind: epic
 title: "Epic: Release from the item"
-state: open
+state: closed
 criterion_seq: 8
 labels:
   - epic
@@ -21,10 +21,10 @@ blocked_by:
   - T-114
   - T-115
   - T-116
-topic: null
+topic: topic-140
 branch: null
 created: 2026-10-09T21:51:34.973Z
-updated: 2026-10-11T15:39:08.841Z
+updated: 2026-10-11T17:08:06.686Z
 ---
 
 ## Goal
@@ -60,12 +60,19 @@ QA runs this epic's walkthrough on `dev` and closes it on a clear verdict with i
 The Coordinator runs `cland release --item T-<v0.1> --dry-run`: it shows `v0.1.0`, the Notes, the ten other epics with their one-line deliverables, and the commit subjects. After the clear QA verdict it runs the release: `main` moves to `dev`, is tagged `v0.1.0` and pushed to GitHub; the hub comments the tag on the release item and closes it; the items panel folds v0.1 as a closed release.
 
 - [ ] C1. `cland release --item` refuses an item with open children or no version, and names the reason.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.979Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 - [ ] C2. The notes hold the item's Notes, its epics with their one-line deliverables, then the commit subjects.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.979Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 - [ ] C3. A successful release comments the tag on the item and closes it; a release without `--item` behaves as before.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.979Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 - [ ] C4. The `release` skill and the Coordinator's clause release from the item after the human's approval.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.979Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 - [ ] C5. Every v0.1 epic's definition-of-done demo passes on `dev`, recorded in a QA report artifact.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.979Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 - [ ] C6. The v0.1 release item has no open children, and the open `tech-debt` items are triaged.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.980Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 - [ ] C7. The build used what it shipped: the release item, item leads, an Aide, `crew.toml` and epic plans each show in the tracker or the journal.
+  - verified: qa-18 [qa] · run qa-2026-10-11-18-117 · 2026-10-11T17:07:54.980Z · commit ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
 
 ## Dogfooding
 
@@ -115,3 +122,45 @@ Deferred to the acceptance walkthrough (D16): T-111 M7, the Coordinator followin
 ### coord · 2026-10-11T15:39:08.841Z
 
 C8 ('v0.1.0 is tagged on GitHub's main, and the v0.1 release item is closed') moved to T-130 as the release's post-check (cland-impl, 2026-10-11 15:42Z). The close gate needs every criterion verified at the dev tip, and C8 can only hold after T-117 closes. Order: QA verifies C1–C7 at the tip, T-117 closes, the Coordinator releases from T-130, then QA post-checks the tag and T-130 closes. No human override.
+
+### qa-18 · 2026-10-11T17:07:54.980Z
+
+verdict: qa
+result: clear
+by: qa-18 [qa]
+run: qa-2026-10-11-18-117
+commit: ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c
+
+| Case | Result | Checked |
+|---|---|---|
+| M0 | PASS | Correct C1–C7, closed children, only T-117 open under T-130, T-216 outside |
+| M1 | PASS | 25 targeted tests, serial; 8 release-item + 17 release; no failures/skips/cancellations |
+| M2 | PASS | Open descendants refuse preview/publication, refs and item unchanged |
+| M3 | PASS | Missing version, mismatch, wrong kind and unknown item refusals |
+| M4 | PASS | Exact notes, epic first sentences, commit subjects, refs; preview nonmutating |
+| M4b | PASS | Real T-130 Notes copied to scratch; both D19 lines retained; 11 expected deliverables recorded |
+| M5 | PASS | Scratch annotated publication, refs, human tag/full-SHA comment, closure, journal |
+| M6 | PASS | Legacy scratch release only commit notes, open releases and next-item bytes unchanged |
+| M7 | PASS | Release skill/clauses; corrected Claude skill links at ed56fca |
+| M8 | PASS | All ten prior epics closed with latest clear hub QA and existing report artifacts |
+| M9 | PASS | Release tree, item-lead loop, Aide, crew enforcement and epic plan evidence |
+| M10 | PASS | 16 open tech-debt children triaged; no needs-triage; only T-117 open in release |
+
+Findings by severity:
+- Medium, fixed, M7: `ls .claude/skills` lacked release; Coordinator confirmed its Claude harness reads there. Fixed by Coordinator at ed56fca. `readlink`/resolved SKILL.md bytes and `git diff 9fcad49 dev` confirm release, qa, plan-epic symlinks and no other delta.
+- Low, brief correction, M6: scratch `cland merge T-10 --override "QA fixture"` refused merge-unpublished for the manually committed release plan. Scratch `cland push`, then continuing that merge, made the fixture ready. Legacy release then passed. No root push.
+- Low, brief correction, M7: qa-record rejected the brief's `docs` surface. Completed docs check recorded as hub-api with original evidence. No omitted check.
+
+Verified marks: C1=M2/M3, C2=M4/M4b, C3=M5/M6, C4=M7, C5=M8, C6=M10/M0, C7=M9; all seven verified in this run. No unresolved product findings.
+
+Evidence gathered initially at 9fcad4977f258477d462ea0ed352735b459d8e84; authorized delta to verdict ed56fca66bd9fb688aab33fdfdcbb4b4bf0faf4c is three Claude skill symlinks only, no product code. M7 checked final tip; re-read dev immediately before this verdict, unchanged. Source clean; only tracker hold modified. Scratch hub stopped. Root release/sync/push never run.
+
+D16 accepts prior epic demos; D19 defers T-109 C1 real terminals and T-111 M7 real-model follow-through, retained in Notes. Real-model Coordinator approval not exercised. M9 observation: T-117's last stage is the only epic plan, rather than plans for epics 8–11; retrospective observation per brief, not C7 failure. P1 belongs to a new T-130 run after the Coordinator releases.
+
+Full case evidence, confirmed C5 table, C7 journal rows and all eleven expected deliverable lines: A-1317, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1317-t-117-qa-clear-release-walkthrough-25-tests-and-complete-evidence/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-11T17:08:06.686Z
+
+Closed on QA run qa-2026-10-11-18-117 (A-1317): clear at dev ed56fca, C1–C7 verified, M0–M10 including M4b, 25 targeted tests. M7's missing .claude/skills links (release, qa, plan-epic) were fixed at ed56fca. The post-release check (the old C8) sits on T-130 (D19).
