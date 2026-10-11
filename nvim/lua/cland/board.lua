@@ -77,9 +77,10 @@ local function card(it, w)
     L[#L + 1] = { m }
   end
   if items.in_work(it) then
-    local verified, total = composition.fraction(it)
+    local verified, total, stale = composition.fraction(it)
     if total > 0 then
       L[#L + 1] = { { verified .. '/' .. total, verified == total and 'ClandGreen' or 'ClandDim' } }
+      if stale > 0 then L[#L + 1] = { { stale .. ' stale', 'ClandAmber' } } end
     end
   end
   return L

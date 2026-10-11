@@ -25,7 +25,7 @@ export function incompleteCriteria(view: ItemView): string[] {
     const failed = c.marks.some(m => m.kind === 'failed');
     if (failed || !c.marks.some(m => m.kind === 'done')) missing.push('not done');
     const needsQa = c.id !== null && view.qaCriteria?.includes(c.id);
-    if (failed || !c.marks.some(m => m.kind === 'verified' && (!needsQa || /\[qa\]$/i.test(m.by)))) missing.push(needsQa ? 'not verified by QA' : 'not verified');
+    if (failed || !c.marks.some(m => m.kind === 'verified' && m.current === true && (!needsQa || /\[qa\]$/i.test(m.by)))) missing.push(needsQa ? 'not verified by QA' : 'not verified');
     return missing.length ? [`${c.id ?? 'legacy criterion'}: ${c.text} (${missing.join(', ')})`] : [];
   })];
 }
@@ -45,7 +45,7 @@ export function gateVerdicts(view: ItemView): { review: IndexedVerdict; qa: Inde
 /** Epic demos are QA on dev, not a task merge: no review or Implementer done marks are required. */
 export function incompleteEpicCriteria(view: ItemView, qa?: IndexedVerdict): string[] {
   return view.criteria.flatMap(c => {
-    const verified = c.marks.some(m => m.kind === 'verified' && m.by === qa?.by && m.run === qa?.run);
+    const verified = c.marks.some(m => m.kind === 'verified' && m.current === true && m.by === qa?.by && m.run === qa?.run);
     return !c.id || c.marks.some(m => m.kind === 'failed') || !verified
       ? [`${c.id ?? 'legacy criterion'}: ${c.text} (not verified in the current QA run)`] : [];
   });

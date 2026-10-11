@@ -1,7 +1,7 @@
 -- id: ITEMS-002
 -- title: Criteria marks and verified fractions refresh at 80 and 120 columns
--- preconditions: a real fixture hub, four done criteria with three verified
--- expected: item glyphs and marks, panel and board 3/4 to green 4/4 after a watched file save
+-- preconditions: a real fixture hub and Git head, four done criteria with three verified
+-- expected: item glyphs and marks, panel and board 3/4 to green 4/4 after a watched file save; stale after a new head
 -- since: T-158
 -- regression: no
 local at = '2026-10-10T10:00Z'
@@ -28,12 +28,36 @@ return {
     qa.wait_for(function() return qa.state().hub.state == 'connected' and #qa.state().items == 2 end, 10000, 'fixture loaded')
     local file
     for _, item in ipairs(qa.state().items) do if item.id == 'T-2' then file = qa.root .. '/.cland/tasks/' .. item.file end end
+    local function git(args)
+      local command = { 'git', '-C', qa.root }
+      vim.list_extend(command, args)
+      local output = vim.fn.system(command)
+      qa.expect(vim.v.shell_error == 0, 'fixture Git command succeeds: ' .. table.concat(args, ' '))
+      return vim.trim(output)
+    end
+    git({ 'init', '-q', '-b', 'dev' })
+    git({ 'config', 'user.name', 'Test' })
+    git({ 'config', 'user.email', 'test@example.com' })
+    git({ 'config', 'commit.gpgsign', 'false' })
+    git({ 'commit', '--allow-empty', '-qm', 'Criteria display build' })
+    local head = git({ 'rev-parse', 'HEAD' })
     local initial = vim.fn.readfile(file)
-    for i, line in ipairs(initial) do if line:match('^status:') then initial[i] = 'status: in progress' end end
+    -- The fixture writer can omit status/branch; put both inside frontmatter explicitly.
+    local header_end
+    for i = 2, #initial do if initial[i] == '---' then header_end = i; break end end
+    qa.expect(header_end ~= nil, 'item has frontmatter')
+    for i = header_end - 1, 2, -1 do
+      if initial[i]:match('^status:') or initial[i]:match('^branch:') then table.remove(initial, i) end
+    end
+    table.insert(initial, 2, 'status: in progress')
+    table.insert(initial, 2, 'branch: dev')
+    for i, line in ipairs(initial) do
+      if line:match('^  %- verified:') then initial[i] = line .. ' · commit ' .. head end
+    end
     local complete = vim.deepcopy(initial)
     for i, line in ipairs(complete) do
       if line == '- [x] C4. Criterion 4' then
-        table.insert(complete, i + 2, '  - verified: qa-2 [qa] · run q-2 · ' .. at)
+        table.insert(complete, i + 2, '  - verified: qa-2 [qa] · run q-2 · ' .. at .. ' · commit ' .. head)
         break
       end
     end
@@ -84,5 +108,14 @@ return {
       green(require('cland.board').b)
       budget(require('cland.board').b)
     end
+    -- A build move refreshes the board without changing criteria source or timestamps.
+    git({ 'commit', '--allow-empty', '-qm', 'New criteria display build' })
+    qa.wait_for(function() return qa.screen():find('0/4',1,true) and qa.screen():find('4 stale',1,true) end, 5000, 'new head makes board verification stale')
+    budget(require('cland.board').b)
+    layout.show({kind='item',id='T-2'},{insert=false})
+    qa.wait_for(function() return qa.screen():find('stale verified:',1,true) end, 5000, 'item labels stale verification')
+    qa.expect(qa.screen():find('◌ C4. Criterion 4',1,true) ~= nil, 'stale criterion glyph')
+    budget(require('cland.item_view').bufs['T-2'])
+    qa.dump('criteria-stale')
   end,
 }

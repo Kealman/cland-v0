@@ -1,5 +1,6 @@
 // Criteria rendered and managed across the real Neovim/hub frame boundary.
 import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -11,7 +12,7 @@ const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 const AT = '2026-10-10T10:00Z';
-const criterion = (i: number, verified = false) => `- [x] C${i}. Criterion ${i}\n  - done: impl-2 · ${AT}${verified ? `\n  - verified: rev-2 [reviewer] · run r-2 · ${AT}` : ''}`;
+const criterion = (i: number, verified = false, commit = '') => `- [x] C${i}. Criterion ${i}\n  - done: impl-2 · ${AT}${verified ? `\n  - verified: rev-2 [reviewer] · run r-2 · ${AT}${commit ? ` · commit ${commit}` : ''}` : ''}`;
 const source = (body: string) => `---\nid: T-2\nkind: task\ntitle: Criteria display\nstate: open\nstatus: in progress\nparent: T-1\ncriterion_seq: 7\ncreated: ${AT}\nupdated: ${AT}\n---\n\n## Acceptance criteria\n${body}\n\n## Notes\nKeep these notes.\n`;
 async function buffer(c: Client, module = 'item_view') {
   return c.lua<string[]>(`local m=require('cland.'..(...)); local b=...=='item_view' and m.bufs['T-2'] or m.b; return vim.api.nvim_buf_get_lines(b,0,-1,false)`, module);
@@ -91,7 +92,11 @@ test('human criterion keys preserve marks and removed ids; panel, cards and grap
   await writeFile(join(root,'.cland/config.toml'),'[tracker]\nlevels = ["epic"]\n');
   await writeFile(join(root,'.cland/tasks/T-1-epic.md'),`---\nid: T-1\nkind: epic\ntitle: Criteria epic\nstate: open\ncreated: ${AT}\nupdated: ${AT}\n---\n`);
   const path=join(root,'.cland/tasks/T-2-criteria.md');
-  await writeFile(path,source([1,2,3,4].map(i=>criterion(i,i<4)).join('\n')));
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  git('init', '-q', '-b', 'dev'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.com'); git('config', 'commit.gpgsign', 'false');
+  git('commit', '--allow-empty', '-qm', 'Display build');
+  const head = git('rev-parse', 'HEAD');
+  await writeFile(path,source([1,2,3,4].map(i=>criterion(i,i<4,head)).join('\n')).replace('status: in progress', 'status: in progress\nbranch: dev'));
   await startDaemon(t,root); const c=await startClient(t,bin,root);
   await c.waitScreen(s=>s.includes('hub: connected'),'connected');
   await c.input('<Esc><Space>i');
@@ -111,7 +116,7 @@ test('human criterion keys preserve marks and removed ids; panel, cards and grap
   await selectCriterion(c,'C9'); await c.input('cd'); await c.waitScreen(s=>s.includes('Remove C9'),'confirmation'); await c.input('2<CR>');
   await c.waitScreen(s=>!s.includes('C9. Next criterion') && s.includes('Edited fourth'),'removed again');
   // Hand saves retain their timestamp; task events must invalidate the fraction anyway.
-  const updated=(await readFile(path,'utf8')).replace('- [x] C4. Edited fourth\n  - done: impl-2 · '+AT,'- [x] C4. Edited fourth\n  - done: impl-2 · '+AT+'\n  - verified: qa-2 [qa] · run q-2 · '+AT);
+  const updated=(await readFile(path,'utf8')).replace('- [x] C4. Edited fourth\n  - done: impl-2 · '+AT,'- [x] C4. Edited fourth\n  - done: impl-2 · '+AT+'\n  - verified: qa-2 [qa] · run q-2 · '+AT+' · commit '+head);
   await writeFile(path,updated);
   await c.waitScreen(s=>s.includes('● C4. Edited fourth'),'verification event refreshes item');
   for(const width of [80,120]) {
@@ -126,6 +131,14 @@ test('human criterion keys preserve marks and removed ids; panel, cards and grap
     budget=await widths(c,'board'); assert.ok(budget.widths.every(w=>w<=budget.width),`board fits ${width}: ${JSON.stringify(budget)}`);
     await c.input(':Cland graph T-1<CR>'); await c.waitScreen(s=>s.includes('4/4'),'graph 4/4');
   }
+  git('commit', '--allow-empty', '-qm', 'New display build');
+  await c.input(':Cland view item T-2<CR>');
+  await c.waitScreen(s=>s.includes('stale verified:'),'head movement makes verification stale');
+  assert.ok((await buffer(c)).join('\n').includes('◌ C4. Edited fourth'));
+  await c.lua("local l=require('cland.layout'); l.preset('steady'); if require('cland.state').S.ui.right then l.right_panel(require('cland.state').S.ui.right) end; l.show({kind='board'},{insert=false})");
+  await c.waitScreen(s=>s.includes('0/4') && s.includes('4 stale'),'board excludes stale verification');
+  await c.lua("require('cland.layout').preset('charting')");
+  await c.waitScreen(s=>/T-2.*0\/4.*4 stale/.test(s),'panel excludes stale verification');
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"),[]);
 });
 

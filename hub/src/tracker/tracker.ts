@@ -10,7 +10,7 @@ import { ToolForbidden } from '../roles/permissions.ts';
 import { PlanError, parsePlan, planInBody, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
-import { criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
+import { annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer } from './kinds.ts';
 import { taskBase, territoryPath } from '../territory.ts';
 import { createHash, randomUUID } from 'node:crypto';
@@ -309,7 +309,7 @@ export class Tracker {
 
   /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
   #tipsMoved(): void {
-    for (const item of this.list()) if (item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
+    for (const item of this.list()) if (item.branch || isPlanningContainer(item.kind, this.levels) || item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
   }
 
   /** Freshness, verdicts and branch changes converge on one queued workflow check. */
@@ -412,7 +412,7 @@ export class Tracker {
   #announce(id: string, ifMoved: boolean, siblings?: string[]): void {
     const indexed = this.#index.get(id);
     const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
-    const shown = item ? JSON.stringify([item.verdictBase, item.verdicts.map((v) => v.current ?? null)]) : '';
+    const shown = item ? JSON.stringify([item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.levels) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
     const previous = this.#announced.get(id);
     // Keep the pre-change path before removal/reparenting changes the indexed tree.
@@ -1045,12 +1045,18 @@ export class Tracker {
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
       ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
       ...(this.isPlanContainer(item.fm.kind) ? { approval: this.#approvalOf(item), stages: this.#stagesOf(item) } : {}),
-      ...parseCriteria(item.body, this.levels.includes(item.fm.kind)),
+      ...this.#criteriaOf(item),
       ...this.#qaFor(item),
       comments: item.comments,
       verdicts: this.#annotateVerdicts(id, item.fm.kind, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),
     };
+  }
+
+  #criteriaOf(item: Item): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
+    const parsed = parseCriteria(item.body, this.levels.includes(item.fm.kind));
+    const branch = isPlanningContainer(item.fm.kind, this.levels) ? 'dev' : item.fm.branch;
+    return { ...parsed, criteria: annotateCriteria(parsed.criteria, this.#fresh.tip(branch)) };
   }
 
   #ancestry(item: Item): ItemView['ancestry'] {
@@ -1177,7 +1183,7 @@ export class Tracker {
   #checkEpicClose(view: ItemView, tip: string | null): void {
     try {
       const evidence = this.#mergeViewOf({ ...view, kind: this.levels[1]! });
-      gateEpicVerdict({ ...evidence, verdicts: evidence.verdicts.map(v => ({ ...v, current: !!tip && v.commit === tip })) });
+      gateEpicVerdict({ ...evidence, criteria: annotateCriteria(evidence.criteria, tip), verdicts: evidence.verdicts.map(v => ({ ...v, current: !!tip && v.commit === tip })) });
     }
     catch (err) {
       if (err instanceof MergeError) throw new TrackerError(err.message, err.code);
@@ -1574,7 +1580,7 @@ export class Tracker {
         const criteria = this.#prepareCriteria(item).criteria;
         const verified = input?.verified === 'all' ? criteria.map(c => c.id!) : input?.verified?.split(',') ?? [];
         for (const id of new Set(verified)) {
-          this.#changeCriterion(item, actor, { op: 'verify', criterion: id, run: v!.run });
+          this.#changeCriterion(item, actor, { op: 'verify', criterion: id, run: v!.run, ...(v!.commit ? { commit: v!.commit } : {}) });
           marked.push({ id, mark: 'verified' });
         }
         for (const failure of input?.failed ?? []) {
@@ -1783,7 +1789,7 @@ export class Tracker {
     return criteriaSource(item.body, this.levels.includes(item.fm.kind));
   }
 
-  #changeCriterion(item: Item, actor: Actor, input: { op: string; criterion?: string; text?: string; note?: string; run?: string }): string {
+  #changeCriterion(item: Item, actor: Actor, input: { op: string; criterion?: string; text?: string; note?: string; run?: string; commit?: string }): string {
     const parsed = this.#prepareCriteria(item);
     if (input.op === 'add' && parsed.insertionInFence) throw new TrackerError('cannot add a criterion inside an unclosed Markdown code fence; close the fence first');
     const lines = item.body.split(/\r?\n/);
@@ -1808,7 +1814,7 @@ export class Tracker {
         marks = [...marks.filter(m => m.kind !== 'done' && m.kind !== 'failed'), { kind: 'done', by: actor.name, at: timestamp }];
         checked = true;
       } else if (input.op === 'verify') {
-        marks = [...marks.filter(m => m.kind !== 'failed'), { kind: 'verified', by: formatVerdictBy(actor.name, actor.role), at: timestamp, run: input.run! }];
+        marks = [...marks.filter(m => m.kind !== 'failed'), { kind: 'verified', by: formatVerdictBy(actor.name, actor.role), at: timestamp, run: input.run!, ...(input.commit ? { commit: input.commit } : {}) }];
       } else if (input.op === 'fail') {
         marks = [{ kind: 'failed', by: formatVerdictBy(actor.name, actor.role), at: timestamp, note: input.note!.trim() }];
         checked = false;
@@ -1818,7 +1824,7 @@ export class Tracker {
       const indent = ' '.repeat(source.indent);
       const block = input.op === 'remove' ? [] : [
         `${indent}- [${checked ? 'x' : ' '}] ${criterion}. ${text.replace(/\r?\n/g, `\n${indent}  `)}`,
-        ...marks.map(m => `${indent}  - ${m.kind}: ${m.by} · ${m.kind === 'verified' ? `run ${m.run} · ` : ''}${m.at}${m.kind === 'failed' ? ` · note ${m.note}` : ''}`),
+        ...marks.map(m => `${indent}  - ${m.kind}: ${m.by} · ${m.kind === 'verified' ? `run ${m.run} · ` : ''}${m.at}${m.kind === 'verified' && m.commit ? ` · commit ${m.commit}` : ''}${m.kind === 'failed' ? ` · note ${m.note}` : ''}`),
       ];
       for (const line of [...source.lines].reverse()) lines.splice(line, 1);
       lines.splice(source.start, 0, ...block);
@@ -1846,9 +1852,18 @@ export class Tracker {
         if (!input.text?.trim()) throw new TrackerError(`${input.op} needs criterion text`);
         checkText(input.text, 'criterion text');
       }
+      let commit: string | null = null;
+      if (input.op === 'verify') {
+        const indexed = this.#index.get(id)!;
+        const branch = isPlanningContainer(indexed.kind, this.levels) ? 'dev' : indexed.branch;
+        if (branch) {
+          commit = await this.#resolve(`refs/heads/${branch}`, `the verification build on ${branch}`);
+          resumed(() => { check(); if (commit) this.#fresh.noteTip(branch, commit); });
+        }
+      }
       let criterion = input.criterion!;
       const view = await this.#mutate(id, actor, 'criterion', item => {
-        criterion = this.#changeCriterion(item, actor, input);
+        criterion = this.#changeCriterion(item, actor, { ...input, ...(commit ? { commit } : {}) });
       }, resumed, undefined, check);
       return resumed(() => {
         this.#criterionEvent(id, criterion, input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op);

@@ -1,7 +1,7 @@
 // Acceptance criteria and their source spans; checkbox state never implies a mark.
 export type CriterionMark =
   | { kind: 'done'; by: string; at: string }
-  | { kind: 'verified'; by: string; at: string; run: string }
+  | { kind: 'verified'; by: string; at: string; run: string; commit?: string; current?: boolean }
   | { kind: 'failed'; by: string; at: string; note: string };
 
 /** Body line numbers are one-based; malformed source is retained verbatim. */
@@ -32,9 +32,10 @@ function markOf(kind: string, value: string): CriterionMark | null {
   const timestamp = kind === 'verified' ? parts[2] : parts[1];
   if (!timestamp || !validTimestamp(timestamp)) return null;
   if (kind === 'done' && parts.length === 2) return { kind, by, at: timestamp };
-  if (kind === 'verified' && parts.length === 3) {
+  if (kind === 'verified' && (parts.length === 3 || parts.length === 4)) {
     const run = /^run (\S+)$/.exec(parts[1] ?? '')?.[1];
-    if (run) return { kind, by, at: timestamp, run };
+    const commit = parts.length === 4 ? /^commit ([0-9a-f]{40,64})$/.exec(parts[3] ?? '')?.[1] : undefined;
+    if (run && (parts.length === 3 || commit)) return { kind, by, at: timestamp, run, ...(commit ? { commit } : {}) };
   }
   if (kind === 'failed') {
     const note = /^note (.+)$/.exec(parts.slice(2).join(' · '))?.[1];
@@ -119,4 +120,10 @@ export function criterionRefusal(op: unknown, actor: { role: string | null; huma
   if (op === 'add' || op === 'edit' || op === 'remove') return actor.human || actor.role === 'coordinator' || actor.role === 'aide'
     ? null : 'add, edit and remove require Coordinator, Aide or human';
   return 'criterion operation must be done, verify, fail, add, edit or remove';
+}
+
+/** Exact-build evidence: legacy marks without a commit remain readable but cannot verify a build. */
+export function annotateCriteria(criteria: Criterion[], tip: string | null): Criterion[] {
+  return criteria.map(c => ({ ...c, marks: c.marks.map(m => m.kind === 'verified'
+    ? { ...m, current: !!tip && m.commit === tip } : m) }));
 }

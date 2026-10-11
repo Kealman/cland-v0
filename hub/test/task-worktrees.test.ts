@@ -13,6 +13,7 @@ import type { Sessions } from '../src/adapters/sessions.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { provisionTerritory } from '../src/territory.ts';
 import { Report } from '../src/init/files.ts';
+import { manualTips } from './freshness-harness.ts';
 
 const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
@@ -325,7 +326,9 @@ async function guardedHub(t: TestContext, options: { clock?: { now: number }; se
   provisionTerritory(new Report(root), root);
   const records: Array<Record<string, unknown>> = [];
   const log = (r: Record<string, unknown>) => records.push(r);
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log });
+  // Only foreground work belongs to these budget assertions; tip events have their own tests.
+  const tips = manualTips();
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, scheduleTips: tips.scheduleTips });
   tracker.start();
   t.after(() => tracker.stop());
   const hub = await startHub({ log, tracker, ...(options.clock ? { guard: { now: () => options.clock!.now } } : {}) });

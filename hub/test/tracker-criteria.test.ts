@@ -28,7 +28,7 @@ test('CLI and MCP views expose structured criteria and marks without writing the
   const expected = [
     { id: 'C1', text: 'The clause arrives again on reconnect', checked: true, marks: [
       { kind: 'done', by: 'impl-57', at: '2026-10-09T10:00Z' },
-      { kind: 'verified', by: 'qa-12 [QA]', run: 'q-0117', at: '2026-10-09T11:00Z' },
+      { kind: 'verified', current: false, by: 'qa-12 [QA]', run: 'q-0117', at: '2026-10-09T11:00Z' },
     ], malformedMarks: [] },
     { id: 'C2', text: 'The failure has a note', checked: false, marks: [
       { kind: 'failed', by: 'rev-3 [Reviewer]', at: '2026-10-09T12:00Z', note: 'Reconnect lost the clause' },
@@ -101,8 +101,8 @@ test('every criterion list sub-item is parsed or reported, including bullet whit
     { line: 11, text: '  1. An ordered supporting item', reason: 'Unrecognized criterion sub-item' },
   ];
   assert.deepEqual(actual.criteria, [{ id: 'C3', text: 'Actual criterion', checked: false, marks: [
-    { kind: 'verified', by: 'qa-2 [QA]', run: 'q-3', at: '2026-10-09T11:00Z' },
-    { kind: 'verified', by: 'qa-2 [QA]', run: 'q-4', at: '2026-10-09T12:00Z' },
+    { kind: 'verified', current: false, by: 'qa-2 [QA]', run: 'q-3', at: '2026-10-09T11:00Z' },
+    { kind: 'verified', current: false, by: 'qa-2 [QA]', run: 'q-4', at: '2026-10-09T12:00Z' },
   ], malformedMarks: warnings }]);
   assert.deepEqual(actual.criteriaWarnings, warnings);
   assert.equal(actual.body, body);
@@ -150,7 +150,7 @@ test('hand edits re-index reworded and reordered criteria, preserve marks, and r
   assert.equal(view.ok, true, view.error);
   assert.deepEqual((view.value as { item: View }).item.criteria, [
     { id: 'C8', text: 'Second, reworded', checked: false, marks: [
-      { kind: 'verified', by: 'qa-2 [QA]', run: 'q-8', at: '2026-10-09T11:00Z' },
+      { kind: 'verified', current: false, by: 'qa-2 [QA]', run: 'q-8', at: '2026-10-09T11:00Z' },
     ], malformedMarks: [
       { line: 4, text: '  - verified: qa-2 [QA] · 2026-10-09T11:00Z', reason: 'Malformed verified mark' },
       { line: 5, text: '  - done: impl-1 · yesterday', reason: 'Malformed done mark' },
@@ -218,7 +218,7 @@ test('criteria parsing respects Markdown fences, section boundaries and wrapped 
   assert.equal(view.ok, true, view.error);
   assert.deepEqual((view.value as { item: View }).item.criteria, [
     { id: 'C3', text: 'A wrapped criterion\ncontinues on this line.', checked: false, marks: [
-      { kind: 'verified', by: 'qa-2 [QA]', run: 'q-3', at: '2026-10-09T11:00:01.123+02:00' },
+      { kind: 'verified', current: false, by: 'qa-2 [QA]', run: 'q-3', at: '2026-10-09T11:00:01.123+02:00' },
     ], malformedMarks: [
       { line: 8, text: '  - [ ] Nested supporting checklist', reason: 'Unrecognized criterion sub-item' },
     ] },

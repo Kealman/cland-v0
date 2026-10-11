@@ -124,8 +124,9 @@ local function row(c, it, bucket, next_id)
   for _, chunk in ipairs(M.who(it)) do put(chunk) end
   if items.asks(it) > 0 then put({ '?' .. (items.asks(it) > 1 and items.asks(it) or ''), 'ClandBadge' }) end
   if it.kind == 'task' and items.in_work(it) then
-    local checked, total = M.fraction(it)
+    local checked, total, stale = M.fraction(it)
     if total > 0 then put({ checked .. '/' .. total, checked == total and 'ClandGreen' or 'ClandDim' }) end
+    if stale > 0 then put({ stale .. ' stale', 'ClandAmber' }) end
   end
   if items.is_container(it) then
     local kids, done = items.children(it.id), 0

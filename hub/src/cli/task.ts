@@ -195,6 +195,9 @@ function viewText(i: ItemView): string {
     `  file      ${i.path}`,
   ];
   if (i.body) lines.push('', i.body);
+  const stale = i.criteria.flatMap(c => c.marks.flatMap(m => m.kind === 'verified' && m.current === false
+    ? [`  ${c.id ?? 'legacy criterion'}: stale verification · ${m.by} · run ${m.run} · ${m.commit ? `commit ${m.commit}` : 'no commit'}`] : []));
+  if (stale.length) lines.push('', 'stale criterion verifications:', ...stale);
   if (i.comments.length) {
     lines.push('', `comments: ${i.comments.length}`);
     let verdictIndex = 0;

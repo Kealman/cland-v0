@@ -226,10 +226,10 @@ local function body_lines(it, d, width)
         first = false
       end
       for _, mark in ipairs(criterion.marks or {}) do
-        local label = mark.kind .. ': ' .. M.by(mark.by) .. ' · ' .. hhmm(mark.at)
-          .. (mark.run and (' · run ' .. mark.run) or '') .. (mark.note and (' · ' .. mark.note) or '')
+        local label = (mark.kind == 'verified' and mark.current == false and 'stale verified' or mark.kind) .. ': ' .. M.by(mark.by) .. ' · ' .. hhmm(mark.at)
+          .. (mark.run and (' · run ' .. mark.run) or '') .. (mark.commit and (' · commit ' .. mark.commit:sub(1, 8)) or '') .. (mark.note and (' · ' .. mark.note) or '')
         for _, line in ipairs(wrap(label, width - 3)) do
-          local chunks = { { '   ' .. line, mark.kind == 'failed' and 'ClandRed' or 'ClandDim' } }
+          local chunks = { { '   ' .. line, mark.kind == 'failed' and 'ClandRed' or mark.current == false and 'ClandAmber' or 'ClandDim' } }
           chunks.criterion = { id = refs[i], text = criterion.text }
           add(chunks)
         end

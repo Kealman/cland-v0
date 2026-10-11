@@ -9,7 +9,7 @@ import { cland, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, ki
 import { Store } from '../src/hub/store.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { fixedRoles } from '../src/roles/config.ts';
-import { Tracker } from '../src/tracker/tracker.ts';
+import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -144,6 +144,60 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
   const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
   assert.equal((await read()).status, 'done');
+});
+
+test('criterion verification follows the exact branch head even when the review patch is unchanged', async t => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  ok(await cland(root, 'task', 'criterion', work.id, 'add', 'First condition'));
+  ok(await cland(root, 'task', 'criterion', work.id, 'add', 'Second condition'));
+  for (const id of ['C1', 'C2']) ok(await cland(root, 'task', 'criterion', work.id, 'done', id));
+  const read = async () => json<{ item: ItemView }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const verify = async (verified: string, run: string, commit?: string) => {
+    const result = await rev.call<{ ok: boolean; error?: string }>('task.comment', {
+      id: work.id, verdict: 'review', result: 'clear', run, verified, ...(commit ? { commit } : {}),
+    });
+    assert.equal(result.ok, true, result.error);
+  };
+  const a = git(work.path, 'rev-parse', 'HEAD');
+  // Old files do not identify a verified build: a current review cannot upgrade their marks.
+  const legacyBody = (await read()).body + '\n  - verified: rev [reviewer] · run legacy · 2026-10-09T11:00Z\n';
+  ok(await cland(root, 'task', 'edit', work.id, '--body', legacyBody));
+  await review(rev, work.id);
+  await refused(ui, root, work.id, 'criteria-incomplete');
+  const unbound = (await read()).criteria[1]!.marks.find(m => m.kind === 'verified');
+  assert.equal(unbound?.kind === 'verified' && unbound.current, false);
+  await verify('all', 'at-a');
+  await eventually('ready at A', async () => (await read()).status === 'ready' ? true : undefined);
+  git(work.path, 'push', '-q', 'origin', work.branch);
+  git(work.path, 'commit', '--allow-empty', '-qm', 'New build with the same patch');
+  const b = git(work.path, 'rev-parse', 'HEAD');
+  git(work.path, 'push', '-q', 'origin', work.branch);
+  await eventually('push alone revokes ready', async () => (await read()).status === 'in progress' ? true : undefined);
+  // The latest review is current at B, but C2 still carries only the verification made at A.
+  await verify('C1', 'partial-at-b');
+  const refusal = await refused(ui, root, work.id, 'criteria-incomplete');
+  assert.match(refusal.error!, /C2.*not verified/);
+  await eventually('head movement revokes ready', async () => (await read()).status === 'in progress' ? true : undefined);
+  const moved = await read();
+  assert.equal(moved.criteria[1]!.checked, true);
+  assert.ok(moved.criteria[1]!.marks.some(m => m.kind === 'done'));
+  const cliView = ok(await cland(root, 'task', 'view', work.id));
+  assert.match(cliView.stdout, /C2: stale verification/);
+  const old = moved.criteria[1]!.marks.find(m => m.kind === 'verified' && m.commit === a);
+  assert.equal(old?.kind === 'verified' && old.commit, a);
+  assert.equal(old?.kind === 'verified' && old.current, false);
+  const current = moved.criteria[0]!.marks.at(-1);
+  assert.equal(current?.kind === 'verified' && current.commit, b);
+  assert.equal(current?.kind === 'verified' && current.current, true);
+  // Explicit verdict commits must also bind their marks to the supplied build, not today's tip.
+  await verify('C2', 'explicit-at-a', a);
+  await refused(ui, root, work.id, 'criteria-incomplete');
+  const separate = await rev.call<{ ok: boolean; error?: string }>('task.criterion', { id: work.id, op: 'verify', criterion: 'C2', run: 'separate-at-b' });
+  assert.equal(separate.ok, true, separate.error);
+  await eventually('ready again at B', async () => (await read()).status === 'ready' ? true : undefined);
+  assert.equal((await read()).criteria[1]!.marks.at(-1)?.kind, 'verified');
+  ok(await cland(root, 'merge', work.id));
 });
 
 test('adding or failing a criterion revokes ready; done and separate verification restore it', async (t) => {
