@@ -3,7 +3,8 @@ id: T-224
 kind: task
 title: "Release from the item, dry run: `cland release --item T-n --dry-run` refuses open children or a missing version, and previews the tag and the notes"
 state: open
-status: in progress
+status: review
+criterion_seq: 4
 labels:
   - ready-for-agent
   - v0.1
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-138
 branch: t/T-224-release-from-the-item-dry-run-cland
 created: 2026-10-11T15:38:09.626Z
-updated: 2026-10-11T15:39:07.642Z
+updated: 2026-10-11T15:46:18.261Z
 ---
 
 ## Parent
@@ -34,13 +35,20 @@ The `release` frame and the protocol carry the item. A release without `--item` 
 
 ## Acceptance criteria
 
-- [ ] `--item` with open children, no version, a non-release item, or a version that disagrees with the item is refused, and the refusal names the reason (and the open children).
-- [ ] The dry-run preview shows `v<version>` and notes in the order: the item's Notes, then the epics with their one-line deliverables, then the commit subjects.
-- [ ] A release without `--item` is unchanged. Existing release tests pass untouched.
-- [ ] Protocol and CLI tests in a scratch project with a bare territory and a GitHub stand-in, as hub/test/release.test.ts sets them up. `npm run typecheck && npm test` pass.
+- [x] C1. `--item` with open children, no version, a non-release item, or a version that disagrees with the item is refused, and the refusal names the reason (and the open children).
+  - done: impl-224 · 2026-10-11T15:46:07.348Z
+- [x] C2. The dry-run preview shows `v<version>` and notes in the order: the item's Notes, then the epics with their one-line deliverables, then the commit subjects.
+  - done: impl-224 · 2026-10-11T15:46:07.437Z
+- [x] C3. A release without `--item` is unchanged. Existing release tests pass untouched.
+  - done: impl-224 · 2026-10-11T15:46:07.516Z
+- [ ] C4. Protocol and CLI tests in a scratch project with a bare territory and a GitHub stand-in, as hub/test/release.test.ts sets them up. `npm run typecheck && npm test` pass.
 
 ## Comments
 
 ### impl-224 · 2026-10-11T15:39:07.642Z
 
 Claimed on dev 994b761. Implementing item-backed dry-run validation and notes through the existing release protocol and CLI, tested only in scratch projects with bare territory and GitHub stand-in. No-item behavior and existing release tests remain untouched; T-225 owns publication and close.
+
+### impl-224 · 2026-10-11T15:45:37.672Z
+
+Implemented and pushed 03f15537cecef799a9d2c7ae30fe2965dd35d6cf on t/T-224-release-from-the-item-dry-run-cland after fetching and merging origin/dev a9f131a. Four item-release protocol/CLI tests pass in scratch repositories; typecheck passes. Artifact A-1303 records scope and validation at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1303-t-224-implementation-and-validation.md. T-225 owns publication and close; this head explicitly requires --dry-run for --item.
