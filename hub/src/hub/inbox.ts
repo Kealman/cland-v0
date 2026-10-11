@@ -211,7 +211,7 @@ export class InboxBoard {
     const byId = new Map(topics.map((t) => [t.id, t]));
     const asks: InboxAsk[] = open.map((a) => {
       const t = byId.get(a.topic);
-      return {
+      return p.visibility.place('inbox', {
         id: a.id,
         topic: { id: a.topic, title: t?.title ?? a.topic, ...(t?.item ? { item: t.item } : {}) },
         question: a.question,
@@ -220,10 +220,11 @@ export class InboxBoard {
         from: a.from,
         label: withRole(a.from, p.store.roleOf(a.from)),
         ts: a.ts,
-      };
+      }, 'ask');
     });
     const asked = new Set(open.map((a) => a.topic));
-    const waiting = topics.filter((t) => t.status === 'waiting for human' && !asked.has(t.id)).sort((a, b) => (a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0));
+    const waiting = topics.filter((t) => t.status === 'waiting for human' && !asked.has(t.id)).sort((a, b) => (a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0))
+      .map(t => p.visibility.place('inbox', t, 'waiting'));
     const approvals: InboxApproval[] = [];
     // one approval per session, by its id: a launched session that renamed itself is its process row (the launch
     // name, with the attach command) and its presence (the name it has now) at once
@@ -244,11 +245,13 @@ export class InboxBoard {
       approvals.push({ session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? null, attach: null });
     }
     approvals.sort((a, b) => String(a.since ?? '').localeCompare(String(b.since ?? '')));
+    const placedApprovals = approvals.map(a => p.visibility.place('inbox', a, 'approval'));
     const notifications = p.store.notifications().map(n => p.visibility.place('inbox', n));
-    const needsYou = asks.filter(a => p.visibility.place('inbox', a, 'ask').layer === 'now').length
-      + approvals.filter(a => p.visibility.place('inbox', a, 'approval').layer === 'now').length
-      + waiting.filter(t => p.visibility.place('inbox', t, 'waiting').layer === 'now').length;
-    return { asks, approvals, waiting, notifications, needsYou };
+    const needsYou = asks.filter(a => a.layer === 'now').length
+      + placedApprovals.filter(a => a.layer === 'now').length
+      + waiting.filter(t => t.layer === 'now').length;
+    // Placement belongs in the publication signature too: a pin/mute can change rows without changing needsYou.
+    return { asks, approvals: placedApprovals, waiting, notifications, needsYou };
   }
 
   needsYou(): number {

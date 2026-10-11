@@ -179,7 +179,7 @@ The **inbox** (spec 5, `Inbox.dc.html`) is the human's queue, in a fixed order: 
 | Request | Result `value` |
 | --- | --- |
 | `{"type":"topic.answer","id":…,"ask":"<ask id>","option":2}` or `"text":"…"` | `{"message":TopicMessage,"outcomes":[…]}` |
-| `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","waiting","notifications","needsYou"}` |
+| `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","waiting","notifications","needsYou"}`. Response rows carry their classified layers before the hub compares inbox publications, so a pin/mute publishes new placement even when `needsYou` stays unchanged (T-235). |
 | `{"type":"inbox.dismiss","id":…,"notification":"<notification id>"}` | `Inbox`; an ask's or a session's name is refused (`asks and approvals are not dismissed: answer them`), a warn-level notification too (`warn events are informational and are not dismissed`), an unknown id too; dismissing twice is harmless |
 | `{"type":"inbox.dismiss_all","id":…}` | `Inbox`, its ordinary notifications gone; warn-level notifications, asks and approvals stay |
 
