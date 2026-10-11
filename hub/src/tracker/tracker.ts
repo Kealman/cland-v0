@@ -6,7 +6,7 @@
 // concurrent hand saves; other writes keep their last-writer-wins policy.
 // Verdict Git resolution belongs to its admitted operation; later tracker operations wait behind it.
 
-import { PlanError, parsePlan, planInBody, withPlan, type EpicPlan } from './plan.ts';
+import { PlanError, parsePlan, planInBody, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
 import { criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
@@ -80,6 +80,9 @@ export type ItemView = IndexedItem & {
   body: string;
   /** Last valid plan; a refused hand save is reported separately. */
   plan: EpicPlan | null;
+  /** Effective merge policy, from the nearest containing plan or the project default. */
+  qaPolicy?: QaPolicy;
+  qaCriteria?: string[];
   planError?: string;
   criteria: Criterion[];
   criteriaWarnings: CriterionWarning[];
@@ -161,6 +164,7 @@ export type TopicBinding = {
 const hashOf = (text: string): string => createHash('sha256').update(text).digest('hex');
 
 const TASKS_REL = join('.cland', 'tasks');
+const QA_FALLBACK_WARNING = 'QA migration fallback: retired outside any plan; uses [plan] qa_default. The old QA requirement may no longer be met; plan this item or set qa_default to retain it.';
 
 /** Native file boundary: requests only read UTF-8 item text and ordinary stat results. */
 export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'link'> & {
@@ -172,6 +176,7 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'li
 
 export class Tracker {
   readonly levels: readonly string[];
+  readonly #qaDefault: QaPolicy;
   get kinds(): string[] { return kindsFor(this.levels); }
   /** The default epic occupies the second configured container level. */
   isPlanContainer(kind: Kind): boolean { return this.levels[1] !== undefined && kind === this.levels[1]; }
@@ -224,7 +229,8 @@ export class Tracker {
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.#qaDefault = options.qaDefault ?? { scope: 'none', when: 'per-item' };
     this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
     this.#files = options.files ?? files;
     this.#watchResumed = options.watchResumed ?? untimed;
@@ -288,6 +294,12 @@ export class Tracker {
     this.#fresh.poke();
     this.#announce(id, false);
     this.#scheduleReady(id);
+    // Reparenting/removing any ancestor can change a task's plan even when no plan text changes.
+    for (const child of this.#index.list()) {
+      if (child.kind !== 'task' || !this.#ancestorIds(child.parent).includes(id)) continue;
+      this.#revisions.set(child.id, (this.#revisions.get(child.id) ?? 0) + 1);
+      this.#scheduleReady(child.id);
+    }
   }
 
   /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
@@ -352,24 +364,32 @@ export class Tracker {
     const { file, revision } = resumed(() => ({ ...this.#require(id), revision: this.#revisions.get(id) }));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
     const checking = resumed(() => {
-      const current = this.#viewOf(id, file, parseItem(text, file, this.levels));
-      const desired = this.#readyStatus(current);
-      if (!desired || current.status === desired) return;
-      return this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'ready', item => {
-        const now = this.#viewOf(id, file, item);
-        if (this.#readyStatus(now) !== desired) throw new ReadyChanged();
-        this.#setStatus(item, desired);
-      }, resumed, undefined, undefined, undefined, async () => {
-        // Native writes may yield for seconds. Re-read Git and file evidence just before rename;
-        // a verdict, hand edit or commit observed after preparation invalidates that preparation.
-        const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        await this.#fresh.refresh(resumed);
-        const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
-        resumed(() => {
-          const now = this.#viewOf(id, file, parseItem(afterGit, file, this.levels));
-          if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || this.#readyStatus(now) !== desired) throw new ReadyChanged();
+      const parsed = parseItem(text, file, this.levels);
+      const prepare = () => {
+        const current = this.#viewOf(id, file, parsed);
+        const desired = this.#readyStatus(current);
+        if (!desired || current.status === desired) return;
+        return this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'ready', item => {
+          const now = this.#viewOf(id, file, item);
+          if (this.#readyStatus(now) !== desired) throw new ReadyChanged();
+          this.#setStatus(item, desired);
+        }, resumed, undefined, undefined, undefined, async () => {
+          // Native writes may yield for seconds. Re-read Git and file evidence just before rename;
+          // a verdict, hand edit or commit observed after preparation invalidates that preparation.
+          const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
+          await this.#fresh.refresh(resumed);
+          const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
+          await this.#refreshPlans(resumed(() => parseItem(afterGit, file, this.levels)), resumed);
+          resumed(() => {
+            const now = this.#viewOf(id, file, parseItem(afterGit, file, this.levels));
+            if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || this.#readyStatus(now) !== desired) throw new ReadyChanged();
+          });
         });
-      });
+      };
+      // Split the budget only at actual ancestor I/O; a parent may be a release
+      // with no plan to read. Otherwise parsing and mutation admission stay together.
+      const refresh = this.#refreshPlans(parsed, resumed);
+      return refresh ? refresh.then(() => resumed(prepare)) : prepare();
     });
     try { await checking; }
     catch (err) { resumed(() => {
@@ -791,10 +811,19 @@ export class Tracker {
       this.#planErrors.set(id, state.planError);
       return state;
     }
-    this.#planErrors.delete(id);
+    const recovered = this.#planErrors.delete(id);
     const previous = this.#index.plan(id);
-    if (JSON.stringify(previous) === JSON.stringify(state.plan)) return state;
+    if (JSON.stringify(previous) === JSON.stringify(state.plan)) {
+      // A read can observe a refused save before the watcher indexes it. Restoring
+      // the same accepted bytes clears only the detail error, so views need an event.
+      if (recovered) this.#announce(id, false);
+      return state;
+    }
     this.#index.rememberPlan(id, state.plan);
+    // A changed epic policy invalidates prepared readiness writes for its tasks too.
+    for (const child of this.#index.list()) {
+      if (child.kind === 'task' && this.#ancestorIds(child.parent).includes(id)) this.#changed(child.id);
+    }
     this.#log({ event: 'task-plan-changed', id, by: writer?.name ?? (source === 'hand' ? 'hand' : 'hub'), source, previous, plan: state.plan });
     return state;
   }
@@ -810,6 +839,58 @@ export class Tracker {
         if (!this.isPlanContainer(item.fm.kind)) throw new TrackerError('a plan belongs only to an epic');
         item.body = withPlan(item.body, plan);
       }, resumed, undefined, authorize);
+    }, resumed);
+  }
+
+  /** Explicit, resumable migration: write the plan before removing each legacy label. */
+  migrateQa(actor: Actor, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ migrated: string[]; fallback: string[]; report: string }> {
+    return this.#serial(async () => {
+      const migrated: string[] = [], fallback: string[] = [];
+      const labelled: Item[] = [];
+      // Warnings live in task comments, atomically with retirement. Recover them on every retry,
+      // including after restart, so an interrupted response never hides an already changed policy.
+      for (const row of resumed(() => this.#index.list())) {
+        const text = await this.#files.readFile(join(this.#dir, row.file), 'utf8');
+        const item = resumed(() => parseItem(text, row.file, this.levels));
+        if (item.comments.some(c => c.text === QA_FALLBACK_WARNING)) fallback.push(row.id);
+        if (item.fm.labels.includes('qa-required')) labelled.push(item);
+      }
+      for (const item of labelled) {
+        const id = item.fm.id;
+        await this.#refreshPlans(item, resumed);
+        const epic = resumed(() => this.#ancestorIds(item.fm.parent).find(id => this.#index.plan(id) !== null));
+        if (item.fm.kind === 'task' && epic) {
+          await this.#mutate(epic, actor, 'qa migration', parent => {
+            const state = this.#planState(parent);
+            if (state.planError || !state.plan) throw new TrackerError(`${epic}: fix the plan before migrating QA: ${state.planError ?? 'no plan'}`);
+            const plan = structuredClone(state.plan);
+            if (!plan.stages.some(s => s.lanes.some(lane => lane.includes(id)))) {
+              let name = 'Legacy QA';
+              while (plan.stages.some(s => s.name === name)) name += ' migration';
+              plan.stages.push({ name, qa: { scope: 'affected', when: 'per-item' }, lanes: [[id]] });
+            }
+            plan.items ??= {};
+            const prior = plan.items[id]?.qa ?? plan.stages.find(s => s.lanes.some(lane => lane.includes(id)))!.qa;
+            plan.items[id] = { ...plan.items[id], qa: { scope: prior.scope === 'none' ? 'affected' : prior.scope, when: 'per-item' } };
+            parent.body = withPlan(parent.body, plan);
+          }, resumed, undefined, authorize);
+          migrated.push(id);
+        } else {
+          if (!fallback.includes(id)) fallback.push(id);
+          resumed(() => this.#log({ event: 'task-qa-migration-fallback', id, report: QA_FALLBACK_WARNING, by: actor.name }));
+        }
+        const outside = !(item.fm.kind === 'task' && epic);
+        await this.#mutate(id, actor, 'qa migration', current => {
+          if (outside && !current.comments.some(c => c.text === QA_FALLBACK_WARNING)) current.comments.push({ author: actor.name, at: this.#now().toISOString(), text: QA_FALLBACK_WARNING });
+          current.fm.labels = current.fm.labels.filter(label => label !== 'qa-required');
+        }, resumed, undefined, authorize);
+      }
+      return resumed(() => {
+        const report = `Migrated plan QA overrides: ${migrated.join(', ') || 'none'}.` +
+          `\nRetired outside any plan (including earlier runs): ${fallback.join(', ') || 'none'}. Those retirements used [plan] qa_default; their old QA requirement may no longer be met. Check their plan or set qa_default to retain it.`;
+        this.#log({ event: 'task-qa-migrated', migrated, fallback, report, by: actor.name });
+        return { migrated, fallback, report };
+      });
     }, resumed);
   }
 
@@ -854,6 +935,7 @@ export class Tracker {
       } catch (err) {
         return resumed(() => { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read: ${err instanceof Error ? err.message : String(err)}`); });
       }
+      await this.#refreshPlans(resumed(() => parseItem(text, file, this.levels)), resumed);
       return resumed(() => {
         let view: ItemView;
         try { view = this.#viewOf(id, file, parseItem(text, file, this.levels)); }
@@ -862,6 +944,42 @@ export class Tracker {
         return evidence ? this.#mergeViewOf(view) : view;
       });
     }, resumed);
+  }
+
+  #ancestorIds(parent: string | null): string[] {
+    const ids: string[] = [];
+    while (parent && !ids.includes(parent)) {
+      ids.push(parent);
+      parent = this.#index.get(parent)?.parent ?? null;
+    }
+    return ids;
+  }
+
+  #refreshPlans(item: Item, resumed: Resumed): Promise<void> | void {
+    const ancestors = resumed(() => this.#ancestorIds(item.fm.parent).flatMap(id => {
+      const meta = this.#index.metaOf(id);
+      return meta && this.isPlanContainer(this.#index.get(id)!.kind) ? [{ id, file: meta.file }] : [];
+    }));
+    if (!ancestors.length) return;
+    return (async () => {
+      for (const { id, file } of ancestors) {
+        const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
+        resumed(() => {
+          const parent = parseItem(text, file, this.levels);
+          this.#planCandidates.set(id, { item: parent, source: 'hand' });
+          this.#acceptPlan(parent, 'hand');
+        });
+      }
+    })();
+  }
+
+  #qaFor(item: Item): { qaPolicy: QaPolicy; qaCriteria: string[] } {
+    for (const id of this.#ancestorIds(item.fm.parent)) {
+      const plan = this.#index.plan(id);
+      const stage = plan?.stages.find(s => s.lanes.some(lane => lane.includes(item.fm.id)));
+      if (stage) return { qaPolicy: plan!.items?.[item.fm.id]?.qa ?? stage.qa, qaCriteria: plan!.items?.[item.fm.id]?.qa_criteria ?? [] };
+    }
+    return { qaPolicy: this.#qaDefault, qaCriteria: [] };
   }
 
   #viewOf(id: string, file: string, item: Item, source: 'file' | 'proposal' = 'file'): ItemView {
@@ -883,6 +1001,7 @@ export class Tracker {
       // Gate previews are unpublished proposals, so they must not retain or journal a plan.
       ...(source === 'file' ? this.#acceptPlan(item, 'hand') : this.#planState(item)),
       ...parseCriteria(item.body, this.levels.includes(item.fm.kind)),
+      ...this.#qaFor(item),
       comments: item.comments,
       verdicts: this.#annotateVerdicts(id, item.fm.kind, item.fm.branch, this.#index.markVerdicts(id, item.comments.flatMap((c) => (c.verdict ? [{ verdict: { ...c.verdict, author: c.author, at: c.at }, key: commentKey(c) }] : [])))),
       claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),

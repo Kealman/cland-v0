@@ -2,6 +2,7 @@
 // `cland init` writes it with the defaults; `cland update` rewrites it to the current template, keeping the values
 // it finds (so a threshold the human changed survives an update). A file without the mark is the human's and left
 // alone. The hub reads the thresholds at start; a missing or unreadable file means the built-in defaults.
+import { qaPolicy, type QaPolicy } from '../tracker/plan.ts';
 import { visibilityOverrides, type VisibilityOverrides } from '../hub/visibility.ts';
 import { DEFAULT_LEVELS, configuredLevels } from '../tracker/kinds.ts';
 import { basename } from 'node:path';
@@ -15,6 +16,7 @@ export type ProjectConfig = {
   name: string;
   visibility: VisibilityOverrides;
   tracker: { levels: string[] };
+  plan: { qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
   keys: { layouts: string[] };
   hygiene: { eventLimit: RateLimit; rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
@@ -26,6 +28,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS] },
+  plan: { qaDefault: { scope: 'none', when: 'per-item' } },
   artifacts: { retentionDays: 30 },
   keys: { layouts: [] },
   hygiene: { eventLimit: { ...EVENT_LIMIT }, rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
@@ -44,6 +47,10 @@ name = ${JSON.stringify(c.name)}
 # Container kinds, ordered top-down. Leaf kinds are task, question and spec; map is outside the ladder.
 [tracker]
 levels = ${JSON.stringify(c.tracker.levels)}
+
+[plan]
+# QA for tasks outside any plan. Review is always required.
+qa_default = { scope = "${c.plan.qaDefault.scope}", when = "${c.plan.qaDefault.when}" }
 
 # Keyboard layouts for Neovim Normal-mode letters (currently: ru). Ctrl focus chords use English.
 [keys]
@@ -85,6 +92,8 @@ export function parseConfig(text: string, fallbackName: string): ProjectConfig {
   if (typeof project.name === 'string' && project.name.trim()) c.name = project.name;
   const tracker = (doc.tracker ?? {}) as Record<string, unknown>;
   if (tracker.levels !== undefined) c.tracker.levels = configuredLevels(tracker.levels);
+  const plan = (doc.plan ?? {}) as Record<string, unknown>;
+  if (plan.qa_default !== undefined) c.plan.qaDefault = qaPolicy(plan.qa_default, 'plan.qa_default');
   const keys = (doc.keys ?? {}) as Record<string, unknown>;
   if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];
   const a = (doc.artifacts ?? {}) as Record<string, unknown>;

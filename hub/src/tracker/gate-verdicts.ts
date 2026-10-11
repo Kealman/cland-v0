@@ -19,13 +19,15 @@ function verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
 }
 
 export function incompleteCriteria(view: ItemView): string[] {
-  return view.criteria.flatMap(c => {
+  const missingIds = (view.qaCriteria ?? []).filter(id => !view.criteria.some(c => c.id === id)).map(id => `${id}: QA criterion is missing`);
+  return [...missingIds, ...view.criteria.flatMap(c => {
     const missing: string[] = [];
     const failed = c.marks.some(m => m.kind === 'failed');
     if (failed || !c.marks.some(m => m.kind === 'done')) missing.push('not done');
-    if (failed || !c.marks.some(m => m.kind === 'verified')) missing.push('not verified');
+    const needsQa = c.id !== null && view.qaCriteria?.includes(c.id);
+    if (failed || !c.marks.some(m => m.kind === 'verified' && (!needsQa || /\[qa\]$/i.test(m.by)))) missing.push(needsQa ? 'not verified by QA' : 'not verified');
     return missing.length ? [`${c.id ?? 'legacy criterion'}: ${c.text} (${missing.join(', ')})`] : [];
-  });
+  })];
 }
 
 export function gateVerdicts(view: ItemView): { review: IndexedVerdict; qa: IndexedVerdict | null } {
@@ -35,7 +37,8 @@ export function gateVerdicts(view: ItemView): { review: IndexedVerdict; qa: Inde
     throw new MergeError('criteria-incomplete', `${view.id}: incomplete acceptance criteria:\n${incomplete.join('\n')}\nThe claiming Implementer marks each criterion done with cland task criterion ${view.id} done C<n>, then Reviewer or QA records a clear verdict with --verified C<n> or --verified all.${legacy}`);
   }
   const review = verdict(view, 'review');
-  const qa = view.labels.includes('qa-required') ? verdict(view, 'qa') : null;
+  const policy = view.qaPolicy;
+  const qa = policy && policy.scope !== 'none' && policy.when === 'per-item' ? verdict(view, 'qa') : null;
   return { review, qa };
 }
 

@@ -69,16 +69,17 @@ async function repository(root: string) {
 }
 
 for (const qaRequired of [false, true]) {
-  test(`ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa-required=${qaRequired}`, async t => {
+  test(`ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=${qaRequired}`, async t => {
     const root = await tempProject(t);
     await repository(root);
+    if (qaRequired) await writeFile(join(root, '.cland/config.toml'), '[plan]\nqa_default = {scope = "affected", when = "per-item"}\n');
     const { discovery } = await startDaemon(t, root, { CLAND_TEST_TIP_CHECK_MS: '250' });
     const ui = await connectUi(t, discovery);
     assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
     const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', sessionId: 'rev-id', role: 'reviewer' });
     const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
     t.after(async () => { await rev.close(); await qa.close(); });
-    const made = await ui.request({ type: 'task.create', title: 'Ready fixture', labels: qaRequired ? ['qa-required'] : [] });
+    const made = await ui.request({ type: 'task.create', title: 'Ready fixture' });
     const item = (made.value as { item: ItemView }).item;
     const claimed = await ui.request({ type: 'task.claim', item: item.id });
     const work = (claimed.value as { worktree: { path: string; branch: string } }).worktree;
@@ -468,13 +469,14 @@ for (const release of ['verdict', 'explicit'] as const) {
   });
 }
 
-for (const mode of ['timing', 'retry'] as const) {
-  test(`ready ${mode === 'timing' ? 'counts parse, decision and mutation admission as one continuation' : 'retries invalidated preparations with bounded backoff'}`, async t => {
+for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
+  const timing = mode !== 'retry';
+  test(`ready ${timing ? `counts parse, decision and mutation admission as one continuation${mode === 'timing-parented' ? ' with a release parent' : ''}` : 'retries invalidated preparations with bounded backoff'}`, async t => {
     const root = await tempProject(t);
     await repository(root);
     // Keep the folder watcher dormant at its native boundary while measuring this continuation.
     // Watcher parsing is a separate continuation with its own existing timing coverage.
-    if (mode === 'timing') {
+    if (timing) {
       const quiet = await tempProject(t);
       const watch = nativeFiles.watch;
       t.mock.method(nativeFiles, 'watch', () => watch(quiet, () => {}));
@@ -489,6 +491,7 @@ for (const mode of ['timing', 'retry'] as const) {
     let slowParse = false;
     let slowOpen = false;
     let armRead = false;
+    let readyId: string | null = null;
     let disrupt = 0;
     const attempts: number[] = [];
     const { RequestGuard } = await import('../src/hub/budget.ts');
@@ -504,7 +507,7 @@ for (const mode of ['timing', 'retry'] as const) {
       files: { ...files,
         readFile: async (...args) => {
           const text = await files.readFile(...args);
-          if (mode === 'timing' && armRead && text.includes('result: clear') && tracker.list()[0]?.verdicts[0]?.current === true) { armRead = false; slowParse = true; }
+          if (timing && armRead && text.includes('result: clear') && tracker.list().find(row => row.id === readyId)?.verdicts[0]?.current === true) { armRead = false; slowParse = true; }
           if (disrupt) { disrupt--; return `${text}\n`; }
           return text;
         },
@@ -529,6 +532,14 @@ for (const mode of ['timing', 'retry'] as const) {
     t.after(() => rev.close());
     const made = await ui.request({ type: 'task.create', title: 'Ready continuation' });
     const item = (made.value as { item: ItemView }).item;
+    readyId = item.id;
+    if (mode === 'timing-parented') {
+      const parent = await ui.request({ type: 'task.create', title: 'Release parent', kind: 'release' });
+      assert.equal(parent.ok, true, parent.error);
+      const release = (parent.value as { item: ItemView }).item;
+      const linked = await ui.request({ type: 'task.link', item: item.id, parent: release.id });
+      assert.equal(linked.ok, true, linked.error);
+    }
     const claimed = await ui.request({ type: 'task.claim', item: item.id });
     const work = (claimed.value as { worktree: { path: string } }).worktree;
     await writeFile(join(work.path, 'feature'), 'reviewed\n');
@@ -536,8 +547,8 @@ for (const mode of ['timing', 'retry'] as const) {
     git(work.path, 'commit', '-qm', 'Reviewed');
     await tips.refresh();
     assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: mode })).ok, true);
-    if (mode === 'timing') {
-      await eventually('ready', async () => tracker.list()[0]?.status === 'ready' ? true : undefined);
+    if (timing) {
+      await eventually('ready', async () => tracker.list().find(row => row.id === readyId)?.status === 'ready' ? true : undefined);
       assert.deepEqual(records.filter(r => r.event === 'slow-request').map(r => [r.tool, r.phase, r.ms]), [['tracker.ready', 'resumed', 300]], JSON.stringify({ clock, slowParse, slowOpen, armRead }));
     } else {
       await eventually('ready retried', async () => attempts.length >= 2 ? true : undefined);
@@ -554,7 +565,7 @@ for (const mode of ['timing', 'retry'] as const) {
       assert.match(paused[0]!.text, /T-1.*readiness evidence changed/);
       fail = false;
       assert.equal((await ui.request({ type: 'task.edit', item: item.id, body: 'new item event' })).ok, true);
-      await eventually('event restarts ready', async () => tracker.list()[0]?.status === 'ready' ? true : undefined);
+      await eventually('event restarts ready', async () => tracker.list().find(row => row.id === readyId)?.status === 'ready' ? true : undefined);
     }
   });
 }

@@ -45,6 +45,14 @@ async function task(root: string, title = 'Ship the parser', file = 'parser.txt'
   return { id: item.id, ...worktree };
 }
 
+async function requireQa(root: string, ui: Awaited<ReturnType<typeof connectUi>>, id: string) {
+  const result = await ui.request({ type: 'task.create', title: 'QA plan', kind: 'epic' });
+  const epic = (result.value as { item: { id: string } }).item.id;
+  ok(await cland(root, 'task', 'link', id, '--parent', epic));
+  const plan = await ui.request({ type: 'task.plan', item: epic, op: 'set', yaml: `stages:\n- name: Required QA\n  qa: {scope: affected, when: per-item}\n  lanes: [[${id}]]\n` });
+  assert.equal(plan.ok, true, plan.error);
+}
+
 test('a current hub review lands one squash commit in the root and territory, closes the item and topic, and removes its worktree and branch', async (t) => {
   const { root, ui, rev } = await project(t);
   const work = await task(root);
@@ -204,7 +212,7 @@ test('the gate refuses in order: item/branch, missing or file-only review, wrong
   });
   assert.equal(git(root, 'rev-parse', 'HEAD'), git(root, 'rev-parse', 'main'));
   await review(rev, work.id, 'clear', 'rev-4');
-  ok(await cland(root, 'task', 'edit', work.id, '--add-label', 'qa-required'));
+  await requireQa(root, ui, work.id);
   await refused(ui, root, work.id, 'qa-missing');
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   for (const code of ['merge-branch', 'merge-item', 'review-missing', 'review-provenance', 'review-role', 'review-claimant', 'review-not-clear', 'review-stale', 'qa-missing']) assert.ok(journal.includes(`"code":"${code}"`), code);
@@ -235,10 +243,10 @@ test('conflicts name the files, touched local edits refuse, and unrelated edits 
   assert.equal(git(root, 'diff', '--cached', '--name-only'), 'README.md');
 });
 
-test('QA-required uses the latest clear current QA evidence and includes its session and run; role moves preserve verdict provenance', async (t) => {
+test('Per-item plan QA uses the latest clear current QA evidence and includes its session and run; role moves preserve verdict provenance', async (t) => {
   const { root, ui, rev } = await project(t);
   const work = await task(root);
-  ok(await cland(root, 'task', 'edit', work.id, '--add-label', 'qa-required'));
+  await requireQa(root, ui, work.id);
   const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', sessionId: 'qa-id', role: 'qa' });
   t.after(() => qa.close());
   await qa.waitForPresence(['qa-1', 'rev']);

@@ -95,7 +95,12 @@ for (const kind of ['review', 'qa'] as const) {
   test(`an Aide claimant cannot supply its own ${kind} after becoming a verifier`, async t => {
     const { root, ui, aide, rev, id, work } = await project(t);
     if (kind === 'qa') {
-      assert.equal((await aide.call<{ ok: boolean }>('task.edit', { id, add_labels: ['qa-required'] })).ok, true);
+      const made = await ui.request({ type: 'task.create', title: 'Required QA', kind: 'epic' });
+      assert.equal(made.ok, true, made.error);
+      const epic = (made.value as { item: ItemView }).item.id;
+      assert.equal((await ui.request({ type: 'task.link', item: id, parent: epic })).ok, true);
+      const planned = await ui.request({ type: 'task.plan', item: epic, op: 'set', yaml: `stages:\n- name: Required QA\n  qa: {scope: affected, when: per-item}\n  lanes: [[${id}]]\n` });
+      assert.equal(planned.ok, true, planned.error);
       assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', result: 'clear', run: 'independent-review' })).ok, true);
       await eventually('independent review is current', async () => {
         const view = await aide.call<{ item: ItemView }>('task.view', { id });

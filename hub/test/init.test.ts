@@ -42,6 +42,21 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   }
 });
 
+test('init adds qa_default and update keeps a configured QA policy', async t => {
+  const root = await tempProject(t);
+  await gitRepo(root);
+  await run(root, 'init');
+  const path = join(root, '.cland/config.toml');
+  const initial = await readFile(path, 'utf8');
+  assert.match(initial, /qa_default = \{ scope = "none", when = "per-item" \}/);
+  await writeFile(path, initial.replace('scope = "none", when = "per-item"', 'scope = "full", when = "after-stage"'));
+  await run(root, 'update');
+  const updated = await readFile(path, 'utf8');
+  assert.match(updated, /qa_default = \{ scope = "full", when = "after-stage" \}/);
+  await run(root, 'update');
+  assert.equal(await readFile(path, 'utf8'), updated);
+});
+
 type Change = { path: string; action: string; note?: string };
 
 const sh = (cwd: string, command: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> =>

@@ -382,7 +382,9 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
   t.after(async () => { await Promise.all([coord, impl, rev, qa].map(s => s.close())); });
   await coord.waitForPresence(['coord', 'impl', 'rev', 'qa-one']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Own loop', assignee: 'impl', labels: ['qa-required'] });
+  const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Loop plan', kind: 'epic' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Own loop', assignee: 'impl', parent: epic.id });
+  await coord.call('task.plan', { id: epic.id, op: 'set', yaml: `stages:\n- name: Loop\n  qa: {scope: affected, when: per-item}\n  lanes: [[${item.id}]]\n` });
   const claimed = await impl.call<{ ok: boolean; worktree: { path: string } }>('task.claim', { id: item.id });
   assert.equal(claimed.ok, true);
   const work = claimed.worktree.path;

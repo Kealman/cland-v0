@@ -25,7 +25,7 @@ export type TaskRequest =
       branch?: string | null;
       as?: ActorField;
     }
-  | { type: 'task.plan'; id: string; item: string; op: 'set' | 'show'; yaml?: string; as?: ActorField }
+  | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate'; yaml?: string; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
   | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
@@ -96,6 +96,7 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
       return { item: await tracker.create(actor, input, resumed, authorize) };
     }
     case 'task.plan': {
+      if (frame.op === 'migrate') return tracker.migrateQa(actor, resumed, authorize);
       optStr(f, 'yaml');
       if (frame.op !== 'show' && frame.op !== 'set') throw new TrackerError('task.plan op must be set or show');
       if (frame.op === 'set' && typeof frame.yaml !== 'string') throw new TrackerError('task.plan set needs yaml');

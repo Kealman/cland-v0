@@ -114,7 +114,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
   const config = readProjectConfig(l.config, root, error => log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }));
-  const tracker = new Tracker({ ...(config ? { levels: config.tracker.levels } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  const tracker = new Tracker({ ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable

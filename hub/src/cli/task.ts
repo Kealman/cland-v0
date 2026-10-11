@@ -13,6 +13,7 @@ import { IMPORT_USAGE, runImportGithub } from './task-import.ts';
 export const TASK_USAGE = `  task create <title> [--kind k] [--version semver] [--body t | --body-file f] [--label l]… [--assignee a]
                   [--parent T-n] [--blocked-by T-n]… [--topic t] [--branch b]
   task view <id>
+  task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show> <epic-id> [--file plan.yaml]
   task list [--under T-n] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--verified C1,C3|all | --failed "C1=note"]…]
@@ -99,6 +100,10 @@ function frameOf(sub: Sub, positionals: string[], v: Values): { type: string } &
     }
     case 'plan': {
       const [op, item, ...extra] = positionals;
+      if (op === 'migrate') {
+        if (item || extra.length || v.file !== undefined) throw new UsageError('task plan migrate takes no item or --file');
+        return { type: 'task.plan', op };
+      }
       if ((op !== 'set' && op !== 'show') || !item || extra.length) throw new UsageError('task plan needs set|show and an epic id');
       if (op === 'set' && typeof v.file !== 'string') throw new UsageError('task plan set needs --file plan.yaml (or --file - for stdin)');
       if (op === 'show' && v.file !== undefined) throw new UsageError('task plan show takes no --file');
@@ -227,6 +232,7 @@ function listText(items: ItemSummary[]): string {
 function humanOf(sub: Sub, value: Record<string, unknown>): string {
   switch (sub) {
     case 'plan':
+      if (typeof value.report === 'string') return value.report + '\n';
       return (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
     case 'list':
       return listText(value.items as ItemSummary[]);
