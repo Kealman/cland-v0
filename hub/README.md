@@ -1375,9 +1375,9 @@ The journal records event ids, subjects, kinds, recipients, counts and limiting,
 never bodies.
 
 Default subscriptions are derived from the current item claims. The Coordinator covers
-open items without an active Implementer or Aide lead in their ancestry; each lead
-covers its claimed items and their descendants, excluding subtrees with their own
-active lead. Ownership walks up to the nearest active lead using stable session
+open items without an active lead in their ancestry (an Implementer or Aide claimant, or a
+container Lead on an epic or release node); each lead covers its claimed items and their
+descendants, excluding subtrees with their own active lead. Ownership walks up to the nearest active lead using stable session
 identities; anonymous hellos retain distinct provisional name identities. Both subscription listings include these rows with `default: true`, a stable
 `default:<session-id>:<item-id>` id, `events: ["task", "session.state"]` and `digest: "turn"`.
 They follow claims, handovers, renames and reconnects; `unsubscribe` removes only

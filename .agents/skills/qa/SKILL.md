@@ -30,7 +30,7 @@ Write one `task.comment` on the epic with `verdict: qa`, `stage: "<exact stage n
 
 After committing and pushing the work to `origin`, send kind `report` to `qa` in the item topic, with first line `qa request T-<n>`, the Coordinator’s committed `qa/briefs/T-<n>.md` and the branch/head. Request QA when a brief was supplied; without one request review only, unless `task.view`’s `qaPolicy` has a non-none scope and `when: per-item`, or `qaCriteria` names criteria still needing QA marks; in either case report the missing brief to the Coordinator. Items with after-stage QA merge on review and receive their stage QA pass on `dev`. Fix not-clear findings and request a new run at the new head. Keep the claim until merge. The hub’s `ready` event supplies the supervising Lead’s or Coordinator’s handover; a clear QA verdict needs no relay.
 
-Default item subscriptions deliver status/verdict and verifier death or long idle to the lead at its next turn. Use `subscribe` for additional subjects and `subscriptions` to inspect them; routine updates use kind `progress`, requests and verdicts use `report`, blockers use `question` or `report`. `lead T-<n>` falls back to the Coordinator for an unclaimed item; for a closed or unknown item address `coordinator` directly.
+Default item subscriptions deliver status/verdict and verifier death or long idle to the lead at its next turn. Use `subscribe` for additional subjects and `subscriptions` to inspect them; routine updates use kind `progress`, requests and verdicts use `report`, blockers use `question` or `report`. `lead T-<n>` falls back to the nearest container Lead, then the Coordinator, for an unclaimed item; for a closed or unknown item address `coordinator` directly.
 
 ## If you are the QA role
 
