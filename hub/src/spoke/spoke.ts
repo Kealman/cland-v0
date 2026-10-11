@@ -7,7 +7,7 @@
 //     both absent: the hub is found through `.cland/hub.json` (CLAND_HUB_FILE names it, else the nearest one
 //     walking up from the cwd), re-read before every reconnect (a restarted hub listens on a new port)
 //   CLAND_SESSION_ID    the harness session id; a restart of the same session takes its name back
-//   CLAND_SESSION_NAME  the name to ask for; absent → the hub generates one
+//   CLAND_SESSION_NAME  the name to ask for; an unbound spoke discovering a project hub stays disconnected
 //   CLAND_ROLE          the role the session asks for; a project's hub grants it only to a session it launched for
 //                       that role, else the session needs a role the human assigned (`cland role set`)
 //   CLAND_DELIVERY      `adapter`: the session's harness adapter injects what the spoke accepts (#24), so the spoke
@@ -16,6 +16,7 @@
 //   CLAND_HUB_WELCOME_TIMEOUT_MS   timings, for tests
 import { subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
@@ -25,6 +26,8 @@ import { TASK_TOOLS, TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { HEARTBEAT_MS, SEND_KINDS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { envelope } from '../adapters/contract.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
+import { Journal, journalPath } from '../hub/journal.ts';
+import { hasRoleMappedSession } from '../hub/store.ts';
 
 const VERSION = '0.1.0';
 
@@ -279,11 +282,26 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
 
   let hub: HubClient | null = null;
   const notConfigured = 'this session is not connected to a cland hub: CLAND_HUB_URL and CLAND_HUB_SECRET are not set and no .cland/hub.json was found from the cwd up — run `cland hub start` in the project, or start the session through cland';
+  const name = env.CLAND_SESSION_NAME?.trim();
+  const launchToken = env.CLAND_LAUNCH_TOKEN?.trim();
+  const sessionId = env.CLAND_SESSION_ID?.trim();
+  const projectRoot = discoveryFile ? readDiscovery(discoveryFile)?.root : undefined;
+  const clandDir = discoveryFile ? projectRoot ? join(projectRoot, '.cland') : dirname(discoveryFile) : null;
+  let mapped = false;
+  if (clandDir && !name && !launchToken && sessionId) {
+    try { mapped = hasRoleMappedSession(join(clandDir, 'hub.db'), sessionId); }
+    catch (err) { log(`could not read this session's role mapping: ${err instanceof Error ? err.message : String(err)}`); }
+  }
+  // A discovered project requires a name, an existing session-id role mapping, or a hub launch credential.
+  // CLAND_ROLE alone is only a request; it does not bind a spare harness process to this project.
+  const skipped = discoveryFile && !name && !launchToken && !mapped
+    ? 'cland hub connection skipped: no CLAND_SESSION_NAME, mapped session role or hub launch credential — start the session through cland, or set CLAND_SESSION_NAME to a name assigned with `cland role set`'
+    : null;
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS, ...TASK_TOOLS] }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const args = (req.params.arguments ?? {}) as Record<string, unknown>;
-    if (!hub) return text({ ok: false, error: notConfigured }, true);
+    if (!hub) return text({ ok: false, error: skipped ?? notConfigured }, true);
     try {
       switch (req.params.name) {
         case 'subscribe': {
@@ -448,12 +466,20 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
   process.stdin.once('close', () => exitWithSession("the session's stdin closed"));
   await server.connect(new StdioServerTransport());
 
+  if (skipped && clandDir) {
+    log(skipped);
+    const journal = new Journal(journalPath(clandDir));
+    journal.write({ event: 'spoke-connection-skipped', cwd: process.cwd(), reason: skipped });
+    try { await journal.close(); }
+    catch (err) { log(`could not journal the skipped connection: ${err instanceof Error ? err.message : String(err)}`); }
+    return { server, hub: null };
+  }
+
   if (!url || !secret) {
     log(notConfigured);
     return { server, hub: null };
   }
 
-  const name = env.CLAND_SESSION_NAME?.trim();
   const role = env.CLAND_ROLE?.trim();
   if (discoveryFile) log(`found the hub through ${discoveryFile}`);
   hub = new HubClient({
@@ -467,10 +493,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     log,
     hello: {
       // a session with no id gets a random one: two such spokes must never look like one session
-      sessionId: env.CLAND_SESSION_ID?.trim() || `anon-${randomUUID()}`,
+      sessionId: sessionId || `anon-${randomUUID()}`,
       cwd: process.cwd(),
       ...(name ? { name } : {}),
-      ...(env.CLAND_LAUNCH_TOKEN ? { launchToken: env.CLAND_LAUNCH_TOKEN } : {}),
+      ...(launchToken ? { launchToken } : {}),
       ...(role ? { role } : {}),
     },
   });
