@@ -112,7 +112,15 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
   assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: item.id, state: 'closed' })).ok, true);
   const pruned = await ui.request({ type: 'worktree.prune', items: [item.id] });
   assert.equal(pruned.ok, true);
-  assert.match(JSON.stringify(pruned.value), /session is being launched/);
+  const outcome = pruned.value as { removed: unknown[]; failed: Array<{ item: string; error: string }> };
+  assert.deepEqual(outcome.removed, []);
+  assert.equal(outcome.failed.length, 1);
+  assert.equal(outcome.failed[0]!.item, item.id);
+  // The spawned verifier may register its presence before the gated adapter returns.
+  assert.ok([
+    `${item.id}: a session is being launched in its worktree`,
+    `${item.id}: late-verifier still stands inside its worktree`,
+  ].includes(outcome.failed[0]!.error), outcome.failed[0]!.error);
   assert.equal(existsSync(join(root, '.cland/worktrees', item.id)), true);
   assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: item.id, state: 'open' })).ok, true);
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: item.id, parent: other.id })).ok, true);
