@@ -101,6 +101,8 @@ const TOOLS = [
     description: "Clear a topic's wait (waiting for agent, waiting for human) back to open, when nothing in it waits any more. The Coordinator's tool.",
     inputSchema: { type: 'object', properties: { topic: { type: 'string', description: 'The topic id' } }, required: ['topic'] },
   },
+  { name: 'ask.forward', description: 'Forward an incoming open question unchanged to the next lead; the Coordinator forwards it to the human. Pass the delivered msg_id. The hub preserves its topic and question.', inputSchema: { type: 'object', properties: { ask: { type: 'string' } }, required: ['ask'] } },
+  { name: 'ask.answer', description: 'Answer an incoming open question locally. Pass the delivered msg_id and answer text; the reply carries answer_to and settles the waiting state. A forwarded question waits for its upstream answer first.', inputSchema: { type: 'object', properties: { ask: { type: 'string' }, text: { type: 'string' } }, required: ['ask', 'text'] } },
   {
     name: 'ask',
     description:
@@ -223,6 +225,8 @@ export function metaOf(message: Message, topic?: TopicRef): Record<string, strin
   if (message.kind !== undefined) meta.kind = message.kind;
   if (message.detail !== undefined) meta.detail = JSON.stringify(message.detail);
   if (message.answerTo !== undefined) meta.answer_to = message.answerTo;
+  if (message.ask?.to !== undefined) meta.ask_to = message.ask.to;
+  if (message.ask?.forwarded !== undefined) meta.ask_forwarded = message.ask.forwarded;
   if (topic) {
     meta.topic = topic.id;
     meta.topic_title = topic.title;
@@ -339,6 +343,13 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
         case 'resolve': {
           if (typeof args.topic !== 'string') return text({ ok: false, error: 'resolve needs `topic`' }, true);
           const value = (await hub.request({ type: 'resolve', topic: args.topic })) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'ask.forward':
+        case 'ask.answer': {
+          if (typeof args.ask !== 'string' || (req.params.name === 'ask.answer' && typeof args.text !== 'string')) return text({ ok: false, error: 'ask.forward needs ask; ask.answer needs ask and text' }, true);
+          const frame = req.params.name === 'ask.forward' ? { type: 'ask.forward' as const, ask: args.ask } : { type: 'ask.answer' as const, ask: args.ask, text: args.text as string };
+          const value = await hub.request(frame) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'ask': {

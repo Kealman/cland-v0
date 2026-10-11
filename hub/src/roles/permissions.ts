@@ -36,6 +36,8 @@ export const KNOWN_TOOLS: readonly string[] = [
   'status',
   'rename',
   'ask',
+  'ask.forward',
+  'ask.answer',
   'resolve',
   'topic.create',
   'task.create',
@@ -84,6 +86,8 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   coordinator: [
     'send',
     'ask',
+    'ask.forward',
+    'ask.answer',
     'resolve',
     'topic.create',
     'task.plan',
@@ -111,8 +115,8 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   // names never change (spec 4.4): only the Coordinator renames (a rename never moves ownership: claims and
   // assignments are held by session id)
-  lead: ['send:agents', 'session.launch', 'session.stop', 'merge', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
-  implementer: ['send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
+  lead: ['ask.forward', 'ask.answer', 'send:agents', 'session.launch', 'session.stop', 'merge', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
+  implementer: ['ask.forward', 'ask.answer', 'send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
   qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
 };
@@ -188,6 +192,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
       return { ok: false, permission: 'send', reason: 'Aide rule (v0.1 §3.3): an Aide sends to sessions by name only, or to topics without addressees' };
     }
   }
+  if (tool === 'ask' && role !== 'coordinator') return { ok: false, permission: tool, reason: 'only the Coordinator asks the human; forward an incoming question with ask.forward instead' };
   // a Reviewer records review verdicts and QA records QA verdicts, whatever else its list grants
   const own = role === 'reviewer' ? 'review' : role === 'qa' ? 'qa' : null;
   if (tool === 'task.comment' && call.verdict && own !== null && call.verdictKind !== undefined && call.verdictKind !== own) {

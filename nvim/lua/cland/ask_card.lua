@@ -40,10 +40,12 @@ function M.lines(card, question)
       out[#out + 1] = { ' ┃ ' .. (k == 1 and head or (' '):rep(vim.fn.strdisplaywidth(head))) .. l, group, i, bar }
     end
   end
-  if open then
+  if open and card.to then
+    out[#out + 1] = { ' ┃ ' .. (card.forwarded and 'forwarded · awaiting the lead chain' or ('waiting for ' .. card.to)), 'ClandFaint', nil, bar }
+  elseif open then
     out[#out + 1] = { ' ┃ ' .. (card.free ~= false and '1-9 answers · free answer: i' or '1-9 answers'), 'ClandFaint', nil, bar }
   elseif card.state == 'answered' then
-    out[#out + 1] = { ' ┃ ' .. (card.option and ('answered with ' .. card.option) or 'answered in your words'), 'ClandDim', nil, bar }
+    out[#out + 1] = { ' ┃ ' .. (card.option and ('answered with ' .. card.option) or (card.to and 'answered by the lead' or 'answered in your words')), 'ClandDim', nil, bar }
   else
     local why = card.state == 'withdrawn' and ': the topic was resolved' or card.state == 'closed' and ': no longer open in the hub' or ': the topic or its item closed'
     out[#out + 1] = { ' ┃ ' .. card.state .. why, 'ClandDim', nil, bar }

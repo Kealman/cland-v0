@@ -293,7 +293,10 @@ test('a stopping hub leaves alone a socket that is no longer the one it bound, a
   await assert.rejects(stat(join(root, '.cland', 'hub.json')), { code: 'ENOENT' });
   const log = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
   const events = log.split('\n').filter((l) => l.startsWith('{')).map((l) => (JSON.parse(l) as { event: string }).event);
-  assert.deepEqual(events.filter(event => ['stopping', 'socket-kept', 'stopped'].includes(event)), ['stopping', 'socket-kept', 'stopped']);
+  // Stop closes the socket before awaiting the startup sweep, so its logs may interleave.
+  const shutdownEvents = events.slice(events.lastIndexOf('stopping')).filter((event) => !event.startsWith('orphan-sweep-'));
+  assert.deepEqual(shutdownEvents, ['stopping', 'socket-kept', 'stopped']);
+  assert.equal(events.at(-1), 'stopped', 'shutdown finishes the log');
 });
 
 test('a stale hub.lock — its hub was killed, or its pid now belongs to another process — does not stop a start', { skip: NO_PS }, async (t) => {

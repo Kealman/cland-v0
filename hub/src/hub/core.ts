@@ -253,6 +253,9 @@ export class HubCore {
       role: (name) => this.#live.get(name)?.role ?? null,
       // the permission table's word on `ask` (#30): the role's grants, or the default table on a hub with no roles
       mayAsk: (role) => decide(role, role === null ? undefined : (this.#roles?.get().get(role)?.permissions.tools ?? DEFAULT_PERMISSIONS[role]), { tool: 'ask' }),
+      identity: id => this.sessionIdentity(id),
+      nextLead: (from, topic, forwarding) => this.#questionLead(from, topic, forwarding),
+      sendFromSession: (from, topic, to, text, replyTo, kind, answerTo) => this.sendFromSession(from, [to], text, replyTo, topic, undefined, undefined, undefined, kind, undefined, false, answerTo),
       sendFromHuman: (topic, text, to, answerTo) => this.sendFromHuman(topic, text, to, undefined, answerTo),
       // an ask withdrawn or cancelled: a notice in its topic to the asker, through the one notice path
       noteTo: (topic, session, text) => {
@@ -588,6 +591,20 @@ export class HubCore {
     if (this.#store.sessionAlias(name)) return `name "${name}" has a pending session identity adoption: retry after adoption succeeds`;
     if (retained?.has(name)) return `name "${name}" has retained traffic`;
     return null;
+  }
+
+  /** Continue above the caller's claimed ancestor, never return to a lower item's claimant. */
+  #questionLead(from: string, topic: Topic, forwarding = false): string | null {
+    if (this.#store.roleOf(from) === COORDINATOR) return null;
+    if (!topic.item) return this.#defaultCoordinator();
+    const items = this.#defaultItemSet();
+    const id = this.sessionIdentity(`name:${from}`);
+    for (const node of this.#items?.ancestry?.(topic.item) ?? [topic.item]) {
+      const claim = items.get(node)?.claim;
+      if (claim && this.sessionIdentity(claim.sessionId) === id) return this.#itemLead(node, from) ?? this.#defaultCoordinator();
+    }
+    if (forwarding) throw new TopicRefusal('this receiving lead no longer leads the topic item ancestry; upward forwarding is refused');
+    return this.#itemLead(topic.item, from) ?? this.#defaultCoordinator();
   }
 
   #itemLead(item: string, except: string): string | null {
@@ -1152,6 +1169,8 @@ export class HubCore {
     for (const fn of [...this.#renamed]) fn(from, to, c.sessionId);
     this.#publishPresence();
     this.#announceCoordinator();
+    this.asks.renamed(c.sessionId);
+    this.#publishTopics();
     return { ok: true, name: to };
   }
 
@@ -1475,6 +1494,8 @@ export class HubCore {
     const fromRole = from === null ? null : cFrom ? cFrom.role : this.#store.roleOf(from);
     if (from !== null && fromRole !== role) throw new Error(`${withRole(from, fromRole)} does not hold the role ${ROLE_LABELS[role] ?? role}`);
     const previous = cTo ? cTo.role : this.#store.roleOf(to);
+    const fromId = from !== null ? this.sessionIdentity(`name:${from}`) : null;
+    const toId = this.sessionIdentity(`name:${to}`);
     const at = this.#now().toISOString();
     const stored = this.#store.roleRecord(role);
     const before: RoleRecord = isRoleRecord(stored) ? stored : { note: null, handover: null };
@@ -1496,6 +1517,7 @@ export class HubCore {
       if (!cTo) this.#store.rememberSession(to, this.#now().getTime());
       this.#store.rememberRole(to, role);
       this.#store.saveRoleRecord(role, record);
+      if (fromId !== null) this.#store.moveAgentAsks(fromId, to, toId);
       return [
         this.#recordNotice(AGENTS.id, { kind: 'handover', text: note ? `${handed}, with a handover note:\n\n${renderNote(note)}` : `${handed}, with no note.`, detail: { role, from, to, by, note: note !== null } }),
         this.#recordNotice(AGENTS.id, { kind: 'role-assign', text: `${withRole(to, role)} took over the ${roleLabel} role${from !== null ? ` from ${from}` : ''}.`, detail: { session: to, role, previous, handover: true } }),
@@ -1521,6 +1543,8 @@ export class HubCore {
     if (from !== null) this.#emitRole(from, then, role, 'handover');
     this.#emitRole(to, role, previous, 'handover');
     this.#announceCoordinator();
+    this.asks.renamed(toId);
+    this.#publishTopics();
     return this.#holder(to);
   }
 
@@ -1718,7 +1742,10 @@ export class HubCore {
   // ---------------------------------------------------------------- topics
 
   topics(): Topic[] {
-    return this.#store.topics();
+    return this.#store.topics().map(topic => {
+      const waitingFor = this.asks.waitingFor(topic.id);
+      return waitingFor.length ? { ...topic, waitingFor } : topic;
+    });
   }
 
   topicRef(id: string): TopicRef | null {
@@ -1728,13 +1755,13 @@ export class HubCore {
 
   /** What a `topic` event is about: a change of any of these is published; the unread count alone is not. */
   static #topicSignature(t: Topic): string {
-    return JSON.stringify([t.status, t.warning ?? null, t.item, t.title]);
+    return JSON.stringify([t.status, t.warning ?? null, t.item, t.title, t.waitingFor ?? []]);
   }
 
   /** Tell subscribers about every topic whose status, warning, binding or title changed since they last heard,
    *  and about the ones in `force` whatever changed (the human's unread count). */
   #publishTopics(force: ReadonlySet<string> = new Set()): void {
-    for (const topic of this.#store.topics()) {
+    for (const topic of this.topics()) {
       const signature = HubCore.#topicSignature(topic);
       if (this.#publishedTopics.get(topic.id) === signature && !force.has(topic.id)) continue;
       this.#publishedTopics.set(topic.id, signature);
@@ -1752,8 +1779,8 @@ export class HubCore {
   #move(topic: Topic, move: TopicMove, why: string): TopicStatus {
     if (topic.id === AGENTS.id) return topic.status;
     let next = nextStatus(topic.status, move);
-    // an open ask keeps its topic waiting for the human (spec 4.5): only answering, resolve or close end that
-    if (next !== 'closed' && next !== 'waiting for human' && this.asks.openIn(topic.id)) next = 'waiting for human';
+    // Open asks keep their topic waiting for the current party; only answering, resolve or close ends that.
+    if (next !== 'closed') next = this.asks.waitingIn(topic.id) ?? next;
     if (next !== topic.status) {
       for (const a of this.#store.setTopicStatus(topic.id, next, this.#now().toISOString())) this.artifactChanged(a);
       this.#log({ event: 'topic-status', topic: topic.id, from: topic.status, to: next, why });
@@ -2001,7 +2028,7 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false, answerTo?: string): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
     if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question or decision');
     const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
@@ -2074,6 +2101,7 @@ export class HubCore {
       ts: this.#now().toISOString(),
       ...(sender.role !== null ? { fromRole: sender.role } : {}),
       ...(replyTo !== undefined ? { replyTo } : {}),
+      ...(answerTo !== undefined ? { answerTo } : {}),
       topic: topic.id,
       ...(artifact ? { artifact } : {}),
       ...messageArtifacts(artifacts, a => (actor?.role ?? this.#store.roleOf(from)) === 'aide' || !this.#store.humanArtifact(a)),
@@ -2082,7 +2110,11 @@ export class HubCore {
     if (sessions.size > 0 || toHuman) {
       // who the human's latest message here waited for, read before this one is recorded
       const awaited = toHuman ? [] : this.#store.lastHumanAddressees(topic.id);
-      this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), nowMs);
+      this.#store.transaction(() => {
+        this.#record(message, [...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), nowMs);
+        this.asks.recordQuestion(message);
+        this.asks.recordAnswer(message);
+      });
       this.#store.touchTopic(topic.id, message.ts);
       for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);

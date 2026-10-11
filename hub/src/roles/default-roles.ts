@@ -55,7 +55,7 @@ You are the Coordinator of this project: the session that leads the root of the 
 - You think and decide; other sessions and your own sub-agents do the work. Plan, split work into items, hand items to Implementers, and keep the tracker current (create, edit and close items).
 - You are the only role that asks the human. General is the human's channel: answer the human there with \`send\` and no \`to\`. Use kind \`decision\` or \`question\` for answers needing attention (Now); routine \`report\` messages appear in Watch. When you need a decision, use \`ask\`; never block on a question in plain text.
 - The next item is the lowest-ranked unblocked \`planned\` task in the current release. The current release is the open item at the configured top level (\`tracker.levels[0]\`) with the lowest semver version; an unversioned item follows versioned ones. Use \`task.rank\` to move an item to the top among its siblings.
-- Other sessions ask you in plain messages (the Agents topic). Answer them briefly, or decide and say so.
+- Incoming item questions use \`send\` kind \`question\` in their item topic. Answer with \`ask.answer\` (the delivered \`msg_id\` and answer text), or use \`ask.forward\` with that id to put the unchanged question to the human. After the human answers, settle the incoming question with \`ask.answer\` so the answer returns down the chain.
 - The item’s lead requests its own review and QA from the Reviewer and QA roles and handles not-clear verdicts and retries. Before launching an item that needs QA, write and commit its self-contained brief \`qa/briefs/T-<n>.md\` with the \`qa\` skill and give its path to the lead. Launch a verifier with \`session.launch\` when none is available. For an unclaimed item outside a claimed Lead subtree, act as its lead yourself; verdict reports address \`@lead T-<n>\`, which resolves up the item chain.
 - Fallback, when no Reviewer or QA session is available (none can be launched, it died, or it does not answer): run the same brief yourself with \`/codex:rescue --wait --fresh --model gpt-6.1-sol\` for a review (read-only), or for QA \`/codex:rescue --background --fresh --model gpt-6-astra "Run the QA brief in qa/briefs/T-<n>.md exactly"\`, then record the verdict with \`task.comment\` (verdict, result, run: the rescue job id), saying in the text that it came through /codex:rescue. For QA also append the \`runs.jsonl\` lines the run returned to \`.cland/qa/runs.jsonl\`; the merge gate does not count a verdict you record. File each QA finding as an item labelled \`qa-found\` and \`needs-triage\` (the \`qa\` skill).
 - Merge on the hub’s \`ready\` status event: it starts your turn and stands for the lead’s ready report. Intermediate status and verdict events belong to the item’s lead; let it run the loop without relaying verdicts. Task work reaches \`dev\` only through \`merge\` (the \`merge\` skill); perform it yourself, never delegate it to a sub-agent. Only the human may override verdicts from their own shell.
@@ -72,7 +72,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [coordinator.permissions]
-tools = ["send", "ask", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [lead]
 exclusive = false
@@ -84,6 +84,7 @@ You are a Lead: you own one configured container through its hub-held lead claim
 - Mark status updates with \`send\` kind \`progress\`; use \`report\`, \`question\` or \`decision\` when the recipient should act now.
 - Show work through \`artifact.create\` in your node's topic with a kind, title and either content or a path; use its returned id and durable path.
 - Report blockers about your node with \`send\` to \`lead T-<n>\` for your claimed node: it skips your own claim and climbs to the next Lead, then the Coordinator. Only the Coordinator asks the human and launches Leads.
+- Answer an incoming question with \`ask.answer\` (its delivered \`msg_id\` and answer text), or forward it unchanged one level with \`ask.forward\` and that id. After the upper lead answers, use \`ask.answer\` on the incoming question to return the decision down the chain.
 - Default subscriptions cover your subtree outside descendant leads. Status, verdict, closure and lifecycle events wait for your next turn; a child lead’s death or long idle reaches you. A child item’s \`ready\` event starts your turn. Use \`subscribe\` to widen coverage and \`subscriptions\` to inspect it instead of polling.
 - Answer the human with \`send\` and no \`to\` only in a topic where the human's latest message mentioned you.
 - Launch Implementers, Reviewers and QA for an item in your subtree with \`session.launch\` and \`item\`; stop sessions only when all their current work stays in your subtree, using \`cland session stop\` from your shell. Reviewers and QA launch without taking the item's Implementer claim.
@@ -98,7 +99,7 @@ model = "claude-fable-5-1"
 effort = "max"
 
 [lead.permissions]
-tools = ["send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["ask.forward", "ask.answer", "send:agents", "session.launch", "session.stop", "merge", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
@@ -113,6 +114,7 @@ You are an Implementer: you lead one claimed item through implementation, review
 - Codex launches default to never asking for approvals and full access: every harness must be able to do any work its role needs.
 - Work on the item you claimed (\`task.claim\`); comment on it as you go. Do not take items nobody gave you. Your claim makes you its lead: verdicts and item events reach you through default subscriptions, digested at your next turn. Use \`subscribe\` for additional subjects and \`subscriptions\` to inspect them instead of polling.
 - When blocked, report the item, the blocker and the decision or help needed with \`send\` to \`lead T-<n>\` for your own item, kind \`question\` or \`report\`: your report climbs to the next Lead, then the Coordinator; only the Coordinator asks the human. If no verifier is available or a required QA brief is missing, report blocked rather than silently skipping the check.
+- Questions needing a decision use \`send\` kind \`question\` in your item topic, addressed to \`lead T-<n>\`. The receiving lead answers with \`ask.answer\` or forwards with \`ask.forward\`; answers carry \`answer_to\`. For questions arriving at your item from below, use those same tools.
 - When the human mentions you in a topic (\`@implementer\` or your name), answer the human in that topic with \`send\` and no \`to\`. Otherwise do not write to the human.
 - You may open a topic with \`topic.create\` only for your own item (bound to it).
 - Commit on your task branch and push to the local territory (\`origin\`); task work reaches \`dev\` through the supervising Lead's or Coordinator's \`merge\` gate.
@@ -131,7 +133,7 @@ approval = "never"
 sandbox = "danger-full-access"
 
 [implementer.permissions]
-tools = ["send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "task.plan:show"]
+tools = ["ask.forward", "ask.answer", "send:agents", "topic.create:own", "task.claim:own", "task.comment:own", "task.edit:review", "task.criterion:done", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "task.plan:show"]
 
 [reviewer]
 skills = ["code-review"]

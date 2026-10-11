@@ -130,6 +130,11 @@ create table if not exists hygiene (
  * Additive only: a column is never dropped or retyped here.
  */
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
+  { table: 'asks', column: 'to_name', type: 'text' },
+  { table: 'asks', column: 'to_session_id', type: 'text' },
+  /** The actionable asker follows role handover; the original message sender remains historical. */
+  { table: 'asks', column: 'from_session_id', type: 'text' },
+  { table: 'asks', column: 'forwarded_id', type: 'text' },
   { table: 'sessions', column: 'status', type: 'text' },
   { table: 'sessions', column: 'role', type: 'text' },
   { table: 'sessions', column: 'session_id', type: 'text' },
@@ -214,7 +219,7 @@ const toMessage = (row: Row): Message => ({
 });
 
 /** An ask's row in the `asks` table (#33). */
-export type AskRow = AskCard & { id: string; topic: string; from: string; ts: string };
+export type AskRow = AskCard & { id: string; topic: string; from: string; ts: string; toSessionId?: string; fromSessionId?: string };
 
 const toAsk = (row: Row): AskRow => ({
   id: row.id as string,
@@ -225,6 +230,10 @@ const toAsk = (row: Row): AskRow => ({
   options: JSON.parse(row.options_json as string) as string[],
   free: row.free === 1,
   state: row.state as AskState,
+  ...(typeof row.to_name === 'string' ? { to: row.to_name as string } : {}),
+  ...(typeof row.to_session_id === 'string' ? { toSessionId: row.to_session_id as string } : {}),
+  ...(typeof row.from_session_id === 'string' ? { fromSessionId: row.from_session_id as string } : {}),
+  ...(typeof row.forwarded_id === 'string' ? { forwarded: row.forwarded_id as string } : {}),
   ...(row.answer_id !== null && row.answer_id !== undefined ? { answer: row.answer_id as string } : {}),
   ...(row.option !== null && row.option !== undefined ? { option: Number(row.option) } : {}),
 });
@@ -235,6 +244,8 @@ export const cardOf = (a: AskRow): AskCard => ({
   options: a.options,
   free: a.free,
   state: a.state,
+  ...(a.to !== undefined ? { to: a.to } : {}),
+  ...(a.forwarded !== undefined ? { forwarded: a.forwarded } : {}),
   ...(a.answer !== undefined ? { answer: a.answer } : {}),
   ...(a.option !== undefined ? { option: a.option } : {}),
 });
@@ -384,7 +395,15 @@ export class Store implements HygieneMemory {
 
   /** The harness session behind a name: hygiene is keyed by it, so a rename changes nothing there. */
   rememberSessionId(name: string, sessionId: string): void {
-    this.#db.prepare('update sessions set session_id = ? where name = ?').run(sessionId, name);
+    this.transaction(() => {
+      this.#db.prepare('update sessions set session_id = ? where name = ?').run(sessionId, name);
+      // A never-connected handover target has only name:<target>. Binding adopts both ask endpoints,
+      // including retained aliases during tracker adoption, before a rename can remove that name's row.
+      if (sessionId === 'unknown') return;
+      const names = new Set([name, ...this.sessionAliases().filter(a => a.id === sessionId).map(a => a.name)]);
+      const adopt = this.#db.prepare("update asks set to_session_id = case when to_session_id = ? then ? else to_session_id end, from_session_id = case when from_session_id = ? then ? else from_session_id end where state = 'open' and (to_session_id = ? or from_session_id = ?)");
+      for (const n of names) adopt.run(`name:${n}`, sessionId, `name:${n}`, sessionId, `name:${n}`, `name:${n}`);
+    });
   }
 
   sessionIdOf(name: string): string | null {
@@ -669,7 +688,9 @@ export class Store implements HygieneMemory {
   /** One stored message by its hub id, or null. */
   message(id: string): Message | null {
     const row = this.#db.prepare('select * from messages where id = ?').get(id) as Row | undefined;
-    return row ? toMessage(row) : null;
+    if (!row) return null;
+    const ask = this.ask(id);
+    return { ...toMessage(row), ...(ask ? { ask: cardOf(ask) } : {}) };
   }
 
   /** The messages waiting for a session, oldest first; those past the TTL are marked dropped and returned
@@ -1142,21 +1163,37 @@ export class Store implements HygieneMemory {
 
   // ---------------------------------------------------------------- asks (#33)
 
-  createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string }): void {
+  createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string; to?: string }): void {
     this.#db
-      .prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts) values (?, ?, ?, ?, ?, ?, 'open', ?)")
-      .run(a.id, a.topic, a.from, a.question, JSON.stringify(a.options), a.free ? 1 : 0, a.ts);
+      .prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts, to_name, to_session_id, from_session_id) values (?, ?, ?, ?, ?, ?, 'open', ?, ?, (select session_id from sessions where name = ?), (select from_session_id from messages where id = ?))")
+      .run(a.id, a.topic, a.from, a.question, JSON.stringify(a.options), a.free ? 1 : 0, a.ts, a.to ?? null, a.to ?? null, a.id);
+  }
+
+  /** Actionable ends of an open agent chain move with their role, atomically with its handover record. */
+  moveAgentAsks(fromId: string, to: string, toId: string): void {
+    this.#db.prepare("update asks set to_name = ?, to_session_id = ? where state = 'open' and to_session_id = ?").run(to, toId, fromId);
+    this.#db.prepare("update asks set from_session_id = ? where state = 'open' and to_name is not null and coalesce(from_session_id, (select from_session_id from messages where messages.id = asks.id)) = ?").run(toId, fromId);
+  }
+
+  forwardAsk(id: string, forwarded: string): void {
+    this.#db.prepare('update asks set forwarded_id = ? where id = ?').run(forwarded, id);
   }
 
   ask(id: string): AskRow | null {
     const row = this.#db.prepare('select * from asks where id = ?').get(id) as Row | undefined;
-    return row ? toAsk(row) : null;
+    return row ? this.#askRow(row) : null;
+  }
+
+  #askRow(row: Row): AskRow {
+    const ask = toAsk(row);
+    if (ask.toSessionId && ask.to !== undefined) ask.to = this.nameOfSession(ask.toSessionId) ?? ask.to;
+    return ask;
   }
 
   /** The open asks, oldest first; of one topic when given. */
   openAsks(topic?: string): AskRow[] {
     const rows = (topic === undefined ? this.#db.prepare("select * from asks where state = 'open' order by ts, rowid").all() : this.#db.prepare("select * from asks where state = 'open' and topic = ? order by ts, rowid").all(topic)) as Row[];
-    return rows.map(toAsk);
+    return rows.map(row => this.#askRow(row));
   }
 
   /** An open ask leaves `open` (answered, withdrawn, cancelled); false when it was no longer open. */

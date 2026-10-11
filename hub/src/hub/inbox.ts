@@ -203,7 +203,7 @@ export class InboxBoard {
 
   list(): Inbox {
     const p = this.#port;
-    const open = p.store.openAsks();
+    const open = p.store.openAsks().filter(a => a.to === undefined);
     const topics = p.topics();
     const byId = new Map(topics.map((t) => [t.id, t]));
     const asks: InboxAsk[] = open.map((a) => {

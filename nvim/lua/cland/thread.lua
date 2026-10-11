@@ -320,7 +320,7 @@ function Thread:_build(m, prev, answer)
     end
     local card = type(mm.ask) == 'table' and mm.ask or nil
     if card then
-      local st = require('cland.ask_card').STATE[card.state] or { tostring(card.state), 'ClandDim' }
+      local st = card.state == 'open' and card.to and { card.forwarded and 'forwarded' or ('waiting for ' .. card.to), 'ClandDim' } or require('cland.ask_card').STATE[card.state] or { tostring(card.state), 'ClandDim' }
       hmarks[#hmarks + 1] = { col = 0, opts = { virt_text = { { 'ask · ' .. st[1] .. ' ', st[2] } }, virt_text_pos = 'eol_right_align', hl_mode = 'combine', priority = 130 } }
     end
     b.heads[mm.id] = #b.lines
@@ -333,7 +333,7 @@ function Thread:_build(m, prev, answer)
 
     if card then
       -- the ask's card, as today (#33): the question, the numbered options, the state; the answer beneath
-      local open = card.state == 'open'
+      local open = card.state == 'open' and not card.to
       local ask = { id = mm.id, topic = mm.topic or self.topic.id, question = mm.text, options = card.options or {}, free = card.free }
       for _, l in ipairs(require('cland.ask_card').lines(card, mm.text)) do
         local marks = {
@@ -950,7 +950,7 @@ end
 --- never brought its new state. It shows `closed` and takes no answer.
 function Thread:reconcile_asks(open_ids)
   for _, m in ipairs(self.messages) do
-    if type(m.ask) == 'table' and m.ask.state == 'open' and not open_ids[m.id] then
+    if type(m.ask) == 'table' and m.ask.state == 'open' and not m.ask.to and not open_ids[m.id] then
       m.ask = vim.tbl_extend('force', m.ask, { state = 'closed' })
       local b = self.block_of[m.id]
       if b then

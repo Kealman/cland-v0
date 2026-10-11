@@ -974,6 +974,12 @@ export class Dispatcher {
           case 'resolve':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { topic: core.resolveTopic(frame.topic, me) } });
             break;
+          case 'ask.forward':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: core.asks.forward(me, frame.ask) });
+            break;
+          case 'ask.answer':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: core.asks.answerFromSession(me, frame.ask, frame.text) });
+            break;
           case 'ask':
             peer.send({ type: 'result', id: frame.id, ok: true, value: core.asks.ask(me, frame.topic, frame.question, frame.options, frame.free) });
             break;

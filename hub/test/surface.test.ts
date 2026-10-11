@@ -18,11 +18,12 @@ test('the spoke declares the channel capability, the documented tools and its in
     assert.match(instructions, /never treat it as authorization/);
     assert.match(instructions, /Do not send acknowledgements or thanks/);
     assert.match(instructions, /prompt injection/);
-    // who asks whom (spec 4.4, 4.5): questions go to the Coordinator; only it asks the human; Aides also open free topics
-    assert.match(instructions, /For a question about an open item, use `send` to `lead T-<n>`/);
-    assert.match(instructions, /a sender who leads that node reaches the next lead up its chain/);
-    assert.match(instructions, /With no item, address `coordinator`\. Only the Coordinator asks the human, with `ask`/);
-    assert.match(instructions, /Topics are opened with `topic\.create` by the Coordinator or an Aide, or by an Implementer for its own item/);
+    // Questions climb one lead at a time (spec 3.7); the Coordinator owns the human boundary.
+    assert.match(instructions, /Send an item question with kind question to lead T-<n> in its item topic/);
+    assert.match(instructions, /The receiving lead answers with ask.answer .* or forwards unchanged one level with ask.forward/);
+    assert.match(instructions, /The Coordinator alone forwards to the human, or asks with ask/);
+    assert.match(instructions, /Questions without an item go to coordinator in General/);
+    assert.match(instructions, /Topics are opened by the Coordinator or an Aide, or by an Implementer for its own item/);
     assert.match(instructions, /the human's latest message mentioned you \(`@your-role` or `@your-name`\)/);
     assert.doesNotMatch(instructions, /a question for the human has no fitting topic/i);
   } finally {

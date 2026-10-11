@@ -121,7 +121,7 @@ export function roleState(ctx: HandoverContext, role: string): RoleState {
     const pending = messages.slice(lastWord + 1).filter((m) => !names.has(m.from) && m.to.some((t) => names.has(t.replace(/^@/, ''))));
     const last = pending.length ? (pending.at(-1) as { ts: string }).ts : topic.updatedAt;
     // the topic's status first (#32): it waits for an agent, and the human's latest message in it addressed this role
-    if (topic.status === 'waiting for agent' && core.store.lastHumanAddressees(topic.id).some((n) => names.has(n))) {
+    if (topic.status === 'waiting for agent' && (topic.waitingFor?.some(n => names.has(n)) || core.store.lastHumanAddressees(topic.id).some((n) => names.has(n)))) {
       waiting.push({ topic: ref, status: topic.status, reason: 'status', pending: pending.length, last });
       continue;
     }

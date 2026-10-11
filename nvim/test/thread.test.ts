@@ -983,3 +983,20 @@ test('fold membership survives extension, split, eviction, union and rewrites pe
   `);
   assert.deepEqual(states, {open:{j:true,k:true},closed:{j:false,k:false}}, 'evicted ids are garbage-collected from both window states');
 });
+
+test('an agent ask waits on its named lead, survives inbox reconciliation and offers no human answer keys', { skip }, async t => {
+  const c = await start(t, { messages: { general: [
+    { ...msg('agent-question', 'implementer', 'Which boundary?'), to: ['lead-1'], kind: 'question', ask: { state: 'open', to: 'lead-1', options: [], free: true } },
+  ] } });
+  const result = await c.lua<{state:string; targets:number; lines:string[]}>(`
+    local t=require('cland.views').topic('general').thread
+    t:reconcile_asks({})
+    local targets=0
+    for row in ipairs(t.info) do if t:ask_at(row) then targets=targets+1 end end
+    return {state=t.by_id['agent-question'].ask.state,targets=targets,lines=t.block_of['agent-question'].lines}
+  `);
+  assert.equal(result.state, 'open');
+  assert.equal(result.targets, 0);
+  assert.ok(result.lines.some(line => line.includes('waiting for lead-1')));
+  assert.equal(result.lines.some(line => line.includes('free answer: i')), false);
+});

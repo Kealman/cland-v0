@@ -109,7 +109,7 @@ The standing, read-only topic that records agent-to-agent messages and the lifec
 _Avoid_: log, console, drivers channel, mirror
 
 **Ask**:
-A question the Coordinator puts to the human inside a topic, with options and room for a free answer. An open ask keeps its topic waiting for the human.
+A decision question sent up the lead chain in a topic: each lead answers locally or forwards it unchanged one level, and only the Coordinator asks the human. An open ask keeps its topic waiting for its current receiving party.
 _Avoid_: prompt, poll, question dialog, request
 
 ## Work

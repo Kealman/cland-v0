@@ -114,6 +114,8 @@ export type Message = {
   detail?: Record<string, unknown>;
   /** The human's answer to an ask (#33): the ask's message id. */
   answerTo?: string;
+  /** A tracked question's card, also carried by agent deliveries. */
+  ask?: AskCard;
   /** Criteria marked by a recorded verdict; consumers render these directly. */
   criteria?: MarkedCriterion[];
   artifact?: Artifact;
@@ -146,6 +148,8 @@ export type Topic = {
   lastMessageAt: string | null;
   /** A message waits for a role nobody holds: `no coordinator` (or `no reviewer`, …); absent otherwise. */
   warning?: string;
+  /** Parties that can currently settle an open ask, excluding forwarded parents. */
+  waitingFor?: string[];
 };
 
 /** How a topic travels with a delivery or an event: its id, its title and its binding. */
@@ -172,6 +176,10 @@ export type AskCard = {
   /** Whether a free answer is welcome beside the options. */
   free: boolean;
   state: AskState;
+  /** Agent recipient; absent for a human ask. */
+  to?: string;
+  /** The unchanged ask forwarded to the next level. */
+  forwarded?: string;
   /** The answer's message id, once answered. */
   answer?: string;
   /** The option the human chose (1-based), absent for a free answer. */
@@ -319,6 +327,8 @@ export type SpokeRequest =
   | { type: 'role.state'; id: string; role?: string }
   /** Ask the human (the Coordinator only): a question with numbered options and room for a free answer. `{ ask, topic }` */
   | { type: 'ask'; id: string; topic: string; question: string; options: string[]; free?: boolean }
+  | { type: 'ask.forward'; id: string; ask: string }
+  | { type: 'ask.answer'; id: string; ask: string; text: string }
   /** The heartbeat. */
   | { type: 'ping'; id: string };
 
@@ -409,6 +419,10 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
     case 'resolve':
       return typeof f.topic === 'string';
+    case 'ask.forward':
+      return typeof f.ask === 'string';
+    case 'ask.answer':
+      return typeof f.ask === 'string' && typeof f.text === 'string';
     case 'ask':
       return (
         typeof f.topic === 'string' &&

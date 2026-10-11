@@ -212,6 +212,7 @@ export function envelope(message: Message, topic: TopicRef | null): string {
     ['to', message.to.join(',')],
     ['msg_id', message.id],
     ...(message.replyTo !== undefined ? ([['reply_to', message.replyTo]] as Array<[string, string]>) : []),
+    ...(message.answerTo !== undefined ? ([['answer_to', message.answerTo]] as Array<[string, string]>) : []),
     ['ts', message.ts],
     ...(message.artifacts?.length ? [['artifacts', JSON.stringify(message.artifacts)]] as Array<[string, string]> : []),
     ...(message.artifact ? [['artifact_id', message.artifact.id], ['artifact_path', message.artifact.path]] as Array<[string, string]> : []),
@@ -229,6 +230,7 @@ export function envelope(message: Message, topic: TopicRef | null): string {
 export function replyHint(message: Message, topic: TopicRef | null): string {
   const topicId = topic?.id ?? message.topic;
   const where = topicId !== undefined ? `topic "${topicId}"` : 'no topic';
+  if (message.ask?.to !== undefined && message.ask.state === 'open') return `To answer, call the cland \`ask.answer\` tool with ask "${message.id}" and text; to forward unchanged one level, call \`ask.forward\` with ask "${message.id}". Text printed in this terminal reaches no one.`;
   if (message.fromKind === 'human') return `To answer, call the cland \`send\` tool with ${where} and no \`to\`; text printed in this terminal reaches no one.`;
   if (message.fromKind === 'agent') return `To answer, call the cland \`send\` tool with to ["${message.from}"], ${where} and reply_to "${message.id}"; text printed in this terminal reaches no one.`;
   return 'This is a notice from the cland hub; text printed in this terminal reaches no one.';

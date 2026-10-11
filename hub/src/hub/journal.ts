@@ -110,6 +110,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   // asks and the inbox (#33)
   'ask',
   'ask-answered',
+  'ask-forwarded',
   'ask-withdrawn',
   'ask-cancelled',
   'notification',
