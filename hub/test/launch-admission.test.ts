@@ -9,6 +9,9 @@ import { ProcessTable } from '../src/adapters/processes.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { eventually, tempProject } from './harness.ts';
+import { defaultCrew } from '../src/crew.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import { TaskWorktrees } from '../src/hub/worktrees.ts';
 
 function deferred() {
   let resolve!: () => void;
@@ -39,6 +42,59 @@ async function fixture(t: TestContext, fresh: NonNullable<RolesSource['fresh']>,
   hub.dispatcher.useSessions(sessions);
   return { root, hub, core: hub.core, sessions, table, starts, setExclusive: (exclusive: boolean) => { config = definitions(exclusive); } };
 }
+
+test('crew admission and merge-stop continuations remain measured after lifecycle awaits', async t => {
+  const crew = defaultCrew();
+  const root = await tempProject(t);
+  const hub = createHubBase({ secret: 'test', crew: { get: () => crew, set: async () => crew } });
+  const core = hub.core;
+  const table = new ProcessTable();
+  const sessions = new Sessions({ core, table, root });
+  t.after(async () => { sessions.close(); table.close(); await hub.close(); });
+  sessions.register({
+    harness: 'test',
+    capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+    spawn: async () => { throw new Error('test spawn refused'); },
+    resume: async p => ({ found: true, process: p, state: 'idle' }),
+    stop: async () => {}, attachCommand: () => '', watch: () => {}, inject: async () => {}, confirm: () => {}, interpret: () => ({}), close: () => {},
+  });
+  let depth = 0;
+  const resumed = <T,>(work: () => T): T => {
+    depth++;
+    try { return work(); } finally { depth--; }
+  };
+  const measurements: boolean[] = [];
+  const presence = core.presence.bind(core);
+  t.mock.method(core, 'presence', () => { measurements.push(depth > 0); return presence(); });
+  await assert.rejects(resumed(() => sessions.launch({ name: 'qa-probe', role: 'qa', cwd: 'missing' }, resumed)), /directory/);
+  assert.ok(measurements.length > 0);
+  assert.ok(measurements.every(Boolean), 'every crew presence scan belongs to a measured synchronous stretch');
+  const tracker = new Tracker({ root, db: ':memory:' });
+  t.after(() => tracker.stop());
+  const item = await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'Review container', kind: 'epic' });
+  const worktrees = new TaskWorktrees({ tracker });
+  const candidateScans: boolean[] = [];
+  const poolRunning = table.running.bind(table);
+  t.mock.method(table, 'running', () => { candidateScans.push(depth > 0); return poolRunning(); });
+  await assert.rejects(resumed(() => worktrees.launch(sessions, { name: 'review-probe', role: 'reviewer', harness: 'test', item: item.id }, resumed)), /test spawn refused/);
+  assert.ok(candidateScans.length > 0);
+  assert.ok(candidateScans.every(Boolean), 'item-bound pool scans after worktree preparation are measured');
+  t.mock.restoreAll();
+  for (const name of ['first', 'second']) table.put({ name, harness: 'test', role: 'implementer', model: null, cwd: root, pid: null,
+    harnessId: null, sessionId: name, harnessSessionId: null, startedAt: '', status: 'running', item: 'T-1' });
+  const running = table.running.bind(table);
+  t.mock.method(table, 'running', () => { assert.ok(depth > 0, 'merge-stop process scan is measured'); return running(); });
+  const stop = sessions.stop.bind(sessions);
+  const stopped: string[] = [];
+  t.mock.method(sessions, 'stop', (...args: Parameters<typeof sessions.stop>) => {
+    assert.ok(depth > 0, 'each stop initiation is measured, including after the previous stop await');
+    stopped.push(args[0]);
+    return stop(...args);
+  });
+  await sessions.stopAfterMerge('T-1', resumed);
+  assert.deepEqual(stopped, ['first', 'second']);
+  t.mock.restoreAll();
+});
 
 for (const operation of ['launch', 'role.set'] as const) {
   test(`${operation}: first admission wins when the fresh read makes the role exclusive`, async t => {

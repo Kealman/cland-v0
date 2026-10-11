@@ -160,6 +160,8 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   await writeFile(join(gateBin, 'git'), `#!/bin/sh\nfor arg in \"$@\"; do\n  case \"$arg\" in\n    write-tree|*^) exec \"${process.execPath}\" \"${join(gateBin, 'gate.mjs')}\" \"$@\" ;;\n  esac\ndone\nexec /usr/bin/git \"$@\"\n`, { mode: 0o755 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, PATH: `${gateBin}:${fake.env.PATH}` });
   const ui = await connectUi(t, discovery);
+  // The direct verdict writer and the launched verifier each occupy a Reviewer slot.
+  assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
   const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator' });
   const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer' });
   t.after(async () => { await coord.close(); await rev.close(); });
@@ -181,8 +183,8 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   git(worktree.path, 'commit', '-qm', 'Implement own item');
   git(worktree.path, 'push', 'origin', worktree.branch);
   for (const role of ['reviewer', 'qa']) {
-    const verifier = await lead.call<{ ok: boolean; reason?: string; claim: unknown; process: HarnessProcessView }>('session.launch', { name: `${role}-pool`, role, item: own, harness: 'claude-code' });
-    assert.equal(verifier.ok, true, verifier.reason);
+    const verifier = await lead.call<{ ok: boolean; reason?: string; error?: string; claim: unknown; process: HarnessProcessView }>('session.launch', { name: `${role}-pool`, role, item: own, harness: 'claude-code' });
+    assert.equal(verifier.ok, true, verifier.error ?? verifier.reason);
     assert.equal(verifier.claim, null);
     assert.equal(verifier.process.item, own);
     const request = await lead.call<{ ok: boolean }>('send', { to: [`${role}-pool`], text: `${role === 'qa' ? 'qa' : 'review'} request ${own}\nCheck the build.` });

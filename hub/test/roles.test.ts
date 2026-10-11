@@ -163,7 +163,7 @@ test('Coordinator is exclusive: a second assignment is refused with the reason; 
   assert.match(cli.stderr, /held by coord \[Coordinator\]/);
   // and a launch for it
   const launch = await ui.request({ type: 'session.launch', name: 'coord-2', role: 'coordinator' });
-  assert.match(launch.error ?? '', /held by coord \[Coordinator\]/);
+  assert.match(launch.error ?? '', /crew\.coordinator: singleton size 1 reached \(coord\)/);
   assert.equal((await status(ui)).sessions.find((s) => s.name === 'impl-1')?.role, 'implementer');
 
   // cland role list: each role with its defaults and holders

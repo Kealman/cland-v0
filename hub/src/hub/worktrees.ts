@@ -154,7 +154,7 @@ export class TaskWorktrees {
    * the session just launched is stopped, the claim left with its holder. An item that gets no worktree launches at
    * the project root; a Lead records its node in process.item without a task worktree.
    */
-  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null } & WorktreeOutcome> {
+  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null; note?: string } & WorktreeOutcome> {
     if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa') throw new Error('`item` is for an Implementer, Lead, Reviewer or QA');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = await this.#tracker.viewAsync(request.item, resumed);
@@ -208,10 +208,13 @@ export class TaskWorktrees {
     try {
       if (verifier) {
         // Verifiers keep the launch reservation, but take only a verifier hold when accepting work.
-        const process = await sessions.launch({ ...request, item: view.id, cwd: worktree?.path ?? this.root }, resumed, authorize);
+        const process = await sessions.launch({ ...request, item: view.id, cwd: sessions.retainedPool(request.role) ? this.root : worktree?.path ?? this.root }, resumed, authorize);
         return { process, claim: null, worktree, ...(reason ? { reason } : {}) };
       }
-      return await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed, authorize);
+      const launched = await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed, authorize);
+      return request.role === 'implementer' && sessions.retainedPool(request.role)
+        ? { ...launched, note: 'Implementer pools reuse only the same worktree; each different item needs a fresh session because native harness cwd cannot be moved.' }
+        : launched;
     } finally {
       release();
     }

@@ -337,7 +337,9 @@ test('simultaneous Coordinator spoke merges serialize and the second commit incl
 
 test('merge closes the item while a launched session is inside, then removes the worktree and branch after it stops', async (t) => {
   const fake = await fakeClaude(t);
-  const { root, rev } = await project(t, fake.env);
+  const { root, ui, rev } = await project(t, fake.env);
+  // Keep the session alive to exercise deferred cleanup after an explicit stop.
+  assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: 'never' })).ok, true);
   const work = await task(root);
   ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
   await review(rev, work.id);
@@ -844,7 +846,9 @@ test('a failed external log sink still returns the landed commit and retries onl
 
 test('deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored', async (t) => {
   const fake = await fakeClaude(t);
-  const { root, rev } = await project(t, fake.env);
+  const { root, ui, rev } = await project(t, fake.env);
+  // Keep the session alive to exercise deferred cleanup after an explicit stop.
+  assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: 'never' })).ok, true);
   const work = await task(root);
   ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
   await review(rev, work.id);
@@ -867,7 +871,9 @@ test('deferred cleanup preserves a worktree switched onto an unrelated branch an
 
 test('deferred cleanup keeps the task branch and worktree if its tip moved after landing', async (t) => {
   const fake = await fakeClaude(t);
-  const { root, rev } = await project(t, fake.env);
+  const { root, ui, rev } = await project(t, fake.env);
+  // Keep the session alive to exercise deferred cleanup after an explicit stop.
+  assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: 'never' })).ok, true);
   const work = await task(root);
   ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
   await review(rev, work.id);

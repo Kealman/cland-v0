@@ -26,10 +26,12 @@ export class TaskMerges {
   readonly tracker: Tracker;
   readonly worktrees: TaskWorktrees;
   readonly log: LogFn;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn) {
+  readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
+  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}) {
     this.tracker = tracker;
     this.worktrees = worktrees;
     this.log = log;
+    this.afterMerge = afterMerge;
   }
 
   async #view(id: string, resumed: Resumed, evidence = true): Promise<ItemView> {
@@ -168,13 +170,18 @@ export class TaskMerges {
       } catch (err) { return this.#incomplete(result, 'record', err instanceof Error ? err.message : String(err), resumed); }
       if (landingFailure) return this.#incomplete(result, landingFailure.step, landingFailure.error, resumed);
       const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed, authorize));
-      return failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result;
+      return resumed(() => failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result);
     }).then(async result => {
       if (result.followUp) return result;
       try {
-        const cleanup = await this.#cleanup(id, resumed);
-        const finished = { ...result, cleanup };
-        return cleanup === 'removed' || cleanup === 'waiting for sessions' || cleanup === 'pending' ? finished : this.#incomplete(finished, 'cleanup', cleanup, resumed);
+        await resumed(() => this.afterMerge(id, resumed));
+      } catch (err) { return this.#incomplete(result, 'stop sessions', err instanceof Error ? err.message : String(err), resumed); }
+      try {
+        const cleanup = await resumed(() => this.#cleanup(id, resumed));
+        return resumed(() => {
+          const finished = { ...result, cleanup };
+          return cleanup === 'removed' || cleanup === 'waiting for sessions' || cleanup === 'pending' ? finished : this.#incomplete(finished, 'cleanup', cleanup, resumed);
+        });
       } catch (err) { return this.#incomplete(result, 'cleanup', err instanceof Error ? err.message : String(err), resumed); }
     });
   }

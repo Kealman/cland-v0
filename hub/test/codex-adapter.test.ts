@@ -462,6 +462,9 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
+  // This profile comparison keeps two QA sessions alive across a role-file edit.
+  assert.equal((await ui.request({ type: 'crew.set', key: 'qa.policy', value: 'pool' })).ok, true);
+  assert.equal((await ui.request({ type: 'crew.set', key: 'qa.size', value: 2 })).ok, true);
   const tmp = await realpath(tmpdir());
   // approval and sandbox belong to the role, not to its default harness: the built-in Implementer runs on OpenCode,
   // and launched on Codex it still gets them

@@ -3,6 +3,19 @@
 // structured fields.
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { RoleDefinition } from './config.ts';
+import type { CrewConfig } from '../crew.ts';
+
+export function staffingClause(role: string, crew: CrewConfig): string {
+  const rule = crew.crew[role];
+  if (!rule) return '';
+  const lines = [rule.subagents
+    ? 'You may delegate to sub-agents inside your harness. Their cost counts to your session; they report to you and never use your cland connection.'
+    : 'Complete work inside this session. Sub-agent delegation is disabled for your role by crew.toml.'];
+  if (role === 'coordinator') lines.push(crew.leads.length
+    ? `Launch Leads for these container levels: ${crew.leads.join(', ')}. Give each Lead its open container as item; it owns staffing below that node.`
+    : 'The crew is flat (leads = []): lead the project from the root.');
+  return lines.join('\n');
+}
 
 export function clauseText(name: string, role: string, definition: RoleDefinition | undefined): string {
   const label = ROLE_LABELS[role] ?? role;

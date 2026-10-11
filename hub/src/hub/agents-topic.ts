@@ -58,6 +58,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
     case 'session-launched':
       // the role it was launched for: its spoke has not said hello yet
       return session ? { kind: 'session-start', text: `${str(entry.role) ? withRole(session, entry.role as string) : label(session)} started (${str(entry.harness) ?? 'harness'}${str(entry.model) ? `, ${String(entry.model)}` : ''})`, detail: { session, harness: entry.harness ?? null } } : null;
+    case 'session-reused':
+      return session ? { kind: 'session-start', text: `${label(session)} reused from the idle pool for ${String(entry.item)}`, detail: { session, item: entry.item, reused: true } } : null;
     case 'session-resumed':
       return session ? { kind: 'session-start', text: `${label(session)} re-found after a hub restart${entry.relaunched ? ' (relaunched)' : ''}`, detail: { session, resumed: true } } : null;
     case 'session-stopped':

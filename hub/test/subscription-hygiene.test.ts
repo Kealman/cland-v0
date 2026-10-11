@@ -425,6 +425,7 @@ test('restart reconciles a committed stop once and retains role and ancestor sub
   const child = (await coord.call<{ item: { id: string } }>('task.create', { title: 'Recovery child', parent })).item.id;
   assert.equal((await ui.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer', item: child })).ok, true);
   await coord.waitForPresence(['coord', 'rev', 'worker']);
+  assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
   const watcherLaunch = await ui.request({ type: 'session.launch', name: 'now-watcher', harness: 'codex', role: 'reviewer' });
   assert.equal(watcherLaunch.ok, true, watcherLaunch.error);
   const watcher = (watcherLaunch.value as { process: { pid: number } }).process;

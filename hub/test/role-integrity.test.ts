@@ -75,7 +75,7 @@ test('two launches for the Coordinator at once: the role is reserved before the 
   const [one, two] = await Promise.all([launchCodex(ui, 'coord-1', { role: 'coordinator' }), launchCodex(ui, 'coord-2', { role: 'coordinator' })]);
   assert.equal(one.ok, true, one.error);
   assert.equal(two.ok, false);
-  assert.match(two.error ?? '', /role "coordinator" is held by coord-1 \[Coordinator\]/);
+  assert.match(two.error ?? '', /crew\.coordinator: singleton size 1 reached \(coord-1\)/);
   // the human's assignment is refused as well
   const set = await ui.request({ type: 'role.set', session: 'other', role: 'coordinator' });
   assert.match(set.error ?? '', /held by coord-1/);

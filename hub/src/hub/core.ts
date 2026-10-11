@@ -35,7 +35,7 @@ import {
 } from '../protocol.ts';
 import { generatedName, nameRefusal, ROLE_LABELS, ROLE_NAMES, withRole, isNodeLeadRole } from '../names.ts';
 import type { RolesSource } from '../roles/config.ts';
-import { clauseText, revokedText } from '../roles/clause.ts';
+import { clauseText, revokedText, staffingClause } from '../roles/clause.ts';
 import { isRoleRecord, noteText, renderNote, type PendingClaims, type RoleRecord } from '../roles/note.ts';
 import { resolveTag } from '../address.ts';
 import { decide, DEFAULT_PERMISSIONS } from '../roles/permissions.ts';
@@ -164,7 +164,28 @@ const ROLE_NOTICE = 'role';
 
 export class HubCore {
   readonly crew: CrewSource | undefined;
-  publishCrew(config: CrewConfig): void { this.#emit({ type: 'crew', config, summary: crewSummary(config) }); }
+  publishCrew(config: CrewConfig): void {
+    this.#emit({ type: 'crew', config, summary: crewSummary(config) });
+    for (const connection of this.#live.values()) {
+      const id = this.#recordClause(connection, 'crew changed');
+      if (id) this.#send(this.#store.message(id) as Message, connection.name);
+    }
+  }
+
+  roleDefinition(role: string) {
+    const definition = this.#roles?.get().get(role);
+    if (!definition || !this.crew) return definition;
+    return { ...definition, clause: `${definition.clause}\n\n${staffingClause(role, this.crew.get())}` };
+  }
+
+  deliverReuseBrief(message: Message): void {
+    const name = message.to[0]!;
+    this.#record(message, [{ session: name, state: 'queued', direct: true }], this.#now().getTime());
+    this.#store.touchTopic(AGENTS.id, message.ts);
+    this.#emitMessage(message);
+    this.#log({ event: 'send', id: message.id, from: message.from, kind: message.kind, to: message.to, topic: message.topic, bytes: Buffer.byteLength(message.text), outcomes: [`${name}:queued`] });
+    this.#send(message, name);
+  }
   readonly #live = new Map<string, Connection>();
   readonly #reserved: ReadonlySet<string>;
   readonly #now: () => Date;
@@ -1609,7 +1630,7 @@ export class HubCore {
    */
   #recordClause(c: Connection, reason: string, previous?: string | null, injected = false, extra: Pick<RoleClause, 'reason' | 'to'> = {}): string | null {
     if (!this.#roles) return null;
-    const definition = c.role !== null ? this.#roles.get().get(c.role) : undefined;
+    const definition = c.role !== null ? this.roleDefinition(c.role) : undefined;
     const clause: RoleClause = c.role !== null ? { role: c.role, clause: definition?.clause ?? '', skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
     Object.assign(clause, extra);
     let text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);

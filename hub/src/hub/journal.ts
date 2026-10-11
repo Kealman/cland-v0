@@ -48,6 +48,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'kick',
   'refused-role',
   'session-launched',
+  'session-reused',
   'session-stopped',
   'session-resumed',
   'harness-exited',

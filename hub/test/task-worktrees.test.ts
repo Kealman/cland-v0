@@ -331,7 +331,7 @@ async function guardedHub(t: TestContext, options: { clock?: { now: number }; se
   const hub = await startHub({ log, tracker, ...(options.clock ? { guard: { now: () => options.clock!.now } } : {}) });
   t.after(() => hub.close());
   const process = { name: 'impl-1', harness: 'claude-code', role: 'implementer', sessionId: 'sess-impl-1', cwd: join(root, '.cland', 'worktrees', 'T-1'), item: 'T-1', status: 'running' } as HarnessProcessView;
-  hub.dispatcher.useSessions({ launch: async () => process, list: options.sessionsList ?? (() => []), pendingStops: () => [] } as unknown as Sessions);
+  hub.dispatcher.useSessions({ retainedPool: () => false, launch: async () => process, list: options.sessionsList ?? (() => []), pendingStops: () => [] } as unknown as Sessions);
   return { root, records, tracker, hub };
 }
 

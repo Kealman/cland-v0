@@ -782,6 +782,14 @@ export class Store implements HygieneMemory {
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
   }
 
+  /** Idle staffing must not take a session with ordinary work still awaiting delivery or confirmation. */
+  hasPendingWork(session: string): boolean {
+    return this.#db.prepare(`select 1 from deliveries d join messages m on m.id = d.message_id
+      where d.session = ? and d.state in ('queued', 'delivered', 'uncertain')
+      and coalesce(m.notice, '') != 'progress'
+      and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') limit 1`).get(session) !== undefined;
+  }
+
   deliveryRoot(messageId: string, session: string): string {
     const row = this.#db.prepare('select digest_id from deliveries where message_id = ? and session = ?').get(messageId, session) as Row | undefined;
     return typeof row?.digest_id === 'string' ? row.digest_id : messageId;
