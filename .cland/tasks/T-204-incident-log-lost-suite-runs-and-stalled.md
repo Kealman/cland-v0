@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-12T15:31:48.205Z
+updated: 2026-10-12T19:05:57.028Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -211,3 +211,7 @@ Correction to the 14:16Z T-277 entry: not a stall. impl-277's census on 7cb55c6 
 ### coord · 2026-10-12T15:31:48.205Z
 
 Incident 2026-10-12 15:30Z, integrated dev run 3262aa67 at add6a19 (Coordinator): red on one test, hub/test/claude-code-adapter.test.ts:207 (harness-exited log line read before the hub's asynchronous write; 0 != 1), which passes 3/3 alone. Fourth failure of this class today (codex-adapter :396, codex-adapter recovery read, nvim sessions). Cost: one 14-minute integrated run; dev unreleasable until green. Recovery: T-291 raised into the build and launched (impl-291), fix forward, then a new integrated run.
+
+### coord · 2026-10-12T19:05:57.028Z
+
+Incident 2026-10-12 19:05Z: machine overload from an Implementer's stress proofs running outside the queue. impl-291's T-291 proofs (20 whole-file runs at four workers per file) ran beside the queue's full suites; at 19:05Z 8 spoke-identity test processes and three T-291 hubs sat next to T-278's verify, load ~30. T-285's full run dddc25d7 peaked at load 67, took 1448 s in the hub phase against ~820, and failed one pool test that passes alone. Cost: one 24-minute full run. Recovery: impl-291 told to run stress proofs only when the verify queue has no holder; T-285 allowed one same-head requeue if the test passes alone. Lesson for the briefs: a multi-worker repeated-file proof is suite-weight and takes the machine like one.

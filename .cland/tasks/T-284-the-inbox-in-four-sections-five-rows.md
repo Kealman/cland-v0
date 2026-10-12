@@ -2,8 +2,8 @@
 id: T-284
 kind: task
 title: The inbox in four sections, five rows each, with ages, in Neovim and the CLI
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-173
 branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
-updated: 2026-10-12T17:21:38.983Z
+updated: 2026-10-12T17:21:51.289Z
 ---
 
 ## Summary
@@ -144,3 +144,7 @@ Both prior findings are fixed without weakening assertions. The integrated READM
 Evidence: A-1571 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1571-t-284-integrated-head-review-clear-at-d09c4d8.md. Full run 40925663 is green at pre-integration 76c65162 (1646/1646, no skips; A-1568). Authorized integration checks on the combined tree pass 28/28 (A-1570), including inbox/CLI/events plus registry duplicate/context and palette/help listings. Coordinator batch authorization explicitly substitutes these checks and delta review for another full run; integrated dev verification follows T-291. No claim of a full suite run at this combined head.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-12T17:21:51.289Z
+
+Merged 37a6a2348b518c08e2c855560443ba77d0cfd355 onto dev.

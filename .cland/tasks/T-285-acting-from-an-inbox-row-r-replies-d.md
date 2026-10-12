@@ -3,7 +3,8 @@ id: T-285
 kind: task
 title: "Acting from an inbox row: r replies, d declines or marks read, A the archive"
 state: open
-status: backlog
+status: review
+criterion_seq: 5
 labels:
   - v0.1.2
   - hub
@@ -13,10 +14,10 @@ assignee: null
 parent: T-274
 blocked_by:
   - T-284
-topic: null
-branch: null
+topic: topic-176
+branch: t/T-285-acting-from-an-inbox-row-r-replies-d
 created: 2026-10-12T11:57:19.680Z
-updated: 2026-10-12T15:27:39.903Z
+updated: 2026-10-12T19:07:44.322Z
 ---
 
 ## Summary
@@ -60,14 +61,110 @@ Out of scope: the events view and the events line; the retirement of the notific
 
 ## Acceptance criteria
 
-- [ ] `r` on a request or message row opens the composer as a reply in the row's topic, and sending it removes the row with reason `replied` or `answered`.
-- [ ] `d` on a request declines it: its sender receives one hub line naming the declined request, the row leaves and needsYou drops; `d` on a message marks only that message read; `d` on an ask or an approval refuses with how to answer it.
-- [ ] `A` shows the rows that left in the last seven days with when and why, and hides them again; the archive line shows how many rows left today, in the empty state too.
-- [ ] `cland inbox --archive` prints the same rows with their reasons, and both the archive and a decline survive a hub restart.
-- [ ] Targeted tests pass (hub frame tests on a real hub with a real spoke receiving the decline, the CLI on a temporary project, nvim headless tests on the stub hub), and `hub/README.md` and `nvim/README.md` describe the frames, `r`, `d`, `A` and `--archive`.
+- [x] C1. `r` on a request or message row opens the composer as a reply in the row's topic, and sending it removes the row with reason `replied` or `answered`.
+  - done: impl-285 · 2026-10-12T17:41:19.748Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+- [x] C2. `d` on a request declines it: its sender receives one hub line naming the declined request, the row leaves and needsYou drops; `d` on a message marks only that message read; `d` on an ask or an approval refuses with how to answer it.
+  - done: impl-285 · 2026-10-12T17:41:20.372Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+- [x] C3. `A` shows the rows that left in the last seven days with when and why, and hides them again; the archive line shows how many rows left today, in the empty state too.
+  - done: impl-285 · 2026-10-12T17:41:20.942Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+- [x] C4. `cland inbox --archive` prints the same rows with their reasons, and both the archive and a decline survive a hub restart.
+  - done: impl-285 · 2026-10-12T17:41:21.325Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+- [x] C5. Targeted tests pass (hub frame tests on a real hub with a real spoke receiving the decline, the CLI on a temporary project, nvim headless tests on the stub hub), and `hub/README.md` and `nvim/README.md` describe the frames, `r`, `d`, `A` and `--archive`.
+  - done: impl-285 · 2026-10-12T19:07:43.160Z
 
 ## Comments
 
 ### coord · 2026-10-12T15:27:39.903Z
 
 Input from T-284's C7 audit (impl-284, 2026-10-12): a request and the human's reply processed within one tick never enter inbox_waits, so they get no departure record and would be missing from the seven-day archive this item builds. Decide in this item: either journal a departure (reason `replied`) for a row that was answered before its first persisted tick, so the archive is complete, or state the gap in hub/README.md. Prefer the first. Also keep T-293's lesson: no synchronous full inbox recompute per event; the archive query must be indexed and bounded.
+
+### impl-285 · 2026-10-12T17:22:43.143Z
+
+Implementation started: human-only decline/read frames, indexed seven-day departure archive (including same-tick replies), CLI archive output and registry-backed Neovim row actions. Keeping inbox-workload C7 regression; protocol/spoke/CLI tests precede headless UI checks.
+
+### impl-285 · 2026-10-12T17:41:22.558Z
+
+C1–C5 implemented and targeted checks pass: hub inbox-actions (5), inbox-workload/C7 (2), existing inbox-requests (10), Neovim inbox-actions panel/full/free-answer/retry (4), archive-layer replacement, registry audit, and narrow status-line checks. First lines are captured with waits so command approvals remain identifiable after metadata clears. Same-tick replied requests retain their actual reply timestamp, keeping old replies outside the seven-day archive. CLI archive/read/decline survive restart and an offline sender receives the persisted decline. Preparing committed review head and final hub-managed suite; QA is after-stage per task policy.
+
+### rev-23 · 2026-10-12T17:46:30.745Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-1
+commit: 603345eb304336f35dc70f695293265379f087e2
+
+Medium: hub/src/hub/core.ts:366 queued live projection has no shutdown cancellation/drain; HubBase.close closes Store (server.ts:133), then callback :371 enters eventsProject/inbox.list on closed SQLite. Read-only in-memory public-boundary probe reproduced queuedProjectionError='database is not open' after await hub.close. Own that callback's shutdown lifecycle while retaining per-tick/C7 bounds; add existing-frame/public-close regression without a new seam.
+C1–C4 requested paths and registry/docs/tests read; no other high/medium finding established. Full suite pending. Evidence A-1576: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1576-t-285-review-pending-live-projection-outlives-shutdown.md.
+
+Criteria: C5 failed (Included live-event batching leaves a pending projection after hub.close, causing an uncaught SQLite database-is-not-open error.).
+
+### impl-285 · 2026-10-12T17:50:03.699Z
+
+Fixed rev-2026-10-12-285-1 C5 finding in separate follow-up f00cde9cd8c9cd39406f8d52b617383e118f4857. HubCore.close cancels its pending journal Immediate and batch, rejects late publication, and closes inbox timers before Store closes. The new regression sends a real topic.close frame over the stdio edge then immediately awaits public hub.close; it failed with database-is-not-open before the fix and passes after. All three inbox-workload tests (unchanged C7 startup/burst assertions) and typecheck pass. Old suite e50ef560 was cancelled; requesting fresh review/full verification at this head.
+
+### rev-23 · 2026-10-12T17:51:12.624Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-2
+commit: f00cde9cd8c9cd39406f8d52b617383e118f4857
+
+No remaining high/medium findings. Core now cancels queued Immediate/rows and guards late publication before Store closes; frame/public-close regression covers the exact shutdown path, C7 bounds unchanged. Read-only in-memory queued+late probe now observes no error. Unchanged C1–C4 source paths, human-only actions, reply/draft routing, durable reads/declines/indexed archive/CLI, registry and docs rechecked; C5 targeted evidence retained plus 3/3 workload/typechecks. Fresh full verify pending; cancelled prior suite is not pass evidence. A-1579: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1579-t-285-re-review-clear-at-f00cde9.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-23 · 2026-10-12T18:22:22.958Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-3
+commit: f00cde9cd8c9cd39406f8d52b617383e118f4857
+
+Medium: hub/test/aide.test.ts:24 expects the Aide-rule reason for every known denied tool; new inbox.decline/read correctly refuse with 'only the human acts on inbox rows' before Aide-rule dispatch. Preserve exact grants/allow-deny checks and all old-tool Aide-rule assertions, adding the exact human-only reason expectation for these two frames. No production permission defect established.
+A-1582/b8725021 cancelled exit 143; 30/30 free phase, named hub-machine failure, no complete machine/Neovim aggregate. No full-green claim. Source/shutdown review A-1579 retained. A-1583: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1583-t-285-cancelled-full-run-exposes-stale-aide-reason-assertion.md.
+
+Criteria: C5 failed (Aide defaults permission test still expects the Aide-rule reason for the two new mandatory human-only inbox tools; cancelled full run is not green.).
+
+### impl-285 · 2026-10-12T18:28:47.017Z
+
+Fixed rev-2026-10-12-285-3 C5 assertion mismatch in 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0: only inbox.decline/read expect the stronger human-only reason, retaining every exact grant/denial and every old-tool Aide-rule assertion. Targeted Aide defaults passes. Cancelled full run b8725021 was not green. Separately, the Coordinator's events diagnosis compared both files on f00cde9 and dev 37a6a23; the reproducible issue was ENOTEMPTY during directory removal before in-process daemon shutdown, leaving a live handle. Shared test-only fix cd3518eb82b462c61666e7d400776afeef5c5ccb corrects both events files without changing any existing assertion or shared harness. events-quiet passes 20/20 runs under four workers (80 cases), and a forced first-case failure exits code 1 in 2.62s instead of hanging. events.test passes 3/3. Evidence A-1586 (stress) and A-1587 (negative control). Fetched/merged origin/dev before final suite, already up to date; requesting review/full verification at 48e1ab0.
+
+### rev-23 · 2026-10-12T18:29:38.665Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-4
+commit: 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+
+No remaining high/medium findings in delta. Aide test now asserts the exact mandatory human-only reason only for inbox.decline/read; exact grants/denials and every old-tool reason retained. Events cleanup registers daemon shutdown before fixture removal and before UI setup, follows restarted daemon, and retains all assertions/shared harness. A-1586 confirms 20 quiet files pass; A-1587 forced failure exits 1 without hanging. C1–C4 production unchanged; C1–C5 evidence A-1579 retained/reverified. Full verification pending, no full-green claim. A-1588: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1588-t-285-permission-and-fixture-delta-clear-at-48e1ab0.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-23 · 2026-10-12T19:06:06.736Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-5
+commit: 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+
+Medium (verification): hub/test/harness.ts:428 via crew-launch.test.ts:111 reports no session.launch result within 5000ms in the opencode keep_context=false pool case. Test/crew/adapter paths unchanged; cause not established. Preserve assertions and deadline; diagnose the missing result. High peak load 67.65 is observed, not proof of a flake.
+A-1598 full run exit 1: 1359/1360 pass, no skips/cancellations, Neovim not reached. Earlier source/permission/cleanup evidence A-1579/A-1588 retained; no prior finding remains in those paths. A-1599: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1599-t-285-full-verify-blocked-by-session-launch-timeout-at-48e1ab0.md.
+
+Criteria: C5 failed (Full verify dddc25d7 failed crew-launch opencode keep_context=false: session.launch returned no result within 5000 ms; Neovim was not reached.).
+
+### impl-285 · 2026-10-12T19:07:44.174Z
+
+Full dddc25d7 at 48e1ab0 finished 1359/1360 hub cases with one 5s session.launch timeout in the unchanged crew-launch OpenCode/keep_context=false test; Neovim was not reached. Exact failing case passes alone on the same task head and dev 37a6a23, with original deadline and assertions unchanged. The Coordinator identified T-291 concurrent stress as the external-load source (peak 67.65; hub phase 1448s vs usual 820s) and explicitly authorized one same-head full retry. No launch/handoff/crew/adapter code or test changed. origin/dev fetched/merged, already up to date. Requesting review and one fresh all run on unchanged 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0.
