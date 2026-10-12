@@ -1,11 +1,12 @@
 // Safety at the cleanup boundary, with synthetic OS process tables and no real signals.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const modulePath = fileURLToPath(new URL('./process-cleanup.ts', import.meta.url));
-function probe(body: string) {
+function probe(body: string, initial = '') {
   const source = `
 import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
 Object.defineProperty(process, 'platform', { value: 'darwin' });
@@ -13,13 +14,15 @@ process.env.TEST_SUITE_RUN_ID = 'owned-run';
 let rows = []; let cwd = ''; const signals = [];
 cp.execFileSync = (command, args) => {
   if (command === 'lsof') return cwd;
+  if (command === 'pgrep') return rows.filter(r => args[1].split(',').includes(String(r.group))).map(r => r.pid).join('\\n');
   if (args.includes('eww')) return rows.map(r => r.pid + ' ' + r.command + ' ' + (r.environment ?? ('TEST_SUITE_RUN_ID=' + r.runId))).join('\\n');
   return rows.map(r => r.pid + ' ' + r.parent + ' ' + r.group + ' ' + r.started + ' R ' + r.command).join('\\n');
 };
 syncBuiltinESMExports();
-process.kill = (pid, signal) => { if (signal === undefined || signal === 0) { const e = new Error('gone'); e.code = 'ESRCH'; throw e; } signals.push({ pid, signal }); rows = rows.filter(row => pid < 0 ? row.group !== -pid : row.pid !== pid); return true; };
-const { cleanupProcesses, captureProcess } = await import(${JSON.stringify(modulePath)});
+process.kill = (pid, signal) => { if (signal === undefined || signal === 0) { if (rows.some(row => row.pid === pid)) return true; const e = new Error('gone'); e.code = 'ESRCH'; throw e; } signals.push({ pid, signal }); rows = rows.filter(row => pid < 0 ? row.group !== -pid : row.pid !== pid); return true; };
 const start = 'Mon Oct 5 12:00:00 2026';
+${initial}
+const { cleanupProcesses, captureProcess } = await import(${JSON.stringify(modulePath)});
 const root = '/tmp/cland-suite-a';
 ${body}
 console.log(JSON.stringify(signals));`;
@@ -132,4 +135,204 @@ process.kill = (pid, signal) => {
 };
 await cleanupProcesses(root);
 if (rows.length !== 2) throw new Error('replacement members must be preserved');`), [{ pid: -420014, signal: 'SIGKILL' }]);
+});
+
+test('an owned teardown uses only targeted probes, including directory removal', () => {
+  assert.deepEqual(probe(`
+const { ownProcess, ownDirectory } = await import(${JSON.stringify(modulePath)});
+const fs = await import('node:fs/promises');
+const dir = await fs.mkdtemp('/tmp/cland-owned-');
+const hooks = []; const t = { after: fn => hooks.push(fn) };
+ownDirectory(t, dir);
+rows = [{ pid: 420020, parent: process.pid, group: 420020, started: start, command: 'node fixture' }];
+const cleanup = ownProcess(t, 420020);
+const exec = cp.execFileSync;
+cp.execFileSync = (command, args) => {
+ if (args.includes('-axo') || command === 'lsof') throw new Error('teardown inspected the machine');
+ return exec(command, args);
+};
+syncBuiltinESMExports();
+for (const hook of hooks) await hook();
+await cleanup();
+if (await fs.stat(dir).catch(() => null)) throw new Error('directory retained');
+`), [{ pid: -420020, signal: 'SIGKILL' }]);
+});
+
+test('owned teardown preserves an unrelated member joining its captured group', () => {
+  assert.deepEqual(probe(`
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+rows = [{ pid: 420021, parent: process.pid, group: 420021, started: start, command: 'node fixture' }];
+const cleanup = ownProcess(undefined, 420021);
+rows.push({ pid: 420022, parent: 1, group: 420021, started: start, command: 'node fixture' });
+await cleanup();
+if (rows.length !== 1 || rows[0].pid !== 420022) throw new Error('unrelated group joiner was killed');
+`), [{ pid: 420021, signal: 'SIGKILL' }]);
+});
+
+test('owned teardown preserves a reused group leader', () => {
+  assert.deepEqual(probe(`
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+rows = [{ pid: 420023, parent: process.pid, group: 420023, started: start, command: 'node fixture' }];
+const cleanup = ownProcess(undefined, 420023);
+rows[0].started = 'Tue Oct 6 12:00:00 2026';
+await cleanup();
+`), []);
+});
+
+test('dead-leader teardown verifies selected member identities and cwd without a machine scan', () => {
+  assert.deepEqual(probe(`
+const { ownProcess, ownDirectory } = await import(${JSON.stringify(modulePath)});
+const fs = await import('node:fs/promises');
+const dir = await fs.realpath(await fs.mkdtemp('/tmp/cland-dead-group-'));
+const remove = ownDirectory(undefined, dir);
+rows = [{ pid: 420024, parent: process.pid, group: 420024, started: start, command: 'node fixture' }];
+const cleanup = ownProcess(undefined, 420024);
+rows = [
+ { pid: 420025, parent: 1, group: 420024, started: start, command: 'node fixture' },
+ { pid: 420026, parent: 1, group: 420024, started: start, command: 'node fixture' }
+];
+cwd = 'p420025\\nn' + dir + '\\np420026\\nn/outside\\n';
+const exec = cp.execFileSync;
+cp.execFileSync = (command, args) => {
+ if (args.includes('-axo') || command === 'lsof' && !args.includes('-p')) throw new Error('global teardown probe');
+ return exec(command, args);
+};
+syncBuiltinESMExports();
+await cleanup();
+if (rows.length !== 1 || rows[0].pid !== 420026) throw new Error('unrelated member was not preserved');
+await remove();
+`), [{ pid: 420025, signal: 'SIGKILL' }]);
+});
+
+test('a replaced registered leader cannot authorize fixture-contained members of its replacement group', () => {
+  assert.deepEqual(probe(`
+const { ownProcess, ownDirectory } = await import(${JSON.stringify(modulePath)});
+const fs = await import('node:fs/promises');
+const dir = await fs.realpath(await fs.mkdtemp('/tmp/cland-reused-group-'));
+const remove = ownDirectory(undefined, dir);
+rows = [{ pid: 420027, parent: process.pid, group: 420027, started: start, command: 'node fixture' }];
+const cleanup = ownProcess(undefined, 420027);
+rows = [
+ { pid: 420027, parent: 1, group: 420027, started: 'Tue Oct 6 12:00:00 2026', command: 'node replacement' },
+ { pid: 420028, parent: 420027, group: 420027, started: 'Tue Oct 6 12:00:00 2026', command: 'node replacement child' }
+];
+cwd = 'p420027\\nn' + dir + '\\np420028\\nn' + dir + '\\n';
+await cleanup();
+if (rows.length !== 2) throw new Error('replacement group was signalled');
+await remove();
+`), []);
+});
+
+test('owned teardown kills its group including a grandchild and preserves the same command in another group', async t => {
+  const { spawn } = await import('node:child_process');
+  const { captureProcess, ownProcess } = await import('./process-cleanup.ts');
+  const script = `const { spawn } = require('node:child_process');
+const depth = Number(process.env.FIXTURE_DEPTH);
+if (depth) {
+ const child = spawn(process.execPath, ['-e', ${JSON.stringify('SCRIPT')}], { env: { ...process.env, FIXTURE_DEPTH: String(depth - 1) }, stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
+ child.on('message', pids => process.send([process.pid, ...pids]));
+} else process.send([process.pid]);
+setInterval(() => {}, 1000);`;
+  // The exact same command is used by both groups and by every descendant.
+  const code = script.replace(JSON.stringify('SCRIPT'), 'process.env.FIXTURE_SCRIPT');
+  const start = (depth: number) => {
+    const child = spawn(process.execPath, ['-e', code], { detached: true, env: { ...process.env, FIXTURE_SCRIPT: code, FIXTURE_DEPTH: String(depth) }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+    const cleanup = ownProcess(undefined, child.pid);
+    t.after(cleanup);
+    return { child, cleanup, ready: new Promise<number[]>((resolve, reject) => { child.once('message', pids => resolve(pids as number[])); child.once('error', reject); }) };
+  };
+  const owned = start(2);
+  const other = start(0);
+  const pids = await owned.ready;
+  await other.ready;
+  assert.equal(pids.length, 3);
+  await owned.cleanup();
+  for (const pid of pids) assert.equal(captureProcess(pid), null, `owned pid ${pid}`);
+  assert.ok(captureProcess(other.child.pid), 'same command in the other group stays alive');
+});
+
+test('the phase sweep captures an owned group member born after discovery without a second machine listing', () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420030, parent: 1, group: 420030, started: start, command: 'node ' + root + '/owned.mjs' }];
+cwd = 'p420030\\nn' + root + '\\n';
+const exec = cp.execFileSync; let discovered = false;
+cp.execFileSync = (command, args) => {
+ if (command === 'ps' && args.includes('-axo')) {
+  if (discovered) throw new Error('second discovery listing');
+  discovered = true;
+ }
+ if (command === 'pgrep' && rows.length === 1) {
+  rows.push({ pid: 420031, parent: 420030, group: 420030, started: start, command: 'node ' + root + '/late.mjs' });
+  cwd += 'p420031\\nn' + root + '\\n';
+ }
+ return exec(command, args);
+};
+syncBuiltinESMExports();
+await cleanupProcesses(root);
+if (rows.length) throw new Error('late child survived the phase sweep');
+`), [{ pid: -420030, signal: 'SIGKILL' }]);
+});
+
+test('directory teardown ends surviving children and grandchild after their registered group leader exits', async t => {
+  const { spawn } = await import('node:child_process');
+  const fs = await import('node:fs/promises');
+  const { captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess } = await import('./process-cleanup.ts');
+  const dir = await fs.mkdtemp('/tmp/cland-dead-leader-');
+  const remove = ownDirectory(t, dir);
+  const script = `const { spawn } = require('node:child_process');
+const depth = Number(process.env.FIXTURE_DEPTH);
+if (depth) {
+ const child = spawn(process.execPath, ['-e', process.env.FIXTURE_SCRIPT], { env: { ...process.env, FIXTURE_DEPTH: String(depth - 1) }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+ child.on('message', pids => process.send([process.pid, ...pids]));
+} else process.send([process.pid]);
+process.on('message', () => process.exit(0));
+setInterval(() => {}, 1000);`;
+  const start = (depth: number, cwd: string) => spawn(process.execPath, ['-e', script], {
+    cwd, detached: true, env: { ...process.env, FIXTURE_SCRIPT: script, FIXTURE_DEPTH: String(depth) },
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  });
+  const leader = start(2, dir);
+  ownProcess(t, leader.pid);
+  const leaderReady = once(leader, 'message');
+  const other = start(0, process.cwd());
+  const otherReady = once(other, 'message');
+  t.after(ownProcess(undefined, other.pid));
+  const [pids] = await leaderReady as [number[]];
+  await otherReady;
+  assert.equal(pids.length, 3);
+  const survivors = pids.slice(1).map(pid => captureProcess(pid)!);
+  t.after(() => cleanupOwnedProcesses(survivors)); // also reap the regression fixture on a red run
+  const exit = once(leader, 'exit');
+  leader.send('exit');
+  await exit;
+  assert.equal(captureProcess(leader.pid), null);
+  assert.ok(survivors.every(identity => captureProcess(identity.pid)), 'children survive their leader');
+  await remove();
+  assert.ok(survivors.every(identity => captureProcess(identity.pid) === null), 'owned group is gone before directory teardown returns');
+  assert.equal(await fs.stat(dir).catch(() => null), null);
+  assert.ok(captureProcess(other.pid), 'same command in another group survives');
+});
+
+
+test('owned teardown preserves a process older than the worker that registers it', () => {
+  assert.deepEqual(probe(`
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+rows.push({ pid: 420040, parent: 1, group: 420040, started: 'Sun Oct 4 12:00:00 2026', command: 'other application' });
+const cleanup = ownProcess(undefined, 420040);
+await cleanup();
+if (!rows.some(row => row.pid === 420040)) throw new Error('earlier process was killed');
+`, `rows = [{ pid: process.pid, parent: 1, group: process.pid, started: start, command: 'worker' }];`), []);
+});
+
+
+test('an already-exited registered non-leader needs no teardown spawn', () => {
+  assert.deepEqual(probe(`
+const { ownProcess } = await import(${JSON.stringify(modulePath)});
+rows = [{ pid: 420050, parent: process.pid, group: 420049, started: start, command: 'node fixture' }];
+const cleanup = ownProcess(undefined, 420050);
+rows = [];
+cp.execFileSync = () => { throw new Error('an absent process needs no probe spawn'); };
+syncBuiltinESMExports();
+await cleanup();
+`), []);
 });

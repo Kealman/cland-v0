@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import { processStarted } from '../src/hub/lock.ts';
-import { cleanupProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
+import { cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -146,7 +146,9 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
     const result = await client.callTool({ name, arguments: args });
     const content = (result.content as Array<{ type: string; text?: string }>)[0];
     if (!content || content.type !== 'text' || content.text === undefined) throw new Error(`tool ${name}: no text content`);
-    return JSON.parse(content.text) as T;
+    const parsed = JSON.parse(content.text) as T;
+    rememberResultProcesses(parsed, options.cwd ?? workDir);
+    return parsed;
   };
 
   const waitForEvent = (predicate: (e: ChannelEvent) => boolean, timeoutMs = 5000): Promise<ChannelEvent> => {
@@ -253,8 +255,8 @@ export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args
       if (err && typeof err.code !== 'number') reject(err);
       else {
         const daemonPid = /\bpid +(\d+)/.exec(stdout)?.[1];
-        if (daemonPid) rememberProcess(Number(daemonPid));
-        try { rememberResultProcesses(JSON.parse(stdout)); } catch { /* plain CLI output */ }
+        if (daemonPid) rememberProcess(Number(daemonPid), cwd);
+        try { rememberResultProcesses(JSON.parse(stdout), cwd); } catch { /* plain CLI output */ }
         resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
       }
     });
@@ -279,8 +281,8 @@ export type Discovery = { root?: string; socket: string; port: number; secret: s
 
 export const readDiscovery = async (root: string): Promise<Discovery> => {
   const discovery = JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as Discovery;
-  rememberProcess(discovery.pid);
-  return discovery;
+  rememberProcess(discovery.pid, root);
+  return { ...discovery, root };
 };
 
 export const pidAlive = (pid: number): boolean => {
@@ -312,7 +314,7 @@ export async function startDaemon(t: TestContext, root: string, env: Record<stri
 
 export async function killDaemon(pid: number): Promise<void> {
   const identity = recordedProcess(pid);
-  if (identity) await cleanupProcesses(undefined, [identity]);
+  if (identity) await cleanupOwnedProcesses([identity]);
 }
 
 /** A JSON-lines client on the hub's Unix socket: send frames, await the next one. */
@@ -386,7 +388,7 @@ export type FrameClient = {
   close: () => void;
 };
 
-export function frameClient(write: (line: string) => void, onData: (fn: (chunk: string) => void) => void, close: () => void): FrameClient {
+export function frameClient(write: (line: string) => void, onData: (fn: (chunk: string) => void) => void, close: () => void, root?: string): FrameClient {
   const frames: Array<Record<string, unknown>> = [];
   const results = new Map<string, (f: Record<string, unknown>) => void>();
   const waiters: Array<{ predicate: (f: Record<string, unknown>) => boolean; resolve: (f: Record<string, unknown>) => void }> = [];
@@ -429,7 +431,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
         }, timeoutMs);
         results.set(id, (f) => {
           clearTimeout(timer);
-          rememberResultProcesses(f);
+          rememberResultProcesses(f, root);
           resolve(f as { ok: boolean; value?: unknown; error?: string });
         });
         send({ ...frame, id });
@@ -452,7 +454,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
 }
 
 /** A UI client on the daemon's Unix socket, welcomed with the project's secret. */
-export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'socket' | 'secret'>, client = 'ui'): Promise<FrameClient> {
+export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'socket' | 'secret' | 'root'>, client = 'ui'): Promise<FrameClient> {
   const socket = createConnection(discovery.socket);
   await new Promise<void>((resolve, reject) => {
     socket.once('connect', resolve);
@@ -464,6 +466,7 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
     (line) => socket.write(line),
     (fn) => socket.on('data', fn),
     () => socket.destroy(),
+    discovery.root,
   );
   t.after(() => ui.close());
   ui.send({ type: 'hello', protocol: 2, secret: discovery.secret, client });
@@ -535,7 +538,7 @@ export async function fakeClaude(
     );
     try {
       const result = JSON.parse(out) as Awaited<ReturnType<FakeClaude['sessions']>>;
-      rememberResultProcesses(result);
+      rememberResultProcesses(result, home);
       return result;
     } catch {
       return [];
@@ -607,7 +610,7 @@ export async function fakeCodex(t: TestContext, options: { pollMs?: number; inje
   const servers = async () => {
     const files = await readdir(join(home, 'servers')).catch(() => [] as string[]);
     const all = await Promise.all(files.map(async (f) => JSON.parse(await readFile(join(home, 'servers', f), 'utf8')) as FakeCodexServer));
-    rememberResultProcesses(all);
+    rememberResultProcesses(all, home);
     return all.filter((s) => pidAlive(s.pid));
   };
   t.after(async () => {

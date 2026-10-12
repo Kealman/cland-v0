@@ -6,7 +6,7 @@ import { mkdir, realpath, stat, writeFile } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { captureProcess, captureRunProcesses, cleanupProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
+import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { processStarted } from '../src/hub/lock.ts';
 import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
 import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
@@ -21,7 +21,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
       interruption.signal ??= signal;
-      if (activeIdentity) void cleanupProcesses(undefined, [activeIdentity], () => {}, runId, [activeIdentity]).catch(error => process.stderr.write(String(error) + '\n'));
+      if (activeIdentity) void cleanupOwnedProcesses([activeIdentity]).catch(error => process.stderr.write(String(error) + '\n'));
     };
     process.on(signal, handler);
     return { signal, handler };
@@ -59,8 +59,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       if (interruption.signal) break;
       if (options.phaseNames?.[index]) process.stderr.write(`suite phase ${options.phaseNames[index]}; locks held ${JSON.stringify(leases.length ? options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'] : [])}\n`);
       if (index > 0) {
-        // Remove the previous phase's processes and root without giving up admission.
-        await sweep(holder);
+        // The previous phase was swept; create a fresh root without giving up admission.
         if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
         holder.phase = index;
         root = join(await realpath('/tmp'), `cland-suite-${holder.token}-${index}`);
@@ -83,6 +82,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       }
       const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token };
       delete env.NODE_TEST_CONTEXT;
+      if (!root) throw new Error('suite phase root is missing');
       const gate = join(root, `start-${index}`);
       const bootstrap = join(root, `bootstrap-${index}.mjs`);
       await writeFile(bootstrap, `import { access } from 'node:fs/promises'; import { setTimeout } from 'node:timers/promises';
@@ -109,7 +109,8 @@ process.chdir(cwd);`);
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const code = await done;
-      await cleanupProcesses(root, [...captureRunProcesses(holder.token), activeIdentity], (line) => process.stderr.write(`${line}\n`), holder.token, [activeIdentity]);
+      await sweep(holder);
+      root = undefined;
       active = undefined; activeIdentity = null;
       for (const lease of machine.reverse()) await lease.release();
       machine = [];

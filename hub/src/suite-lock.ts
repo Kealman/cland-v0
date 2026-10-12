@@ -58,7 +58,7 @@ async function publish(path: string, holder: Holder, exclusive = false): Promise
 }
 export async function sweep(holder: Holder): Promise<void> {
   // Worker-local process discovery; the daemon runs this in a bounded subprocess.
-  const { captureRunProcesses, cleanupProcesses } = await import('../test/process-cleanup.ts');
+  const { cleanupProcesses } = await import('../test/process-cleanup.ts');
   const ownedRoot = async () => {
     if (!holder.root) return undefined;
     const info = await stat(holder.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
@@ -67,13 +67,9 @@ export async function sweep(holder: Holder): Promise<void> {
     if (info && !identityMatches) throw new Error('suite root identity changed; refusing cleanup');
     return info ? holder.root : undefined;
   };
-  // The run marker is unique per invocation, including workers whose cwd is the repository.
-  for (let n = 0; n < 10; n++) {
-    const anchors = holder.runner ? [holder.runner] : [];
-    const count = await cleanupProcesses(await ownedRoot(), [...captureRunProcesses(holder.token), ...anchors], line => process.stderr.write(`${line}\n`), holder.token, anchors);
-    if (count === 0) break;
-    if (n === 9) throw new Error('old suite still owns live processes; refusing to start another suite');
-  }
+  // One discovery sweep per completed phase (also used for crashed-holder recovery).
+  const anchors = holder.runner ? [holder.runner] : [];
+  await cleanupProcesses(await ownedRoot(), anchors, line => process.stderr.write(`${line}\n`), holder.token, anchors);
   const root = await ownedRoot();
   if (root) await rm(root, { recursive: true, force: true });
 }

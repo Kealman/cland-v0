@@ -129,7 +129,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
       unwatchItems?.();
       unbindTopics?.();
       unwatchVerdicts?.();
-      core.inbox.close();
+      core.close();
       core.store.close();
     },
   };

@@ -321,6 +321,18 @@ export class HubCore {
   }
 
   readonly #recentEvents = new Map<string, EventRow>();
+  #journalRows: Array<{ row: EventRow; record: JournalRecord }> = [];
+  #journalImmediate: NodeJS.Immediate | null = null;
+  #closed = false;
+
+  /** Stop deferred publications before the hub closes its store. */
+  close(): void {
+    this.#closed = true;
+    if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
+    this.#journalImmediate = null;
+    this.#journalRows = [];
+    this.inbox.close();
+  }
 
   /** Restore the tail's coalesced predecessors before any startup announcements. */
   restoreJournalRows(rows: EventRow[]): void {
@@ -358,7 +370,22 @@ export class HubCore {
   }
 
   publishJournalRow(row: EventRow, record: JournalRecord): void {
-    const projected = this.eventsProject()(row, record);
+    if (this.#closed) return;
+    this.#journalRows.push({ row, record });
+    if (this.#journalImmediate) return;
+    this.#journalImmediate = setImmediate(() => {
+      this.#journalImmediate = null;
+      if (this.#closed) return;
+      const rows = this.#journalRows;
+      this.#journalRows = [];
+      // Startup and bursts share one inbox projection, rather than a full query per journal row.
+      const project = this.eventsProject();
+      for (const entry of rows) this.#publishJournalRow(entry.row, entry.record, project);
+    });
+  }
+
+  #publishJournalRow(row: EventRow, record: JournalRecord, project: ReturnType<HubCore['eventsProject']>): void {
+    const projected = project(row, record);
     if (!projected) return;
     row = projected;
     const key = eventKey(row), time = Date.parse(row.ts);

@@ -13,6 +13,10 @@ async function seedJournal(root: string, count: number) {
 }
 
 test('events.list reads the tail and pages without repeats or gaps while a real spoke appends events', async t => {
+  // Stop the in-process hub before the fixture removes its live directory,
+  // including when an assertion or UI connection fails.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   await seedJournal(root, 135000);
   let bytes = 0;
@@ -20,8 +24,9 @@ test('events.list reads the tail and pages without repeats or gaps while a real 
     const file = await open(path, 'a+');
     return { stat: () => file.stat(), close: () => file.close(), write: (b, o, l) => file.write(b, o, l), read: async (b, o, l, p) => { const r = await file.read(b, o, l, p); bytes += r.bytesRead; return r; } };
   } });
+  stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   await ui.request({ type: 'subscribe' });
   bytes = 0;
   const start = performance.now();
@@ -49,6 +54,10 @@ test('events.list reads the tail and pages without repeats or gaps while a real 
 });
 
 test('events.list maps all eight kinds and usable legacy records, and persists a spoke artifact without subscribers', async t => {
+  // Stop the in-process hub before the fixture removes its live directory,
+  // including when an assertion or UI connection fails.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   const records = [
@@ -71,8 +80,9 @@ test('events.list maps all eight kinds and usable legacy records, and persists a
   ];
   await writeFile(join(root, '.cland/journal.jsonl'), records.map(r => JSON.stringify({ ts: '2026-10-12T10:00:00Z', ...r })).join('\n') + '\n');
   const daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   const initial = (await ui.request({ type: 'events.list' })).value as EventsPage;
   assert.deepEqual(new Set(initial.rows.map(r => r.kind)), new Set(['session', 'task', 'topic', 'verdict', 'release', 'suite', 'usage', 'artifact']));
   assert.equal(initial.rows.length, 14);
@@ -99,14 +109,19 @@ test('events.list maps all eight kinds and usable legacy records, and persists a
 });
 
 test('events pages clamp limits, cross UTF-8 block boundaries and terminate at the first row, skipping damaged records', async t => {
+  // Stop the in-process hub before the fixture removes its live directory,
+  // including when an assertion or UI connection fails.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   await seedJournal(root, 205);
   const file = await open(join(root, '.cland/journal.jsonl'), 'a');
   await file.write('damaged journal line\n' + JSON.stringify({ ts: '2026-10-12T12:00:00Z', event: 'event-announced', kind: 'task', subject: { item: 'T-3' }, text: 'boundary ' + '✓'.repeat(16000) }) + '\n');
   await file.close();
   const daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   const page = (await ui.request({ type: 'events.list', limit: 900 })).value as EventsPage;
   assert.equal(page.rows.length, 200);
   assert.equal(page.rows[0]?.text, 'boundary ' + '✓'.repeat(16000));

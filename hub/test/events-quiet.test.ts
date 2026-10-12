@@ -8,6 +8,10 @@ import type { EventRow, EventsPage } from '../src/protocol.ts';
 
 const stamp = (seconds: number) => new Date(Date.parse('2026-10-12T10:00:00Z') + seconds * 1000).toISOString();
 test('real journal classes, interleaved bursts and filtered pages never split or repeat a group', async t => {
+  // Register hub shutdown before tempProject registers directory removal. A failed
+  // assertion must still stop the in-process hub before its live files are removed.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[visibility]\ninbox.clear = "now"\n');
@@ -29,8 +33,9 @@ test('real journal classes, interleaved bursts and filtered pages never split or
   ].sort((a, b) => a.ts.localeCompare(b.ts));
   await writeFile(join(root, '.cland/journal.jsonl'), records.map(r => JSON.stringify(r)).join('\n') + '\n');
   const daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   const list = async (extra = {}) => {
     const result = await ui.request({ type: 'events.list', ...extra });
     assert.equal(result.ok, true, result.error);
@@ -61,10 +66,15 @@ test('real journal classes, interleaved bursts and filtered pages never split or
 });
 
 test('real announced rows merge on pushes and list, and subtree filters include descendants', async t => {
+  // Register hub shutdown before tempProject registers directory removal. A failed
+  // assertion must still stop the in-process hub before its live files are removed.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   const daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   const parent = ((await ui.request({ type: 'task.create', kind: 'epic', title: 'Parent' })).value as { item: { id: string } }).item.id;
   const child = ((await ui.request({ type: 'task.create', parent, title: 'Child' })).value as { item: { id: string } }).item.id;
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
@@ -87,12 +97,17 @@ test('real announced rows merge on pushes and list, and subtree filters include 
 });
 
 test('pending plan approvals, asks and waiting messages stay in the inbox; follow-up approval events may show', async t => {
+  // Register hub shutdown before tempProject registers directory removal. A failed
+  // assertion must still stop the in-process hub before its live files are removed.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   const daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   const ok = async (frame: { type: string } & Record<string, unknown>) => { const r = await ui.request(frame); assert.equal(r.ok, true, r.error); return r.value; };
   const parent = (await ok({ type: 'task.create', kind: 'epic', title: 'Waiting plan' }) as { item: { id: string } }).item.id;
   const child = (await ok({ type: 'task.create', title: 'Plan child', parent }) as { item: { id: string } }).item.id;
@@ -111,10 +126,15 @@ test('pending plan approvals, asks and waiting messages stay in the inbox; follo
 });
 
 test('the first equal announcement after a real hub restart replaces the restored group', async t => {
+  // Register hub shutdown before tempProject registers directory removal. A failed
+  // assertion must still stop the in-process hub before its live files are removed.
+  let stop = async () => {};
+  t.after(() => stop());
   const root = await tempProject(t);
   let daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
   let ui = await connectUi(t, daemon.discovery!);
-  t.after(async () => { ui.close(); await daemon.stop(); });
+  stop = async () => { ui.close(); await daemon.stop(); };
   const create = await ui.request({ type: 'task.create', title: 'Restart coalescing' });
   const item = (create.value as { item: { id: string } }).item.id;
   for (let i = 0; i < 10; i++) {

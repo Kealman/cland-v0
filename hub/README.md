@@ -1337,31 +1337,60 @@ use `eventWindowMs` or their existing injectable `now` clock. Timing fixtures
 retain generous failure deadlines: shortening a window does not shorten how long
 a loaded machine has to become ready.
 
-Test teardown still checks PID/start identity, cwd containment, ancestry and
-whole-group ownership before signalling. Seed-only teardown reads cwd only for
-the captured seeds and descendants; root sweeps inspect all cwd paths. A second
-cwd check covers captured targets only, and empty target sets return immediately.
-Environment-marker scans are needed only when teardown diagnostics are requested;
-markers remain hints, never ownership proof.
+Test helpers record each process's PID, process group and start identity at spawn
+or first observation through the CLI, hub frames or fake harness records. PIDs
+from one protocol result are captured together. Teardown
+selects only those PIDs and their recorded leader groups (`pgrep -g`, followed by
+`ps -p`), verifies the original identities, and kills a group only when its leader
+and every selected member are owned. Non-leaders and groups with an unrelated
+member receive individual PID signals. Processes older than the test worker are preserved; its ancestors are protected
+using targeted probes. Current ancestry proves child ownership;
+reparented members require a targeted cwd check under a still-owned fixture.
+An exited leader retains its recorded group until selected survivors are checked;
+verified survivors receive individual signals, since the absent leader cannot
+authorize a group signal. A reused leader cannot authorize its replacement group.
+Exit waits probe only captured PIDs. An already-absent registered non-leader needs no additional spawn. Directory teardown kills registered processes
+before removing the directory, without a machine-wide process or cwd listing.
 
 The machine shards run at concurrency 4; hermetic shards run at 1. Targeted single-file runs are free:
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
 `node --test` is reserved for targeted runs.
 
-The runner uses a short temporary directory for each run (Unix socket paths must
-fit), verifies process start identities and either cwd containment in an owned
-directory or a current parent chain to its recorded runner before signalling,
-and prints any final leftovers, including detached hook bridges. Test helpers register temporary
-project ownership before spawning: their after hooks kill owned descendants
-(and groups only when every member and the leader are verified)
-before removing the directory, and signal handlers cover SIGINT/SIGTERM where
-Node's test after hooks do not run. New process fixtures must use `tempProject`
-or `ownDirectory` and register teardown before awaiting process startup.
-Each test runner waits at startup until its PID/start identity is durably
-recorded. Environment markers only identify candidates; they never prove
-ownership. Ambiguous candidates are preserved and printed in the sweep report.
-Cleanup uses `ps` plus `lsof` on macOS, or `/proc` on Linux.
+The runner uses a short temporary directory for each phase (Unix socket paths must
+fit). After the test process exits, one machine-wide discovery sweep is the safety
+net for missed registrations and crashed tests. It verifies process start identities
+and either cwd containment in the phase root or current ancestry to its recorded
+runner before signalling; revalidation and exit waits target the captured PIDs and groups. Late group
+members must prove current cwd containment or descent from an original identity;
+they are captured during targeted revalidation.
+Each cleaned process is visible as `cleanup pid <pid>: <command>` in the runner's
+log; ambiguous candidates are preserved and printed as `preserved pid <pid>:
+ambiguous ownership`. Cwd discovery uses `lsof` on macOS or `/proc` on Linux.
+Environment markers select candidates and diagnostics; they never prove ownership.
+The phase root retains its device/inode proof, including during crashed-holder
+recovery, and is removed after the sweep. A test runner waits at startup until its
+PID/start identity is durably recorded.
+
+New process fixtures must use `tempProject` or `ownDirectory` and register each
+process with `ownProcess` before awaiting startup. Helpers associate protocol/CLI
+PIDs with their registered fixture directories; `ownProcess(t, pid)` also belongs
+to that test context. Start fixtures detached when they need to own descendants as
+a group. Signal handlers clean registered identities on SIGINT/SIGTERM; a crash
+that bypasses them is covered and reported by the phase sweep.
+
+Production grace waits select descendants of captured parents with bounded
+`pgrep -P` walks and targeted `ps -p` snapshots. Each new child still needs a
+current parent/start-identity proof before reservation and capture, so an observed
+child stays owned after its parent exits gracefully. After freeze/KILL, waits
+probe only captured PIDs. Termination
+settles without another spawn when `kill(pid, 0)` confirms all are absent. Its full
+initial tree discovery, repeated fork-to-freeze walks, immediate identity check
+before each signal, ancestor protection and reservation/authority checks remain. Synchronous lock
+acquisition caches only a successful identity for its own current-process lock
+record, as asynchronous acquisition already does. A missing self identity is
+retried. The general PID probe APIs and every foreign-PID pre-signal check stay
+fresh; no identity of another process is cached.
 Each suite invocation prints its elapsed duration and peak sampled one-minute
 machine load, which includes other activity on the machine.
 

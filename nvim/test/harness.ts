@@ -75,7 +75,7 @@ export async function startClient(t: TestContext, bin: string, root: string, env
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
   // the restart snapshot lives under stdpath('state'): one per test
   Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
-  const child = spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
   ownProcess(t, child.pid);
   let stderr = '';
   child.stderr?.setEncoding('utf8');

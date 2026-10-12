@@ -16,14 +16,14 @@ async function fixture(t: TestContext) {
   return dir;
 }
 const lockPath = (dir: string, mode?: 'hub' | 'nvim') => join(dir, mode === 'hub' ? 'cland-suite.lock' : mode === 'nvim' ? 'cland-suite-nvim.lock' : 'lock');
-function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all', stopWhenQueued = false) {
+function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all', stopWhenQueued = false, extraEnv: NodeJS.ProcessEnv = {}) {
   const options = { cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } };
   // Pause at the queue diagnostic boundary, after every recovery guard is released.
   // An external SIGSTOP immediately after ticket publication can strand a .break guard.
   const stop = stopWhenQueued ? `const write = process.stderr.write.bind(process.stderr);
 process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args); if (String(chunk).includes('waiting for the suite lock')) { process.stderr.write = write; process.kill(process.pid, 'SIGSTOP'); } return result; };` : '';
   const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lockPath(dir))} })`};`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
@@ -65,7 +65,7 @@ for (const mode of ['hub', 'nvim'] as const) {
     const { captureProcess } = await import('./process-cleanup.ts');
     const workerIdentity = captureProcess(worker.pid);
     // A crashed runner cannot run its cleanup: clean the fixture child explicitly after the check.
-    t.after(async () => { const { cleanupProcesses } = await import('./process-cleanup.ts'); await cleanupProcesses(worker.root, workerIdentity ? [workerIdentity] : []); await rm(worker.root, { recursive: true, force: true }); });
+    t.after(async () => { const { cleanupOwnedProcesses } = await import('./process-cleanup.ts'); await cleanupOwnedProcesses(workerIdentity ? [workerIdentity] : []); await rm(worker.root, { recursive: true, force: true }); });
     const exited = new Promise<void>(resolve => holder.child.once('exit', () => resolve()));
     holder.child.kill('SIGKILL');
     await exited;
@@ -134,12 +134,12 @@ syncBuiltinESMExports();
 const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lock)} });`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
   const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
-  const { ownProcess, cleanupProcesses } = await import('./process-cleanup.ts');
+  const { ownProcess, cleanupOwnedProcesses } = await import('./process-cleanup.ts');
   ownProcess(t, child.pid);
   await exited;
   assert.equal(child.signalCode, 'SIGKILL');
-  const previous = JSON.parse(await readFile(marker, 'utf8')) as { root: string; runner: { pid: number; started: string } };
-  t.after(async () => { await cleanupProcesses(previous.root, [previous.runner], () => {}, '', [previous.runner]); await rm(previous.root, { recursive: true, force: true }); });
+  const previous = JSON.parse(await readFile(marker, 'utf8')) as { root: string; runner: { pid: number; started: string; group: number } };
+  t.after(async () => { await cleanupOwnedProcesses([previous.runner]); await rm(previous.root, { recursive: true, force: true }); });
   // The durable sidecar still has no runner anchor: cwd proof alone must recover the stopped child.
   assert.equal(JSON.parse(await readFile(`${lock}.owner`, 'utf8')).runner, undefined);
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; test('unpublished child gone before startup', () => { assert.throws(() => process.kill(${previous.runner.pid}, 0), { code: 'ESRCH' }); assert.equal(existsSync(${JSON.stringify(previous.root)}), false); });`);
@@ -759,4 +759,36 @@ test('stale broker recovery uses the newer per-run root record before admitting 
   const next = run(t, dir, file);
   assert.equal(await next.done, 0, next.output());
   assert.deepEqual(await readdir(holder.records), []);
+});
+
+
+test('one per-phase discovery sweep kills and prints a crashed test’s leftover', async t => {
+  const dir = await fixture(t);
+  const marker = join(dir, 'crashed.json');
+  const scans = join(dir, 'scans');
+  const bin = join(dir, 'bin');
+  await mkdir(bin);
+  // Count the real OS discovery boundary; targeted PID probes and environment hints are separate.
+  await writeFile(join(bin, 'ps'), `#!/bin/sh
+case " $* " in
+  *" ww -axo "*) echo scan >> '${scans}' ;;
+esac
+exec /bin/ps "$@"
+`, { mode: 0o755 });
+  const file = join(dir, 'crash.mjs');
+  await writeFile(file, `import test from 'node:test'; import { spawn } from 'node:child_process'; import { writeFile, mkdtemp } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
+test('crash', async () => {
+ const root = await mkdtemp(join(tmpdir(), 'crashed-test-'));
+ const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { cwd: root, detached: true, stdio: 'ignore' });
+ child.unref();
+ await writeFile(${JSON.stringify(marker)}, JSON.stringify({ root, pid: child.pid }));
+ process.kill(process.pid, 'SIGKILL');
+});`);
+  const suite = run(t, dir, file, undefined, false, { PATH: `${bin}:${process.env.PATH ?? ''}` });
+  assert.equal(await suite.done, 1, suite.output());
+  const orphan = JSON.parse(await readFile(marker, 'utf8')) as { root: string; pid: number };
+  assert.match(suite.output(), new RegExp(`cleanup pid ${orphan.pid}:`));
+  assert.throws(() => process.kill(orphan.pid, 0), { code: 'ESRCH' });
+  assert.equal(await readFile(scans, 'utf8'), 'scan\n', 'one process-table discovery per phase');
+  assert.equal(await import('node:fs/promises').then(({ stat }) => stat(orphan.root)).catch(() => null), null);
 });

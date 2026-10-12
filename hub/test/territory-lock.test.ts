@@ -5,6 +5,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { withTerritoryLock, withTerritoryLockAsync } from '../src/territory.ts';
 import { tempProject } from './harness.ts';
+import { ownProcess } from './process-cleanup.ts';
 
 test('an async territory operation keeps overlapping callers out until its promise settles', async (t) => {
   const root = await tempProject(t);
@@ -289,7 +290,7 @@ test('synchronous stale removal and an async acquirer in another process share t
     } catch (err) { process.stdout.write('refused:' + String(err) + '\\n'); process.exit(1); }
   `;
   const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['pipe', 'pipe', 'pipe'] });
-  t.after(() => child.kill());
+  ownProcess(t, child.pid);
   const ready = Promise.withResolvers<void>(), childResult = Promise.withResolvers<string>();
   let output = '';
   child.stdout.setEncoding('utf8');
@@ -434,4 +435,44 @@ test('failed exclusive creation retains its original error if temporary-file cle
     assert.match(primary.message, /^exclusive create unavailable; cleanup failed: cleanup unavailable; cleanup failed: cleanup unavailable$/);
     return true;
   });
+});
+
+
+test('own lock records cache only a successful self identity; foreign PID probes stay fresh', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const entry = new URL('../src/hub/lock.ts', import.meta.url).href;
+  const source = `
+import assert from 'node:assert/strict'; import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import { mkdtempSync, rmSync } from 'node:fs'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
+const started = 'Mon Oct 5 12:00:00 2026';
+let ownCalls = 0, foreignCalls = 0, foreign = started;
+cp.spawnSync = (_command, args) => {
+ const pid = Number(args[args.indexOf('-p') + 1]);
+ if (pid === process.pid) {
+  if (++ownCalls === 1) return { status: 1, stdout: '' };
+  return { status: 0, stdout: started };
+ }
+ foreignCalls++; return { status: 0, stdout: foreign };
+};
+syncBuiltinESMExports();
+const { acquireLock, processStarted } = await import(${JSON.stringify(entry)});
+const root = mkdtempSync(join(tmpdir(), 'cland-self-lock-'));
+try {
+ for (let i = 0; i < 4; i++) {
+  const lock = acquireLock(join(root, 'hub.lock'));
+  assert.equal(lock.holder.started, i === 0 ? null : started);
+  lock.release();
+ }
+ assert.equal(ownCalls, 2, 'unknown self identity retries; successful identity is reused only for its own lock');
+ assert.equal(processStarted(420100), started);
+ foreign = 'Tue Oct 6 12:00:00 2026';
+ assert.equal(processStarted(420100), foreign, 'foreign PID reuse is observed immediately');
+ assert.equal(foreignCalls, 2);
+ assert.equal(processStarted(process.pid), started);
+ assert.equal(ownCalls, 3, 'the explicit OS probe API itself remains uncached');
+} finally { rmSync(root, { recursive: true, force: true }); }
+`;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(result.status, 0, result.stderr);
 });

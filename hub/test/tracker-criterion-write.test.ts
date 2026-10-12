@@ -92,14 +92,18 @@ test('each role is limited to its criterion operations and done requires a live 
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-1', 'qa'], ['none', undefined], ['aide-1', 'aide']] as const) {
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `cli:${name}`, ...(role ? { role } : {}) });
     sessions.push(spoke); t.after(() => spoke.close());
-    if (!role) await ui.request({ type: 'role.clear', session: name });
+    if (!role) {
+      // Revoke a live connection: clearing before the asynchronous hello refuses admission instead of a tool.
+      await spoke.waitForPresence([name]);
+      assert.equal((await ui.request({ type: 'role.clear', session: name })).ok, true);
+    }
     for (const op of ['done', 'verify', 'fail', 'add', 'edit', 'remove']) {
       const shouldAllow = role === 'coordinator' || role === 'aide' ? ['done', 'add', 'edit', 'remove'].includes(op) : role === 'reviewer' || role === 'qa' ? ['verify', 'fail'].includes(op) : false;
       const result = await spoke.call<{ ok?: boolean; code?: string; reason?: string; item?: ItemView }>('task.criterion', { id: item.id, op, criterion: ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item.criteria[0]!.id, run: 'r-1', note: 'Failed', text: 'First' });
       if (shouldAllow) {
         assert.ok(result.item, `${role} ${op}: ${JSON.stringify(result)}`);
         if (op === 'remove') assert.equal((await ui.request({ type: 'task.criterion', item: item.id, op: 'add', text: 'First' })).ok, true);
-      } else { assert.equal(result.ok, false, `${role} ${op}`); assert.equal(result.code, 'forbidden'); assert.ok(result.reason); }
+      } else { assert.equal(result.ok, false, `${role} ${op}`); assert.equal(result.code, 'forbidden', `${role} ${op}: ${JSON.stringify(result)}`); assert.ok(result.reason); }
     }
   }
   const impl = sessions[1]!;

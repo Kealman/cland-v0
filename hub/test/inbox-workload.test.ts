@@ -13,9 +13,11 @@ import { createStdioEdge } from '../src/hub/stdio.ts';
 import { connectUi, eventually } from './harness.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import type { Inbox } from '../src/protocol.ts';
+import { createHubBase, type HubBase } from '../src/hub/server.ts';
+import { eventRow, type JournalRecord } from '../src/hub/journal.ts';
 
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
-function pipe(daemon: Daemon) {
+function pipe(daemon: Pick<Daemon, 'hub'>) {
   const input = new PassThrough(), output = new PassThrough();
   const frames: Array<Record<string, unknown>> = [];
   let pending = '';
@@ -144,4 +146,33 @@ test('durable wait capture is deferred one tick, retains the original timestamp,
   assert.ok(!inspector.inboxWaits().some(w => w.id === transient.id));
   assert.ok(!inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === transient.id), 'a wait settled before the first recompute never enters the durable inbox archive');
   assert.ok(!records.some(r => r.event === 'inbox-departure' && r.id === transient.id));
+});
+
+test('an event-producing frame followed immediately by public hub close cancels queued live projection', async t => {
+  const store = new Store(), ts = new Date().toISOString();
+  store.createTopic('shutdown', 'Shutdown boundary', null, ts);
+  let hub: HubBase | undefined;
+  const journalRows: JournalRecord[] = [];
+  const log = (entry: Record<string, unknown>) => {
+    const record = { ts, ...entry, event: String(entry.event), eventsVersion: 1 };
+    const row = eventRow(record);
+    if (row && hub) { journalRows.push(record); hub.core.publishJournalRow(row, record); }
+  };
+  hub = createHubBase({ secret: 'test', store, log });
+  let closed = false;
+  t.after(async () => { if (!closed) await hub!.close(); });
+  const client = pipe({ hub });
+  t.after(() => client.close());
+  client.send({ type: 'hello', protocol: 2, client: 'ui' });
+  await client.request({ type: 'subscribe', id: 'subscribe' });
+  await tick();
+  const before = client.frames.filter(f => f.type === 'event').length;
+  client.send({ type: 'topic.close', id: 'close-topic', topic: 'shutdown' });
+  assert.equal(client.frames.find(f => f.id === 'close-topic')?.ok, true, 'the domain action committed through its frame');
+  assert.ok(journalRows.some(r => r.event === 'event-announced' && (r.subject as { topic?: string })?.topic === 'shutdown'), 'closing the topic queued its actual journal row');
+  assert.equal(client.frames.filter(f => f.type === 'event').length, before, 'the projection is still pending in this tick');
+  await hub.close();
+  closed = true;
+  await tick();
+  assert.equal(client.frames.filter(f => f.type === 'event').length, before, 'no pending events publish after the hub closes');
 });

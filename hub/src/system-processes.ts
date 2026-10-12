@@ -26,9 +26,29 @@ function timeout(deadline?: number): number {
   if (remaining <= 0) throw new Error('process inspection deadline reached; remaining processes preserved');
   return Math.min(probeTimeout(process.env, 3000), remaining);
 }
-export async function systemProcesses(resumed: Resumed = untimed, deadline?: number): Promise<SystemProcess[]> {
+export async function systemProcesses(resumed: Resumed = untimed, deadline?: number, pids?: number[], descendants = false): Promise<SystemProcess[]> {
+  if (pids && descendants) {
+    const discoveryDeadline = Math.min(deadline ?? Infinity, Date.now() + 3000);
+    const selected = new Set(pids);
+    let parents = pids;
+    while (parents.length) {
+      // Select children of captured PIDs, then walk only those newly selected parents.
+      // The ps snapshot below must still prove every ancestry edge before capture.
+      const children = await run('pgrep', ['-P', parents.join(',')], process.env, timeout(discoveryDeadline));
+      if (children.error || children.code !== 0 && children.code !== 1) throw new Error('cannot inspect captured process descendants: pgrep failed or timed out');
+      parents = resumed(() => children.stdout.trim().split(/\s+/).filter(Boolean).map(value => {
+        if (!/^\d+$/.test(value) || Number(value) <= 1) throw new Error('cannot verify captured process descendants');
+        return Number(value);
+      }).filter(pid => {
+        if (selected.has(pid)) return false;
+        selected.add(pid); return true;
+      }));
+    }
+    pids = [...selected];
+  }
   // Reuse the probe runner: a wrapper's grandchildren must not keep stdout open past the deadline.
-  const result = await run('ps', ['ww', '-axo', 'pid=,ppid=,pgid=,lstart=,stat=,command='], process.env, timeout(deadline));
+  const selection = pids ? ['-p', [...new Set([process.pid, ...pids])].join(','), '-o'] : ['-axo'];
+  const result = await run('ps', ['ww', ...selection, 'pid=,ppid=,pgid=,lstart=,stat=,command='], process.env, timeout(deadline));
   return resumed(() => {
     if (result.code !== 0 || result.error) throw new Error('cannot inspect the OS process table: ps failed or timed out');
     const rows = result.stdout.split('\n').flatMap(line => {
@@ -116,7 +136,19 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       });
     };
     const matching = (current: SystemProcess[]) => current.filter(row => owned.get(row.pid)?.started === row.started);
-    const remaining = async () => { const current = await inspect(); return resumed(() => matching(current)); };
+    const remaining = async (discoverChildren = false) => {
+      const absent = resumed(() => [...owned.keys()].every(pid => !pidAlive(pid)));
+      if (absent) return resumed(() => { latest = []; frozen.clear(); return []; });
+      // Grace polls retain children born while a captured parent lives. After the
+      // full-tree freeze/KILL, waiting needs only captured identities.
+      const current = await systemProcesses(resumed, options.deadline, [...owned.keys()], discoverChildren);
+      if (discoverChildren) await extend(current, options.deadline);
+      return resumed(() => {
+        latest = current;
+        for (const [pid, identity] of frozen) if (!current.some(row => row.pid === pid && row.started === identity.started)) frozen.delete(pid);
+        return matching(current);
+      });
+    };
     const signal = async (kind: NodeJS.Signals, leaderOnly = false, snapshot?: SystemProcess[]): Promise<boolean> => {
       const deadline = kind === 'SIGSTOP' ? freezeDeadline : options.deadline;
       const current = snapshot ?? await inspect(deadline);
@@ -187,10 +219,10 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       resumed(() => observe({ event: 'harness-end-incomplete', pid: p.pid, pids: matching(latest).map(row => row.pid), confirmed, reason }));
       return false;
     };
-    const wait = async (ms: number) => {
+    const wait = async (ms: number, discoverChildren = false) => {
       const deadline = Date.now() + ms;
       for (;;) {
-        const alive = await remaining();
+        const alive = await remaining(discoverChildren);
         const result = resumed(() => !alive.length ? true : Date.now() >= deadline ? false : null);
         if (result !== null) return result;
         await sleep(50);
@@ -205,7 +237,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       // Let the harness close its bridges gracefully. Before escalation, freeze and capture the entire tree.
       if (!await signal('SIGTERM', true)) return await incomplete('SIGTERM refused');
       let forced = false;
-      if (!await wait(graceMs)) {
+      if (!await wait(graceMs, true)) {
         forced = true;
         const snapshot = await freeze();
         if (!snapshot || !await signal('SIGKILL', false, snapshot)) return await incomplete('freeze or SIGKILL refused');

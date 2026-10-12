@@ -45,6 +45,7 @@ export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS
 
 /** This process's own start time, asked once: it never changes. */
 let ownStarted: Promise<string | null> | null = null;
+let ownSynchronousStarted: string | null = null;
 
 export function readLock(path: string): LockHolder | null {
   try {
@@ -211,7 +212,10 @@ const pauseSync = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0
 const pauseAsync = () => new Promise(resolve => setTimeout(resolve, 20));
 
 export function acquireLock(path: string): HubLock {
-  const me = { pid: process.pid, started: processStarted(process.pid), token: randomUUID() };
+  // Only this process's own lock identity is immutable while it lives. Null is
+  // retried; processStarted and every inspection of another PID remain fresh.
+  ownSynchronousStarted ??= processStarted(process.pid);
+  const me = { pid: process.pid, started: ownSynchronousStarted, token: randomUUID() };
   const text = `${JSON.stringify(me)}\n`;
   const guarded = <T>(work: () => T): T => {
     for (let attempt = 0; attempt < 250; attempt++) {

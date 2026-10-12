@@ -15,19 +15,25 @@ import { PassThrough } from 'node:stream';
 import { syncBuiltinESMExports } from 'node:module';
 const start = 'Mon Oct 5 12:00:00 2026';
 const row = (pid, parent, group, started = start) => ({ pid, parent, group, started, state: 'S', command: 'node fixture' });
-let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, cwdOf = () => '';
-const signals = [];
+let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '';
+const signals = []; const listings = [];
 cp.spawn = (bin, args) => {
-  assert.ok(bin === 'ps' || bin === 'lsof');
+  assert.ok(bin === 'ps' || bin === 'lsof' || bin === 'pgrep');
   const child = new EventEmitter();
   child.stdout = new PassThrough(); child.stderr = new PassThrough();
   queueMicrotask(async () => {
     let output;
-    if (bin === 'lsof') {
+    if (bin === 'pgrep') {
+      await onChildren();
+      const parents = args[args.indexOf('-P') + 1].split(',').map(Number);
+      output = rows.filter(p => parents.includes(p.parent)).map(p => p.pid).join('\\n');
+    } else if (bin === 'lsof') {
       output = 'fcwd\\nn' + cwdOf(Number(args[args.indexOf('-p') + 1]));
-    } else if (args.includes('-axo')) {
+    } else if (args.includes('-axo') || args.includes('pid=,ppid=,pgid=,lstart=,stat=,command=')) {
+      listings.push([...args]);
       if (await onTable() === false) { child.stdout.end(); child.stderr.end(); child.emit('close', 1); return; }
-      output = [row(process.pid, 1, process.pid), ...rows].map(p =>
+      const selected = args.includes('-p') ? args[args.indexOf('-p') + 1].split(',').map(Number) : null;
+      output = [row(process.pid, 1, process.pid), ...rows].filter(p => !selected || selected.includes(p.pid)).map(p =>
         p.pid + ' ' + p.parent + ' ' + p.group + ' ' + p.started + ' ' + p.state + ' ' + p.command).join('\\n');
     } else {
       const pid = Number(args[args.indexOf('-p') + 1]);
@@ -122,6 +128,46 @@ assert.deepEqual(signals.filter(p => p.signal === 'SIGTERM' || p.signal === 'SIG
   { pid: 420100, signal: 'SIGKILL' },
   { pid: 420101, signal: 'SIGKILL' }
 ]);
+`);
+});
+
+test('termination retains a child born during grace after its parent exits gracefully', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+let termed = false, born = false, graceTables = 0;
+const fork = () => { if (termed && !born) { born = true; rows.push(row(420101, 420100, 420101), row(420102, 420101, 420102)); } };
+onSignal = (pid, signal) => { if (pid === 420100 && signal === 'SIGTERM') { termed = true; return false; } };
+onChildren = fork;
+onTable = () => {
+  if (!termed) return;
+  fork();
+  if (++graceTables === 2) rows = rows.filter(p => p.pid !== 420100).map(p => ({ ...p, parent: p.parent === 420100 ? 1 : p.parent }));
+};
+const entries = [];
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, entry => entries.push(entry), 100), true);
+assert.equal(born, true);
+assert.deepEqual(rows, [], 'the observed child survives its graceful parent exit only until forced cleanup');
+assert.ok(entries.some(entry => entry.event === 'harness-ended' && entry.pids.includes(420101) && entry.pids.includes(420102)));
+assert.deepEqual(signals.filter(p => p.signal === 'SIGKILL'), [{ pid: 420101, signal: 'SIGKILL' }, { pid: 420102, signal: 'SIGKILL' }]);
+assert.ok(signals.every(p => p.pid > 0));
+`);
+});
+
+test('grace descendant selection preserves children of a reused captured parent', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+onSignal = (pid, signal) => {
+  if (signal === 'SIGTERM') {
+    rows = [row(420100, 1, 420100, 'Tue Oct 6 12:00:00 2026'), row(420101, 420100, 420100)];
+    return false;
+  }
+};
+const captured = [];
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 50, undefined,
+  { claim: identity => { captured.push(identity.pid); return true; } }), true);
+assert.deepEqual(captured, [420100], 'replacement ancestry cannot establish child ownership');
+assert.deepEqual(rows.map(p => p.pid), [420100, 420101]);
+assert.deepEqual(signals, [{ pid: 420100, signal: 'SIGTERM' }]);
 `);
 });
 
@@ -227,13 +273,11 @@ assert.equal(entries.some(p => p.event === 'harness-ended'), false);
 test('a stopped identity confirmed dead receives no later CONT when its pid is reused', async () => {
   await probe(`
 rows = [row(420100, 1, 420100)];
-let killed = false;
 onSignal = (pid, signal) => {
   if (signal === 'SIGTERM') return false;
-  if (signal === 'SIGKILL') killed = true;
-};
-onTable = () => {
-  if (killed && rows.length === 0) rows.push(row(420100, 1, 420100, 'Tue Oct 6 12:00:00 2026'));
+  if (signal === 'SIGKILL') {
+    queueMicrotask(() => { if (rows.length === 0) rows.push(row(420100, 1, 420100, 'Tue Oct 6 12:00:00 2026')); });
+  }
 };
 assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true);
 assert.equal(rows.length, 1);
@@ -422,5 +466,33 @@ try {
   }), true);
   assert.deepEqual(rows, []);
 } finally { fs.rm = rm; fs.writeFile = writeFile; await rm(directory + '420100', { force: true }); }
+`);
+});
+
+
+test('termination waits for captured pids with targeted probes before the full-tree freeze', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420100)];
+let termAt = -1, stopAt = -1;
+onSignal = (pid, signal) => {
+ if (signal === 'SIGTERM') { termAt = listings.length; return false; }
+ if (signal === 'SIGSTOP' && stopAt < 0) stopAt = listings.length;
+};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 75), true);
+const polls = listings.slice(termAt, stopAt - 1);
+assert.ok(polls.length >= 2, 'grace period includes repeated exit checks');
+assert.ok(polls.every(args => args.includes('-p') && !args.includes('-axo')), 'exit checks never enumerate the machine');
+assert.deepEqual(rows, []);
+`);
+});
+
+test('termination settles confirmed absent captured pids without another spawn', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+let termAt = -1;
+onSignal = (pid, signal) => { if (signal === 'SIGTERM') termAt = listings.length; };
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 50), true);
+assert.deepEqual(rows, []);
+assert.equal(listings.length, termAt, 'kill(pid, 0) already confirms every captured PID absent');
 `);
 });
