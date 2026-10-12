@@ -3,7 +3,6 @@ import type { Actor, Tracker } from '../tracker/tracker.ts';
 import { ReleaseError, type ReleaseResult } from '../release.ts';
 import type { LogFn } from '../log.ts';
 import { clearPublicationReceipt, releaseGit, syncGit } from '../territory-release.ts';
-import type { Store } from './store.ts';
 import { landedTask, withTerritoryLockAsync, territoryGitAsync, territoryPath, TerritoryGitError } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
 
@@ -31,8 +30,7 @@ export class Releases {
   readonly tracker: Tracker;
   readonly worktrees: TaskWorktrees;
   readonly log: LogFn;
-  readonly store: Store;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, store: Store) { this.tracker = tracker; this.worktrees = worktrees; this.log = log; this.store = store; }
+  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn) { this.tracker = tracker; this.worktrees = worktrees; this.log = log; }
 
   push(resumed: Resumed, authorize: () => void): Promise<PushResult> {
     let published: PushResult | undefined;
@@ -43,8 +41,9 @@ export class Releases {
           const receipt = this.tracker.mergeReceipt(item.id);
           if (!receipt) return [];
           if (receipt.checkout) throw new PushError('push-state', `finish pending cland merge ${item.id} checkout recovery before pushing dev`);
-          const topic = item.topic ? this.store.topic(item.topic) : null;
-          return item.state !== 'closed' || item.claim || (topic && topic.status !== 'closed') ? [{ id: item.id, receipt }] : [];
+          // Discussion can reopen a topic after landing. Only unfinished item/claim follow-ups
+          // represent merge recovery; topic activity cannot undo a completed merge.
+          return item.state !== 'closed' || item.claim ? [{ id: item.id, receipt }] : [];
         });
       });
       for (const item of pending) {
@@ -155,13 +154,12 @@ export class Releases {
       for (const item of items) {
         const view = await this.tracker.viewAsync(item.id, resumed);
         const next = resumed(() => {
-          // Re-read the receipt, topic and claim after queued file I/O, before testing pending recovery.
+          // Re-read the receipt and claim after queued file I/O, before testing pending recovery.
           authorize();
           const receipt = this.tracker.mergeReceipt(item.id);
           if (!receipt) return null;
-          const topic = view.topic ? this.store.topic(view.topic) : null;
           if (receipt.checkout) throw new ReleaseError('sync-recovery', `finish pending cland merge ${item.id} checkout recovery before sync`);
-          return view.state !== 'closed' || this.tracker.claimOf(item.id) || (topic && topic.status !== 'closed') ? { id: item.id, receipt } : null;
+          return view.state !== 'closed' || this.tracker.claimOf(item.id) ? { id: item.id, receipt } : null;
         });
         if (next) pending.push(next);
       }

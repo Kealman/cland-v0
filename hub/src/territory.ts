@@ -519,8 +519,8 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
  * `check` runs there right before the removal and refuses it by throwing (the caller's item state and sessions, which
  * may have changed while Git was read).
  */
-/** Merged cleanup may delete only this exact ref value; explicit human prune has no expected value. */
-export type ExpectedBranch = { branch: string; tip: string };
+/** Merged cleanup accepts the recorded tip or a tip contained in its base; deletion compares the observed tip. */
+export type ExpectedBranch = { branch: string; tip: string; base?: string };
 /** Preparation may return a final containment/live check, run after the last path check and before Git. */
 type WorktreeValidation = () => void | Promise<void>;
 export type WorktreeCheck = () => void | WorktreeValidation | Promise<void | WorktreeValidation>;
@@ -540,9 +540,14 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
     const tip = branch === null ? null : await refAsync(root, `refs/heads/${branch}`);
     const identityRead = resumed(() => found ? stat(found.path) : null);
     const identity = await identityRead;
+    // Recreated task branches can differ from the squash source while containing no work
+    // beyond dev. A failed ancestry check keeps the worktree, just like an unmerged commit.
+    const contained = expected?.base && tip && tip !== expected.tip
+      ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', tip, `refs/heads/${expected.base}`]) !== null
+      : false;
     const gone = resumed(() => {
       if (expected && !found && tip === null) return true;
-      if (expected && tip !== expected.tip) throw new Error(`${item}: branch moved since merge (${tip ?? 'none'}), kept`);
+      if (expected && tip !== expected.tip && !contained) throw new Error(`${item}: branch moved since merge (${tip ?? 'none'}), kept; move unmerged work to a follow-up task`);
       return false;
     });
     if (gone) return { path, branch };
@@ -565,15 +570,15 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
       if (expected) {
         try {
           // --no-deref protects against a hand-replaced symbolic task ref; the old SHA is a compare-and-swap.
-          await territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, expected.tip]);
+          await territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, tip]);
         } catch (err) {
           const current = await refAsync(root, `refs/heads/${branch}`);
-          if (current !== expected.tip) {
+          if (current !== tip) {
             // A writer moved the ref after the pre-removal check: preserve its branch and put its worktree back.
             if (found) {
               await checkWorktreePath(root, path, resumed);
-              await territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', path, expected.tip] : ['worktree', 'add', path, branch]);
-              await verifyCreatedWorktree(root, path, current === null ? null : branch, current ?? expected.tip, false, resumed);
+              await territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', path, tip] : ['worktree', 'add', path, branch]);
+              await verifyCreatedWorktree(root, path, current === null ? null : branch, current ?? tip, false, resumed);
             }
             resumed(() => { throw new Error(`${item}: branch moved since merge (${current ?? 'none'}), kept`); });
           }
@@ -708,11 +713,20 @@ export async function restoreTaskCheckout(root: string, receipt: { commit: strin
 }
 
 /** A recorded Item commit on the local integration ref is landed; publication may still need finishing. */
-export async function landedTask(root: string, id: string, receipt: { commit: string; base: string; branch: string; tip: string }, resumed: <T>(work: () => T) => T): Promise<{ current: boolean; published: boolean } | null> {
-  const message = await maybeGitAsync(root, ['show', '-s', '--format=%B', receipt.commit]);
+export async function landedTask(root: string, id: string, receipt: { commit: string; base: string; branch: string; tip: string }, resumed: <T>(work: () => T) => T, options: { strict?: boolean } = {}): Promise<{ current: boolean; published: boolean } | null> {
+  // Reopen must not mistake an unavailable Git inspection for a fully rolled-back receipt.
+  const inspect = (cwd: string, args: string[]) => options.strict
+    ? territoryGitAsync(cwd, args).catch(err => resumed(() => {
+      if (err instanceof TerritoryGitError && err.code === 1 && (args[0] === 'merge-base' || args[0] === 'rev-parse')) return null;
+      throw err;
+    }))
+    : maybeGitAsync(cwd, args);
+  const message = await inspect(root, ['show', '-s', '--format=%B', receipt.commit]);
   if (!resumed(() => message?.split('\n').includes(`Item: ${id}`))) return null;
-  const local = await maybeGitAsync(root, ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
-  const remote = await maybeGitAsync(territoryPath(root), ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
+  const local = await inspect(root, ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
+  // A rolled-back preparation may never have copied its commit object into the territory.
+  const remoteObject = options.strict ? await inspect(territoryPath(root), ['rev-parse', '--verify', '--quiet', `${receipt.commit}^{commit}`]) : null;
+  const remote = !options.strict || remoteObject ? await inspect(territoryPath(root), ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]) : null;
   if (local === null && remote === null) return null;
   const tip = await refAsync(root, `refs/heads/${receipt.branch}`);
   return resumed(() => ({ current: tip === null || tip === receipt.tip, published: remote !== null }));

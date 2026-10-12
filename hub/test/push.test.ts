@@ -279,6 +279,9 @@ test('push refuses pending landed merge or checkout recovery but permits a fully
   assert.equal(refs(root, territory), snapshot);
   tracker.recordMerge(item.id, receipt);
   // No integration ref contains the prepared commit: rollback finished, so ordinary tracker publication is safe.
+  await tracker.close(human, item.id);
+  const reopened = await ui.request({ type: 'task.edit', item: item.id, state: 'open' });
+  assert.equal(reopened.ok, true, reopened.error);
   git(root, 'commit', '--allow-empty', '-qm', 'Tracker after rollback');
   result = await ui.request({ type: 'push' }, 30_000);
   assert.equal(result.ok, true, result.error);

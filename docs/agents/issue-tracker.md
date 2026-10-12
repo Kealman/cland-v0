@@ -34,7 +34,15 @@ The GitHub Issues served as the human-facing mirror until v0 was done. At the hu
 - **Comment on an item**: `cland task comment T-<n> --body-file - <<'EOF'` … `EOF`, or `cland task comment T-<n> "<text>"` for one line.
 - **Apply / remove labels**: `cland task edit T-<n> --add-label <l> --remove-label <l>` (each repeats). `--label` instead replaces the whole set. Labels need no setup: any string is a label.
 - **Assign**: `cland task edit T-<n> --assignee <name>`; `--assignee none` clears it.
-- **Close**: `cland task close T-<n> --comment "<text>"`. An epic (the second configured level, `tracker.levels[1]`) also needs a current clear hub-written QA verdict on the exact `dev` tip, with every criterion verified by QA in that run, and no open children (D16). Refusals name missing verdicts or criterion ids. The human shell may skip epic QA evidence with `--override "reason"`; the journal records `epic-close-overridden`, the reason and unmet criteria. Open children still refuse. Releases keep their own path through `cland release --item`. Reopen with `cland task edit T-<n> --state open`.
+- **Close**: `cland task close T-<n> --comment "<text>"`. An epic (the second configured level, `tracker.levels[1]`) also needs a current clear hub-written QA verdict on the exact `dev` tip, with every criterion verified by QA in that run, and no open children (D16). Refusals name missing verdicts or criterion ids. The human shell may skip epic QA evidence with `--override "reason"`; the journal records `epic-close-overridden`, the reason and unmet criteria. Open children still refuse. Releases keep their own path through `cland release --item`. Reopen an unmerged item with `cland task edit T-<n> --state open`.
+
+### After a task merges
+
+A landed task is complete. Reopening it through `task edit --state open`, a non-done status, or a failing criterion/verdict is refused. Create a follow-up with `cland task create "<title>" --parent T-<epic-or-release>` (omit the parent for unscheduled work), and reference the merged task in its body. Claiming the follow-up starts its own branch and worktree from current `dev`. A prepared merge receipt that fully rolled back does not count as a landing.
+
+Posting in a merged task's topic may reopen the discussion; it leaves the task and its merge complete and does not block `cland push` or `cland sync`. Unfinished checkout recovery or item/claim follow-ups still require `cland merge T-<n>` before publication.
+
+Re-run `cland merge T-<n>` to clean a stale worktree of a closed, landed task. It removes the original merged branch or a recreated branch whose tip is fully contained in the recorded integration base (`dev`). It keeps worktrees with uncommitted changes, unmerged commits, an unrelated branch, or a session inside. Cleanup never lands another squash or deletes another worktree. Move any unmerged work into a follow-up task before retrying cleanup.
 
 ## Acceptance criteria
 

@@ -140,7 +140,7 @@ export class Dispatcher {
     this.#log = options.log ?? (() => {});
     this.#worktrees = options.tracker ? new TaskWorktrees({ tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
     this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }) : null;
-    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.core.store) : null;
+    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles);
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();

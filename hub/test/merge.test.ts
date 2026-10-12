@@ -97,6 +97,104 @@ async function review(rev: Awaited<ReturnType<typeof spawnSpoke>>, id: string, r
   assert.equal(r.ok, true, r.error);
 }
 
+test('discussion after a completed merge never blocks CLI push or recreates its worktree', async t => {
+  const { root, ui, rev, discovery } = await project(t);
+  const work = await task(root);
+  const created = await ui.request({ type: 'topic.create', title: 'Landed task', item: work.id });
+  assert.equal(created.ok, true, created.error);
+  const topic = (created.value as { topic: { id: string } }).topic.id;
+  await review(rev, work.id);
+  ok(await cland(root, 'merge', work.id));
+  assert.equal(existsSync(work.path), false);
+  const posted = await ui.request({ type: 'topic.send', topic, text: 'A follow-up discussion after landing' });
+  assert.equal(posted.ok, true, posted.error);
+  git(root, 'add', '.cland/tasks');
+  git(root, 'commit', '-qm', 'Record completed tracker');
+  ok(await cland(root, 'push'));
+  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), git(root, 'rev-parse', 'dev'));
+  await killDaemon(discovery.pid);
+  await startDaemon(t, root);
+  ok(await cland(root, 'push'));
+  assert.equal(existsSync(work.path), false);
+  assert.equal(git(root, 'branch', '--list', work.branch), '');
+});
+
+test('CLI reopen of a landed task refuses with a follow-up path, then push succeeds without an orphan worktree', async t => {
+  const { root, rev } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  ok(await cland(root, 'merge', work.id));
+  for (const args of [['--state', 'open'], ['--status', 'backlog']]) {
+    const reopened = await cland(root, 'task', 'edit', work.id, ...args);
+    assert.notEqual(reopened.code, 0, 'a landed task cannot start a second work round');
+    assert.match(reopened.stderr, /already merged.*follow-up.*cland task create/s);
+    const view = json<{ item: { state: string; status: string; claim: unknown } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+    assert.equal(view.state, 'closed');
+    assert.equal(view.status, 'done');
+    assert.equal(view.claim, null);
+  }
+  git(root, 'add', '.cland/tasks');
+  git(root, 'commit', '-qm', 'Record completed tracker');
+  ok(await cland(root, 'push'));
+  assert.equal(existsSync(work.path), false);
+  assert.equal(git(root, 'branch', '--list', work.branch), '');
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'Parser follow-up', '--json'));
+  const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
+  assert.equal(git(worktree.path, 'rev-parse', 'HEAD'), git(root, 'rev-parse', 'dev'), 'a follow-up starts from current dev');
+  assert.equal(await readFile(join(worktree.path, 'parser.txt'), 'utf8'), 'finished\n');
+});
+
+test('CLI reopen preserves a landed task when Git cannot inspect its receipt', async t => {
+  const bin = await tempProject(t, 'cland-reopen-git-');
+  const unavailable = join(bin, 'unavailable');
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
+  await writeFile(join(bin, 'git'), `#!/bin/sh
+if [ "$1" = show ] && [ -f ${quote(unavailable)} ]; then
+  echo 'fixture landing inspection unavailable' >&2
+  exit 3
+fi
+exec ${quote(realGit)} "$@"
+`, { mode: 0o755 });
+  const { root, rev } = await project(t, { PATH: `${bin}:${process.env.PATH}` });
+  const work = await task(root);
+  await review(rev, work.id);
+  ok(await cland(root, 'merge', work.id));
+  await writeFile(unavailable, 'fail Git inspection\n');
+  const reopened = await cland(root, 'task', 'edit', work.id, '--state', 'open');
+  assert.notEqual(reopened.code, 0);
+  assert.match(reopened.stderr, /fixture landing inspection unavailable/);
+  const view = json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  assert.equal(view.state, 'closed');
+  assert.equal(existsSync(work.path), false);
+});
+
+test('CLI merge removes a closed landed task stale worktree when dev contains its changed branch', async t => {
+  const { root, rev } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
+  git(root, 'add', '.cland/tasks');
+  git(root, 'commit', '-qm', 'Tracker after landing');
+  ok(await cland(root, 'push'));
+  const dev = git(root, 'rev-parse', 'dev');
+  const other = join(root, '.cland', 'other-worktree');
+  git(root, 'worktree', 'add', '-b', 'keep-other-work', other, dev);
+  await writeFile(join(other, 'unfinished.txt'), 'keep this work\n');
+  git(root, 'worktree', 'add', '-b', work.branch, work.path, dev);
+  const cleaned = json<{ commit: string; cleanup: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(cleaned.commit, merged.commit, 'cleanup never lands another squash');
+  assert.equal(cleaned.cleanup, 'removed');
+  assert.equal(cleaned.followUp, undefined);
+  assert.equal(git(root, 'rev-parse', 'dev'), dev);
+  assert.equal(existsSync(work.path), false);
+  assert.equal(git(root, 'branch', '--list', work.branch), '');
+  assert.equal(await readFile(join(other, 'unfinished.txt'), 'utf8'), 'keep this work\n');
+  assert.equal(git(other, 'rev-parse', 'HEAD'), dev);
+  assert.equal(git(other, 'branch', '--show-current'), 'keep-other-work');
+  ok(await cland(root, 'push'));
+});
+
 async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: string, id: string, code: string, files?: string[]) {
   const refs = git(root, 'show-ref');
   const r = await ui.request({ type: 'merge', item: id }, 30_000);

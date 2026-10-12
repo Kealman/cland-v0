@@ -85,10 +85,12 @@ export class TaskMerges {
             resumed(() => {
               state.landed = { commit: prior.commit, base: prior.base };
               step = 'reconcile';
-              if (!existing.current) throw new Error(`${id}: already landed, but the task branch changed since; reconcile the item before merging further work`);
             });
             const view = await this.tracker.viewAsync(id, resumed);
             resumed(() => {
+              // A closed landing may have a recreated stale branch from dev. Cleanup checks
+              // containment before deleting it; an open recovery still requires the original tip.
+              if (!existing.current && (view.state !== 'closed' || view.claim || prior.checkout || !existing.published)) throw new Error(`${id}: already landed, but the task branch changed since; reconcile the item before merging further work`);
               if (view.branch !== prior.branch) throw new MergeError('merge-changed', `${id}: already landed, but the item's branch changed`);
               reason = prior.override;
               recovered = true;

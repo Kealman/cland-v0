@@ -115,14 +115,22 @@ test('stage verdict refuses premature QA, wrong roles, stale builds, unknown sta
   assert.equal(stage?.state, 'closed', 'an after-stage override receives integrated QA even under a per-item default');
 });
 
-test('changed stage plans, reopened items and altered verdict headers cannot retain stage closure', async t => {
+test('changed stage plans, hand-reopened items and altered verdict headers cannot retain stage closure', async t => {
   const f = await fixture(t); await f.land(); assert.equal((await f.verdict()).ok, true);
   f.plan.stages[0]!.qa.scope = 'full'; await f.set(); assert.equal((await f.read()).stages?.[0]?.state, 'open');
   assert.equal((await f.verdict('clear', { run: 'full-scope' })).ok, true);
-  assert.equal((await f.ui.request({ type: 'task.edit', item: f.items[0]!.id, state: 'open' })).ok, true);
-  assert.equal((await f.read()).stages?.[0]?.state, 'open');
-  assert.equal((await f.ui.request({ type: 'task.edit', item: f.items[0]!.id, state: 'closed' })).ok, true);
-  assert.equal((await f.read()).stages?.[0]?.state, 'closed');
+  const reopen = await f.ui.request({ type: 'task.edit', item: f.items[0]!.id, state: 'open' });
+  assert.equal(reopen.ok, false);
+  assert.match(reopen.error ?? '', /already merged.*follow-up/s);
+  assert.equal((await f.read()).stages?.[0]?.state, 'closed', 'refused API reopen keeps the completed stage');
+  // Files remain the tracker source of truth: an external reopen still invalidates stage evidence.
+  const childPath = join(f.root, f.items[0]!.path), childSource = await readFile(childPath, 'utf8');
+  const reopenedSource = childSource.replace('state: closed', 'state: open').replace('status: done', 'status: backlog');
+  assert.notEqual(reopenedSource, childSource);
+  await writeFile(childPath, reopenedSource);
+  await eventually('hand-reopened child opens the stage', async () => (await f.read()).stages?.[0]?.state === 'open' ? true : undefined);
+  await writeFile(childPath, childSource);
+  await eventually('restored child closes the stage', async () => (await f.read()).stages?.[0]?.state === 'closed' ? true : undefined);
   const path = join(f.root, f.epic.path), source = await readFile(path, 'utf8');
   assert.match(source, /run: full-scope/);
   await writeFile(path, source.replace('run: full-scope', 'run: hand-forged'));

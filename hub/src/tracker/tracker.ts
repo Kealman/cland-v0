@@ -12,7 +12,7 @@ import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
 import { annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer } from './kinds.ts';
-import { taskBase, territoryPath } from '../territory.ts';
+import { landedTask, taskBase, territoryPath } from '../territory.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, linkSync, unlinkSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
 import files, { type FileHandle } from 'node:fs/promises';
@@ -1431,10 +1431,20 @@ export class Tracker {
         try { item = parseItem(text, file, this.levels); }
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
+        const wasClosedTask = item.fm.kind === 'task' && item.fm.state === 'closed';
         change(item);
+        const receipt = wasClosedTask && item.fm.state === 'open' ? this.#index.mergeReceipt(id) : null;
+        const prepare = receipt ? async () => {
+          await beforeRename?.();
+          // A prepared receipt may have rolled back. Only an actual landing makes the task final.
+          const landed = await landedTask(this.root, id, receipt, resumed, { strict: true });
+          resumed(() => {
+            if (landed) throw new TrackerError(`${id} is already merged: create a follow-up task with cland task create "<title>"${item.fm.parent ? ` --parent ${item.fm.parent}` : ''}; reference ${id} in its body`);
+          });
+        } : beforeRename;
         if (skipUnchanged && serializeItem(item) === text) return Promise.resolve(item);
         item.fm.updated = this.#now().toISOString();
-        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, beforeRename, actor, planReason);
+        return this.#write(file, item, resumed, { id, op, hash: hashOf(text), fd }, verdictWriter, beforeCommit, committed, prepare, actor, planReason);
       });
       result = { written };
     } catch (error) { result = { error }; }

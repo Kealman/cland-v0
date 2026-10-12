@@ -297,6 +297,29 @@ test('a lost successful GitHub push reply recovers from its receipt even after t
   assert.equal(git(territory, 'rev-parse', 'main'), dev);
 });
 
+test('post-merge topic discussion permits CLI sync without reviving the task or its worktree', async t => {
+  const { root, github, ui } = await project(t);
+  const { item } = json<{ item: { id: string } }>(await cland(root, 'task', 'create', 'Completed parser', '--json'));
+  const created = await ui.request({ type: 'topic.create', title: 'Parser discussion', item: item.id });
+  assert.equal(created.ok, true, created.error);
+  const topic = (created.value as { topic: { id: string } }).topic.id;
+  const { worktree } = json<{ worktree: { path: string } }>(await cland(root, 'task', 'claim', item.id, '--json'));
+  await writeFile(join(worktree.path, 'parser.txt'), 'finished\n');
+  git(worktree.path, 'add', 'parser.txt');
+  git(worktree.path, 'commit', '-qm', 'Parser');
+  ok(await cland(root, 'merge', item.id, '--override', 'test fixture'));
+  const posted = await ui.request({ type: 'topic.send', topic, text: 'Later discussion' });
+  assert.equal(posted.ok, true, posted.error);
+  await clean(root);
+  const remote = await collaborator(t, github, 'collaborator.txt', 'from github\n');
+  ok(await cland(root, 'sync'));
+  assert.equal(git(root, 'rev-parse', 'main'), remote);
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  const view = json<{ item: { state: string } }>(await cland(root, 'task', 'view', item.id, '--json')).item;
+  assert.equal(view.state, 'closed');
+  await assert.rejects(readFile(join(worktree.path, 'parser.txt')), { code: 'ENOENT' });
+});
+
 test('sync refuses a landed merge with pending tracker completion, preserving its retry identity', async (t) => {
   const { root, github, territory, discovery } = await project(t);
   const { item } = json<{ item: { id: string; file: string } }>(await cland(root, 'task', 'create', 'Ship the parser', '--json'));
