@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: item explorer at the release root</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;gap:12px}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap}
+.dim{color:#8a94a3}
+.faint{color:#5b6472}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+.watch{color:#c2a15e}
+.dn{color:#98bfa2}
+.prop{display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.02em;text-transform:none;white-space:nowrap;vertical-align:1px;cursor:help}
+.tree{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:4px 0}
+.tr{display:flex;align-items:center;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden;flex:none}
+.tr.sel{background:#182131}
+.tr.vis{background:#264f78}
+.tr.hd{height:20px;color:#5b6472;font-size:11px;letter-spacing:.04em}
+.tr .fd{width:14px;flex:none;color:#5b6472}
+.tr .g{width:16px;flex:none}
+.tr .i{width:50px;flex:none;color:#8a94a3}
+.tr .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.cols{display:flex;align-items:center;flex:none;font-size:12px}
+.c-frac{width:40px;text-align:right}
+.c-bar{width:86px;padding-left:10px;box-sizing:border-box;display:flex;align-items:center}
+.c-n{width:24px;text-align:right}
+.c-stg{width:40px;text-align:right}
+.c-lead{width:56px;text-align:right}
+.c-who{width:150px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.c-ver{width:96px;text-align:left}
+.cells{display:inline-flex;gap:1px;align-items:center}
+.cl{display:inline-block;width:6px;height:10px;border-radius:1px;background:#1e2631}
+.cl.dn{background:#7ddc8a}
+.cl.rd{background:transparent;box-shadow:inset 0 0 0 1px #7ddc8a}
+.cl.qa{background:#f0b429}
+.cl.rv{background:#f0b429}
+.cl.ip{background:#35c4a0}
+.cl.pl{background:transparent;box-shadow:inset 0 0 0 1px #8a94a3}
+.cl.bl{background:#2a3340}
+.cells.s .cl{width:4px;height:8px}
+.root{border-top:1px solid #1a212b;margin-top:8px;padding-top:6px}
+.rk{color:#d6dbe4}
+.foot{display:flex;align-items:center;gap:6px;height:22px;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.foot b{color:#d6dbe4;font-weight:400}
+.legend{margin:6px 12px 8px;border:1px dashed #3d4756;border-radius:5px;background:#0e1219;padding:7px 10px;display:flex;flex-direction:column;gap:3px;font-size:11.5px;line-height:16px;color:#aab3c0}
+.legend .lh{color:#d6dbe4;font-size:11px;letter-spacing:.04em}
+.legend .prop{margin-left:0;margin-right:6px}
+.cardpane{display:flex;flex-direction:column;background:#0d1117;border-left:1px solid #222a35;min-width:0;flex:none}
+.cp{padding:10px 14px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;flex:1;min-height:0}
+.cp>*{flex:none}
+.cpath{color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle{font-size:16px;line-height:21px;font-weight:600}
+.csum{line-height:19px}
+.csec{display:flex;align-items:center;gap:6px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid #1a212b;padding-top:6px}
+.csec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);column-gap:10px;row-gap:1px;font-size:12px;line-height:17px}
+.kv .l{color:#8a94a3}
+.kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2{font-size:12px;line-height:17px}
+.crit{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:17px}
+.crit .cid{color:#8a94a3;min-width:20px}
+.crit .ct{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crit .mk{margin-left:auto;padding-left:12px;color:#8a94a3;white-space:nowrap}
+.cnote{font-size:12px;line-height:16px;padding-left:44px}
+.zb{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border-top:1px solid #1a212b;border-bottom:1px solid #1a212b;padding:5px 0}
+.mline{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:4px 8px}
+.k{display:inline-block;min-width:16px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:15px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.stg-tag{display:inline-block;min-width:20px;padding:0 5px;border-radius:3px;border:1px solid #3a4452;background:#141a23;color:#d6dbe4;font-size:11px;line-height:16px;text-align:center;flex:none}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1.2</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">explorer · R-228 Working with items</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">2</span></span>
+    <span class="chip">sessions <span class="badge n">10</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 300px; flex: none">
+      <div class="ph"><span>items · <span style="text-transform: none">v0.1.2</span></span><span>14 in work · 8 done</span></div>
+      <div class="tabs"><span class="faint">epic</span><span class="cur">all</span><span>E-270</span><span>E-273</span><span>E-274</span><span>E-275</span><span>E-272</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+        <div class="row" style="margin-top: 4px"><span class="faint">▾</span><span class="teal">◐</span><span class="id">E-270</span><span class="t">The explorer and the card</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">2/10</span></div>
+        <div class="sec" style="padding-left: 34px"><span>in progress (2)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="teal">◐</span><span class="id">T-279</span><span class="t">The card: summary, facts, progress, verdict</span><span class="claim">impl-279 <span class="bad">✗</span></span><span class="frac">2/5</span></div>
+        <div class="row" style="padding-left: 34px"><span class="teal">◐</span><span class="id">T-280</span><span class="t">Done items after the live ones</span><span class="claim">impl-280</span><span class="frac">0/4</span></div>
+        <div class="sec" style="padding-left: 34px"><span>review (1)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="warn">◉</span><span class="id">T-278</span><span class="t">Rows per level</span><span class="claim">rev-27</span><span class="frac">0/5</span></div>
+        <div class="sec" style="padding-left: 34px"><span>planned (2)</span></div>
+        <div class="row" style="padding-left: 34px"><span>○</span><span class="id">T-281</span><span class="t">s rescopes the tree</span><span class="claim">next</span><span class="frac">0/3</span></div>
+        <div class="row" style="padding-left: 34px"><span class="dim">◌</span><span class="id">T-282</span><span class="t">gi opens the explorer on the card</span><span class="claim dim">by T-279</span><span class="frac">0/3</span></div>
+        <div class="sec" style="padding-left: 34px"><span>▸</span><span>backlog (3)</span><span class="r">za</span></div>
+        <div class="row" style="margin-top: 6px"><span class="faint">▸</span><span class="teal">◐</span><span class="id">E-273</span><span class="t">Remote executors</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rd"></span><span class="cl qa"></span><span class="cl rv"></span><span class="cl ip"></span></span></span><span class="frac">2/6</span></div>
+        <div class="row"><span class="faint">▸</span><span class="teal">◐</span><span class="id">E-274</span><span class="t">Accounts and limits</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl bl"></span></span></span><span class="frac">0/4</span></div>
+        <div class="row"><span class="faint">▸</span><span>○</span><span class="id">E-275</span><span class="t">Stopped sessions and the panel</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">0/4</span></div>
+        <div class="row dim"><span class="faint">▸</span><span>○</span><span class="id">E-272</span><span class="t">Inbox and events</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">0/3</span></div>
+        <div class="sec" style="margin-top: 10px; border-top: 1px solid #1a212b; padding-top: 10px"><span>▸</span><span style="text-transform: none; letter-spacing: 0">categories 23 · unscheduled 3</span><span class="r">f all</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">K J rank among siblings · T to the top</div>
+      <div class="row dim" style="font-size: 12px">↵ open · za fold · e E scope · gt gs</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+      <div class="ph"><span>explorer · <span style="text-transform: none; color: #d6dbe4">R-228 v0.1.2 Working with items</span></span><span><span style="text-transform: none">done shown · 8</span> · <span style="text-transform: none">D</span><span class="prop" title="P7: The explorer&#x27;s header shows the D state and the count it affects (done shown, done hidden); the state is kept in ui.json.">proposal P7</span></span></div>
+      <div class="tree">
+
+        <div class="tr" style="height: 16px; overflow: visible"><span style="width: 22px; flex: none"></span><span class="prop" title="P2: An epic has no status (v0.1 section 3.2), so its glyph derives from its tasks: a green dot when closed, a teal half circle when any task is in progress to ready, a circle in text colour when its current stage is planned, a dim circle otherwise. The release row derives the same way from its epics.">proposal P2</span><span style="flex: 1"></span><span style="width: 198px; flex: none"><span class="prop" title="P3: The progress bar has one cell per child in the order done, ready, qa, review, in progress, planned, backlog. The in-progress, review and qa counts sit in their own columns under a dim header row; a zero shows as a dot.">proposal P3</span></span><span style="width: 96px; flex: none; text-align: right"><span class="prop" title="P4: The lead column shows coord dimmed when the Coordinator leads the epic, which is every epic while leads = [] (the v0.1.1 crew, kept for v0.1.2); a Lead session&#x27;s name otherwise.">proposal P4</span></span></div>
+        <div class="tr hd"><span class="fd"></span><span class="g"></span><span class="i">id</span><span class="tt">release, its epics and tasks, by rank</span><span class="cols"><span class="c-frac">done</span><span class="c-bar">progress</span><span class="c-n">◐</span><span class="c-n">rev</span><span class="c-n">qa</span><span class="c-stg">stage</span><span class="c-lead">lead</span></span></div>
+
+        <div class="tr" style="margin-top: 2px"><span class="fd">▾</span><span class="g teal">◐</span><span class="i">R-228</span><span class="tt"><b>v0.1.2</b> Working with items</span><span class="cols"><span class="c-frac">1/6</span><span class="c-bar"><span class="cells"><span class="cl dn"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl bl"></span></span></span><span class="c-n teal">5</span><span class="c-n warn">2</span><span class="c-n warn">1</span><span class="c-stg faint">—</span><span class="c-lead dim">coord</span></span></div>
+        <div class="tr" style="height: 18px; padding-left: 42px; font-size: 12px"><span class="dim">tasks 8/32&nbsp;&nbsp;</span><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl rd"></span><span class="cl qa"></span><span class="cl rv"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span><span class="prop" title="P5: The release row: epics done/total and one cell per epic; its second line holds the task breakdown, one cell per task, with the count per status.">proposal P5</span></div>
+        <div class="tr" style="height: 18px; padding-left: 42px; font-size: 12px; margin-bottom: 4px"><span class="ok">8 done</span><span class="dim">&nbsp;·&nbsp;</span><span class="ok">1 ready</span><span class="dim">&nbsp;·&nbsp;</span><span class="warn">1 qa</span><span class="dim">&nbsp;·&nbsp;</span><span class="warn">2 review</span><span class="dim">&nbsp;·&nbsp;</span><span class="teal">5 in progress</span><span class="dim">&nbsp;·&nbsp;</span><span>5 planned</span><span class="dim">&nbsp;·&nbsp;10 backlog</span></div>
+
+        <div class="tr sel" style="padding-left: 30px"><span class="fd">▸</span><span class="g teal">◐</span><span class="i">E-270</span><span class="tt">The explorer and the card</span><span class="cols"><span class="c-frac">2/10</span><span class="c-bar"><span class="cells"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="c-n teal">2</span><span class="c-n warn">1</span><span class="c-n faint">·</span><span class="c-stg">S2</span><span class="c-lead dim">coord</span></span></div>
+
+        <div class="tr" style="padding-left: 30px"><span class="fd">▾</span><span class="g teal">◐</span><span class="i">E-273</span><span class="tt">Remote executors</span><span class="cols"><span class="c-frac">2/6</span><span class="c-bar"><span class="cells"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rd"></span><span class="cl qa"></span><span class="cl rv"></span><span class="cl ip"></span></span></span><span class="c-n teal">1</span><span class="c-n warn">1</span><span class="c-n warn">1</span><span class="c-stg">S2</span><span class="c-lead dim">coord</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g warn">◉</span><span class="i">T-246</span><span class="tt">The verify line becomes the queue summary and opens the queue view</span><span class="cols"><span class="c-who"><span class="teal">qa-28</span> <span class="dim">QA</span></span><span class="c-ver ok">✓ review</span><span class="c-frac ok">4/4</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g warn">◉</span><span class="i">T-253</span><span class="tt">Fail fast on a serving-time tracker storage stall</span><span class="cols"><span class="c-who"><span class="teal">rev-26</span> <span class="dim">Reviewer</span></span><span class="c-ver faint">—</span><span class="c-frac dim">0/3</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g ok">◉</span><span class="i">T-254</span><span class="tt">A cancelled suite attempt does not supersede green cache evidence for its tree</span><span class="cols"><span class="c-who"><span class="teal">impl-254</span> <span class="dim">Implementer</span></span><span class="c-ver ok">✓ review ✓ qa</span><span class="c-frac ok">3/3</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g teal">◐</span><span class="i">T-293</span><span class="tt">The human's npm test goes through the hub queue unless --force</span><span class="cols"><span class="c-who"><span class="teal">impl-293</span> <span class="dim">Implementer</span></span><span class="c-ver faint">—</span><span class="c-frac dim">0/3</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g ok">●</span><span class="i">T-256</span><span class="tt dn">Remote executors for cland verify: suite runs on cloud VMs behind a provider-agnostic executor interface (DigitalOcean first)</span><span class="cols dn"><span class="c-who">merged 12:58</span><span class="c-ver">✓ review</span><span class="c-frac">5/5</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g ok">●</span><span class="i">T-292</span><span class="tt dn">Tagged VMs are swept on exit, on hub start and by a timer</span><span class="cols dn"><span class="c-who">merged 14:20</span><span class="c-ver">✓ review</span><span class="c-frac">3/3</span></span></div>
+
+        <div class="tr" style="padding-left: 30px"><span class="fd">▸</span><span class="g teal">◐</span><span class="i">E-274</span><span class="tt">Accounts and limits</span><span class="cols"><span class="c-frac">0/4</span><span class="c-bar"><span class="cells"><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl bl"></span></span></span><span class="c-n teal">2</span><span class="c-n faint">·</span><span class="c-n faint">·</span><span class="c-stg">S1</span><span class="c-lead dim">coord</span></span></div>
+        <div class="tr" style="padding-left: 30px"><span class="fd">▸</span><span class="g">○</span><span class="i">E-275</span><span class="tt">Stopped sessions and the panel</span><span class="cols"><span class="c-frac">0/4</span><span class="c-bar"><span class="cells"><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="c-n faint">·</span><span class="c-n faint">·</span><span class="c-n faint">·</span><span class="c-stg">S1</span><span class="c-lead dim">coord</span></span></div>
+        <div class="tr" style="padding-left: 30px"><span class="fd">▸</span><span class="g dim">○</span><span class="i">E-272</span><span class="tt dim">Inbox and events</span><span class="cols"><span class="c-frac dim">0/3</span><span class="c-bar"><span class="cells"><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="c-n faint">·</span><span class="c-n faint">·</span><span class="c-n faint">·</span><span class="c-stg faint">—</span><span class="c-lead dim">coord</span></span></div>
+        <div class="tr" style="padding-left: 30px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-248</span><span class="tt dim">T-109 C1: the key-encoding matrix in real Ghostty and tmux terminals</span><span class="cols"><span class="c-who faint">no claim</span><span class="c-ver faint">—</span><span class="c-frac dim">—</span></span></div>
+        <div class="tr" style="padding-left: 30px"><span class="fd">▸</span><span class="g ok">●</span><span class="i">E-271</span><span class="tt dn">Categories and the migration</span><span class="cols dn"><span class="c-frac">4/4</span><span class="c-bar"><span class="cells"><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span><span class="cl dn"></span></span></span><span style="width: 168px; text-align: right">closed 14:52 · ✓ qa</span></span></div>
+
+        <div style="height: 1px; background: #1a212b; margin: 9px 12px 7px; flex: none"></div>
+        <div class="tr"><span class="fd">▸</span><span><b>Categories</b> (4) · 23 items</span><span class="dim" style="margin-left: 12px; font-size: 12px">Tech debt 9 · Bugs 5 · Follow-ups 6 · Ideas 3</span><span class="prop" title="P6: The folded roots name what they hold: the categories with their counts, the other releases with their versions and whether they are open or closed (closed releases sit in the archive layer, v0.1 section 3.5).">proposal P6</span></div>
+        <div class="tr"><span class="fd">▸</span><span><b>Unscheduled</b> (3)</span></div>
+        <div class="tr"><span class="fd">▸</span><span><b>Other releases</b> (3)</span><span class="dim" style="margin-left: 12px; font-size: 12px">v0.2 open · v0.1.1 and v0.1 closed</span></div>
+
+        <div style="flex: 1"></div>
+        <div class="legend">
+          <div class="lh">PROPOSALS ON THIS BOARD · hover a sticker for its note</div>
+          <div><span class="prop" title="P1: m is the one action key: a quick message to the Coordinator from the row under the cursor (normal mode) or from a selection of rows (visual mode). It is free in a read-only tree in both modes; i and a start text objects in visual mode, and c is the sessions panel&#x27;s capabilities key.">proposal P1</span>m sends a quick message to the Coordinator, from a row or a selection</div>
+          <div><span class="prop" title="P2: An epic has no status (v0.1 section 3.2), so its glyph derives from its tasks: a green dot when closed, a teal half circle when any task is in progress to ready, a circle in text colour when its current stage is planned, a dim circle otherwise. The release row derives the same way from its epics.">proposal P2</span>an epic's glyph derives from its tasks; the release's from its epics</div>
+          <div><span class="prop" title="P3: The progress bar has one cell per child in the order done, ready, qa, review, in progress, planned, backlog. The in-progress, review and qa counts sit in their own columns under a dim header row; a zero shows as a dot.">proposal P3</span>one bar cell per child; in progress, review and qa counted in columns</div>
+          <div><span class="prop" title="P4: The lead column shows coord dimmed when the Coordinator leads the epic, which is every epic while leads = [] (the v0.1.1 crew, kept for v0.1.2); a Lead session&#x27;s name otherwise.">proposal P4</span>the lead reads coord while leads = [] gives every epic to the Coordinator</div>
+          <div><span class="prop" title="P5: The release row: epics done/total and one cell per epic; its second line holds the task breakdown, one cell per task, with the count per status.">proposal P5</span>the release row's second line breaks its tasks down by status</div>
+          <div><span class="prop" title="P6: The folded roots name what they hold: the categories with their counts, the other releases with their versions and whether they are open or closed (closed releases sit in the archive layer, v0.1 section 3.5).">proposal P6</span>the folded roots name what they hold</div>
+          <div><span class="prop" title="P7: The explorer&#x27;s header shows the D state and the count it affects (done shown, done hidden); the state is kept in ui.json.">proposal P7</span>the header shows the D state and how many done items it touches</div>
+          <div><span class="prop" title="P14: The done colour is #98bfa2: green-tinted, between the live text #d6dbe4 and the backlog grey #8a94a3, beside the green filled glyph. Section 3.3 names no value.">proposal P14</span>the done colour, here on E-271, T-256 and T-292</div>
+          <div class="dim">the card's stickers (P15 to P18, P20, P21) are explained on the card boards</div>
+        </div>
+      </div>
+      <div class="foot" style="border-top: 1px solid #222a35"><b>l h</b> unfold, fold · <b>za</b> toggle · <b>j k</b> move · <b>↵</b> into the card · <b>s</b> scope to the row · <b>␣␣</b> back</div>
+      <div class="foot"><b>D</b> hide done · <b>m</b> message the Coordinator<span class="prop" title="P1: m is the one action key: a quick message to the Coordinator from the row under the cursor (normal mode) or from a selection of rows (visual mode). It is free in a read-only tree in both modes; i and a start text objects in visual mode, and c is the sessions panel&#x27;s capabilities key.">proposal P1</span> · <b>V</b> select rows · <b>gi gt gs gp</b></div>
+    </div>
+
+    <div class="cardpane" style="width: 440px">
+      <div class="ph"><span>E-270 · epic · <span class="teal">in work</span></span><span><span style="text-transform: none">↵ focus · zb · m</span><span class="prop" title="P21: Enter moves the focus into the card (section 3.8); the card&#x27;s header lists the keys that work there, and h or Space Space returns to the tree.">proposal P21</span></span></div>
+      <div class="cp">
+        <div class="cpath">R-228 v0.1.2 Working with items › E-270</div>
+        <div class="ctitle">The explorer and the card</div>
+        <div class="csum">The release as an outline tree in the centre, with the card of the row under the cursor beside it. Read-only: its one action is a message to the Coordinator.</div>
+        <div class="csec"><span>facts</span></div>
+        <div class="kv">
+          <span class="l">status</span><span class="v"><span class="teal">◐ in work</span><span class="dim"> · from its tasks</span><span class="prop" title="P2: An epic has no status (v0.1 section 3.2), so its glyph derives from its tasks: a green dot when closed, a teal half circle when any task is in progress to ready, a circle in text colour when its current stage is planned, a dim circle otherwise. The release row derives the same way from its epics.">proposal P2</span></span>
+          <span class="l">rank</span><span class="v">10 · first of 6 in R-228</span>
+          <span class="l">layer</span><span class="v">now<span class="dim"> · its tasks are in work</span><span class="prop" title="P15: An epic&#x27;s layer is the highest layer among its tasks: now while any task is in work. Today the hub files an open epic under background, because a container has no status.">proposal P15</span></span>
+          <span class="l">labels</span><span class="v">v0.1.2 · workbench</span>
+          <span class="l">parent</span><span class="v">R-228 v0.1.2 Working with items</span>
+          <span class="l">lead</span><span class="v">coord<span class="dim"> · Coordinator · no epic Lead</span></span>
+          <span class="l">claim</span><span class="v dim">none</span>
+          <span class="l">holds</span><span class="v dim">none on the epic</span>
+          <span class="l">on tasks</span><span class="v"><span class="teal">impl-279 impl-280 · rev-26 rev-27</span><span class="prop" title="P16: An epic&#x27;s card lists the claims and verifier holds on its tasks under its own claim and holds, which stay empty without a dedicated Lead.">proposal P16</span></span>
+        </div>
+        <div class="csec"><span>progress</span><span class="r">2 of 10 done</span></div>
+        <div class="cl2" style="display: flex; align-items: center; gap: 8px; white-space: nowrap"><span class="cells"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span><span><span class="warn">1 review</span><span class="dim"> · </span><span class="teal">2 in progress</span><span class="dim"> · </span>2 planned<span class="dim"> · 3 backlog</span></span></div>
+        <div class="csec"><span>plan · stage 2 of 3</span><span class="r">gp plan view</span></div>
+        <div class="cl2"><span class="teal">S2 rows and the card</span> · in work · 0 of 5 merged</div>
+        <div class="cl2 dim">qa affected after stage · S1 closed · approved 11:05</div>
+        <div class="csec"><span>latest verdict</span><span class="r">in its tasks<span class="prop" title="P17: For a container, the latest verdict and the last activity are the latest in its subtree, naming the item they came from.">proposal P17</span></span></div>
+        <div class="cl2"><span class="bad">✗ review · not clear</span><span class="dim"> · T-279 · rev-26 [Reviewer] · r1 · 18:31</span></div>
+        <div class="cl2">C3 failed: a planless epic still shows "S1 · 0 of 0"</div>
+        <div class="csec"><span>relations and dates</span></div>
+        <div class="kv">
+          <span class="l">blocked by</span><span class="v">E-271 Categories and the migration <span class="ok">● done</span></span>
+          <span class="l">blocks</span><span class="v">E-272 Inbox and events</span>
+          <span class="l">created</span><span class="v">2026-10-12 10:05 · coord<span class="dim"> · updated 11:05</span></span>
+          <span class="l">last</span><span class="v">19:34 · rev-27 took a hold on T-278</span>
+        </div>
+        <div class="zb"><span>▸</span><span>agents' text · Goal, Contents, Done, Plan · 2.3k words</span><span style="margin-left: auto" class="k">zb</span><span class="prop" title="P18: The folded agents&#x27; text line names the body&#x27;s sections and its size in words; zb unfolds it in place and folds it again.">proposal P18</span></div>
+        <div class="mline"><span class="k">m</span><span>message the Coordinator in E-270's topic…</span><span style="margin-left: auto"></span><span class="prop" title="P20: The composer stays one line on the card until m opens it in place; the item and the card line under the cursor (a criterion, a blocker) ride with the message.">proposal P20</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>explorer · R-228 · E-270 under the cursor</span>
+    <span>hub: ok</span>
+    <span>sessions: 7 busy · 3 idle</span>
+    <span style="margin-left: auto">explorer at the release root: live items by rank, the done after them in the done colour, three folded roots</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

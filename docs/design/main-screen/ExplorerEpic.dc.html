@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: item explorer scoped to an epic</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;gap:12px}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap}
+.dim{color:#8a94a3}
+.faint{color:#5b6472}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+.watch{color:#c2a15e}
+.dn{color:#98bfa2}
+.prop{display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.02em;text-transform:none;white-space:nowrap;vertical-align:1px;cursor:help}
+.tree{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:4px 0}
+.tr{display:flex;align-items:center;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden;flex:none}
+.tr.sel{background:#182131}
+.tr.vis{background:#264f78}
+.tr.hd{height:20px;color:#5b6472;font-size:11px;letter-spacing:.04em}
+.tr .fd{width:14px;flex:none;color:#5b6472}
+.tr .g{width:16px;flex:none}
+.tr .i{width:50px;flex:none;color:#8a94a3}
+.tr .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.cols{display:flex;align-items:center;flex:none;font-size:12px}
+.c-frac{width:40px;text-align:right}
+.c-bar{width:86px;padding-left:10px;box-sizing:border-box;display:flex;align-items:center}
+.c-n{width:24px;text-align:right}
+.c-stg{width:40px;text-align:right}
+.c-lead{width:56px;text-align:right}
+.c-who{width:150px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.c-ver{width:96px;text-align:left}
+.cells{display:inline-flex;gap:1px;align-items:center}
+.cl{display:inline-block;width:6px;height:10px;border-radius:1px;background:#1e2631}
+.cl.dn{background:#7ddc8a}
+.cl.rd{background:transparent;box-shadow:inset 0 0 0 1px #7ddc8a}
+.cl.qa{background:#f0b429}
+.cl.rv{background:#f0b429}
+.cl.ip{background:#35c4a0}
+.cl.pl{background:transparent;box-shadow:inset 0 0 0 1px #8a94a3}
+.cl.bl{background:#2a3340}
+.cells.s .cl{width:4px;height:8px}
+.root{border-top:1px solid #1a212b;margin-top:8px;padding-top:6px}
+.rk{color:#d6dbe4}
+.foot{display:flex;align-items:center;gap:6px;height:22px;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.foot b{color:#d6dbe4;font-weight:400}
+.legend{margin:6px 12px 8px;border:1px dashed #3d4756;border-radius:5px;background:#0e1219;padding:7px 10px;display:flex;flex-direction:column;gap:3px;font-size:11.5px;line-height:16px;color:#aab3c0}
+.legend .lh{color:#d6dbe4;font-size:11px;letter-spacing:.04em}
+.legend .prop{margin-left:0;margin-right:6px}
+.cardpane{display:flex;flex-direction:column;background:#0d1117;border-left:1px solid #222a35;min-width:0;flex:none}
+.cp{padding:10px 14px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;flex:1;min-height:0}
+.cp>*{flex:none}
+.cpath{color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle{font-size:16px;line-height:21px;font-weight:600}
+.csum{line-height:19px}
+.csec{display:flex;align-items:center;gap:6px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid #1a212b;padding-top:6px}
+.csec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);column-gap:10px;row-gap:1px;font-size:12px;line-height:17px}
+.kv .l{color:#8a94a3}
+.kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2{font-size:12px;line-height:17px}
+.crit{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:17px}
+.crit .cid{color:#8a94a3;min-width:20px}
+.crit .ct{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crit .mk{margin-left:auto;padding-left:12px;color:#8a94a3;white-space:nowrap}
+.cnote{font-size:12px;line-height:16px;padding-left:44px}
+.zb{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border-top:1px solid #1a212b;border-bottom:1px solid #1a212b;padding:5px 0}
+.mline{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:4px 8px}
+.k{display:inline-block;min-width:16px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:15px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.stg-tag{display:inline-block;min-width:20px;padding:0 5px;border-radius:3px;border:1px solid #3a4452;background:#141a23;color:#d6dbe4;font-size:11px;line-height:16px;text-align:center;flex:none}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1.2</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">explorer · E-270 The explorer and the card</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">2</span></span>
+    <span class="chip">sessions <span class="badge n">10</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 300px; flex: none">
+      <div class="ph"><span>items · <span style="text-transform: none">v0.1.2</span></span><span>14 in work · 8 done</span></div>
+      <div class="tabs"><span class="faint">epic</span><span class="cur">all</span><span>E-270</span><span>E-273</span><span>E-274</span><span>E-275</span><span>E-272</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+        <div class="row" style="margin-top: 4px"><span class="faint">▾</span><span class="teal">◐</span><span class="id">E-270</span><span class="t">The explorer and the card</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">2/10</span></div>
+        <div class="sec" style="padding-left: 34px"><span>in progress (2)</span></div>
+        <div class="row sel" style="padding-left: 34px"><span class="teal">◐</span><span class="id">T-279</span><span class="t">The card: summary, facts, progress, verdict</span><span class="claim">impl-279 <span class="bad">✗</span></span><span class="frac">2/5</span></div>
+        <div class="row" style="padding-left: 34px"><span class="teal">◐</span><span class="id">T-280</span><span class="t">Done items after the live ones</span><span class="claim">impl-280</span><span class="frac">0/4</span></div>
+        <div class="sec" style="padding-left: 34px"><span>review (1)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="warn">◉</span><span class="id">T-278</span><span class="t">Rows per level</span><span class="claim">rev-27</span><span class="frac">0/5</span></div>
+        <div class="sec" style="padding-left: 34px"><span>planned (2)</span></div>
+        <div class="row" style="padding-left: 34px"><span>○</span><span class="id">T-281</span><span class="t">s rescopes the tree</span><span class="claim">next</span><span class="frac">0/3</span></div>
+        <div class="row" style="padding-left: 34px"><span class="dim">◌</span><span class="id">T-282</span><span class="t">gi opens the explorer on the card</span><span class="claim dim">by T-279</span><span class="frac">0/3</span></div>
+        <div class="sec" style="padding-left: 34px"><span>▸</span><span>backlog (3)</span><span class="r">za</span></div>
+        <div class="row" style="margin-top: 6px"><span class="faint">▸</span><span class="teal">◐</span><span class="id">E-273</span><span class="t">Remote executors</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rd"></span><span class="cl qa"></span><span class="cl rv"></span><span class="cl ip"></span></span></span><span class="frac">2/6</span></div>
+        <div class="row"><span class="faint">▸</span><span class="teal">◐</span><span class="id">E-274</span><span class="t">Accounts and limits</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl bl"></span></span></span><span class="frac">0/4</span></div>
+        <div class="row"><span class="faint">▸</span><span>○</span><span class="id">E-275</span><span class="t">Stopped sessions and the panel</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">0/4</span></div>
+        <div class="row dim"><span class="faint">▸</span><span>○</span><span class="id">E-272</span><span class="t">Inbox and events</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">0/3</span></div>
+        <div class="sec" style="margin-top: 10px; border-top: 1px solid #1a212b; padding-top: 10px"><span>▸</span><span style="text-transform: none; letter-spacing: 0">categories 23 · unscheduled 3</span><span class="r">f all</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">K J rank among siblings · T to the top</div>
+      <div class="row dim" style="font-size: 12px">↵ open · za fold · e E scope · gt gs</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+      <div class="ph"><span style="text-transform: none; letter-spacing: 0"><span class="dim">R-228 v0.1.2</span><span class="faint"> › </span><span style="color: #d6dbe4">E-270 The explorer and the card</span></span><span><span style="text-transform: none">␣␣ back to R-228 · done shown · 2 · D</span></span></div>
+      <div class="tree">
+
+        <div class="tr" style="margin-top: 2px"><span class="fd">▾</span><span class="g teal">◐</span><span class="i">E-270</span><span class="tt"><b>The explorer and the card</b></span><span class="cols"><span class="c-frac">2/10</span><span class="c-bar"><span class="cells"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="c-n teal">2</span><span class="c-n warn">1</span><span class="c-n faint">·</span><span class="c-stg">S2</span><span class="c-lead dim">coord</span></span></div>
+        <div class="tr" style="height: 18px; padding-left: 42px; font-size: 12px; margin-bottom: 4px"><span class="dim">plan of 3 stages · approval human · approved by you 11:05 · gp opens the plan view</span></div>
+
+        <div class="tr" style="height: 16px; overflow: visible"><span style="width: 22px; flex: none"></span><span class="prop" title="P8: In an epic with a plan, the live tasks group under one label per stage (number, name, state, QA policy, merged count), in rank order inside each stage; the done tasks follow under one done label, in the order they closed.">proposal P8</span><span style="flex: 1"></span><span style="width: 294px; flex: none"><span class="prop" title="P9: A task row shows its claim, or its verifier&#x27;s hold while in review or qa (session and role); a done row shows when it merged. The latest verdict carries its round: r1, r2.">proposal P9</span></span></div>
+        <div class="tr hd"><span class="fd"></span><span class="g"></span><span class="i">id</span><span class="tt">its tasks by stage, by rank in a stage</span><span class="cols"><span class="c-who">claim or holder</span><span class="c-ver">latest verdict</span><span class="c-frac">verif.</span></span></div>
+
+        <div class="tr" style="padding-left: 30px; margin-top: 4px"><span class="stg-tag" style="color: #35c4a0; border-color: #24584b">S2</span><span style="margin-left: 8px; font-weight: 600">rows and the card</span><span class="dim" style="margin-left: 10px; font-size: 12px">in work · 0 of 5 merged · qa affected, after the stage</span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g warn">◉</span><span class="i">T-278</span><span class="tt">Rows per level: release and epic rows with done/total and the status bar</span><span class="cols"><span class="c-who"><span class="teal">rev-27</span> <span class="dim">Reviewer</span></span><span class="c-ver faint">—</span><span class="c-frac dim">0/5</span></span></div>
+        <div class="tr sel" style="padding-left: 50px"><span class="fd"></span><span class="g teal">◐</span><span class="i">T-279</span><span class="tt">The card: summary, facts, progress, verdict and relations; the agents' text behind zb</span><span class="cols"><span class="c-who"><span class="teal">impl-279</span> <span class="dim">Implementer</span></span><span class="c-ver bad">✗ review r1</span><span class="c-frac dim">2/5</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g teal">◐</span><span class="i">T-280</span><span class="tt">Done items after the live ones in the done colour; D hides them, kept in ui.json</span><span class="cols"><span class="c-who"><span class="teal">impl-280</span> <span class="dim">Implementer</span></span><span class="c-ver faint">—</span><span class="c-frac dim">0/4</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g">○</span><span class="i">T-281</span><span class="tt">s rescopes the tree with breadcrumbs in the winbar; ␣␣ goes back</span><span class="cols"><span class="c-who faint">—</span><span class="c-ver faint">—</span><span class="c-frac dim">0/3</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">◌</span><span class="i">T-282</span><span class="tt">gi opens the explorer on the card; the item view retires</span><span class="cols"><span class="c-who dim">blocked by T-279</span><span class="c-ver faint">—</span><span class="c-frac dim">0/3</span></span></div>
+
+        <div class="tr" style="padding-left: 30px; margin-top: 8px"><span class="stg-tag dim">S3</span><span class="dim" style="margin-left: 8px; font-weight: 600">the quick message and the entry points</span><span class="dim" style="margin-left: 10px; font-size: 12px">backlog · qa full, per item</span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-283</span><span class="tt dim">The quick message to the Coordinator from a row or a visual selection</span><span class="cols"><span class="c-who"></span><span class="c-ver"></span><span class="c-frac dim">0/4</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-284</span><span class="tt dim">The Coordinator's clause reads quick messages and acts through the tracker</span><span class="cols"><span class="c-who"></span><span class="c-ver"></span><span class="c-frac dim">0/3</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-285</span><span class="tt dim">␣e opens the explorer; it is the centre view at startup</span><span class="cols"><span class="c-who"></span><span class="c-ver"></span><span class="c-frac dim">0/2</span></span></div>
+
+        <div class="tr" style="padding-left: 30px; margin-top: 8px"><span class="stg-tag" style="color: #7ddc8a; border-color: #2c4a33">✓</span><span class="dn" style="margin-left: 8px; font-weight: 600">done</span><span class="dim" style="margin-left: 10px; font-size: 12px">in the order they closed · S1 summary and the tree · closed 15:02 · review only</span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g ok">●</span><span class="i">T-276</span><span class="tt dn">## Summary in the skills and clauses, with the first-paragraph fallback</span><span class="cols dn"><span class="c-who">merged 13:40</span><span class="c-ver">✓ review</span><span class="c-frac">4/4</span></span></div>
+        <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g ok">●</span><span class="i">T-277</span><span class="tt dn">The explorer buffer: the release root, folded roots and in-place folds</span><span class="cols dn"><span class="c-who">merged 15:02</span><span class="c-ver">✓ review</span><span class="c-frac">5/5</span></span></div>
+
+        <div style="flex: 1"></div>
+        <div class="legend">
+          <div class="lh">PROPOSALS ON THIS BOARD · hover a sticker for its note</div>
+          <div><span class="prop" title="P8: In an epic with a plan, the live tasks group under one label per stage (number, name, state, QA policy, merged count), in rank order inside each stage; the done tasks follow under one done label, in the order they closed.">proposal P8</span>stage labels group the live tasks; done ones follow in the order they closed</div>
+          <div><span class="prop" title="P9: A task row shows its claim, or its verifier&#x27;s hold while in review or qa (session and role); a done row shows when it merged. The latest verdict carries its round: r1, r2.">proposal P9</span>claim, or the verifier's hold in review and qa; merge time on done rows; verdict round</div>
+          <div><span class="prop" title="P14: The done colour is #98bfa2: green-tinted, between the live text #d6dbe4 and the backlog grey #8a94a3, beside the green filled glyph. Section 3.3 names no value.">proposal P14</span>the done colour on T-276 and T-277, with the green ● and no strikethrough</div>
+          <div class="dim">s on E-270 scoped the tree; the winbar holds the path, ␣␣ returns to R-228 on E-270</div>
+        </div>
+      </div>
+      <div class="foot" style="border-top: 1px solid #222a35"><b>l h</b> unfold, fold · <b>za</b> toggle · <b>j k</b> move · <b>↵</b> into the card · <b>s</b> scope to the row · <b>␣␣</b> back</div>
+      <div class="foot"><b>D</b> hide done · <b>m</b> message the Coordinator<span class="prop" title="P1: m is the one action key: a quick message to the Coordinator from the row under the cursor (normal mode) or from a selection of rows (visual mode). It is free in a read-only tree in both modes; i and a start text objects in visual mode, and c is the sessions panel&#x27;s capabilities key.">proposal P1</span> · <b>V</b> select rows · <b>gi gt gs gp</b></div>
+    </div>
+
+    <div class="cardpane" style="width: 440px">
+      <div class="ph"><span>T-279 · task · <span class="teal">in progress</span></span><span><span style="text-transform: none">↵ focus · zb · m</span><span class="prop" title="P21: Enter moves the focus into the card (section 3.8); the card&#x27;s header lists the keys that work there, and h or Space Space returns to the tree.">proposal P21</span></span></div>
+      <div class="cp" style="gap: 5px">
+        <div class="cpath">R-228 › E-270 The explorer and the card › S2</div>
+        <div class="ctitle">The card: summary, facts, progress, verdict and relations; the agents' text behind zb</div>
+        <div class="csum">The explorer's right part: the human's picture of the row under the cursor, with the agents' text folded.</div>
+        <div class="csec"><span>facts</span></div>
+        <div class="kv">
+          <span class="l">status</span><span class="v"><span class="teal">◐ in progress</span><span class="dim"> · set by rev-26's verdict 18:31</span></span>
+          <span class="l">rank · size</span><span class="v">40 · 4th of 10 in E-270<span class="dim"> · size</span> M<span class="prop" title="P22: The card shows the fields of section 3.12: the size class among the facts, regression_of among the relations, and the scope of a review verdict (full, delta, evidence-only) on the verdict line. Section 3.9 predates them.">proposal P22</span></span>
+          <span class="l">layer</span><span class="v">now<span class="dim"> · labels v0.1.2, workbench</span></span>
+          <span class="l">lead</span><span class="v">impl-279<span class="dim"> · its claim leads the item</span></span>
+          <span class="l">claim</span><span class="v"><span class="teal">impl-279</span> Implementer<span class="dim"> · Codex · busy</span></span>
+          <span class="l">holds</span><span class="v"><span class="teal">rev-26</span> Reviewer<span class="dim"> · since 17:44</span></span>
+        </div>
+        <div class="csec"><span>criteria</span><span class="r">2 of 5 verified · <span class="bad">1 failed</span></span></div>
+        <div class="crit"><span class="ok">●</span><span class="cid">C1</span><span class="ct">The summary, or the first paragraph when it is missing</span><span class="mk">verified</span></div>
+        <div class="crit"><span class="ok">●</span><span class="cid">C2</span><span class="ct">The facts, with claim and holds by role</span><span class="mk">verified</span></div>
+        <div class="crit"><span class="bad">✗</span><span class="cid">C3</span><span class="ct">The plan stage from the epic's plan, none without one</span><span class="mk bad">failed</span></div>
+        <div class="cnote dim" style="padding-left: 36px">a planless epic still shows "S1 · 0 of 0"</div>
+        <div class="crit"><span class="teal">◐</span><span class="cid">C4</span><span class="ct">zb folds the agents' text in place, with its size</span><span class="mk">done</span></div>
+        <div class="crit"><span class="dim">○</span><span class="cid">C5</span><span class="ct">The card follows the cursor within 50 ms on 300 items</span><span class="mk">open</span></div>
+        <div class="csec"><span>latest verdict</span></div>
+        <div class="cl2"><span class="bad">✗ review · not clear</span><span class="dim"> · rev-26 [Reviewer] · r1 · full · 18:31</span></div>
+        <div class="cl2">1 medium finding: C3 · C1 and C2 verified on 4c1d2e7</div>
+        <div class="csec"><span>branch and suite</span><span class="r"><span class="prop" title="P19: The task card adds the branch (commits, last push) and the latest cland verify result for its head: result, shards, tests, time, where it ran. Section 3.9 lists neither.">proposal P19</span></span></div>
+        <div class="cl2">t/T-279-the-card<span class="dim"> · 7 commits · </span><span class="ok">✓ verify green</span><span class="dim"> · 14m</span></div>
+        <div class="csec"><span>relations and dates</span></div>
+        <div class="kv">
+          <span class="l">relations</span><span class="v"><span class="dim">blocked by none · blocks</span> T-282 gi opens the…</span>
+          <span class="l">dates</span><span class="v">created 10:22 · coord<span class="dim"> · updated 18:31</span></span>
+          <span class="l">last</span><span class="v">19:22 · impl-279 pushed the C3 fix</span>
+        </div>
+        <div class="zb"><span>▸</span><span>agents' text · What to build, Criteria, Notes · 640 words</span><span style="margin-left: auto" class="k">zb</span></div>
+        <div class="mline"><span class="k">m</span><span>message the Coordinator in T-279's topic…</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>explorer · E-270 · T-279 under the cursor</span>
+    <span>hub: ok</span>
+    <span>sessions: 7 busy · 3 idle</span>
+    <span style="margin-left: auto">explorer scoped to an epic with s: stages group the live tasks, the done ones close the list in the done colour</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

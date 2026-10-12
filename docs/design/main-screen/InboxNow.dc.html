@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: inbox on the now layer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.shell{display:flex;flex-direction:column;width:840px;flex:none;min-height:0;border:1px solid #222a35;border-radius:6px;overflow:hidden;background:#0b0e14}
+.bar{display:flex;align-items:center;gap:14px;padding:0 12px;height:36px;flex:none;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;flex:none;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.sec{display:flex;align-items:center;gap:8px;padding:9px 12px 3px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.k{display:inline-block;min-width:18px;box-sizing:border-box;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.ir{display:grid;grid-template-columns:14px 64px minmax(0,1fr) 156px 38px;column-gap:8px;align-items:center;height:22px;padding:0 12px;white-space:nowrap}
+.ir>span{overflow:hidden;text-overflow:ellipsis}
+.fr{font-size:12px;color:#8a94a3}
+.tm{font-size:12px;color:#8a94a3;text-align:right}
+.sel{background:#182131}
+.xr{display:flex;align-items:center;gap:8px;min-height:20px;padding:0 12px 0 106px;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden}
+.xq{padding:3px 24px 3px 106px;font-size:13px;line-height:18px;color:#eef1f5}
+.fo{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px 0 106px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.gb{display:block;width:3px;height:22px;margin:0 auto;background:currentColor}
+.gb.ds{background:repeating-linear-gradient(to bottom,currentColor 0 5px,transparent 5px 8px)}
+.foot{display:flex;align-items:center;gap:8px;height:22px;flex:none;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.status{display:flex;gap:18px;align-items:center;height:24px;flex:none;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.mg{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+.note{display:flex;flex-direction:column;gap:4px;padding:8px 12px;border:1px solid #222a35;border-radius:6px;background:#0d1117}
+.note h3{display:flex;align-items:center;gap:8px;margin:0 0 1px;font-size:13px;line-height:18px;font-weight:600;color:#d6dbe4}
+.note p{margin:0;color:#a7b0bc;font-size:12px;line-height:16px}
+.kv{display:grid;grid-template-columns:62px minmax(0,1fr);column-gap:8px;font-size:12px;line-height:16px}
+.kv>span:first-child{color:#5b6472}
+.kv>span:last-child{color:#a7b0bc}
+.mini{display:flex;flex-direction:column;border:1px solid #222a35;border-radius:5px;background:#0b0e14;overflow:hidden}
+.prop{display:inline-block;flex:none;padding:0 5px;border-radius:3px;background:#d6dbe4;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:0;text-transform:none;vertical-align:1px;white-space:nowrap}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.bad{color:#ff7b72}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.watch{color:#c2a15e}
+.ref{color:#6aa5ff}
+.br{color:#eef1f5}
+.nm{font-weight:700;color:#eef1f5}
+.c-co{color:#35c4a0}
+.c-im{color:#a78bfa}
+.c-rv{color:#ee8fc9}
+.c-qa{color:#7fd3e6}
+.c-yu{color:#6aa5ff}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; gap: 20px; padding: 20px; overflow: hidden">
+
+  <div class="shell">
+
+    <div class="bar">
+      <span style="color: #d6dbe4; font-weight: 600">cland</span>
+      <span>cland-v0</span>
+      <span class="chip"><span class="dim">release</span> v0.1.2</span>
+      <span style="color: #5b6472">|</span>
+      <span style="color: #d6dbe4">Inbox</span>
+      <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord <span class="dim">busy</span></span>
+      <span class="chip"><span class="warn">▲</span> needs you <span class="badge">16</span></span>
+      <span class="chip">sessions <span class="badge n">8</span> <span class="warn">2▲</span></span>
+    </div>
+
+    <div class="ph"><span>inbox · now</span><span class="warn">16 need you</span></div>
+
+    <div style="flex: 1; min-height: 0; overflow: hidden; padding: 2px 0 6px; display: flex; flex-direction: column">
+
+      <div class="sec"><span>asks and approvals (6)</span><span class="r">asks answered here · approvals in their session</span></div>
+      <div class="sel" style="padding-bottom: 6px">
+        <div class="ir"><span class="warn">?</span><span class="ref">T-271</span><span class="br">264 item files to rename: one commit, or one per kind?</span><span class="fr"><b class="nm">impl-271</b> via <span class="c-co">coord</span></span><span class="tm">11:52</span></div>
+        <div class="xq">The migration renames 264 item files and rewrites parent and blocked_by in their frontmatter. Land it as one commit, or one commit per kind?</div>
+        <div class="xr"><span class="k">1</span><span>one commit for the whole migration</span></div>
+        <div class="xr"><span class="k">2</span><span>one commit per kind: R, E, T, Q, M, S</span></div>
+        <div class="xr"><span class="k">3</span><span>ask me later</span></div>
+        <div class="xr dim"><span class="k">i</span><span>free answer ·</span><span class="k">↵</span><span>the ask in its topic · forwarded unchanged by coord</span><span class="prop">proposal P1</span></div>
+      </div>
+      <div class="ir"><span class="warn">▲</span><span class="c-im">impl-281</span><span>run: doctl compute droplet create cland-suite-7 --size c-8</span><span class="fr"><span class="warn">waiting 11 m</span> · T-281</span><span class="tm">11:47</span></div>
+      <div class="ir"><span class="warn">?</span><span class="ref">E-266</span><span>The sweep found 2 untagged droplets on your account: delete them?</span><span class="fr"><span class="c-co">coord</span></span><span class="tm">11:31</span></div>
+      <div class="ir"><span class="warn">▲</span><span class="c-yu">aide-3</span><span>edit docs/spec/v0.1.2.md · §3.10 Categories · 14 lines</span><span class="fr"><span class="warn">waiting 49 m</span></span><span class="tm">11:09</span></div>
+      <div class="ir"><span class="warn">?</span><span class="ref">T-255</span><span>size is now required: backfill 41 open tasks, or new ones only?</span><span class="fr"><span class="c-co">coord</span></span><span class="tm">10:05</span></div>
+      <div class="fo"><span>▸ 1 more · the oldest waits 2 h 20 m, since 09:38</span><span class="k">za</span><span class="prop">proposal P2</span></div>
+
+      <div class="sec"><span>plan approvals (1)</span><span class="prop">proposal P3</span><span class="r">↵ the plan view · a approves there</span></div>
+      <div class="ir"><span class="warn">▲</span><span class="ref">E-270</span><span class="br">The item explorer · 3 stages · 8 items · no session launched</span><span class="fr">plan by <span class="c-co">coord</span></span><span class="tm">10:42</span></div>
+
+      <div class="sec"><span>requests to you (2)</span><span class="prop">proposal P4</span><span class="r">do it and reply · d declines</span></div>
+      <div class="ir"><span class="warn">◉</span><span class="ref">A-1540</span><span><span class="dim">review request ·</span> explorer mockups: root, epic, categories</span><span class="fr"><b class="nm">aide-2</b> <span class="c-yu">Aide</span></span><span class="tm">11:40</span></div>
+      <div class="ir"><span class="warn">⇄</span><span class="ref">T-248</span><span><span class="dim">handover ·</span> key matrix: Ghostty done, tmux left · note A-1531</span><span class="fr"><b class="nm">aide-1</b> <span class="c-yu">Aide</span> · stopped</span><span class="tm">09:58</span></div>
+
+      <div class="sec"><span>messages to you (7)</span><span class="prop">proposal P5</span><span class="r">↵ read · r reply · d mark read</span></div>
+      <div class="ir"><span class="c-qa"><i class="gb"></i></span><span class="ref">E-266</span><span>8 vCPU droplet: the full suite in 6 m 40 s against 14 m here</span><span class="fr"><b class="nm">qa-17</b> <span class="c-qa">QA</span></span><span class="tm">11:44</span></div>
+      <div class="ir"><span class="c-rv"><i class="gb"></i></span><span class="ref">T-272</span><span>Checked the rerun you asked about: Ideas is seeded twice</span><span class="fr"><b class="nm">rev-19</b> <span class="c-rv">Reviewer</span></span><span class="tm">11:26</span></div>
+      <div class="ir"><span class="c-co"><i class="gb"></i></span><span class="blue">General</span><span><span class="dim">decision ·</span> T-284 goes before T-283: they share no files</span><span class="fr"><b class="nm">coord</b> <span class="c-co">Coordinator</span></span><span class="tm">11:03</span></div>
+      <div class="ir"><span class="c-yu"><i class="gb ds"></i></span><span class="blue">General</span><span>R-228 notes intro drafted in A-1536; one sentence is yours</span><span class="fr"><b class="nm">aide-2</b> <span class="c-yu">Aide</span></span><span class="tm">10:51</span></div>
+      <div class="ir"><span class="c-im"><i class="gb"></i></span><span class="ref">T-271</span><span>Only parent and blocked_by are rewritten; old ids still resolve</span><span class="fr"><b class="nm">impl-271</b> <span class="c-im">Implementer</span></span><span class="tm">10:20</span></div>
+      <div class="fo"><span>▸ 2 more · since 08:12</span><span class="k">za</span></div>
+
+      <div class="row watch" style="margin-top: 12px; height: 32px; border-top: 1px solid #1a212b"><span>△</span><span>16 new events since your last look at 09:40</span><span class="dim">·</span><span class="warn">⚠&#xFE0E; 2</span><span class="dim">·</span><span class="k">e</span><span class="dim">opens the events view</span><span class="prop">proposal P7</span></div>
+      <div class="row dim"><span>▸</span><span>archive · 17 rows left today</span><span class="k">A</span><span class="prop">proposal P8</span></div>
+
+    </div>
+
+    <div class="foot" style="border-top: 1px solid #222a35">↵ open · 1-9 answer · i free answer · r reply · d read or decline · za more</div>
+    <div class="foot">gi item · gt topic · gs session · gp plan · A archive · e events · ␣N back</div>
+
+    <div class="status">
+      <span>inbox · now · 16 need you</span>
+      <span>hub: ok</span>
+      <span>sessions: 5 busy · 2 waiting · 3 idle</span>
+      <span style="margin-left: auto">by kind · newest first · 5 each</span>
+    </div>
+
+  </div>
+
+  <div class="mg">
+
+    <div style="display: flex; flex-direction: column; gap: 3px; padding: 0 2px 2px">
+      <div style="font-size: 15px; line-height: 20px; font-weight: 700">Inbox on the now layer</div>
+      <div class="dim" style="font-size: 12px; line-height: 16px">T-261 · spec v0.1.2 §3.7, v0.1 §3.5 · replaces Inbox anatomy (v0)</div>
+      <div style="font-size: 12px; line-height: 16px; color: #a7b0bc">Decided in §3.7: by kind, newest first, the last N; chip = inbox count.</div>
+      <div class="dim" style="font-size: 12px; line-height: 16px"><span class="prop">proposal Pn</span> marks a choice the spec leaves open: react by its number.</div>
+    </div>
+
+    <div class="note">
+      <h3>Asks and approvals</h3>
+      <div class="kv"><span>feeds</span><span>the Coordinator's asks, an Implementer's arriving forwarded up the lead chain; sessions waiting to run a command</span></div>
+      <div class="kv"><span>leaves</span><span>answered or cancelled, or its session moves on; never dismissed</span></div>
+      <p><span class="prop">proposal P1</span> The selected row unfolds in place; the rest stay one line.</p>
+    </div>
+
+    <div class="note">
+      <h3>Plan approvals <span class="prop">proposal P3</span></h3>
+      <div class="kv"><span>feeds</span><span>epics whose plan waits under [plan] approval = "human"</span></div>
+      <div class="kv"><span>leaves</span><span>when approved in the plan view, gp then a, or withdrawn</span></div>
+      <p>Its own section, second: an Aide can approve plans but not asks or commands, and one row holds an epic's launch. §3.7 lists it last.</p>
+    </div>
+
+    <div class="note">
+      <h3>Requests to you <span class="prop">proposal P4</span></h3>
+      <div class="kv"><span>feeds</span><span>messages to you whose first line is review request, qa request or handover, as the crew already writes them to each other</span></div>
+      <div class="kv"><span>leaves</span><span>on your reply or verdict; d declines and tells the sender</span></div>
+    </div>
+
+    <div class="note">
+      <h3>Messages to you <span class="prop">proposal P5</span></h3>
+      <div class="kv"><span>feeds</span><span>now-layer messages to you, in the sender's role colour: a session you mentioned, the Coordinator's questions and decisions, an Aide; a topic waiting for you without an ask</span></div>
+      <div class="kv"><span>leaves</span><span>once read, by ↵ or d, or answered: <span class="prop">proposal P6</span> r replies from the row</span></div>
+      <div class="kv"><span>not here</span><span>the Coordinator's reports, watch layer, unread in their topic</span></div>
+    </div>
+
+    <div class="note">
+      <h3>Below the sections</h3>
+      <p><span class="prop">proposal P2</span> 5 rows a section; the more line names the oldest wait. <span class="prop">proposal P7</span> New events since your last look, warnings apart; e opens them. <span class="prop">proposal P8</span> A lists what left in 7 days and how: answered, approved, read, declined.</p>
+      <div class="mini">
+        <div class="bar" style="height: 28px"><span style="color: #d6dbe4; font-weight: 600">cland</span><span>cland-v0</span><span style="margin-left: auto" class="chip"><span class="ok">✓ needs you 0</span></span></div>
+        <div class="row ok">✓ nothing needs you</div>
+        <div class="row watch"><span>△</span><span>4 new events since your last look at 13:10</span><span class="k">e</span></div>
+        <div class="row dim"><span>▸</span><span>archive · 21 rows left today</span><span class="k">A</span></div>
+      </div>
+      <p><span class="prop">proposal P9</span> Empty: the chip turns green; the events line and the archive stay.</p>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

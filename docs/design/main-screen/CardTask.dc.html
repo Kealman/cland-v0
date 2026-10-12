@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: item card of a task</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;gap:12px}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap}
+.dim{color:#8a94a3}
+.faint{color:#5b6472}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+.watch{color:#c2a15e}
+.dn{color:#98bfa2}
+.prop{display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.02em;text-transform:none;white-space:nowrap;vertical-align:1px;cursor:help}
+.tree{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:4px 0}
+.tr{display:flex;align-items:center;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden;flex:none}
+.tr.sel{background:#182131}
+.tr.vis{background:#264f78}
+.tr.hd{height:20px;color:#5b6472;font-size:11px;letter-spacing:.04em}
+.tr .fd{width:14px;flex:none;color:#5b6472}
+.tr .g{width:16px;flex:none}
+.tr .i{width:50px;flex:none;color:#8a94a3}
+.tr .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.cols{display:flex;align-items:center;flex:none;font-size:12px}
+.c-frac{width:40px;text-align:right}
+.c-bar{width:86px;padding-left:10px;box-sizing:border-box;display:flex;align-items:center}
+.c-n{width:24px;text-align:right}
+.c-stg{width:40px;text-align:right}
+.c-lead{width:56px;text-align:right}
+.c-who{width:150px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.c-ver{width:96px;text-align:left}
+.cells{display:inline-flex;gap:1px;align-items:center}
+.cl{display:inline-block;width:6px;height:10px;border-radius:1px;background:#1e2631}
+.cl.dn{background:#7ddc8a}
+.cl.rd{background:transparent;box-shadow:inset 0 0 0 1px #7ddc8a}
+.cl.qa{background:#f0b429}
+.cl.rv{background:#f0b429}
+.cl.ip{background:#35c4a0}
+.cl.pl{background:transparent;box-shadow:inset 0 0 0 1px #8a94a3}
+.cl.bl{background:#2a3340}
+.cells.s .cl{width:4px;height:8px}
+.root{border-top:1px solid #1a212b;margin-top:8px;padding-top:6px}
+.rk{color:#d6dbe4}
+.foot{display:flex;align-items:center;gap:6px;height:22px;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.foot b{color:#d6dbe4;font-weight:400}
+.legend{margin:6px 12px 8px;border:1px dashed #3d4756;border-radius:5px;background:#0e1219;padding:7px 10px;display:flex;flex-direction:column;gap:3px;font-size:11.5px;line-height:16px;color:#aab3c0}
+.legend .lh{color:#d6dbe4;font-size:11px;letter-spacing:.04em}
+.legend .prop{margin-left:0;margin-right:6px}
+.cardpane{display:flex;flex-direction:column;background:#0d1117;border-left:1px solid #222a35;min-width:0;flex:none}
+.cp{padding:10px 14px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;flex:1;min-height:0}
+.cp>*{flex:none}
+.cpath{color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle{font-size:16px;line-height:21px;font-weight:600}
+.csum{line-height:19px}
+.csec{display:flex;align-items:center;gap:6px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid #1a212b;padding-top:6px}
+.csec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);column-gap:10px;row-gap:1px;font-size:12px;line-height:17px}
+.kv .l{color:#8a94a3}
+.kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2{font-size:12px;line-height:17px}
+.crit{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:17px}
+.crit .cid{color:#8a94a3;min-width:20px}
+.crit .ct{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crit .mk{margin-left:auto;padding-left:12px;color:#8a94a3;white-space:nowrap}
+.cnote{font-size:12px;line-height:16px;padding-left:44px}
+.zb{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border-top:1px solid #1a212b;border-bottom:1px solid #1a212b;padding:5px 0}
+.mline{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:4px 8px}
+.k{display:inline-block;min-width:16px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:15px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.stg-tag{display:inline-block;min-width:20px;padding:0 5px;border-radius:3px;border:1px solid #3a4452;background:#141a23;color:#d6dbe4;font-size:11px;line-height:16px;text-align:center;flex:none}
+.anat{position:relative;width:1440px;height:900px;box-sizing:border-box;background:#0b0e14;color:#d6dbe4;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:18px;overflow:hidden}
+.cardcol{position:absolute;left:360px;top:12px;width:720px;display:flex;flex-direction:column}
+.cb{background:#0d1117;border-left:1px solid #2a3340;border-right:1px solid #2a3340;padding:7px 18px 8px;display:flex;flex-direction:column;gap:4px;min-width:0;position:relative}
+.cb+.cb{border-top:1px solid #1a212b}
+.cb.first{border-top:1px solid #2a3340;border-radius:6px 6px 0 0;padding:0}
+.cb.last{border-bottom:1px solid #2a3340;border-radius:0 0 6px 6px}
+.lab{display:flex;align-items:center;gap:8px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.lab .r{margin-left:auto;letter-spacing:0;text-transform:none;font-size:12px}
+.nb{display:inline-block;min-width:14px;padding:0 3px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;text-align:center;letter-spacing:0;text-transform:none;flex:none}
+.ttl{font-size:18px;line-height:24px;font-weight:600}
+.sum{font-size:14px;line-height:21px}
+.kv4{display:grid;grid-template-columns:88px minmax(0,1fr) 64px minmax(0,1fr);column-gap:12px;row-gap:2px;font-size:12.5px;line-height:18px}
+.kv4 .l,.kvw .l{color:#8a94a3}
+.kv4 .v,.kvw .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kvw{display:grid;grid-template-columns:88px minmax(0,1fr);column-gap:12px;row-gap:2px;font-size:12.5px;line-height:18px}
+.ln{font-size:12.5px;line-height:18px}
+.cells.w{gap:2px}
+.cells.w .cl{width:22px;height:10px}
+.cells.m .cl{width:10px;height:8px}
+.inp{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:6px 10px;color:#d6dbe4;font-size:13px;line-height:19px}
+.ctx{border-left:2px solid #2a3340;background:#0b0e14;padding:3px 10px;font-size:12px;line-height:17px;color:#aab3c0}
+.note{position:absolute;width:300px;box-sizing:border-box;display:flex;flex-direction:column;gap:3px;padding:7px 11px 8px;border:1px dashed #3d4756;border-radius:6px;background:#0e1219;margin-top:3px}
+.note h3{margin:0;font-size:12px;line-height:16px;font-weight:600;color:#d6dbe4;display:flex;align-items:center;gap:6px}
+.note p{margin:0;color:#9aa4b2;font-size:11.5px;line-height:16px}
+.note p .prop{margin-left:2px}
+.nl{left:40px}
+.nr{left:1100px}
+.nl::after{content:"";position:absolute;top:14px;right:-21px;width:20px;border-top:1px dashed #4a5566}
+.nr::before{content:"";position:absolute;top:14px;left:-21px;width:20px;border-top:1px dashed #4a5566}
+.crit2{display:grid;grid-template-columns:16px 26px minmax(0,1fr) auto;column-gap:6px;font-size:12.5px;line-height:18px;align-items:baseline}
+.crit2 .mk{color:#8a94a3;font-size:12px;white-space:nowrap;text-align:right}
+.crit2 .cn{grid-column:3 / span 2;font-size:12px;line-height:16px;margin-bottom:2px}
+.vbox{border:1px solid #2a3340;border-radius:5px;padding:6px 10px;display:flex;flex-direction:column;gap:2px;font-size:12.5px;line-height:18px}
+.nr.low::before{top:auto;bottom:14px}
+</style>
+</helmet>
+<div class="anat">
+<div class="cardcol">
+
+  <div class="cb first"><div class="ph" style="border-bottom-color: #1a212b"><span>T-279 · task · <span class="teal">in progress</span></span><span style="text-transform: none">↵ focus · zb text · m message · gt topic · gs session · gb branch</span></div></div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">1</span><span style="text-transform: none; letter-spacing: 0; font-size: 12px">R-228 v0.1.2 › E-270 The explorer and the card › S2, lane b</span></div>
+    <div class="ttl">The card: summary, facts, progress, verdict and relations; the agents' text behind zb</div>
+  </div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">2</span>summary</div>
+    <div class="sum">The explorer's right part: the human's picture of the row under the cursor, with the agents' text folded behind zb. It replaces the item view on gi.</div>
+  </div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">3</span>facts</div>
+    <div class="kv4">
+      <span class="l">status</span><span class="v"><span class="teal">◐ in progress</span><span class="dim"> · verdict 18:31</span></span>
+      <span class="l">parent</span><span class="v">E-270 The explorer and the card</span>
+      <span class="l">rank</span><span class="v">40 · 4th of 10 in E-270</span>
+      <span class="l">lead</span><span class="v">impl-279<span class="dim"> · its claimant</span></span>
+      <span class="l">layer</span><span class="v">now</span>
+      <span class="l">claim</span><span class="v"><span class="teal">impl-279</span> Implementer<span class="dim"> · busy</span></span>
+      <span class="l">labels</span><span class="v">v0.1.2 · workbench</span>
+      <span class="l">holds</span><span class="v"><span class="teal">rev-26</span> Reviewer<span class="dim"> · since 17:44</span></span>
+      <span class="l">size</span><span class="v">M<span class="dim"> · ex ante</span><span class="prop" title="P22: The card shows the fields of section 3.12: the size class among the facts, regression_of among the relations, and the scope of a review verdict (full, delta, evidence-only) on the verdict line. Section 3.9 predates them.">proposal P22</span></span>
+      <span class="l"></span><span class="v"></span>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">4</span>criteria<span class="r">2 of 5 verified · <span class="bad">1 failed</span></span></div>
+    <div class="crit2"><span class="ok">●</span><span class="dim">C1</span><span>The summary, or the first paragraph standing in</span><span class="mk">verified · rev-26 · r1 · 18:31</span></div>
+    <div class="crit2"><span class="ok">●</span><span class="dim">C2</span><span>The facts, with the claim and the holds by role</span><span class="mk">verified · rev-26 · r1 · 18:31</span></div>
+    <div class="crit2"><span class="bad">✗</span><span class="dim">C3</span><span>The plan stage from the plan, none without one</span><span class="mk bad">failed · rev-26 · r1 · 18:31</span>
+      <span class="cn"><span class="dim">note:</span> a planless epic still shows "stage S1 · 0 of 0"</span></div>
+    <div class="crit2"><span class="teal">◐</span><span class="dim">C4</span><span>zb folds the agents' text; the line shows its size</span><span class="mk">done · impl-279 · 17:38</span></div>
+    <div class="crit2"><span class="dim">○</span><span class="dim">C5</span><span>The card follows the cursor within 50 ms</span><span class="mk">open</span></div>
+  </div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">5</span>latest verdict</div>
+    <div class="vbox" style="border-color: #ff7b72"><div><span class="bad">✗ review · not clear</span><span class="dim"> · rev-26 [Reviewer] · round 1 · scope full · 18:31</span></div><div>C3 failed: a planless epic still shows "S1 · 0 of 0". 1 medium finding, none high.</div><div class="dim">run rev-26-20261012-279-1 · on 4c1d2e7 · rev-26 keeps its hold for round 2</div></div>
+  </div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">6</span>branch and suite<span class="prop" title="P19: The task card adds the branch (commits, last push) and the latest cland verify result for its head: result, shards, tests, time, where it ran. Section 3.9 lists neither.">proposal P19</span></div>
+    <div class="kvw">
+      <span class="l">branch</span><span class="v">t/T-279-the-card<span class="dim"> · 7 commits, 2 since the verdict · pushed 19:22</span></span>
+      <span class="l">suite</span><span class="v"><span class="ok">✓ green</span><span class="dim"> · cland verify all · 1,618 of 1,618 · 14m 32s · at 9b0e3a1 · remote</span></span>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="lab"><span class="nb">7</span>relations and dates</div>
+    <div class="kvw">
+      <span class="l">blocked by</span><span class="v">none<span class="dim"> · T-277 </span><span class="ok">● done 15:02</span></span>
+      <span class="l">blocks</span><span class="v">T-282 gi opens the explorer on the card<span class="dim"> · ◌ planned</span></span>
+      <span class="l">created</span><span class="v">2026-10-12 10:22 by coord<span class="dim"> · updated 18:31, the verdict's marks</span></span>
+      <span class="l">last</span><span class="v">19:22 · impl-279 pushed 2 commits: "C3: no stage line without a plan"</span>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="ln" style="display: flex; align-items: center; gap: 8px; color: #8a94a3"><span class="nb">8</span><span>▸</span><span>agents' text · Summary, What to build, Acceptance criteria, Notes · 640 words</span><span style="margin-left: auto" class="k">zb</span></div>
+  </div>
+
+  <div class="cb last">
+    <div class="ln" style="display: flex; align-items: center; gap: 8px"><span class="nb">9</span><span class="mline" style="flex: 1; min-width: 0"><span class="k">m</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">message the Coordinator in T-279's topic · T-279 and C3 ride with it…</span></span><span class="prop" title="P20: The composer stays one line on the card until m opens it in place; the item and the card line under the cursor (a criterion, a blocker) ride with the message.">proposal P20</span></div>
+  </div>
+
+</div>
+
+  <div class="note nl" style="top: 12px"><h3><span class="nb">1</span>The card of a task</h3><p>T-279 under the cursor in the epic scope (the epic explorer board), alone at reading size. The same blocks as the epic's card, with the criteria in place of the children and no plan block; the path names the stage and lane.</p></div>
+  <div class="note nr" style="top: 130px"><h3><span class="nb">2</span>Summary</h3><p>The item's ## Summary (§3.9). The skills and the role clauses ask whoever files the task to write it; without one, the first paragraph of the first section that is not Parent stands in.</p></div>
+  <div class="note nl" style="top: 210px"><h3><span class="nb">3</span>Facts, with claim and holds</h3><p>§3.9's facts. A task's lead is its claimant (v0.1 §3.7). The claim and each hold carry their role: rev-26 kept its hold after its round-1 verdict and re-reviews the fix. Size is §3.12's required class<span class="prop" title="P22: The card shows the fields of section 3.12: the size class among the facts, regression_of among the relations, and the scope of a review verdict (full, delta, evidence-only) on the verdict line. Section 3.9 predates them.">proposal P22</span>.</p></div>
+  <div class="note nr" style="top: 346px"><h3><span class="nb">4</span>Criteria with marks</h3><p>A task's progress (§3.9): each criterion with its glyph and latest mark (v0.1 §3.4): ○ open, ◐ done, ● verified, ✗ failed with the verifier's note under it. The header counts verified of total, like the row's fraction.</p></div>
+  <div class="note nl" style="top: 508px"><h3><span class="nb">5</span>Latest verdict</h3><p>Kind, result, session and role, round, scope (§3.12)<span class="prop" title="P22: The card shows the fields of section 3.12: the size class among the facts, regression_of among the relations, and the scope of a review verdict (full, delta, evidence-only) on the verdict line. Section 3.9 predates them.">proposal P22</span> and time; the reason names the failed criterion and the findings. The run and what the verifier does next close it.</p></div>
+  <div class="note nr" style="top: 618px"><h3><span class="nb">6</span>Branch and suite</h3><p>Not in §3.9's list<span class="prop" title="P19: The task card adds the branch (commits, last push) and the latest cland verify result for its head: result, shards, tests, time, where it ran. Section 3.9 lists neither.">proposal P19</span>: the task branch with its commits and last push, and the latest cland verify result for its head, here a remote run on a DigitalOcean VM that E-273 brought.</p></div>
+  <div class="note nl" style="top: 694px"><h3><span class="nb">7</span>Relations and dates</h3><p>Blocked by and blocks with each end's state, plus regression_of when the task reworks another (§3.12). Created, updated and the last activity.</p></div>
+  <div class="note nl" style="top: 810px"><h3><span class="nb">8</span>The agents' text</h3><p>The body as agents wrote it, folded to one line with its sections and size<span class="prop" title="P18: The folded agents&#x27; text line names the body&#x27;s sections and its size in words; zb unfolds it in place and folds it again.">proposal P18</span>; zb unfolds it in place.</p></div>
+  <div class="note nr low" style="top: 760px"><h3><span class="nb">9</span>The quick message, folded</h3><p>One line until m opens it in place<span class="prop" title="P20: The composer stays one line on the card until m opens it in place; the item and the card line under the cursor (a criterion, a blocker) ride with the message.">proposal P20</span>: a message into T-279's topic, addressed to the Coordinator, with T-279 and the card line under the cursor (here C3) riding along.</p></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

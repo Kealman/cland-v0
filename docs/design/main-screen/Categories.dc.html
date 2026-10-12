@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: item explorer, categories and the quick message</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;gap:12px}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap}
+.dim{color:#8a94a3}
+.faint{color:#5b6472}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+.watch{color:#c2a15e}
+.dn{color:#98bfa2}
+.prop{display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.02em;text-transform:none;white-space:nowrap;vertical-align:1px;cursor:help}
+.tree{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:4px 0}
+.tr{display:flex;align-items:center;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden;flex:none}
+.tr.sel{background:#182131}
+.tr.vis{background:#264f78}
+.tr.hd{height:20px;color:#5b6472;font-size:11px;letter-spacing:.04em}
+.tr .fd{width:14px;flex:none;color:#5b6472}
+.tr .g{width:16px;flex:none}
+.tr .i{width:50px;flex:none;color:#8a94a3}
+.tr .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.cols{display:flex;align-items:center;flex:none;font-size:12px}
+.c-frac{width:40px;text-align:right}
+.c-bar{width:86px;padding-left:10px;box-sizing:border-box;display:flex;align-items:center}
+.c-n{width:24px;text-align:right}
+.c-stg{width:40px;text-align:right}
+.c-lead{width:56px;text-align:right}
+.c-who{width:150px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.c-ver{width:96px;text-align:left}
+.cells{display:inline-flex;gap:1px;align-items:center}
+.cl{display:inline-block;width:6px;height:10px;border-radius:1px;background:#1e2631}
+.cl.dn{background:#7ddc8a}
+.cl.rd{background:transparent;box-shadow:inset 0 0 0 1px #7ddc8a}
+.cl.qa{background:#f0b429}
+.cl.rv{background:#f0b429}
+.cl.ip{background:#35c4a0}
+.cl.pl{background:transparent;box-shadow:inset 0 0 0 1px #8a94a3}
+.cl.bl{background:#2a3340}
+.cells.s .cl{width:4px;height:8px}
+.root{border-top:1px solid #1a212b;margin-top:8px;padding-top:6px}
+.rk{color:#d6dbe4}
+.foot{display:flex;align-items:center;gap:6px;height:22px;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.foot b{color:#d6dbe4;font-weight:400}
+.legend{margin:6px 12px 8px;border:1px dashed #3d4756;border-radius:5px;background:#0e1219;padding:7px 10px;display:flex;flex-direction:column;gap:3px;font-size:11.5px;line-height:16px;color:#aab3c0}
+.legend .lh{color:#d6dbe4;font-size:11px;letter-spacing:.04em}
+.legend .prop{margin-left:0;margin-right:6px}
+.cardpane{display:flex;flex-direction:column;background:#0d1117;border-left:1px solid #222a35;min-width:0;flex:none}
+.cp{padding:10px 14px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;flex:1;min-height:0}
+.cp>*{flex:none}
+.cpath{color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle{font-size:16px;line-height:21px;font-weight:600}
+.csum{line-height:19px}
+.csec{display:flex;align-items:center;gap:6px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid #1a212b;padding-top:6px}
+.csec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);column-gap:10px;row-gap:1px;font-size:12px;line-height:17px}
+.kv .l{color:#8a94a3}
+.kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2{font-size:12px;line-height:17px}
+.crit{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:17px}
+.crit .cid{color:#8a94a3;min-width:20px}
+.crit .ct{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crit .mk{margin-left:auto;padding-left:12px;color:#8a94a3;white-space:nowrap}
+.cnote{font-size:12px;line-height:16px;padding-left:44px}
+.zb{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border-top:1px solid #1a212b;border-bottom:1px solid #1a212b;padding:5px 0}
+.mline{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:4px 8px}
+.k{display:inline-block;min-width:16px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:15px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.stg-tag{display:inline-block;min-width:20px;padding:0 5px;border-radius:3px;border:1px solid #3a4452;background:#141a23;color:#d6dbe4;font-size:11px;line-height:16px;text-align:center;flex:none}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div class="bar">
+    <span style="color: #d6dbe4; font-weight: 600">cland</span>
+    <span>cland-v0</span>
+    <span class="chip"><span class="dim">release</span> v0.1.2</span>
+    <span style="color: #5b6472">|</span>
+    <span style="color: #d6dbe4">explorer · Categories</span>
+    <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord <span class="dim">Coordinator · Claude Code · fable · busy</span></span>
+    <span class="chip"><span class="warn">▲</span> needs you <span class="badge">2</span></span>
+    <span class="chip">sessions <span class="badge n">10</span></span>
+  </div>
+
+  <div style="display: flex; flex: 1; min-height: 0">
+
+    <div class="panel" style="width: 300px; flex: none">
+      <div class="ph"><span>items · <span style="text-transform: none">v0.1.2</span></span><span>14 in work · 8 done</span></div>
+      <div class="tabs"><span class="faint">epic</span><span class="cur">all</span><span>E-270</span><span>E-273</span><span>E-274</span><span>E-275</span><span>E-272</span></div>
+      <div style="padding: 2px 0 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+        <div class="row" style="margin-top: 4px"><span class="faint">▸</span><span class="teal">◐</span><span class="id">E-270</span><span class="t">The explorer and the card</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">2/10</span></div>
+        <div class="row"><span class="faint">▾</span><span class="teal">◐</span><span class="id">E-273</span><span class="t">Remote executors</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rd"></span><span class="cl qa"></span><span class="cl rv"></span><span class="cl ip"></span></span></span><span class="frac">2/6</span></div>
+        <div class="sec" style="padding-left: 34px"><span>in progress (1)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="teal">◐</span><span class="id">T-293</span><span class="t">The human's npm test goes through the queue</span><span class="claim">impl-293</span><span class="frac">0/3</span></div>
+        <div class="sec" style="padding-left: 34px"><span>review (1)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="warn">◉</span><span class="id">T-253</span><span class="t">Fail fast on a storage stall</span><span class="claim">rev-26</span><span class="frac">0/3</span></div>
+        <div class="sec" style="padding-left: 34px"><span>qa (1)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="warn">◉</span><span class="id">T-246</span><span class="t">The verify line and the queue view</span><span class="claim">qa-28</span><span class="frac ok">4/4</span></div>
+        <div class="sec" style="padding-left: 34px"><span>ready (1)</span></div>
+        <div class="row" style="padding-left: 34px"><span class="ok">◉</span><span class="id">T-254</span><span class="t">A cancelled attempt keeps the cache</span><span class="claim ok">✓ ✓</span><span class="frac ok">3/3</span></div>
+        <div class="row" style="margin-top: 6px"><span class="faint">▸</span><span class="teal">◐</span><span class="id">E-274</span><span class="t">Accounts and limits</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl bl"></span></span></span><span class="frac">0/4</span></div>
+        <div class="row"><span class="faint">▸</span><span>○</span><span class="id">E-275</span><span class="t">Stopped sessions and the panel</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">0/4</span></div>
+        <div class="row dim"><span class="faint">▸</span><span>○</span><span class="id">E-272</span><span class="t">Inbox and events</span><span style="margin-left: auto; display: flex"><span class="cells s"><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span class="frac">0/3</span></div>
+        <div class="sec" style="margin-top: 10px; border-top: 1px solid #1a212b; padding-top: 10px"><span>▸</span><span style="text-transform: none; letter-spacing: 0">categories 23 · unscheduled 3</span><span class="r">f all</span></div>
+      </div>
+      <div class="row dim" style="border-top: 1px solid #222a35; font-size: 12px">K J rank among siblings · T to the top</div>
+      <div class="row dim" style="font-size: 12px">↵ open · za fold · e E scope · gt gs</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <div style="flex: 1; min-height: 0; display: flex">
+
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0e14">
+          <div class="ph"><span>explorer · <span style="text-transform: none; color: #d6dbe4">R-228 v0.1.2 Working with items</span></span><span><span style="text-transform: none; color: #d6dbe4">done hidden · 14</span><span style="text-transform: none"> · D shows</span><span class="prop" title="P7: The explorer&#x27;s header shows the D state and the count it affects (done shown, done hidden); the state is kept in ui.json.">proposal P7</span></span></div>
+          <div class="tree">
+            <div class="tr" style="margin-top: 2px"><span class="fd">▸</span><span class="g teal">◐</span><span class="i">R-228</span><span class="tt"><b>v0.1.2</b> Working with items</span><span class="cols"><span class="c-frac">1/6</span><span class="c-bar"><span class="cells"><span class="cl dn"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl bl"></span></span></span><span class="c-n teal">5</span><span class="c-n warn">2</span><span class="c-n warn">1</span><span class="c-stg faint">—</span><span class="c-lead dim">coord</span></span></div>
+
+            <div style="height: 1px; background: #1a212b; margin: 7px 12px 5px; flex: none"></div>
+            <div class="tr"><span class="fd">▾</span><span><b>Categories</b> (4) · 23 items</span><span class="dim" style="margin-left: 12px; font-size: 12px">outside every release and epic · never unscheduled</span></div>
+
+            <div class="tr" style="padding-left: 30px"><span class="fd">▾</span><span class="g"></span><span class="i">C-216</span><span class="tt"><b>Tech debt</b><span class="dim" style="font-size: 12px">&nbsp;&nbsp;9 open</span><span class="watch" style="font-size: 12px">&nbsp;· idle work</span><span class="prop" title="P13: A category named in idle_from (crew.toml) carries an idle work mark: the Coordinator takes its items in rank order when the release has nothing unblocked.">proposal P13</span><span class="prop" title="P12: An unfolded category shows its top three items by rank and folds the rest into N more; its row carries the open count and how many done items D hides.">proposal P12</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-303</span><span class="tt">Split tracker.ts: the hold, claim and verdict paths in their own modules</span><span class="cols"><span class="c-frac dim">0/3</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-305</span><span class="tt">The tracker index rebuilds every item on one file change</span><span class="cols"><span class="c-frac dim">0/2</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-218</span><span class="tt">Research: verification at crew scale (suite anatomy, test architecture, merge queues, cland verify)</span><span class="cols"><span class="c-frac dim">—</span></span></div>
+            <div class="tr dim" style="padding-left: 50px; font-size: 12px"><span class="fd">▸</span>6 more</div>
+
+            <div class="tr" style="padding-left: 30px"><span class="fd">▾</span><span class="g"></span><span class="i">C-299</span><span class="tt"><b>Bugs</b><span class="dim" style="font-size: 12px">&nbsp;&nbsp;5 open · 2 done hidden</span></span></div>
+            <div class="tr vis" style="padding-left: 50px"><span class="fd"></span><span class="g">○</span><span class="i" style="color: #c9d6ea">T-306</span><span class="tt">cland verify reports 'queue empty' while a remote VM run is still uploading</span><span class="cols"><span class="c-frac" style="color: #c9d6ea">0/2</span></span></div>
+            <div class="tr vis" style="padding-left: 50px"><span class="fd"></span><span class="g">○</span><span class="i" style="color: #c9d6ea">T-308</span><span class="tt">A remote run that loses its VM mid-suite is retried locally without saying so</span><span class="cols"><span class="c-frac" style="color: #c9d6ea">0/3</span></span></div>
+            <div class="tr vis" style="padding-left: 50px; box-shadow: inset 3px 0 0 #9cc3ff"><span class="fd"></span><span class="g">○</span><span class="i" style="color: #c9d6ea">T-310</span><span class="tt">The queue view's ETA ignores remote executors and doubles the wait</span><span class="cols"><span class="c-frac" style="color: #c9d6ea">0/2</span></span></div>
+            <div class="tr dim" style="padding-left: 50px; font-size: 12px"><span class="fd">▸</span>2 more</div>
+
+            <div class="tr" style="padding-left: 30px"><span class="fd">▾</span><span class="g"></span><span class="i">C-300</span><span class="tt"><b>Follow-ups</b><span class="dim" style="font-size: 12px">&nbsp;&nbsp;6 open</span><span class="watch" style="font-size: 12px">&nbsp;· idle work</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-312</span><span class="tt">Document cland verify --remote in hub/README.md and the qa skill</span><span class="cols"><span class="c-frac dim">0/2</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-317</span><span class="tt">After T-279: a planless epic gets no stage line anywhere, plan view included</span><span class="cols"><span class="c-frac dim">0/2</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-314</span><span class="tt">Release notes list the category items merged in the release</span><span class="cols"><span class="c-frac dim">0/3</span></span></div>
+            <div class="tr dim" style="padding-left: 50px; font-size: 12px"><span class="fd">▸</span>3 more</div>
+
+            <div class="tr" style="padding-left: 30px"><span class="fd">▾</span><span class="g"></span><span class="i">C-301</span><span class="tt"><b>Ideas</b><span class="dim" style="font-size: 12px">&nbsp;&nbsp;3 open</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-315</span><span class="tt">Group the explorer's done items by the day they closed</span><span class="cols"><span class="c-frac dim">—</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-316</span><span class="tt">A cost line on the epic card: dollars and tokens so far</span><span class="cols"><span class="c-frac dim">—</span></span></div>
+            <div class="tr" style="padding-left: 50px"><span class="fd"></span><span class="g dim">○</span><span class="i">T-318</span><span class="tt">The quick message keeps its last three drafts per item</span><span class="cols"><span class="c-frac dim">—</span></span></div>
+
+            <div class="tr" style="margin-top: 4px"><span class="fd">▸</span><span><b>Unscheduled</b> (3)</span></div>
+            <div class="tr"><span class="fd">▸</span><span><b>Other releases</b> (3)</span><span class="dim" style="margin-left: 12px; font-size: 12px">v0.2 open · v0.1.1 and v0.1 closed</span></div>
+          </div>
+          <div class="foot" style="border-top: 1px solid #222a35"><b>l h</b> unfold, fold · <b>za</b> toggle · <b>j k</b> move · <b>↵</b> into the card · <b>s</b> scope to the row · <b>␣␣</b> back</div>
+          <div class="foot"><span class="blue">V 3 rows</span> · <b>m</b> message the Coordinator<span class="prop" title="P1: m is the one action key: a quick message to the Coordinator from the row under the cursor (normal mode) or from a selection of rows (visual mode). It is free in a read-only tree in both modes; i and a start text objects in visual mode, and c is the sessions panel&#x27;s capabilities key.">proposal P1</span> · <b>D</b> show done · <b>gi gt gs gp</b></div>
+        </div>
+
+        <div class="cardpane" style="width: 440px">
+          <div class="ph"><span>T-310 · task · <span style="text-transform: none">backlog</span></span><span><span style="text-transform: none">↵ focus · zb · m</span></span></div>
+          <div class="cp" style="gap: 5px">
+            <div class="cpath">Categories › C-299 Bugs › T-310</div>
+            <div class="ctitle">The queue view's ETA ignores remote executors and doubles the wait</div>
+            <div class="csum">With a remote executor admitted, the queue view still estimates admission from local runs only, so its ETA is about twice the real wait.</div>
+            <div class="csec"><span>facts</span></div>
+            <div class="kv">
+              <span class="l">status</span><span class="v">○ backlog</span>
+              <span class="l">rank · size</span><span class="v">30 · third in C-299 Bugs<span class="dim"> · size</span> S</span>
+              <span class="l">layer</span><span class="v">background<span class="dim"> · labels hub, verify</span></span>
+              <span class="l">parent</span><span class="v">C-299 Bugs<span class="dim"> · a category, not unscheduled</span></span>
+              <span class="l">lead</span><span class="v">coord<span class="dim"> · the Coordinator leads the root</span></span>
+              <span class="l">claim</span><span class="v dim">none · holds none</span>
+            </div>
+            <div class="csec"><span>criteria</span><span class="r">0 of 2 verified</span></div>
+            <div class="crit"><span class="dim">○</span><span class="cid">C1</span><span class="ct">The ETA counts remote runs by their own median</span><span class="mk">open</span></div>
+            <div class="crit"><span class="dim">○</span><span class="cid">C2</span><span class="ct">The queue view names each running suite's executor</span><span class="mk">open</span></div>
+            <div class="csec"><span>latest verdict</span><span class="r">none yet</span></div>
+            <div class="csec"><span>relations and dates</span></div>
+            <div class="kv">
+              <span class="l">relations</span><span class="v"><span class="dim">blocks none · regression of</span> T-256<span class="prop" title="P22: The card shows the fields of section 3.12: the size class among the facts, regression_of among the relations, and the scope of a review verdict (full, delta, evidence-only) on the verdict line. Section 3.9 predates them.">proposal P22</span></span>
+              <span class="l">dates</span><span class="v">created 18:12 · qa-28<span class="dim"> · updated 19:05</span></span>
+              <span class="l">last</span><span class="v">19:05 · coord ranked it after T-308</span>
+            </div>
+            <div class="zb"><span>▸</span><span>agents' text · What happens, Criteria, Found during · 310 words</span><span style="margin-left: auto" class="k">zb</span></div>
+            <div class="mline" style="border-color: #6aa5ff"><span class="k">m</span><span class="blue">composing below · 3 rows ride with it</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex: none; border-top: 1px solid #6aa5ff; background: #0d1117; display: flex; flex-direction: column">
+        <div class="ph" style="border-bottom: 1px solid #1a212b"><span><span style="color: #d6dbe4">message to the Coordinator</span> · <span style="text-transform: none">3 rows</span><span class="prop" title="P10: A message from a selection goes to General with the selected ids, because a selection has no single topic; a message from one item goes to that item&#x27;s topic, as section 3.8 says.">proposal P10</span></span><span style="text-transform: none">↵ send · S-↵ newline · Esc closes and keeps the draft</span></div>
+        <div style="padding: 8px 16px 10px; display: flex; flex-direction: column; gap: 7px">
+          <div style="display: flex; gap: 18px; font-size: 12px; white-space: nowrap"><span><span class="dim">to</span> <span class="teal">coord</span> Coordinator</span><span><span class="dim">in</span> General<span class="dim"> · a selection has no single topic</span></span><span class="dim">the Coordinator acts through the tracker and replies in General</span></div>
+          <div style="border-left: 2px solid #2a3340; background: #0b0e14; padding: 4px 10px; font-size: 12px; line-height: 17px; display: flex; flex-direction: column">
+            <div class="dim" style="display: flex; align-items: center">rides with it, as the Coordinator receives it<span class="prop" title="P11: The composer shows what rides with the message exactly as the Coordinator will receive it: where the human was (the scope), then one line per item with its id, kind, status, container, rank and title.">proposal P11</span></div>
+            <div><span class="dim">from the explorer · scope</span> Categories › C-299 Bugs<span class="dim"> · 3 of its 5 open items</span></div>
+            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span class="blue">T-306</span><span class="dim"> task · backlog · C-299 Bugs · rank 10 · </span>cland verify reports 'queue empty' while a remote VM run is still uploading</div>
+            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span class="blue">T-308</span><span class="dim"> task · backlog · C-299 Bugs · rank 20 · </span>A remote run that loses its VM mid-suite is retried locally without saying so</div>
+            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span class="blue">T-310</span><span class="dim"> task · backlog · C-299 Bugs · rank 30 · </span>The queue view's ETA ignores remote executors and doubles the wait</div>
+          </div>
+          <div style="border: 1px solid #2a3340; border-radius: 4px; background: #0b0e14; padding: 7px 10px; line-height: 19px">Plan these three into an epic under R-228, after E-273: all three come from remote runs. Rank it before E-272.<span style="color: #6aa5ff">▏</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status">
+    <span>explorer · Categories · 3 rows selected · T-310 under the cursor</span>
+    <span>hub: ok</span>
+    <span>sessions: 7 busy · 3 idle</span>
+    <span style="margin-left: auto">categories as a root; m on a selection writes one message to the Coordinator</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

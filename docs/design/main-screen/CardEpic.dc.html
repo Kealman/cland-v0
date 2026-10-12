@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: item card of an epic</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.bar{display:flex;align-items:center;gap:16px;padding:0 14px;height:36px;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3}
+.panel{display:flex;flex-direction:column;background:#10141b;border-right:1px solid #222a35;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;gap:12px}
+.tabs{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.row.sel{background:#182131}
+.id{color:#8a94a3;min-width:38px}
+.t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.claim{margin-left:auto;color:#35c4a0;font-size:12px}
+.frac{color:#8a94a3;font-size:12px;min-width:26px;text-align:right}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.sec{display:flex;align-items:center;gap:6px;padding:8px 12px 2px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.status{display:flex;gap:18px;align-items:center;height:24px;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap}
+.dim{color:#8a94a3}
+.faint{color:#5b6472}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.bad{color:#ff7b72}
+.watch{color:#c2a15e}
+.dn{color:#98bfa2}
+.prop{display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:.02em;text-transform:none;white-space:nowrap;vertical-align:1px;cursor:help}
+.tree{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:4px 0}
+.tr{display:flex;align-items:center;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden;flex:none}
+.tr.sel{background:#182131}
+.tr.vis{background:#264f78}
+.tr.hd{height:20px;color:#5b6472;font-size:11px;letter-spacing:.04em}
+.tr .fd{width:14px;flex:none;color:#5b6472}
+.tr .g{width:16px;flex:none}
+.tr .i{width:50px;flex:none;color:#8a94a3}
+.tr .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.cols{display:flex;align-items:center;flex:none;font-size:12px}
+.c-frac{width:40px;text-align:right}
+.c-bar{width:86px;padding-left:10px;box-sizing:border-box;display:flex;align-items:center}
+.c-n{width:24px;text-align:right}
+.c-stg{width:40px;text-align:right}
+.c-lead{width:56px;text-align:right}
+.c-who{width:150px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.c-ver{width:96px;text-align:left}
+.cells{display:inline-flex;gap:1px;align-items:center}
+.cl{display:inline-block;width:6px;height:10px;border-radius:1px;background:#1e2631}
+.cl.dn{background:#7ddc8a}
+.cl.rd{background:transparent;box-shadow:inset 0 0 0 1px #7ddc8a}
+.cl.qa{background:#f0b429}
+.cl.rv{background:#f0b429}
+.cl.ip{background:#35c4a0}
+.cl.pl{background:transparent;box-shadow:inset 0 0 0 1px #8a94a3}
+.cl.bl{background:#2a3340}
+.cells.s .cl{width:4px;height:8px}
+.root{border-top:1px solid #1a212b;margin-top:8px;padding-top:6px}
+.rk{color:#d6dbe4}
+.foot{display:flex;align-items:center;gap:6px;height:22px;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.foot b{color:#d6dbe4;font-weight:400}
+.legend{margin:6px 12px 8px;border:1px dashed #3d4756;border-radius:5px;background:#0e1219;padding:7px 10px;display:flex;flex-direction:column;gap:3px;font-size:11.5px;line-height:16px;color:#aab3c0}
+.legend .lh{color:#d6dbe4;font-size:11px;letter-spacing:.04em}
+.legend .prop{margin-left:0;margin-right:6px}
+.cardpane{display:flex;flex-direction:column;background:#0d1117;border-left:1px solid #222a35;min-width:0;flex:none}
+.cp{padding:10px 14px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;flex:1;min-height:0}
+.cp>*{flex:none}
+.cpath{color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle{font-size:16px;line-height:21px;font-weight:600}
+.csum{line-height:19px}
+.csec{display:flex;align-items:center;gap:6px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid #1a212b;padding-top:6px}
+.csec .r{margin-left:auto;letter-spacing:0;text-transform:none}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);column-gap:10px;row-gap:1px;font-size:12px;line-height:17px}
+.kv .l{color:#8a94a3}
+.kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2{font-size:12px;line-height:17px}
+.crit{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:17px}
+.crit .cid{color:#8a94a3;min-width:20px}
+.crit .ct{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crit .mk{margin-left:auto;padding-left:12px;color:#8a94a3;white-space:nowrap}
+.cnote{font-size:12px;line-height:16px;padding-left:44px}
+.zb{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border-top:1px solid #1a212b;border-bottom:1px solid #1a212b;padding:5px 0}
+.mline{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a94a3;border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:4px 8px}
+.k{display:inline-block;min-width:16px;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:15px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.stg-tag{display:inline-block;min-width:20px;padding:0 5px;border-radius:3px;border:1px solid #3a4452;background:#141a23;color:#d6dbe4;font-size:11px;line-height:16px;text-align:center;flex:none}
+.anat{position:relative;width:1440px;height:900px;box-sizing:border-box;background:#0b0e14;color:#d6dbe4;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:18px;overflow:hidden}
+.cardcol{position:absolute;left:360px;top:12px;width:720px;display:flex;flex-direction:column}
+.cb{background:#0d1117;border-left:1px solid #2a3340;border-right:1px solid #2a3340;padding:7px 18px 8px;display:flex;flex-direction:column;gap:4px;min-width:0;position:relative}
+.cb+.cb{border-top:1px solid #1a212b}
+.cb.first{border-top:1px solid #2a3340;border-radius:6px 6px 0 0;padding:0}
+.cb.last{border-bottom:1px solid #2a3340;border-radius:0 0 6px 6px}
+.lab{display:flex;align-items:center;gap:8px;color:#8a94a3;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.lab .r{margin-left:auto;letter-spacing:0;text-transform:none;font-size:12px}
+.nb{display:inline-block;min-width:14px;padding:0 3px;border-radius:3px;background:#e6e9ef;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;text-align:center;letter-spacing:0;text-transform:none;flex:none}
+.ttl{font-size:18px;line-height:24px;font-weight:600}
+.sum{font-size:14px;line-height:21px}
+.kv4{display:grid;grid-template-columns:88px minmax(0,1fr) 64px minmax(0,1fr);column-gap:12px;row-gap:2px;font-size:12.5px;line-height:18px}
+.kv4 .l,.kvw .l{color:#8a94a3}
+.kv4 .v,.kvw .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kvw{display:grid;grid-template-columns:88px minmax(0,1fr);column-gap:12px;row-gap:2px;font-size:12.5px;line-height:18px}
+.ln{font-size:12.5px;line-height:18px}
+.cells.w{gap:2px}
+.cells.w .cl{width:22px;height:10px}
+.cells.m .cl{width:10px;height:8px}
+.inp{border:1px solid #2a3340;border-radius:4px;background:#0b0e14;padding:6px 10px;color:#d6dbe4;font-size:13px;line-height:19px}
+.ctx{border-left:2px solid #2a3340;background:#0b0e14;padding:3px 10px;font-size:12px;line-height:17px;color:#aab3c0}
+.note{position:absolute;width:300px;box-sizing:border-box;display:flex;flex-direction:column;gap:3px;padding:7px 11px 8px;border:1px dashed #3d4756;border-radius:6px;background:#0e1219;margin-top:3px}
+.note h3{margin:0;font-size:12px;line-height:16px;font-weight:600;color:#d6dbe4;display:flex;align-items:center;gap:6px}
+.note p{margin:0;color:#9aa4b2;font-size:11.5px;line-height:16px}
+.note p .prop{margin-left:2px}
+.nl{left:40px}
+.nr{left:1100px}
+.nl::after{content:"";position:absolute;top:14px;right:-21px;width:20px;border-top:1px dashed #4a5566}
+.nr::before{content:"";position:absolute;top:14px;left:-21px;width:20px;border-top:1px dashed #4a5566}
+.crit2{display:grid;grid-template-columns:16px 26px minmax(0,1fr) auto;column-gap:6px;font-size:12.5px;line-height:18px;align-items:baseline}
+.crit2 .mk{color:#8a94a3;font-size:12px;white-space:nowrap;text-align:right}
+.crit2 .cn{grid-column:3 / span 2;font-size:12px;line-height:16px;margin-bottom:2px}
+.vbox{border:1px solid #2a3340;border-radius:5px;padding:6px 10px;display:flex;flex-direction:column;gap:2px;font-size:12.5px;line-height:18px}
+.nr.low::before{top:auto;bottom:14px}
+</style>
+</helmet>
+<div class="anat">
+<div class="cardcol">
+
+  <div class="cb first""><div class="ph" style="border-bottom-color: #1a212b"><span>E-270 · epic · <span class="teal">in work</span></span><span style="text-transform: none">↵ focus · zb text · m message · gp plan · gt topic</span></div></div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">1</span><span style="text-transform: none; letter-spacing: 0; font-size: 12px">R-228 v0.1.2 Working with items › E-270</span></div>
+    <div class="ttl">The explorer and the card</div>
+  </div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">2</span>summary</div>
+    <div class="sum">The release as an outline tree in the centre, with the card of the row under the cursor beside it. Read-only: its one action is a message to the Coordinator.</div>
+  </div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">3</span>facts</div>
+    <div class="kv4">
+      <span class="l">status</span><span class="v"><span class="teal">◐ in work</span><span class="dim">, derived</span><span class="prop" title="P2: An epic has no status (v0.1 section 3.2), so its glyph derives from its tasks: a green dot when closed, a teal half circle when any task is in progress to ready, a circle in text colour when its current stage is planned, a dim circle otherwise. The release row derives the same way from its epics.">proposal P2</span></span>
+      <span class="l">parent</span><span class="v">R-228 v0.1.2 Working with items</span>
+      <span class="l">rank</span><span class="v">10 · first of 6 epics</span>
+      <span class="l">lead</span><span class="v">coord<span class="dim"> · Coordinator, no Lead</span></span>
+      <span class="l">layer</span><span class="v">now<span class="dim">, from its tasks</span><span class="prop" title="P15: An epic&#x27;s layer is the highest layer among its tasks: now while any task is in work. Today the hub files an open epic under background, because a container has no status.">proposal P15</span></span>
+      <span class="l">claim</span><span class="v dim">none · a Lead claims epics</span>
+      <span class="l">labels</span><span class="v">v0.1.2 · workbench</span>
+      <span class="l">holds</span><span class="v dim">none · verifiers hold tasks</span>
+    </div>
+    <div class="kvw">
+      <span class="l">task claims</span><span class="v"><span class="teal">impl-279</span> T-279<span class="dim"> · </span><span class="teal">impl-280</span> T-280<span class="dim"> · both Implementers</span><span class="prop" title="P16: An epic&#x27;s card lists the claims and verifier holds on its tasks under its own claim and holds, which stay empty without a dedicated Lead.">proposal P16</span></span>
+      <span class="l">task holds</span><span class="v"><span class="teal">rev-26</span> T-279<span class="dim"> · </span><span class="teal">rev-27</span> T-278<span class="dim"> · both Reviewers</span></span>
+    </div>
+  </div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">4</span>progress<span class="r">2 of 10 done</span></div>
+    <div class="ln" style="display: flex; align-items: center; gap: 10px; white-space: nowrap"><span class="cells m"><span class="cells"><span class="cl dn"></span><span class="cl dn"></span><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span></span><span><span class="ok">2 done</span><span class="dim"> · </span><span class="warn">1 review</span><span class="dim"> · </span><span class="teal">2 in progress</span><span class="dim"> · </span>2 planned<span class="dim">, 1 blocked · 3 backlog</span></span></div>
+    <div class="ln" style="display: flex; align-items: center; gap: 8px; white-space: nowrap"><span class="dim">by stage</span><span>S1</span><span class="cells s"><span class="cl dn"></span><span class="cl dn"></span></span><span class="dim">closed ·</span><span class="teal">S2</span><span class="cells s"><span class="cl rv"></span><span class="cl ip"></span><span class="cl ip"></span><span class="cl pl"></span><span class="cl pl"></span></span><span class="dim">in work ·</span><span class="dim">S3</span><span class="cells s"><span class="cl bl"></span><span class="cl bl"></span><span class="cl bl"></span></span><span class="dim">backlog</span><span class="prop" title="P3: The progress bar has one cell per child in the order done, ready, qa, review, in progress, planned, backlog. The in-progress, review and qa counts sit in their own columns under a dim header row; a zero shows as a dot.">proposal P3</span></div>
+  </div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">5</span>plan · stage 2 of 3<span class="r">gp opens the plan view</span></div>
+    <div class="ln"><span class="stg-tag" style="color: #35c4a0; border-color: #24584b">S2</span> <span class="teal">rows and the card</span> · in work · 0 of 5 merged<span class="dim"> · qa affected, after stage</span></div>
+    <div class="ln dim"><span class="stg-tag" style="color: #7ddc8a; border-color: #2c4a33">S1</span> summary and the tree · closed 15:02 · <span class="stg-tag">S3</span> the quick message · backlog</div>
+    <div class="ln dim">approval human · approved by you 2026-10-12 11:05 · unchanged since</div>
+  </div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">6</span>latest verdict<span class="r">in its tasks<span class="prop" title="P17: For a container, the latest verdict and the last activity are the latest in its subtree, naming the item they came from.">proposal P17</span> · the epic's own is the QA demo after S3</span></div>
+    <div class="vbox" style="border-color: #ff7b72"><div><span class="bad">✗ review · not clear</span><span class="dim"> · T-279 The card · rev-26 [Reviewer] · round 1 · full · 18:31</span></div><div>C3 failed: a planless epic still shows "S1 · 0 of 0" <span class="dim">· 1 medium finding</span></div></div>
+  </div>
+
+  <div class="cb"">
+    <div class="lab"><span class="nb">7</span>relations and dates</div>
+    <div class="kvw">
+      <span class="l">blocked by</span><span class="v">E-271 Categories and the migration <span class="ok">● done 14:52</span><span class="dim"> · no open blocker</span></span>
+      <span class="l">blocks</span><span class="v">E-272 Inbox and events <span class="dim">○ backlog</span></span>
+      <span class="l">created</span><span class="v">2026-10-12 10:05 by coord<span class="dim"> · updated 11:05, the plan approved</span></span>
+      <span class="l">last</span><span class="v">19:34 · rev-27 took a hold on T-278 [Reviewer]<span class="dim"> · in its tasks</span></span>
+    </div>
+  </div>
+
+  <div class="cb"">
+    <div class="ln" style="display: flex; align-items: center; gap: 8px; color: #8a94a3"><span class="nb">8</span><span>▸</span><span>agents' text · Goal, Contents, Definition of done, Plan · 2.3k words</span><span style="margin-left: auto" class="k">zb</span><span class="prop" title="P18: The folded agents&#x27; text line names the body&#x27;s sections and its size in words; zb unfolds it in place and folds it again.">proposal P18</span></div>
+  </div>
+
+  <div class="cb last" style="background: #0f141c">
+    <div class="lab"><span class="nb">9</span><span style="color: #d6dbe4">quick message to the Coordinator</span><span class="prop" title="P20: The composer stays one line on the card until m opens it in place; the item and the card line under the cursor (a criterion, a blocker) ride with the message.">proposal P20</span><span class="r">↵ send · S-↵ newline · Esc keeps the draft</span></div>
+    <div class="ln" style="display: flex; gap: 18px"><span><span class="dim">to</span> <span class="teal">coord</span> Coordinator</span><span><span class="dim">in</span> E-270's topic<span class="dim"> · The explorer and the card</span></span></div>
+    <div class="ctx"><span class="dim">rides with it:</span> <span class="blue">E-270</span><span class="dim"> epic · in work · R-228 · rank 10 · S2 · cursor on</span> plan, stage 2 of 3</div>
+    <div class="inp">Take T-282 before T-281: gi should land on the card as soon as T-279 merges.<span style="color: #6aa5ff">▏</span></div>
+  </div>
+</div>
+
+  <div class="note nl" style="top: 12px"><h3><span class="nb">1</span>The card at reading size</h3><p>E-270's card as the explorer's right part shows it, here alone at the item view's size: the same blocks in the same order as the compact card beside the tree. Enter moves the focus in; the header lists the keys that work there<span class="prop" title="P21: Enter moves the focus into the card (section 3.8); the card&#x27;s header lists the keys that work there, and h or Space Space returns to the tree.">proposal P21</span>.</p></div>
+  <div class="note nr" style="top: 106px"><h3><span class="nb">2</span>Summary</h3><p>One to three sentences from the item's ## Summary, written by whoever created it (§3.9). When it is missing, the first paragraph of the first section that is not Parent stands in; for an epic that is its Goal.</p></div>
+  <div class="note nl" style="top: 186px"><h3><span class="nb">3</span>Facts</h3><p>Status, rank, layer, labels, parent path, lead, claim and holds (§3.9). An epic has no status (v0.1 §3.2), so it derives one from its tasks<span class="prop" title="P2: An epic has no status (v0.1 section 3.2), so its glyph derives from its tasks: a green dot when closed, a teal half circle when any task is in progress to ready, a circle in text colour when its current stage is planned, a dim circle otherwise. The release row derives the same way from its epics.">proposal P2</span>, and its layer is the highest of theirs<span class="prop" title="P15: An epic&#x27;s layer is the highest layer among its tasks: now while any task is in work. Today the hub files an open epic under background, because a container has no status.">proposal P15</span>. With leads = [] the Coordinator leads every epic and nothing claims or holds the epic itself, so the claims and holds on its tasks say who is on it<span class="prop" title="P16: An epic&#x27;s card lists the claims and verifier holds on its tasks under its own claim and holds, which stay empty without a dedicated Lead.">proposal P16</span>.</p></div>
+  <div class="note nr" style="top: 344px"><h3><span class="nb">4</span>Progress</h3><p>For a container, the children's breakdown (§3.9): one cell per task in status order, the counts in words, the same cells per stage. Green done, outlined green ready, amber review and qa, teal in progress, outlined planned, dark backlog<span class="prop" title="P3: The progress bar has one cell per child in the order done, ready, qa, review, in progress, planned, backlog. The in-progress, review and qa counts sit in their own columns under a dim header row; a zero shows as a dot.">proposal P3</span>.</p></div>
+  <div class="note nl" style="top: 422px"><h3><span class="nb">5</span>Plan stage</h3><p>For an epic only (§3.9): the stage in work with its merged count, lanes and QA policy, the stages around it, the approval. gp opens the plan view (v0.1 §3.13).</p></div>
+  <div class="note nr" style="top: 522px"><h3><span class="nb">6</span>Latest verdict</h3><p>The latest verdict and its one-line reason (§3.9). An epic's own verdict is the QA demo at its end, so until then the card shows the latest verdict among its tasks and names the task<span class="prop" title="P17: For a container, the latest verdict and the last activity are the latest in its subtree, naming the item they came from.">proposal P17</span>.</p></div>
+  <div class="note nl" style="top: 612px"><h3><span class="nb">7</span>Relations and dates</h3><p>Blocked by and blocks, with the state of each end. Created, updated and the last activity, for a container the latest event in its subtree<span class="prop" title="P17: For a container, the latest verdict and the last activity are the latest in its subtree, naming the item they came from.">proposal P17</span>.</p></div>
+  <div class="note nl" style="top: 728px"><h3><span class="nb">8</span>The agents' text</h3><p>The body, written for agents and unchanged for them (§3.9), folded to one line with its sections and size<span class="prop" title="P18: The folded agents&#x27; text line names the body&#x27;s sections and its size in words; zb unfolds it in place and folds it again.">proposal P18</span>. zb unfolds it in place under this line.</p></div>
+  <div class="note nr" style="top: 762px"><h3><span class="nb">9</span>The quick message</h3><p>m opens the composer in the card<span class="prop" title="P1: m is the one action key: a quick message to the Coordinator from the row under the cursor (normal mode) or from a selection of rows (visual mode). It is free in a read-only tree in both modes; i and a start text objects in visual mode, and c is the sessions panel&#x27;s capabilities key.">proposal P1</span>: a message into E-270's topic, addressed to the Coordinator, who acts through the tracker (§3.8). The item and the card line under the cursor ride with it<span class="prop" title="P20: The composer stays one line on the card until m opens it in place; the item and the card line under the cursor (a criterion, a blocker) ride with the message.">proposal P20</span>.</p></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

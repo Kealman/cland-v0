@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cland: events view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#6aa5ff}a:hover{color:#9cc3ff}
+.shell{display:flex;flex-direction:column;width:840px;flex:none;min-height:0;border:1px solid #222a35;border-radius:6px;overflow:hidden;background:#0b0e14}
+.bar{display:flex;align-items:center;gap:14px;padding:0 12px;height:36px;flex:none;border-bottom:1px solid #222a35;background:#10141b;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;flex:none;padding:0 12px;border-bottom:1px solid #222a35;color:#8a94a3;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;align-items:center;gap:10px;height:30px;flex:none;padding:0 12px;border-bottom:1px solid #1a212b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.tabs .cur{color:#d6dbe4;border-bottom:1px solid #6aa5ff}
+.row{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px;white-space:nowrap;overflow:hidden}
+.badge{min-width:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:16px;text-align:center;background:#f0b429;color:#1a1400}
+.badge.n{background:#2a3340;color:#d6dbe4}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;border:1px solid #2a3340;background:#141a23;color:#d6dbe4;height:22px;font-size:12px}
+.k{display:inline-block;min-width:18px;box-sizing:border-box;text-align:center;border:1px solid #3a4452;border-radius:3px;font-size:11px;line-height:16px;color:#d6dbe4;background:#141a23;padding:0 3px}
+.er{position:relative;display:grid;grid-template-columns:38px 14px 62px 76px minmax(0,1fr);column-gap:8px;align-items:center;height:22px;padding:0 12px 0 16px;white-space:nowrap}
+.er>span{overflow:hidden;text-overflow:ellipsis}
+.er .t{font-size:12px;color:#8a94a3}
+.er .kd{font-size:12px;color:#8a94a3}
+.er.nw::before{content:"";position:absolute;left:5px;top:3px;bottom:3px;width:3px;border-radius:1px;background:#c2a15e}
+.er.q>span{opacity:.5}
+.dl{display:flex;align-items:center;gap:8px;height:22px;padding:0 12px 0 16px;font-size:12px;white-space:pre;overflow:hidden}
+.rule{color:#3a4452}
+.foot{display:flex;align-items:center;gap:8px;height:22px;flex:none;padding:0 12px;font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden}
+.status{display:flex;gap:18px;align-items:center;height:24px;flex:none;padding:0 14px;border-top:1px solid #222a35;background:#10141b;color:#8a94a3;font-size:12px;white-space:nowrap;overflow:hidden}
+.mg{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+.note{display:flex;flex-direction:column;gap:4px;padding:8px 12px;border:1px solid #222a35;border-radius:6px;background:#0d1117}
+.note h3{display:flex;align-items:center;gap:8px;margin:0 0 1px;font-size:13px;line-height:18px;font-weight:600;color:#d6dbe4}
+.note p{margin:0;color:#a7b0bc;font-size:12px;line-height:16px}
+.kv{display:grid;grid-template-columns:62px minmax(0,1fr);column-gap:8px;font-size:12px;line-height:16px}
+.kv>span:first-child{color:#5b6472}
+.kv>span:last-child{color:#a7b0bc}
+.prop{display:inline-block;flex:none;padding:0 5px;border-radius:3px;background:#d6dbe4;color:#0b0e14;font-size:10px;line-height:14px;font-weight:700;letter-spacing:0;text-transform:none;vertical-align:1px;white-space:nowrap}
+.dim{color:#8a94a3}
+.ok{color:#7ddc8a}
+.warn{color:#f0b429}
+.bad{color:#ff7b72}
+.teal{color:#35c4a0}
+.blue{color:#6aa5ff}
+.watch{color:#c2a15e}
+.ref{color:#6aa5ff}
+.c-co{color:#35c4a0}
+.c-im{color:#a78bfa}
+.c-rv{color:#ee8fc9}
+.c-qa{color:#7fd3e6}
+.c-yu{color:#6aa5ff}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0b0e14; color: #d6dbe4; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; display: flex; gap: 20px; padding: 20px; overflow: hidden">
+
+  <div class="shell">
+
+    <div class="bar">
+      <span style="color: #d6dbe4; font-weight: 600">cland</span>
+      <span>cland-v0</span>
+      <span class="chip"><span class="dim">release</span> v0.1.2</span>
+      <span style="color: #5b6472">|</span>
+      <span style="color: #d6dbe4">Events</span>
+      <span style="margin-left: auto" class="chip"><span class="teal">●</span> coord <span class="dim">busy</span></span>
+      <span class="chip"><span class="warn">▲</span> needs you <span class="badge">16</span></span>
+      <span class="chip">sessions <span class="badge n">8</span> <span class="warn">2▲</span></span>
+    </div>
+
+    <div class="ph"><span>events · newest first</span><span><span class="watch">16 new since 09:40</span> · <span class="warn">⚠&#xFE0E; 2</span> · the newest 200</span></div>
+
+    <div class="tabs">
+      <span style="color: #5b6472">kind</span>
+      <span class="cur">all</span><span>session</span><span>task</span><span>verdict</span><span>suite</span><span>release</span><span>artifact</span><span>usage</span><span>topic</span>
+      <span style="color: #2a3340">|</span>
+      <span><span class="warn">⚠&#xFE0E;</span> only</span>
+      <span style="color: #2a3340">|</span>
+      <span>subject: any</span>
+      <span class="prop" style="margin-left: auto">proposal P17</span>
+    </div>
+
+    <div style="flex: 1; min-height: 0; overflow: hidden; padding: 4px 0 6px; display: flex; flex-direction: column">
+
+      <div class="dl"><span class="rule">──</span><span class="dim">Mon 12 Oct · today</span><span class="rule">──────────────────────────────────────────────────────────────────────────────────────────────</span></div>
+
+      <div class="er nw"><span class="t">11:58</span><span class="ok">✓</span><span class="kd">verdict</span><span class="ref">T-283</span><span>review <span class="ok">clear</span> · rev-20 · 5 of 5 verified · on 9d41c07</span></div>
+      <div class="er nw"><span class="t">11:52</span><span class="warn">⚠&#xFE0E;</span><span class="kd">verdict</span><span class="ref">T-272</span><span>review <span class="bad">not clear</span> · rev-19 · C3 failed: a rerun seeds Ideas twice</span></div>
+      <div class="er nw"><span class="t">11:21</span><span class="warn">◉</span><span class="kd">task</span><span class="ref">T-272</span><span>status → review · impl-272 handed it over · rev-19 holds it</span></div>
+      <div class="er nw q"><span class="t">11:16</span><span class="ok">▶&#xFE0E;</span><span class="kd">session</span><span class="c-im">impl-277</span><span>resumed by coord in its own harness session · keeps its claim on T-277</span></div>
+      <div class="er nw"><span class="t">11:12</span><span class="warn">⚠&#xFE0E;</span><span class="kd">session</span><span class="c-im">impl-277</span><span><span class="bad">died</span> · its harness exited with code 137 · on T-277</span></div>
+      <div class="er nw"><span class="t">11:05</span><span class="ok">●</span><span class="kd">task</span><span class="ref">T-282</span><span>merged onto dev at 4c7e19a by coord · done</span></div>
+      <div class="er nw"><span class="t">10:58</span><span class="ok">✓</span><span class="kd">suite</span><span class="ref">T-282</span><span>all · 1 491 of 1 491 passed · 6 m 40 s on cland-suite-6, 8 vCPU</span></div>
+      <div class="er nw"><span class="t">10:51</span><span class="blue">A</span><span class="kd">artifact</span><span class="ref">A-1536</span><span>R-228 notes intro · draft · by aide-2 · yours</span></div>
+      <div class="er nw"><span class="t">10:40</span><span>$</span><span class="kd">usage</span><span class="c-co">coord</span><span>passed the $25 day threshold · 3.1 M tokens since 00:00</span></div>
+      <div class="er nw q"><span class="t">10:33</span><span class="teal">◐</span><span class="kd">task</span><span class="ref">T-281</span><span>criteria C1 C2 done · impl-281 · ×2</span></div>
+      <div class="er nw"><span class="t">10:20</span><span class="warn">◉</span><span class="kd">task</span><span class="ref">T-283</span><span>status → review · rev-20 holds it</span></div>
+      <div class="er nw"><span class="t">10:12</span><span class="teal">▤</span><span class="kd">task</span><span class="ref">E-266</span><span>plan changed by coord: T-284 moved to S2 · qa runs 1 → 2</span></div>
+      <div class="er nw q"><span class="t">10:03</span><span class="blue">⚑</span><span class="kd">task</span><span class="ref">T-281</span><span>claimed by impl-281</span></div>
+      <div class="er nw q"><span class="t">10:02</span><span class="ok">▶&#xFE0E;</span><span class="kd">session</span><span class="c-im">impl-281</span><span>launched · Implementer · Codex · gpt-6.1-sol</span></div>
+      <div class="er nw q"><span class="t">09:58</span><span class="dim">■</span><span class="kd">session</span><span class="c-yu">aide-1</span><span>stopped at its context limit · handed T-248 back to you</span></div>
+      <div class="er nw"><span class="t">09:47</span><span class="dim">○</span><span class="kd">session</span><span class="c-rv">rev-20</span><span>idle 30 min · holds nothing</span></div>
+
+      <div class="dl watch"><span>──</span><span>△ your last look · 09:40 · 16 new above</span><span class="prop">proposal P11</span><span>──────────────────────────────────────────────────────────────────────────────────</span></div>
+
+      <div class="er"><span class="t">09:31</span><span class="ok">✓</span><span class="kd">verdict</span><span class="ref">T-282</span><span>qa <span class="ok">clear</span> · qa-17 · run q-0212 · 3 of 3 verified</span></div>
+      <div class="er q"><span class="t">09:12</span><span class="dim">■</span><span class="kd">topic</span><span class="blue">VM sizing</span><span>closed by coord · answered: 8 vCPU, c-8</span></div>
+      <div class="er"><span class="t">03:17</span><span class="ok">✓</span><span class="kd">verdict</span><span class="ref">R-227</span><span>qa <span class="ok">clear</span> · qa-22 · post-release check: tag v0.1.1 is on GitHub main</span></div>
+      <div class="er"><span class="t">03:14</span><span class="ok">◈</span><span class="kd">release</span><span class="ref">R-227</span><span>v0.1.1 released · tag v0.1.1 at 99b1d66 · notes from R-227</span></div>
+      <div class="er"><span class="t">03:05</span><span class="ok">●</span><span class="kd">task</span><span class="ref">E-231</span><span>closed · v0.1.1 hygiene · all children done, its demo clear</span></div>
+
+      <div class="dl"><span class="rule">──</span><span class="dim">Sun 11 Oct · yesterday</span><span class="rule">──────────────────────────────────────────────────────────────────────────────────────────</span></div>
+
+      <div class="er"><span class="t">20:36</span><span class="ok">●</span><span class="kd">task</span><span class="ref">T-235</span><span>merged onto dev at 35cd922 · done</span></div>
+      <div class="er"><span class="t">19:35</span><span class="ok">✓</span><span class="kd">verdict</span><span class="ref">T-235</span><span>review <span class="ok">clear</span> · rev-18 · C1 C2 verified</span></div>
+      <div class="er"><span class="t">17:12</span><span class="ok">◈</span><span class="kd">release</span><span class="ref">R-130</span><span>v0.1.0 released · tag v0.1.0 on GitHub main</span></div>
+      <div class="er"><span class="t">12:34</span><span class="ok">●</span><span class="kd">task</span><span class="ref">T-171</span><span>merged onto dev at b1add76 · done</span></div>
+      <div class="er"><span class="t">11:39</span><span class="warn">⚠&#xFE0E;</span><span class="kd">verdict</span><span class="ref">T-171</span><span>review <span class="bad">not clear</span> · rev-13 · C4 failed: the full suite exits 1</span></div>
+      <div class="er q"><span class="t"></span><span class="dim">⋮</span><span class="kd"></span><span></span><span class="dim">174 more rows, down to Thu 8 Oct</span></div>
+
+      <div class="dl"><span class="rule">──</span><span class="dim">the newest 200 rows · A pages 200 older ones in from the journal</span><span class="prop">proposal P15</span><span class="rule">──────────────────────────────────────</span></div>
+
+    </div>
+
+    <div class="foot" style="border-top: 1px solid #222a35">↵ open the subject · gi gt gs · gM mute it · 1-8 kind · 0 all · w ⚠&#xFE0E; only · s subject · F clear</div>
+    <div class="foot">A older rows · za folds a day · ␣␣ back · ␣n inbox · ␣L Agents log</div>
+
+    <div class="status">
+      <span>events · 16 new · ⚠&#xFE0E; 2</span>
+      <span>hub: ok</span>
+      <span>sessions: 5 busy · 2 waiting · 3 idle</span>
+      <span style="margin-left: auto">events never count in needs you</span>
+    </div>
+
+  </div>
+
+  <div class="mg">
+
+    <div style="display: flex; flex-direction: column; gap: 3px; padding: 0 2px 2px">
+      <div style="font-size: 15px; line-height: 20px; font-weight: 700">Events view</div>
+      <div class="dim" style="font-size: 12px; line-height: 16px">T-261 · spec v0.1.2 §3.7, v0.1 §3.9 and D17 · GLOSSARY: Events view</div>
+      <div style="font-size: 12px; line-height: 16px; color: #a7b0bc">Decided in §3.7: notifications and events leave the inbox for this view, newest first and capped.</div>
+      <div class="dim" style="font-size: 12px; line-height: 16px"><span class="prop">proposal Pn</span> marks a choice the spec leaves open: react by its number.</div>
+    </div>
+
+    <div class="note">
+      <h3>Getting here <span class="prop">proposal P10</span></h3>
+      <p>␣E from anywhere; e in the inbox, or ↵ on its events line; the palette's Events view. ␣␣ goes back.</p>
+      <p><span class="prop">proposal P11</span> Opening the view sets your last look: the inbox line drops to zero, and the bar on new rows stays until you leave.</p>
+    </div>
+
+    <div class="note">
+      <h3>A row <span class="prop">proposal P12</span></h3>
+      <p>Time, glyph, kind, subject, one line. The subject is an item, a session, a topic or an artifact. <span class="prop">proposal P13</span> ↵ opens it, gi gt gs jump from it, gM mutes its events.</p>
+      <div class="kv"><span>session</span><span><span class="ok">▶&#xFE0E;</span> launched or resumed · <span class="dim">■</span> stopped · <span class="dim">○</span> idle · <span class="teal">⇄</span> handover</span></div>
+      <div class="kv"><span>task</span><span><span class="blue">⚑</span> claimed · <span class="teal">◐</span> <span class="warn">◉</span> <span class="ok">●</span> status and criteria · <span class="teal">▤</span> plan changed</span></div>
+      <div class="kv"><span>others</span><span><span class="ok">✓</span> clear, passed · <span class="bad">✗</span> failed · <span class="ok">◈</span> release · <span class="blue">A</span> artifact · $ usage</span></div>
+      <p>◈, ▤ and $ are new; the rest come from the Agents log and the status glyphs.</p>
+    </div>
+
+    <div class="note">
+      <h3>Warn level, D17</h3>
+      <p>Not-clear verdicts and deaths show an amber <span class="warn">⚠&#xFE0E;</span> in place of their glyph: information, never counted in needs you, never dismissed. <span class="prop">proposal P14</span> A red suite on dev joins them; on a task branch it stays ordinary.</p>
+    </div>
+
+    <div class="note">
+      <h3>Cap, days and quiet rows</h3>
+      <p><span class="prop">proposal P15</span> The newest 200 rows that match the filter, the window a thread keeps; A pages 200 older ones in from the journal. Day rules as in the thread; za folds a day.</p>
+      <p><span class="prop">proposal P16</span> Launches, stops, claims, moves to in progress, done marks and topic closes are dimmed; equal events on one subject within 60 s make one row with ×N, the §3.9 hygiene.</p>
+    </div>
+
+    <div class="note">
+      <h3>Filter <span class="prop">proposal P17</span></h3>
+      <p>1-8 picks a kind, 0 all, w warn only; s picks a subject through the palette: @ session, # item with its subtree, / topic, ~ artifact. F clears; ui.json keeps the filter.</p>
+    </div>
+
+    <div class="note">
+      <h3>Never here <span class="prop">proposal P18</span></h3>
+      <p>Agent-to-agent messages, progress notes and digests stay in the Agents topic, ␣L; the Coordinator's reports and agents' report artifacts stay in their topics. Nothing waiting in the inbox repeats here; what follows from it may, such as E-270's plan approved.</p>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

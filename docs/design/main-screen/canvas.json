@@ -108,6 +108,55 @@
       "w": 1440,
       "h": 900,
       "title": "Epic plan: mid-way (T-100)"
+    },
+    "Explorer.dc.html": {
+      "x": 0,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "Explorer: release root (T-259)"
+    },
+    "ExplorerEpic.dc.html": {
+      "x": 1520,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "Explorer: scoped to an epic (T-259)"
+    },
+    "Categories.dc.html": {
+      "x": 3040,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "Explorer: categories and the quick message (T-259)"
+    },
+    "CardEpic.dc.html": {
+      "x": 4560,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "Card: an epic (T-260)"
+    },
+    "CardTask.dc.html": {
+      "x": 6080,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "Card: a task (T-260)"
+    },
+    "InboxNow.dc.html": {
+      "x": 0,
+      "y": 9000,
+      "w": 1440,
+      "h": 900,
+      "title": "Inbox: the now layer (T-261)"
+    },
+    "Events.dc.html": {
+      "x": 1520,
+      "y": 9000,
+      "w": 1440,
+      "h": 900,
+      "title": "Events view (T-261)"
     }
   },
   "order": [
@@ -124,7 +173,14 @@
     "Palette.dc.html",
     "Thread.dc.html",
     "PlanBefore.dc.html",
-    "PlanMidway.dc.html"
+    "PlanMidway.dc.html",
+    "Explorer.dc.html",
+    "ExplorerEpic.dc.html",
+    "Categories.dc.html",
+    "CardEpic.dc.html",
+    "CardTask.dc.html",
+    "InboxNow.dc.html",
+    "Events.dc.html"
   ],
   "notes": {
     "t1": {
@@ -159,6 +215,20 @@
       "x": 0,
       "y": 5700,
       "text": "v0.1 thread and epic plan: role gutters, Markdown and folded agent runs; the plan before start and mid-way",
+      "kind": "title1",
+      "maxW": 4480
+    },
+    "t6": {
+      "x": 0,
+      "y": 7200,
+      "text": "v0.1.2 explorer and the item card (map T-264, tickets T-259 and T-260; spec v0.1.2 §3.8 to §3.10): the outline tree in the centre with the card following the cursor, scoping with breadcrumbs, the categories root, and the one action: a quick message to the Coordinator. White stickers P1 to P22 are proposals where the spec is silent; hover for the full text.",
+      "kind": "title1",
+      "maxW": 4480
+    },
+    "t7": {
+      "x": 0,
+      "y": 8700,
+      "text": "v0.1.2 inbox on the now layer and the events view (T-261; spec v0.1.2 §3.7): sections by kind, newest first, capped; notifications and events in their own view. Stickers are proposals.",
       "kind": "title1",
       "maxW": 4480
     }
