@@ -140,7 +140,8 @@ export class InboxBoard {
       default:
         break;
     }
-    this.list();
+    // the sections are recomputed once per tick by #changed (coalesced); a synchronous list() here ran the full
+    // inbox query on every hub event, which stalled startup for minutes on a project with 200 remembered processes
     this.#changed();
   }
 
