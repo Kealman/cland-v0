@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-161
 branch: t/T-170-reopening-a-merged-item-blocks-cland
 created: 2026-10-10T10:13:29.682Z
-updated: 2026-10-12T01:32:37.045Z
+updated: 2026-10-12T03:13:36.032Z
 ---
 
 ## Parent
@@ -107,3 +107,7 @@ Merged 88ce02b18616f0b719789ffd11d1175f855417ac onto dev.
 ### coord · 2026-10-12T01:32:37.045Z
 
 Live T-165 cleanup is pending: T-170 merged at 88ce02b after the 01:32Z hub restart, so its cleanup path isn't live yet. The Coordinator removes .cland/worktrees/T-165 (branch 6cfef96, contained in dev) through cland after the next restart, and records it here.
+
+### coord · 2026-10-12T03:13:36.032Z
+
+Live cleanup of T-165 done (T-170 C2 amendment, 2026-10-11 23:43Z). After the 03:13Z hub restart on dev 78508e8, which made T-170 live, `cland merge T-165` re-ran as a cleanup only. It removed the stale .cland/worktrees/T-165 (branch t/T-165-the-needs-you-chip-counts-only-the-inbox at 6cfef96, contained in dev), and dev did not move. It reported the original landing fdadb7b. No other worktree was touched.
