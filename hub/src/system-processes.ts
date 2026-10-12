@@ -5,9 +5,10 @@ import type { Resumed } from './hub/worktrees.ts';
 import { pidAlive } from './project.ts';
 import { TerminationOwner } from './termination-owner.ts';
 import { withCleanupAsync } from './cleanup.ts';
+import { parseProcessTable, processTableArgs, type SystemProcess } from './process-table.ts';
+export type { SystemProcess } from './process-table.ts';
 
 const untimed: Resumed = work => work();
-export type SystemProcess = { pid: number; parent: number; group: number; started: string; state: string; command: string };
 export type ProcessEndOptions = {
   resumed?: Resumed;
   /** Recheck the caller's live authority immediately before destructive actions. */
@@ -47,14 +48,11 @@ export async function systemProcesses(resumed: Resumed = untimed, deadline?: num
     pids = [...selected];
   }
   // Reuse the probe runner: a wrapper's grandchildren must not keep stdout open past the deadline.
-  const selection = pids ? ['-p', [...new Set([process.pid, ...pids])].join(','), '-o'] : ['-axo'];
-  const result = await run('ps', ['ww', ...selection, 'pid=,ppid=,pgid=,lstart=,stat=,command='], process.env, timeout(deadline));
+  const selected = pids ? [...new Set([process.pid, ...pids])] : undefined;
+  const result = await run('ps', processTableArgs(selected), process.env, timeout(deadline));
   return resumed(() => {
     if (result.code !== 0 || result.error) throw new Error('cannot inspect the OS process table: ps failed or timed out');
-    const rows = result.stdout.split('\n').flatMap(line => {
-      const m = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+\s+\S+\s+\d+\s+\S+\s+\d+)\s+(\S+)\s+(.+)$/.exec(line);
-      return m && !m[5]!.startsWith('Z') ? [{ pid: Number(m[1]), parent: Number(m[2]), group: Number(m[3]), started: m[4]!.replace(/\s+/g, ' '), state: m[5]!, command: m[6]! }] : [];
-    });
+    const rows = parseProcessTable(result.stdout);
     if (!rows.some(row => row.pid === process.pid)) throw new Error('cannot verify the OS process table format');
     return rows;
   });

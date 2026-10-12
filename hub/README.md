@@ -1386,7 +1386,12 @@ members must prove current cwd containment or descent from an original identity;
 they are captured during targeted revalidation.
 Each cleaned process is visible as `cleanup pid <pid>: <command>` in the runner's
 log; ambiguous candidates are preserved and printed as `preserved pid <pid>:
-ambiguous ownership`. Cwd discovery uses `lsof` on macOS or `/proc` on Linux.
+ambiguous ownership`. Production inspection and test cleanup share
+`ps -ww -e -o pid=,ppid=,pgid=,lstart=,stat=,command=` on macOS and Linux
+(procps-ng); targeted listings replace `-e` with `-p <pids>`. The repeated `-w`
+keeps the full command line, zombies are dropped, and start-time whitespace is
+normalized to match the lock's `processStarted` identity. No `PS_PERSONALITY`
+setting is needed. Cwd discovery uses `lsof` on macOS or `/proc` on Linux.
 Environment markers select candidates and diagnostics; they never prove ownership.
 The phase root retains its device/inode proof, including during crashed-holder
 recovery, and is removed after the sweep. A test runner waits at startup until its

@@ -1,9 +1,49 @@
-// The real termination API against a deterministic OS boundary. No real process receives a signal.
+// Portable OS listings, then the termination API against a deterministic OS boundary.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { parseProcessTable } from '../src/process-table.ts';
+import { systemProcesses } from '../src/system-processes.ts';
+import { processStarted, processStartedAsync } from '../src/hub/lock.ts';
+import { captureProcess, ownProcess } from './process-cleanup.ts';
+
+test('recorded macOS and procps listings parse the same identities and complete commands', () => {
+  const recorded = (dialect: string) => readFileSync(new URL(`./fixtures/process-listing/${dialect}.txt`, import.meta.url), 'utf8');
+  const mac = parseProcessTable(recorded('macos'));
+  const linux = parseProcessTable(recorded('procps'));
+  assert.deepEqual(mac, linux);
+  assert.equal(mac.length, 1, 'the recorded zombie is dropped');
+  assert.deepEqual(mac[0], {
+    pid: 420100, parent: 420001, group: 420100, started: 'Mon Oct 5 12:00:00 2026', state: 'Ss',
+    command: `/bin/sh -c sleep 600 & wait fixture with "double" and 'single' quotes ${'x'.repeat(4096)} final-argument`,
+  });
+});
+
+test('real whole-table and selected listings match lock and cleanup start identities without truncation', async t => {
+  const columns = process.env.COLUMNS;
+  process.env.COLUMNS = '40';
+  t.after(() => { if (columns === undefined) delete process.env.COLUMNS; else process.env.COLUMNS = columns; });
+  const tail = `with spaces and "quotes" ${'x'.repeat(4096)} final-argument`;
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)', tail], { detached: true, stdio: 'ignore' });
+  ownProcess(t, child.pid);
+  assert.ok(child.pid);
+  for (const rows of [await systemProcesses(), await systemProcesses(undefined, undefined, [child.pid])]) {
+    for (const pid of [process.pid, child.pid]) {
+      const row = rows.find(row => row.pid === pid);
+      assert.ok(row, `listing contains pid ${pid}`);
+      assert.equal(row.started, processStarted(pid));
+      assert.equal(row.started, await processStartedAsync(pid));
+      assert.equal(row.started, captureProcess(pid)?.started);
+    }
+    const row = rows.find(row => row.pid === child.pid)!;
+    assert.equal(row.parent, process.pid);
+    assert.equal(row.group, child.pid);
+    assert.ok(row.command.endsWith(tail), 'full command survives spaces, quotes and narrow terminal widths');
+  }
+});
 
 const entry = fileURLToPath(new URL('../src/system-processes.ts', import.meta.url));
 async function probe(body: string) {
@@ -15,7 +55,7 @@ import { PassThrough } from 'node:stream';
 import { syncBuiltinESMExports } from 'node:module';
 const start = 'Mon Oct 5 12:00:00 2026';
 const row = (pid, parent, group, started = start) => ({ pid, parent, group, started, state: 'S', command: 'node fixture' });
-let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '';
+let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '', tableOutput;
 const signals = []; const listings = [];
 cp.spawn = (bin, args) => {
   assert.ok(bin === 'ps' || bin === 'lsof' || bin === 'pgrep');
@@ -29,11 +69,13 @@ cp.spawn = (bin, args) => {
       output = rows.filter(p => parents.includes(p.parent)).map(p => p.pid).join('\\n');
     } else if (bin === 'lsof') {
       output = 'fcwd\\nn' + cwdOf(Number(args[args.indexOf('-p') + 1]));
-    } else if (args.includes('-axo') || args.includes('pid=,ppid=,pgid=,lstart=,stat=,command=')) {
+    } else if (args.includes('pid=,ppid=,pgid=,lstart=,stat=,command=')) {
+      const selection = args.includes('-p') ? ['-p', args[args.indexOf('-p') + 1]] : ['-e'];
+      assert.deepEqual(args, ['-ww', ...selection, '-o', 'pid=,ppid=,pgid=,lstart=,stat=,command=']);
       listings.push([...args]);
       if (await onTable() === false) { child.stdout.end(); child.stderr.end(); child.emit('close', 1); return; }
       const selected = args.includes('-p') ? args[args.indexOf('-p') + 1].split(',').map(Number) : null;
-      output = [row(process.pid, 1, process.pid), ...rows].filter(p => !selected || selected.includes(p.pid)).map(p =>
+      output = tableOutput ?? [row(process.pid, 1, process.pid), ...rows].filter(p => !selected || selected.includes(p.pid)).map(p =>
         p.pid + ' ' + p.parent + ' ' + p.group + ' ' + p.started + ' ' + p.state + ' ' + p.command).join('\\n');
     } else {
       const pid = Number(args[args.indexOf('-p') + 1]);
@@ -62,11 +104,23 @@ process.kill = (pid, signal) => {
   rows = rows.filter(p => !killed.has(p.pid)).map(p => ({ ...p, parent: killed.has(p.parent) ? 1 : p.parent }));
   return true;
 };
-const { endProcess } = await import(${JSON.stringify(entry)});
+const { endProcess, systemProcesses } = await import(${JSON.stringify(entry)});
 ${body}
 `;
   await promisify(execFile)(process.execPath, ['--input-type=module', '-e', source], { timeout: 10_000 });
 }
+
+test('inspection refuses a successful listing whose own live identity cannot be parsed', async () => {
+  await probe(`
+for (const output of ['', 'not a process table', row(420100, 1, 420100).pid + ' 1 420100 ' + start + ' S node fixture',
+  process.pid + ' 1 ' + process.pid + ' ' + start + ' Z node fixture']) {
+  tableOutput = output;
+  await assert.rejects(systemProcesses(), /cannot verify the OS process table format/);
+  await assert.rejects(systemProcesses(undefined, undefined, [420100]), /cannot verify the OS process table format/);
+}
+assert.deepEqual(signals, []);
+`);
+});
 
 test('termination preserves an unrelated process joining an owned group during identity probes', async () => {
   await probe(`
@@ -481,7 +535,7 @@ onSignal = (pid, signal) => {
 assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 75), true);
 const polls = listings.slice(termAt, stopAt - 1);
 assert.ok(polls.length >= 2, 'grace period includes repeated exit checks');
-assert.ok(polls.every(args => args.includes('-p') && !args.includes('-axo')), 'exit checks never enumerate the machine');
+assert.ok(polls.every(args => args.includes('-p') && !args.includes('-e')), 'exit checks never enumerate the machine');
 assert.deepEqual(rows, []);
 `);
 });

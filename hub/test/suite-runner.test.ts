@@ -771,7 +771,7 @@ test('one per-phase discovery sweep kills and prints a crashed test’s leftover
   // Count the real OS discovery boundary; targeted PID probes and environment hints are separate.
   await writeFile(join(bin, 'ps'), `#!/bin/sh
 case " $* " in
-  *" ww -axo "*) echo scan >> '${scans}' ;;
+  *" -ww -e -o pid=,ppid=,pgid=,lstart=,stat=,command= "*) echo scan >> '${scans}' ;;
 esac
 exec /bin/ps "$@"
 `, { mode: 0o755 });

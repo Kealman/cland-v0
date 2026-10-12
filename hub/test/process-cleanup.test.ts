@@ -9,6 +9,7 @@ const modulePath = fileURLToPath(new URL('./process-cleanup.ts', import.meta.url
 function probe(body: string, initial = '') {
   const source = `
 import cp from 'node:child_process'; import { syncBuiltinESMExports } from 'node:module';
+import assert from 'node:assert/strict';
 Object.defineProperty(process, 'platform', { value: 'darwin' });
 process.env.TEST_SUITE_RUN_ID = 'owned-run';
 let rows = []; let cwd = ''; const signals = [];
@@ -16,6 +17,8 @@ cp.execFileSync = (command, args) => {
   if (command === 'lsof') return cwd;
   if (command === 'pgrep') return rows.filter(r => args[1].split(',').includes(String(r.group))).map(r => r.pid).join('\\n');
   if (args.includes('eww')) return rows.map(r => r.pid + ' ' + r.command + ' ' + (r.environment ?? ('TEST_SUITE_RUN_ID=' + r.runId))).join('\\n');
+  const selection = args.includes('-p') ? ['-p', args[args.indexOf('-p') + 1]] : ['-e'];
+  assert.deepEqual(args, ['-ww', ...selection, '-o', 'pid=,ppid=,pgid=,lstart=,stat=,command=']);
   return rows.map(r => r.pid + ' ' + r.parent + ' ' + r.group + ' ' + r.started + ' R ' + r.command).join('\\n');
 };
 syncBuiltinESMExports();
@@ -148,7 +151,7 @@ rows = [{ pid: 420020, parent: process.pid, group: 420020, started: start, comma
 const cleanup = ownProcess(t, 420020);
 const exec = cp.execFileSync;
 cp.execFileSync = (command, args) => {
- if (args.includes('-axo') || command === 'lsof') throw new Error('teardown inspected the machine');
+ if (args.includes('-e') || args.includes('-axo') || command === 'lsof') throw new Error('teardown inspected the machine');
  return exec(command, args);
 };
 syncBuiltinESMExports();
@@ -194,7 +197,7 @@ rows = [
 cwd = 'p420025\\nn' + dir + '\\np420026\\nn/outside\\n';
 const exec = cp.execFileSync;
 cp.execFileSync = (command, args) => {
- if (args.includes('-axo') || command === 'lsof' && !args.includes('-p')) throw new Error('global teardown probe');
+ if (args.includes('-e') || args.includes('-axo') || command === 'lsof' && !args.includes('-p')) throw new Error('global teardown probe');
  return exec(command, args);
 };
 syncBuiltinESMExports();
@@ -257,7 +260,7 @@ rows = [{ pid: 420030, parent: 1, group: 420030, started: start, command: 'node 
 cwd = 'p420030\\nn' + root + '\\n';
 const exec = cp.execFileSync; let discovered = false;
 cp.execFileSync = (command, args) => {
- if (command === 'ps' && args.includes('-axo')) {
+ if (command === 'ps' && args.includes('-e')) {
   if (discovered) throw new Error('second discovery listing');
   discovered = true;
  }

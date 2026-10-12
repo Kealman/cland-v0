@@ -4,9 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, readlinkSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import type { TestContext } from 'node:test';
+import { parseProcessTable, processTableArgs, type SystemProcess } from '../src/process-table.ts';
 
 export type ProcessIdentity = { pid: number; started: string; group?: number };
-type ProcessRow = ProcessIdentity & { parent: number; group: number; command: string };
+type ProcessRow = SystemProcess;
 export const RUN_ID = process.env.TEST_SUITE_RUN_ID ??= randomUUID();
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 const recorded = new Map<number, ProcessIdentity>();
@@ -27,17 +28,13 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
     pids = [...new Set([...(pids ?? []), ...members.trim().split(/\s+/).filter(Boolean).map(Number)])];
   }
   if (pids?.length === 0) return [];
-  const selection = pids ? ['-p', pids.join(','), '-o'] : ['-axo'];
   let output: string;
-  try { output = execFileSync('ps', ['ww', ...selection, 'pid=,ppid=,pgid=,lstart=,stat=,command='], { encoding: 'utf8' }); }
+  try { output = execFileSync('ps', processTableArgs(pids), { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }); }
   catch (error) {
     if (!pids || (error as { status?: number }).status !== 1) throw error;
     output = String((error as { stdout?: string }).stdout ?? '');
   }
-  return output.split('\n').flatMap(line => {
-    const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+\s+\S+\s+\d+\s+\S+\s+\d+)\s+(\S+)\s+(.*)$/.exec(line);
-    return match && !match[5]!.startsWith('Z') ? [{ pid: Number(match[1]), parent: Number(match[2]), group: Number(match[3]), started: match[4]!.replace(/\s+/g, ' '), command: match[6]! }] : [];
-  });
+  return parseProcessTable(output);
 }
 /** Capture at spawn/first API observation, never after a remembered child has exited. */
 export function captureProcess(pid: number | undefined): ProcessIdentity | null {
