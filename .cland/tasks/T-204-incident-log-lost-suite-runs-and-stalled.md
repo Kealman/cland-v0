@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-12T14:19:03.355Z
+updated: 2026-10-12T15:31:48.205Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -207,3 +207,7 @@ Incident 2026-10-12 14:16Z, T-277, impl-277: at 13:27:09Z it reported the codex-
 ### coord · 2026-10-12T14:19:03.355Z
 
 Correction to the 14:16Z T-277 entry: not a stall. impl-277's census on 7cb55c6 was running as a hand run on the machine lock and completed at about 14:18Z (hub 1336/1336, Neovim 291/293; the two failures are qa.test.ts's sandbox-exec cases, where the recorder's log open got EPERM). The hub's idle event fired because the session waited on the run. My check misread the verify queue: a hand run on the lock appears as a holder with no session, and the T-283 run that followed hid it. No time was lost; the nudge was unneeded.
+
+### coord · 2026-10-12T15:31:48.205Z
+
+Incident 2026-10-12 15:30Z, integrated dev run 3262aa67 at add6a19 (Coordinator): red on one test, hub/test/claude-code-adapter.test.ts:207 (harness-exited log line read before the hub's asynchronous write; 0 != 1), which passes 3/3 alone. Fourth failure of this class today (codex-adapter :396, codex-adapter recovery read, nvim sessions). Cost: one 14-minute integrated run; dev unreleasable until green. Recovery: T-291 raised into the build and launched (impl-291), fix forward, then a new integrated run.

@@ -4,7 +4,7 @@ kind: task
 title: The inbox in four sections, five rows each, with ages, in Neovim and the CLI
 state: open
 status: review
-criterion_seq: 6
+criterion_seq: 7
 labels:
   - v0.1.2
   - nvim
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-173
 branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
-updated: 2026-10-12T15:13:54.278Z
+updated: 2026-10-12T15:29:37.158Z
 ---
 
 ## Summary
@@ -71,9 +71,15 @@ Out of scope: `r`, `d` on the new rows, and `A` (the next ticket); the events li
   - done: impl-284 · 2026-10-12T14:47:34.673Z
 - [x] C6. Targeted tests pass (nvim headless tests on the stub hub, read with `screenstring()`; a hub test of `cland inbox` on a real hub), and `nvim/README.md` describes the four sections, their order, the five-row fold and the ages.
   - done: impl-284 · 2026-10-12T14:47:34.805Z
+- [x] C7. A regression test bounds the inbox's work per hub event and at startup on a store with thousands of messages (T-293's first follow-up), and the finding on T-293's second point (whether a durable wait start is recorded one tick late) is stated in the item.
+  - done: impl-284 · 2026-10-12T15:28:59.385Z
 
 ## Comments
 
 ### impl-284 · 2026-10-12T14:37:08.668Z
 
 Implemented the four now sections in both views and CLI, per-section five-row folds, selected ask/command details and a local age clock. Added frame metadata for plan stage/lane/item counts and sender roles. Headless and real-hub tests are being updated to the new layout; legacy notifications and events footer remain separate.
+
+### impl-284 · 2026-10-12T15:27:31.984Z
+
+C7 / T-293 regression and timing audit: hub/test/inbox-workload.test.ts seeds 3,200 messages (same-topic answers and cross-topic explicit replies) and 256 remembered processes, starts the actual project hub and drives two 100-frame topic-read event bursts through the JSON-lines protocol. Native SQLite tracing observes real queries without substituting their results. Startup stays within a fixed ≤3 inbox-query budget including its first tick; observed 0 synchronous queries at serving. Each 100-event burst performs no synchronous full query and exactly one next-tick recompute. Reintroducing the pre-b75e0fe observe()->list() call made the test fail on 512 startup queries; the temporary mutation was removed. Timing audit through request/reply protocol frames: inbox_waits is persisted one tick after send, but its since equals the original message.ts, not the recompute time. A request resolved by the human within the same tick never reaches inbox_waits and has no inbox-departure/archive record. The audit test records this existing coalescing limitation; the frame rendering adds no per-event recompute.

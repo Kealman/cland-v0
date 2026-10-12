@@ -3,7 +3,7 @@ id: T-287
 kind: task
 title: Events view quiet rows, warnings, filters in ui.json, gM and the last look
 state: open
-status: review
+status: ready
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-174
 branch: t/T-287-events-view-quiet-rows-warnings-filters
 created: 2026-10-12T11:57:19.803Z
-updated: 2026-10-12T15:15:19.175Z
+updated: 2026-10-12T15:30:30.322Z
 ---
 
 ## Summary
@@ -70,17 +70,23 @@ Out of scope: the retirement of the inbox's notification list (the next ticket);
 ## Acceptance criteria
 
 - [x] C1. Launches, stops, claims, status moves, criterion marks and topic closes are dimmed; five equal events on one subject within 60 seconds show as one row ×5.
-  - done: impl-287 · 2026-10-12T15:13:51.314Z
+  - done: impl-287 · 2026-10-12T15:28:57.611Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 - [x] C2. Not-clear verdicts, deaths, override-raised events and a red suite on `dev` show as warnings; a red suite on a task branch does not; no row repeats something still waiting in the inbox.
   - done: impl-287 · 2026-10-12T15:14:28.531Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 - [x] C3. `1`–`8`, `0`, `w`, `s` with each palette prefix and `F` filter the view as described, and the filter survives a workbench restart through `ui.json`.
   - done: impl-287 · 2026-10-12T15:14:28.850Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 - [x] C4. `gM` hides the subject's rows through the events-view mute list in `ui.json` and the view says how many subjects it hides; `gM` again restores them; the hub's `visibility` mutes and the inbox are unchanged by it.
   - done: impl-287 · 2026-10-12T15:14:29.215Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 - [x] C5. Opening the view sets the last look in `ui.json`; the inbox's events line counts the newer rows and warnings apart, reads "200+" past the cap, and drops to zero after the view opens.
   - done: impl-287 · 2026-10-12T15:14:29.850Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 - [x] C6. Targeted tests pass (hub frame tests of the classes, merging and filters on a real hub; nvim headless tests on the stub hub for the keys, `ui.json` and the events line), and `nvim/README.md` and `hub/README.md` describe the classes, the filters, `gM` and the last look.
   - done: impl-287 · 2026-10-12T15:14:30.287Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 
 ## Comments
 
@@ -91,3 +97,33 @@ Implementation started: hub classes/coalescing/filtering first, then events view
 ### impl-287 · 2026-10-12T15:14:30.905Z
 
 Implementation pushed at aa432f2887ae8b1b4a20c22a532939b2605c6e50. All 36 targeted tests, typechecks and shard lint pass; details in A-1542. origin/dev fetched and merged before full suite (current). Hub outage resolved; requesting exact-head review and full cland verification. Policy has no per-item QA or qaCriteria.
+
+### rev-23 · 2026-10-12T15:22:06.798Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-287-1
+commit: aa432f2887ae8b1b4a20c22a532939b2605c6e50
+
+Medium: hub/src/hub/core.ts:358 live cache starts empty after restart and events.list never seeds it, so the first equal live row lacks replaces/count and duplicates a recent restored journal group instead of extending ×N.
+Medium: nvim/lua/cland/events.lua:248 only the immediate replaces id maps to a row; R1→R2→R3 while Events is hidden loses R1, so Back moves the selected group to its day header. Preserve the full replacement identity chain and regression-test hidden selection with older pages.
+Evidence A-1547: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1547-t-287-review-restored-groups-and-replacement-identity.md. Read C1–C6, spec/docs, production and tests. A-1542 reports 36 targeted checks passing; neither path above is covered. Full suite pending; no Reviewer test execution or edits.
+
+Criteria: C1 failed (A first equal live event after restart does not join the restored journal group; multiple replacements also lose the original cursor identity.).
+
+### impl-287 · 2026-10-12T15:28:17.989Z
+
+Both C1 review regressions reproduced and fixed. A real hub restart test now verifies the first equal live row replaces a journal ×5 group with ×6 even when the group lies beyond the first 200 rows. Headless regression verifies hidden and same-batch replacement chains retain the selected group and 400 loaded rows. Existing real-hub and headless events tests and typechecks pass. Prior verification ff07948a was cancelled (A-1548) because the reviewed head required fixes.
+
+### rev-23 · 2026-10-12T15:30:28.664Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-287-2
+commit: a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+
+No remaining high/medium findings. Startup restores recent journal groups beyond the first page before live announcements, preserving predecessor/count on the first equal event. UI aliases preserve the full replacement chain until visible cursors move. Real-frame restart and headless hidden/batched cursor regressions cover both A-1547 traces, including older pages. C1–C6 checked; classes, filters/persistence, independent mutes, last-look counts and READMEs retained. A-1542/A-1549 report targeted tests/typechecks passing. Full suite pending; cancelled A-1548 is not pass evidence. Evidence A-1552: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1552-t-287-re-review-clear-at-a14ab6d.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

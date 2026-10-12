@@ -3,17 +3,18 @@ id: T-291
 kind: task
 title: "Tests that read hub.log or journal.jsonl right after an event race the hub's asynchronous writes: audit them and wait on the flushLogs barrier"
 state: open
-status: backlog
+status: in progress
 labels:
   - hub
   - ready-for-agent
+  - v0.1.2
 assignee: null
 parent: T-216
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
-updated: 2026-10-12T13:45:45.431Z
+updated: 2026-10-12T15:31:46.989Z
 ---
 
 ## Summary
@@ -35,3 +36,9 @@ Out of scope: the three cases already fixed (7cb55c6, aed0622, T-281's handover 
 - [ ] Every hub test reading hub.log or journal.jsonl after an action is listed in the item as synchronized or fixed.
 - [ ] Each fixed test waits on the flushLogs barrier or an `eventually` on the expected record, with its assertions unchanged in strength.
 - [ ] Each fixed file passes 20 runs under four concurrent workers; `npm run typecheck` passes and `cland verify` is green.
+
+## Comments
+
+### coord · 2026-10-12T15:31:33.271Z
+
+Raised and launched now (Coordinator, 2026-10-12 15:32Z): the integrated dev run 3262aa67 at add6a19 (A-1551) failed only hub/test/claude-code-adapter.test.ts:207 ("one log event for the crash", 0 != 1), which passes 3/3 alone: the same race as codex-adapter :396. These flakes now cost a full run each, so this item is fixed forward before the next integrated run. Known starting points: claude-code-adapter.test.ts:207 (must be fixed here); 7cb55c6 on t/T-277 (codex-adapter :396, not yet on dev: cherry-pick it so both land together and do not conflict); aed0622 (codex-adapter recovery journal read, on dev via T-283); d44a2c8 (nvim sessions test, on dev via T-283); T-281's handover case stays T-281's.

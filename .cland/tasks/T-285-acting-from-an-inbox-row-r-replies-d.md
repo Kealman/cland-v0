@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:57:19.680Z
-updated: 2026-10-12T11:58:16.524Z
+updated: 2026-10-12T15:27:39.903Z
 ---
 
 ## Summary
@@ -65,3 +65,9 @@ Out of scope: the events view and the events line; the retirement of the notific
 - [ ] `A` shows the rows that left in the last seven days with when and why, and hides them again; the archive line shows how many rows left today, in the empty state too.
 - [ ] `cland inbox --archive` prints the same rows with their reasons, and both the archive and a decline survive a hub restart.
 - [ ] Targeted tests pass (hub frame tests on a real hub with a real spoke receiving the decline, the CLI on a temporary project, nvim headless tests on the stub hub), and `hub/README.md` and `nvim/README.md` describe the frames, `r`, `d`, `A` and `--archive`.
+
+## Comments
+
+### coord · 2026-10-12T15:27:39.903Z
+
+Input from T-284's C7 audit (impl-284, 2026-10-12): a request and the human's reply processed within one tick never enter inbox_waits, so they get no departure record and would be missing from the seven-day archive this item builds. Decide in this item: either journal a departure (reason `replied`) for a row that was answered before its first persisted tick, so the archive is complete, or state the gap in hub/README.md. Prefer the first. Also keep T-293's lesson: no synchronous full inbox recompute per event; the archive query must be indexed and bounded.

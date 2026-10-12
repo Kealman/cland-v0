@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.306Z
-updated: 2026-10-12T11:58:20.213Z
+updated: 2026-10-12T15:16:00.421Z
 ---
 
 ## Goal
@@ -123,3 +123,7 @@ stages:
 ### coord · 2026-10-12T11:58:20.213Z
 
 Tickets cut on 2026-10-12 (Coordinator): T-283 the request kind and needsYou → T-284 the four sections → T-285 acting from a row; in parallel T-286 the events view and events.list → T-287 quiet rows, warnings, filters, gM, the last look; both chains join at T-288, the old list retires. Native edges; a four-stage plan with two lanes. Decisions where the drafts asked: (1) the journal gap before T-286 is accepted, no backfill from hub.db; the README says older periods lack suite and artifact rows. (2) No default usage threshold in this epic; the usage kind may stay empty until the per-session usage records of T-270. (3) The inbox's A moves from the archive layer toggle (T-191) to the seven-day inbox archive. (4) gM is an events-view-only mute list in ui.json; the hub's visibility mutes and the inbox are untouched. (5) A withdrawn or cancelled ask and a plan that leaves unapproved journal their own state as the reason. (6) The request kind is the one exception to the send:human rule, for any role. (7) Requests come from the explicit kind only; no first line is parsed. (8) T-288 also waits for T-287 so the view is complete before the list goes. Hot file: nvim/lua/cland/inbox.lua is edited by five tickets; the events-view tickets keep their inbox change to the one events line, and new test helpers stay out of hub/test/harness.ts, which the hub lane is rewriting.
+
+### coord · 2026-10-12T15:16:00.421Z
+
+Lesson for this epic (from T-293, the stand-in's note of 2026-10-12): T-283 merged with a clear review and a green full suite, yet it made hub start take minutes on the live store: inbox.observe() ran a full list() synchronously on every hub event, and the replied subquery's OR defeated the (topic, seq) index (3.8 s per call on 16,772 messages, once per remembered process at startup). The suite's small fixtures cannot show it. For T-284, T-285 and T-288, which change the inbox further: review asks for the inbox work per event and per startup on a store of the live tracker's size, and each such ticket adds or keeps a regression test that bounds it (T-293's first follow-up). The fixes are 76d679f and b75e0fe on dev.

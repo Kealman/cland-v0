@@ -3,7 +3,7 @@ id: T-277
 kind: task
 title: A spawn census of one full suite run, per test file and helper
 state: open
-status: review
+status: ready
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T15:15:18.647Z
+updated: 2026-10-12T15:47:20.503Z
 ---
 
 ## Summary
@@ -52,20 +52,31 @@ Constraints:
 - [x] C1. One documented command runs the full suite with the recorder preloaded and writes a Markdown report and a JSON aggregate: totals per command, and per command the sources ranked by test file and by helper, with the run's wall time and head.
   - done: impl-277 · 2026-10-12T12:06:36.023Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-3 · 2026-10-12T15:19:54.173Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-4 · 2026-10-12T15:47:18.354Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
 - [x] C2. The census artifact is published in this item's topic and names the ten largest sources of `git`, of `ps` and of Node spawns, with counts; its totals for `git` and `ps` are of the order the T-256 prototype measured (tens of thousands), or the report explains the difference. The completed census at 7cb55c6 serves as the baseline, with the two sandbox-exec cases of qa.test.ts named as uncounted (the recorder's denied log, fixed afterwards on this branch); a later recorder-only change does not require a new baseline run (the Coordinator's decision of 2026-10-12).
   - done: impl-277 · 2026-10-12T14:22:27.994Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-3 · 2026-10-12T15:19:54.174Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-4 · 2026-10-12T15:47:18.354Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
 - [x] C3. The report names the test files whose subtrees replace or strip `NODE_OPTIONS` as uncounted, and records no environment values or arguments beyond the first.
   - done: impl-277 · 2026-10-12T12:06:36.294Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-3 · 2026-10-12T15:19:54.174Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-4 · 2026-10-12T15:47:18.354Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
 - [x] C4. A test covers the recorder and the aggregation on a small fixture (a spawn from a test file, from a helper and from a Node grandchild, each attributed correctly) and the comparison of two aggregates.
   - done: impl-277 · 2026-10-12T12:06:36.500Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-3 · 2026-10-12T15:19:54.174Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-4 · 2026-10-12T15:47:18.355Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
 - [x] C5. `hub/README.md` describes the census, how to run and compare it, and its blind spots.
   - done: impl-277 · 2026-10-12T12:06:36.695Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
-- [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
-  - failed: rev-23 [reviewer] · 2026-10-12T15:14:13.433Z · note Ordinary macOS full cland verify failed nvim/test/plan.test.ts:218: five-second readiness wait for qa-schema-2 timed out.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-3 · 2026-10-12T15:19:54.174Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-4 · 2026-10-12T15:47:18.355Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
+- [x] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+  - done: impl-277 · 2026-10-12T15:46:43.783Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-4 · 2026-10-12T15:47:18.355Z · commit 96981e46973a72e7fd18f1e5a429b5d760412d83
 
 ## Comments
 
@@ -125,3 +136,31 @@ Medium: nvim/test/plan.test.ts:218 timed out after 5000 ms waiting for qa-schema
 Full run exit 1: 1629/1630 passed (hub free 30/30, hub machine 1307/1307, Neovim 292/293), zero skips/cancellations/todos. C1–C5 source/baseline review and revised C2 acceptance remain applicable. Evidence A-1543: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1543-t-277-c6-failed-at-0f153a7.md; full log A-1539. Publication was delayed by hub disconnection; reconnect confirmed same head and no superseding verdict.
 
 Criteria: C6 failed (Ordinary macOS full cland verify failed nvim/test/plan.test.ts:218: five-second readiness wait for qa-schema-2 timed out.).
+
+### rev-23 · 2026-10-12T15:19:54.174Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-277-3
+commit: 96981e46973a72e7fd18f1e5a429b5d760412d83
+
+No merge-delta finding. Census command, recorder, aggregator, fixture and qualified baseline remain unchanged; README and exact-one settle assertions retained. Additional codex-adapter flushLogs barrier is the already reviewed T-283 fix with assertions preserved. C1–C5 verified at this head; C6 remains unverified pending fresh full verify 409cd84b. Evidence A-1546: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1546-t-277-merge-delta-review-at-96981e4.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-277 · 2026-10-12T15:46:44.504Z
+
+C6 complete: fresh full cland verify 409cd84b at final merged/pushed head 96981e46973a72e7fd18f1e5a429b5d760412d83 passed 1640/1640 with no failures, skips or cancellations; suite duration 964.61s. Durable log A-1553. All implementation criteria done; source/merge delta review clear C1-C5, awaiting reviewer C6 verification/readiness gate. Baseline A-1535 remains the accepted before-cut measurement.
+
+### rev-23 · 2026-10-12T15:47:18.355Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-277-4
+commit: 96981e46973a72e7fd18f1e5a429b5d760412d83
+
+No remaining high/medium findings. C1–C5 source/merge/qualified-baseline review retained (A-1536/A-1546/A-1535). C6 established by durable full cland verify 409cd84b at this exact head: typechecks pass; hub free 30/30, hub machine 1316/1316, Neovim 294/294; 1640/1640 total, exit 0, zero failures/skips/cancellations/todos. No tests weakened, skipped or retried by reviewed changes. Evidence A-1554: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1554-t-277-final-review-full-green-at-96981e4.md; suite A-1553.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
