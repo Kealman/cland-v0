@@ -143,9 +143,21 @@ for (const qaRequired of [false, true]) {
     assert.notEqual(git(work.path, 'rev-parse', 'HEAD'), reviewed);
     await status('ready');
     const before = git(root, 'rev-parse', 'dev');
-    const merged = await eventually('rebased gate accepts', async () => {
-      const result = await ui.request({ type: 'merge', item: item.id }, 30_000);
-      if ((result as { code?: string }).code?.endsWith('-pending')) return undefined;
+    let mergeAttempt = 0;
+    const requestMerge = () => {
+      const id = `rebased-merge-${++mergeAttempt}`;
+      ui.send({ type: 'merge', item: item.id, id });
+      return id;
+    };
+    let mergeId = requestMerge();
+    const merged = await eventually('rebased gate accepts', () => {
+      // Observe one in-flight result; only a settled pending refusal permits another merge request.
+      const result = ui.frames.find(f => f.type === 'result' && f.id === mergeId);
+      if (!result) return undefined;
+      if (typeof result.code === 'string' && result.code.endsWith('-pending')) {
+        mergeId = requestMerge();
+        return undefined;
+      }
       assert.equal(result.ok, true, JSON.stringify(result));
       return result;
     });

@@ -98,7 +98,10 @@ export class Freshness {
 
   start(): void {
     this.#stopped = false;
-    this.#schedule = this.#scheduleTips(() => this.refresh(), this.#intervalMs);
+    // A slow scheduled read must not accumulate timer callers that keep refresh's reread loop alive.
+    // Foreground callers still request their own read after any in-flight read finishes.
+    let scheduled: Promise<void> | null = null;
+    this.#schedule = this.#scheduleTips(() => scheduled ??= this.refresh().finally(() => { scheduled = null; }), this.#intervalMs);
   }
 
   stop(): void {

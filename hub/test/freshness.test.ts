@@ -6,8 +6,10 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setImmediate } from 'node:timers/promises';
 import { tempProject } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
+import { Freshness } from '../src/tracker/freshness.ts';
 import { Tracker, TrackerError, type Actor, type ItemChange, type ItemSummary } from '../src/tracker/tracker.ts';
 import { answerTask } from '../src/tracker/requests.ts';
 import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
@@ -198,4 +200,33 @@ test('Git not answering a verdict write is a typed refusal naming what it could 
   assert.equal(result.type === 'result' && !result.ok && result.code, 'git-unavailable');
   assert.match(result.type === 'result' && !result.ok ? result.error : '', new RegExp(`the verdict's commit ${feature.slice(0, 12)}`));
   assert.deepEqual(tracker.view(id).comments, [], 'nothing was written');
+});
+
+test('scheduled tip reads cannot starve a foreground refresh when Git is slower than the poll cadence', async t => {
+  let poll!: () => Promise<void>;
+  const pending: Array<() => void> = [];
+  const fresh = new Freshness({
+    git: () => new Promise(resolve => pending.push(() => resolve(`${'a'.repeat(40)} refs/heads/dev`))),
+    scheduleTips: read => { poll = read; return { poke: () => {}, stop: () => {} }; },
+    settled: () => {},
+    tipsMoved: () => {},
+  });
+  t.after(() => { fresh.stop(); for (const done of pending.splice(0)) done(); });
+  fresh.start();
+  const background = poll();
+  let finished = false;
+  const foreground = fresh.refresh().then(() => { finished = true; });
+  const polls = [background];
+  // A scheduled tick lands during every blocked read. It must not keep the gate's refresh draining forever.
+  for (let i = 0; i < 4; i++) {
+    polls.push(poll());
+    assert.equal(pending.length, 1, 'only one Git read runs at a time');
+    pending.shift()!();
+    await setImmediate();
+  }
+  assert.equal(finished, true, 'the foreground refresh finishes despite continuing scheduled ticks');
+  assert.equal(fresh.tip('dev'), 'a'.repeat(40));
+  fresh.stop();
+  for (const done of pending.splice(0)) done();
+  await Promise.all([foreground, ...polls]);
 });
