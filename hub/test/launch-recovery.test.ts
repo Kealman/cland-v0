@@ -90,6 +90,12 @@ test('a failed relaunch retains its conversation and refuses resume across resta
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const prior = (launched.value as { process: HarnessProcessView }).process;
+  // Launch returns on turn acceptance; the fake saves a resumable rollout only after completion.
+  // Persist the conversation before this recovery scenario kills the original child.
+  await eventually('first clause turn persisted for relaunch', async () => {
+    const thread = JSON.parse(await readFile(join(fake.home, 'threads', `${prior.harnessSessionId}.json`), 'utf8')) as { turns: number };
+    return thread.turns > 0 || undefined;
+  });
   const log = join(root, '.cland/log/codex-impl.log');
   await writeFile(log, 'committed conversation log\n');
   for (const flag of ['hold-thread-resume', 'fail-thread-resume']) await writeFile(join(fake.home, flag), 'hold');
