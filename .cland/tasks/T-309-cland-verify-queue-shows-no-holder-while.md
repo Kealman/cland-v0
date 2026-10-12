@@ -2,8 +2,8 @@
 id: T-309
 kind: task
 title: cland verify queue shows no holder while a hand run holds the legacy machine lease, and a stale sweep may take a live holder's lease
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - hub
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-183
 branch: t/T-309-cland-verify-queue-shows-no-holder-while
 created: 2026-10-12T21:49:51.411Z
-updated: 2026-10-12T22:10:01.468Z
+updated: 2026-10-12T22:32:26.571Z
 ---
 
 ## Summary
@@ -36,10 +36,14 @@ T-216 Tech debt. Found in the v0.1.2 build (T-281's Linux proof wrapper PID 6068
 - [x] C1. The verify queue and the verify line show a hand-run lease holder with its pid, worktree and start.
   - verified: rev-23 [reviewer] · run rev-2026-10-12-309-1 · 2026-10-12T22:09:39.182Z · commit eea04359fb8d21dbbd808e797cef6f1c953ba9ac
   - done: impl-309 · 2026-10-12T22:10:00.195Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-309-2 · 2026-10-12T22:31:43.108Z · commit eea04359fb8d21dbbd808e797cef6f1c953ba9ac
 - [x] C2. A stale-lease judgement never takes or signals a lease whose owner is alive and verified; a test proves it.
   - verified: rev-23 [reviewer] · run rev-2026-10-12-309-1 · 2026-10-12T22:09:39.183Z · commit eea04359fb8d21dbbd808e797cef6f1c953ba9ac
   - done: impl-309 · 2026-10-12T22:10:01.468Z
-- [ ] C3. Targeted tests pass and `cland verify` is green.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-309-2 · 2026-10-12T22:31:43.108Z · commit eea04359fb8d21dbbd808e797cef6f1c953ba9ac
+- [x] C3. Targeted tests pass and `cland verify` is green.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-309-2 · 2026-10-12T22:31:43.108Z · commit eea04359fb8d21dbbd808e797cef6f1c953ba9ac
+  - done: impl-309 · 2026-10-12T22:31:44.672Z
 
 ## Comments
 
@@ -62,3 +66,23 @@ commit: eea04359fb8d21dbbd808e797cef6f1c953ba9ac
 No high/medium findings. C1/C2 verified: hand-holder metadata reaches queue/CLI/sessions, canonical UTC identities protect current owners and legacy timezone ambiguity remains held. Real-runner/frame tests cover live current/legacy owners, no takeover/signals, killed recovery and PID reuse. Hot run-suite change is identity-only; fixture leases are isolated. Historical killer PID remains unknown as A-1660 states. C3 awaits full exact-head cland verify. Evidence A-1663: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1663-t-309-source-review-utc-lease-identity-and-hand-holder-display.md.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-23 · 2026-10-12T22:31:43.108Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-309-2
+commit: eea04359fb8d21dbbd808e797cef6f1c953ba9ac
+
+No high/medium findings. C1/C2 assessment retained; C3 verified by full exact-head cland verify a76743d3, A-1669: typecheck and all phases, 1690/1690, zero skips/cancellations, exit 0. Current/legacy live-owner protection, cross-timezone killed recovery, PID reuse, scratch isolation and sessions hand-holder display regressions pass. Evidence A-1670: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1670-t-309-final-review-full-utc-lease-verification-green.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-309 · 2026-10-12T22:31:46.983Z
+
+Exact-head full verification a76743d3-50a7-4b55-a56c-c9d10ad53234 at eea04359fb8d21dbbd808e797cef6f1c953ba9ac passed: exit 0, 1690 tests/pass 1690, fail/cancelled/skipped/todo 0. Both typechecks included. Durable log A-1669: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1669-suite-a76743d3-50a7-4b55-a56c-c9d10ad53234-all-at-eea0435.log. C1/C2 source review clear and verified; all three implementer done marks recorded. Reviewer has the result to verify C3.
+
+### coord · 2026-10-12T22:32:02.805Z
+
+Merged 92a0f50361f623633f516c382793c2aacfd00d37 onto dev.

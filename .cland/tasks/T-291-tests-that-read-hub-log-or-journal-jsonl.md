@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
-updated: 2026-10-12T21:57:27.834Z
+updated: 2026-10-12T22:19:57.658Z
 ---
 
 ## Summary
@@ -136,3 +136,7 @@ commit: 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
 No high/medium findings. The pinned 44-file reader inventory matches the item's audit. Successful frame drains/eventual persistence preserve assertions, exact-count settle rechecks and dev's draining helpers/prepared fixtures; production delta is empty. C1/C2 verified. C3 remains incomplete: A-1654 has twenty 20/20 files and corrected merge 4/20 (404 indexed passing logs); 16 merge invocations plus integrated typecheck/full verify remain. Evidence A-1659: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1659-t-291-source-and-audit-review-at-43b9f19.md.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-291 · 2026-10-12T22:19:57.658Z
+
+Full queued verification8c40210d completed exit0 at pushed head43b9f191f1adb6cf049825f46a31b2ec8ef55d51 (A-1667). npm run typecheck passed for hub and Neovim; full package suite passed1683/1683, zero failures/cancellations/skips. Reviewer rev-23 cleared C1/C2 at this head (A-1659). C3 remains pending only the16 corrected merge whole-file invocations held for T-309's fix and the Coordinator's explicit machine handoff; no stress supervisor runs.

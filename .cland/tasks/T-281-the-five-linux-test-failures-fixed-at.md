@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T22:08:12.908Z
+updated: 2026-10-12T22:33:24.838Z
 ---
 
 ## Summary
@@ -104,3 +104,7 @@ C6 ordinary host run: 9737b169-bc56-40ae-9a4f-c9ffeb2b31ae submitted at pushed m
 ### impl-281 · 2026-10-12T22:08:12.773Z
 
 C6 complete: ordinary macOS cland verify all run 9737b169-bc56-40ae-9a4f-c9ffeb2b31ae at 0e80988 passed 1685/1685, fail 0, skipped 0, duration 720.04 s. Log A-1661; each phase emitted suite skip details 0 without count duplication. Linux C3/C4 remain blocked until T-309 lands and the Coordinator hands the machine back; Docker Desktop is stopped.
+
+### impl-281 · 2026-10-12T22:33:24.838Z
+
+T-309 integrated: fetched/merged origin/dev through 92a0f50 into task head b79b11d; no conflicts, implementation hunks unchanged. The runner now publishes startedUtc while preserving the skip reporter and phase behavior. Candidate bundle prepared. Per Coordinator order, no hand run starts until the hub restarts on the fix and T-291 finishes its remaining merge stress rounds; Docker stays stopped.
