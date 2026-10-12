@@ -1,10 +1,86 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, open, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { serveProject } from '../src/hub/daemon.ts';
 import { connectUi, spawnSpoke, tempProject } from './harness.ts';
-import type { EventsPage } from '../src/protocol.ts';
+import type { EventRow, EventsPage } from '../src/protocol.ts';
+
+test('a real spoke verdict produces one event on pushes and journal pages, including after restart', async t => {
+  let stop = async () => {};
+  t.after(() => stop());
+  const root = await tempProject(t);
+  let daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
+  let ui = await connectUi(t, daemon.discovery!);
+  stop = async () => { ui.close(); await daemon.stop(); };
+  await ui.request({ type: 'subscribe' });
+  const created = await ui.request({ type: 'task.create', title: 'One verdict, one row' });
+  const item = (created.value as { item: { id: string } }).item.id;
+  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
+  t.after(() => spoke.close());
+  await spoke.waitForPresence(['rev']);
+  for (const result of ['not clear', 'clear'] as const) {
+    const start = ui.frames.length;
+    const verdict = await spoke.call<{ ok: boolean }>('task.comment', { id: item, text: 'Check the fold.', verdict: 'review', result, run: `one-row-${result.replace(' ', '-')}` });
+    assert.equal(verdict.ok, true, JSON.stringify(verdict));
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    const pushed = ui.frames.slice(start).filter(f => f.type === 'event' && (f.row as EventRow)?.kind === 'verdict');
+    assert.equal(pushed.length, 1, JSON.stringify(pushed.map(f => f.row)));
+    const page = (await ui.request({ type: 'events.list', filter: { kinds: ['verdict'] } })).value as EventsPage;
+    assert.equal(page.rows.filter(r => r.text.includes(`review ${result} ·`)).length, 1, JSON.stringify(page.rows));
+  }
+  // Keep both durable source records: other subscribers still receive the task announcement.
+  const journal = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  assert.equal(journal.filter(r => r.event === 'notification' && r.kind === 'verdict').length, 2);
+  assert.equal(journal.filter(r => r.event === 'event-announced' && r.text?.includes('verdict posted')).length, 2);
+  const before = (await ui.request({ type: 'events.list', filter: { kinds: ['verdict'] } })).value as EventsPage;
+  assert.equal(before.rows.length, 2);
+  assert.equal(before.rows.filter(r => r.warning).length, 1);
+  await spoke.close();
+  await stop();
+  daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
+  ui = await connectUi(t, daemon.discovery!);
+  stop = async () => { ui.close(); await daemon.stop(); };
+  const after = (await ui.request({ type: 'events.list', filter: { kinds: ['verdict'] } })).value as EventsPage;
+  assert.deepEqual(after.rows, before.rows);
+  const warnings = (await ui.request({ type: 'events.list', filter: { warnings: true } })).value as EventsPage;
+  assert.equal(warnings.rows.filter(r => r.kind === 'verdict').length, 1);
+});
+
+test('old paired verdict records count once across filtered pages while file-authored verdicts remain visible', async t => {
+  let stop = async () => {};
+  t.after(() => stop());
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const records: Record<string, unknown>[] = ['first', 'second', 'clear'].flatMap(run => {
+    const result = run === 'clear' ? 'clear' : 'not clear';
+    return [
+      { event: 'event-announced', kind: 'task', subject: { item: 'T-5' }, verdict: { verdict: 'review', result, run }, text: `T-5 verdict posted review ${result} · ${run}` },
+      { event: 'notification', kind: 'verdict', item: 'T-5', session: 'rev', result, text: `T-5 review ${result} · rev [reviewer] · run ${run}` },
+    ];
+  });
+  records.push({ event: 'event-announced', kind: 'task', subject: { item: 'T-5' }, verdict: { verdict: 'review', result: 'not clear', run: 'file', source: 'file' }, text: 'T-5 verdict posted review not clear · file' });
+  await writeFile(join(root, '.cland/journal.jsonl'), records.map(r => JSON.stringify({ ts: '2026-10-12T10:00:00Z', ...r })).join('\n') + '\n');
+  const daemon = await serveProject(root, { log: () => {} });
+  stop = () => daemon.stop();
+  const ui = await connectUi(t, daemon.discovery!);
+  stop = async () => { ui.close(); await daemon.stop(); };
+  const page = (await ui.request({ type: 'events.list', filter: { kinds: ['verdict'] } })).value as EventsPage;
+  assert.equal(page.rows.length, 4);
+  assert.ok(page.rows.every(r => !r.count), 'paired records are one verdict, not a burst of two');
+  const warnings = (await ui.request({ type: 'events.list', filter: { warnings: true } })).value as EventsPage;
+  assert.equal(warnings.rows.length, 3);
+  const paged: EventRow[] = [];
+  let before: string | undefined;
+  do {
+    const p = (await ui.request({ type: 'events.list', limit: 1, before, filter: { kinds: ['verdict'] } })).value as EventsPage;
+    paged.push(...p.rows);
+    before = p.more ? p.before! : undefined;
+  } while (before);
+  assert.deepEqual(paged, page.rows);
+});
 
 // Seed at the filesystem boundary, before the real hub starts. Never extend the shared harness.
 async function seedJournal(root: string, count: number) {

@@ -13,6 +13,56 @@ const bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 const kinds: EventKind[] = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'];
 
+test('one row per verdict counts once in the live inbox, warnings view and saved-filter cold start', { skip }, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.git'), { recursive: true });
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const path = join(root, '.cland/ui.json');
+  await writeFile(path, JSON.stringify({ version: 2, events: { filter: {}, muted: [], last_look: new Date(Date.now() - 86400000).toISOString() } }));
+  // Protocol rows captured by the real-hub regression: the richer notification
+  // is the canonical verdict, with neither a duplicate task row nor a ×2 count.
+  const rows: EventRow[] = ['clear', 'not clear'].map(result => ({
+    id: `verdict-${result}`, ts: new Date(Date.now() - 1000).toISOString(), kind: 'verdict',
+    subject: { kind: 'item', id: 'T-1' }, item: 'T-1', session: 'rev',
+    text: `T-1 review ${result} · rev [reviewer] · run one-row-${result.replace(' ', '-')}`,
+    glyph: result === 'not clear' ? '⚠' : '✓', ...(result === 'not clear' ? { warning: true } : {}),
+  }));
+  const controlPath = join(root, 'control.sock');
+  const control = (command: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
+    const socket = createConnection(controlPath);
+    socket.setEncoding('utf8'); socket.on('error', reject);
+    socket.on('data', () => { socket.end(); resolve(); });
+    socket.write(JSON.stringify(command) + '\n');
+  });
+  const scenario = { inbox: {}, events: [] as EventRow[] };
+  const env = { CLAND_STUB_CONTROL: controlPath, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) };
+  const c = await startClient(t, bin, root, env);
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await c.input('<Esc> N');
+  await c.waitScreen(s => s.includes('△ 0 new events since your last look · ⚠ 0'), 'initial empty events line');
+  await control({ set: { events: [rows[1]] }, emit: { type: 'event', row: rows[1] } });
+  await c.waitScreen(s => s.includes('△ 1 new events since your last look · ⚠ 1'), 'one not-clear verdict counted once');
+  await control({ set: { events: rows }, emit: { type: 'event', row: rows[0] } });
+  await c.waitScreen(s => s.includes('△ 2 new events since your last look · ⚠ 1'), 'clear verdict adds one ordinary event');
+  await c.input('Ge3w');
+  await c.waitScreen(s => s.includes('kind: verdict · ⚠ warnings only') && s.includes('review not clear'), 'one warning verdict');
+  const visible = () => c.lua<EventRow[]>("return require('cland.events').rows");
+  assert.deepEqual((await visible()).map(r => r.id), [rows[1]!.id]);
+  assert.doesNotMatch((await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)")).join('\n'), /verdict posted|×2/);
+  await c.input('F3');
+  await c.waitScreen(s => s.includes('review clear') && s.includes('review not clear'), 'both verdicts present once');
+  assert.equal((await visible()).length, 2);
+  await c.input('w');
+  await c.waitScreen(s => s.includes('warnings only') && !s.includes('review clear ·'), 'saved warning filter');
+  await c.lua("require('cland.ui').changed(); return require('cland.ui').flush()");
+  await c.input(':qa!<CR>');
+  const cold = await startClient(t, bin, root, { ...env, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ ...scenario, events: rows }) });
+  await cold.waitScreen(s => s.includes('hub: connected'), 'cold connected');
+  await cold.input('<Esc> E');
+  await cold.waitScreen(s => s.includes('kind: verdict · ⚠ warnings only') && s.includes('review not clear'), 'saved filter replays one warning row');
+  assert.deepEqual((await cold.lua<EventRow[]>("return require('cland.events').rows")).map(r => r.id), [rows[1]!.id]);
+});
+
 test('events keys, warning/dim presentation, independent mutes, last look and cold persistence', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });

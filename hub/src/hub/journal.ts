@@ -395,6 +395,11 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   let glyph = '●';
   const item = value('item'), session = value('session') ?? value('name') ?? (r.event === 'role-handover' ? value('to') : undefined), topic = value('topic'), artifact = value('artifact');
   if (r.event === 'event-announced') {
+    // Hub-written verdicts also journal their richer notification (reviewer and
+    // run). Keep the task announcement for subscribers, but project it only for
+    // file-authored verdicts, which have no notification. This applies to old
+    // journals as well as live pushes, before filtering or 60-second grouping.
+    if (r.kind === 'task' && r.verdict && (r.verdict as { source?: string }).source !== 'file') return null;
     const announced = r.subject as Record<string, string> | undefined;
     if (!announced) return null;
     kind = r.kind === 'session.state' ? 'session' : r.kind === 'task' && r.verdict ? 'verdict' : r.kind as EventKind;
