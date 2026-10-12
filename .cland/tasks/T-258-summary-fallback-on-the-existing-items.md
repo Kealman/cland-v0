@@ -5,13 +5,13 @@ title: Summary fallback on the existing items, and prior art for tree explorers 
 state: open
 labels:
   - wayfinder:research
-assignee: null
+assignee: cland-design
 parent: T-264
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:10:35.385Z
-updated: 2026-10-12T09:12:26.114Z
+updated: 2026-10-12T09:12:38.774Z
 ---
 
 ## Question

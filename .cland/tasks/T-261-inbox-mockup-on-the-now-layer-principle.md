@@ -5,13 +5,13 @@ title: Inbox mockup on the now-layer principle, and the events view
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: T-264
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:10:35.771Z
-updated: 2026-10-12T09:12:26.508Z
+updated: 2026-10-12T09:12:39.166Z
 ---
 
 ## Question

@@ -5,13 +5,13 @@ title: "Item card mockups: an epic and a task, with the quick message to the Coo
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: T-264
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:10:35.641Z
-updated: 2026-10-12T09:12:26.376Z
+updated: 2026-10-12T09:12:39.035Z
 ---
 
 ## Question
