@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-12T11:36:11.934Z
+updated: 2026-10-12T11:38:20.308Z
 ---
 
 ## Goal
@@ -61,7 +61,7 @@ T-240 and T-256, 2026-10-12 (after the research and the prototype): accounts reg
 
 ## Open
 
-The explorer map T-264 runs: the mockups and the research AFK, the human reacts to the mockups, then the prototype, then /to-spec on this item. The AFK tickets T-240, T-255, T-256 report back to their items.
+The planning is done (2026-10-12): the spec is complete, the explorer map T-264 is closed, the nine epics below are published. The build is led by the cland-impl session, as for v0.1; the human approves E09's plan (`gp`, then `a`) before any of its items launch, everything else runs under `[plan] approval = "none"`. The MicroVM experiment of E04 (about $0.12) is approved by the human; the DigitalOcean token is in the human's shell environment and reaches crew sessions after the hub restarts.
 
 ## Epics
 
