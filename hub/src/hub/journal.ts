@@ -122,6 +122,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'ask-withdrawn',
   'ask-cancelled',
   'notification',
+  'inbox-departure',
   // hygiene
   'loop-breaker',
   'unmuted',

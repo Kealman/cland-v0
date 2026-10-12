@@ -151,6 +151,7 @@ export type ToolCall = {
   claimed?: () => boolean;
   /** `send`: no addressee, so the message is for the human. */
   toHuman?: boolean;
+  request?: boolean;
   /** Explicit session addresses on a send; Aides address sessions by name only. */
   to?: string[];
   /** `send` to the human: whether the human's latest message in the target topic addressed the caller (by name or
@@ -180,6 +181,9 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   // normalised before anything is decided: a blank item is no item (review of #32)
   const call: ToolCall = { ...input, item: typeof input.item === 'string' ? input.item.trim() || null : (input.item ?? null) };
   const { tool } = call;
+  // §3.7: every session may ask the human for review, QA or a handover.
+  // The hub validates the request fields before recording anything.
+  if (tool === 'send' && call.request) return { ok: true };
   if (role === null) return { ok: false, permission: tool, reason: 'a session with no role has no tools' };
   if (tool === 'session.launch' && call.launchRole === 'lead' && role !== 'coordinator') {
     return { ok: false, permission: tool, reason: 'root level: only the Coordinator launches Leads' };

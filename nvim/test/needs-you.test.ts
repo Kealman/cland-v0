@@ -35,6 +35,7 @@ for (const scenario of cases) {
     const store = new Store(join(root, '.cland/hub.db'));
     store.createTopic('waiting', 'Left waiting', null, new Date().toISOString());
     store.setTopicStatus('waiting', 'waiting for human');
+    store.record({ id: 'waiting-report', from: 'legacy', fromKind: 'agent', via: 'session', to: ['coord'], kind: 'report', text: 'Waiting for your response', topic: 'waiting', ts: new Date().toISOString() }, [], Date.now());
     store.close();
     const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
     const { discovery } = await startDaemon(t, root, fake.env);

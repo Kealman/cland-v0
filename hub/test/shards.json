@@ -50,6 +50,7 @@
     "hub/test/launch-recovery.test.ts": "machine",
     "hub/test/lead-handover.test.ts": "machine",
     "hub/test/lead-launch.test.ts": "machine",
+    "hub/test/inbox-requests.test.ts": "machine",
     "hub/test/lead-permissions.test.ts": "machine",
     "hub/test/lead-routing.test.ts": "machine",
     "hub/test/lifecycle-serialization.test.ts": "machine",

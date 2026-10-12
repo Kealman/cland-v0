@@ -24,8 +24,9 @@ export const UPDATE_HINT = 'update cland and restart the session';
 
 export type FromKind = 'human' | 'agent' | 'hub';
 export type Via = 'session' | 'hub';
-export type SendKind = 'progress' | 'report' | 'question' | 'decision';
-export const SEND_KINDS: readonly SendKind[] = ['progress', 'report', 'question', 'decision'];
+export type SendKind = 'progress' | 'report' | 'question' | 'decision' | 'request';
+export type RequestKind = 'review' | 'qa' | 'handover';
+export const SEND_KINDS: readonly SendKind[] = ['progress', 'report', 'question', 'decision', 'request'];
 export function isSendKind(value: unknown): value is SendKind {
   return typeof value === 'string' && SEND_KINDS.includes(value as SendKind);
 }
@@ -113,6 +114,8 @@ export type Message = {
   topic?: string;
   /** An agent's send kind, or a hub notice's lifecycle kind (`role`, `claim`, `mute`, …). */
   kind?: string;
+  request?: RequestKind;
+  subject?: string;
   /** Held progress and events attached to this addressee's turn-starting delivery, oldest first. */
   digest?: Message[];
   /** The notice's facts, typed by its kind: a mute carries its `HygieneRefusal` and the pair. */
@@ -192,10 +195,15 @@ export type AskCard = {
 };
 
 /** An open ask as the inbox lists it. */
-export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; label: string; ts: string };
+export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; label: string; ts: string; since: string };
 
 /** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
-export type InboxApproval = { layer?: Layer; session: string; label: string; harness: string | null; since: string | null; attach: string | null };
+export type InboxApproval = { layer?: Layer; id: string; session: string; label: string; harness: string | null; since: string; attach: string | null; command?: string };
+export type InboxPlan = { layer?: Layer; id: string; subject: string; title: string; since: string };
+export type InboxRequest = { layer?: Layer; id: string; from: string; fromRole?: string; request: RequestKind; subject: string; topic: TopicRef; ts: string; since: string; text: string };
+export type InboxMessage = { layer?: Layer; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
+export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';
+export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; since: string; ts: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'read' };
 
 export type NotificationKind = 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
@@ -215,8 +223,8 @@ export type InboxNotification = {
   dismissed: boolean;
 };
 
-/** The inbox (§3.5): needsYou counts now asks, approvals and waiting topics only. */
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
+/** The four now sections (§3.7); waiting and notifications remain for older renderers. */
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
 
 /** Journal rows, newest first; cursors are exclusive byte positions in the append-only file. */
 export type EventKind = 'session' | 'task' | 'verdict' | 'suite' | 'release' | 'artifact' | 'usage' | 'topic';
@@ -328,7 +336,7 @@ export type SpokeRequest =
   | ArtifactMove
   | ArtifactPromote
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
-  | { type: 'send'; id: string; to?: string[]; text: string; kind?: SendKind; replyTo?: string; topic?: string; artifacts?: string[] }
+  | { type: 'send'; id: string; to?: string[]; text: string; kind?: SendKind; request?: RequestKind; subject?: string; replyTo?: string; topic?: string; artifacts?: string[] }
   | { type: 'who'; id: string }
   /** `topic`: that topic's latest messages instead of the session's own traffic; Agents accepts item/session filters. */
   | ({ type: 'history'; id: string; limit?: number; with?: string; topic?: string } & AgentsHistoryFilter)

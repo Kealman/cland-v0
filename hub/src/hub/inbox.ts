@@ -1,23 +1,15 @@
-// The inbox (spec 5, Inbox.dc.html, #33): what only the human can unblock, in a fixed order, then what is worth
-// the human's eye.
-//
-//   asks           the open asks, oldest first (the `asks` table)
-//   approvals      sessions in `waiting for approval`: the harness's own prompt, answered in the attached session
-//   waiting        topics `waiting for human` that carry no open ask
-//   notifications  informational warnings stay visible; ordinary notifications have a `dismissed` flag. Fed by the hub's own events
-//                  (`session.role`, `session.state`), the tracker's verdicts, and for a handover its one `handover`
-//                  notice in Agents (#31, #34) rather than its two `session.role` events.
-//
-// The "needs you" count includes only now asks, approvals and waiting topics. Subscribers get the whole inbox
-// in an `inbox` event whenever any of it changed, coalesced to one per turn of the event loop.
+// The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
+// Each row records when its wait began; departures persist in hub.db and reach the journal
+// through the log tap. Publications are coalesced, but waits settle on every observed change.
 import { messageVerdict, warningSeverity, type Visibility } from './visibility.ts';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
-import type { HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
+import type { HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { ROLE_LABELS, withRole } from '../names.ts';
-import type { Store } from './store.ts';
+import type { ItemSummary } from '../tracker/tracker.ts';
+import type { InboxWait, Store } from './store.ts';
 
 /** A session idle longer than this is worth a background event, unless the project's config says otherwise. */
 export const IDLE_NOTIFY_MS = 30 * 60 * 1000;
@@ -56,6 +48,7 @@ export type InboxPort = {
   log: LogFn;
   emit: (event: HubEvent) => void;
   topics: () => Topic[];
+  items: () => ItemSummary[];
   presence: () => Presence[];
   /** A session's state by its session id. */
   stateOf: (sessionId: string) => SessionState;
@@ -69,7 +62,7 @@ export class InboxBoard {
   readonly #port: InboxPort;
   /** The launched sessions (the adapters' process table): the approvals and their attach commands. */
   #processes: (() => HarnessProcessView[]) | null = null;
-  /** When each session entered `waiting for approval`, by name. */
+  /** When each session entered `waiting for approval`, by session id. */
   readonly #since = new Map<string, string>();
   /** One timer per idle session, by session id. */
   readonly #idle = new Map<string, NodeJS.Timeout>();
@@ -147,6 +140,7 @@ export class InboxBoard {
       default:
         break;
     }
+    this.list();
     this.#changed();
   }
 
@@ -209,7 +203,7 @@ export class InboxBoard {
     const open = p.store.openAsks().filter(a => a.to === undefined);
     const topics = p.topics();
     const byId = new Map(topics.map((t) => [t.id, t]));
-    const asks: InboxAsk[] = open.map((a) => {
+    const asks: InboxAsk[] = open.slice().reverse().map((a) => {
       const t = byId.get(a.topic);
       return p.visibility.place('inbox', {
         id: a.id,
@@ -220,8 +214,10 @@ export class InboxBoard {
         from: a.from,
         label: withRole(a.from, p.store.roleOf(a.from)),
         ts: a.ts,
+        since: a.ts,
       }, 'ask');
     });
+    asks.sort((a, b) => b.ts.localeCompare(a.ts));
     const asked = new Set(open.map((a) => a.topic));
     const waiting = topics.filter((t) => t.status === 'waiting for human' && !asked.has(t.id)).sort((a, b) => (a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0))
       .map(t => p.visibility.place('inbox', t, 'waiting'));
@@ -236,22 +232,91 @@ export class InboxBoard {
       seen.add(proc.sessionId);
       const now = live.get(proc.sessionId);
       const name = now?.name ?? proc.name;
-      approvals.push({ session: name, label: now?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.sessionId) ?? null, attach: proc.attach });
+      approvals.push({ id: proc.sessionId, session: name, label: now?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.sessionId) ?? p.now().toISOString(), attach: proc.attach, ...(proc.approvalCommand ? { command: proc.approvalCommand } : {}) });
     }
     // a session the adapters did not launch has no state of its own; one that has (a resumed launch under another name) still counts
     for (const s of presence) {
       if (s.state !== 'waiting for approval' || seen.has(s.sessionId)) continue;
       seen.add(s.sessionId);
-      approvals.push({ session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? null, attach: null });
+      approvals.push({ id: s.sessionId, session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? p.now().toISOString(), attach: null });
     }
-    approvals.sort((a, b) => String(a.since ?? '').localeCompare(String(b.since ?? '')));
     const placedApprovals = approvals.map(a => p.visibility.place('inbox', a, 'approval'));
     const notifications = p.store.notifications().map(n => p.visibility.place('inbox', n));
-    const needsYou = asks.filter(a => a.layer === 'now').length
-      + placedApprovals.filter(a => a.layer === 'now').length
-      + waiting.filter(t => t.layer === 'now').length;
-    // Placement belongs in the publication signature too: a pin/mute can change rows without changing needsYou.
-    return { asks, approvals: placedApprovals, waiting, notifications, needsYou };
+    const candidates = p.store.inboxMessages();
+    const requests: InboxRequest[] = [];
+    const messages: InboxMessage[] = [];
+    for (const candidate of candidates) {
+      const m = candidate.message;
+      const t = byId.get(m.topic)!;
+      const topic = { id: t.id, title: t.title, ...(t.item ? { item: t.item } : {}) };
+      if (m.kind === 'request') {
+        if (candidate.replied || p.store.leftInbox('request', m.id)) continue;
+        requests.push({ id: m.id, from: m.from, ...(m.fromRole ? { fromRole: m.fromRole } : {}),
+          request: m.request!, subject: m.subject!, topic, ts: m.ts, since: m.ts, text: m.text, layer: 'now' });
+        continue;
+      }
+      if (candidate.read || candidate.replied || p.store.leftInbox('message', m.id)) continue;
+      const latestWaiting = candidate.latest && t.status === 'waiting for human' && !asked.has(t.id);
+      const layer = latestWaiting ? p.visibility.place('inbox', t, 'waiting').layer : p.visibility.place('messages', m).layer;
+      if (!(candidate.toHuman || latestWaiting) || layer !== 'now') continue;
+      messages.push({ id: m.id, from: m.from, ...(m.fromRole ? { fromRole: m.fromRole } : {}),
+        subject: t.item ?? t.id, topic, ts: m.ts, since: m.ts, text: m.text, layer });
+    }
+    const items = p.items();
+    const plans: InboxPlan[] = items.filter(i => i.state === 'open' && i.plan && !i.planError && i.approval?.required && i.approval.state === 'pending')
+      .map(i => ({ id: i.id, subject: i.id, title: i.title, since: i.updated, layer: 'now' as const }));
+    const rows: InboxWait[] = [
+      ...asks.filter(a => a.layer === 'now').map(a => ({ kind: 'ask' as const, id: a.id, subject: a.topic.item ?? a.topic.id, since: a.ts })),
+      ...placedApprovals.filter(a => a.layer === 'now').map(a => ({ kind: 'approval' as const, id: a.id, subject: a.session, since: a.since })),
+      ...plans.map(a => ({ kind: 'plan' as const, id: a.id, subject: a.subject, since: a.since })),
+      ...requests.map(a => ({ kind: 'request' as const, id: a.id, subject: a.subject, since: a.since })),
+      ...messages.map(a => ({ kind: 'message' as const, id: a.id, subject: a.subject, since: a.since })),
+    ];
+    // Capture the start of every wait before coalescing publication, and settle only a documented leave rule.
+    for (const row of p.store.inboxWaits()) {
+      let reason: InboxDeparture['reason'] | undefined;
+      if (row.kind === 'ask') {
+        const state = p.store.ask(row.id)?.state;
+        if (state && state !== 'open') reason = state;
+      } else if (row.kind === 'approval') {
+        const proc = this.#processes?.().find(s => s.sessionId === row.id);
+        if ((proc?.state ?? p.stateOf(row.id)) !== 'waiting for approval') reason = 'approved';
+      } else if (row.kind === 'plan') {
+        const item = items.find(i => i.id === row.id);
+        if (item?.state === 'closed') reason = 'closed';
+        else if (!item?.plan || item.planError || !item.approval?.required) reason = 'invalidated';
+        else if (item.approval.state === 'approved') reason = 'approved';
+      } else {
+        const candidate = candidates.find(c => c.message.id === row.id);
+        if (candidate?.replied) reason = row.kind === 'request' ? 'replied' : 'answered';
+        else if (row.kind === 'message' && candidate?.read) reason = 'read';
+      }
+      if (reason) this.#depart(row, reason);
+    }
+    for (const row of rows) {
+      const since = p.store.waitInInbox(row);
+      const section = row.kind === 'plan' ? plans : row.kind === 'request' ? requests : row.kind === 'message' ? messages : row.kind === 'approval' ? placedApprovals : null;
+      const result = section?.find(a => a.id === row.id);
+      if (result) result.since = since;
+    }
+    plans.sort((a, b) => b.since.localeCompare(a.since));
+    placedApprovals.sort((a, b) => b.since.localeCompare(a.since));
+    const needsYou = rows.length;
+    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, notifications, needsYou };
+  }
+
+  #depart(row: InboxWait, reason: InboxDeparture['reason']): void {
+    const departure = this.#port.store.departInbox(row, reason, this.#port.now().toISOString());
+    if (departure) this.#port.log({ event: 'inbox-departure', ...departure });
+  }
+
+  /** Human review/QA verdicts reply to requests on the item, regardless of the request's topic. */
+  verdict(subject: string): void {
+    this.list();
+    for (const row of this.#port.store.inboxWaits()) {
+      if (row.kind === 'request' && row.subject === subject) this.#depart(row, 'replied');
+    }
+    this.#changed();
   }
 
   needsYou(): number {

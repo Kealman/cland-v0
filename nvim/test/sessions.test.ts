@@ -98,7 +98,8 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
     FAKE_OPENCODE_HOME: opencodeHome,
     FAKE_OPENCODE_TURN_MS: '300',
   };
-  await startDaemon(t, root, env);
+  const { discovery } = await startDaemon(t, root, env);
+  const ui = await connectUi(t, discovery);
   const c = await startClient(t, bin, root, { ...env, CLAND_REFRESH_MS: '500' });
   await c.waitScreen((x) => x.includes('SESSIONS') && statusLine(x).includes('hub: connected'), 'the workbench, connected');
   await c.input('<Esc>');
@@ -113,6 +114,8 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
     const s = await c.waitScreen(x => x.includes(model!) && /idle|busy/.test(x), `${name} selected with model`, 30000);
     assert.doesNotMatch(s, /refused/);
   }
+  const launchedLogs = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(launchedLogs.ok, true, launchedLogs.error);
   const log = await hubLog(root);
   for (const name of ['coord', 'rev', 'impl']) assert.match(log, new RegExp(`"event":"session-launched","session":"${name}"`));
 
@@ -135,6 +138,8 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   await focusPanel(c);
   await c.input('zRgg/^ . coord \\[<CR>');
   await c.waitScreen((x) => /✗ coord \[Coordinator\]/.test(x) && x.includes('unknown · died'), 'coord unknown after its death', 15_000);
+  const deathLogs = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(deathLogs.ok, true, deathLogs.error);
   assert.match(await hubLog(root), /"event":"harness-exited","session":"coord"/);
 
   // x then y stops the Codex session through the hub
@@ -145,5 +150,7 @@ test('Claude Code, Codex and OpenCode sessions launched from the UI show in the 
   await c.waitScreen((x) => x.includes('rev stopped'), 'stop accepted', 15000);
   await c.input('gg/^ . rev \\[<CR>');
   await c.waitScreen((x) => x.includes('rev stopped') && /× rev \[Reviewer\]/.test(x), 'rev stopped', 15_000);
+  const stoppedLogs = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(stoppedLogs.ok, true, stoppedLogs.error);
   assert.match(await hubLog(root), /"event":"session-stopped","session":"rev"/);
 });

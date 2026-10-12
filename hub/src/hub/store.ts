@@ -5,6 +5,8 @@ import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
 import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
+import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
+export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string };
 import { vacancyWarning } from './topics.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
@@ -14,6 +16,16 @@ export type KnownSession = { name: string; lastSeen: string; status: string | nu
 export type ReleasedDigest = { trigger: string; session: string; notes: string[]; reheld: string[] };
 
 const SCHEMA = `
+create table if not exists inbox_waits (
+  kind text not null, id text not null, subject text not null, since text not null,
+  primary key (kind, id)
+);
+create table if not exists inbox_departures (
+  number integer primary key autoincrement, kind text not null, id text not null,
+  subject text not null, since text not null, ts text not null, reason text not null
+);
+create index if not exists inbox_departures_row on inbox_departures (kind, id);
+create index if not exists inbox_departures_time on inbox_departures (ts);
 create table if not exists subscriptions (
   id text primary key,
   subscriber_id text not null,
@@ -131,6 +143,8 @@ create table if not exists hygiene (
  * Additive only: a column is never dropped or retyped here.
  */
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
+  { table: 'messages', column: 'request_kind', type: 'text' },
+  { table: 'messages', column: 'request_subject', type: 'text' },
   { table: 'asks', column: 'to_name', type: 'text' },
   { table: 'asks', column: 'to_session_id', type: 'text' },
   /** The actionable asker follows role handover; the original message sender remains historical. */
@@ -205,6 +219,7 @@ update counters set value = max(value, (select coalesce(max(seq), 0) from messag
 type Row = Record<string, string | number | null>;
 
 const toMessage = (row: Row): Message => ({
+  ...(typeof row.request_kind === 'string' ? { request: row.request_kind as NonNullable<Message['request']>, subject: row.request_subject as string } : {}),
   ...(typeof row.artifact === 'string' ? { artifact: JSON.parse(row.artifact) as Artifact } : {}),
   ...(typeof row.artifacts === 'string' ? { artifacts: JSON.parse(row.artifacts) as Artifact[] } : {}),
   ...(typeof row.criteria === 'string' ? { criteria: JSON.parse(row.criteria) as NonNullable<Message['criteria']> } : {}),
@@ -630,6 +645,7 @@ export class Store implements HygieneMemory {
           seq,
         );
       if (message.criteria !== undefined) this.#db.prepare('update messages set criteria = ? where id = ?').run(JSON.stringify(message.criteria), message.id);
+      if (message.request !== undefined) this.#db.prepare('update messages set request_kind = ?, request_subject = ? where id = ?').run(message.request, message.subject ?? null, message.id);
       if (message.artifact) this.#db.prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
       if (message.artifacts?.length) {
         this.#db.prepare('update messages set artifacts = ? where id = ?').run(JSON.stringify(message.artifacts), message.id);
@@ -1243,6 +1259,54 @@ export class Store implements HygieneMemory {
 
   // ---------------------------------------------------------------- asks (#33)
 
+  /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
+  inboxMessages(): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
+    const rows = this.#db.prepare(`with latest_messages as (
+      select m.topic, max(m.seq) as seq from messages m
+      where m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
+        and not exists (select 1 from asks a where a.id = m.id)
+      group by m.topic
+    ) select m.*, m.seq <= t.read_seq as was_read,
+      json_array_length(m.to_json) = 0 as to_human,
+      m.seq = latest.seq as latest,
+      exists (select 1 from messages h where h.from_kind = 'human' and h.seq > m.seq
+        and (h.topic = m.topic or (m.notice = 'request' and h.reply_to = m.id))) as replied
+      from messages m join topics t on t.id = m.topic
+      left join latest_messages latest on latest.topic = m.topic
+      where m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event')
+        and not exists (select 1 from asks a where a.id = m.id)
+        and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
+          or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))
+      order by m.seq desc`).all() as Row[];
+    return rows.map(r => ({ message: { ...toMessage(r), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 }));
+  }
+
+  inboxWaits(): InboxWait[] {
+    return this.#db.prepare('select kind, id, subject, since from inbox_waits').all() as InboxWait[];
+  }
+
+  waitInInbox(row: InboxWait): string {
+    this.#db.prepare('insert into inbox_waits (kind, id, subject, since) values (?, ?, ?, ?) on conflict (kind, id) do nothing').run(row.kind, row.id, row.subject, row.since);
+    return (this.#db.prepare('select since from inbox_waits where kind = ? and id = ?').get(row.kind, row.id) as Row).since as string;
+  }
+
+  leftInbox(kind: InboxRowKind, id: string): boolean {
+    return this.#db.prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
+  }
+
+  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string): InboxDeparture | null {
+    return this.#transaction(() => {
+      if (!this.#db.prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes) return null;
+      this.#db.prepare('insert into inbox_departures (kind, id, subject, since, ts, reason) values (?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason);
+      return { ...row, ts, reason };
+    });
+  }
+
+  /** The later archive frame can read seven days directly, without scanning the journal. */
+  inboxDepartures(after: string): InboxDeparture[] {
+    return this.#db.prepare('select kind, id, subject, since, ts, reason from inbox_departures where ts >= ? order by ts desc, number desc').all(after) as InboxDeparture[];
+  }
+
   createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string; to?: string }): void {
     this.#db
       .prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts, to_name, to_session_id, from_session_id) values (?, ?, ?, ?, ?, ?, 'open', ?, ?, (select session_id from sessions where name = ?), (select from_session_id from messages where id = ?))")
@@ -1337,6 +1401,7 @@ export class Store implements HygieneMemory {
       where d.state in ('queued', 'delivered', 'uncertain') and (d.digest_id is not null or exists
         (select 1 from deliveries member where member.session = d.session and member.digest_id = d.message_id))
     ) select id from messages where created_at < ? and id not in (select id from asks where state = 'open')
+      and id not in (select id from inbox_waits where kind in ('request', 'message'))
       and id not in (select d.message_id from deliveries d join pending_digests pending
         on pending.session = d.session and (d.message_id = pending.root or d.digest_id = pending.root))`, [now - retentionMs]);
       // an answered, withdrawn or cancelled ask goes with its message

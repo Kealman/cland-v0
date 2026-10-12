@@ -260,6 +260,12 @@ export class Dispatcher {
    * a frame that is no tool the table knows goes on to its own "unknown request" answer.
    */
   #permitted(connection: Caller, frame: Record<string, unknown>, peer: Peer, answer = true): boolean {
+    if (frame.type === 'send' && frame.kind !== 'request' && (frame.request !== undefined || frame.subject !== undefined)) {
+      const reason = 'request and subject require kind: request; remove them from this send';
+      this.#log({ event: 'send-refused', session: connection.name, reason });
+      if (answer) peer.send(Dispatcher.#failure(String(frame.id), new Error(reason)));
+      return false;
+    }
     const core = this.#options.core;
     const roles = core.roles;
     if (!roles) return true;
@@ -371,7 +377,7 @@ export class Dispatcher {
     if (['release', 'sync', 'push', 'hub.stop', 'rename', 'session.resume'].includes(type)) {
       return `root level: only the Coordinator may use ${type}`;
     }
-    const request = type === 'send' && typeof frame.text === 'string'
+    const request = type === 'send' && frame.kind !== 'request' && typeof frame.text === 'string'
       ? /^(?:review|qa) request (T-[1-9]\d*)\s*(?:\n|$)/.exec(frame.text)
         ?? /^qa request (T-[1-9]\d*)[ \t]+stage[ \t]+\S[^\r\n]*(?:\r?\n|$)/.exec(frame.text)
       : null;
@@ -460,7 +466,7 @@ export class Dispatcher {
           return !!claim && !!tracker?.sameSession(claim.sessionId, sessionActor(connection, UNKNOWN_SESSION).id);
         },
       } : {}),
-      ...(tool === 'send' ? { to: Array.isArray(frame.to) ? frame.to as string[] : [], toHuman: !Array.isArray(frame.to) || frame.to.length === 0, mentioned: () => this.#mentioned(connection, frame) } : {}),
+      ...(tool === 'send' ? { to: Array.isArray(frame.to) ? frame.to as string[] : [], toHuman: !Array.isArray(frame.to) || frame.to.length === 0, request: frame.kind === 'request', mentioned: () => this.#mentioned(connection, frame) } : {}),
       // a plain comment whose text reads back as a verdict header is a verdict to every reader, so it is one here too
       ...(tool === 'task.comment'
         ? {
@@ -711,7 +717,7 @@ export class Dispatcher {
             if (typeof text !== 'string') throw new ArtifactError('artifact-source', 'send needs text');
             const reply = typeof frame.replyTo === 'string' ? frame.replyTo : undefined;
             const to = Array.isArray(frame.to) ? frame.to as string[] : undefined;
-            const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts, frame.kind)
+            const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts, frame.kind, undefined, false, undefined, frame.request, frame.subject)
               : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts);
             return { type: 'result', id: String(frame.id), ok: true, value };
           });
@@ -1001,7 +1007,7 @@ export class Dispatcher {
             peer.send({ type: 'result', id: frame.id, ok: true, value: { pong: true } });
             break;
           case 'send': {
-            const { outcomes, topic } = core.sendFromSession(me, frame.to ?? [], frame.text, frame.replyTo, frame.topic, undefined, undefined, undefined, frame.kind);
+            const { outcomes, topic } = core.sendFromSession(me, frame.to ?? [], frame.text, frame.replyTo, frame.topic, undefined, undefined, undefined, frame.kind, undefined, false, undefined, frame.request, frame.subject);
             peer.send({ type: 'result', id: frame.id, ok: true, value: { outcomes, topic } });
             break;
           }

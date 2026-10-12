@@ -198,7 +198,7 @@ export class Visibility {
     const project = (payload: Row): Row => {
       const out = { ...payload };
       for (const [key, surface] of Object.entries({ messages: 'messages', digest: 'messages', sessions: 'sessions', presence: 'sessions', processes: 'sessions', harnesses: 'sessions', items: 'items', topics: 'topics', artifacts: 'artifacts' } as const)) {
-        if (Array.isArray(out[key])) out[key] = rows(out[key]).map(r => one(surface, r));
+        if (Array.isArray(out[key]) && !(key === 'messages' && typeof out.needsYou === 'number')) out[key] = rows(out[key]).map(r => one(surface, r));
       }
       for (const [key, surface] of Object.entries({ message: 'messages', process: 'sessions', item: 'items', topic: 'topics', artifact: 'artifacts' } as const)) {
         const r = row(out[key]);

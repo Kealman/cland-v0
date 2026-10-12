@@ -118,7 +118,7 @@ export type ItemView = IndexedItem & {
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & { layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & { layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
@@ -238,7 +238,7 @@ export class Tracker {
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
-  readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict, report?: VerdictReport) => void>();
+  readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict, report?: VerdictReport, human?: boolean) => void>();
   /** The hub's topic binding; without one (a tracker on its own) the `topic` field is written as given. */
   #topicBinding: TopicBinding | null = null;
   readonly #git: Git;
@@ -463,7 +463,7 @@ export class Tracker {
    */
   #announce(id: string, ifMoved: boolean, siblings?: string[]): void {
     const indexed = this.#index.get(id);
-    const item: ItemSummary | null = indexed ? { ...indexed, claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#inboxPlan(id), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts().get(id) ?? []), verdictBase: this.#fresh.base() } : null;
     const shown = item ? JSON.stringify([item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.levels) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(id) === shown || (item && pending(item.verdicts)))) return;
     const previous = this.#announced.get(id);
@@ -505,7 +505,7 @@ export class Tracker {
   }
 
   /** Listen to verdict comments written through the hub; returns the unsubscribe. */
-  onVerdict(listener: (id: string, author: string, verdict: Verdict, report?: VerdictReport) => void): () => void {
+  onVerdict(listener: (id: string, author: string, verdict: Verdict, report?: VerdictReport, human?: boolean) => void): () => void {
     this.#verdictListeners.add(listener);
     return () => this.#verdictListeners.delete(listener);
   }
@@ -1329,7 +1329,14 @@ export class Tracker {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
-    return this.#index.list(filter).map((i) => ({ ...i, claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
+    return this.#index.list(filter).map((i) => ({ ...i, ...this.#inboxPlan(i.id), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
+  }
+
+  #inboxPlan(id: string): Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> {
+    const candidate = this.#planCandidates.get(id);
+    if (!candidate) return {};
+    return { plan: this.#index.plan(id), approval: this.#approvalOf(candidate.item),
+      ...(this.#planErrors.has(id) ? { planError: this.#planErrors.get(id)! } : {}) };
   }
 
   /** Session work reads indexed ownership; item bodies and verdict provenance are irrelevant. */
@@ -1758,7 +1765,7 @@ export class Tracker {
       if (recorded) {
         for (const listener of [...this.#verdictListeners]) {
           try {
-            listener(view.id, actor.name, recorded, v ? { topic: view.topic, text: view.comments.at(-1)!.text, ...(marking ? { criteria: marked } : {}) } : undefined);
+            listener(view.id, actor.name, recorded, v ? { topic: view.topic, text: view.comments.at(-1)!.text, ...(marking ? { criteria: marked } : {}) } : undefined, actor.human === true);
           } catch (err) {
             this.#log({ event: 'task-verdict-listener-failed', id: view.id, error: err instanceof Error ? err.message : String(err) });
           }

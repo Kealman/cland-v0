@@ -300,6 +300,7 @@ export class HubCore {
       log: this.#log,
       emit: (e) => this.#emit(e),
       topics: () => this.#store.topics(),
+      items: () => this.#items?.list?.() ?? [],
       presence: () => this.presence(),
       stateOf: (id) => this.sessionState(id),
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
@@ -2218,8 +2219,18 @@ export class HubCore {
    * message goes into the topic for the human. The topic defaults to General for a message to the human
    * and to Agents for one between sessions (spec 4.5).
    */
-  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false, answerTo?: string): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
-    if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question or decision');
+  sendFromSession(from: string, to: string[], text: string, replyTo?: string, topicId?: string, artifact?: Artifact, actor?: { role: string | null }, artifacts?: Artifact[], kind: unknown = 'report', messageId?: string, requireAllRecipients = false, answerTo?: string, request?: unknown, subject?: unknown): { message: Message; outcomes: SendOutcome[]; topic: TopicRef } {
+    if (!isSendKind(kind)) throw new Error('send kind must be progress, report, question, decision or request');
+    if (kind !== 'request' && (request !== undefined || subject !== undefined)) throw new Error('request and subject require kind: request; remove them from this send');
+    if (kind === 'request') {
+      if (to.length) throw new Error('a request is for the human: omit to or use an empty to');
+      if (typeof request !== 'string' || !['review', 'qa', 'handover'].includes(request)) throw new Error('set request to review, qa or handover');
+      if (typeof subject !== 'string' || !subject.trim()) throw new Error('a request needs subject: name a known item (T-n), artifact (A-n) or session');
+      const known = /^T-[1-9]\d*$/.test(subject) ? this.#items?.list?.().some(i => i.id === subject)
+        : /^A-[1-9]\d*$/.test(subject) ? this.#store.artifact(subject) !== null
+        : this.#store.knownSessions().some(s => s.name === subject);
+      if (!known) throw new Error(`unknown subject "${subject}": name a known item (T-n), artifact (A-n) or session`);
+    }
     const sender = actor ?? this.#live.get(from);
     if (!sender) throw new Error(`unknown sender ${from}`);
     this.#drainVerifierRequests();
@@ -2230,7 +2241,7 @@ export class HubCore {
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });
     const self = this.#identity(from);
-    const verifier = this.#verifierRequest(from, sender.role, text, topic);
+    const verifier = kind === 'request' ? undefined : this.#verifierRequest(from, sender.role, text, topic);
     if (requireAllRecipients) {
       const intended = this.#resolveAddressees(to, from, 'offline-holders', verifier);
       if (intended.unknown.length || intended.empty.length) throw new Error('result recipients unavailable; delivery remains pending');
@@ -2290,6 +2301,7 @@ export class HubCore {
       from,
       fromKind: 'agent',
       kind,
+      ...(kind === 'request' ? { request: request as NonNullable<Message['request']>, subject: subject as string } : {}),
       via: 'session',
       to: [...sessions, ...waiting.map(w => w.tag)],
       text,

@@ -44,6 +44,8 @@ const KEPT = [
   'model',
   'effort',
   'kind',
+  'request',
+  'subject',
   'state',
   'assignee',
   'parent',

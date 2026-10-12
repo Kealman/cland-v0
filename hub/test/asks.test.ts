@@ -153,7 +153,7 @@ test('two open asks in one topic: answering one keeps the wait, a plain message 
   const topic = (await ok<{ topic: Topic }>(ui, { type: 'topic.create', title: 'Two questions' })).topic;
   const first = await ask(coord, topic.id, 'First?', ['yes', 'no']);
   const second = await ask(coord, topic.id, 'Second, in your words?', []);
-  assert.equal((await inbox(ui)).asks.map((a) => a.id).join(), [first.ask, second.ask].join(), 'oldest first');
+  assert.equal((await inbox(ui)).asks.map((a) => a.id).join(), [second.ask, first.ask].join(), 'newest first');
   assert.equal((await inbox(ui)).needsYou, 2);
 
   await ok(ui, { type: 'topic.answer', ask: first.ask, option: 1 });
@@ -211,6 +211,7 @@ test('closing the topic cancels its open asks; a topic left waiting without an a
   const store = new Store();
   store.createTopic('topic-1', 'Left waiting', null, new Date().toISOString());
   store.setTopicStatus('topic-1', 'waiting for human');
+  store.record({ id: 'waiting-report', from: 'legacy', fromKind: 'agent', via: 'session', to: ['coord'], kind: 'report', text: 'Waiting for your response', topic: 'topic-1', ts: new Date().toISOString() }, [], Date.now());
   const hub = await hubFor(t, { store });
   const coord = await spoke(t, hub, 'coord', 'coordinator');
   await coord.waitForPresence(['coord']);

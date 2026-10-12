@@ -58,7 +58,7 @@ export type Scenario = {
   /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
   visibility?: import('../../hub/src/hub/visibility.ts').VisibilityOverrides;
-  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null };
+  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; plans?: Array<Record<string, unknown>>; requests?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null };
 };
 
 type Frame = Record<string, unknown> & { type?: string; id?: string };
@@ -160,11 +160,14 @@ function inboxValue(): Record<string, unknown> {
   const asks = ib.asks ?? [];
   const approvals = ib.approvals ?? [];
   const waiting = ib.waiting ?? [];
+  const plans = ib.plans ?? [], requests = ib.requests ?? [];
+  const messages = ib.messages ?? waiting; // Legacy scenarios model messages through their waiting topic.
   const policy = visibility();
   const count = asks.filter(r => policy.place('inbox', r, 'ask').layer === 'now').length
     + approvals.filter(r => policy.place('inbox', r, 'approval').layer === 'now').length
-    + waiting.filter(r => policy.place('inbox', r, 'waiting').layer === 'now').length;
-  return { asks, approvals, waiting, notifications: ib.notifications ?? [],
+    + plans.length + requests.length
+    + messages.filter(r => (r.layer ?? policy.place('inbox', r, 'waiting').layer) === 'now').length;
+  return { asks, approvals, waiting, plans, requests, messages, notifications: ib.notifications ?? [],
     ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? count }) };
 }
 

@@ -49,13 +49,15 @@ const TOOLS = [
   {
     name: 'send',
     description:
-      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another). A lead\'s `review request T-<n>` to `reviewer` or `qa request T-<n>` to `qa` in Agents or the item topic reaches one live verifier: the previous verifier, otherwise a free holder. The outcome\'s `resolvedTo` names that session. If none is eligible, `queued` waits for the next free verifier; the hub delivers automatically and sends the lead an assignment or refusal notice. Wait instead of resending. With none live, report the staffing blocker so one can be launched.',
+      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. Exception: any session may send kind request to the human, with request review, qa or handover and a known subject (item, artifact or session). request and subject are forbidden on other kinds. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another). A lead\'s `review request T-<n>` to `reviewer` or `qa request T-<n>` to `qa` in Agents or the item topic reaches one live verifier: the previous verifier, otherwise a free holder. The outcome\'s `resolvedTo` names that session. If none is eligible, `queued` waits for the next free verifier; the hub delivers automatically and sends the lead an assignment or refusal notice. Wait instead of resending. With none live, report the staffing blocker so one can be launched.',
     inputSchema: {
       type: 'object',
       properties: {
         to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles, `all` or `lead T-<n>` (the nearest lead up the open item chain, skipping the sender’s own claims, then Coordinator); omit to write to the human' },
         text: { type: 'string', description: 'The message' },
         kind: { type: 'string', enum: SEND_KINDS, description: 'progress waits for the next turn in a digest; report (default), question and decision start a turn' },
+        request: { type: 'string', enum: ['review', 'qa', 'handover'], description: 'Required with kind request, addressed only to the human; any session may send one' },
+        subject: { type: 'string', description: 'Required with kind request: a known item (T-n), artifact (A-n) or session name' },
         artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact ids in this topic to attach; deliveries carry their durable paths' },
         topic: { type: 'string', description: 'The topic id (the `topic` of the event being answered); default General for the human, Agents between sessions' },
         reply_to: { type: 'string', description: 'msg_id of the event being answered' },
@@ -339,7 +341,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
           return text({ ok: true, ...value });
         }
         case 'send': {
-          if (args.kind !== undefined && !isSendKind(args.kind)) return text({ ok: false, error: 'send kind must be progress, report, question or decision' }, true);
+          if (args.kind !== undefined && !isSendKind(args.kind)) return text({ ok: false, error: 'send kind must be progress, report, question, decision or request' }, true);
           const to = Array.isArray(args.to) ? args.to.filter((t): t is string => typeof t === 'string') : [];
           if (typeof args.text !== 'string') return text({ ok: false, error: 'send needs `text`' }, true);
           const value = (await hub.request({
@@ -347,6 +349,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
             to,
             text: args.text,
             ...(isSendKind(args.kind) ? { kind: args.kind } : {}),
+            ...(args.request !== undefined ? { request: args.request as import('../protocol.ts').RequestKind } : {}),
+            ...(args.subject !== undefined ? { subject: args.subject as string } : {}),
             ...(args.artifacts !== undefined ? { artifacts: args.artifacts as string[] } : {}),
             ...(typeof args.reply_to === 'string' ? { replyTo: args.reply_to } : {}),
             ...(typeof args.topic === 'string' ? { topic: args.topic } : {}),

@@ -209,6 +209,13 @@ test('the hub places messages, sessions, items and artifacts by the default tabl
     const event = await ui.waitFor(f => f.type === 'message' && (f.message as { id: string }).id === m.id);
     assert.equal((event.message as { layer: string }).layer, layer);
   }
+  const unread = (await ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.deepEqual(unread.messages.map(m => m.text), ['Direct human report']);
+  assert.equal(unread.needsYou, 1, 'the unread now message counts under the four-kind inbox');
+  assert.equal((await ui.request({ type: 'topic.read', topic: 'general' })).ok, true);
+  const read = (await ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.equal(read.messages.length, 0);
+  assert.equal(read.needsYou, 0, 'read the report before checking that verdict notifications add no waits');
   const create = async (title: string, extra: Record<string, unknown> = {}) => {
     const result = await ui.request({ type: 'task.create', title, ...extra });
     assert.equal(result.ok, true, result.error);

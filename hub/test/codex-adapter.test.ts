@@ -931,6 +931,8 @@ test('a refused recovery request records journal, Agents and inbox failure and t
   await fake.approve();
   const expected = 'impl [Implementer]: its turn ended without a message it had accepted, and delivering it again failed: recovery request refused';
   await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
+  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(flushed.ok, true, flushed.error);
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string; error?: string });
   assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id && e.error === 'recovery request refused').length, 1);
   assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 0);
