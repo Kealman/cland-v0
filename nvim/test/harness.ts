@@ -1,5 +1,6 @@
 // The Neovim client's seam: the real client (`nvim --clean -u nvim/init.lua`) headless with `--listen`,
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
+import { isolateVerification } from '../../hub/test/harness.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdtemp } from 'node:fs/promises';
@@ -68,6 +69,7 @@ return rows`;
  * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
  */
 export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}): Promise<Client> {
+  if (!env.CLAND_COMMAND) await isolateVerification(root);
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
   ownDirectory(t, dir);
   const sock = join(dir, 'nvim.sock');

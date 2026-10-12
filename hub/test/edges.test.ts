@@ -6,7 +6,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION, type VerificationQueue } from '../src/protocol.ts';
-import { CLI_ENTRY, connectSocket, frameClient, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, connectSocket, frameClient, isolateVerification, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 /** A valid `topic.list` request one byte under the frame limit (its newline not counted). */
 export function nearLimitFrame(id: string): string {
@@ -52,7 +52,8 @@ test('the Unix socket reads a near-limit frame and the next one from a single wr
 type StdioHub = { ui: FrameClient; pid: number; stderr: () => string; exited: Promise<number | null>; write: (raw: string) => void };
 
 /** `cland hub serve --stdio …` as a UI's child, optionally under a command prefix (a sandbox). */
-function spawnStdioHub(t: TestContext, root: string, args: string[], prefix: string[] = []): StdioHub {
+async function spawnStdioHub(t: TestContext, root: string, args: string[], prefix: string[] = []): Promise<StdioHub> {
+  await isolateVerification(root);
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   const argv = [...prefix, process.execPath, CLI_ENTRY, 'hub', 'serve', '--stdio', ...args];
@@ -114,7 +115,7 @@ test('in a sandbox that forbids listening, `serve --stdio` still serves the UI o
   writeFileSync(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(lock)}\n`);
   mkdirSync(lock);
   writeFileSync(join(lock, 'holder.json'), JSON.stringify({ pid: process.pid, started, since: new Date().toISOString(), token: 'hand', worktree: root }));
-  const hub = spawnStdioHub(t, root, [], ['/usr/bin/sandbox-exec', '-p', '(version 1)(allow default)(deny network-bind)']);
+  const hub = await spawnStdioHub(t, root, [], ['/usr/bin/sandbox-exec', '-p', '(version 1)(allow default)(deny network-bind)']);
   await driveUi(hub);
   const result = await hub.ui.request({ type: 'suite.queue' });
   assert.equal(result.ok, true, result.error);
@@ -133,7 +134,7 @@ test('in a sandbox that forbids listening, `serve --stdio` still serves the UI o
 
 test('`serve --stdio --no-listen` binds nothing and serves the UI over stdio', async (t) => {
   const root = await tempProject(t);
-  const hub = spawnStdioHub(t, root, ['--no-listen']);
+  const hub = await spawnStdioHub(t, root, ['--no-listen']);
   await driveUi(hub);
   assert.doesNotMatch(hub.stderr(), /"event":"listening"/);
   assert.equal(existsSync(join(root, '.cland', 'hub.json')), false);
@@ -146,7 +147,7 @@ test('when one listener cannot bind, `serve --stdio` closes the other and goes o
   const root = await tempProject(t);
   // a directory where the socket goes: the Unix socket cannot be put in place, after the WebSocket bound
   mkdirSync(join(root, '.cland', 'hub.sock'), { recursive: true });
-  const hub = spawnStdioHub(t, root, []);
+  const hub = await spawnStdioHub(t, root, []);
   await driveUi(hub);
   assert.match(hub.stderr(), /"event":"listen-failed"/);
   assert.equal(existsSync(join(root, '.cland', 'hub.json')), false);
@@ -159,7 +160,7 @@ test('when one listener cannot bind, `serve --stdio` closes the other and goes o
 test('while a daemon serves the project, `serve --stdio` refuses with a clear error and leaves the daemon alone', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
-  const hub = spawnStdioHub(t, root, []);
+  const hub = await spawnStdioHub(t, root, []);
   assert.equal(await hub.exited, 1);
   assert.match(hub.stderr(), new RegExp(`a hub already runs for ${root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(pid ${discovery.pid}`));
   assert.match(hub.stderr(), /cland hub stop/);

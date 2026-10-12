@@ -36,7 +36,7 @@ export async function suiteWorker(input: string): Promise<void> {
   try {
     const started = await processStartedAsync(process.pid);
     if (!started) throw new Error('cannot establish compatibility lease identity');
-    const holder = { pid: process.pid, started, token, since: new Date().toISOString(), worktree: job.cwd };
+    const holder = { pid: process.pid, started, startedUtc: await processStartedAsync(process.pid, undefined, undefined, 'UTC'), token, since: new Date().toISOString(), worktree: job.cwd };
     if (admitted && !signal) leases.push(...await acquireBroker(dirs, () => signal !== null, holder));
     const checkHead = async () => {
       const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');

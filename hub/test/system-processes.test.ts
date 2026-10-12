@@ -36,7 +36,7 @@ test('real whole-table and selected listings match lock and cleanup start identi
       assert.ok(row, `listing contains pid ${pid}`);
       assert.equal(row.started, processStarted(pid));
       assert.equal(row.started, await processStartedAsync(pid));
-      assert.equal(row.started, captureProcess(pid)?.started);
+      assert.equal(processStarted(pid, 'UTC'), captureProcess(pid)?.started);
     }
     const row = rows.find(row => row.pid === child.pid)!;
     assert.equal(row.parent, process.pid);

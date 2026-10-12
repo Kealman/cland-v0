@@ -281,6 +281,9 @@ local function render_sessions(c)
     local names = {}
     for _, w in ipairs(waiters) do names[#names + 1] = w.session .. ' (' .. seconds(w.waitMs) .. ')' end
     local line = 'verify: ' .. (holder and (holder.kind == 'hand run' and 'hand run' or holder.session) or (#waiters == 0 and 'idle' or 'free'))
+    if holder and holder.kind == 'hand run' then
+      line = line .. ' · pid ' .. tostring(holder.pid or 'unknown') .. ' · ' .. (holder.worktree or 'worktree unknown') .. ' · since ' .. (holder.since or 'unknown')
+    end
     if #names > 0 then line = line .. ' · waiting ' .. table.concat(names, ' → ') .. ' · next ETA ' .. seconds(waiters[1].etaMs) end
     wrapped(c, line, 'ClandDim')
     c:add({})

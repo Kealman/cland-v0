@@ -5,7 +5,8 @@
 // Nothing here reaches into either side's state; everything goes through the seams.
 import { execFile } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -242,7 +243,8 @@ export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
 }
 
 /** `cland` with `extra` added to its environment: a test hook such as CLAND_TEST_TASK_WRITE_GATE, or a daemon that launches a fake harness. */
-export function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
+export async function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
+  if (args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) await isolateVerification(cwd);
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   // Doctor normally discovers deleted-project hubs machine-wide. Tests only inspect their own fixture.
@@ -294,10 +296,23 @@ export const pidAlive = (pid: number): boolean => {
   }
 };
 
-/**
- * `cland hub start` in `root`; the daemon it leaves behind is killed when the test ends, whatever happened.
- * Registered before the start returns, so even a failing assertion right after cannot leak a process.
- */
+/** Give every real scratch-hub launch a fixture-local compatibility fence. */
+export async function isolateVerification(root: string): Promise<void> {
+  // A scratch hub must never inspect or sweep another run's machine-wide leases.
+  const configPath = join(root, '.cland', 'config.toml');
+  const source = await readFile(configPath, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
+  const config = parseToml(source);
+  const verification = config.verification ?? {};
+  assert.ok(typeof verification === 'object' && verification !== null && !Array.isArray(verification) && !(verification instanceof Date));
+  if (!('lock_path' in verification) || verification.lock_path === '/tmp/cland-suite.lock') {
+    verification.lock_path = join(root, 'suite.lock');
+    config.verification = verification;
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(configPath, stringifyToml(config));
+  }
+}
+
+/** Start the fixture daemon and register teardown before returning its discovery. */
 export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}): Promise<{ result: CliResult; discovery: Discovery }> {
   const result = await clandWithEnv(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;

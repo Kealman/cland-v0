@@ -129,6 +129,67 @@ if (args.join(' ') === 'rev-parse HEAD' && existsSync('hold-head')) {
   assert.deepEqual((queue.value as VerificationQueue).waiters, []);
 });
 
+test('scratch daemon defaults to fixture leases when the project has no verification override', async t => {
+  const root = await tempProject(t, 'cland-scratch-lease-');
+  const { discovery } = await startDaemon(t, root, { TZ: 'Pacific/Honolulu' });
+  const lock = join(root, 'suite.lock');
+  await mkdir(lock);
+  await writeFile(`${lock}.owner`, JSON.stringify({ pid: process.pid, started: null, token: 'scratch', worktree: root, since: '2026-10-12T00:00:00Z' }));
+  const ui = await connectUi(t, discovery);
+  const q = (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  assert.equal(q.holder?.kind, 'hand run');
+  assert.equal(q.holder?.pid, process.pid);
+  assert.equal(q.holder?.worktree, root);
+});
+
+for (const legacy of [false, true]) test(`verify queue preserves a live ${legacy ? 'legacy' : 'UTC'} package holder across observer timezones`, async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '', { TZ: 'Pacific/Honolulu' });
+  const lock = join(f.root, 'suite.lock');
+  const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const marker = join(f.root, 'hand-started');
+  const finish = join(f.root, 'hand-finish');
+  const file = join(f.root, 'hand.mjs');
+  await writeFile(file, `import test from 'node:test'; import { existsSync, writeFileSync } from 'node:fs'; test('hand holder', async () => { writeFileSync(${JSON.stringify(marker)}, 'ready'); while (!existsSync(${JSON.stringify(finish)})) await new Promise(r => setTimeout(r, 25)); });`);
+  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [${JSON.stringify(file)}], { cwd: ${JSON.stringify(f.root)}, lockDirs: { hub: ${JSON.stringify(lock)}, nvim: ${JSON.stringify(`${lock}-nvim`)} } });`], {
+    env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  ownProcess(t, child.pid);
+  let output = '';
+  child.stdout.on('data', data => { output += String(data); });
+  child.stderr.on('data', data => { output += String(data); });
+  const done = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+  t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); await done; });
+  await eventually('live package holder', () => readFile(marker, 'utf8').then(() => true, () => undefined));
+  if (legacy) for (const dir of [lock, `${lock}-nvim`]) {
+    const owner = JSON.parse(await readFile(`${dir}.owner`, 'utf8'));
+    delete owner.startedUtc;
+    await writeFile(`${dir}.owner`, JSON.stringify(owner));
+    await writeFile(join(dir, 'holder.json'), JSON.stringify(owner));
+  }
+  const owner = JSON.parse(await readFile(`${lock}.owner`, 'utf8')) as { pid: number; since: string; token: string };
+  assert.equal(owner.pid, child.pid);
+  assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
+  const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  assert.equal(queue.holder?.kind, 'hand run', output);
+  assert.equal(queue.holder?.pid, child.pid);
+  assert.equal(queue.holder?.worktree, f.root);
+  assert.equal(queue.holder?.since, owner.since);
+  const cli = await clandWithEnv(f.root, f.env, 'verify', 'queue', '--json');
+  assert.equal(cli.code, 0, cli.stderr);
+  assert.equal((JSON.parse(cli.stdout) as VerificationQueue).holder?.pid, child.pid);
+  const text = await cland(f.root, 'verify', 'queue');
+  assert.equal(text.code, 0, text.stderr);
+  assert.ok(text.stdout.includes(`since ${owner.since}`), text.stdout);
+  await f.ui.waitFor(frame => frame.type === 'verification.queue' && (frame.queue as VerificationQueue).holder?.pid === child.pid);
+  const waiting = await f.launch();
+  assert.equal(waiting.pid, null, 'hub admission must leave the live hand holder alone');
+  assert.equal(child.signalCode, null, output);
+  assert.equal(JSON.parse(await readFile(`${lock}.owner`, 'utf8')).token, owner.token);
+  await writeFile(finish, 'done');
+  assert.equal(await done, 0, output);
+  await eventually('queued run completes after hand release', async () => (await f.results())[0]);
+});
+
 test('verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart', async t => {
   const f = await fixture(t, 'node -e "process.exit(0)"');
   const lock = join(f.root, 'suite.lock');

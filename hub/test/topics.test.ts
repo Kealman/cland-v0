@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { CLI_ENTRY, cland, connectSocket, connectUi, frameClient, killDaemon, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, cland, connectSocket, connectUi, frameClient, isolateVerification, killDaemon, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Topic = { id: string; title: string; status: string; standing: boolean; createdAt: string; updatedAt: string };
 type TopicMessage = { id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; stage?: string };
@@ -159,6 +159,7 @@ test("a spoke's send appears to the subscribed UI as a message event with sender
 
 test('the same frames over stdio: a UI spawning `cland hub serve --stdio` as its child', async (t) => {
   const root = await tempProject(t);
+  await isolateVerification(root);
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve', '--stdio'], { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });

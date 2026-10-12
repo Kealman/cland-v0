@@ -20,6 +20,8 @@ export type LockHolder = {
   pid: number;
   /** The holder's process start time as `ps -o lstart=` prints it; null when `ps` could not tell. */
   started: string | null;
+  /** New ownership records use a pinned ps timezone; older records have no basis. */
+  startedUtc?: string | null;
   /** New lock instances have a nonce; older pid/start-time records remain readable. */
   token?: string;
 };
@@ -31,39 +33,48 @@ export const parseStarted = (stdout: string): string | null => stdout.trim().rep
 const PS_TIMEOUT_MS = 3000;
 
 /** The start time of a live process, as `ps` prints it; null when it is gone or `ps` cannot say (in time). */
-export function processStarted(pid: number): string | null {
-  const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: PS_TIMEOUT_MS, killSignal: 'SIGKILL' });
+export function processStarted(pid: number, timezone?: 'UTC'): string | null {
+  const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: PS_TIMEOUT_MS, killSignal: 'SIGKILL', ...(timezone ? { env: { ...process.env, TZ: timezone, LC_ALL: 'C' } } : {}) });
   if (r.status !== 0 || r.error) return null;
   return parseStarted(r.stdout);
 }
 
 /** `processStarted` without blocking: `ps` awaited, killed at the same deadline. */
-export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS, resumed: Resumed = work => work()): Promise<string | null> {
-  const result = await run('ps', ['-o', 'lstart=', '-p', String(pid)], process.env, timeoutMs);
+export async function processStartedAsync(pid: number, timeoutMs = PS_TIMEOUT_MS, resumed: Resumed = work => work(), timezone?: 'UTC'): Promise<string | null> {
+  const result = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, timeoutMs);
   return resumed(() => result.code === 0 && !result.error ? parseStarted(result.stdout) : null);
 }
 
 /** This process's own start time, asked once: it never changes. */
 let ownStarted: Promise<string | null> | null = null;
+let ownUtcStarted: Promise<string | null> | null = null;
 let ownSynchronousStarted: string | null = null;
 
 export function readLock(path: string): LockHolder | null {
   try {
     const v = JSON.parse(readFileSync(path, 'utf8')) as Partial<LockHolder>;
     if (typeof v.pid !== 'number') return null;
-    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null };
+    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null, ...(typeof v.startedUtc === 'string' || v.startedUtc === null ? { startedUtc: v.startedUtc } : {}) };
   } catch {
     return null;
   }
 }
 
 // `ps` failing for a live pid says nothing either way: keep the lock rather than break a live hub's
-const sameProcess = (holder: LockHolder, now: string | null): boolean => holder.started === null || now === null || now === holder.started;
+export function sameProcess(holder: LockHolder, now: string | null): boolean {
+  const expected = holder.startedUtc === undefined ? holder.started : holder.startedUtc;
+  if (expected === null || now === null || now === expected) return true;
+  if (holder.startedUtc !== undefined) return false;
+  // Legacy lstart has no timezone. UTC-12 through UTC+14 can describe the same
+  // process 26 hours apart; that ambiguity is never evidence for a destructive sweep.
+  const before = Date.parse(`${holder.started} UTC`), current = Date.parse(`${now} UTC`);
+  return Number.isFinite(before) && Number.isFinite(current) && Math.abs(before - current) <= 26 * 60 * 60 * 1000;
+}
 
 /** Whether the process the lock names is still the one that took it. */
 export function holderAlive(holder: LockHolder): boolean {
   if (!pidAlive(holder.pid)) return false;
-  return holder.started === null || sameProcess(holder, processStarted(holder.pid));
+  return holder.started === null || sameProcess(holder, processStarted(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC'));
 }
 
 /** The live holder of the lock at `path`, or null when nobody (live) holds it. */
@@ -76,11 +87,11 @@ export function liveHolder(path: string): LockHolder | null {
  * `liveHolder` without blocking: the start-time probe is `startedOf`, which the caller bounds (`cland doctor` runs
  * `ps` with a deadline and kills its process group when it passes). A probe that cannot say counts as the holder.
  */
-export async function liveHolderAsync(path: string, startedOf: (pid: number) => Promise<string | null>): Promise<LockHolder | null> {
+export async function liveHolderAsync(path: string, startedOf: (pid: number, timezone?: 'UTC') => Promise<string | null>): Promise<LockHolder | null> {
   const holder = readLock(path);
   if (!holder || !pidAlive(holder.pid)) return null;
   if (holder.started === null) return holder;
-  return sameProcess(holder, await startedOf(holder.pid)) ? holder : null;
+  return sameProcess(holder, await startedOf(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC')) ? holder : null;
 }
 
 // Creation, stale removal and release all hold the same guard. Its directory is installed nonempty in one
@@ -91,12 +102,12 @@ const parseHolder = (text: string): LockHolder | null => {
   try {
     const v = JSON.parse(text) as Partial<LockHolder>;
     if (typeof v.pid !== 'number') return null;
-    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null, ...(typeof v.token === 'string' ? { token: v.token } : {}) };
+    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null, ...(typeof v.startedUtc === 'string' || v.startedUtc === null ? { startedUtc: v.startedUtc } : {}), ...(typeof v.token === 'string' ? { token: v.token } : {}) };
   } catch { return null; } // malformed bytes are distinct from a failed filesystem read
 };
 const absent = (err: unknown) => (err as NodeJS.ErrnoException).code === 'ENOENT';
 const occupied = (err: unknown) => ['EEXIST', 'ENOTEMPTY'].includes((err as NodeJS.ErrnoException).code ?? '');
-const sameHolder = (a: LockHolder | null, b: LockHolder) => a?.pid === b.pid && a.started === b.started && a.token === b.token;
+const sameHolder = (a: LockHolder | null, b: LockHolder) => a?.pid === b.pid && a.started === b.started && a.startedUtc === b.startedUtc && a.token === b.token;
 
 function recordSync(path: string): RecordSnapshot {
   try { return { exists: true, holder: parseHolder(readFileSync(path, 'utf8')) }; }
@@ -149,7 +160,7 @@ async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: numb
       return record.holder;
     });
     if (resumed(() => pidAlive(holder.pid))) {
-      const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed);
+      const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed, holder.startedUtc === undefined ? undefined : 'UTC');
       if (resumed(() => sameProcess(holder, now))) return;
     }
     await fs.rm(`${path}/${name}`, { force: true });
@@ -254,12 +265,13 @@ function lockTimeout(deadline?: number): number {
   return Math.min(PS_TIMEOUT_MS, ms);
 }
 
-export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number): Promise<AsyncHubLock> {
+export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number, timezone?: 'UTC'): Promise<AsyncHubLock> {
   lockTimeout(deadline);
   ownStarted ??= processStartedAsync(process.pid, lockTimeout(deadline));
   const started = await ownStarted;
+  const startedUtc = timezone ? await (ownUtcStarted ??= processStartedAsync(process.pid, lockTimeout(deadline), undefined, timezone)) : undefined;
   const { me, text } = resumed(() => {
-    const me = { pid: process.pid, started, token: randomUUID() };
+    const me = { pid: process.pid, started, ...(startedUtc !== undefined ? { startedUtc } : {}), token: randomUUID() };
     return { me, text: `${JSON.stringify(me)}\n` };
   });
   const guarded = async <T>(work: () => Promise<T>, limit?: number): Promise<T> => {
@@ -279,7 +291,7 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
       if (!record.exists) return false;
       if (record.holder && resumed(() => pidAlive(record.holder!.pid))) {
         const holder = record.holder;
-        const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed);
+        const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed, holder.startedUtc === undefined ? undefined : 'UTC');
         resumed(() => { if (sameProcess(holder, now)) throw new HubLocked(holder); });
       }
       await fs.rm(path, { force: true });

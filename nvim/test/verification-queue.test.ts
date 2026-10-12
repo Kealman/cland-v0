@@ -38,7 +38,7 @@ test('sessions queue line follows hub snapshots and events, including events rac
   await c.lua("require('cland').refresh_sessions()");
   await control({ waitSnapshot: 'hub.status' });
   await control({ emit: { type: 'verification.queue', queue: hand } });
-  await c.waitScreen(s => s.includes('verify: hand run') && s.includes('next (8s)') && s.includes('ETA unknown'), 'hand-run event while old status snapshot waits');
+  await c.waitScreen(s => s.includes('verify: hand run') && s.includes('pid 42') && s.includes('/candidate') && s.includes('since 2026-10-11T00:00:00Z') && s.includes('next (8s)') && s.includes('ETA') && s.includes('unknown'), 'hand-run identity and start while old status snapshot waits');
   await control({ releaseSnapshots: ['hub.status'] });
   const screen = await c.waitScreen(s => s.includes('hub: connected') && s.includes('verify: hand run'), 'event remains after stale snapshot replay');
   assert.ok(!screen.includes('verify: idle'), screen);

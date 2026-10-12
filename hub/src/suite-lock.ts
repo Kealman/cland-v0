@@ -2,13 +2,13 @@
 import { type Stats, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { link, mkdir, readFile, realpath, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { acquireLockAsync, processStartedAsync, HubLocked } from './hub/lock.ts';
+import { acquireLockAsync, processStartedAsync, sameProcess, HubLocked } from './hub/lock.ts';
 import { pidAlive } from './project.ts';
 import { run } from './doctor/report.ts';
 import { fileURLToPath } from 'node:url';
 import type { ProcessIdentity } from '../test/process-cleanup.ts';
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-export type Holder = { pid: number; started: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string };
+export type Holder = { pid: number; started: string | null; startedUtc?: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 /** Read-only view of the compatibility slot; never reap or take a lease to display it. */
 export async function compatibilityHolder(dirs: string[]): Promise<{ holder: Holder | null; since: string | null } | null> {
@@ -18,8 +18,8 @@ export async function compatibilityHolder(dirs: string[]): Promise<{ holder: Hol
     // Display must stay responsive even when the OS identity probe is stalled.
     // A failed probe preserves a live unknown; admission still performs its own checks.
     if (holder && pidAlive(holder.pid)) {
-      const current = readableStart(holder.started) ? await processStartedAsync(holder.pid, 100) : null;
-      if (current === null || current === holder.started) return { holder, since: holder.since };
+      const current = readableStart(holder.startedUtc === undefined ? holder.started : holder.startedUtc) ? await processStartedAsync(holder.pid, 100, undefined, holder.startedUtc === undefined ? undefined : 'UTC') : null;
+      if (sameProcess(holder, current)) return { holder, since: holder.since };
     }
     if (info && !holder) return { holder: null, since: new Date(info.mtimeMs).toISOString() };
   }
@@ -31,7 +31,7 @@ async function holderAt(path: string): Promise<Holder | null> {
     const value: unknown = JSON.parse(await readFile(path, 'utf8'));
     if (typeof value === 'object' && value !== null && 'pid' in value && 'token' in value && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.token === 'string') {
       const parsed = value as Partial<Holder>;
-      return { ...parsed, pid: Number(value.pid), started: typeof parsed.started === 'string' ? parsed.started : null, since: parsed.since ?? parsed.started ?? 'unknown', token: value.token };
+      return { ...parsed, pid: Number(value.pid), started: typeof parsed.started === 'string' ? parsed.started : null, ...('startedUtc' in parsed ? { startedUtc: typeof parsed.startedUtc === 'string' ? parsed.startedUtc : null } : {}), since: parsed.since ?? parsed.started ?? 'unknown', token: value.token };
     }
   } catch { /* no complete ownership record */ }
   return null;
@@ -45,9 +45,9 @@ function remaining(deadline?: number): number {
 }
 async function liveHolder(holder: Holder, deadline?: number): Promise<boolean> {
   if (!pidAlive(holder.pid)) return false;
-  if (!readableStart(holder.started)) return true;
-  const now = await processStartedAsync(holder.pid, remaining(deadline));
-  return now === null || now === holder.started;
+  if (!readableStart(holder.startedUtc === undefined ? holder.started : holder.startedUtc)) return true;
+  const now = await processStartedAsync(holder.pid, remaining(deadline), undefined, holder.startedUtc === undefined ? undefined : 'UTC');
+  return sameProcess(holder, now);
 }
 
 async function publish(path: string, holder: Holder, exclusive = false): Promise<void> {
@@ -95,7 +95,7 @@ async function recoveryHolder(holder: Holder, dirs: string[]): Promise<Holder> {
   const record = join(holder.records, `${holder.token}.json`);
   const latest = await holderAt(record);
   if (latest) {
-    if (latest.token !== holder.token || latest.pid !== holder.pid || latest.started !== holder.started) throw new Error('broker recovery record identity changed; ownership preserved');
+    if (latest.token !== holder.token || latest.pid !== holder.pid || latest.started !== holder.started || latest.startedUtc !== holder.startedUtc) throw new Error('broker recovery record identity changed; ownership preserved');
     return latest;
   }
   if (await stat(record).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) throw new Error('invalid broker recovery record; ownership preserved');
@@ -153,7 +153,7 @@ export async function acquire(dirs: string[], interrupted: () => boolean, holder
         // Hold every recovery guard while inspecting/admitting the phase. Legacy
         // runners release these guards before waiting on the next lock, so this
         // cannot form a cycle with their Neovim-first acquisition order.
-        for (const dir of dirs) guards.push(await acquireLockAsync(`${dir}.reaper`));
+        for (const dir of dirs) guards.push(await acquireLockAsync(`${dir}.reaper`, undefined, undefined, 'UTC'));
         const tickets = await liveTickets(queueDir);
         position = tickets.findIndex(waiting => waiting.token === holder.token) + 1;
         total = tickets.length;
@@ -243,7 +243,7 @@ export async function compatibilityOccupied(dirs: string[]): Promise<boolean> {
   };
   const guards: Awaited<ReturnType<typeof acquireLockAsync>>[] = [];
   try {
-    for (const dir of dirs) guards.push(await acquireLockAsync(`${dir}.reaper`, work => work(), deadline));
+    for (const dir of dirs) guards.push(await acquireLockAsync(`${dir}.reaper`, work => work(), deadline, 'UTC'));
     if ((await inspectLocks(dirs, deadline, recover)).blockedDir !== null) return true;
     const queue = `${dirs[0]}.queue`;
     return existsSync(queue) && (await liveTickets(queue, deadline)).length > 0;
@@ -293,8 +293,10 @@ export async function borrowLease(dirs: string[], holder: Holder): Promise<Lease
     const owner = await holderAt(`${dir}.owner`);
     if (!owner || owner.pid !== inherited.pid || owner.started !== inherited.started || owner.token !== inherited.token || !await liveHolder(owner)) throw new Error('inherited suite lease is no longer held');
   }
-  holder.pid = inherited.pid; holder.started = inherited.started; holder.token = inherited.token;
   const owner = await holderAt(`${dirs[0]}.owner`);
+  holder.pid = inherited.pid; holder.started = inherited.started; holder.token = inherited.token;
+  if (owner?.startedUtc !== undefined) holder.startedUtc = owner.startedUtc;
+  else delete holder.startedUtc;
   if (owner?.records === `${dirs[0]}.runs`) holder.records = owner.records;
   holder.root = join(await realpath('/tmp'), `cland-suite-${holder.token}`);
   const leases = dirs.map(dir => ({ publish: async () => {

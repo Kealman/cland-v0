@@ -35,8 +35,8 @@ async function checkHub(l: Layout): Promise<Check[]> {
   const text = readText(l.discovery);
   const d = text === null ? null : readDiscovery(l.discovery);
   // the lock's holder, its start time asked of `ps` with a deadline: a hung `ps` cannot hold the doctor up
-  const holder = await liveHolderAsync(l.lock, async (pid) => {
-    const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], process.env, probeTimeout(process.env, 3000));
+  const holder = await liveHolderAsync(l.lock, async (pid, timezone) => {
+    const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, probeTimeout(process.env, 3000));
     return r.code === 0 && r.error === undefined ? parseStarted(r.stdout) : null;
   });
   const out: Check[] = [];

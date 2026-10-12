@@ -29,7 +29,7 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
   }
   if (pids?.length === 0) return [];
   let output: string;
-  try { output = execFileSync('ps', processTableArgs(pids), { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }); }
+  try { output = execFileSync('ps', processTableArgs(pids), { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' } }); }
   catch (error) {
     if (!pids || (error as { status?: number }).status !== 1) throw error;
     output = String((error as { stdout?: string }).stdout ?? '');

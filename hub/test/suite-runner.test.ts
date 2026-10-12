@@ -54,12 +54,12 @@ for (const mode of ['hub', 'nvim'] as const) {
     assert.equal(await readFile(journal, 'utf8'), 'start\nend\nstart\nend\n');
   });
 
-  test(`a ${mode} suite takes over locks left by a killed runner and reaper`, async (t) => {
+  test(`a ${mode} suite takes over locks left by a killed runner and reaper across timezones`, async (t) => {
     const dir = await fixture(t);
     const marker = join(dir, 'holder.json');
     const holding = join(dir, 'held.mjs');
     await writeFile(holding, `import test from 'node:test'; import { writeFile } from 'node:fs/promises'; test('holder', async () => { await writeFile(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root: process.env.TMPDIR })); await new Promise(r => setTimeout(r, 60000)); });`);
-    const holder = run(t, dir, holding, mode);
+    const holder = run(t, dir, holding, mode, false, { TZ: 'UTC' });
     await until(async () => (await readFile(marker, 'utf8').catch(() => '')).length > 0);
     const worker = JSON.parse(await readFile(marker, 'utf8')) as { pid: number; root: string };
     const { captureProcess } = await import('./process-cleanup.ts');
@@ -82,7 +82,7 @@ for (const mode of ['hub', 'nvim'] as const) {
     await reaped;
     const file = join(dir, 'pass.mjs');
     await writeFile(file, `import assert from 'node:assert/strict'; import { existsSync } from 'node:fs'; import test from 'node:test'; test('fixture', () => { assert.throws(() => process.kill(${worker.pid}, 0), { code: 'ESRCH' }); assert.equal(existsSync(${JSON.stringify(worker.root)}), false); });`);
-    const suite = run(t, dir, file, mode);
+    const suite = run(t, dir, file, mode, false, { TZ: 'Pacific/Honolulu' });
     assert.equal(await suite.done, 0, suite.output());
     assert.match(suite.output(), /taking over stale suite lock/);
     assert.throws(() => process.kill(worker.pid, 0), { code: 'ESRCH' });
@@ -179,19 +179,19 @@ const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode =
 });
 
 for (const mode of ['hub', 'nvim'] as const) {
-  for (const kind of ['reused holder PID', 'dead automatic empty lock', 'unknown manual empty lock'] as const) {
+  for (const kind of ['reused holder PID', 'reused UTC holder PID', 'dead automatic empty lock', 'unknown manual empty lock'] as const) {
     test(`${mode} suite lock handles ${kind}`, async t => {
       const dir = await fixture(t);
       const lock = lockPath(dir, mode);
       await mkdir(lock);
       const old = new Date(Date.now() - 16 * 60_000);
       if (kind !== 'unknown manual empty lock') {
-        const pid = kind === 'reused holder PID' ? process.pid : 2147483647;
+        const pid = kind.startsWith('reused') ? process.pid : 2147483647;
         if (kind === 'dead automatic empty lock') assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
-        const metadata = { pid, started: 'Mon Oct 5 12:00:00 1900', since: old.toISOString(), token: 'dead-fixture' };
+        const metadata = { pid, started: 'Mon Oct 5 12:00:00 1900', ...(kind === 'reused UTC holder PID' ? { startedUtc: 'Mon Oct 5 12:00:00 1900' } : {}), since: old.toISOString(), token: 'dead-fixture' };
         await writeFile(`${lock}.owner`, JSON.stringify(metadata));
         await utimes(`${lock}.owner`, old, old);
-        if (kind === 'reused holder PID') await writeFile(join(lock, 'holder.json'), JSON.stringify(metadata));
+        if (kind.startsWith('reused')) await writeFile(join(lock, 'holder.json'), JSON.stringify(metadata));
       }
       await utimes(lock, old, old);
       const file = join(dir, 'pass.mjs');
@@ -271,6 +271,43 @@ test('all waits for joint admission then cleans its hub root and uses a fresh ro
     assert.equal(existsSync(lockPath(dir, mode)), false);
     assert.equal(existsSync(`${lockPath(dir, mode)}.owner`), false);
   }
+});
+
+for (const legacy of [false, true]) test(`a second package runner never signals or takes a live ${legacy ? 'legacy' : 'UTC'} holder in another timezone`, async t => {
+  const dir = await fixture(t);
+  const marker = join(dir, 'live-started');
+  const finish = join(dir, 'live-finish');
+  const holding = join(dir, 'holding.mjs');
+  await writeFile(holding, `import test from 'node:test'; import { existsSync, writeFileSync } from 'node:fs'; test('live holder', async () => { writeFileSync(${JSON.stringify(marker)}, 'ready'); while (!existsSync(${JSON.stringify(finish)})) await new Promise(r => setTimeout(r, 25)); });`);
+  const holder = run(t, dir, holding, 'all', false, { TZ: 'UTC' });
+  await until(() => readFile(marker, 'utf8').then(() => true, () => false));
+  const locks = [lockPath(dir, 'hub'), lockPath(dir, 'nvim')];
+  if (legacy) for (const lock of locks) {
+    const owner = JSON.parse(await readFile(`${lock}.owner`, 'utf8'));
+    delete owner.startedUtc; // Pre-upgrade local-time records have no timezone basis.
+    await writeFile(`${lock}.owner`, JSON.stringify(owner));
+    await writeFile(join(lock, 'holder.json'), JSON.stringify(owner));
+  }
+  const records = await Promise.all(locks.map(lock => readFile(`${lock}.owner`, 'utf8')));
+  for (const [i, lock] of locks.entries()) {
+    assert.equal(JSON.parse(records[i]!).pid, holder.child.pid);
+    assert.deepEqual(JSON.parse(await readFile(join(lock, 'holder.json'), 'utf8')), JSON.parse(records[i]!));
+    const old = new Date(Date.now() - 60_000);
+    await utimes(`${lock}.owner`, old, old);
+  }
+  const passing = join(dir, 'pass.mjs');
+  await writeFile(passing, `import test from 'node:test'; test('successor', () => {});`);
+  const contender = run(t, dir, passing, 'all', false, { TZ: 'Pacific/Honolulu' });
+  await until(() => /waiting for the suite lock|taking over stale suite lock/.test(contender.output()));
+  assert.doesNotMatch(contender.output(), /taking over stale suite lock|cleanup pid/);
+  assert.match(contender.output(), new RegExp(`waiting for the suite lock held by pid ${holder.child.pid}`));
+  assert.equal(holder.child.exitCode, null, holder.output());
+  assert.equal(holder.child.signalCode, null, holder.output());
+  for (const [i, lock] of locks.entries()) assert.equal(await readFile(`${lock}.owner`, 'utf8'), records[i]);
+  contender.child.kill('SIGTERM');
+  assert.equal(await contender.done, 143, contender.output());
+  await writeFile(finish, 'done');
+  assert.equal(await holder.done, 0, holder.output());
 });
 
 for (const started of [new Date().toISOString(), null, 'unreadable-start-time']) {

@@ -23,7 +23,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const q = await askHubFrame(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
     const duration = (ms: number | null) => ms === null ? 'unknown' : `${Math.ceil(ms / 1000)}s`;
-    const lines = [`holder: ${q.holder ? `${q.holder.kind === 'hand run' ? 'hand run' : q.holder.session} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
+    const lines = [`holder: ${q.holder ? `${q.holder.kind === 'hand run' ? 'hand run' : q.holder.session} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · since ${q.holder.since ?? 'unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
       ...q.waiters.map(w => `${w.position}. ${w.session} · ${w.item ?? w.id} · ${w.mode} · wait ${duration(w.waitMs)} · ETA ${duration(w.etaMs)}`),
       `last ${q.metrics.window} runs (${q.metrics.count} recorded): wait median ${duration(q.metrics.wait.medianMs)} / p90 ${duration(q.metrics.wait.p90Ms)}; run median ${duration(q.metrics.run.medianMs)} / p90 ${duration(q.metrics.run.p90Ms)}`];
     process.stdout.write((values.json ? JSON.stringify(q) : lines.join('\n')) + '\n');

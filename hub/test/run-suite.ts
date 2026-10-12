@@ -28,7 +28,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   });
   const startedIdentity = processStarted(process.pid);
   if (!startedIdentity) throw new Error('cannot establish suite holder process identity');
-  const holder: Holder = { pid: process.pid, started: startedIdentity, since: new Date().toISOString(), token: runId, worktree: await realpath(options.cwd ?? process.cwd()), root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
+  const holder: Holder = { pid: process.pid, started: startedIdentity, startedUtc: processStarted(process.pid, 'UTC'), since: new Date().toISOString(), token: runId, worktree: await realpath(options.cwd ?? process.cwd()), root: join(await realpath('/tmp'), `cland-suite-${runId}`) };
   const leases: Lease[] = [];
   let machine: Lease[] = [];
   let root: string | undefined;
