@@ -382,6 +382,7 @@ function M.show(view, opts)
       table.remove(ui.hist, 1)
     end
   end
+  if ui.view.kind == 'events' and view.kind ~= 'events' then require('cland.events').visit_look = nil end
   if view.kind == 'events' and ui.view.kind ~= 'events' then require('cland.events').enter() end
   if view.kind == 'plan' then require('cland.plan').enter(view.id) end
   ui.view = view
@@ -457,6 +458,8 @@ function M.back()
     return
   end
   table.insert(ui.hist, ui.view)
+  if ui.view.kind == 'events' then require('cland.events').visit_look = nil end
+  if prev.kind == 'events' then require('cland.events').visit() end
   if prev.kind == 'plan' then require('cland.plan').enter(prev.id) end
   ui.view = prev
   M.apply_view({ insert = false })

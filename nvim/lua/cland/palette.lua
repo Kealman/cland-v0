@@ -143,7 +143,7 @@ local function render(p)
   p.prefix = g and g.prefix or nil
   local groups = {}
   for _, def in ipairs(M.GROUPS) do
-    if not g or g.key == def.key then
+    if (not p.subject_only or def.key ~= 'actions') and (not g or g.key == def.key) then
       -- built on every draw: what the hub sends while the palette is open shows at once
       local matched = match(build(def.key), text)
       if #matched > 0 then
@@ -238,7 +238,7 @@ function M.open(opts)
   local max_height = math.max(5, math.min(24, vim.o.lines - 10))
   local row = math.max(1, math.floor((vim.o.lines - max_height) / 5))
   local col = math.floor((vim.o.columns - width) / 2)
-  local p = { sel = 1, max_height = max_height, prev = api.nvim_get_current_win(), width = width, select_best=true }
+  local p = { select = opts.select, subject_only = opts.subject_only, sel = 1, max_height = max_height, prev = api.nvim_get_current_win(), width = width, select_best=true }
   if not M.listening then
     -- the open palette follows the state, as the panels do (one listener for the session)
     M.listening = true
@@ -288,7 +288,7 @@ function M.open(opts)
       M.close()
       if e then
         vim.schedule(function()
-          M.run(e, split)
+          if p.select then p.select(e) else M.run(e, split) end
         end)
       end
     end

@@ -206,6 +206,7 @@ local function wire_client(client)
   end)
   client:on('connected', function()
     M.refresh()
+    require('cland.events').refresh_summary()
     if state.S.ui.view.kind == 'events' then require('cland.events').enter() end
   end)
   client:on('visibility', M.refresh)
@@ -533,7 +534,7 @@ function M.start(opts)
   require('cland.hl').setup()
   require('cland.bars').setup()
   state.reset({ root = root })
-  require('cland.events').reset()
+  require('cland.events').reset(true)
   state.S.ui.right = 'sessions'
   require('cland.ui').load(root)
   M.root = root

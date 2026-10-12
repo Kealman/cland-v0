@@ -1142,7 +1142,7 @@ export class Dispatcher {
             return answer(core.asks.answer(frame.ask, frame.option, frame.text));
           case 'events.list': {
             const resumed = this.#guard.resumer(frame.type);
-            return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+            return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'inbox.list':
             return answer(core.inbox.list());

@@ -109,6 +109,14 @@ export class Visibility {
     return this.#overrides[surface]?.[kind] ?? defaults[kind] ?? 'background';
   }
 
+  /** Project policy can promote an informational event; human pins do not change its class. */
+  raisedToNow(surface: Surface, object: Row, kind?: string): boolean {
+    if (!this.#overrides[surface]) return false;
+    const cell = kind ?? this.#kind(surface, object);
+    const defaults: Readonly<Record<string, Layer>> = DEFAULT_VISIBILITY[surface];
+    return this.#overrides[surface]?.[cell] === 'now' && defaults[cell] !== 'now';
+  }
+
   place<T extends object>(surface: Surface, object: T, kind?: string): T & { layer: Layer; severity?: 'warn' } {
     const r = object as Row;
     const cell = kind ?? this.#kind(surface, r);

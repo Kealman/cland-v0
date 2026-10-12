@@ -226,9 +226,20 @@ export type InboxNotification = {
 /** The four now sections (§3.7); waiting and notifications remain for older renderers. */
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
 
-/** Journal rows, newest first; cursors are exclusive byte positions in the append-only file. */
-export type EventKind = 'session' | 'task' | 'verdict' | 'suite' | 'release' | 'artifact' | 'usage' | 'topic';
-export type EventRow = { id: string; ts: string; kind: EventKind; subject: { kind: 'item' | 'session' | 'topic' | 'artifact'; id: string }; text: string; glyph: string; item?: string; session?: string; topic?: string; artifact?: string };
+/** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
+export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'] as const;
+export type EventKind = typeof EVENT_KINDS[number];
+export type EventSubject = { kind: 'item' | 'session' | 'topic' | 'artifact'; id: string };
+export type EventsFilter = { kinds?: EventKind[]; warnings?: boolean; subject?: EventSubject; muted?: EventSubject[] };
+export type EventRow = { count?: number; bookkeeping?: boolean; warning?: boolean; replaces?: string; firstTs?: string; id: string; ts: string; kind: EventKind; subject: EventSubject; text: string; glyph: string; item?: string; session?: string; topic?: string; artifact?: string };
+export function isEventsFilter(f: unknown): boolean {
+  if (f === undefined) return true;
+  if (!isObject(f)) return false;
+  const subject = (s: unknown) => isObject(s) && ['item', 'session', 'topic', 'artifact'].includes(String(s.kind)) && typeof s.id === 'string' && s.id.length > 0;
+  return (f.kinds === undefined || Array.isArray(f.kinds) && f.kinds.every(k => ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'].includes(k)))
+    && (f.warnings === undefined || typeof f.warnings === 'boolean') && (f.subject === undefined || subject(f.subject))
+    && (f.muted === undefined || Array.isArray(f.muted) && f.muted.every(subject));
+}
 export type EventsPage = { rows: EventRow[]; before: string | null; more: boolean };
 
 /** What the hub pushes to a subscribed client. */
@@ -562,7 +573,7 @@ export type ClientRequest =
   /** The inbox: `Inbox`. */
   | { type: 'inbox.list'; id: string }
   /** At most 200 journal rows older than before: EventsPage. */
-  | { type: 'events.list'; id: string; before?: string; limit?: number }
+  | { type: 'events.list'; id: string; before?: string; limit?: number; filter?: EventsFilter }
   /** Dismiss one notification: `Inbox`. Asks and approvals are not dismissable. */
   | { type: 'inbox.dismiss'; id: string; notification: string }
   /** Dismiss every notification: `Inbox`. */
@@ -742,7 +753,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'inbox.dismiss_all':
       return true;
     case 'events.list':
-      return (f.before === undefined || (typeof f.before === 'string' && /^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0));
+      return (f.before === undefined || (typeof f.before === 'string' && (/^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)) || /^events:[A-Za-z0-9_-]+$/.test(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0)) && isEventsFilter(f.filter);
     case 'inbox.dismiss':
       return typeof f.notification === 'string';
     case 'worktree.list':

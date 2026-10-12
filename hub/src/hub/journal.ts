@@ -6,6 +6,7 @@
 // Every record is `{ ts, event, … }`, the hub log's own shape: the journal is a filter over the log closure (`tap`),
 // so an event is journalled by being logged, with no second call site. `write` is there for a record that is not
 // a log line (the audit log calls it, or logs `{ event: 'audit', … }`, which the filter journals too).
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -226,15 +227,46 @@ export class Journal {
   }
 
   /** Read fixed-size blocks backwards; a cursor excludes the last returned row's start byte. */
-  async events(before?: string, limit = 200): Promise<EventsPage> {
+  async events(before?: string, limit = 200, project: (row: EventRow, record: JournalRecord) => EventRow | null = row => row): Promise<EventsPage> {
     const resumed = this.#resumer('events.list');
     await this.flush();
     const file = this.#file!;
     const size = (await resumed(() => file.stat())).size;
-    let end = before === undefined ? size : Number(before);
+    const continuation = before?.startsWith('events:') ? JSON.parse(Buffer.from(before.slice(7), 'base64url').toString()) : null;
+    if (continuation && (!Array.isArray(continuation.skip) || continuation.skip.some((v: unknown) => !Array.isArray(v) || typeof v[0] !== 'string' || !Array.isArray(v[1]) || typeof v[1][0] !== 'number' || typeof v[1][1] !== 'number'))) throw new Error('invalid events cursor');
+    let end = continuation ? continuation.end : before === undefined ? size : Number(before);
     if (!Number.isSafeInteger(end) || end < 0 || end > size) throw new Error('invalid events cursor');
     const rows: EventRow[] = [];
     let cursor: string | null = null;
+    let overflow: number | undefined;
+    const excluded = new Map<string, [number, number]>(continuation?.skip ?? []);
+    const groups = new Map<string, EventRow>();
+    const result = (more: boolean): EventsPage => ({ rows, more, before: overflow === undefined ? cursor : 'events:' + Buffer.from(JSON.stringify({ end: overflow, skip: [...excluded, ...rows.map(r => [eventKey(r), [Date.parse(r.ts), Date.parse(r.firstTs ?? r.ts)]] as const)] })).toString('base64url') });
+    const accept = (record: JournalRecord, start: number, end: number): boolean => {
+      const raw = eventRow(record, String(start));
+      const row = raw && project(raw, record);
+      if (!row) return false;
+      const time = Date.parse(row.ts), key = eventKey(row);
+      for (const [k, range] of excluded) if (range[1] - time > 60000) excluded.delete(k);
+      const skipped = excluded.get(key);
+      if (skipped !== undefined && skipped[1] - time <= 60000 && skipped[0] >= time) return false;
+      if (skipped !== undefined) excluded.delete(key);
+      const group = groups.get(key);
+      if (group && Date.parse(group.firstTs ?? group.ts) - time <= 60000 && Date.parse(group.ts) >= time) {
+        group.count = (group.count ?? 1) + 1;
+        group.firstTs = row.ts;
+        if (overflow === undefined) cursor = String(start);
+        return false;
+      }
+      if (rows.length < cap) {
+        groups.set(key, row); rows.push(row); cursor = String(start);
+        return false;
+      }
+      overflow ??= end;
+      // Finish every selected group's 60-second window before returning. Interleaved
+      // rows remain behind the cursor; excluded groups prevent cross-page duplicates.
+      return time < Math.min(...rows.map(r => Date.parse(r.firstTs ?? r.ts))) - 60000;
+    };
     let suffix = Buffer.alloc(0);
     let skipLine = false;
     const cap = Math.min(200, Math.max(1, limit));
@@ -254,12 +286,9 @@ export class Journal {
           if (data[i] !== 10) continue;
           const lineStart = i + 1;
           if (!skipLine && lineStart < lineEnd) {
-            let row: EventRow | null = null;
-            try { row = eventRow(JSON.parse(data.subarray(lineStart, lineEnd).toString()), String(start + lineStart)); } catch { /* damaged/partial records are skipped */ }
-            if (row) {
-              if (rows.length === cap) return { rows, before: cursor, more: true };
-              rows.push(row); cursor = String(start + lineStart);
-            }
+            let record: JournalRecord | undefined;
+            try { record = JSON.parse(data.subarray(lineStart, lineEnd).toString()); } catch { /* damaged/partial records are skipped */ }
+            if (record && accept(record, start + lineStart, start + lineEnd)) return result(true);
           }
           skipLine = false;
           lineEnd = i;
@@ -273,14 +302,10 @@ export class Journal {
     }
     if (!skipLine && suffix.length) {
       try {
-        const row = eventRow(JSON.parse(suffix.toString()), '0');
-        if (row) {
-          if (rows.length === cap) return { rows, before: cursor, more: true };
-          rows.push(row); cursor = '0';
-        }
+        accept(JSON.parse(suffix.toString()), 0, suffix.length);
       } catch { /* damaged records are skipped */ }
     }
-    return { rows, before: cursor, more: false };
+    return result(overflow !== undefined);
   }
 
   /** Drain records accepted before this call without closing the sink. Later producers may keep appending. */
@@ -362,7 +387,7 @@ export function readJournal(path: string, query: JournalQuery = {}, now: Date = 
 
 /** Translate announced rows and usable historical domain records; no database backfill. */
 export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
-  if (!r || typeof r.ts !== 'string') return null;
+  if (!r || typeof r.ts !== 'string' || !Number.isFinite(Date.parse(r.ts))) return null;
   const value = (key: string) => typeof r[key] === 'string' ? r[key] as string : undefined;
   let kind: EventKind;
   let subject: EventRow['subject'] | undefined;
@@ -373,6 +398,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
     const announced = r.subject as Record<string, string> | undefined;
     if (!announced) return null;
     kind = r.kind === 'session.state' ? 'session' : r.kind === 'task' && r.verdict ? 'verdict' : r.kind as EventKind;
+    if (r.lifecycle === 'waiting for approval') return null;
     subject = artifact ? { kind: 'artifact', id: artifact } : announced.item ? { kind: 'item', id: announced.item } : announced.session ? { kind: 'session', id: announced.session } : announced.topic ? { kind: 'topic', id: announced.topic } : undefined;
   } else if (r.event === 'notification') {
     kind = r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
@@ -404,9 +430,9 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   if (kind === 'artifact') glyph = 'A';
   else if (kind === 'usage') glyph = '$';
   else if (kind === 'release') glyph = '◈';
-  else if (kind === 'verdict') glyph = r.result === 'not clear' || text.includes('not clear') ? '⚠' : '✓';
+  else if (kind === 'verdict') glyph = (r.verdict as { result?: string } | undefined)?.result === 'not clear' || r.result === 'not clear' || text.includes('not clear') ? '⚠' : '✓';
   else if (kind === 'suite') { /* the outcome above owns the suite glyph */ }
-  else if (kind === 'session' && /died|harness-exited/.test(text)) glyph = '⚠';
+  else if (kind === 'session' && (r.lifecycle === 'died' || r.kind === 'death' || /died|harness-exited/.test(text))) glyph = '⚠';
   else if (kind === 'session' && /launched|resumed/.test(text)) glyph = '▶';
   else if (kind === 'session' && /stopped/.test(text)) glyph = '■';
   else if (kind === 'session' && /idle/.test(text)) glyph = '○';
@@ -415,5 +441,12 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   else if (kind === 'task' && /plan/.test(text)) glyph = '▤';
   else if (kind === 'task' && /criterion|criteria/.test(text)) glyph = '◐';
   else if (kind === 'task' && /status/.test(text)) glyph = '◉';
-  return { id: value('rowId') ?? `journal:${offset}`, ts: r.ts, kind, subject, text: text.replace(/[\r\n]+/g, ' '), glyph, ...(item ? { item } : {}), ...(session ? { session } : {}), ...(topic ? { topic } : {}), ...(artifact ? { artifact } : {}), [subject.kind]: subject.id };
+  const warning = glyph === '⚠' || kind === 'suite' && r.branch === 'dev' && glyph === '✗';
+  const bookkeeping = !warning && (['session-launched', 'session-resumed', 'session-stopped', 'task-claimed'].includes(r.event) || kind === 'session' && /launched|resumed|stopped/.test(text) || kind === 'task' && /claimed|status changed|criterion|criteria/.test(text) || kind === 'topic' && /closed/.test(text));
+  return { ...(warning ? { warning: true } : {}), ...(bookkeeping ? { bookkeeping: true } : {}), id: value('rowId') ?? `journal:${offset}`, ts: r.ts, kind, subject, text: text.replace(/[\r\n]+/g, ' '), glyph: warning ? '⚠' : glyph, ...(item ? { item } : {}), ...(session ? { session } : {}), ...(topic ? { topic } : {}), ...(artifact ? { artifact } : {}), [subject.kind]: subject.id };
+}
+
+/** Equality is the announced kind, subject and one-line content; presentation is not part of it. */
+export function eventKey(row: EventRow): string {
+  return createHash('sha256').update(JSON.stringify([row.kind, row.subject, row.text])).digest('hex');
 }

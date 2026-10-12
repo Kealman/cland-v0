@@ -35,7 +35,7 @@ test('Events view opens through the registry, groups days, pages, folds and foll
   await c.waitScreen(s => s.includes('claimed event 200') || s.includes('── ' + new Date(yesterday).toLocaleDateString('en-GB', { weekday: 'short' })) || s.includes('the newest 400 rows'), 'older day appended');
   await c.input('G');
   await c.waitScreen(s => s.includes('claimed event 399'), 'older 200 rows');
-  await c.input('ggjj');
+  await c.lua("for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('claimed event 0',1,true) then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
   const selected = await c.lua<string>('return vim.api.nvim_get_current_line()');
   await control({ emit: { type: 'event', row: { ...rows[0], id: 'live', text: 'live event' } } });
   await c.waitScreen(s => s.includes('live event'), 'live row at top');
@@ -62,11 +62,11 @@ test('Events view opens through the registry, groups days, pages, folds and foll
   await c.input('  ');
   await c.waitScreen(s => s.includes('Subject detail') && !s.includes('events · newest first'), 'previous view');
   await c.input(' N');
-  await c.waitScreen(s => s.includes('△ events · e opens the events view'), 'inbox events line');
+  await c.waitScreen(s => s.includes('new events since your last look'), 'inbox events line');
   await c.input('Ge');
   await c.waitScreen(s => s.includes('events · newest first'), 'inbox e');
   await c.input('  ');
-  await c.lua("local b=vim.api.nvim_get_current_buf(); for i,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if l:find('△ events',1,true) then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
+  await c.lua("local b=vim.api.nvim_get_current_buf(); for i,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do if l:find('new events since your last look',1,true) then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
   await c.input('<CR>');
   await c.waitScreen(s => s.includes('events · newest first'), 'inbox Enter');
   await c.lua("require('cland.actions').run('global:<leader>E')");

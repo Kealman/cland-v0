@@ -9,7 +9,7 @@ import type { EventsPage } from '../src/protocol.ts';
 // Seed at the filesystem boundary, before the real hub starts. Never extend the shared harness.
 async function seedJournal(root: string, count: number) {
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/journal.jsonl'), Array.from({ length: count }, (_, i) => JSON.stringify({ ts: '2026-10-12T10:00:00Z', event: 'task-claimed', item: 'T-1', session: `worker-${i}` }) + '\n').join(''));
+  await writeFile(join(root, '.cland/journal.jsonl'), Array.from({ length: count }, (_, i) => JSON.stringify({ ts: new Date(Date.parse('2026-10-12T10:00:00Z') - (count - i) * 61000).toISOString(), event: 'task-claimed', item: 'T-1', session: `worker-${i}` }) + '\n').join(''));
 }
 
 test('events.list reads the tail and pages without repeats or gaps while a real spoke appends events', async t => {

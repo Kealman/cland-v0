@@ -9,6 +9,7 @@ local function snapshot()
   return {
     version = 2,
     plan_seen = vim.deepcopy(ui.plan_seen or vim.empty_dict()),
+    events = vim.deepcopy(ui.events or { filter = vim.empty_dict(), muted = {} }),
     preset = ui.preset or vim.NIL,
     panels = { left = ui.left, right = ui.right or vim.NIL, dock = ui.dock },
     sizes = vim.deepcopy(ui.sizes),
@@ -38,6 +39,19 @@ local function validate(data)
   for id, receipt in pairs(data.plan_seen) do
     assert(type(id) == 'string' and id:match('^T%-[1-9]%d*$') and type(receipt) == 'string', 'invalid plan receipt')
   end
+  data.events = data.events or { filter = vim.empty_dict(), muted = {} }
+  local e = data.events
+  assert(type(e) == 'table' and type(e.filter) == 'table' and type(e.muted) == 'table', 'invalid events preferences')
+  local kinds = { 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic' }
+  local function subject(s)
+    return type(s) == 'table' and vim.tbl_contains({ 'item', 'session', 'topic', 'artifact' }, s.kind) and type(s.id) == 'string' and s.id ~= ''
+  end
+  assert(e.filter.warnings == nil or type(e.filter.warnings) == 'boolean', 'invalid events warnings')
+  assert(e.filter.kinds == nil or type(e.filter.kinds) == 'table', 'invalid events kinds')
+  for _, k in ipairs(e.filter.kinds or {}) do assert(vim.tbl_contains(kinds, k), 'invalid events kind') end
+  assert(e.filter.subject == nil or subject(e.filter.subject), 'invalid events subject')
+  for _, s in ipairs(e.muted) do assert(subject(s), 'invalid events mute') end
+  assert(e.last_look == nil or type(e.last_look) == 'string' and e.last_look:match('^%d%d%d%d%-%d%d%-%d%dT'), 'invalid events last look')
   return data
 end
 
@@ -46,6 +60,7 @@ function M.load(root)
   path, pending, warned = root .. '/.cland/ui.json', nil, false
   local ui = state.S.ui
   ui.plan_seen = vim.empty_dict()
+  ui.events = { filter = vim.empty_dict(), muted = {} }
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
   ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
   local _, _, stat_code = uv.fs_stat(path)
@@ -54,6 +69,7 @@ function M.load(root)
   end)
   if ok then
     ui.plan_seen = data.plan_seen
+    ui.events = data.events
     ui.preset = data.preset
     ui.left, ui.right, ui.dock = data.panels.left, data.panels.right, data.panels.dock
     ui.sizes, ui.items_filter, ui.current_release = data.sizes, data.items_filter, data.current_release
@@ -76,9 +92,9 @@ local function atomic_write(text)
     local read_ok, current = pcall(function()
       return vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
     end)
-    if read_ok and type(current) == 'table' and current.visibility then
+    if read_ok and type(current) == 'table' then
       local data = vim.json.decode(text)
-      data.visibility = current.visibility
+      for key, value in pairs(current) do if data[key] == nil then data[key] = value end end
       text = vim.json.encode(data) .. '\n'
     end
     fd = assert(uv.fs_open(tmp, 'wx', 384))

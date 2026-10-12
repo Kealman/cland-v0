@@ -102,7 +102,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
       row.id = id;
     }
     tapped(record);
-    if (row) hub?.core.publishJournalRow(row);
+    if (row) hub?.core.publishJournalRow(row, record);
   };
   // Always close both sinks, including a failed journal, before releasing the lock.
   const closeLogs = async () => {
@@ -146,6 +146,28 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     await tracker.rescanAsync();
     await roles.start();
     await crew.start();
+    // The live cache must share the journal's recent groups, including ones beyond the
+    // first page. Read the tail before creating the core so startup log producers cannot
+    // race restoration; the listeners and adapters start only after this cache is installed.
+    const recent: import('../protocol.ts').EventRow[] = [];
+    const cutoff = Date.now() - 60000;
+    let before: string | undefined;
+    try {
+      while (true) {
+        const page = await journal.events(before);
+        let older = false;
+        for (const row of page.rows) {
+          if (Date.parse(row.ts) < cutoff) { older = true; break; }
+          recent.push(row);
+        }
+        if (older || !page.more || page.before === null) break;
+        before = page.before;
+      }
+    } catch (err) {
+      // History restoration is optional. Journal retains its own error, so stop
+      // still rejects and releases the project lock through the normal cleanup.
+      log({ event: 'events-restore-failed', error: err instanceof Error ? err.message : String(err) });
+    }
     hub = createHubBase({
       secret,
       journal,
@@ -184,6 +206,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
         stop: () => { void stop().catch(err => processLog({ event: 'stop-failed', error: err instanceof Error ? err.message : String(err) })); },
       },
     });
+    hub.core.restoreJournalRows(recent);
   } catch (err) {
     await crew.stop();
     await roles.stop();

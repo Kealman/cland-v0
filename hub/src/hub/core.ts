@@ -49,6 +49,8 @@ import { sessionActor } from '../tracker/requests.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
 import { Visibility, messageVerdict, type VisibilityOverrides } from './visibility.ts';
+import { eventKey, type JournalRecord } from './journal.ts';
+import type { EventRow, EventsFilter } from '../protocol.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
 
 /** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
@@ -318,7 +320,56 @@ export class HubCore {
     return () => this.#listeners.delete(listener);
   }
 
-  publishJournalRow(row: import('../protocol.ts').EventRow): void { this.#emit({ type: 'event', row }); }
+  readonly #recentEvents = new Map<string, EventRow>();
+
+  /** Restore the tail's coalesced predecessors before any startup announcements. */
+  restoreJournalRows(rows: EventRow[]): void {
+    for (const row of rows) {
+      const key = eventKey(row), previous = this.#recentEvents.get(key);
+      if (!previous || Date.parse(row.ts) > Date.parse(previous.ts)) this.#recentEvents.set(key, row);
+    }
+  }
+
+  /** Same projection for the journal and live rows, independent of visibility preferences. */
+  eventsProject(filter: EventsFilter = {}): (row: EventRow, record: JournalRecord) => EventRow | null {
+    const inbox = this.inbox.list();
+    const waitingTopics = new Set([...inbox.waiting.map(t => t.id), ...inbox.asks.map(a => a.topic.id), ...inbox.messages.map(m => m.topic.id), ...inbox.requests.map(r => r.topic.id)]);
+    const items = new Map((this.#items?.list?.() ?? []).map(i => [i.id, i]));
+    const pendingPlans = new Set(inbox.plans.map(p => p.id));
+    const descendants = filter.subject?.kind === 'item' ? new Set((this.#items?.list?.() ?? []).filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
+    descendants?.add(filter.subject!.id);
+    return (row, record) => {
+      if (row.kind === 'topic' && /waiting for human/.test(row.text) && waitingTopics.has(row.subject.id)) return null;
+      if (record.event === 'notification' && record.kind === 'plan' && pendingPlans.has(row.subject.id)) return null;
+      const cell = record.event === 'notification' ? String(record.kind === 'verdict' ? record.result === 'not clear' ? 'not_clear' : 'clear' : record.kind)
+        : row.kind === 'verdict' ? row.warning ? 'not_clear' : 'clear' : row.kind === 'release' ? 'release' : row.kind === 'session' && row.warning ? 'death' : undefined;
+      const promoted = cell && this.visibility.raisedToNow('inbox', record, cell)
+        || row.kind === 'artifact' && this.visibility.raisedToNow('artifacts', this.#store.artifact(row.subject.id) ?? { id: row.subject.id, creatorRole: record.role, creator: record.session })
+        || row.kind === 'task' && this.visibility.raisedToNow('items', items.get(row.subject.id) ?? {})
+        || row.kind === 'session' && this.visibility.raisedToNow('sessions', { role: record.role, status: /stopped|died|harness-exited/.test(row.text) ? 'stopped' : 'running', state: /idle/.test(row.text) ? 'idle' : 'busy' })
+        || row.kind === 'topic' && this.visibility.raisedToNow('topics', { status: /closed/.test(row.text) ? 'closed' : /waiting for human/.test(row.text) ? 'waiting for human' : 'open' });
+      if (promoted) row = { ...row, warning: true, glyph: '⚠', bookkeeping: false };
+      if (filter.kinds?.length && !filter.kinds.includes(row.kind) || filter.warnings && !row.warning) return null;
+      if (filter.muted?.some(s => s.kind === row.subject.kind && s.id === row.subject.id)) return null;
+      const subject = filter.subject;
+      if (subject && !(subject.kind === 'item' ? descendants?.has(row.item ?? (row.subject.kind === 'item' ? row.subject.id : '')) : row.subject.kind === subject.kind && row.subject.id === subject.id || row[subject.kind] === subject.id)) return null;
+      return row;
+    };
+  }
+
+  publishJournalRow(row: EventRow, record: JournalRecord): void {
+    const projected = this.eventsProject()(row, record);
+    if (!projected) return;
+    row = projected;
+    const key = eventKey(row), time = Date.parse(row.ts);
+    for (const [k, r] of this.#recentEvents) if (time - Date.parse(r.ts) > 60000) this.#recentEvents.delete(k);
+    const previous = this.#recentEvents.get(key);
+    if (previous && time - Date.parse(previous.ts) <= 60000) {
+      row = { ...row, replaces: previous.id, count: (previous.count ?? 1) + 1, firstTs: previous.firstTs ?? previous.ts };
+    }
+    this.#recentEvents.set(key, row);
+    this.#emit({ type: 'event', row });
+  }
 
   publishVerification(queue: VerificationQueue): void { this.#emit({ type: 'verification.queue', queue }); }
 

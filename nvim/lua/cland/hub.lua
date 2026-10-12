@@ -131,6 +131,7 @@ function Client:request(frame, cb, opts)
 end
 
 local snapshot_events = {
+  ['events.list'] = { event = true },
   ['task.list'] = { task = true },
   ['topic.list'] = { topic = true, message = true },
   ['session.list'] = { ['session.cleanup'] = true, ['session.process'] = true, ['session.state'] = true, ['session.role'] = true, ['session.usage'] = true },

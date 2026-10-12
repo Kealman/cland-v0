@@ -1,7 +1,8 @@
 // T-119 source guard: compiler-resolved Kind and default-level literal types survive bindings.
 // Compare both operand types for equality, switch cases and includes/has (receiver element types).
 // In-place array/Set/Map constructions also expose their literals even when inference widens them.
-// Default declaration and the one-off migration are the only exemptions. Operational release
+// Default declaration and the one-off migration bound tracker literals. The exact Lua
+// EventKind module may contain only its protocol-validated value list. Operational release
 // vocabulary has no Kind type and remains allowed. Mutable variable/object widening to string/string[], any,
 // unknown and cast erasure lose literal or Kind types; those residuals remain review matters.
 // Epic has no operational meaning and its literals are always forbidden outside the exemptions.
@@ -11,6 +12,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
+import { EVENT_KINDS } from '../src/protocol.ts';
 import { DEFAULT_LEVELS } from '../src/tracker/kinds.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -81,6 +83,20 @@ function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeC
   return failures;
 }
 
+function luaContainerLiterals(rel: string, source: string): string[] {
+  if (rel === 'nvim/lua/cland/event_kinds.lua') {
+    // This exact file holds event kinds, not tracker kinds, and may declare only
+    // the protocol's operational vocabulary. It
+    // cannot contain tracker operations, other literals or executable statements.
+    const declaration = source.replace(/--[^\n]*/g, '').trim().match(/^return\s*\{([\s\S]*)\}$/);
+    const literal = /(['"])([a-z]+)\1/g;
+    const values = declaration ? [...declaration[1]!.matchAll(literal)].map(m => m[2]) : [];
+    const rest = declaration?.[1]?.replace(literal, '').replace(/[\s,]/g, '');
+    return rest === '' && JSON.stringify(values) === JSON.stringify(EVENT_KINDS) ? [] : [rel + ': invalid EventKind declaration'];
+  }
+  return [...source.matchAll(/["']([^"']*)["']/g)].filter(m => DEFAULT_LEVELS.includes(m[1]!)).map(() => rel);
+}
+
 async function productionFiles(dir: string): Promise<string[]> {
   const found: string[] = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -99,7 +115,7 @@ test('container names occur only in defaults, never in compiler-typed Kind opera
   for (const path of files) {
     const rel = relative(root, path);
     if (path.endsWith('.lua')) {
-      for (const match of (await readFile(path, 'utf8')).matchAll(/["']([^"']*)["']/g)) if (DEFAULT_LEVELS.includes(match[1]!)) failures.push(rel);
+      failures.push(...luaContainerLiterals(rel, await readFile(path, 'utf8')));
     } else {
       const source = program.getSourceFile(path);
       assert.ok(source, path);
@@ -193,4 +209,20 @@ test('compiler guard follows aliases and inference while preserving operational 
   allowed.forEach((text, index) => assert.deepEqual(checked[index + rejected.length], [], text));
   assert.deepEqual(checked.at(-2), [], 'only DEFAULT_LEVELS is exempt');
   assert.ok(checked.at(-1)!.length > 0, 'helpers in the defaults file stay protected');
+});
+
+test('Lua EventKind declarations match the protocol and cannot hide tracker container operations', () => {
+  const rel = 'nvim/lua/cland/event_kinds.lua';
+  const declaration = "return { 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic' }";
+  assert.deepEqual(luaContainerLiterals(rel, declaration), []);
+  for (const source of [
+    declaration + "\nif item.kind == 'epic' then open(item) end",
+    declaration.replace("'usage'", "'epic'"),
+    declaration.replace("'release'", "'milestone'"),
+    "return { 'release' }",
+  ]) assert.ok(luaContainerLiterals(rel, source).length, source);
+  for (const source of ["if item.kind == 'release' then open(item) end", "local containers = { 'epic', 'release' }"]) {
+    assert.ok(luaContainerLiterals('nvim/lua/cland/items.lua', source).length, source);
+    assert.ok(luaContainerLiterals('nvim/lua/cland/events.lua', source).length, 'other modules retain the full guard');
+  }
 });

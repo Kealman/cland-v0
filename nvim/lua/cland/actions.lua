@@ -67,7 +67,8 @@ group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
   {'p','Next epic tab'}, {'P','Previous epic tab'}, {'<Tab>','Next epic tab'}, {'<S-Tab>','Previous epic tab'}})
 group('items', {{'gn','Now-layer items'}, {'gw','Watch-layer items'}, {'gb','Background-layer items'}, {'gA','Archived items'}})
 group('topics', {{'za','Toggle background topics'}, {'A','Show or hide archived topics'}})
-group('events', {{'<CR>', 'Open event subject'}, {'A', 'Page 200 older events'}, {'za', 'Fold or unfold event day'}})
+group('events', {{'<CR>', 'Open event subject'}, {'A', 'Page 200 older events'}, {'za', 'Fold or unfold event day'}, {'0', 'Show all event kinds'}, {'w', 'Toggle warning events'}, {'s', 'Filter events by subject'}, {'F', 'Clear events filter'}, {'gM', 'Mute or restore event subject'}})
+for i, kind in ipairs(require('cland.event_kinds')) do add('events', tostring(i), 'Filter ' .. kind .. ' events') end
 group('inbox', {{'e', 'Events view'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end

@@ -284,8 +284,20 @@ function answer(f: Frame) {
     }
     case 'events.list': {
       const start = Number(f.before ?? 0);
-      const rows = (scenario.events ?? []).slice(start, start + Math.min(200, Number(f.limit ?? 200)));
-      return ok(f.id, { rows, before: String(start + rows.length), more: start + rows.length < (scenario.events ?? []).length });
+      const filter = f.filter as import('../../hub/src/protocol.ts').EventsFilter | undefined;
+      const all = (scenario.events ?? []).filter(r => {
+        if (filter?.kinds?.length && !filter.kinds.includes(r.kind) || filter?.warnings && !r.warning) return false;
+        if (filter?.muted?.some(s => s.kind === r.subject.kind && s.id === r.subject.id)) return false;
+        const s = filter?.subject;
+        if (!s) return true;
+        if (s.kind !== 'item') return s.kind === r.subject.kind && s.id === r.subject.id || r[s.kind] === s.id;
+        let id = r.item ?? (r.subject.kind === 'item' ? r.subject.id : undefined);
+        const seen = new Set<string>();
+        while (id && !seen.has(id)) { if (id === s.id) return true; seen.add(id); const parent = scenario.items?.find(i => i.id === id)?.parent; id = typeof parent === 'string' ? parent : undefined; }
+        return false;
+      });
+      const rows = all.slice(start, start + Math.min(200, Number(f.limit ?? 200)));
+      return ok(f.id, { rows, before: String(start + rows.length), more: start + rows.length < all.length });
     }
     case 'inbox.list':
       return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');

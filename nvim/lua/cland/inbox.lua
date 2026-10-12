@@ -140,7 +140,7 @@ function M.render(c, full)
     c:add({})
     c:add({ { ' ' .. earlier .. ' earlier · Agents log (␣L)', 'ClandDim' } }, nil, { earlier_notifications = true })
   end
-  c:add({ { ' △ events · e opens the events view', 'ClandDim' } }, nil, { events = true })
+  c:add({ { require('cland.events').inbox_line(), 'ClandPlanChange' } }, nil, { events = true })
   if full then
     return { ' 1-9 answer · i free answer · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
   end
