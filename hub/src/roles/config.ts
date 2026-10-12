@@ -8,7 +8,7 @@ import type { LogFn } from '../log.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
-import { APPROVALS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Sandbox } from '../adapters/contract.ts';
+import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Permissions, type Sandbox } from '../adapters/contract.ts';
 
 export type LaunchDefaults = {
   harness: string;
@@ -21,6 +21,8 @@ export type LaunchDefaults = {
   /** What the session's commands may touch, `writableRoots` as the file gives them (relative to the project
    *  root); null: the harness's own sandbox. Adapters whose harness takes neither ignore both. */
   sandbox: Sandbox | null;
+  /** `skip`: Claude Code launches pass `--dangerously-skip-permissions`; null: the harness's own settings. */
+  permissions: Permissions | null;
 };
 
 export type RoleDefinition = {
@@ -136,6 +138,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null): R
         // a key left out is the role's built-in value; `""` is the adapter's or the harness's own
         approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
         sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
+        permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : launch.permissions === '' ? null : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`),
       },
       permissions: { tools: grants(permissions.tools, role) },
     });

@@ -11,8 +11,11 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #   exclusive    one holder at most (the Coordinator)
 #   [<role>.launch]       what \`cland session launch --role <role>\` uses when no harness or model is given:
 #                         harness (claude-code | codex | opencode), model ("" = the harness's default), effort
-#                         How a launched session may act, read at each launch (and relaunch). Codex takes these;
-#                         Claude Code and OpenCode keep their own permission settings and ignore them:
+#                         How a launched session may act, read at each launch (and relaunch). Codex takes approval and
+#                         sandbox; Claude Code takes permissions; OpenCode keeps its own settings and ignores them all:
+#                           permissions     "" (the default: the harness's own permission settings) | skip (Claude Code
+#                                           launches with --dangerously-skip-permissions: no permission prompts, no
+#                                           auto-mode classifier; the human's choice for a machine where that is safe)
 #                           approval        never (the default: the session never stops to ask the human; a command
 #                                           its sandbox refuses just fails) | on-request | untrusted
 #                           sandbox         read-only | workspace-write (the session's directory and the temp dir)

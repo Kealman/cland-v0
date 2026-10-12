@@ -545,7 +545,7 @@ export class Sessions {
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
     if (defaults === null) return {};
     const sandbox = defaults.sandbox && { ...defaults.sandbox, writableRoots: defaults.sandbox.writableRoots.map((r) => resolve(this.#root, r)) };
-    return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}) };
+    return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}), ...(defaults.permissions ? { permissions: defaults.permissions } : {}) };
   }
 
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {

@@ -33,7 +33,7 @@ import { addUsage } from './usage.ts';
 import { processStarted } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
 import { turnError } from './turn-error.ts';
-import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type LaunchPolicy, type Permissions, type ResumeResult, type SpawnRequest } from './contract.ts';
 
 
 
@@ -272,7 +272,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return /claude attach (\S+)/.exec(stdout)?.[1]?.replace(/[`'".,]+$/, '') ?? /\(([0-9a-f]{6,})\)/.exec(stdout)?.[1] ?? /\b([0-9a-f]{8})\b/.exec(stdout)?.[1] ?? null;
   }
 
-  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<HarnessProcess> {
+  async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, permissions: Permissions | null = null): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
       // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
@@ -284,6 +284,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         p.name,
         ...(p.model ? ['--model', p.model] : []),
         ...(effort ? ['--effort', effort] : []),
+        // roles.toml `permissions = "skip"`: the session never stops at a permission prompt or an auto-mode classifier
+        ...(permissions === 'skip' ? ['--dangerously-skip-permissions'] : []),
         ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree, launchToken),
       ];
       authorize();
@@ -320,7 +322,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize);
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -498,7 +500,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       const entries = (yield* wait(this.#agents(resumed))) ?? [];
@@ -512,7 +514,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
       yield* wait(this.stop(p, options.resumed));
-      const process = yield* wait(this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, null, resumed));
+      const process = yield* wait(this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, null, resumed, undefined, () => {}, options.policy?.permissions ?? null));
       return { found: true, process, state: 'unknown' };
     }).call(this), options.resumed ?? untimed);
   }

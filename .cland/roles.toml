@@ -65,6 +65,7 @@ You are the Coordinator of this project: the session that leads the root of the 
 harness = "claude-code"
 model = "claude-fable-5-1"
 effort = "max"
+permissions = "skip"
 
 [coordinator.permissions]
 tools = ["ask.forward", "ask.answer", "send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.plan", "task.comment", "session.launch", "session.stop", "session.resume", "hub.stop", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
@@ -187,6 +188,7 @@ You are a Lead: you own one configured container through its hub-held lead claim
 [lead.launch]
 harness = "claude-code"
 model = "claude-sonnet-5-5"
+permissions = "skip"
 effort = "max"
 
 [lead.permissions]

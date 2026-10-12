@@ -136,7 +136,7 @@ run: rev-2026-10-08-1
 
 The human's second decision of 2026-10-09 (T-65, superseding T-48's defaults) is that every session of every harness must be able to do any work its role needs. Codex Implementer and QA launches therefore default to `approval = "never"` and `sandbox = "danger-full-access"`, the equivalent of Claude Code's auto mode. Harness choice no longer depends on whether Codex's restricted sandbox can run a check. Reviewer stays read-only with no network.
 
-These values come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `hub/README.md`, ".cland/roles.toml") and are read at each launch and relaunch. Existing sessions keep their policy until relaunched. With `approval = "never"` a command a chosen sandbox refuses fails; nothing waits for the human to approve it.
+These values come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `hub/README.md`, ".cland/roles.toml") and are read at each launch and relaunch. Claude Code roles take `permissions = "skip"` instead (T-289): the launch and every relaunch pass `--dangerously-skip-permissions`, so the session never stops at a permission prompt or an auto-mode classifier; the default `""` keeps the harness's own settings. Existing sessions keep their policy until relaunched. With `approval = "never"` a command a chosen sandbox refuses fails; nothing waits for the human to approve it.
 
 | Role | Sandbox default | Network | Why |
 | --- | --- | --- | --- |

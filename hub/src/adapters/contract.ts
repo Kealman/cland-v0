@@ -55,6 +55,11 @@ export type Approval = (typeof APPROVALS)[number];
 export const SANDBOX_MODES = ['read-only', 'workspace-write', 'danger-full-access'] as const;
 export const SANDBOX_NETWORKS = ['none', 'local', 'full'] as const;
 
+/** Whether a launched Claude Code session skips its permission checks (roles.toml's `permissions = "skip"`:
+ *  `claude --dangerously-skip-permissions`). Adapters whose harness takes no such flag ignore it. */
+export const PERMISSIONS = ['skip'] as const;
+export type Permissions = (typeof PERMISSIONS)[number];
+
 /**
  * What a launched session's commands may touch (roles.toml's `sandbox`, `writable_roots` and `network`), in
  * harness-neutral terms; the adapter turns it into its harness's own settings.
@@ -76,6 +81,8 @@ export type LaunchPolicy = {
   approval?: Approval | null;
   /** Absent: the harness's own sandbox. */
   sandbox?: Sandbox | null;
+  /** `skip`: the session runs with every permission check bypassed (Claude Code); absent: the harness's own settings. */
+  permissions?: Permissions | null;
 };
 
 export type SpawnRequest = LaunchPolicy & {
