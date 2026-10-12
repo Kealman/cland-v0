@@ -2,8 +2,8 @@
 id: T-285
 kind: task
 title: "Acting from an inbox row: r replies, d declines or marks read, A the archive"
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-176
 branch: t/T-285-acting-from-an-inbox-row-r-replies-d
 created: 2026-10-12T11:57:19.680Z
-updated: 2026-10-12T20:01:54.930Z
+updated: 2026-10-12T20:02:20.780Z
 ---
 
 ## Summary
@@ -66,24 +66,29 @@ Out of scope: the events view and the events line; the retirement of the notific
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.939Z · commit 27bfb180878062a126d79293693e21b622d87a15
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-8 · 2026-10-12T20:02:17.630Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C2. `d` on a request declines it: its sender receives one hub line naming the declined request, the row leaves and needsYou drops; `d` on a message marks only that message read; `d` on an ask or an approval refuses with how to answer it.
   - done: impl-285 · 2026-10-12T17:41:20.372Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-8 · 2026-10-12T20:02:17.630Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C3. `A` shows the rows that left in the last seven days with when and why, and hides them again; the archive line shows how many rows left today, in the empty state too.
   - done: impl-285 · 2026-10-12T17:41:20.942Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-8 · 2026-10-12T20:02:17.630Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C4. `cland inbox --archive` prints the same rows with their reasons, and both the archive and a decline survive a hub restart.
   - done: impl-285 · 2026-10-12T17:41:21.325Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-8 · 2026-10-12T20:02:17.630Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C5. Targeted tests pass (hub frame tests on a real hub with a real spoke receiving the decline, the CLI on a temporary project, nvim headless tests on the stub hub), and `hub/README.md` and `nvim/README.md` describe the frames, `r`, `d`, `A` and `--archive`.
   - done: impl-285 · 2026-10-12T19:39:00.910Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-8 · 2026-10-12T20:02:17.631Z · commit 27bfb180878062a126d79293693e21b622d87a15
 
 ## Comments
 
@@ -203,3 +208,19 @@ commit: 27bfb180878062a126d79293693e21b622d87a15
 No remaining high/medium source/delta findings. Archive cap test retains all50 Now/Watch ids/10 earlier/hidden layers after A and asserts departure separately; ask hint test retains row/frame/option/count/mode checks and adds no decline/read frames. One identical shutdown case remains after duplicate merge copy removal; T-278 merge intact. C1–C5 source/targeted criteria reverified, prior source evidence retained. Coordinator confirmed cleanup mismatch is old live hub; fresh full must wait for dev restart and remains pending, no full-green claim. A-1609: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1609-t-285-neovim-expectation-and-merge-delta-clear-at-27bfb18.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-23 · 2026-10-12T20:02:17.631Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-8
+commit: 27bfb180878062a126d79293693e21b622d87a15
+
+No remaining high/medium findings. All C1–C5 verified at unchanged head; source/delta A-1579/A-1588/A-1609 retained. Full verify8e682b10/A-1613 after hub restart: typechecks pass; 30/30 free+1346/1346 machine+303/303 Neovim=1679/1679, zero failures/skips/cancellations/todos, exit0 including compatibility cleanup. All inbox/restart/CLI/draft/permission/archive/C7/shutdown and reconciled cap/ask tests pass. A-1614: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1614-t-285-final-review-full-green-at-27bfb18.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-12T20:02:20.780Z
+
+Merged 50214f173ae1eaa8d7be88f923ea267e7d7c864d onto dev.

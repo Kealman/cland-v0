@@ -3,7 +3,7 @@ id: T-288
 kind: task
 title: Retire the v0.1.1 notification list, d/D and the 50-row cap from the inbox
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -15,10 +15,10 @@ blocked_by:
   - T-285
   - T-286
   - T-287
-topic: null
-branch: null
+topic: topic-180
+branch: t/T-288-retire-the-v0-1-1-notification-list-d-d
 created: 2026-10-12T11:57:19.861Z
-updated: 2026-10-12T11:58:16.672Z
+updated: 2026-10-12T20:04:27.886Z
 ---
 
 ## Summary
@@ -60,3 +60,9 @@ T-274: Inbox and the events view. Spec: docs/spec/v0.1.2.md §3.7.
 - [ ] A clear verdict and a role change appear in `events.list` and the events view and never in the inbox; a not-clear verdict and a death appear as warnings there and never change needsYou.
 - [ ] The default role clauses and `.cland/roles.toml` tell sessions to send review, QA and handover requests to the human with the `request` kind.
 - [ ] Targeted tests pass (hub frame tests on a real hub, nvim headless tests on the stub hub, the QA cases that touched the inbox), `cland verify` is green, and `hub/README.md`, `nvim/README.md` and the clauses describe the inbox, the `request` kind and the events view.
+
+## Comments
+
+### impl-288 · 2026-10-12T20:04:27.886Z
+
+Started retirement at the existing protocol/CLI and headless UI seams. The real-hub tracer test is red because inbox.list still carries notifications. Journal notification records will stay; inbox notification storage and row actions will retire. T-284's C7 workload test remains in scope. Default clauses and this project's .cland/roles.toml will both change; running sessions receive the new clauses only when relaunched, so the Coordinator must relaunch after merge.

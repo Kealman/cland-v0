@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-178
 branch: t/T-279-a-prepared-fixture-repository-per-worker
 created: 2026-10-12T11:54:20.662Z
-updated: 2026-10-12T19:54:54.804Z
+updated: 2026-10-12T20:14:50.230Z
 ---
 
 ## Summary
@@ -54,19 +54,26 @@ Constraints:
 - [x] C1. A shared helper prepares each fixture shape once per worker and gives each test its own copy or shared-object clone; a test proves two tests' copies do not share refs, index, config, hooks, worktrees or `.cland` state, and that writing objects in one copy leaves the prepared fixture unchanged.
   - done: impl-279 · 2026-10-12T19:37:08.827Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-279-1 · 2026-10-12T19:54:54.804Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-279-2 · 2026-10-12T20:14:50.230Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 - [x] C2. A complete census on the branch, compared with slice 1's baseline (A-1535), records the measured cut with both wall times and the remaining sources named; the comparison artifact is published in this item's topic and the figures are sent to the Coordinator for T-267 (A-1610: git 32,341 → 21,111, ps 28,888 → 15,290, wall 905 → 706 s). The halving target was replaced by the measured cut on 2026-10-12 (the human's stand-in, D24, answering the Coordinator's ask); the remaining production sources are a Tech debt follow-up.
   - done: impl-279 · 2026-10-12T19:51:22.328Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-279-1 · 2026-10-12T19:54:54.804Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-279-2 · 2026-10-12T20:14:50.230Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 - [x] C3. The T-220 check was run on the pinned Node and its outcome recorded in the item; a compile cache is enabled only if that check and a full suite with it pass.
   - done: impl-279 · 2026-10-12T19:37:09.445Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-279-1 · 2026-10-12T19:54:54.804Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-279-2 · 2026-10-12T20:14:50.230Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 - [x] C4. Each batching of repeated hub-phase setup is named in the item with the census line it cut.
   - done: impl-279 · 2026-10-12T19:37:09.975Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-279-1 · 2026-10-12T19:54:54.804Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-279-2 · 2026-10-12T20:14:50.230Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 - [x] C5. `hub/README.md` describes the prepared fixtures and their isolation rule.
   - done: impl-279 · 2026-10-12T19:37:10.346Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-279-1 · 2026-10-12T19:54:54.804Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
-- [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-279-2 · 2026-10-12T20:14:50.230Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
+- [x] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+  - done: impl-279 · 2026-10-12T20:14:30.576Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-279-2 · 2026-10-12T20:14:50.230Z · commit 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 
 ## Comments
 
@@ -101,3 +108,19 @@ commit: 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 No high/medium findings. Private copied per-worker shapes, Git/frame isolation (second/third copies unchanged), retained construction assertions and shard/docs checked. Per-operation config/tip and release-path batching preserve write order/freshness; real-frame branch-move race refuses stale merge then accepts fresh review. Current revised C2 verified via completed A-1610 and D24 decision: Git32341→21111, ps28888→15290, Node6017→5928; runner905.46→706.18s, both invocation times/remaining sources and Coordinator delivery checked, no halving claim. A-1604 qualification fails warm loads; cache remains disabled. C1–C5 verified; C6 ordinary full d8e587d2 pending. A-1612: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1612-t-279-fixture-batching-and-census-review-clear-at-5d92ef5.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-279 · 2026-10-12T20:14:30.860Z
+
+C6 complete: ordinary full verification d8e587d2-75b2-4f94-827f-f2aec96bdd7d at reviewed head 5d92ef5 passed 1,672/1,672 tests, zero failures/skips. Durable log A-1615. Review C1–C5 clear in A-1612; no code changes since reviewed/censused head.
+
+### rev-23 · 2026-10-12T20:14:50.230Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-279-2
+commit: 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
+
+No remaining high/medium findings. C1–C5 A-1612 assessment retained; C6 established by ordinary full d8e587d2/A-1615 at unchanged head: typechecks pass;30/30 free+1343/1343 machine+299/299 Neovim=1672/1672, zero failures/skips/cancellations/todos, exit0. Isolation and freshness-race regressions plus previously timed-out palette case pass. Revised C2 measured comparison retained; no halving claim; compile cache remains disabled. A-1617: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1617-t-279-final-review-full-green-at-5d92ef5.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
