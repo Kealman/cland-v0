@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T08:33:25.047Z
-updated: 2026-10-12T08:33:25.047Z
+updated: 2026-10-12T08:59:32.897Z
 ---
 
 Observation from the human (2026-10-12, after v0.1.1), relayed by the cland-design session.
@@ -27,3 +27,9 @@ In the sessions panel a stopped Aide (aide-1, "Claude Code · claude-opus-5-5 ·
 Facts in the build: the panel groups sessions by layer (now, watch, background, archive) with `A` toggling the archive section and `za` folding the background "more" fold; the hub resumes its adapters at daemon start but offers the human no resume of a stopped session; no retention rule exists for stopped sessions.
 
 Relates to spec §3.3 (Aide), §3.5 (layers, pins and archive), §3.11 (the sessions panel), and epic T-229 (session lifecycle, v0.1.1). To grill with the human in v0.1.2, together with T-239 and T-247.
+
+## Comments
+
+### human · 2026-10-12T08:59:32.897Z
+
+Decided (2026-10-12, round 2): resume with r and a palette action through the harness's own resume, keeping name, role and claim (the hub records the harness session id at launch; a fresh launch with the same brief when resume is impossible); d archives a session row, A keeps toggling the archive section, archived sessions leave every group and the default session.list; crew sessions archive automatically one hour after their item merged or closed, otherwise 24 hours after stopping; Aides never automatically; the more fold shows the latest 20 plus an archived count; cland session prune --older-than deletes hub records of archived sessions, never the journal. Recorded in docs/spec/v0.1.2.md §3.5.
