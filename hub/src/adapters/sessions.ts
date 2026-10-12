@@ -386,6 +386,7 @@ export class Sessions {
   view(p: HarnessProcess): HarnessProcessView {
     const adapter = this.#adapters.get(p.harness);
     const usage = adapter?.usage?.(p) ?? null;
+    const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     return {
       name: p.name,
@@ -396,6 +397,7 @@ export class Sessions {
       cwd: p.cwd,
       item: p.item ?? null,
       holds: this.#core.sessionHolds(p),
+      ...(pending ? { pending } : {}),
       pid: p.pid,
       harnessId: p.harnessId,
       sessionId: p.sessionId,

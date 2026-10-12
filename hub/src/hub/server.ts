@@ -79,6 +79,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   core.reconcileBindings();
   // Verdict reports remain readable in their topic; subscribed events cover lead delivery.
   const unwatchVerdicts = options.tracker?.onVerdict((id, author, v, report, human) => {
+    core.clearPendingVerification(author, id);
     if (human) core.inbox.verdict(id);
     if (report) core.noticeInTopic(report.topic ?? 'agents', {
       kind: 'report', text: `${id}${v.stage ? ` stage ${v.stage}` : ''} ${v.verdict} ${v.result} · ${v.by} · run ${v.run}${report.text ? `\n\n${report.text}` : ''}`,

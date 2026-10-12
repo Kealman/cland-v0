@@ -176,3 +176,84 @@ test('an event-producing frame followed immediately by public hub close cancels 
   await tick();
   assert.equal(client.frames.filter(f => f.type === 'event').length, before, 'no pending events publish after the hub closes');
 });
+
+
+test('delivered verifier requests and session.list bursts never scan retained message history', async t => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-verifier-work-'))), db = join(root, '.cland', 'hub.db');
+  const cleanup = ownDirectory(undefined, root);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const seed = new Store(db), ts = new Date().toISOString();
+  seed.transaction(() => {
+    for (let i = 0; i < 4000; i++) seed.record({ id: `old-${i}`, from: 'old', fromKind: 'agent', via: 'session', to: [], text: 'review request T-1', ts }, [], Date.now());
+  });
+  seed.close();
+  const daemon = await serveProject(root, { log: () => {} });
+  const human = pipe(daemon), verifier = pipe(daemon);
+  t.after(async () => { human.close(); verifier.close(); await daemon.stop(); await cleanup(); });
+  human.send({ type: 'hello', protocol: 2, client: 'ui' });
+  await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' });
+  verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
+  await eventually('verifier hello', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
+  await human.request({ type: 'task.create', id: 'item', title: 'Burst verification' });
+  const first = ((human.frames.find(f => f.id === 'item')!.value as { item: { id: string } }).item.id);
+  const second = await human.request({ type: 'task.create', id: 'item-two', title: 'Newer burst request' });
+  const item = (second.value as { item: { id: string } }).item.id;
+  // Take the initial role clause before measuring request deliveries.
+  for (const frame of verifier.frames.filter(f => f.type === 'role')) verifier.send({ type: 'ack', id: (frame.message as { id: string }).id });
+  await tick();
+  const table = new ProcessTable(db);
+  table.put({ name: 'verifier', harness: 'codex', role: 'reviewer', model: null, cwd: root, pid: null, harnessId: null, sessionId: 'verifier-id', harnessSessionId: null, startedAt: ts, status: 'running' });
+  table.close();
+  await human.request({ type: 'subscribe', id: 'subscribe' });
+  const prepare = DatabaseSync.prototype.prepare;
+  let observing = false, messageReads = 0, pendingReads = 0;
+  const scans: string[] = [];
+  t.mock.method(DatabaseSync.prototype, 'prepare', function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+    const sql = args[0];
+    if (observing && /^select|^with/i.test(sql.trim()) && /\b(?:from|join) messages\b/i.test(sql)) {
+      messageReads++;
+      const explain = sql.replace(/:[a-z_]+/gi, '?');
+      const plan = prepare.call(this, `explain query plan ${explain}`).all(...Array((explain.match(/\?/g) ?? []).length).fill(null)) as Array<{ detail: string }>;
+      const aliases = [...sql.matchAll(/\b(?:from|join) messages(?:\s+(?!where\b|on\b|order\b|group\b|limit\b|join\b)([a-z_]+))?/gi)].map(m => m[1] ?? 'messages');
+      if (plan.some(row => aliases.some(alias => new RegExp(`^SCAN ${alias}(?: |$)`, 'i').test(row.detail)))) scans.push(sql);
+    }
+    const statement = prepare.apply(this, args);
+    if (sql === 'select value from meta where key = ?') {
+      const get = statement.get;
+      t.mock.method(statement, 'get', function(this: typeof statement, ...bindings: unknown[]) {
+        if (observing && bindings[0] === 'pending-verification:verifier-id') pendingReads++;
+        return Reflect.apply(get, this, bindings);
+      });
+    }
+    return statement;
+  });
+  for (let burst = 0; burst < 3; burst++) {
+    const before = human.frames.length, readsBefore = pendingReads;
+    observing = true;
+    for (let i = 0; i < 100; i++) {
+      human.send({ type: 'topic.send', id: `send-${burst}-${i}`, topic: 'general', to: ['verifier'], text: burst === 2 ? `Ordinary report ${i}` : `review request ${i % 2 === 0 ? first : item}` });
+      if (burst === 0 && i === 0) {
+        const queued = await human.request({ type: 'session.list', id: 'before-acceptance' });
+        assert.equal((queued.value as { processes: Array<{ pending?: unknown }> }).processes[0]?.pending, undefined, 'sending alone does not set pending work');
+      }
+      const frame = verifier.frames.filter(f => f.type === 'deliver').at(-1)!;
+      verifier.send({ type: 'ack', id: (frame.message as { id: string }).id });
+      human.send({ type: 'session.list', id: `list-${burst}-${i}` });
+    }
+    observing = false;
+    assert.deepEqual(scans, [], 'delivery acceptance and session views use indexed message lookups only');
+    // At most 100 delivery captures + 100 explicit views, with a small fixed allowance; ordinary reports need only the views.
+    assert.ok(pendingReads - readsBefore <= (burst === 2 ? 110 : 210), `100 deliveries and 100 explicit views allow no synchronous whole-presence reads (${pendingReads - readsBefore} pending reads)`);
+    await tick();
+    const presence = human.frames.slice(before).filter(f => f.type === 'presence');
+    assert.equal(presence.length, burst === 0 ? 1 : 0, 'changing requests publish only the final changed presence per tick');
+    const updates = human.frames.slice(before).filter(f => f.type === 'session.process' && (f.process as { name: string }).name === 'verifier');
+    assert.equal(updates.length, burst === 0 ? 1 : 0, 'a burst of changing requests publishes at most one final process per tick');
+    const lists = human.frames.slice(before).filter(f => String(f.id).startsWith(`list-${burst}-`));
+    assert.equal(lists.length, 100);
+    assert.ok(lists.every((f, i) => f.ok === true && (f.value as { processes: Array<{ pending?: { item: string } }> }).processes[0]?.pending?.item === (burst === 2 || i % 2 !== 0 ? item : first)));
+  }
+  const status = await human.request({ type: 'hub.status', id: 'pending-status' });
+  assert.deepEqual((status.value as { sessions: Array<{ pending?: { item: string; kind: string } }> }).sessions[0]!.pending, { item, kind: 'review' });
+  assert.ok(messageReads > 0, 'native tracing observed actual delivery message lookups');
+});

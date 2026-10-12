@@ -131,7 +131,9 @@ export class Dispatcher {
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
   #rolesSnapshot: RolesConfig | undefined;
-  readonly #processHolds = new Map<string, string>();
+  readonly #processWork = new Map<string, string>();
+  #workImmediate: ReturnType<typeof setImmediate> | null = null;
+  #closed = false;
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
   readonly #suites: Suites | null;
@@ -150,6 +152,8 @@ export class Dispatcher {
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
       this.#guard.changed();
+      if (event.type === 'presence' || event.type === 'delivery') this.#refreshSessionWork();
+      if (event.type === 'session.process') this.#processWork.set(event.process.sessionId, JSON.stringify([event.process.holds ?? [], event.process.pending ?? null]));
       if (event.type === 'session.process' && event.process.status !== 'running') {
         options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
         this.#suites?.requesterExited(event.process.sessionId);
@@ -159,12 +163,7 @@ export class Dispatcher {
     options.tracker?.onChange(() => {
       this.#guard.changed();
       options.core.refreshPresence();
-      for (const process of this.#sessions?.list() ?? []) {
-        const holds = JSON.stringify(process.holds ?? []);
-        const previous = this.#processHolds.get(process.sessionId) ?? '[]';
-        this.#processHolds.set(process.sessionId, holds);
-        if (holds !== previous) options.core.publishProcess(process);
-      }
+      this.#refreshSessionWork();
     });
     // A crash after the tracker commit but before alias cleanup must not reserve the old name forever.
     if (options.tracker) for (const { name, id } of options.core.store.sessionAliases()) {
@@ -188,12 +187,32 @@ export class Dispatcher {
     }
   }
 
-  async close(): Promise<void> { this.#merges?.stop(); await this.#suites?.close(); }
+  async close(): Promise<void> {
+    this.#closed = true;
+    if (this.#workImmediate) clearImmediate(this.#workImmediate);
+    this.#workImmediate = null;
+    this.#merges?.stop();
+    await this.#suites?.close();
+  }
+
+  /** Holds and delivered requests share one trailing process projection per tick. */
+  #refreshSessionWork(): void {
+    if (this.#closed || this.#workImmediate) return;
+    this.#workImmediate = setImmediate(() => {
+      this.#workImmediate = null;
+      for (const process of this.#sessions?.list() ?? []) {
+        const work = JSON.stringify([process.holds ?? [], process.pending ?? null]);
+        const previous = this.#processWork.get(process.sessionId) ?? '[[],null]';
+        this.#processWork.set(process.sessionId, work);
+        if (work !== previous) this.#options.core.publishProcess(process);
+      }
+    });
+  }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
-    this.#processHolds.clear();
-    for (const process of sessions?.list() ?? []) this.#processHolds.set(process.sessionId, JSON.stringify(process.holds ?? []));
+    this.#processWork.clear();
+    for (const process of sessions?.list() ?? []) this.#processWork.set(process.sessionId, JSON.stringify([process.holds ?? [], process.pending ?? null]));
     this.#options.tracker?.reconcileSessionIdentities();
     // A crash can follow the durable process-row update but precede queued hold cleanup.
     // Reconcile only known process identities; direct and unknown sessions retain their work.

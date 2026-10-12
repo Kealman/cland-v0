@@ -28,6 +28,7 @@ import {
   type SendOutcome,
   type SessionState,
   type SessionHold,
+  type PendingVerification,
   type Topic,
   type TopicMessage,
   type TopicRef,
@@ -235,6 +236,7 @@ export class HubCore {
   readonly #artifactStates = new Map<string, Artifact['status']>();
   readonly #processFacts = new Map<string, Pick<HarnessProcessView, 'status' | 'role'>>();
   #publishedPresence = '[]';
+  #presenceImmediate: NodeJS.Immediate | null = null;
   #items: TopicItems | null;
   readonly #sessionHolds: (sessionId: string) => SessionHold[];
   /** The last indexed ownership survives a watcher removal until its final fan-out. */
@@ -328,6 +330,8 @@ export class HubCore {
   /** Stop deferred publications before the hub closes its store. */
   close(): void {
     this.#closed = true;
+    if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
+    this.#presenceImmediate = null;
     if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
     this.#journalImmediate = null;
     this.#journalRows = [];
@@ -455,6 +459,11 @@ export class HubCore {
 
   /** Adapter-owned process facts go through the same subscription as the core's events. */
   publishProcess(process: HarnessProcessView): void {
+    if (process.status !== 'running') {
+      this.#store.clearMeta(`pending-verification:${this.sessionIdentity(process.sessionId)}`);
+      process = { ...process };
+      delete process.pending;
+    }
     const previous = this.#processFacts.get(process.sessionId)?.status;
     this.seedProcess(process);
     const context = { role: process.role, item: process.item };
@@ -498,6 +507,7 @@ export class HubCore {
       const selected = this.#store.allSubscriptions().filter(s => 'subtree' in s.subject && departed.includes(s.subject.subtree) && s.events.includes('task'));
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} left subtree`, {}, { selected, memberOnly: true });
     }
+    for (const hold of change.item.holds) this.clearPendingVerification(hold.session, change.id);
     const postedVerdicts = [...(change.postedVerdicts ?? [])];
     for (const text of change.events ?? []) {
       if (text === 'closed') this.#terminalEvent({ item: change.id }, 'task', `${change.id} closed`);
@@ -690,7 +700,19 @@ export class HubCore {
     this.#emit({ type: 'session.usage', session, sessionId, usage });
   }
 
+  /** Work changes rebuild presence once, after the current burst of deliveries/holds. */
+  #schedulePresence(): void {
+    if (this.#closed || this.#presenceImmediate) return;
+    this.#presenceImmediate = setImmediate(() => {
+      this.#presenceImmediate = null;
+      this.#publishPresence();
+    });
+  }
+
   #publishPresence(): void {
+    if (this.#closed) return;
+    if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
+    this.#presenceImmediate = null;
     const sessions = this.presence();
     const signature = JSON.stringify(sessions);
     if (signature === this.#publishedPresence) return;
@@ -949,8 +971,19 @@ export class HubCore {
   /** The spoke accepted a message: its delivery moves from queued to delivered. A stale connection acks nothing. */
   ack(connection: Connection, messageId: string): void {
     if (!this.isCurrent(connection)) return;
-    if (!this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) return;
-    for (const id of this.#store.deliveryIds(messageId, connection.name)) {
+    let pendingChanged = false;
+    const ids = this.#store.transaction(() => {
+      if (!this.#store.markDelivered(messageId, connection.name, this.#now().getTime())) return null;
+      const ids = this.#store.deliveryIds(messageId, connection.name);
+      for (const id of ids) {
+        const message = this.#store.message(id);
+        if (message && this.#rememberVerification(connection, message)) pendingChanged = true;
+      }
+      return ids;
+    });
+    if (!ids) return;
+    if (pendingChanged) this.#schedulePresence();
+    for (const id of ids) {
       this.#log({ event: 'acked', id, session: connection.name });
       this.#emitStage(id);
     }
@@ -1115,25 +1148,58 @@ export class HubCore {
   }
 
   presence(): Presence[] {
-    return [...this.#live.values()].map((c) => ({
-      name: c.name,
-      sessionId: c.sessionId,
-      cwd: c.cwd,
-      role: c.role,
-      label: withRole(c.name, c.role),
-      status: c.status,
-      connectedAt: c.connectedAt,
-      state: this.sessionState(c.sessionId),
-      holds: this.sessionHolds(c),
-    }));
+    return [...this.#live.values()].map((c) => {
+      const pending = this.sessionPending(c);
+      return {
+        name: c.name,
+        sessionId: c.sessionId,
+        cwd: c.cwd,
+        role: c.role,
+        label: withRole(c.name, c.role),
+        status: c.status,
+        connectedAt: c.connectedAt,
+        state: this.sessionState(c.sessionId),
+        holds: this.sessionHolds(c),
+        ...(pending ? { pending } : {}),
+      };
+    });
   }
 
   sessionHolds(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): SessionHold[] {
     return this.#sessionHolds(sessionActor(session, UNKNOWN_SESSION).id);
   }
 
+  sessionPending(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): PendingVerification | undefined {
+    const stored = this.#store.meta(`pending-verification:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`);
+    return stored ? JSON.parse(stored) as PendingVerification : undefined;
+  }
+
+  clearPendingVerification(name: string, item: string): void {
+    const id = this.sessionIdentity(`name:${name}`), key = `pending-verification:${id}`;
+    const stored = this.#store.meta(key);
+    if (!stored || (JSON.parse(stored) as PendingVerification).item !== item) return;
+    this.#store.clearMeta(key);
+    this.#schedulePresence();
+  }
+
+  /** Delivery acceptance captures only the delivered first line, never the message history. */
+  #rememberVerification(connection: Pick<Connection, 'name' | 'sessionId' | 'role'>, message: Message): boolean {
+    if (connection.role !== 'reviewer' && connection.role !== 'qa') return false;
+    const request = /^(review|qa) request ([A-Za-z]+-([1-9]\d*))(?:[ \t]+stage[ \t]+[^\r\n]+)?[ \t]*(?:\r?\n|$)/.exec(message.text);
+    if (!request) return false;
+    const item = this.#items?.list?.().find(i => i.id.split('-').at(-1) === request[3]);
+    if (!item) return false;
+    const key = `pending-verification:${this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id)}`;
+    const pending = this.sessionHolds(connection).some(h => h.item === item.id)
+      ? null : JSON.stringify({ item: item.id, kind: request[1] });
+    if (this.#store.meta(key) === pending) return false;
+    if (pending === null) this.#store.clearMeta(key);
+    else this.#store.setMeta(key, pending);
+    return true;
+  }
+
   /** Tracker changes may alter work even when a session's role and state stay the same. */
-  refreshPresence(): void { this.#publishPresence(); this.#drainVerifierRequests(); }
+  refreshPresence(): void { this.#schedulePresence(); this.#drainVerifierRequests(); }
 
   /** A hub-kind message to one session: delivered now or queued, and recorded. */
   notify(name: string, text: string): void {
@@ -1232,7 +1298,13 @@ export class HubCore {
   completeCarriedBrief(launchId: string, sessionId: string): void {
     for (const message of this.#store.launchBriefs(launchId)) {
       const name = message.to[0]!;
-      if (this.#store.markDelivered(message.id, name, this.#now().getTime())) {
+      const delivered = this.#store.transaction(() => {
+        if (!this.#store.markDelivered(message.id, name, this.#now().getTime())) return false;
+        const pendingChanged = this.#rememberVerification({ name, sessionId, role: this.#store.roleOf(name) }, message);
+        return { pendingChanged };
+      });
+      if (delivered) {
+        if (delivered.pendingChanged) this.#schedulePresence();
         this.#log({ event: 'acked', id: message.id, session: name, source: 'launch first turn' });
         this.#emitStage(message.id);
       }

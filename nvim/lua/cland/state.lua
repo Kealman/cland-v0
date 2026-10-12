@@ -159,6 +159,7 @@ function M.sessions()
       usage = p.usage,
       approvalCommand = p.approvalCommand,
       holds = p.holds,
+      pending = p.pending,
     }
     seen[p.name] = true
   end
@@ -166,7 +167,7 @@ function M.sessions()
   for _, p in ipairs(M.S.presence) do
     if type(p.holds) == 'table' then holds[p.name] = p.holds end
     if not seen[p.name] then
-      out[#out + 1] = { layer = p.layer, name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true, approvalCommand = p.approvalCommand }
+      out[#out + 1] = { layer = p.layer, name = p.name, role = p.role, label = M.label(p.name, p.role, p.label), harness = nil, model = nil, state = p.state or 'unknown', status = 'connected', launched = false, live = true, approvalCommand = p.approvalCommand, pending = p.pending }
       seen[p.name] = true
     end
   end

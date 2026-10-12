@@ -1349,10 +1349,10 @@ export class Tracker {
     }
     for (const [item, verifiers] of this.#index.indexedHolds()) {
       for (const hold of verifiers) if (this.sameSession(hold.sessionId, sessionId)) {
-        holds.push({ item, role: hold.role === 'reviewer' ? 'review' : 'qa' });
+        holds.push({ item, role: hold.role === 'reviewer' ? 'review' : 'qa', heldAt: hold.heldAt });
       }
     }
-    return [...claims, ...holds];
+    return [...claims, ...holds.sort((a, b) => b.heldAt!.localeCompare(a.heldAt!))];
   }
 
   /** Routing reads only committed index facts, without reading item files or yielding. */

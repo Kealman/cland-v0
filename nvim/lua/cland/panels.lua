@@ -229,25 +229,47 @@ local function session_row(c, s, group)
   local down = not s.live
   local label = s.label or s.name
   local role = label:sub(#s.name + 1)
-  local items = {}
+  local items, holds = {}, {}
   if type(s.holds) == 'table' then
-    -- Claims come first even if an older hub sent its holds in another order.
-    for _, role_tag in ipairs({ 'item', 'review', 'qa' }) do
-      for _, hold in ipairs(s.holds) do
-        if hold.role == role_tag then items[#items + 1] = hold.item .. ' ' .. hold.role end
-      end
+    -- A claim keeps the existing rendering; verifier work follows its time order.
+    for _, hold in ipairs(s.holds) do
+      if hold.role == 'item' then holds[#holds + 1] = hold end
     end
+    local verifiers = {}
+    for _, hold in ipairs(s.holds) do
+      if hold.role == 'review' or hold.role == 'qa' then verifiers[#verifiers + 1] = hold end
+    end
+    table.sort(verifiers, function(a, b) return (a.heldAt or '') > (b.heldAt or '') end)
+    for _, hold in ipairs(verifiers) do holds[#holds + 1] = hold end
+    for _, hold in ipairs(holds) do items[#items + 1] = hold.item .. ' ' .. hold.role end
   elseif s.item then
     items[1] = s.item
   end
-  local item_text = #items > 0 and table.concat(items, ', ') or 'free'
+  local item_text, item_hl = 'free', 'ClandFaint'
+  if #items > 0 then
+    item_hl = 'ClandTeal'
+    if holds[1] and holds[1].role ~= 'item' then
+      local suffix = #holds > 1 and (' +' .. (#holds - 1)) or ''
+      item_text = items[1] .. suffix
+      if sw(item_text) + 1 > c.width then item_text = holds[1].item .. suffix end
+    else
+      item_text = table.concat(items, ', ')
+    end
+  elseif type(s.pending) == 'table' and type(s.pending.item) == 'string' then
+    item_text = s.pending.item .. ' ' .. s.pending.kind
+  end
   c:add(
     { { sel and '▎' or ' ', 'ClandBlue' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' } },
-    { { item_text .. ' ', #items > 0 and 'ClandTeal' or 'ClandFaint' } },
+    { { item_text .. ' ', item_hl } },
     { session = s.name, group = group }
   )
   if not sel then
     return
+  end
+  for _, hold in ipairs(holds) do
+    if hold.role ~= 'item' then
+      c:add({ { '   ' .. hold.item .. ' ' .. hold.role, 'ClandDim' } }, nil, { session = s.name, group = group, detail = true })
+    end
   end
   local head, tail = M.session_meta_parts(s)
   tail = M.session_words(s)

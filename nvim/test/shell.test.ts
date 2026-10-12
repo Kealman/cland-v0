@@ -1,3 +1,4 @@
+import { eventually } from '../../hub/test/harness.ts';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 // The workbench shell (#25) against a stub hub over stdio (`stub-hub.ts`): deterministic topics,
 // sessions with states and capability tables, items and events on command. Driven like a human, with
@@ -2199,3 +2200,37 @@ for (const [status, role, layer, count] of [['stopped', 'implementer', 'backgrou
     assert.deepEqual(observed, { layer, dim: layer === 'background', count });
   });
 }
+
+
+test('verifier rows show the latest hold plus others and dim pending work until its hold frame', { skip }, async t => {
+  const reviewer = { ...proc('reviewer', 'reviewer', 'idle'), holds: [
+    { item: 'T-a', role: 'review', heldAt: ts(1) },
+    { item: 'T-b', role: 'review', heldAt: ts(2) },
+  ], pending: { item: 'T-other', kind: 'review' } };
+  const qa = { ...proc('qa', 'qa', 'idle'), holds: [], pending: { item: 'T-c', kind: 'qa' } };
+  const claim = { ...proc('impl', 'implementer', 'idle'), holds: [{ item: 'T-d', role: 'item' }] };
+  const c = await startShell(t, s => { s.processes = [reviewer, qa, claim]; });
+  await onSessionRow(c, 'reviewer');
+  const screen = await c.waitScreen(s => /reviewer.*T-b review \+1/.test(s) && s.includes('   T-a review'), 'latest verifier hold and count');
+  assert.match(screen, /T-c qa/);
+  assert.match(screen, /impl.*T-d item/);
+  assert.ok(screen.indexOf('   T-b review') < screen.indexOf('   T-a review'), 'details retain roles and run newest first');
+  assert.doesNotMatch(screen, /T-other/);
+  const attr = (item: string) => c.lua<number>(`
+    local item = ...
+    for r = 1, vim.o.lines do for col = 1, vim.o.columns - #item do
+      local text = ''
+      for k = 0, #item - 1 do text = text .. vim.fn.screenstring(r, col + k) end
+      if text == item then return vim.fn.screenattr(r, col) end
+    end end
+    error('item absent from screen')
+  `, item);
+  const dim = await attr('T-c'), normal = await attr('T-d');
+  assert.notEqual(dim, normal, 'the pending item has a dim screen attribute');
+  const held = { ...qa, holds: [{ item: 'T-c', role: 'qa', heldAt: ts(3) }], pending: null };
+  await c.control({ set: { processes: [reviewer, held, claim] }, emit: { type: 'session.process', process: held } });
+  await c.waitScreen(s => /qa.*T-c qa/.test(s), 'pending item replaced by hold');
+  // The text stays the same; screen attributes prove the frame changed its colour.
+  await eventually('held item uses normal colour', async () => await attr('T-c') === normal || undefined);
+  assert.equal(await c.lua('return #require("cland.actions").audit()'), 0);
+});
