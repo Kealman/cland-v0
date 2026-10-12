@@ -3,7 +3,8 @@ id: T-284
 kind: task
 title: The inbox in four sections, five rows each, with ages, in Neovim and the CLI
 state: open
-status: backlog
+status: in progress
+criterion_seq: 6
 labels:
   - v0.1.2
   - nvim
@@ -12,10 +13,10 @@ assignee: null
 parent: T-274
 blocked_by:
   - T-283
-topic: null
-branch: null
+topic: topic-173
+branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
-updated: 2026-10-12T11:58:12.051Z
+updated: 2026-10-12T14:47:34.805Z
 ---
 
 ## Summary
@@ -58,9 +59,21 @@ Out of scope: `r`, `d` on the new rows, and `A` (the next ticket); the events li
 
 ## Acceptance criteria
 
-- [ ] The panel and full-width inbox show the now layer in four sections in the order asks and approvals, plan approvals, requests to you, messages to you, each newest first with its count; senders are in their role colour.
-- [ ] A section with more than five rows shows five and a "N more" line naming the oldest wait and its time; `za` on it unfolds and folds the rest.
-- [ ] Every row shows its waiting age, and the age advances without a hub frame.
-- [ ] The selected ask unfolds its options and free-answer hint in place and the selected approval its full command; other rows stay one line, and Enter on a plan row opens the plan view.
-- [ ] `cland inbox` prints the four sections in the same order with ages and ends with `needs you: <n>` equal to the chip.
-- [ ] Targeted tests pass (nvim headless tests on the stub hub, read with `screenstring()`; a hub test of `cland inbox` on a real hub), and `nvim/README.md` describes the four sections, their order, the five-row fold and the ages.
+- [x] C1. The panel and full-width inbox show the now layer in four sections in the order asks and approvals, plan approvals, requests to you, messages to you, each newest first with its count; senders are in their role colour.
+  - done: impl-284 · 2026-10-12T14:47:22.059Z
+- [x] C2. A section with more than five rows shows five and a "N more" line naming the oldest wait and its time; `za` on it unfolds and folds the rest.
+  - done: impl-284 · 2026-10-12T14:47:34.246Z
+- [x] C3. Every row shows its waiting age, and the age advances without a hub frame.
+  - done: impl-284 · 2026-10-12T14:47:34.414Z
+- [x] C4. The selected ask unfolds its options and free-answer hint in place and the selected approval its full command; other rows stay one line, and Enter on a plan row opens the plan view.
+  - done: impl-284 · 2026-10-12T14:47:34.552Z
+- [x] C5. `cland inbox` prints the four sections in the same order with ages and ends with `needs you: <n>` equal to the chip.
+  - done: impl-284 · 2026-10-12T14:47:34.673Z
+- [x] C6. Targeted tests pass (nvim headless tests on the stub hub, read with `screenstring()`; a hub test of `cland inbox` on a real hub), and `nvim/README.md` describes the four sections, their order, the five-row fold and the ages.
+  - done: impl-284 · 2026-10-12T14:47:34.805Z
+
+## Comments
+
+### impl-284 · 2026-10-12T14:37:08.668Z
+
+Implemented the four now sections in both views and CLI, per-section five-row folds, selected ask/command details and a local age clock. Added frame metadata for plan stage/lane/item counts and sender roles. Headless and real-hub tests are being updated to the new layout; legacy notifications and events footer remain separate.

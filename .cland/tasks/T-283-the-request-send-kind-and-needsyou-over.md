@@ -2,8 +2,8 @@
 id: T-283
 kind: task
 title: The request send kind and needsYou over the inbox's four kinds
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-171
 branch: t/T-283-the-request-send-kind-and-needsyou-over
 created: 2026-10-12T11:57:19.566Z
-updated: 2026-10-12T14:14:58.077Z
+updated: 2026-10-12T14:30:47.426Z
 ---
 
 ## Summary
@@ -224,3 +224,7 @@ commit: d44a2c8ef6735088c356f1f5c0756d5a983d86be
 No findings. The sole test-file delta uses existing connectUi and asserts successful hub.status flushLogs:true before each launch/death/stop process-log read. All original screen, attach and log assertions remain unchanged. A-1532's missing process-log barriers are resolved with no production/shared-helper/polling/retry/timeout change. C1–C6 checked for this exact head using prior source/delta evidence and A-1533's final barrier checks (complete sessions file 2/2). Worktree clean. A-1534: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1534-t-283-process-log-barrier-delta-clear-at-d44a2c8.md. Previous full run passed all hub tests and 1637/1638 total; replacement full verify remains pending, with no full-suite green claimed.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-12T14:30:47.426Z
+
+Merged ab772d8aafe350b092eb62782df9fbdb78fe01cb onto dev.

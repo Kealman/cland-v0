@@ -3,7 +3,7 @@ id: T-287
 kind: task
 title: Events view quiet rows, warnings, filters in ui.json, gM and the last look
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -13,10 +13,10 @@ assignee: null
 parent: T-274
 blocked_by:
   - T-286
-topic: null
-branch: null
+topic: topic-174
+branch: t/T-287-events-view-quiet-rows-warnings-filters
 created: 2026-10-12T11:57:19.803Z
-updated: 2026-10-12T11:58:16.622Z
+updated: 2026-10-12T14:32:31.241Z
 ---
 
 ## Summary
@@ -74,3 +74,9 @@ Out of scope: the retirement of the inbox's notification list (the next ticket);
 - [ ] `gM` hides the subject's rows through the events-view mute list in `ui.json` and the view says how many subjects it hides; `gM` again restores them; the hub's `visibility` mutes and the inbox are unchanged by it.
 - [ ] Opening the view sets the last look in `ui.json`; the inbox's events line counts the newer rows and warnings apart, reads "200+" past the cap, and drops to zero after the view opens.
 - [ ] Targeted tests pass (hub frame tests of the classes, merging and filters on a real hub; nvim headless tests on the stub hub for the keys, `ui.json` and the events line), and `nvim/README.md` and `hub/README.md` describe the classes, the filters, `gM` and the last look.
+
+## Comments
+
+### impl-287 · 2026-10-12T14:32:31.241Z
+
+Implementation started: hub classes/coalescing/filtering first, then events view preferences, keys, mutes and last-look count. Inbox edits will stay on the events line.

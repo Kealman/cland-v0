@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T14:30:08.334Z
+updated: 2026-10-12T15:13:40.445Z
 ---
 
 ## Summary
@@ -107,3 +107,7 @@ commit: 0f153a74e7f9f717f01c194030ea5ea3ad64c651
 No source/baseline findings. C1–C5 checked: seven spawn wrappers with inherited attribution/privacy and synchronous append durability; package-runner command/report/compare; fixture coverage; shard classification and README; separately authorized test repairs retain exact assertions. A-1535 satisfies revised C2: accepted complete 7cb55c6 census with explicitly qualified two sandbox gaps, 86,457 calls (git 32,341; ps 28,888; node 6,017), top-ten sources, wall/lock times and prototype comparison. Durable aggregate sums match all test/helper/source rankings; read-only Node 24 identical-aggregate comparison has zero deltas. C6 remains unverified pending macOS full cland verify 2c67624e at this exact head; no full-suite green claimed. Evidence A-1536: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1536-t-277-source-and-baseline-review-clear-at-0f153a7.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-277 · 2026-10-12T15:13:40.445Z
+
+C6 ordinary full verification 2c67624e at 0f153a74 failed 1/1630: unchanged nvim/test/plan.test.ts:191 timed out at :218 waiting for qa-schema-2. Case passes 20/20 native and 20/20 active-preload isolated runs. A-1540 preserves all targeted logs/results plus full failure trace; branch unchanged. Requested Lead classification/next action after hub outage.
