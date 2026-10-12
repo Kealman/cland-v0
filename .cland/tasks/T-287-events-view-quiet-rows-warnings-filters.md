@@ -3,7 +3,8 @@ id: T-287
 kind: task
 title: Events view quiet rows, warnings, filters in ui.json, gM and the last look
 state: open
-status: in progress
+status: review
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-174
 branch: t/T-287-events-view-quiet-rows-warnings-filters
 created: 2026-10-12T11:57:19.803Z
-updated: 2026-10-12T14:32:31.241Z
+updated: 2026-10-12T15:15:19.175Z
 ---
 
 ## Summary
@@ -68,15 +69,25 @@ Out of scope: the retirement of the inbox's notification list (the next ticket);
 
 ## Acceptance criteria
 
-- [ ] Launches, stops, claims, status moves, criterion marks and topic closes are dimmed; five equal events on one subject within 60 seconds show as one row ×5.
-- [ ] Not-clear verdicts, deaths, override-raised events and a red suite on `dev` show as warnings; a red suite on a task branch does not; no row repeats something still waiting in the inbox.
-- [ ] `1`–`8`, `0`, `w`, `s` with each palette prefix and `F` filter the view as described, and the filter survives a workbench restart through `ui.json`.
-- [ ] `gM` hides the subject's rows through the events-view mute list in `ui.json` and the view says how many subjects it hides; `gM` again restores them; the hub's `visibility` mutes and the inbox are unchanged by it.
-- [ ] Opening the view sets the last look in `ui.json`; the inbox's events line counts the newer rows and warnings apart, reads "200+" past the cap, and drops to zero after the view opens.
-- [ ] Targeted tests pass (hub frame tests of the classes, merging and filters on a real hub; nvim headless tests on the stub hub for the keys, `ui.json` and the events line), and `nvim/README.md` and `hub/README.md` describe the classes, the filters, `gM` and the last look.
+- [x] C1. Launches, stops, claims, status moves, criterion marks and topic closes are dimmed; five equal events on one subject within 60 seconds show as one row ×5.
+  - done: impl-287 · 2026-10-12T15:13:51.314Z
+- [x] C2. Not-clear verdicts, deaths, override-raised events and a red suite on `dev` show as warnings; a red suite on a task branch does not; no row repeats something still waiting in the inbox.
+  - done: impl-287 · 2026-10-12T15:14:28.531Z
+- [x] C3. `1`–`8`, `0`, `w`, `s` with each palette prefix and `F` filter the view as described, and the filter survives a workbench restart through `ui.json`.
+  - done: impl-287 · 2026-10-12T15:14:28.850Z
+- [x] C4. `gM` hides the subject's rows through the events-view mute list in `ui.json` and the view says how many subjects it hides; `gM` again restores them; the hub's `visibility` mutes and the inbox are unchanged by it.
+  - done: impl-287 · 2026-10-12T15:14:29.215Z
+- [x] C5. Opening the view sets the last look in `ui.json`; the inbox's events line counts the newer rows and warnings apart, reads "200+" past the cap, and drops to zero after the view opens.
+  - done: impl-287 · 2026-10-12T15:14:29.850Z
+- [x] C6. Targeted tests pass (hub frame tests of the classes, merging and filters on a real hub; nvim headless tests on the stub hub for the keys, `ui.json` and the events line), and `nvim/README.md` and `hub/README.md` describe the classes, the filters, `gM` and the last look.
+  - done: impl-287 · 2026-10-12T15:14:30.287Z
 
 ## Comments
 
 ### impl-287 · 2026-10-12T14:32:31.241Z
 
 Implementation started: hub classes/coalescing/filtering first, then events view preferences, keys, mutes and last-look count. Inbox edits will stay on the events line.
+
+### impl-287 · 2026-10-12T15:14:30.905Z
+
+Implementation pushed at aa432f2887ae8b1b4a20c22a532939b2605c6e50. All 36 targeted tests, typechecks and shard lint pass; details in A-1542. origin/dev fetched and merged before full suite (current). Hub outage resolved; requesting exact-head review and full cland verification. Policy has no per-item QA or qaCriteria.

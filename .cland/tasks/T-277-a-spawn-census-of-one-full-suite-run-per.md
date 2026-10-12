@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T15:13:40.445Z
+updated: 2026-10-12T15:15:18.647Z
 ---
 
 ## Summary
@@ -65,6 +65,7 @@ Constraints:
   - done: impl-277 · 2026-10-12T12:06:36.695Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
 - [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+  - failed: rev-23 [reviewer] · 2026-10-12T15:14:13.433Z · note Ordinary macOS full cland verify failed nvim/test/plan.test.ts:218: five-second readiness wait for qa-schema-2 timed out.
 
 ## Comments
 
@@ -111,3 +112,16 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-277 · 2026-10-12T15:13:40.445Z
 
 C6 ordinary full verification 2c67624e at 0f153a74 failed 1/1630: unchanged nvim/test/plan.test.ts:191 timed out at :218 waiting for qa-schema-2. Case passes 20/20 native and 20/20 active-preload isolated runs. A-1540 preserves all targeted logs/results plus full failure trace; branch unchanged. Requested Lead classification/next action after hub outage.
+
+### rev-23 · 2026-10-12T15:14:13.434Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-277-2
+commit: 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+
+Medium: nvim/test/plan.test.ts:218 timed out after 5000 ms waiting for qa-schema-2 in full verify 2c67624e, so C6's green-suite requirement is unmet. The predicate also checks current plan view/id, valid buffer and completed visit acknowledgement; the captured failure does not identify which was missing. Plan test and renderer are unchanged from the fixed dev base; no recorder causality or new production defect established. Preserve assertions and diagnose the missing state/receipt. No test rerun by Reviewer.
+Full run exit 1: 1629/1630 passed (hub free 30/30, hub machine 1307/1307, Neovim 292/293), zero skips/cancellations/todos. C1–C5 source/baseline review and revised C2 acceptance remain applicable. Evidence A-1543: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1543-t-277-c6-failed-at-0f153a7.md; full log A-1539. Publication was delayed by hub disconnection; reconnect confirmed same head and no superseding verdict.
+
+Criteria: C6 failed (Ordinary macOS full cland verify failed nvim/test/plan.test.ts:218: five-second readiness wait for qa-schema-2 timed out.).

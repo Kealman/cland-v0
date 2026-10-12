@@ -3,7 +3,7 @@ id: T-284
 kind: task
 title: The inbox in four sections, five rows each, with ages, in Neovim and the CLI
 state: open
-status: in progress
+status: review
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-173
 branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
-updated: 2026-10-12T14:47:34.805Z
+updated: 2026-10-12T15:13:54.278Z
 ---
 
 ## Summary
