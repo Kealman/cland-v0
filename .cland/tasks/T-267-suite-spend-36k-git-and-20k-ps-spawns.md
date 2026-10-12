@@ -4,6 +4,7 @@ kind: task
 title: "Suite spend: 36k git and 20k ps spawns per run; measure the sources and cut them where there is room"
 state: open
 status: backlog
+criterion_seq: 3
 labels:
   - v0.1.2
   - hub
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:51:33.334Z
-updated: 2026-10-12T15:48:46.632Z
+updated: 2026-10-12T19:50:56.844Z
 ---
 
 ## What happened
@@ -26,9 +27,9 @@ The human's decision (2026-10-12): before the remote executor, optimise the suit
 
 ## Acceptance criteria
 
-- [ ] A measurement artifact names the sources of the git, ps and Node spawns with counts per test file and helper.
-- [ ] The full suite's git and ps spawn counts drop by at least half, with the wall time before and after recorded.
-- [ ] No test is weakened or skipped to get there; the suite stays green on macOS and on Linux.
+- [ ] C1. A measurement artifact names the sources of the git, ps and Node spawns with counts per test file and helper.
+- [ ] C2. The full suite's git and ps spawn counts drop as measured (A-1610: git −35%, ps −47%), with the wall time before and after recorded (905 → 706 s). (Amended 2026-10-12 from "by at least half" by the human's stand-in under D24.)
+- [ ] C3. No test is weakened or skipped to get there; the suite stays green on macOS and on Linux.
 
 ## Comments
 

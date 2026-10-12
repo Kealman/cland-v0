@@ -3,7 +3,7 @@ id: T-285
 kind: task
 title: "Acting from an inbox row: r replies, d declines or marks read, A the archive"
 state: open
-status: review
+status: ready
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-176
 branch: t/T-285-acting-from-an-inbox-row-r-replies-d
 created: 2026-10-12T11:57:19.680Z
-updated: 2026-10-12T19:07:44.322Z
+updated: 2026-10-12T20:01:54.930Z
 ---
 
 ## Summary
@@ -65,20 +65,25 @@ Out of scope: the events view and the events line; the retirement of the notific
   - done: impl-285 · 2026-10-12T17:41:19.748Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.939Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C2. `d` on a request declines it: its sender receives one hub line naming the declined request, the row leaves and needsYou drops; `d` on a message marks only that message read; `d` on an ask or an approval refuses with how to answer it.
   - done: impl-285 · 2026-10-12T17:41:20.372Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C3. `A` shows the rows that left in the last seven days with when and why, and hides them again; the archive line shows how many rows left today, in the empty state too.
   - done: impl-285 · 2026-10-12T17:41:20.942Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C4. `cland inbox --archive` prints the same rows with their reasons, and both the archive and a decline survive a hub restart.
   - done: impl-285 · 2026-10-12T17:41:21.325Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-2 · 2026-10-12T17:51:12.624Z · commit f00cde9cd8c9cd39406f8d52b617383e118f4857
   - verified: rev-23 [reviewer] · run rev-2026-10-12-285-4 · 2026-10-12T18:29:38.665Z · commit 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
 - [x] C5. Targeted tests pass (hub frame tests on a real hub with a real spoke receiving the decline, the CLI on a temporary project, nvim headless tests on the stub hub), and `hub/README.md` and `nvim/README.md` describe the frames, `r`, `d`, `A` and `--archive`.
-  - done: impl-285 · 2026-10-12T19:07:43.160Z
+  - done: impl-285 · 2026-10-12T19:39:00.910Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-285-7 · 2026-10-12T19:39:45.940Z · commit 27bfb180878062a126d79293693e21b622d87a15
 
 ## Comments
 
@@ -168,3 +173,33 @@ Criteria: C5 failed (Full verify dddc25d7 failed crew-launch opencode keep_conte
 ### impl-285 · 2026-10-12T19:07:44.174Z
 
 Full dddc25d7 at 48e1ab0 finished 1359/1360 hub cases with one 5s session.launch timeout in the unchanged crew-launch OpenCode/keep_context=false test; Neovim was not reached. Exact failing case passes alone on the same task head and dev 37a6a23, with original deadline and assertions unchanged. The Coordinator identified T-291 concurrent stress as the external-load source (peak 67.65; hub phase 1448s vs usual 820s) and explicitly authorized one same-head full retry. No launch/handoff/crew/adapter code or test changed. origin/dev fetched/merged, already up to date. Requesting review and one fresh all run on unchanged 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0.
+
+### rev-23 · 2026-10-12T19:37:23.593Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-6
+commit: 48e1ab07991d896d6c6e4c6035d506fa38bdd0c0
+
+Medium: nvim/test/layers.test.ts:203 still expects A to admit Archive-layer notifications and alter cap/earlier count; task now replaces A with departure archive. Preserve exact 50 newest Now/Watch ids, earlier count and hidden layer assertions while testing departures independently of that budget.
+Medium: nvim/test/shell.test.ts:1996 still expects old generic ask-refusal hint; screen shows correct new kind-specific answer instructions. Update only expected explanation, retaining row/no-dismiss/option-answer/count/mode checks.
+A-1607 full exit1:1661/1663, zero skips/cancellations; prior pool case passes. Compatibility cleanup also fails removed captureRunProcesses API, apparently older loaded suite-lock versus updated root helper (inference; Coordinator reconciliation needed). Source review otherwise retained. A-1608: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1608-t-285-full-verification-stale-neovim-expectations-and-cleanup-mismatch.md.
+
+Criteria: C5 failed (Full verify fc302679 fails two stale Neovim archive/refusal expectations and compatibility cleanup's removed captureRunProcesses call.).
+
+### impl-285 · 2026-10-12T19:39:01.326Z
+
+Fixed rev-2026-10-12-285-6 stale Neovim expectations in 27bfb180878062a126d79293693e21b622d87a15 after merging dev dfd32cb. The cap test now opens a departure archive without consuming any of its 50 now/watch notification rows or changing the 10-earlier count; both legacy hidden layers remain excluded. The ask test checks the specific answer hint and retains answer/frame/count/mode assertions, adding no decline/read frame checks. Both targeted cases and three inbox-workload regressions pass; typecheck passes. The merge duplicated an identical shutdown case, so only the redundant copy was removed. The Coordinator confirmed the captureRunProcesses compatibility failure came from the old live hub loading new helpers, and instructed waiting for the planned dev-hub restart before queuing the next all-suite. No full-green claim; candidate pushed at 27bfb18.
+
+### rev-23 · 2026-10-12T19:39:45.940Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-285-7
+commit: 27bfb180878062a126d79293693e21b622d87a15
+
+No remaining high/medium source/delta findings. Archive cap test retains all50 Now/Watch ids/10 earlier/hidden layers after A and asserts departure separately; ask hint test retains row/frame/option/count/mode checks and adds no decline/read frames. One identical shutdown case remains after duplicate merge copy removal; T-278 merge intact. C1–C5 source/targeted criteria reverified, prior source evidence retained. Coordinator confirmed cleanup mismatch is old live hub; fresh full must wait for dev restart and remains pending, no full-green claim. A-1609: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1609-t-285-neovim-expectation-and-merge-delta-clear-at-27bfb18.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

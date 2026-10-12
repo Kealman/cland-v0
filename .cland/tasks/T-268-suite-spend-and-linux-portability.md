@@ -3,6 +3,7 @@ id: T-268
 kind: epic
 title: Suite spend and Linux portability
 state: open
+criterion_seq: 7
 labels:
   - epic
   - v0.1.2
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.526Z
-updated: 2026-10-12T11:55:01.627Z
+updated: 2026-10-12T19:50:55.547Z
 ---
 
 ## Goal
@@ -52,13 +53,13 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 
 QA runs the census on `dev` and compares it with the census recorded before the first cut. QA runs `cland verify` on `dev` and reads a green result. QA then runs the full suite once on a c-8 droplet with the prototype's scripts and the token from the human's environment, as an ordinary user with no environment variable beyond PATH, and reads the green log with the platform skips listed by reason; afterwards the provider's tag listing is empty. In the Linux container QA runs the listing test on both `ps` dialects, and each of the five formerly failing files alone.
 
-- [ ] A census artifact names the sources of the `git`, `ps` and Node spawns with counts per test file and helper, before the first cut and on the final `dev`.
-- [ ] A full run's `git` and `ps` spawn counts are at least halved, with the wall time before and after recorded on T-267.
-- [ ] No test was weakened, skipped or retried to get there, and the suite is green on macOS through `cland verify`.
-- [ ] `hub/src/system-processes.ts` and the test cleanup list processes the same way on macOS and Linux, covered by a test on both `ps` dialects.
-- [ ] The five Linux failures of the T-256 prototype are fixed at their cause.
-- [ ] `npm run typecheck && npm test` passes on Ubuntu 24.04 with 8 vCPUs, as an ordinary user, with no environment variable beyond PATH, and the platform skips are listed by reason.
-- [ ] `hub/README.md` describes the census, the platform skips and how to run the suite on Linux; T-266 and T-267 are closed.
+- [ ] C1. A census artifact names the sources of the `git`, `ps` and Node spawns with counts per test file and helper, before the first cut and on the final `dev`.
+- [ ] C2. A full run's `git` and `ps` spawn counts are cut as measured on T-279's census (A-1610: git 32,341 → 21,111, −35%; ps 28,888 → 15,290, −47%), with the wall time before and after recorded on T-267 (905 → 706 s) and phase leftovers at zero; the remaining production sources are filed as a Tech debt follow-up. (Amended 2026-10-12 from "at least halved" by the human's stand-in under D24, answering the Coordinator's ask.)
+- [ ] C3. No test was weakened, skipped or retried to get there, and the suite is green on macOS through `cland verify`.
+- [ ] C4. `hub/src/system-processes.ts` and the test cleanup list processes the same way on macOS and Linux, covered by a test on both `ps` dialects.
+- [ ] C5. The five Linux failures of the T-256 prototype are fixed at their cause.
+- [ ] C6. `npm run typecheck && npm test` passes on Ubuntu 24.04 with 8 vCPUs, as an ordinary user, with no environment variable beyond PATH, and the platform skips are listed by reason.
+- [ ] C7. `hub/README.md` describes the census, the platform skips and how to run the suite on Linux; T-266 and T-267 are closed.
 
 ## Dogfooding
 

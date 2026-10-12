@@ -2,8 +2,8 @@
 id: T-278
 kind: task
 title: Test teardown kills the process groups it started; the machine-wide scan once per phase
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-175
 branch: t/T-278-test-teardown-kills-the-process-groups
 created: 2026-10-12T11:54:20.614Z
-updated: 2026-10-12T19:19:36.890Z
+updated: 2026-10-12T19:20:04.447Z
 ---
 
 ## Summary
@@ -132,3 +132,7 @@ commit: ea9a08da862f09a3a2c4cef7f991f3874323698c
 No remaining high/medium findings. C1–C5 assessment A-1597 retained; C6 now established by ordinary full verify d5aaf623/A-1602 at unchanged exact head: typechecks pass, 30/30 hub free +1341/1341 machine +299/299 Neovim =1670/1670; zero failures/cancellations/skips/todos, exit0. Both ownership regressions, phase crash cleanup, and own-lock/fresh foreign PID guards pass. Final phase cleanup count zero vs baseline two. Revised C2 complete A-1580 comparison retained; no halving claim for this slice. A-1603: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1603-t-278-final-review-full-green-at-ea9a08d.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-12T19:20:04.447Z
+
+Merged dfd32cbbeb61b02e3d3dc03bf3266be1498070ce onto dev.
