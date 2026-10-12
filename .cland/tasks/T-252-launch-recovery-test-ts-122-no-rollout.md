@@ -2,8 +2,8 @@
 id: T-252
 kind: task
 title: 'launch-recovery.test.ts:122 "no rollout found for thread id" about 1 in 5 runs: the fake Codex saves its rollout only after the first turn while the test relaunches at once'
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - v0.1.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-166
 branch: t/T-252-launch-recovery-test-ts-122-no-rollout
 created: 2026-10-12T00:15:33.334Z
-updated: 2026-10-12T02:01:09.267Z
+updated: 2026-10-12T02:28:32.407Z
 ---
 
 ## What happened
@@ -32,9 +32,13 @@ Confirm the race. Make the fixture, or the fake, wait on an observable condition
 
 - [x] C1. The race is confirmed or refuted, with a deterministic reproduction.
   - done: impl-252 · 2026-10-12T01:41:48.332Z
+  - verified: rev-20 [reviewer] · run rev-20261012-252-8a646d2 · 2026-10-12T02:28:10.818Z · commit 8a646d21b49d63c03c5e4f50205c95a894a6fef1
 - [x] C2. The case passes 20/20 isolated and under induced load on Node 24.21.0, recorded in an artifact, with assertions unchanged.
   - done: impl-252 · 2026-10-12T02:00:29.629Z
-- [ ] C3. `npm run typecheck && npm test` pass.
+  - verified: rev-20 [reviewer] · run rev-20261012-252-8a646d2 · 2026-10-12T02:28:10.818Z · commit 8a646d21b49d63c03c5e4f50205c95a894a6fef1
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-252 · 2026-10-12T02:27:55.978Z
+  - verified: rev-20 [reviewer] · run rev-20261012-252-8a646d2 · 2026-10-12T02:28:10.818Z · commit 8a646d21b49d63c03c5e4f50205c95a894a6fef1
 
 ## Comments
 
@@ -49,3 +53,28 @@ Baseline complete: 20/20 full-file runs failed at the affected final resume asse
 ### impl-252 · 2026-10-12T02:00:30.021Z
 
 A-1489 contains complete logs and reproducible scripts: baseline full file 0/20 passes with 20 exact no-rollout failures; fixed full file 20/20 isolated and 20/20 with four CPU load workers on Node v24.21.0; delayed-first-turn reproduction 0/3 before and 3/3 after. Original assertions and timeouts unchanged. Durable evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1489-t-252-before-after-and-induced-load-verification/README.md. Fetched and merged origin/dev d57ef7f before final suite (tracker/docs-only update); preparing review request.
+
+### impl-252 · 2026-10-12T02:27:56.285Z
+
+Final exact-head verification e49ae221-fe54-496d-b99a-a98e7bda1930 passed at 8a646d21b49d63c03c5e4f50205c95a894a6fef1: typecheck and full suite exit 0, 1615/1615 tests passed, no failures/skips/cancellations. Durable full-suite log A-1495: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1495-suite-e49ae221-fe54-496d-b99a-a98e7bda1930-all-at-8a646d2.log. C1/C2 repetition evidence remains A-1489. All criteria marked done; no further commits.
+
+### rev-20 · 2026-10-12T02:28:10.818Z
+
+verdict: review
+result: clear
+by: rev-20 [reviewer]
+run: rev-20261012-252-8a646d2
+commit: 8a646d21b49d63c03c5e4f50205c95a894a6fef1
+
+No high, medium, or low findings.
+
+Standards: 0 findings. Six-line fixture wait uses the existing bounded eventually helper; assertions/timeouts unchanged, no production/fake changes.
+Spec: 0 findings. C1 deterministic delayed-turn evidence flips 3/3 failures to 3/3 passes at the original assertion. C2 all durable logs confirm 20/20 isolated and 20/20 with four CPU load workers on Node v24.21.0; after snapshot exactly matches candidate and assertion lines are identical (A-1489). Native probe supports keeping this fixture-only within its documented limits.
+C3 exact-head suite e49ae221-fe54-496d-b99a-a98e7bda1930 passed typecheck and full tests, 1615/1615, zero failures/cancellations/skips, exit 0 (A-1495).
+Inspection A-1492; final review artifact posted in topic-166. All C1-C3 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-12T02:28:32.407Z
+
+Merged d7bcaf9a45e8d61c99dd3d1c330516521d26923b onto dev.
