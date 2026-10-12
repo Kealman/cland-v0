@@ -2,8 +2,8 @@
 id: T-240
 kind: task
 title: Account limits and several accounts per harness
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:01.590Z
-updated: 2026-10-12T09:51:33.482Z
+updated: 2026-10-12T11:35:33.539Z
 ---
 
 ## Open question
@@ -45,3 +45,7 @@ Found on the way: Claude Code issue anthropics/claude-code#95822 (open): short-l
 ### human · 2026-10-12T09:51:33.482Z
 
 Decided (2026-10-12): an accounts registry at user level (~/.config/cland/accounts.toml, names and paths, no secrets), accounts by name in roles.toml and launches, the account recorded on the session and applied as the environment of every adapter process; limits from running sessions first (Codex rateLimits events, Claude's status-line rate_limits via the cland mod), idle accounts polled at most every 15 minutes through the harness only, never the provider endpoints with tokens cland reads, nothing for OpenCode; an accounts block at the top of the sessions panel with the windows per account; routing without rotation: accounts pinned by hand, a limit-hit marks the account limited, refuses launches and asks the human, no failover or round-robin. Recorded in docs/spec/v0.1.2.md §3.13. T-265 precedes multi-account use.
+
+### human · 2026-10-12T11:35:33.539Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.13; built by T-272 Accounts and limits

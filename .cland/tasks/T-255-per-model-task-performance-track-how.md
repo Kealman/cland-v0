@@ -2,8 +2,8 @@
 id: T-255
 kind: task
 title: "Per-model task performance: track how each task went by the model that did it, to route tokens across many models"
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - ready-for-human
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T06:08:23.359Z
-updated: 2026-10-12T09:36:01.233Z
+updated: 2026-10-12T11:35:34.826Z
 ---
 
 Observation from the human (2026-10-12 morning, after v0.1.1), relayed by the stand-in cland-impl.
@@ -71,3 +71,7 @@ Open questions for the grilling are in section 9 of the doc: the routing objecti
 ### human · 2026-10-12T09:36:01.233Z
 
 Decided (2026-10-12): instrumentation only in v0.1.2: session usage journaled at each publication and at stop, a required size field on tasks, a regression_of link, the model of every launch including sub-agents, the verdict scope on verdict records. No model rotation in this build: the human will measure later on another project with many models; the crew stays as decided. The metric set (first-pass yield, rounds to first clear, reviewer-found defects, escaped defects, cost per landed task; compared within size class, run and Reviewer model) is recorded for that later measurement. Recorded in docs/spec/v0.1.2.md §3.12.
+
+### human · 2026-10-12T11:35:34.826Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.12; built by T-270 Status, fields and instrumentation

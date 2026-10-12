@@ -2,8 +2,8 @@
 id: T-243
 kind: task
 title: "An item explorer: a full work area over the item tree in the centre"
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:02.317Z
-updated: 2026-10-12T09:12:26.906Z
+updated: 2026-10-12T11:35:34.015Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T09:12:26.906Z
 
 Decided (2026-10-12, round 3): the explorer is an outline tree in the centre with in-place folding (not columns), root = the current release, folded roots for categories, unscheduled and other releases; l/h and za fold, j/k move, the card follows the cursor and Enter focuses it, s rescopes with breadcrumbs, ␣␣ back; rows per level with counts and bars; live items by rank then done items in the done colour, D hides done; ␣e opens it and it is the centre at startup, gi opens it on the item; read-only: the one action is a quick message to the Coordinator in the item's topic (the human: hand edits would add chaos). Recorded in docs/spec/v0.1.2.md §3.8; mockups and prototype are tickets of map T-264.
+
+### human · 2026-10-12T11:35:34.015Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.8; built by T-276 The explorer and the card

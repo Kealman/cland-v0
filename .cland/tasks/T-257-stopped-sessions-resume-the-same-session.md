@@ -2,8 +2,8 @@
 id: T-257
 kind: task
 title: "Stopped sessions: resume the same session, archive one from the panel, and a cleanup rule so stopped sessions do not pile up"
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T08:33:25.047Z
-updated: 2026-10-12T08:59:32.897Z
+updated: 2026-10-12T11:35:35.147Z
 ---
 
 Observation from the human (2026-10-12, after v0.1.1), relayed by the cland-design session.
@@ -33,3 +33,7 @@ Relates to spec §3.3 (Aide), §3.5 (layers, pins and archive), §3.11 (the sess
 ### human · 2026-10-12T08:59:32.897Z
 
 Decided (2026-10-12, round 2): resume with r and a palette action through the harness's own resume, keeping name, role and claim (the hub records the harness session id at launch; a fresh launch with the same brief when resume is impossible); d archives a session row, A keeps toggling the archive section, archived sessions leave every group and the default session.list; crew sessions archive automatically one hour after their item merged or closed, otherwise 24 hours after stopping; Aides never automatically; the more fold shows the latest 20 plus an archived count; cland session prune --older-than deletes hub records of archived sessions, never the journal. Recorded in docs/spec/v0.1.2.md §3.5.
+
+### human · 2026-10-12T11:35:35.147Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.5; built by T-275 Sessions: stopped sessions, verifiers' items, the queue line

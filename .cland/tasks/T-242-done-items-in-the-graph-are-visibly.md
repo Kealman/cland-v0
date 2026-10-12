@@ -2,8 +2,8 @@
 id: T-242
 kind: task
 title: Done items in the graph are visibly distinct from backlog, and container nodes show their children's progress
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:02.073Z
-updated: 2026-10-12T08:59:32.618Z
+updated: 2026-10-12T11:35:33.857Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T08:59:32.618Z
 
 Decided (2026-10-12, round 2): a done node keeps a readable title: green filled glyph, title in a done colour (green-tinted, dimmer than live text), not the backlog grey, no strikethrough; container nodes carry done/total of their children and the count in work where task nodes carry the criteria fraction; the same colour rule for done rows in the panel and on the board. Recorded in docs/spec/v0.1.2.md §3.3.
+
+### human · 2026-10-12T11:35:33.857Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.3; built by T-276 The explorer and the card

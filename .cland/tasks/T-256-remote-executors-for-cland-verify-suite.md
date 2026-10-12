@@ -2,8 +2,8 @@
 id: T-256
 kind: task
 title: "Remote executors for cland verify: suite runs on cloud VMs behind a provider-agnostic executor interface (DigitalOcean first)"
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - ready-for-human
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T08:21:26.188Z
-updated: 2026-10-12T09:59:54.355Z
+updated: 2026-10-12T11:35:34.983Z
 ---
 
 Remote executors for `cland verify`: suite runs on cloud VMs through a provider-agnostic executor interface, so the crew stops queueing behind one machine and the project pays per minute.
@@ -188,3 +188,7 @@ Appendix A of the doc, run to completion offline against a mock API. To run it:
   git show research/do-microvms:docs/research/do-microvms.md | sed -n '/^#!\/usr\/bin\/env bash$/,/^```$/p' | sed '$d' > /tmp/microvm-experiment.sh
   eval "$(grep -E '^export DIGITALOCEAN_TOKEN=' ~/.zshrc)"
   REF=dev OUT=/tmp/cland-microvm-exp bash /tmp/microvm-experiment.sh 2>&1 | tee /tmp/cland-microvm-exp.log
+
+### human · 2026-10-12T11:35:34.983Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.14; built by T-271 Remote executors

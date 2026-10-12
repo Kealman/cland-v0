@@ -2,8 +2,8 @@
 id: T-247
 kind: task
 title: Rework the inbox around the layers
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:03.291Z
-updated: 2026-10-12T08:59:33.170Z
+updated: 2026-10-12T11:35:34.667Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T08:59:33.170Z
 
 Decided (2026-10-12, round 2): the inbox holds the now layer only, in sections by kind (asks and approvals, requests to the human, direct messages, plan approvals), newest first, the last N with a folded more; notifications and events move to a separate events view, newest first, capped; the chip equals the inbox count. The form is decided by a mockup in the explorer map. Recorded in docs/spec/v0.1.2.md §3.7.
+
+### human · 2026-10-12T11:35:34.667Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.7; built by T-274 Inbox and the events view

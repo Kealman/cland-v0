@@ -2,8 +2,8 @@
 id: T-245
 kind: task
 title: Categories of items that gather outside the epics (tech debt, bugs, follow-ups, ideas)
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:02.803Z
-updated: 2026-10-12T09:12:27.177Z
+updated: 2026-10-12T11:35:34.344Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T09:12:27.177Z
 
 Decided (2026-10-12, round 3): a root-level container kind category in [tracker] levels; the migration seeds Tech debt (from T-216), Bugs, Follow-ups, Ideas; agents file with --parent C-n as the clauses say; the explorer shows categories as a root section with counts; promotion is a message to the Coordinator (move, rank to top, plan these); the Coordinator takes category work by rank when the release has nothing unblocked, from crew.toml idle_from (empty = never); the tech-debt label retires; an item in a category is not unscheduled. Recorded in docs/spec/v0.1.2.md §3.10 and GLOSSARY (Category, Unscheduled).
+
+### human · 2026-10-12T11:35:34.344Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.10; built by T-269 Prefixes and categories (the hub side) and T-276 The explorer and the card (the Neovim side)

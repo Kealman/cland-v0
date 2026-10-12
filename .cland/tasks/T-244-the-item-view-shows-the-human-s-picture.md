@@ -2,8 +2,8 @@
 id: T-244
 kind: task
 title: The item view shows the human's picture first and folds the agents' text
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:02.559Z
-updated: 2026-10-12T09:12:27.043Z
+updated: 2026-10-12T11:35:34.170Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T09:12:27.043Z
 
 Decided (2026-10-12, round 3): a ## Summary section of one to three sentences written by whoever creates the item (to-tickets, plan-epic, the clauses, the human), the first paragraph of the first non-Parent section as the fallback; the card shows summary, facts, progress, plan stage, the latest verdict with its reason, relations, dates and last activity, the body behind zb; the card is the explorer's right part and replaces the item view on gi. Recorded in docs/spec/v0.1.2.md §3.9; mockups in map T-264 (T-260).
+
+### human · 2026-10-12T11:35:34.170Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.9; built by T-276 The explorer and the card, with the hub's fields from T-270 Status, fields and instrumentation

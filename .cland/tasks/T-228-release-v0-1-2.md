@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-12T10:03:34.174Z
+updated: 2026-10-12T11:36:11.934Z
 ---
 
 ## Goal
@@ -62,6 +62,22 @@ T-240 and T-256, 2026-10-12 (after the research and the prototype): accounts reg
 ## Open
 
 The explorer map T-264 runs: the mockups and the research AFK, the human reacts to the mockups, then the prototype, then /to-spec on this item. The AFK tickets T-240, T-255, T-256 report back to their items.
+
+## Epics
+
+Published on 2026-10-12 from `docs/spec/v0.1.2.md` §4, children of this release, labelled `epic`, `v0.1.2` and `ready-for-agent`. Two lanes: the hub lane E01 to E06 and the Neovim lane E07 to E09, which joins the release E06.
+
+| Key | Id | Title | Blocked by |
+|---|---|---|---|
+| E01 | T-268 | Suite spend and Linux portability | none |
+| E02 | T-269 | Prefixes and categories | T-268 |
+| E03 | T-270 | Status, fields and instrumentation | T-269 |
+| E04 | T-271 | Remote executors | T-270 |
+| E05 | T-272 | Accounts and limits | T-271 |
+| E06 | T-273 | Release v0.1.2 from the item | T-272, T-276 |
+| E07 | T-274 | Inbox and the events view | none |
+| E08 | T-275 | Sessions: stopped sessions, verifiers' items, the queue line | T-274 |
+| E09 | T-276 | The explorer and the card | T-275, T-269 |
 
 ## Comments
 

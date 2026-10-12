@@ -2,8 +2,8 @@
 id: T-237
 kind: task
 title: Release scope shows the release's epics as rows with a status breakdown, and drills down to tasks at epic scope
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:00.863Z
-updated: 2026-10-12T09:12:27.314Z
+updated: 2026-10-12T11:35:33.074Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T09:12:27.314Z
 
 Decided (2026-10-12, round 3): at release scope the items panel lists the release's epics as folded rows with done/total and the status breakdown in rank order; an unfolded epic shows its status sections as the epic scope does; the epic tab row stays; categories as one count line at the bottom. Recorded in docs/spec/v0.1.2.md §3.11; the full tree lives in the explorer (§3.8, map T-264).
+
+### human · 2026-10-12T11:35:33.074Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.11; built by T-276 The explorer and the card

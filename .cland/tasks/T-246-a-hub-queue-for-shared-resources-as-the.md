@@ -2,8 +2,8 @@
 id: T-246
 kind: task
 title: A hub queue for shared resources, as the human experiences it
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:03.051Z
-updated: 2026-10-12T08:59:33.034Z
+updated: 2026-10-12T11:35:34.512Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T08:59:33.034Z
 
 Decided (2026-10-12, round 2): no general queue API in v0.1.2 (cland verify is the suite queue, merges are serialized by the hub); the verify line in the sessions panel header becomes a one-line queue summary that opens the queue view (holder, ordered waiters with their wait, admission ETA from the median run); the human's own npm test goes through the same queue and does not start while it is busy unless --force. Recorded in docs/spec/v0.1.2.md §3.6.
+
+### human · 2026-10-12T11:35:34.512Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.6; built by T-275 Sessions: stopped sessions, verifiers' items, the queue line

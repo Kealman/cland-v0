@@ -2,8 +2,8 @@
 id: T-241
 kind: task
 title: Id prefixes per item kind (R-, E-, T-, Q-, M-)
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - ready-for-human
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:01.834Z
-updated: 2026-10-12T08:59:32.334Z
+updated: 2026-10-12T11:35:33.697Z
 ---
 
 ## Open question
@@ -27,3 +27,7 @@ Source: the human's observations during the v0.1 build, memory note cland-v011-s
 ### human · 2026-10-12T08:59:32.334Z
 
 Decided (2026-10-12, round 2 of the v0.1.2 grilling): the number is the identity, the prefix follows the kind (R- release, E- epic, T- task, Q- question, M- map, S- spec, C- category once it is a kind); one shared counter; the hub resolves any prefix with a number, so old ids stay valid everywhere; migration is one command that renames the item files and rewrites parent and blocked_by in frontmatter, nothing else. Recorded in docs/spec/v0.1.2.md §3.1.
+
+### human · 2026-10-12T11:35:33.697Z
+
+Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.1; built by T-269 Prefixes and categories
