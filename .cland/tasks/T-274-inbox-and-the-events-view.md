@@ -2,7 +2,7 @@
 id: T-274
 kind: epic
 title: Inbox and the events view
-state: open
+state: closed
 criterion_seq: 8
 labels:
   - epic
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-182
 branch: null
 created: 2026-10-12T11:35:14.306Z
-updated: 2026-10-12T22:12:14.859Z
+updated: 2026-10-12T22:59:14.808Z
 ---
 
 ## Goal
@@ -60,20 +60,27 @@ In a scratch project with the fake harnesses and `[plan] approval = "human"`, an
 
 - [ ] C1. The inbox shows only the now layer, in four sections in the decided order, newest first, five per section with an "N more" line naming the oldest wait, and the waiting age on every row.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:06.322Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C2. needsYou counts the four kinds, each row leaves by its rule, and the chip equals the inbox count.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:32.411Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C3. `send` has the `request` kind addressed to the human; `r` replies from a row; `d` declines a request with its sender told, or marks a message read.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:33.372Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C4. `A` shows what left the inbox in the last seven days and why, and `cland inbox --archive` prints it.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:33.991Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C5. The events view opens on `␣E`, from the inbox's events line and from the palette; it shows the newest 200 matching rows by day, loads older ones with `A`, dims bookkeeping, merges equal events within 60 seconds, and filters by kind, warnings and subject, kept in `ui.json`.
-  - failed: qa-27 [qa] · 2026-10-12T22:11:31.752Z · note M25/M26: one not-clear verdict produces two warning rows, including after a saved-filter workbench restart.
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C6. Opening the events view sets the last look; the inbox's events line counts what is new since, with warnings apart; nothing still waiting in the inbox repeats in the view.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:34.768Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C7. The v0.1.1 notification list, its `d` and `D` and its cap are gone.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:35.281Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 - [ ] C8. `hub/README.md`, `nvim/README.md` and the role clauses describe the inbox, the `request` kind and the events view.
   - verified: qa-27 [qa] · run qa-2026-10-12-27 · 2026-10-12T22:10:35.958Z · commit fdf5d2631bc02220330f6d1792ea371b574c9f16
+  - verified: qa-27 [qa] · run qa-2026-10-13-27-2 · 2026-10-12T22:58:54.296Z · commit 0fcb242df2bc44716d6a85c45aceb57efb26816e
 
 ## Dogfooding
 
@@ -216,3 +223,67 @@ Local departure times (Europe/Belgrade): ask answered Oct 12 23:59:23.587; comma
 Evidence artifact A-1664: [report and complete evidence](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1664-t-274-qa-evidence-duplicate-verdict-warnings/README.md).
 
 Criteria: C5 failed (M25/M26: one not-clear verdict produces two warning rows, including after a saved-filter workbench restart.).
+
+### qa-27 · 2026-10-12T22:58:54.296Z
+
+verdict: qa
+result: clear
+by: qa-27 [qa]
+run: qa-2026-10-13-27-2
+commit: 0fcb242df2bc44716d6a85c45aceb57efb26816e
+
+| Case | Surface | Result | Evidence (A-1673) |
+| --- | --- | --- | --- |
+| M0 | hub-api | PASS | [M0.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M0.txt) |
+| M1 | hub-api | PASS | [M1.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M1.txt) |
+| M2 | hub-api | PASS | [M2-hub_test_inbox-requests.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M2-hub_test_inbox-requests.test.ts.txt) |
+| M3 | hub-api | PASS | [M3-hub_test_inbox-actions.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M3-hub_test_inbox-actions.test.ts.txt) |
+| M4 | hub-api | PASS | [M4-hub_test_inbox-workload.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M4-hub_test_inbox-workload.test.ts.txt) |
+| M5 | hub-api | PASS | [M5-hub_test_events.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M5-hub_test_events.test.ts.txt) |
+| M6 | hub-api | PASS | [M6-hub_test_events-quiet.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M6-hub_test_events-quiet.test.ts.txt) |
+| M7 | hub-api | PASS | [M7-hub_test_visibility.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M7-hub_test_visibility.test.ts.txt) |
+| M8 | hub-api | PASS | [M8-nvim_test_inbox-sections.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M8-nvim_test_inbox-sections.test.ts.txt) |
+| M9 | hub-api | PASS | [M9-nvim_test_events.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M9-nvim_test_events.test.ts.txt) |
+| M10 | hub-api | PASS | [M10-nvim_test_layers.test.ts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M10-nvim_test_layers.test.ts.txt) |
+| M11 | headless-grid | PASS | [PANELS-008-runner.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/PANELS-008-runner.txt) |
+| M12 | hub-api | PASS | [M12-setup.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M12-setup.txt) |
+| M13 | hub-api | PASS | [M13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M13.txt) |
+| M14 | headless-grid | PASS | [M14.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M14.txt) |
+| M15 | hub-api | PASS | [M15.jsonl](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M15.jsonl) |
+| M16 | headless-grid | PASS | [M16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M16.txt) |
+| M17 | headless-grid | PASS | [M17-ask.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M17-ask.txt) |
+| M18 | hub-api | PASS | [M18-send.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M18-send.json) |
+| M19 | headless-grid | PASS | [M19.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M19.txt) |
+| M20 | headless-grid | PASS | [M20.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M20.txt) |
+| M21 | hub-api | PASS | [M21.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M21.txt) |
+| M22 | hub-api | PASS | [M22-after.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M22-after.txt) |
+| M23 | hub-api | PASS | [M23.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M23.txt) |
+| M24 | headless-grid | PASS | [M24-open.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M24-open.txt) |
+| M25 | headless-grid | PASS | [M25.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M25.txt) |
+| M26 | headless-grid | PASS | [M26-before.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M26-before.txt) |
+| M27 | headless-grid | PASS | [M27.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M27.txt) |
+| M28 | headless-grid | PASS | [M28.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M28.txt) |
+| M29 | headless-grid | PASS | [M29.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M29.txt) |
+| M30 | hub-api | PASS | [M30.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M30.txt) |
+| M31 | hub-api | PASS | [M31-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/M31-start.txt) |
+| PANELS-008 | headless-grid | PASS | [palette-answer.screen.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/palette-answer.screen.txt) |
+| THREAD-009 | headless-grid | PASS | [now-count-120.screen.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/now-count-120.screen.txt) |
+| THREAD-010 | headless-grid | PASS | [now-count-80.screen.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/now-count-80.screen.txt) |
+
+Findings by severity: high — none; medium — none; low — none.
+
+All 32 manual checks and three catalogue cases passed. The 26 serial single-file test runs passed 224 tests, with no failures or skips. No full suite was run (excluded by the brief).
+
+T-310 regression resolved: M22/M25 have exactly two warning rows, `doomed died` and `T-5 review not clear · rev [reviewer] · run qa274-nc`. M26 restores exactly one not-clear verdict row after a cold workbench restart. No duplicate `verdict posted` warning remains.
+
+The four earlier Coordinator clarifications are incorporated in the committed amended brief: scratch-local origin is permitted; role-named drivers use -q; archiveToday is local-day-aware; the initial no-op means status groups ×5 and ×4. This run’s twelve departures all occurred Oct 13, 00:54:55.551–00:55:07.846 Europe/Belgrade; archiveToday=12 and seven-day archive=12, with expected reasons.
+
+Criteria marks: verified C1,C2,C3,C4,C5,C6,C7,C8 in run qa-2026-10-13-27-2 at 0fcb242df2bc44716d6a85c45aceb57efb26816e. Criterion IDs match the brief by text. Scratch teardown complete; machine lock listing and empty queue unchanged; no product edits. HEAD/dev rechecked unchanged before verdict.
+
+Full commands, case notes, captures and test outputs: [A-1673 evidence](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1673-t-274-qa-clear-full-rerun-and-duplicate-verdict-regression/README.md).
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-12T22:59:14.808Z
+
+Closed on QA's clear epic demo, run qa-2026-10-13-27-2 at dev 0fcb242 (A-1673): M0–M31, three catalogue cases and 224 tests in 26 serial files passed, C1–C8 verified. Children T-283 to T-288 and the QA finding T-310 (one verdict, one warning row) merged. The first run (qa-2026-10-12-27) failed C5 on the duplicate warning; the brief gained four clarifications (849c28a).

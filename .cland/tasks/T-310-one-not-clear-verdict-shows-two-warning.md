@@ -2,8 +2,8 @@
 id: T-310
 kind: task
 title: One not-clear verdict shows two warning rows in the events view
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-184
 branch: t/T-310-one-not-clear-verdict-shows-two-warning
 created: 2026-10-12T22:12:06.310Z
-updated: 2026-10-12T22:43:38.187Z
+updated: 2026-10-12T22:44:06.618Z
 ---
 
 ## Summary
@@ -87,3 +87,7 @@ commit: c00414eb6cc0aa20284be6e416603fcef4068344
 No high/medium findings. C1–C3 assessment retained; C4 verified by full exact-head cland verify e618c84f, A-1671: typecheck and all phases, 1686/1686, zero skips/cancellations, exit 0. Once-only verdict live/history/restart, paired pagination/file-authored preservation, UI counts/cold filters and unchanged workload regression pass. Evidence A-1672: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1672-t-310-final-review-once-only-verdict-full-verification.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-12T22:44:06.618Z
+
+Merged 0fcb242df2bc44716d6a85c45aceb57efb26816e onto dev.
