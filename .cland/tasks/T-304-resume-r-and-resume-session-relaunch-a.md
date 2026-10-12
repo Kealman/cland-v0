@@ -3,7 +3,7 @@ id: T-304
 kind: task
 title: 'Resume: r and "Resume session" relaunch a stopped session on its harness conversation, with a fresh launch on the same brief when it cannot'
 state: open
-status: backlog
+status: review
 labels:
   - v0.1.2
   - ready-for-agent
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: T-275
 blocked_by: []
-topic: null
-branch: null
+topic: topic-186
+branch: t/T-304-resume-r-and-resume-session-relaunch-a
 created: 2026-10-12T21:34:30.803Z
-updated: 2026-10-12T21:35:02.196Z
+updated: 2026-10-12T23:15:00.243Z
 ---
 
 ## Summary
@@ -88,3 +88,13 @@ Then the answer is `found: false` with the reason and an offer: `fresh: { brief:
 - [ ] C3. A harness that cannot resume answers `found: false` with its reason and a fresh-launch offer. `--fresh` (`fresh: true`) launches under the same name and role with the brief recorded at launch, text or artifact id, and a hub test checks that the first input carries that brief.
 - [ ] C4. A Neovim headless test on the stub hub shows four things: `r` on a stopped row, the outcome note, the fresh-launch confirmation line with `f` and `n`, and "Resume session" in the palette and `␣?`.
 - [ ] C5. `hub/README.md`'s session frames and CLI table describe `--relaunch` on a stopped session, `--fresh` and the answer's fields. `nvim/README.md` describes `r` and the offer. The Coordinator's default clause names `cland session resume <name> --relaunch` and `--fresh`.
+
+## Comments
+
+### impl-304 · 2026-10-12T23:00:14.778Z
+
+Implementation started. Testing at the item's agreed seams: real hub session frames/CLI with fake harnesses, then headless Neovim on the stub hub. Resume keeps the session identity's valid item claim and never restores verifier holds. C5 requires a default-roles.ts Coordinator clause update; no new Coordinator tool is planned.
+
+### impl-304 · 2026-10-12T23:14:09.894Z
+
+C1–C5 implemented. Local tests: 12 resume frame/CLI cases, OpenCode missing-conversation plus failed-fresh-row recovery, four launch-recovery and six lifecycle serialization cases, headless resume UI, typecheck and shard lint passed. default-roles.ts changes the Coordinator clause only (no new tools); Coordinator relaunch after merge is required by the epic handoff. fake-claude.ts and harness.ts are untouched. Final review/full suite follow after fetching and merging origin/dev.

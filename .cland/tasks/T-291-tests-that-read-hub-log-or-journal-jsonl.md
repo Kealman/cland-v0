@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
-updated: 2026-10-12T22:19:57.658Z
+updated: 2026-10-12T23:22:11.868Z
 ---
 
 ## Summary
@@ -37,9 +37,11 @@ Out of scope: the three cases already fixed (7cb55c6, aed0622, T-281's handover 
 - [x] C1. Every hub test reading hub.log or journal.jsonl after an action is listed in the item as synchronized or fixed.
   - done: impl-291 · 2026-10-12T17:32:06.553Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-291-1 · 2026-10-12T21:57:27.834Z · commit 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-291-2 · 2026-10-12T23:22:11.867Z · commit 83e48a4eb0b16875d36957595bd996433fd68275
 - [x] C2. Each fixed test waits on the flushLogs barrier or an `eventually` on the expected record, with its assertions unchanged in strength.
   - done: impl-291 · 2026-10-12T17:32:08.380Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-291-1 · 2026-10-12T21:57:27.834Z · commit 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-291-2 · 2026-10-12T23:22:11.867Z · commit 83e48a4eb0b16875d36957595bd996433fd68275
 - [ ] C3. Each fixed file passes 20 runs under four concurrent workers; `npm run typecheck` passes and `cland verify` is green.
 
 ## Comments
@@ -140,3 +142,23 @@ Criteria: C1 verified, C2 verified.
 ### impl-291 · 2026-10-12T22:19:57.658Z
 
 Full queued verification8c40210d completed exit0 at pushed head43b9f191f1adb6cf049825f46a31b2ec8ef55d51 (A-1667). npm run typecheck passed for hub and Neovim; full package suite passed1683/1683, zero failures/cancellations/skips. Reviewer rev-23 cleared C1/C2 at this head (A-1659). C3 remains pending only the16 corrected merge whole-file invocations held for T-309's fix and the Coordinator's explicit machine handoff; no stress supervisor runs.
+
+### impl-291 · 2026-10-12T23:17:01.074Z
+
+Fresh merge proof atbebb72f completed20/20 whole-file invocations under four concurrent workers (A-1677); earlier4/4 and interrupted prior-head runs are excluded. All21 fixed files now have complete20-run proofs (420 passing invocations). Both proof leases released; T-303's ordinary queued full run acquired them afterward. Fetched/merged currentdevbf09ed0 into pushed head83e48a4eb0b16875d36957595bd996433fd68275 before final review/verification; merge.test.ts, harness.ts, run-suite.ts and suite-lock.ts blobs are unchanged from the fresh proof build. Re-audit still finds44 reader files. Updated synchronized classification: hub/test/events.test.ts now also has T-310's emitted verdict-journal read, after successful flushLogs at the end of each verdict iteration; awaited fixture writes remain synchronized. No additional fix required. C3 awaits fresh-head integrated typecheck/full verification.
+
+### impl-291 · 2026-10-12T23:18:09.111Z
+
+Final proof bundle A-1678 is durable at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1678-t-291-final-proof-bundle-420-passing-invocations-across-21-files/README.md. It validates21 complete summaries and420 successful whole-file invocations; excludes the older partial merge proof and interrupted runs while retaining their logs. Review refresh delivered to rev-23 at pushed83e48a4 after currentdev merge; relevant merge/fixture/runner blobs match freshproofbebb72f. Per Coordinator04eb8c33, final ordinary suite submission waits for T-281's Linux batch/container end, behind T-304. No further hand run; C3 remains pending final integrated typecheck/full result.
+
+### rev-23 · 2026-10-12T23:22:11.868Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-291-2
+commit: 83e48a4eb0b16875d36957595bd996433fd68275
+
+No high or medium findings. C1/C2 remain clear after the shared merge; all 44 reader classifications match, including T-310's flushed verdict reader. The selected 21 proof indices contain 420 successful whole-file invocations and every log has zero fail/cancelled/skipped/todo. Fresh merge proof blobs match this head. C3 remains pending the new exact-head integrated typecheck/full verification. Evidence A-1684: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1684-t-291-refreshed-source-review-and-420-log-proof-audit.md.
+
+Criteria: C1 verified, C2 verified.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T22:33:24.838Z
+updated: 2026-10-12T23:21:27.613Z
 ---
 
 ## Summary
@@ -108,3 +108,7 @@ C6 complete: ordinary macOS cland verify all run 9737b169-bc56-40ae-9a4f-c9ffeb2
 ### impl-281 · 2026-10-12T22:33:24.838Z
 
 T-309 integrated: fetched/merged origin/dev through 92a0f50 into task head b79b11d; no conflicts, implementation hunks unchanged. The runner now publishes startedUtc while preserving the skip reporter and phase behavior. Candidate bundle prepared. Per Coordinator order, no hand run starts until the hub restarts on the fix and T-291 finishes its remaining merge stress rounds; Docker stays stopped.
+
+### impl-281 · 2026-10-12T23:21:20.132Z
+
+Refreshed and pushed 336f125 after merging origin/dev, including T-309 UTC lease identity and T-310. No task-hunk change or conflict. Combined Linux driver prepared: holds both host leases across ten solo runs per file and the container full run, publishes the proof log, then quits Docker. Coordinator order: wait for T-303's resubmitted ordinary run to finish, do not take its cancellation gap; T-281 then owns both Linux phases, and announces the end to Coordinator, impl-304 and impl-291.

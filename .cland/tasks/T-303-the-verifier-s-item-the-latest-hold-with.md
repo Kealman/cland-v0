@@ -2,8 +2,9 @@
 id: T-303
 kind: task
 title: "The verifier's item: the latest hold with +N, and a pending request dimmed until the hold"
-state: open
-status: backlog
+state: closed
+status: done
+criterion_seq: 6
 labels:
   - v0.1.2
   - ready-for-agent
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: T-275
 blocked_by: []
-topic: null
-branch: null
+topic: topic-185
+branch: t/T-303-the-verifier-s-item-the-latest-hold-with
 created: 2026-10-12T21:34:30.315Z
-updated: 2026-10-12T21:35:01.682Z
+updated: 2026-10-12T23:31:51.527Z
 ---
 
 ## Summary
@@ -63,9 +64,69 @@ T-275: Sessions: stopped sessions, verifiers' items, the queue line. Spec: `docs
 
 ## Acceptance criteria
 
-- [ ] C1. A verifier with two or more holds shows its latest hold and `+N` in the sessions panel, and its selected row lists every hold with its role, newest first. A claim still renders as in T-168.
-- [ ] C2. A verifier delivered `review request <id>` or `qa request <id>` with no hold shows that item dimmed. Its hold on the item, its verdict on it, or its stop clears the pending item, and a newer request replaces it. The id resolves with any kind prefix.
-- [ ] C3. A hub test on a real hub with fake sessions proves both of these: the `heldAt` order of `session.list` holds, and the pending item's set, replace and clear paths, including a hub restart.
-- [ ] C4. A regression test on a store with thousands of messages proves that a burst of deliveries and `session.list` calls never scans the message table. It uses SQLite tracing, as T-284's C7 test does.
-- [ ] C5. A Neovim headless test on the stub hub shows `T-b +1` for a two-hold Reviewer and a dimmed `T-c` that turns normal when the hold frame arrives.
-- [ ] C6. `hub/README.md` describes `holds[].heldAt` and the pending field in the process view. `nvim/README.md`'s session section describes `+N` and the dimmed pending item.
+- [x] C1. A verifier with two or more holds shows its latest hold and `+N` in the sessions panel, and its selected row lists every hold with its role, newest first. A claim still renders as in T-168.
+  - done: impl-303 · 2026-10-12T23:11:51.829Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-303-2 · 2026-10-12T23:31:35.203Z · commit cad64e3178055386f85c104da988ec7596f26b67
+- [x] C2. A verifier delivered `review request <id>` or `qa request <id>` with no hold shows that item dimmed. Its hold on the item, its verdict on it, or its stop clears the pending item, and a newer request replaces it. The id resolves with any kind prefix.
+  - done: impl-303 · 2026-10-12T23:11:52.568Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-303-2 · 2026-10-12T23:31:35.203Z · commit cad64e3178055386f85c104da988ec7596f26b67
+- [x] C3. A hub test on a real hub with fake sessions proves both of these: the `heldAt` order of `session.list` holds, and the pending item's set, replace and clear paths, including a hub restart.
+  - done: impl-303 · 2026-10-12T23:19:32.329Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-303-2 · 2026-10-12T23:31:35.203Z · commit cad64e3178055386f85c104da988ec7596f26b67
+- [x] C4. A regression test on a store with thousands of messages proves that a burst of deliveries and `session.list` calls never scans the message table. It uses SQLite tracing, as T-284's C7 test does.
+  - done: impl-303 · 2026-10-12T23:19:32.816Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-303-2 · 2026-10-12T23:31:35.203Z · commit cad64e3178055386f85c104da988ec7596f26b67
+- [x] C5. A Neovim headless test on the stub hub shows `T-b +1` for a two-hold Reviewer and a dimmed `T-c` that turns normal when the hold frame arrives.
+  - done: impl-303 · 2026-10-12T23:11:54.535Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-303-2 · 2026-10-12T23:31:35.203Z · commit cad64e3178055386f85c104da988ec7596f26b67
+- [x] C6. `hub/README.md` describes `holds[].heldAt` and the pending field in the process view. `nvim/README.md`'s session section describes `+N` and the dimmed pending item.
+  - done: impl-303 · 2026-10-12T23:11:55.205Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-303-2 · 2026-10-12T23:31:35.203Z · commit cad64e3178055386f85c104da988ec7596f26b67
+
+## Comments
+
+### impl-303 · 2026-10-12T23:00:00.728Z
+
+Implementing the verifier column and persisted pending requests. Test seams are those specified by the item: real hub/spoke frame protocol, SQLite tracing for message-table scan regression, and headless Neovim on the stub hub. Panel edits stay within verifier item rendering.
+
+### impl-303 · 2026-10-12T23:12:10.021Z
+
+Implementation committed and pushed to origin at cebc5342fa1de84f3451d77805a3e72d5ce63e9a. C1–C6 done. Typecheck, 7 session-hold/lifecycle tests, 4 inbox workload tests (including C7), and the Neovim verifier-column test pass. Review evidence: A-1674 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1674-t-303-implementation-and-verification.md. Final full suite is queued only after requesting review.
+
+### rev-23 · 2026-10-12T23:14:31.991Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-303-1
+commit: cebc5342fa1de84f3451d77805a3e72d5ce63e9a
+
+Medium — hub/src/hub/core.ts:969: #publishPresence rebuilds all sessions for every accepted delivery; alternating requests emit one full presence per ack despite process-frame coalescing, violating once-per-tick event-driven recompute.
+Medium — hub/test/session-holds.test.ts:124: timestamp migration dropped the existing exact role/cardinality precondition; restore those checks rather than first-item-only equality.
+Full verification pending. Evidence A-1676: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1676-t-303-review-presence-burst-recompute-and-weakened-hold-precondition.md.
+
+Criteria: C4 failed (Accepted deliveries synchronously rebuild/publish whole presence per ack; alternating bursts emit many presence snapshots while the regression only bounds process frames.), C3 failed (Shutdown test replaces exact one review hold with first-item-only precondition; restore role/cardinality strength with heldAt.).
+
+### impl-303 · 2026-10-12T23:19:44.192Z
+
+Review findings A-1676 corrected and pushed at cad64e3178055386f85c104da988ec7596f26b67. Work-driven presence is now coalesced; the native tracer asserts bounded metadata reads and presence frames. Restored exact shutdown hold assertion. Reproduced and fixed the cancelled suite's teardown failures; targeted artifact/journal/ask tests and typecheck pass. A-1681 records the correction. New full suite follows the corrected review request.
+
+### impl-303 · 2026-10-12T23:31:19.698Z
+
+Exact-head full verification passed at cad64e3178055386f85c104da988ec7596f26b67: run c33afbb8-c948-42c1-affa-7648ce207451, exit 0, 1698/1698 tests passed with no failures, cancellations or skips. Durable log A-1685: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1685-suite-c33afbb8-c948-42c1-affa-7648ce207451-all-at-cad64e3.log. Source re-review was clear in A-1682; awaiting the Reviewer's exact-head verdict and hub ready event.
+
+### rev-23 · 2026-10-12T23:31:35.203Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-303-2
+commit: cad64e3178055386f85c104da988ec7596f26b67
+
+No high or medium findings remain. Both A-1676 findings are fixed, and late close paths are guarded. Exact-head full c33afbb8 passed typecheck and all 1698/1698 tests, with zero failures/cancellations/skips. C1–C6 verified. Evidence A-1686: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1686-t-303-final-review-at-cad64e3.md; source A-1682 and full log A-1685.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-12T23:31:51.527Z
+
+Merged 6a8a5652fdd3e013b3b3b514e2b11f4756385c8f onto dev.
