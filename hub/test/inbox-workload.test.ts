@@ -106,7 +106,7 @@ test('startup with 256 remembered processes and thousands of messages, then two 
 });
 
 
-test('durable wait capture is deferred one tick, retains the original timestamp, and never captures a wait resolved within that tick', async t => {
+test('durable wait capture is deferred one tick, retains the original timestamp, and archives a request resolved within that tick', async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-inbox-time-'))), records: Array<Record<string, unknown>> = [];
   const cleanup = ownDirectory(undefined, root);
   let stop = async () => {};
@@ -144,8 +144,8 @@ test('durable wait capture is deferred one tick, retains the original timestamp,
   assert.equal(human.frames.find(f => f.id === 'reply-transient')?.ok, true);
   await tick();
   assert.ok(!inspector.inboxWaits().some(w => w.id === transient.id));
-  assert.ok(!inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === transient.id), 'a wait settled before the first recompute never enters the durable inbox archive');
-  assert.ok(!records.some(r => r.event === 'inbox-departure' && r.id === transient.id));
+  assert.equal(inspector.inboxDepartures('1970-01-01T00:00:00.000Z').filter(d => d.id === transient.id && d.reason === 'replied').length, 1, 'a same-tick reply has one durable departure');
+  assert.equal(records.filter(r => r.event === 'inbox-departure' && r.id === transient.id && r.reason === 'replied').length, 1);
 });
 
 test('an event-producing frame followed immediately by public hub close cancels queued live projection', async t => {

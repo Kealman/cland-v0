@@ -1993,9 +1993,11 @@ test('2 on an ask row answers with option 2: topic.answer goes out, the row leav
   await openInbox(c);
   // d on an ask: nothing is dismissed, a hint says why
   await c.input('gg/T-12<CR>d');
-  let s = await c.waitScreen((x) => statusLine(x).includes('asks and approvals are not dismissed'), 'the hint');
+  let s = await c.waitScreen((x) => statusLine(x).includes('answer this ask: 1-9 chooses an option, i or r gives a free answer'), 'the protected ask answer hint');
   assert.match(rightOf(s), /\? T-12/);
   assert.deepEqual(await requestsOf(c, 'inbox.dismiss'), []);
+  assert.deepEqual(await requestsOf(c, 'inbox.decline'), []);
+  assert.deepEqual(await requestsOf(c, 'inbox.read'), []);
   await c.input('2');
   s = await c.waitScreen((x) => !rightOf(x).includes('Which should win?') && topBar(x).includes('needs you  2 '), 'the ask answered');
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option, f.text]), [['a1', 2, undefined]]);

@@ -2123,6 +2123,26 @@ export class HubCore {
     return this.#topicOrThrow(id);
   }
 
+  /** The decline and its queued notice commit together, including an offline sender. */
+  declineInboxRequest(id: string): ReturnType<InboxBoard['list']> {
+    return this.#store.transaction(() => {
+      const inbox = this.inbox.decline(id);
+      const message = this.#store.message(id)!;
+      const senderId = this.#store.senderSessionId(id);
+      const sender = senderId !== null && senderId !== UNKNOWN_SESSION ? this.#store.nameOfSession(senderId) : null;
+      this.noticeTo(message.topic!, { kind: 'request-declined', to: [sender ?? message.from],
+        text: `The human declined request ${id} (${message.request} ${message.subject}): ${message.text.split(/\r?\n/, 1)[0]}`,
+        detail: { request: id, subject: message.subject } });
+      return inbox;
+    });
+  }
+
+  readInboxMessage(id: string): ReturnType<InboxBoard['list']> {
+    const inbox = this.inbox.read(id);
+    this.#publishTopics(new Set([this.#store.message(id)!.topic!]));
+    return inbox;
+  }
+
   /**
    * The binding as the tracker's `task.link` and `task.create` with a topic see it (spec 4.5): one topic per item and
    * one item per topic; the store's binding follows the item's file.
@@ -2233,6 +2253,13 @@ export class HubCore {
       const senderId = this.#store.senderSessionId(original.id);
       const sender = senderId !== null && senderId !== UNKNOWN_SESSION ? (this.connectionOf(senderId)?.name ?? this.#store.nameOfSession(senderId)) : null;
       to = [sender ?? original.from];
+    } else if (replyTo !== undefined && to === undefined) {
+      const original = this.#store.message(replyTo);
+      if (original?.fromKind === 'agent') {
+        const senderId = this.#store.senderSessionId(original.id);
+        const sender = senderId !== null && senderId !== UNKNOWN_SESSION ? this.#store.nameOfSession(senderId) : null;
+        to = [sender ?? original.from];
+      }
     }
     const size = this.#hygiene.sizeRefusal(text);
     if (size) throw new HygieneError(size, { code: 'hygiene', rule: 'size' });

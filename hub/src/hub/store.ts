@@ -6,7 +6,7 @@ import { isHeldDelivery } from '../protocol.ts';
 import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
-export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string };
+export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
 import { vacancyWarning } from './topics.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
@@ -26,6 +26,7 @@ create table if not exists inbox_departures (
 );
 create index if not exists inbox_departures_row on inbox_departures (kind, id);
 create index if not exists inbox_departures_time on inbox_departures (ts);
+create table if not exists message_reads (id text primary key);
 create table if not exists subscriptions (
   id text primary key,
   subscriber_id text not null,
@@ -143,6 +144,8 @@ create table if not exists hygiene (
  * Additive only: a column is never dropped or retyped here.
  */
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
+  { table: 'inbox_waits', column: 'text', type: "text not null default ''" },
+  { table: 'inbox_departures', column: 'text', type: "text not null default ''" },
   { table: 'messages', column: 'request_kind', type: 'text' },
   { table: 'messages', column: 'request_subject', type: 'text' },
   { table: 'asks', column: 'to_name', type: 'text' },
@@ -305,7 +308,8 @@ const toTopic = (row: Row): Topic => {
  *  last read), the latest message's time, and the roles a message in it still waits for (`@role` deliveries). */
 const TOPIC_SELECT = `
 select t.*, t.rowid as rid,
-  (select count(*) from messages m where m.topic = t.id and m.seq > t.read_seq and m.from_kind != 'human') as unread,
+  (select count(*) from messages m where m.topic = t.id and m.seq > t.read_seq and m.from_kind != 'human'
+    and not exists (select 1 from message_reads r where r.id = m.id)) as unread,
   (select max(m.ts) from messages m where m.topic = t.id) as last_message_at,
   (select group_concat(distinct substr(d.session, 2)) from deliveries d join messages m on m.id = d.message_id
      where m.topic = t.id and d.session like '@%' and d.verifier_item is null and d.state = 'queued') as vacant_roles,
@@ -1223,6 +1227,7 @@ export class Store implements HygieneMemory {
         if (['queued', 'delivered', 'uncertain'].includes(row.state as string)) batch.reheld.push(note);
         clear.run(note, session);
       }
+      this.#db.prepare(`delete from message_reads where id in (${selectIds})`).run(...args);
       const gone = Number(this.#db.prepare(`delete from messages where id in (${selectIds})`).run(...args).changes);
       return { gone, released };
     });
@@ -1267,7 +1272,7 @@ export class Store implements HygieneMemory {
       where m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
         and not exists (select 1 from asks a where a.id = m.id)
       group by m.topic
-    ) select m.*, m.seq <= t.read_seq as was_read,
+    ) select m.*, (m.seq <= t.read_seq or exists (select 1 from message_reads r where r.id = m.id)) as was_read,
       json_array_length(m.to_json) = 0 as to_human,
       m.seq = latest.seq as latest,
       (exists (select 1 from messages h where h.topic = m.topic and h.seq > m.seq and h.from_kind = 'human')
@@ -1283,11 +1288,21 @@ export class Store implements HygieneMemory {
   }
 
   inboxWaits(): InboxWait[] {
-    return this.#db.prepare('select kind, id, subject, since from inbox_waits').all() as InboxWait[];
+    return this.#db.prepare('select kind, id, subject, since, text from inbox_waits').all() as InboxWait[];
+  }
+
+  /** The first human reply's time, using topic/sequence and reply indexes separately. */
+  inboxReplyAt(id: string, topic: string): string | undefined {
+    const sameTopic = this.#db.prepare(`select seq, ts from messages where topic = ?
+      and seq > (select seq from messages where id = ?) and from_kind = 'human' order by seq limit 1`).get(topic, id) as Row | undefined;
+    const explicit = this.#db.prepare(`select seq, ts from messages where reply_to = ?
+      and seq > (select seq from messages where id = ?) and from_kind = 'human' order by seq limit 1`).get(id, id) as Row | undefined;
+    const reply = !sameTopic ? explicit : !explicit || Number(sameTopic.seq) < Number(explicit.seq) ? sameTopic : explicit;
+    return reply?.ts as string | undefined;
   }
 
   waitInInbox(row: InboxWait): string {
-    this.#db.prepare('insert into inbox_waits (kind, id, subject, since) values (?, ?, ?, ?) on conflict (kind, id) do nothing').run(row.kind, row.id, row.subject, row.since);
+    this.#db.prepare('insert into inbox_waits (kind, id, subject, since, text) values (?, ?, ?, ?, ?) on conflict (kind, id) do nothing').run(row.kind, row.id, row.subject, row.since, row.text?.split(/\r?\n/, 1)[0] ?? '');
     return (this.#db.prepare('select since from inbox_waits where kind = ? and id = ?').get(row.kind, row.id) as Row).since as string;
   }
 
@@ -1295,17 +1310,30 @@ export class Store implements HygieneMemory {
     return this.#db.prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
   }
 
-  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string): InboxDeparture | null {
+  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = ''): InboxDeparture | null {
     return this.#transaction(() => {
-      if (!this.#db.prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes) return null;
-      this.#db.prepare('insert into inbox_departures (kind, id, subject, since, ts, reason) values (?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason);
-      return { ...row, ts, reason };
+      const waiting = this.#db.prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes;
+      // A request replied to before the coalesced tick still belongs in the archive, once.
+      if (!waiting && (row.kind !== 'request' || this.leftInbox(row.kind, row.id))) return null;
+      this.#db.prepare('insert into inbox_departures (kind, id, subject, since, ts, reason, text) values (?, ?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason, text);
+      return { ...row, ts, reason, text };
     });
   }
 
   /** The later archive frame can read seven days directly, without scanning the journal. */
   inboxDepartures(after: string): InboxDeparture[] {
-    return this.#db.prepare('select kind, id, subject, since, ts, reason from inbox_departures where ts >= ? order by ts desc, number desc').all(after) as InboxDeparture[];
+    const rows = this.#db.prepare(`select d.kind, d.id, d.subject, d.since, d.ts, d.reason,
+      coalesce(nullif(d.text, ''), (select m.text from messages m where m.id = d.id), '') as text
+      from inbox_departures d where d.ts >= ? order by d.ts desc, d.number desc`).all(after) as InboxDeparture[];
+    return rows.map(row => ({ ...row, text: row.text?.split(/\r?\n/, 1)[0] ?? '' }));
+  }
+
+  inboxDeparturesToday(after: string): number {
+    return (this.#db.prepare('select count(*) as n from inbox_departures where ts >= ?').get(after) as Row).n as number;
+  }
+
+  markMessageRead(id: string): void {
+    this.#db.prepare('insert into message_reads (id) values (?) on conflict do nothing').run(id);
   }
 
   createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string; to?: string }): void {

@@ -33,9 +33,12 @@ function M.new(client, topic)
           done(err)
         end)
       end
-      client:request({ type = 'topic.send', topic = topic.id, text = text, artifacts = #attachments > 0 and attachments or nil }, function(err)
+      local replying = view.composer.replying
+      client:request({ type = 'topic.send', topic = topic.id, text = text, replyTo = replying and replying.id, artifacts = #attachments > 0 and attachments or nil }, function(err)
         if err then
           view.thread:set_notice('not sent: ' .. err, 'ClandRed')
+        elseif view.composer.replying == replying then
+          view.composer:reply_to(nil)
         end
         done(err)
       end)

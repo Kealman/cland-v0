@@ -21,7 +21,10 @@ test('Aide defaults are non-exclusive, use the human model, and grant exactly §
   for (const tool of KNOWN_TOOLS) {
     const decision = decide('aide', KNOWN_TOOLS, { tool, ...(tool === 'task.criterion' ? { criterionOp: 'done' } : {}) });
     assert.equal(decision.ok, aideTools.includes(tool), tool);
-    if (!decision.ok) assert.match(decision.reason, /Aide rule \(v0.1 §3.3\)/);
+    if (!decision.ok) {
+      if (tool === 'inbox.decline' || tool === 'inbox.read') assert.equal(decision.reason, 'only the human acts on inbox rows');
+      else assert.match(decision.reason, /Aide rule \(v0.1 §3.3\)/);
+    }
   }
 });
 

@@ -1145,7 +1145,11 @@ export class Dispatcher {
             return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'inbox.list':
-            return answer(core.inbox.list());
+            return answer(core.inbox.list(frame.archive));
+          case 'inbox.decline':
+            return answer(core.declineInboxRequest(frame.request));
+          case 'inbox.read':
+            return answer(core.readInboxMessage(frame.message));
           case 'inbox.dismiss':
             return answer(core.inbox.dismiss(frame.notification));
           case 'inbox.dismiss_all':

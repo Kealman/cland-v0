@@ -213,7 +213,8 @@ test('asks and a fake harness command approval wait with ages, then journal each
   await ok(ui, { type: 'session.signal', session: 'worker', event: 'tool-done', at: Date.now(), payload: {} });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
   // A repeated snapshot must not write a second departure.
-  await ok(ui, { type: 'inbox.list' });
+  const archive = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });
+  assert.equal(archive.archive?.find(r => r.kind === 'approval')?.text, 'git status', 'the archive retains the command after approval metadata is cleared');
   await ok(ui, { type: 'hub.status', flushLogs: true });
   const records = (await cland(root, 'hub', 'journal', '--json')).stdout.trim().split('\n').map(line => JSON.parse(line) as { event: string; reason: string });
   assert.deepEqual(records.filter(r => r.event === 'inbox-departure').map(r => r.reason), ['answered', 'withdrawn', 'cancelled', 'approved']);

@@ -199,7 +199,7 @@ export class InboxBoard {
 
   // ---------------------------------------------------------------- what it shows
 
-  list(): Inbox {
+  list(archive = false): Inbox {
     const p = this.#port;
     const open = p.store.openAsks().filter(a => a.to === undefined);
     const topics = p.topics();
@@ -254,6 +254,9 @@ export class InboxBoard {
       const t = byId.get(m.topic)!;
       const topic = { id: t.id, title: t.title, ...(t.item ? { item: t.item } : {}) };
       if (m.kind === 'request') {
+        if (candidate.replied && !p.store.leftInbox('request', m.id)) {
+          this.#depart({ kind: 'request', id: m.id, subject: m.subject!, since: m.ts }, 'replied', p.store.inboxReplyAt(m.id, m.topic));
+        }
         if (candidate.replied || p.store.leftInbox('request', m.id)) continue;
         requests.push({ id: m.id, from: m.from, ...(m.fromRole ? { fromRole: m.fromRole } : {}),
           request: m.request!, subject: m.subject!, topic, ts: m.ts, since: m.ts, text: m.text, layer: 'now' });
@@ -273,11 +276,11 @@ export class InboxBoard {
         items: i.plan!.stages.reduce((n, s) => n + s.lanes.reduce((m, lane) => m + lane.length, 0), 0),
         since: i.updated, layer: 'now' as const }));
     const rows: InboxWait[] = [
-      ...asks.filter(a => a.layer === 'now').map(a => ({ kind: 'ask' as const, id: a.id, subject: a.topic.item ?? a.topic.id, since: a.ts })),
-      ...placedApprovals.filter(a => a.layer === 'now').map(a => ({ kind: 'approval' as const, id: a.id, subject: a.session, since: a.since })),
-      ...plans.map(a => ({ kind: 'plan' as const, id: a.id, subject: a.subject, since: a.since })),
-      ...requests.map(a => ({ kind: 'request' as const, id: a.id, subject: a.subject, since: a.since })),
-      ...messages.map(a => ({ kind: 'message' as const, id: a.id, subject: a.subject, since: a.since })),
+      ...asks.filter(a => a.layer === 'now').map(a => ({ kind: 'ask' as const, id: a.id, subject: a.topic.item ?? a.topic.id, since: a.ts, text: a.question })),
+      ...placedApprovals.filter(a => a.layer === 'now').map(a => ({ kind: 'approval' as const, id: a.id, subject: a.session, since: a.since, text: a.command ?? 'waiting for approval' })),
+      ...plans.map(a => ({ kind: 'plan' as const, id: a.id, subject: a.subject, since: a.since, text: a.title })),
+      ...requests.map(a => ({ kind: 'request' as const, id: a.id, subject: a.subject, since: a.since, text: a.text })),
+      ...messages.map(a => ({ kind: 'message' as const, id: a.id, subject: a.subject, since: a.since, text: a.text })),
     ];
     // Capture the start of every wait before coalescing publication, and settle only a documented leave rule.
     for (const row of p.store.inboxWaits()) {
@@ -309,11 +312,19 @@ export class InboxBoard {
     plans.sort((a, b) => b.since.localeCompare(a.since));
     placedApprovals.sort((a, b) => b.since.localeCompare(a.since));
     const needsYou = rows.length;
-    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, notifications, needsYou };
+    const now = p.now(), today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, notifications, needsYou,
+      archiveToday: p.store.inboxDeparturesToday(today.toISOString()),
+      ...(archive ? { archive: p.store.inboxDepartures(new Date(now.getTime() - 7 * 86400_000).toISOString()) } : {}) };
   }
 
-  #depart(row: InboxWait, reason: InboxDeparture['reason']): void {
-    const departure = this.#port.store.departInbox(row, reason, this.#port.now().toISOString());
+  #depart(row: InboxWait, reason: InboxDeparture['reason'], at?: string): void {
+    const p = this.#port;
+    const text = row.text || (row.kind === 'approval' ? this.#processes?.().find(s => s.sessionId === row.id)?.approvalCommand ?? 'waiting for approval'
+      : row.kind === 'plan' ? p.items().find(i => i.id === row.id)?.title
+      : p.store.message(row.id)?.text ?? p.store.ask(row.id)?.question) || '';
+    const departure = p.store.departInbox(row, reason, at ?? p.now().toISOString(), text.split(/\r?\n/, 1)[0]);
     if (departure) this.#port.log({ event: 'inbox-departure', ...departure });
   }
 
@@ -328,6 +339,24 @@ export class InboxBoard {
 
   needsYou(): number {
     return this.list().needsYou;
+  }
+
+  /** These actions address one current row; stale and unknown ids are refused by name. */
+  decline(id: string): Inbox {
+    const row = this.list().requests.find(r => r.id === id);
+    if (!row) throw new Error(`no waiting inbox request "${id}" (unknown or already left)`);
+    this.#depart({ kind: 'request', id, subject: row.subject, since: row.since }, 'declined');
+    this.#changed();
+    return this.list();
+  }
+
+  read(id: string): Inbox {
+    const row = this.list().messages.find(r => r.id === id);
+    if (!row) throw new Error(`no waiting inbox message "${id}" (unknown or already left)`);
+    this.#port.store.markMessageRead(id);
+    this.#depart({ kind: 'message', id, subject: row.subject, since: row.since }, 'read');
+    this.#changed();
+    return this.list();
   }
 
   /** Dismiss an ordinary notification; warnings, asks, approvals and unknown ids are refused. */

@@ -58,7 +58,7 @@ export type Scenario = {
   /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
   visibility?: import('../../hub/src/hub/visibility.ts').VisibilityOverrides;
-  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; plans?: Array<Record<string, unknown>>; requests?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null };
+  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; plans?: Array<Record<string, unknown>>; requests?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null; archiveToday?: number; archive?: Array<Record<string, unknown>> };
 };
 
 type Frame = Record<string, unknown> & { type?: string; id?: string };
@@ -151,11 +151,20 @@ function acceptSend(f: Frame) {
   const message = topicMessage(f);
   const topic = scenario.topics?.find((t) => t.id === f.topic);
   write({ type: 'message', topic: { id: f.topic, title: topic?.title ?? f.topic }, message });
+  const ib = scenario.inbox;
+  if (ib) {
+    for (const [section, kind, reason] of [['requests', 'request', 'replied'], ['messages', 'message', 'answered']] as const) {
+      const leaving = (ib[section] ?? []).filter(r => (r.topic as { id?: string })?.id === f.topic || (kind === 'request' && r.id === f.replyTo));
+      for (const r of leaving) depart(kind, r, reason);
+      ib[section] = (ib[section] ?? []).filter(r => !leaving.includes(r));
+    }
+    write({ type: 'inbox', inbox: inboxValue() });
+  }
   ok(f.id, { message, outcomes: [] });
 }
 
 /** The inbox as the hub answers it, with its "needs you" count. */
-function inboxValue(): Record<string, unknown> {
+function inboxValue(archive = false): Record<string, unknown> {
   const ib = scenario.inbox ?? {};
   const asks = ib.asks ?? [];
   const approvals = ib.approvals ?? [];
@@ -167,8 +176,17 @@ function inboxValue(): Record<string, unknown> {
     + approvals.filter(r => policy.place('inbox', r, 'approval').layer === 'now').length
     + plans.length + requests.length
     + messages.filter(r => (r.layer ?? policy.place('inbox', r, 'waiting').layer) === 'now').length;
-  return { asks, approvals, waiting, plans, requests, messages, notifications: ib.notifications ?? [],
+  return { asks, approvals, waiting, plans, requests, messages, notifications: ib.notifications ?? [], archiveToday: ib.archiveToday ?? 0,
+    ...(archive ? { archive: ib.archive ?? [] } : {}),
     ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? count }) };
+}
+
+function depart(kind: string, row: Record<string, unknown>, reason: string) {
+  const ib = (scenario.inbox ??= {});
+  (ib.archive ??= []).unshift({ kind, id: row.id, subject: row.subject ?? (row.topic as { id?: string })?.id ?? row.id,
+    text: String(row.text ?? row.question ?? '').split(/\r?\n/, 1)[0], since: row.since ?? row.ts, ts: now(), reason });
+  ib.archiveToday = (ib.archiveToday ?? 0) + 1;
+  if (typeof ib.needsYou === 'number') ib.needsYou--;
 }
 
 /** The human answers an ask: the answer message (with answerTo, to the asker), the card answered, the row gone. */
@@ -300,7 +318,18 @@ function answer(f: Frame) {
       return ok(f.id, { rows, before: String(start + rows.length), more: start + rows.length < all.length });
     }
     case 'inbox.list':
-      return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');
+      return scenario.inbox ? ok(f.id, inboxValue(f.archive === true)) : fail(f.id, 'the stub hub has no inbox in this scenario');
+    case 'inbox.decline':
+    case 'inbox.read': {
+      const ib = (scenario.inbox ??= {}), section = f.type === 'inbox.decline' ? 'requests' : 'messages';
+      const id = f.type === 'inbox.decline' ? f.request : f.message;
+      const row = ib[section]?.find(r => r.id === id);
+      if (!row) return fail(f.id, `no waiting inbox row "${String(id)}"`);
+      depart(section === 'requests' ? 'request' : 'message', row, section === 'requests' ? 'declined' : 'read');
+      ib[section] = ib[section]!.filter(r => r !== row);
+      write({ type: 'inbox', inbox: inboxValue() });
+      return ok(f.id, inboxValue());
+    }
     case 'topic.answer':
       return answerAsk(f);
     case 'inbox.dismiss':

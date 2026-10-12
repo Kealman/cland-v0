@@ -5,10 +5,11 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { Inbox, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const INBOX_USAGE = `  inbox [--json]          four sections: asks and approvals, plan approvals, requests to you, messages to you
+export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and approvals, plan approvals, requests to you, messages to you
                           newest first, all rows with ids, subjects, senders and waiting ages;
                           then legacy notification lines, last 'needs you: <n>'
                           (--json for the hub's Inbox frame)
+                          --archive prints departures from the last seven days, newest first, with when and why
 `;
 export const TOPIC_USAGE = `  topic answer <ask id> <option number>
                           answer an ask with its option n (1-based): prints
@@ -60,8 +61,10 @@ export async function runInbox(args: string[], cwd: string = process.cwd()): Pro
     return 1;
   }
   const json = args.includes('--json');
-  const v = (await askHubFrame(d, { type: 'inbox.list' })) as Inbox;
-  process.stdout.write(`${json ? JSON.stringify(v) : describe(v)}\n`);
+  const archive = args.includes('--archive');
+  const v = (await askHubFrame(d, { type: 'inbox.list', ...(archive ? { archive: true } : {}) })) as Inbox;
+  const text = archive ? (v.archive ?? []).map(r => `${r.ts}  ${r.kind} ${r.id}  ${r.subject}  ${firstLine(r.text ?? '')}  · ${r.reason}`).join('\n') : describe(v);
+  process.stdout.write(`${json ? JSON.stringify(v) : text}\n`);
   return 0;
 }
 

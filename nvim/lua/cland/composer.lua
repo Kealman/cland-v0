@@ -50,6 +50,7 @@ function Composer:placeholder()
     return
   end
   local hint = self.answering and ('Your answer to: ' .. self.answering.question .. '  Enter sends it as the answer')
+    or self.replying and ('Reply to: ' .. self.replying.text .. '  Enter sends it as a reply')
     or ('Message ' .. self.topic.title .. '…  Enter sends · Shift+Enter newline')
   if #self.attachments > 0 then
     local label = self.answering and 'pending for next message: ' or 'attached: '
@@ -60,7 +61,15 @@ end
 
 --- Arm the composer for a free answer to ask `ask` (#33): the next Enter sends its text as the answer. nil disarms.
 function Composer:answer_to(ask, question)
+  self.replying = nil
   self.answering = ask and { ask = ask, question = question or '' } or nil
+  self:placeholder()
+  require('cland.state').changed()
+end
+
+function Composer:reply_to(id, text)
+  self.answering = nil
+  self.replying = id and { id = id, text = text or '' } or nil
   self:placeholder()
   require('cland.state').changed()
 end

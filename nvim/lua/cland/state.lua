@@ -298,11 +298,13 @@ function M.set_inbox(inbox)
   local function list(x)
     return type(x) == 'table' and x or {}
   end
-  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), notifications = list(inbox.notifications) }
+  local archive = type(inbox.archive) == 'table' and inbox.archive or M.S.inbox.archive
+  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), notifications = list(inbox.notifications), archive = archive, archiveToday = inbox.archiveToday or 0 }
   if type(inbox.needsYou) == 'number' then
     M.S.needs_you = inbox.needsYou
   end
   M.changed()
+  if M.S.ui.inbox_archive and inbox.archive == nil then require('cland.inbox').refresh_archive() end
 end
 
 --- The human answered ask `id`: its row goes at once (the hub's `inbox` event confirms it).

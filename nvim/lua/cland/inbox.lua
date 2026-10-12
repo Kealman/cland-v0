@@ -107,6 +107,7 @@ local function render_row(c, entry, selected)
     info.plan, info.item = true, r.id
     left = { { ' ▲ ', 'ClandAmber' }, { r.id .. ' ', 'ClandBlue' }, { r.title .. ' · ' .. (r.stages or '?') .. ' stages · ' .. (r.lanes or '?') .. ' lanes · ' .. (r.items or '?') .. ' items' } }
   else
+    info.inbox_kind, info.message, info.text = kind, r.id, first_line(r.text)
     info.topic, info.item, info.session = r.topic and r.topic.id, r.subject, r.from
     local glyph = kind == 'message' and '●' or ({ review = '✓', qa = '◇', handover = '⇄' })[r.request] or '·'
     local where = kind == 'request' and r.subject or (r.topic and (r.topic.item ~= vim.NIL and r.topic.item or r.topic.title) or r.title)
@@ -173,7 +174,6 @@ function M.render(c, full, buf)
   if state.needs_you() == 0 then c:add({ { ' ✓ nothing needs you', 'ClandGreen' } }) end
   M.render_sections(c, buf)
   local layers = { 'now', 'watch' }
-  if state.S.ui.inbox_archive then table.insert(layers, 'archive') end
   -- The hub sends notifications oldest first, breaking equal timestamps by insertion order.
   -- Reverse only the display copy; hidden Background/Archive entries spend no row budget.
   local notifications, earlier = {}, 0
@@ -209,10 +209,21 @@ function M.render(c, full, buf)
     c:add({ { ' ' .. earlier .. ' earlier · Agents log (␣L)', 'ClandDim' } }, nil, { earlier_notifications = true })
   end
   c:add({ { require('cland.events').inbox_line(), 'ClandPlanChange' } }, nil, { events = true })
-  if full then
-    return { ' 1-9 answer · i free answer · za more · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
+  c:add({ { ' ' .. (state.S.ui.inbox_archive and '▾' or '▸') .. ' archive · ' .. (state.S.inbox.archiveToday or 0) .. ' rows left today · A', 'ClandDim' } })
+  if state.S.ui.inbox_archive then
+    local rows = state.S.inbox.archive or {}
+    for _, r in ipairs(rows) do
+      local text = r.kind .. ' · ' .. r.subject .. ' · ' .. first_line(r.text)
+      -- Wrap the archive so when and why are visible in the narrow panel too.
+      for _, line in ipairs(wrapped(text, c.width - 2)) do c:add({ { ' ' .. line, 'ClandDim' } }) end
+      for _, line in ipairs(wrapped(r.ts .. ' · ' .. r.reason, c.width - 2)) do c:add({ { ' ' .. line, 'ClandDim' } }) end
+    end
+    if #rows == 0 then c:add({ { ' No rows left in the last seven days', 'ClandDim' } }) end
   end
-  return { ' 1-9 answer · i free · za more · ↵ act · d/D dismiss · A archive · ␣N full width' }
+  if full then
+    return { ' 1-9 answer · i free · r reply · za more · ↵ open · d decline/read · D dismiss all · A archive · ␣N or ␣␣ back' }
+  end
+  return { ' 1-9 answer · i free · r reply · za more · ↵ act · d decline/read · D dismiss all · A archive · ␣N full width' }
 end
 
 --- Follow a selected notification across redraws; a capped-out selection lands on the inert footer.
@@ -295,6 +306,23 @@ local function request(frame)
   end)
 end
 
+function M.refresh_archive()
+  request({ type = 'inbox.list', archive = true })
+end
+
+function M.reply(buf)
+  local info = row(buf)
+  if not info then return end
+  if info.ask then return ask_card.free(info.ask) end
+  if info.approval then return state.say('answer this command approval in its session: ↵ attaches', 'ClandAmberBar') end
+  if info.plan then return state.say('answer this plan approval in its plan: ↵ opens it', 'ClandAmberBar') end
+  if info.message and info.topic then
+    require('cland.views').topic(info.topic).composer:reply_to(info.message, info.text)
+    return require('cland.layout').show({ kind = 'thread', id = info.topic }, { insert = true })
+  end
+  state.say('r replies to a request or message, or gives a free answer to an ask')
+end
+
 --- ↵: the topic of an ask or a waiting topic, the attached session of an approval, the item (else the session) of a
 --- notification.
 function M.open(buf)
@@ -321,6 +349,11 @@ end
 --- d: dismiss an ordinary notification; warnings stay visible, asks and approvals wait for answers.
 function M.dismiss(buf)
   local info = row(buf)
+  if info and info.inbox_kind == 'request' then return request({ type = 'inbox.decline', request = info.message }) end
+  if info and info.inbox_kind == 'message' then return request({ type = 'inbox.read', message = info.message }) end
+  if info and info.plan then return state.say('answer this plan approval in its plan: ↵ opens it', 'ClandAmberBar') end
+  if info and info.approval then return state.say('answer this command approval in its session: ↵ attaches', 'ClandAmberBar') end
+  if info and info.ask then return state.say('answer this ask: 1-9 chooses an option, i or r gives a free answer', 'ClandAmberBar') end
   if info and info.warning then
     return state.say('warn events are informational and are not dismissed', 'ClandAmberBar')
   end
@@ -377,11 +410,13 @@ function M.keys(buf)
   end, 'open or attach')
   map('d', function()
     M.dismiss(buf)
-  end, 'dismiss the notification')
+  end, 'decline a request, mark a message read, or dismiss a notification')
+  map('r', function() M.reply(buf) end, 'reply to the inbox row')
   map('D', M.dismiss_all, 'dismiss every notification')
   map('A', function()
     state.S.ui.inbox_archive = not state.S.ui.inbox_archive
     state.changed()
+    if state.S.ui.inbox_archive then M.refresh_archive() end
   end, 'show or hide archived inbox entries')
   require('cland.ask_card').keys(buf, function(r)
     local info = require('cland.panels').row_at(buf, r)

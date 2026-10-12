@@ -203,7 +203,7 @@ export type InboxPlan = { layer?: Layer; id: string; subject: string; title: str
 export type InboxRequest = { layer?: Layer; id: string; from: string; fromRole?: string; request: RequestKind; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxMessage = { layer?: Layer; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';
-export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; since: string; ts: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'read' };
+export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
 
 export type NotificationKind = 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
@@ -224,7 +224,7 @@ export type InboxNotification = {
 };
 
 /** The four now sections (§3.7); waiting and notifications remain for older renderers. */
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
 
 /** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
 export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'] as const;
@@ -571,7 +571,10 @@ export type ClientRequest =
   /** The human answers an ask with an option (1-based) or a free text: `{ message: TopicMessage, outcomes }`. */
   | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string }
   /** The inbox: `Inbox`. */
-  | { type: 'inbox.list'; id: string }
+  | { type: 'inbox.list'; id: string; archive?: boolean }
+  /** Human-only row actions, returning Inbox. */
+  | { type: 'inbox.decline'; id: string; request: string }
+  | { type: 'inbox.read'; id: string; message: string }
   /** At most 200 journal rows older than before: EventsPage. */
   | { type: 'events.list'; id: string; before?: string; limit?: number; filter?: EventsFilter }
   /** Dismiss one notification: `Inbox`. Asks and approvals are not dismissable. */
@@ -749,9 +752,14 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.list':
     case 'subscribe':
     case 'role.list':
-    case 'inbox.list':
     case 'inbox.dismiss_all':
       return true;
+    case 'inbox.list':
+      return f.archive === undefined || typeof f.archive === 'boolean';
+    case 'inbox.decline':
+      return typeof f.request === 'string';
+    case 'inbox.read':
+      return typeof f.message === 'string';
     case 'events.list':
       return (f.before === undefined || (typeof f.before === 'string' && (/^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)) || /^events:[A-Za-z0-9_-]+$/.test(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0)) && isEventsFilter(f.filter);
     case 'inbox.dismiss':

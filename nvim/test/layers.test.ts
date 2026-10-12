@@ -86,11 +86,11 @@ test('real bound-topic verdict and death events show warning markers without cha
   assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
 });
 
-test('inbox archive is opt-in and stays separate from background in both views', { skip }, async t => {
+test('inbox archive shows departures while the old archive layer stays hidden in both views', { skip }, async t => {
   const ts = new Date().toISOString();
   const c = await start(t, {
     visibility: { inbox: { clear: 'archive' } },
-    inbox: { notifications: [
+    inbox: { archiveToday: 1, archive: [{ id: 'left', kind: 'request', subject: 'T-1', text: 'declined request', since: ts, ts, reason: 'declined' }], notifications: [
       { id: 'old', kind: 'verdict', result: 'clear', text: 'archived verdict', ts },
       { id: 'book', kind: 'role', text: 'hidden bookkeeping', ts },
       { id: 'idle', kind: 'idle', text: 'watch idle', ts },
@@ -103,11 +103,11 @@ test('inbox archive is opt-in and stays separate from background in both views',
   s = await c.waitScreen(s => s.includes('watch idle'), 'ordinary unfold');
   assert.ok(!s.includes('archived verdict'), 'unfold is not an archive request');
   await c.input('A');
-  await c.waitScreen(s => s.includes('ARCHIVE') && s.includes('archived verdict') && !s.includes('hidden bookkeeping'), 'explicit archive request');
+  await c.waitScreen(s => s.includes('archive') && s.includes('declined request') && !s.includes('archived verdict') && !s.includes('hidden bookkeeping'), 'explicit archive request');
   await c.input('<Space>N');
-  await c.waitScreen(s => s.includes('Inbox · full width') && s.includes('archived verdict'), 'full width shares archive selection');
+  await c.waitScreen(s => s.includes('Inbox · full width') && s.includes('declined request'), 'full width shares archive selection');
   await c.input('A');
-  await c.waitScreen(s => !s.includes('archived verdict') && s.includes('watch idle'), 'archive hidden again');
+  await c.waitScreen(s => !s.includes('declined request') && s.includes('watch idle'), 'archive hidden again');
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
 });
 
@@ -177,14 +177,16 @@ test('both inbox views show newest notifications first with a 50-row cap and ear
   }
 });
 
-test('the notification cap is shared by visible layers and excludes hidden Background and Archive', { skip }, async t => {
+test('the notification cap is shared by visible layers and is unchanged by the departure archive', { skip }, async t => {
   const ts = new Date().toISOString();
   const notifications = Array.from({ length: 60 }, (_, i) => ({
     id: `note-${i}`, kind: i % 2 ? 'idle' : 'plan', text: `visible notification ${i}`, ts,
   }));
   const c = await start(t, {
     visibility: { inbox: { plan: 'now', clear: 'archive' } },
-    inbox: { notifications: [...notifications,
+    inbox: { archiveToday: 1, archive: [
+      { id: 'departed', kind: 'request', subject: 'T-1', text: 'departed request', since: ts, ts, reason: 'declined' },
+    ], notifications: [...notifications,
       { id: 'book', kind: 'role', text: 'hidden bookkeeping', ts },
       { id: 'archived', kind: 'verdict', result: 'clear', text: 'archived notification', ts },
     ] },
@@ -196,15 +198,17 @@ test('the notification cap is shared by visible layers and excludes hidden Backg
   const watch = Array.from({ length: 25 }, (_, i) => `note-${59 - i * 2}`);
   assert.deepEqual(rows.ids, [...now, ...watch]);
   assert.match(rows.text, /10 earlier · Agents log/);
-  assert.doesNotMatch(rows.text, /hidden bookkeeping|archived notification/);
+  assert.doesNotMatch(rows.text, /hidden bookkeeping|archived notification|departed request/);
   await c.input('A');
   await c.lua(`assert(vim.wait(5000, function()
-    return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('archived notification', 1, true) ~= nil
+    return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('departed request', 1, true) ~= nil
   end))`);
   rows = await inboxRows(c);
-  assert.deepEqual(rows.ids, [...now.slice(0, -1), ...watch, 'archived']);
-  assert.match(rows.text, /11 earlier · Agents log/);
-  assert.doesNotMatch(rows.text, /hidden bookkeeping/);
+  assert.deepEqual(rows.ids, [...now, ...watch], 'departures do not spend the notification row budget');
+  assert.match(rows.text, /10 earlier · Agents log/);
+  assert.match(rows.text, /departed request/);
+  assert.match(rows.text, /declined/);
+  assert.doesNotMatch(rows.text, /hidden bookkeeping|archived notification/);
 });
 
 for (const view of ['panel', 'full width']) {

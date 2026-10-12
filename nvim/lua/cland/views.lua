@@ -74,6 +74,9 @@ end
 
 --- The human read topic `id` (its thread is in view): the hub clears its unread count.
 function M.mark_read(id, up_to)
+  -- A row reply leaves on sending its answer. Opening its composer keeps that wait intact.
+  local tv = M.topics[id]
+  if tv and tv.composer.replying then return end
   local t = state.topic(id)
   if not t or (tonumber(t.unread) or 0) == 0 and not up_to then
     return
