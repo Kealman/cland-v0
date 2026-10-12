@@ -198,7 +198,7 @@ export class InboxBoard {
   #notify(kind: NotificationKind, text: string, extra: { item?: string; session?: string; result?: string } = {}): void {
     const id = `n-${randomUUID().slice(0, 8)}`;
     this.#port.store.addNotification({ id, kind, text, ts: this.#port.now().toISOString(), ...extra });
-    this.#port.log({ event: 'notification', id, kind, text });
+    this.#port.log({ event: 'notification', id, kind, text, ...extra });
     this.#changed();
   }
 

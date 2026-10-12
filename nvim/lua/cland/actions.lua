@@ -35,7 +35,7 @@ group('global', {
   {'<leader>s', 'Toggle sessions panel'}, {'<leader>t', 'Toggle topics panel'},
   {'<leader>T', 'Toggle topics dock'}, {'<leader>N', 'Toggle inbox full width'},
   {'<leader>b', 'Toggle board view'}, {'<leader>G', 'Open experimental graph'}, {'<leader>a', 'Palette: artifacts'},
-  {'<leader>L', 'Toggle Agents log'}, {'<leader>g', 'Open General'},
+  {'<leader>E', 'Events view'}, {'<leader>L', 'Toggle Agents log'}, {'<leader>g', 'Open General'},
   {'<leader>c', 'Focus composer'}, {'<leader>P', 'Draft a prompt'},
   {'<leader>p', 'Open palette'}, {'<leader>l', 'Launch a session'}, {'<leader>A', 'Launch an Aide'},
   {'<leader><leader>', 'Previous centre view'}, {'<leader>r', 'Resolve this topic'},
@@ -67,12 +67,13 @@ group('items', {{'f','Next items filter'}, {'F','Previous items filter'},
   {'p','Next epic tab'}, {'P','Previous epic tab'}, {'<Tab>','Next epic tab'}, {'<S-Tab>','Previous epic tab'}})
 group('items', {{'gn','Now-layer items'}, {'gw','Watch-layer items'}, {'gb','Background-layer items'}, {'gA','Archived items'}})
 group('topics', {{'za','Toggle background topics'}, {'A','Show or hide archived topics'}})
-group('inbox', {{'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
+group('events', {{'<CR>', 'Open event subject'}, {'A', 'Page 200 older events'}, {'za', 'Fold or unfold event day'}})
+group('inbox', {{'e', 'Events view'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end
   add(scope, 'i', 'Free answer to selected ask' .. (scope == 'thread' and ' or focus composer' or ''))
 end
-group('inbox_full', {{'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
+group('inbox_full', {{'e', 'Events view'}, {'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 group('thread', {{'<CR>','Toggle agent run or open artifact chip'}, {'ga','Artifacts in this topic'},
   {'zo','Open agent run'}, {'za','Toggle agent run'}, {'zc','Close agent run'},
   {'zR','Open all agent runs'}, {'zM','Fold all agent runs'}})
@@ -264,6 +265,7 @@ local function command(path, title, run, mapped)
 end
 local function layout() return require('cland.layout') end
 local function views() return require('cland.views') end
+command('view events', 'Events view', function() layout().show({kind='events'}, {insert=false}) end, 'global:<leader>E')
 command('help', 'Keys', function() require('cland').help() end, 'global:<leader>?')
 command('refresh', 'Refresh from hub', function() require('cland').refresh() end)
 command('graph', 'Open experimental graph', function(args) require('cland.graph').open(args[1]) end, 'global:<leader>G')

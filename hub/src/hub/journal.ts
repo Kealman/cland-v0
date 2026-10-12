@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { EventKind, EventRow, EventsPage } from '../protocol.ts';
 import type { LogEntry, LogFn } from '../log.ts';
 import type { RequestGuard, Resumed } from './budget.ts';
 
@@ -23,6 +24,8 @@ export const journalPath = (clandDir: string): string => join(clandDir, JOURNAL_
  */
 export const JOURNALLED: ReadonlySet<string> = new Set([
   'verification-timing',
+  'event-announced',
+  'suite-result',
   // the hub's life
   'hub-started',
   'hub-stopped',
@@ -221,6 +224,64 @@ export class Journal {
     };
   }
 
+  /** Read fixed-size blocks backwards; a cursor excludes the last returned row's start byte. */
+  async events(before?: string, limit = 200): Promise<EventsPage> {
+    const resumed = this.#resumer('events.list');
+    await this.flush();
+    const file = this.#file!;
+    const size = (await resumed(() => file.stat())).size;
+    let end = before === undefined ? size : Number(before);
+    if (!Number.isSafeInteger(end) || end < 0 || end > size) throw new Error('invalid events cursor');
+    const rows: EventRow[] = [];
+    let cursor: string | null = null;
+    let suffix = Buffer.alloc(0);
+    let skipLine = false;
+    const cap = Math.min(200, Math.max(1, limit));
+    while (end > 0) {
+      const start = Math.max(0, end - 32768);
+      const block = Buffer.alloc(end - start);
+      let got = 0;
+      while (got < block.length) {
+        const read = await resumed(() => file.read(block, got, block.length - got, start + got));
+        if (!read.bytesRead) throw new Error('journal read made no progress');
+        got += read.bytesRead;
+      }
+      const page = resumed((): EventsPage | undefined => {
+        const data = Buffer.concat([block, suffix]);
+        let lineEnd = data.length;
+        for (let i = data.length - 1; i >= 0; i--) {
+          if (data[i] !== 10) continue;
+          const lineStart = i + 1;
+          if (!skipLine && lineStart < lineEnd) {
+            let row: EventRow | null = null;
+            try { row = eventRow(JSON.parse(data.subarray(lineStart, lineEnd).toString()), String(start + lineStart)); } catch { /* damaged/partial records are skipped */ }
+            if (row) {
+              if (rows.length === cap) return { rows, before: cursor, more: true };
+              rows.push(row); cursor = String(start + lineStart);
+            }
+          }
+          skipLine = false;
+          lineEnd = i;
+        }
+        suffix = data.subarray(0, lineEnd);
+        // A damaged or oversized record cannot make the reader retain the whole file.
+        if (skipLine || suffix.length > 1024 * 1024) { suffix = Buffer.alloc(0); skipLine = true; }
+      });
+      if (page) return page;
+      end = start;
+    }
+    if (!skipLine && suffix.length) {
+      try {
+        const row = eventRow(JSON.parse(suffix.toString()), '0');
+        if (row) {
+          if (rows.length === cap) return { rows, before: cursor, more: true };
+          rows.push(row); cursor = '0';
+        }
+      } catch { /* damaged records are skipped */ }
+    }
+    return { rows, before: cursor, more: false };
+  }
+
   /** Drain records accepted before this call without closing the sink. Later producers may keep appending. */
   async flush(): Promise<void> {
     await this.#tail;
@@ -296,4 +357,62 @@ export function readJournal(path: string, query: JournalQuery = {}, now: Date = 
     out.push(r);
   }
   return out;
+}
+
+/** Translate announced rows and usable historical domain records; no database backfill. */
+export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
+  if (!r || typeof r.ts !== 'string') return null;
+  const value = (key: string) => typeof r[key] === 'string' ? r[key] as string : undefined;
+  let kind: EventKind;
+  let subject: EventRow['subject'] | undefined;
+  let text = value('text');
+  let glyph = '●';
+  const item = value('item'), session = value('session') ?? value('name') ?? (r.event === 'role-handover' ? value('to') : undefined), topic = value('topic'), artifact = value('artifact');
+  if (r.event === 'event-announced') {
+    const announced = r.subject as Record<string, string> | undefined;
+    if (!announced) return null;
+    kind = r.kind === 'session.state' ? 'session' : r.kind === 'task' && r.verdict ? 'verdict' : r.kind as EventKind;
+    subject = artifact ? { kind: 'artifact', id: artifact } : announced.item ? { kind: 'item', id: announced.item } : announced.session ? { kind: 'session', id: announced.session } : announced.topic ? { kind: 'topic', id: announced.topic } : undefined;
+  } else if (r.event === 'notification') {
+    kind = r.kind === 'verdict' ? 'verdict' : r.kind === 'release' ? 'release' : r.kind === 'plan' ? 'task' : 'session';
+    subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : undefined;
+  } else if (r.event === 'suite-result' || (r.event === 'verification-timing' && r.outcome)) {
+    kind = 'suite'; subject = item ? { kind: 'item', id: item } : session ? { kind: 'session', id: session } : topic ? { kind: 'topic', id: topic } : undefined;
+    const outcome = r.outcome as { code?: number; cause?: string };
+    text = `${r.mode} · ${r.branch} · ${outcome.code === 0 ? 'passed' : 'failed'} · ${String(r.counts ?? 'counts unavailable').split('\n')[0]}`;
+    glyph = outcome.code === 0 ? '✓' : '✗';
+  } else if (r.event === 'released') {
+    kind = 'release'; subject = item ? { kind: 'item', id: item } : { kind: 'topic', id: topic ?? 'general' };
+    text ??= `released ${r.version ?? r.tag ?? ''}`;
+  } else {
+    // New session/task/topic events have their own one-line announcement.
+    if (r.eventsVersion && !['session-resumed', 'task-merged', 'merge-resumed', 'topic-created', 'topic-status', 'task-plan-changed', 'task-plan-approved'].includes(r.event)) return null;
+    if (r.eventsVersion && r.event === 'topic-status' && ['waiting for human', 'closed'].includes(String(r.to))) return null;
+    if (['session-launched', 'session-resumed', 'session-stopped', 'harness-exited', 'harness-ended', 'session-state', 'role-handover'].includes(r.event)) {
+      kind = 'session'; subject = session ? { kind: 'session', id: session } : undefined;
+      text ??= `${session} ${r.event.replace('session-', '')}${r.state ? ` ${r.state}` : ''}`;
+    } else if (['task-claimed', 'task-merged', 'merge-resumed', 'task-plan-changed', 'task-plan-approved'].includes(r.event)) {
+      kind = 'task'; const id = item ?? value('id'); subject = id ? { kind: 'item', id } : undefined;
+      text ??= r.event === 'task-claimed' ? `${id} claimed by ${session ?? r.by ?? '?'}` : r.event.startsWith('task-plan-') ? `${id} ${r.event.replace('task-', '').replaceAll('-', ' ')} by ${r.by ?? '?'}` : `${id} merged onto ${r.base ?? 'dev'}`;
+    } else if (['topic-created', 'topic-status'].includes(r.event)) {
+      kind = 'topic'; const id = topic ?? value('id'); subject = id ? { kind: 'topic', id } : undefined;
+      text ??= `${id} ${r.to ?? r.status ?? 'created'}`;
+    } else return null;
+  }
+  if (!subject || !text || !['session','task','verdict','suite','release','artifact','usage','topic'].includes(kind)) return null;
+  if (kind === 'artifact') glyph = 'A';
+  else if (kind === 'usage') glyph = '$';
+  else if (kind === 'release') glyph = '◈';
+  else if (kind === 'verdict') glyph = r.result === 'not clear' || text.includes('not clear') ? '⚠' : '✓';
+  else if (kind === 'suite') { /* the outcome above owns the suite glyph */ }
+  else if (kind === 'session' && /died|harness-exited/.test(text)) glyph = '⚠';
+  else if (kind === 'session' && /launched|resumed/.test(text)) glyph = '▶';
+  else if (kind === 'session' && /stopped/.test(text)) glyph = '■';
+  else if (kind === 'session' && /idle/.test(text)) glyph = '○';
+  else if (kind === 'session' && /handover|handed .* over/.test(text)) glyph = '⇄';
+  else if (kind === 'task' && /claimed/.test(text)) glyph = '⚑';
+  else if (kind === 'task' && /plan/.test(text)) glyph = '▤';
+  else if (kind === 'task' && /criterion|criteria/.test(text)) glyph = '◐';
+  else if (kind === 'task' && /status/.test(text)) glyph = '◉';
+  return { id: value('rowId') ?? `journal:${offset}`, ts: r.ts, kind, subject, text: text.replace(/[\r\n]+/g, ' '), glyph, ...(item ? { item } : {}), ...(session ? { session } : {}), ...(topic ? { topic } : {}), ...(artifact ? { artifact } : {}), [subject.kind]: subject.id };
 }

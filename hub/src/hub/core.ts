@@ -317,6 +317,8 @@ export class HubCore {
     return () => this.#listeners.delete(listener);
   }
 
+  publishJournalRow(row: import('../protocol.ts').EventRow): void { this.#emit({ type: 'event', row }); }
+
   publishVerification(queue: VerificationQueue): void { this.#emit({ type: 'verification.queue', queue }); }
 
   #emit(event: HubEvent): void {
@@ -514,6 +516,7 @@ export class HubCore {
   publishEvent(subject: SubscriptionSubject, event: SubscriptionEvent, text: string, context: EventContext = {}, selected?: OwnedSubscription[]): void {
     const session = 'session' in subject ? subject.session : null;
     const facts = { ...(session ? { role: this.#store.roleOf(session), item: this.#processItems.get(this.#store.sessionIdOf(session) ?? '') ?? null } : {}), ...context };
+    this.#afterCommit(() => this.#log({ event: 'event-announced', kind: event, subject, text: text.replace(/[\r\n\u2028\u2029]+/g, ' '), ...facts }));
     const recipients = new Map<string, 'turn' | 'now'>();
     // Claim-derived defaults address the item's lead, including an Aide; explicit requests stay crew-only.
     const defaultRecipients = new Set<string>();
@@ -883,7 +886,7 @@ export class HubCore {
   #publishArtifact(artifact: Artifact): void {
     const previous = this.#artifactStates.get(artifact.id);
     this.#artifactStates.set(artifact.id, artifact.status);
-    const context = { item: this.#store.topic(artifact.topic)?.item ?? null, role: this.#store.roleOf(artifact.creator) };
+    const context = { artifact: artifact.id, topic: artifact.topic, session: artifact.creator, item: this.#store.topic(artifact.topic)?.item ?? null, role: this.#store.roleOf(artifact.creator) };
     const subjects: SubscriptionSubject[] = [{ topic: artifact.topic }, { session: artifact.creator }];
     // One logical occurrence per recipient even when topic and creator subscriptions overlap.
     const selected = this.#store.allSubscriptions().filter(s => subjects.some(subject => this.#eventMatches(s, subject, context)));

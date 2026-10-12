@@ -218,8 +218,14 @@ export type InboxNotification = {
 /** The inbox (§3.5): needsYou counts now asks, approvals and waiting topics only. */
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number };
 
+/** Journal rows, newest first; cursors are exclusive byte positions in the append-only file. */
+export type EventKind = 'session' | 'task' | 'verdict' | 'suite' | 'release' | 'artifact' | 'usage' | 'topic';
+export type EventRow = { id: string; ts: string; kind: EventKind; subject: { kind: 'item' | 'session' | 'topic' | 'artifact'; id: string }; text: string; glyph: string; item?: string; session?: string; topic?: string; artifact?: string };
+export type EventsPage = { rows: EventRow[]; before: string | null; more: boolean };
+
 /** What the hub pushes to a subscribed client. */
 export type HubEvent =
+  | { type: 'event'; row: EventRow }
   | { type: 'verification.queue'; queue: VerificationQueue }
   | { type: 'visibility' }
   | { type: 'crew'; config: import('./crew.ts').CrewConfig; summary: string }
@@ -547,6 +553,8 @@ export type ClientRequest =
   | { type: 'topic.answer'; id: string; ask: string; option?: number; text?: string }
   /** The inbox: `Inbox`. */
   | { type: 'inbox.list'; id: string }
+  /** At most 200 journal rows older than before: EventsPage. */
+  | { type: 'events.list'; id: string; before?: string; limit?: number }
   /** Dismiss one notification: `Inbox`. Asks and approvals are not dismissable. */
   | { type: 'inbox.dismiss'; id: string; notification: string }
   /** Dismiss every notification: `Inbox`. */
@@ -725,6 +733,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'inbox.list':
     case 'inbox.dismiss_all':
       return true;
+    case 'events.list':
+      return (f.before === undefined || (typeof f.before === 'string' && /^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0));
     case 'inbox.dismiss':
       return typeof f.notification === 'string';
     case 'worktree.list':

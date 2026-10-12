@@ -204,7 +204,10 @@ local function wire_client(client)
     state.S.hub = { state = st, detail = detail }
     state.changed()
   end)
-  client:on('connected', M.refresh)
+  client:on('connected', function()
+    M.refresh()
+    if state.S.ui.view.kind == 'events' then require('cland.events').enter() end
+  end)
   client:on('visibility', M.refresh)
   client:on('message', function(event)
     if not event.topic then
@@ -283,6 +286,7 @@ local function wire_client(client)
     state.set_session_usage(event.sessionId, event.usage)
   end)
   -- the inbox, whole, whenever any of it changed (#33)
+  client:on('event', function(event) require('cland.events').push(event.row) end)
   client:on('inbox', function(event)
     state.set_inbox(event.inbox)
   end)
@@ -297,7 +301,7 @@ M.HELP = {
   'Items     1 board · 2 in work · 3 needs you · 4 done · 5 map · 6 all (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
-  'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣␣ the previous centre view',
+  'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
   'Graph     h/j/k/l nodes · ^/$ ends · ↵ item · gi/gt/gs · p/P parent · d done · o turn · r edges · :Cland graph [T-n]',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
@@ -363,6 +367,7 @@ local function keymaps()
     layout.right_panel('topics')
   end, 'topics panel')
   map('<leader>T', layout.toggle_dock, 'topics docked above the inbox')
+  map('<leader>E', function() require('cland.layout').show({ kind = 'events' }, { insert = false }) end, 'Events view')
   map('<leader>N', function()
     layout.toggle_view({ kind = 'inbox' })
   end, 'inbox full width')
@@ -528,6 +533,7 @@ function M.start(opts)
   require('cland.hl').setup()
   require('cland.bars').setup()
   state.reset({ root = root })
+  require('cland.events').reset()
   state.S.ui.right = 'sessions'
   require('cland.ui').load(root)
   M.root = root

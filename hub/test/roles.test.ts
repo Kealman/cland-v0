@@ -234,18 +234,18 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
   const launch = (lines: string) => parseRoles(`[qa.launch]\nharness = "codex"\n${lines}\n`).get('qa')?.launch;
   // nothing given (a roles.toml written before these keys existed): the role's built-in approval and sandbox, not none
   const qaSandbox = { mode: 'danger-full-access', writableRoots: [], network: 'full' };
-  assert.deepEqual(launch(''), { harness: 'codex', model: null, effort: null, approval: 'never', sandbox: qaSandbox });
+  assert.deepEqual(launch(''), { harness: 'codex', model: null, effort: null, approval: 'never', sandbox: qaSandbox, permissions: null });
   const implementer = parseRoles('[implementer.launch]\nharness = "codex"\nmodel = "gpt-6.1-sol"\n').get('implementer')?.launch;
   assert.deepEqual([implementer?.approval, implementer?.sandbox], ['never', qaSandbox]);
   // the Coordinator has none built in
-  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
+  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', model: null, effort: null, approval: null, sandbox: null, permissions: null });
   // only what is written overrides, key by key
-  assert.deepEqual(launch('approval = "on-request"'), { harness: 'codex', model: null, effort: null, approval: 'on-request', sandbox: qaSandbox });
+  assert.deepEqual(launch('approval = "on-request"'), { harness: 'codex', model: null, effort: null, approval: 'on-request', sandbox: qaSandbox, permissions: null });
   assert.deepEqual(launch('network = "full"')?.sandbox, { ...qaSandbox, network: 'full' });
   assert.deepEqual(launch('sandbox = "workspace-write"\nnetwork = "local"\nwritable_roots = [".", "../shared"]')?.sandbox, { mode: 'workspace-write', writableRoots: ['.', '../shared'], network: 'local' });
   assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "workspace-write"\nnetwork = "local"\nwritable_roots = []\n').get('implementer')?.launch.sandbox, { mode: 'workspace-write', writableRoots: [], network: 'local' });
   // "" is the adapter's default approval and the harness's own sandbox
-  assert.deepEqual(launch('approval = ""\nsandbox = ""'), { harness: 'codex', model: null, effort: null, approval: null, sandbox: null });
+  assert.deepEqual(launch('approval = ""\nsandbox = ""'), { harness: 'codex', model: null, effort: null, approval: null, sandbox: null, permissions: null });
   // a written mode keeps what still fits it: no roots outside workspace-write, nothing closed without a sandbox
   assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "read-only"\n').get('implementer')?.launch.sandbox, { mode: 'read-only', writableRoots: [], network: 'full' });
   assert.deepEqual(launch('sandbox = "read-only"\nnetwork = "none"')?.sandbox, { mode: 'read-only', writableRoots: [], network: 'none' });

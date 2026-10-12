@@ -64,6 +64,7 @@ function M.context()
   local buf = api.nvim_get_current_buf()
   local role = vim.b[buf].cland_role
   local row = api.nvim_win_get_cursor(0)[1]
+  if role == 'events' then return require('cland.events').row() or {} end
   if role == 'items' or role == 'sessions' or role == 'topics' or role == 'inbox' or role == 'inbox_full' then
     local info = require('cland.panels').row_at(buf, row)
     if info then
@@ -94,6 +95,7 @@ function M.context()
 end
 
 function M.subject()
+  if vim.b.cland_role == 'events' then return M.context() end
   return M.token() or M.context()
 end
 
@@ -148,6 +150,11 @@ function M.go(kind, subj)
   subj = subj or M.subject()
   local layout = require('cland.layout')
   local v = state.S.ui.view
+  if subj.event then
+    local id = subj[kind]
+    if not id then return state.say('event has no ' .. kind) end
+    return layout.show({ kind = kind == 'topic' and 'thread' or kind, id = id }, { insert = false })
+  end
   if kind == 'item' then
     local id = M.item_of(subj)
     if not id then

@@ -34,6 +34,7 @@
     "hub/test/doctor-isolation.test.ts": "machine",
     "hub/test/doctor.test.ts": "machine",
     "hub/test/edges.test.ts": "machine",
+    "hub/test/events.test.ts": "machine",
     "hub/test/epic-close.test.ts": "machine",
     "hub/test/freshness.test.ts": "machine",
     "hub/test/handover-integrity.test.ts": "machine",

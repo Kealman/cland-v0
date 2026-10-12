@@ -6,6 +6,7 @@
 // A hub serving a UI over its stdio may run without the listeners (spec 4.2: sandboxed QA runs, where
 // binding is forbidden). It still takes the lock — the store is one hub's alone — but writes no `hub.json`
 // and plugs in no adapters: nothing could reach it, so it launches nothing.
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { access, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -24,7 +25,7 @@ import { projectSessions, type ProjectSessions } from '../adapters/index.ts';
 import { CrewFile, crewSummary } from '../crew.ts';
 import { RolesFile } from '../roles/config.ts';
 import { readProjectConfig } from '../init/config.ts';
-import { Journal, journalPath, readJournal, type JournalOpen } from './journal.ts';
+import { Journal, journalPath, readJournal, eventRow, type JournalOpen, type JournalRecord } from './journal.ts';
 import { agentsRecord, replayAgentsRecord } from './agents-topic.ts';
 import { idleNotifyMs } from './inbox.ts';
 import { RequestGuard } from './budget.ts';
@@ -90,7 +91,19 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   });
   const journal = new Journal(journalPath(l.dir), undefined, { log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
-  log = agents.tap(journal.tap(processLog));
+  let hub!: HubBase;
+  const tapped = agents.tap(journal.tap(processLog));
+  log = entry => {
+    const record: JournalRecord = { ts: new Date().toISOString(), ...entry, event: String(entry.event), eventsVersion: 1 };
+    const row = eventRow(record);
+    if (row) {
+      const id = randomUUID();
+      record.rowId = id;
+      row.id = id;
+    }
+    tapped(record);
+    if (row) hub?.core.publishJournalRow(row);
+  };
   // Always close both sinks, including a failed journal, before releasing the lock.
   const closeLogs = async () => {
     let failure: unknown;
@@ -124,7 +137,6 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
-  let hub!: HubBase;
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker.levels, requestGuard.resumer('crew.refresh'));
   let adapters: ProjectSessions | null = null;
   let ws: WebSocketEdge | null = null;
@@ -136,6 +148,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     await crew.start();
     hub = createHubBase({
       secret,
+      journal,
       verification: { cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, budget: config?.verification.budget ?? 1, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
       store: new Store(l.db),
       log,

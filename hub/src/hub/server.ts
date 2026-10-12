@@ -23,6 +23,7 @@ export type HubBaseOptions = CoreOptions & {
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
   verification?: DispatcherOptions['verification'];
+  journal?: import('./journal.ts').Journal;
   artifactFiles?: DispatcherOptions['artifactFiles'];
   /** `hub.status` and `hub.stop` for clients; absent, clients are told this hub serves no project. */
   control?: Control;
@@ -86,6 +87,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   });
   const dispatcher = new Dispatcher({
     core,
+    ...(options.journal ? { journal: options.journal } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,
@@ -113,6 +115,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   pruneTimer.unref();
   return {
     core,
+    ...(options.journal ? { journal: options.journal } : {}),
     dispatcher,
     prune: () => { const gone = core.prune(); cleanupArtifacts(); return gone; },
     close: async () => {

@@ -83,6 +83,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  journal?: import('./journal.ts').Journal;
   verification?: SuiteSchedulerOptions;
   core: HubCore;
   secret: string;
@@ -524,6 +525,7 @@ export class Dispatcher {
         if (!id) throw new Error('cancelled suite topic is unavailable');
         core.store.setMeta(key, id);
       });
+      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode });
       return;
     }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
@@ -560,6 +562,7 @@ export class Dispatcher {
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
     if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, counts: suiteSummary(log), mode: job.selection?.mode ?? job.mode });
     this.#log({ event: 'audit', session: caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
@@ -1131,6 +1134,10 @@ export class Dispatcher {
             return answer(core.unmute(frame.a, frame.b));
           case 'topic.answer':
             return answer(core.asks.answer(frame.ask, frame.option, frame.text));
+          case 'events.list': {
+            const resumed = this.#guard.resumer(frame.type);
+            return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+          }
           case 'inbox.list':
             return answer(core.inbox.list());
           case 'inbox.dismiss':

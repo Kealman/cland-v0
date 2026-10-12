@@ -28,6 +28,7 @@ import { Visibility, warningSeverity } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
+  events?: import('../../hub/src/protocol.ts').EventRow[];
   verification?: import('../../hub/src/protocol.ts').VerificationQueue;
   topics?: Array<Record<string, unknown>>;
   messages?: Record<string, Array<Record<string, unknown>>>;
@@ -215,6 +216,10 @@ function answer(f: Frame) {
     case 'subscribe':
       return ok(f.id, { subscribed: true });
     case 'artifact.list':
+      if (f.artifact !== undefined) {
+        const artifact = (scenario.artifacts ?? []).find(a => a.id === f.artifact);
+        return artifact ? ok(f.id, { artifact }) : fail(f.id, 'no such artifact');
+      }
       return ok(f.id, { artifacts: (scenario.artifacts ?? []).filter((a) => f.topic === undefined || a.topic === f.topic) });
     case 'topic.list':
       return ok(f.id, { topics: scenario.topics });
@@ -273,6 +278,11 @@ function answer(f: Frame) {
     case 'hub.status': {
       const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
       return ok(f.id, { keys: config.keys, tracker: scenario.tracker ?? config.tracker, sessions: scenario.presence ?? [], ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+    }
+    case 'events.list': {
+      const start = Number(f.before ?? 0);
+      const rows = (scenario.events ?? []).slice(start, start + Math.min(200, Number(f.limit ?? 200)));
+      return ok(f.id, { rows, before: String(start + rows.length), more: start + rows.length < (scenario.events ?? []).length });
     }
     case 'inbox.list':
       return scenario.inbox ? ok(f.id, inboxValue()) : fail(f.id, 'the stub hub has no inbox in this scenario');

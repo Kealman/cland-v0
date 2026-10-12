@@ -140,6 +140,7 @@ function M.render(c, full)
     c:add({})
     c:add({ { ' ' .. earlier .. ' earlier · Agents log (␣L)', 'ClandDim' } }, nil, { earlier_notifications = true })
   end
+  c:add({ { ' △ events · e opens the events view', 'ClandDim' } }, nil, { events = true })
   if full then
     return { ' 1-9 answer · i free answer · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
   end
@@ -185,7 +186,9 @@ function M.open(buf)
     return
   end
   local layout = require('cland.layout')
-  if info.approval and info.session then
+  if info.events then
+    layout.show({ kind = 'events' }, { insert = false })
+  elseif info.approval and info.session then
     layout.show({ kind = 'session', id = info.session }, { insert = true })
   elseif info.topic then
     layout.show({ kind = 'thread', id = info.topic }, { insert = false })
@@ -241,6 +244,7 @@ function M.keys(buf)
   local function map(lhs, fn, desc)
     require('cland.actions').map('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
   end
+  map('e', function() require('cland.layout').show({ kind = 'events' }, { insert = false }) end, 'Events view')
   map('<CR>', function()
     M.open(buf)
   end, 'open or attach')

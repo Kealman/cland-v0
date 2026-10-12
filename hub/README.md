@@ -681,12 +681,19 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 | `{"type":"topic.rename","id":…,"topic":…,"title":…}` | `{"topic":Topic}`; refused for General and Agents |
 | `{"type":"topic.delete","id":…,"topic":…}` | `{"deleted":id}`; refused for General and Agents |
 | `{"type":"topic.answer","id":…,"ask":…,"option"?:n,"text"?:…}`, `inbox.list`, `inbox.dismiss`, `inbox.dismiss_all` | Under Asks and the inbox above |
+| `{"type":"events.list","id":…, "before"?:"<cursor>", "limit"?:200}` | `{rows: EventRow[], before: string|null, more: boolean}`; newest first, at most 200, with an exclusive cursor for the next older page |
 | `{"type":"subscribe","id":…}` | `{"subscribed":true}`; events follow on this connection until it closes |
 | `{"type":"hygiene.unmute","id":…,"a":"<session>","b":"<session>"}` | `{"lifted":bool,"pair":[a,b]}`: the loop breaker's mute of the pair lifted (false when none ran); refused for a name the hub never knew |
 
 - `Topic` is `{"id","title","status","standing","createdAt","updatedAt","item","unread","lastMessageAt","warning"?}`: `status` is `open`, `waiting for human`, `waiting for agent` or `closed`; `item` the bound item or null; `unread` the human's unread count; `warning` (`no coordinator`) only while a message waits for a role nobody holds.
 - A recorded verdict posts a `message` frame with `message.kind: "report"` in its bound item topic (Agents if unbound). Its `message.criteria`, when marks were requested, is `[{ "id": "C1", "mark": "verified" }, { "id": "C2", "mark": "failed", "note": "what failed" }]`: each mark is `verified` or `failed`, and failures carry a note. The text lists the same ids; render the structured field directly, with nothing extra when absent. The field persists in topic history across restart.
 - `TopicMessage` is the stored message, `{"id","from","fromKind","fromRole"?,"via","to","text","ts","replyTo"?,"answerTo"?,"topic","stage"?,"kind"?,"detail"?,"ask"?,"criteria"?}`, where `stage` is present when the message had addressees, `kind` and `detail` on a hub notice (the Agents record, above), `answerTo` on the human's answer to an ask, `ask` (`AskCard`) on an ask.
+
+`events.list` reads `.cland/journal.jsonl` backwards in 32 KiB blocks, retaining only a page and the partial record at a block boundary. `limit` is a positive integer, defaults to 200 and is capped at 200. Pass the returned `before` unchanged for the next page; new appends cannot repeat or skip rows behind that byte cursor. `more` says whether another usable row remains. Invalid cursors are refused; malformed records are skipped. The frame waits for accepted journal appends before reading.
+
+An `EventRow` is `{id, ts, kind, subject: {kind, id}, glyph, text, item?, session?, topic?, artifact?}`. The eight event kinds are session, task, verdict, suite, release, artifact, usage and topic; a subject is an item, session, topic or artifact. Navigation references are present where known. A subscribed UI receives each new row as `{"type":"event","row":EventRow}` through the existing log tap, with the same id and shape as the page. Announced events are journaled once with their text and subject even without session subscribers. Suite result records include their branch, item, outcome and counts; notifications retain their subject and verdict result.
+
+Usable historical launch, stop, death, handover, claim, merge, topic, release and notification records are translated too. Older periods may lack suite and artifact rows: there is no backfill from `hub.db`. Usage events currently require a subscription threshold crossing; no default threshold is added, so that kind may be empty.
 
 Events, pushed after `subscribe`:
 

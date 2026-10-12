@@ -382,6 +382,7 @@ function M.show(view, opts)
       table.remove(ui.hist, 1)
     end
   end
+  if view.kind == 'events' and ui.view.kind ~= 'events' then require('cland.events').enter() end
   if view.kind == 'plan' then require('cland.plan').enter(view.id) end
   ui.view = view
   M.apply_view(opts)
