@@ -482,8 +482,8 @@ end
 
 -- Inbox -----------------------------------------------------------------------------------------------
 
-local function render_inbox(c)
-  return require('cland.inbox').render(c, false)
+local function render_inbox(c, buf)
+  return require('cland.inbox').render(c, false, buf)
 end
 
 local RENDER = { sessions = render_sessions, topics = render_topics, items = render_items, inbox = render_inbox }
@@ -618,7 +618,7 @@ function M.render(kind, win)
     return
   end
   local c = canvas(api.nvim_win_get_width(win))
-  local footer = RENDER[kind](c)
+  local footer = RENDER[kind](c, b)
   c:add({})
   for _, f in ipairs(footer or {}) do
     c:add({ { f, 'ClandFaint' } })
@@ -626,12 +626,12 @@ function M.render(kind, win)
   c:footer_at(vim.fn.winheight(win), #(footer or {}))
   local cur = api.nvim_win_get_cursor(win)
   local info = M.row_at(b, cur[1])
-  local notification = kind == 'inbox' and info and info.notification
+  local inbox_info = kind == 'inbox' and info
   local follow = (kind == 'sessions' or kind == 'items') and M.row_key((M.rows[b] or {})[cur[1]]) or nil
   M.rows[b] = c:apply(b)
   local target = c.cursor_to
-  if notification then
-    target = require('cland.inbox').notification_row(c, notification)
+  if inbox_info then
+    target = require('cland.inbox').follow_row(c, inbox_info)
   end
   if not target and follow then
     for r = 1, #c.lines do

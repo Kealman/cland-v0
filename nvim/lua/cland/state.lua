@@ -25,7 +25,7 @@ function M.reset(opts)
     tracker = { levels = {} }, -- hub.status's loaded container ladder; unknown until the hub answers
     sibling_orders = {}, -- final task rank events, keyed by parent (empty string for roots)
     items_note = nil, -- why the items panel is empty
-    inbox = { asks = {}, approvals = {}, waiting = {}, notifications = {} }, -- inbox.list and `inbox` events (#33)
+    inbox = { asks = {}, approvals = {}, plans = {}, requests = {}, messages = {}, waiting = {}, notifications = {} },
     needs_you = nil, -- the hub's "needs you" count (hub.status, `inbox` events); nil until it said
     ui = {
       view = { kind = 'thread', id = 'general' },
@@ -298,7 +298,7 @@ function M.set_inbox(inbox)
   local function list(x)
     return type(x) == 'table' and x or {}
   end
-  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), waiting = list(inbox.waiting), notifications = list(inbox.notifications) }
+  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), notifications = list(inbox.notifications) }
   if type(inbox.needsYou) == 'number' then
     M.S.needs_you = inbox.needsYou
   end

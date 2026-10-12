@@ -202,7 +202,7 @@ test('the chip and inbox header show only the hub count through notification flo
   await count(1);
   await c.control({ emit: ask });
   await count(1);
-  ib.approvals = [{ session: 'impl-1', label: 'impl-1 [Implementer]' }];
+  ib.approvals = [{ id: 'approval-1', session: 'impl-1', label: 'impl-1 [Implementer]', since: ts(2) }];
   await inbox(2);
   await count(2);
   ib.waiting = [{ ...bound, id: 'topic-waiting', title: 'Waiting decision', status: 'waiting for human' }];
@@ -251,15 +251,15 @@ test('the count stays unknown until the hub says, follows hub.status, and stays 
   await c.control({ set: { holdSnapshots: ['inbox.list'], inbox: { needsYou: 9 } } });
   await c.lua("require('cland').refresh()");
   const status = await c.waitScreen(s => topBar(s).includes('needs you  9 ') && rightOf(s).includes('9 need you'), 'hub.status supplies the count before inbox.list');
-  assert.match(rightOf(status), /Which should win\?/); // The held rows have not changed.
+  assert.match(rightOf(status), /\? T-12/); // The held rows have not changed.
   await c.control({ set: { holdSnapshots: [] }, releaseSnapshots: ['inbox.list'] });
   const scenario: Scenario = {};
   withInbox(scenario);
   const ib = { ...scenario.inbox, needsYou: 17 };
   await c.control({ set: { inbox: ib }, emit: { type: 'inbox', inbox: ib } });
-  await c.waitScreen(s => topBar(s).includes('needs you  17 ') && rightOf(s).includes('17 need you') && rightOf(s).includes('Which should win?'), 'inbox event supplies a new count');
+  await c.waitScreen(s => topBar(s).includes('needs you  17 ') && rightOf(s).includes('17 need you') && rightOf(s).includes('? T-12'), 'inbox event supplies a new count');
   await c.input('<Esc><C-w>l');
-  await c.input('gg/Which should<CR>2');
+  await c.input('gg/T-12<CR>2');
   const answered = await c.waitScreen(s => !rightOf(s).includes('Which should win?') && statusLine(s).includes('answered with 2'), 'answer removes the row');
   assert.match(topBar(answered), /needs you {2}17 /, 'local answer never decrements the hub value');
   assert.match(rightOf(answered), /17 need you/);
@@ -1903,8 +1903,9 @@ function withInbox(s: Scenario): void {
   s.processes = [proc('coord-1', 'coordinator', 'busy'), proc('impl-1', 'implementer', 'waiting for approval', 'sonnet')];
   s.inbox = {
     asks: [{ id: 'a1', topic: { id: 'topic-1', title: 'Spoke identity', item: 'T-12' }, question: 'Which should win?', options: ASK_OPTIONS, free: true, from: 'coord-1', label: 'coord-1 [Coordinator]', ts: ts(1) }],
-    approvals: [{ session: 'impl-1', label: 'impl-1 [Implementer]', harness: 'claude-code', since: ts(2), attach: 'claude attach impl-1-bg' }],
+    approvals: [{ id: 'cmd1', session: 'impl-1', label: 'impl-1 [Implementer]', harness: 'claude-code', since: ts(2), attach: 'claude attach impl-1-bg' }],
     waiting: [topic('topic-5', 'Spoke reconnect: flaky test', 'waiting for human', { unread: 2 })],
+    messages: [{ id: 'waiting-report', topic: { id: 'topic-5', title: 'Spoke reconnect: flaky test' }, text: 'Needs a reply', from: 'coord-1', fromRole: 'coordinator', since: ts(2), layer: 'now' }],
     notifications: [
       { id: 'n1', kind: 'verdict', text: 'T-19 review not clear · rev-1', ts: ts(3), item: 'T-19', session: 'rev-1', result: 'not clear', dismissed: false },
       { id: 'n2', kind: 'verdict', result: 'clear', text: 'T-19 QA clear: rev-1', ts: ts(4), session: 'rev-1', dismissed: false },
@@ -1976,48 +1977,29 @@ async function openInbox(c: Shell): Promise<string> {
   return c.waitScreen((x) => x.includes('INBOX') && rightOf(x).includes('NOTIFICATIONS'), 'the inbox panel');
 }
 
-test('the inbox lists asks, approvals, waiting topics and notifications in that order; the top bar counts what needs the human', { skip }, async (t) => {
+test('the inbox puts asks and approvals first, messages next, then legacy notifications; the chip is hub-owned', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   const s = await openInbox(c);
   const panel = rightOf(s);
-  // the asker as everywhere: name [Role], the hub's label
-  assert.match(panel, /\? T-12 +coord-1 \[Coordinator\] · /);
-  const order = [
-    'ASKS · ANSWER HERE',
-    '? T-12',
-    'Which should win?',
-    '1  the name recorded by the',
-    '2  the harness session id',
-    '3  ask me later',
-    'i free answer · ↵ open the topic',
-    'APPROVALS · ANSWER IN THE SESSI',
-    '▲ impl-1 [Implementer]',
-    'WAITING FOR YOU · TOPICS',
-    '● Spoke reconnect: flaky te',
-    'NOTIFICATIONS · d dismiss · D all',
-    '⚠ impl-3 [Implementer] died',
-    '✓ T-19 QA clear: rev-1',
-    '⚠ T-19 review not clear · rev-1',
-  ].map((w) => panel.indexOf(w));
-  assert.ok(order.every((at) => at >= 0), `every row is there:\n${panel}`);
-  assert.deepEqual([...order].sort((a, b) => a - b), order, `in the design's order:\n${panel}`);
-  assert.match(s, /INBOX +3 need you/);
-  assert.match(topBar(s), /▲ needs you {2}3 /, 'the hub count excludes notifications');
-  assert.match(statusLine(s), /1-9 answer · i free answer/);
+  const order = ['ASKS AND APPROVALS', '▲ impl-1', '? T-12', 'MESSAGES TO YOU', 'NOTIFICATIONS'].map(w => panel.indexOf(w));
+  assert.ok(order.every(at => at >= 0), panel);
+  assert.deepEqual([...order].sort((a,b) => a-b), order);
+  assert.match(topBar(s), /▲ needs you {2}3 /);
+  assert.doesNotMatch(panel, /1  the name recorded/);
 });
 
 test('2 on an ask row answers with option 2: topic.answer goes out, the row leaves and the count drops; d on an ask does nothing', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await openInbox(c);
   // d on an ask: nothing is dismissed, a hint says why
-  await c.input('gg/Which should<CR>d');
+  await c.input('gg/T-12<CR>d');
   let s = await c.waitScreen((x) => statusLine(x).includes('asks and approvals are not dismissed'), 'the hint');
-  assert.match(rightOf(s), /Which should win\?/);
+  assert.match(rightOf(s), /\? T-12/);
   assert.deepEqual(await requestsOf(c, 'inbox.dismiss'), []);
   await c.input('2');
   s = await c.waitScreen((x) => !rightOf(x).includes('Which should win?') && topBar(x).includes('needs you  2 '), 'the ask answered');
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option, f.text]), [['a1', 2, undefined]]);
-  assert.doesNotMatch(rightOf(s), /ASKS · ANSWER HERE/);
+  assert.doesNotMatch(rightOf(s), /Which should win/);
   assert.match(rightOf(s), /APPROVALS/);
   assert.equal(await c.mode(), 'n', 'answering never leaves the inbox');
 });
@@ -2025,7 +2007,7 @@ test('2 on an ask row answers with option 2: topic.answer goes out, the row leav
 test('i on an ask opens its topic with the composer armed: Enter sends the text as the free answer', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await openInbox(c);
-  await c.input('gg/ask me later<CR>i');
+  await c.input('gg/T-12<CR>i');
   let s = await c.waitScreen((x) => topBar(x).includes('│ Spoke identity') && x.includes('answer to: Which should win?'), 'the composer armed in the topic');
   assert.equal(await c.mode(), 'i');
   await c.input('keep both behind a flag<CR>');
@@ -2040,7 +2022,7 @@ test('i on an ask opens its topic with the composer armed: Enter sends the text 
 test('Enter on an approval attaches the session in the centre', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await openInbox(c);
-  await c.input('gg/impl-1 \\[Impl<CR><CR>');
+  await c.input('gg/▲ impl-1<CR><CR>');
   const s = await c.waitScreen((x) => x.includes('attached impl-1') && statusLine(x).includes('impl-1 · session'), 'impl-1 attached');
   assert.match(topBar(s), /│ impl-1 \[Implementer\]/);
   assert.deepEqual((await requestsOf(c, 'session.attach')).map((f) => f.session), ['impl-1']);
@@ -2059,8 +2041,8 @@ test('d dismisses ordinary notifications; D retains warnings, asks and approvals
   assert.equal((await requestsOf(c, 'inbox.dismiss_all')).length, 0);
   assert.ok(rightOf(s).includes('T-19 review not clear'));
   assert.ok(rightOf(s).includes('impl-3 [Implementer] died'));
-  assert.match(rightOf(s), /Which should win\?/);
-  assert.match(rightOf(s), /▲ impl-1 \[Implementer\]/);
+  assert.match(rightOf(s), /\? T-12/);
+  assert.match(rightOf(s), /▲ impl-1/);
   assert.match(topBar(s), /needs you {2}3 /, 'dismissing notifications never changes the hub count');
 });
 
@@ -2099,6 +2081,7 @@ test('a question and options over several lines render as lines in the card and 
   assert.ok(card.every((at) => at >= 0), `the card:\n${s}`);
   assert.deepEqual([...card].sort((a, b) => a - b), card);
   await c.input('<Space>n');
+  await c.input('gg/T-12<CR>');
   s = await c.waitScreen((x) => rightOf(x).includes('The spoke or the harness.'), 'the inbox with both lines');
   const panel = rightOf(s);
   const rows = ['Which should win?', 'The spoke or the harness.', '1  the name recorded', 'by the spoke', '2  the harness session id'].map((w) => panel.indexOf(w));
@@ -2169,12 +2152,12 @@ test('the inbox full width (␣N) shows the same sections and acts the same', { 
   await c.input('<Esc><Space>N');
   let s = await c.waitScreen((x) => statusLine(x).includes('Inbox · full width') && centreOf(x).includes('NOTIFICATIONS'), 'the inbox full width');
   const centre = centreOf(s);
-  const order = ['ASKS · ANSWER HERE', '1  the name recorded by the spoke', 'APPROVALS', 'WAITING FOR YOU', 'NOTIFICATIONS'].map((w) => centre.indexOf(w));
+  const order = ['ASKS AND APPROVALS', '▲ impl-1', '? T-12', 'MESSAGES TO YOU', 'NOTIFICATIONS'].map((w) => centre.indexOf(w));
   assert.ok(order.every((at) => at >= 0), centre);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   assert.match(s, /INBOX · FULL WIDTH/);
-  await c.input('gg/ask me later<CR>3');
-  s = await c.waitScreen((x) => !centreOf(x).includes('ASKS · ANSWER HERE') && centreOf(x).includes('APPROVALS'), 'answered with 3');
+  await c.input('gg/T-12<CR>3');
+  s = await c.waitScreen((x) => !centreOf(x).includes('Which should win') && centreOf(x).includes('APPROVALS'), 'answered with 3');
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 3]]);
   // an inbox event replaces the rows
   await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } } });

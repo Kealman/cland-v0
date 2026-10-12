@@ -40,7 +40,7 @@ test('cland topic answer from a session\'s shell is refused with the typed error
   assert.notEqual(refused.code, 0);
   assert.match(refused.stderr, /forbidden: topic\.answer \(only the human may do this; this call is impl-1 \[Implementer\]'s, by \$CLAND_SESSION_ID\)/);
   assert.equal(refused.stdout, '');
-  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `), 'the ask is still open');
+  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `, 'm'), 'the ask is still open');
   const [audit] = (await audits(root, 'topic.answer')).slice(-1);
   assert.deepEqual([audit?.session, audit?.sessionId, audit?.role, audit?.client, audit?.outcome, audit?.permission], ['impl-1', 'sess-impl', 'implementer', 'cli', 'forbidden', 'topic.answer']);
 
@@ -62,7 +62,7 @@ test('cland topic answer from a session\'s shell is refused with the typed error
   const ghostTask = await clandWithEnv(root, { CLAND_SESSION_NAME: 'ghost' }, 'task', 'create', 'From nobody');
   assert.notEqual(ghostTask.code, 0);
   assert.match(ghostTask.stderr, /forbidden: task\.create \(a session with no role has no tools\)/);
-  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `), 'the ask is still open');
+  assert.match((await cland(root, 'inbox')).stdout, new RegExp(`^ask ${asked.ask} `, 'm'), 'the ask is still open');
 
   // without the variables it is the human's, as before
   const answered = await cland(root, 'topic', 'answer', asked.ask, '1');

@@ -20,7 +20,7 @@ async function coordinator(t: import('node:test').TestContext, root: string): Pr
 const ask = (s: Session, topic: string, question: string, options: string[], free?: boolean) =>
   s.call<AskResult>('ask', { topic, question, options, ...(free !== undefined ? { free } : {}) });
 
-test('cland inbox lists an open ask with its id, topic, asker, question and numbered options, and needs you; --json prints the hub\'s Inbox', async (t) => {
+test('cland inbox lists an open ask with its section, id, topic, asker, first line and age, and needs you; --json prints the hub\'s Inbox', async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root);
   const coord = await coordinator(t, root);
@@ -29,8 +29,9 @@ test('cland inbox lists an open ask with its id, topic, asker, question and numb
 
   const listed = await cland(root, 'inbox');
   assert.equal(listed.code, 0, listed.stderr);
-  assert.match(listed.stdout, new RegExp(`^ask ${asked.ask}  General  from coord \\[Coordinator\\]\n`));
-  assert.match(listed.stdout, /^ {2}Which port\?\n {4}1\. a fixed one\n {4}2\. a free one, picked at start\n/m);
+  assert.match(listed.stdout, /^Asks and approvals \(1\)\n/);
+  assert.ok(listed.stdout.includes(`ask ${asked.ask}  General  Which port?  from coord [Coordinator]  · 0 m`), listed.stdout);
+  assert.doesNotMatch(listed.stdout, /a fixed one|a free one, picked at start/);
   assert.match(listed.stdout, /needs you: 1\n$/);
 
   const json = await cland(root, 'inbox', '--json');

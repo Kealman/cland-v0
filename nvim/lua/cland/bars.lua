@@ -246,7 +246,7 @@ function M.status()
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then
-    hint = '1-9 answer · i free answer · ↵ open · d dismiss · D all'
+    hint = '1-9 answer · i free answer · za more · ↵ open · d dismiss · D all'
   else
     hint = '␣i ␣s ␣t ␣n panels · ␣p palette · ␣␣ back · gi gt gs'
   end

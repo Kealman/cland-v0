@@ -195,11 +195,11 @@ export type AskCard = {
 };
 
 /** An open ask as the inbox lists it. */
-export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; label: string; ts: string; since: string };
+export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
 
 /** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
-export type InboxApproval = { layer?: Layer; id: string; session: string; label: string; harness: string | null; since: string; attach: string | null; command?: string };
-export type InboxPlan = { layer?: Layer; id: string; subject: string; title: string; since: string };
+export type InboxApproval = { layer?: Layer; id: string; session: string; role?: string; label: string; harness: string | null; since: string; attach: string | null; command?: string };
+export type InboxPlan = { layer?: Layer; id: string; subject: string; title: string; stages?: number; lanes?: number; items?: number; since: string };
 export type InboxRequest = { layer?: Layer; id: string; from: string; fromRole?: string; request: RequestKind; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxMessage = { layer?: Layer; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';

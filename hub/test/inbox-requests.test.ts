@@ -31,6 +31,7 @@ test('a request from an unmentioned Implementer raises needsYou and the human re
   assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'Reviewed' })).ok, true);
   const after = JSON.parse((await cland(root, 'inbox', '--json')).stdout) as Inbox;
   assert.equal(after.needsYou, 0);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const journal = await cland(root, 'hub', 'journal', '--json');
   assert.equal(journal.code, 0, journal.stderr);
   assert.match(journal.stdout, /inbox-departure/);
@@ -99,11 +100,13 @@ test('message read marks and request replies survive stop/start, while an unansw
   await aide.close();
   const stop = await cland(root, 'hub', 'stop');
   assert.equal(stop.code, 0, stop.stderr);
-  await startDaemon(t, root);
+  const restarted = await startDaemon(t, root);
+  const again = await connectUi(t, restarted.discovery);
   const after = JSON.parse((await cland(root, 'inbox', '--json')).stdout) as Inbox;
   assert.equal(after.needsYou, 1);
   assert.deepEqual(after.requests, before.requests);
   assert.deepEqual(after.messages, []);
+  await ok(again, { type: 'hub.status', flushLogs: true });
   const journal = (await cland(root, 'hub', 'journal', '--json')).stdout;
   assert.match(journal, /"reason":"read"/);
   assert.match(journal, /"reason":"replied"/);
@@ -128,6 +131,7 @@ test('now messages are counted per message, newest first, and leave individually
   assert.equal(read.needsYou, 1);
   await ok(ui, { type: 'topic.send', topic: 'general', text: 'Answered' });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const journal = (await cland(root, 'hub', 'journal', '--json')).stdout.trim().split('\n').map(line => JSON.parse(line) as { event: string; reason: string });
   const departures = journal.filter(r => r.event === 'inbox-departure');
   assert.deepEqual(departures.map(r => r.reason), ['read', 'read', 'answered']);
@@ -158,6 +162,7 @@ test('pending valid plans count only with human approval, and approval, invalida
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 1);
   await ok(ui, { type: 'task.edit', item: epic, body: '## Summary\nRemoved plan' });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const journal = (await cland(root, 'hub', 'journal', '--json')).stdout;
   assert.match(journal, /"reason":"approved"/);
   assert.match(journal, /"reason":"invalidated"/);
@@ -165,6 +170,7 @@ test('pending valid plans count only with human approval, and approval, invalida
   await ok(ui, { type: 'task.close', item: task });
   await ok(ui, { type: 'task.close', item: epic, override: 'Fixture closes without after-stage QA' });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   assert.match((await cland(root, 'hub', 'journal', '--json')).stdout, /"reason":"closed"/);
   const other = await tempProject(t);
   const none = await startDaemon(t, other);
@@ -208,6 +214,7 @@ test('asks and a fake harness command approval wait with ages, then journal each
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
   // A repeated snapshot must not write a second departure.
   await ok(ui, { type: 'inbox.list' });
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const records = (await cland(root, 'hub', 'journal', '--json')).stdout.trim().split('\n').map(line => JSON.parse(line) as { event: string; reason: string });
   assert.deepEqual(records.filter(r => r.event === 'inbox-departure').map(r => r.reason), ['answered', 'withdrawn', 'cancelled', 'approved']);
 });
@@ -231,6 +238,7 @@ test('only a human review or QA verdict replies to requests on its subject item'
   assert.equal((await aide.call<{ ok: boolean }>('send', { kind: 'request', request: 'qa', subject: id, text: 'QA' })).ok, true);
   await ok(ui, { type: 'task.comment', item: id, text: 'Human QA', verdict: { verdict: 'qa', result: 'clear', run: 'human-qa' } });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).requests.length, 0);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const records = (await cland(root, 'hub', 'journal', '--json')).stdout.trim().split('\n').map(line => JSON.parse(line) as { event: string; kind: string; subject: string; reason: string });
   assert.equal(records.filter(r => r.event === 'inbox-departure' && r.kind === 'request' && r.subject === id && r.reason === 'replied').length, 2);
 });
@@ -291,10 +299,69 @@ test('progress and hub notices preserve a waiting topic report until it is read'
   assert.equal(afterNotice.needsYou, 1);
   const latestPush = ui.frames.slice(mark).filter(frame => frame.type === 'inbox').at(-1);
   if (latestPush) assert.equal((latestPush.inbox as Inbox).needsYou, 1);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const beforeRead = (await cland(root, 'hub', 'journal', '--json')).stdout;
   assert.doesNotMatch(beforeRead, /"event":"inbox-departure"/);
   await ok(ui, { type: 'topic.read', topic });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const records = (await cland(root, 'hub', 'journal', '--json')).stdout.trim().split('\n').map(line => JSON.parse(line) as { event: string; id: string; reason: string });
   assert.deepEqual(records.filter(record => record.event === 'inbox-departure').map(record => [record.id, record.reason]), [[before.messages[0]!.id, 'read']]);
+});
+
+test('cland inbox prints all four sections, all rows with ages, plan size and first lines, with the hub count last', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
+  const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
+  t.after(() => coord.close()); t.after(() => aide.close());
+  await coord.waitForPresence(['coord', 'aide-1']);
+  const epic = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', kind: 'epic', title: 'Inbox plan' })).item.id;
+  const item = (await ok<{ item: { id: string } }>(ui, { type: 'task.create', title: 'Planned work', parent: epic })).item.id;
+  await ok(ui, { type: 'task.plan', item: epic, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'Build', lanes: [[item]], qa: { scope: 'none', when: 'after-stage' } }] }) });
+  await ok(ui, { type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' });
+  await eventually('worker idle', async () => {
+    const status = await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' });
+    return status.sessions.some(s => s.name === 'worker' && s.state === 'idle') || undefined;
+  });
+  const asked = await coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Which path?\nFull question', options: ['Continue'] });
+  assert.equal(asked.ok, true);
+  assert.equal((await aide.call<{ ok: boolean }>('send', { kind: 'request', request: 'qa', subject: item, text: 'Check the build\nRequest body' })).ok, true);
+  for (let i = 0; i < 7; i++) assert.equal((await aide.call<{ ok: boolean }>('send', { text: `Message ${i}\nMessage body` })).ok, true);
+  const commandTopic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Command approval' })).topic.id;
+  await ok(ui, { type: 'topic.send', topic: commandTopic, text: '@worker needs approval' });
+  await eventually('fake harness holds a real command approval', async () => {
+    const inbox = await ok<Inbox>(ui, { type: 'inbox.list' });
+    return inbox.approvals.some(a => a.session === 'worker') || undefined;
+  });
+  const frame = JSON.parse((await cland(root, 'inbox', '--json')).stdout) as Inbox;
+  assert.deepEqual([frame.plans[0]?.stages, frame.plans[0]?.lanes, frame.plans[0]?.items], [1, 1, 1]);
+  assert.equal(frame.asks[0]?.fromRole, 'coordinator');
+  assert.equal(frame.approvals[0]?.command, 'touch approved');
+  const cli = await cland(root, 'inbox');
+  assert.equal(cli.code, 0, cli.stderr);
+  const lines = cli.stdout.trim().split('\n');
+  const titles = ['Asks and approvals (2)', 'Plan approvals (1)', 'Requests to you (1)', 'Messages to you (7)'];
+  const positions = titles.map(title => lines.indexOf(title));
+  assert.ok(positions.every(n => n >= 0), cli.stdout);
+  assert.deepEqual([...positions].sort((a,b) => a-b), positions);
+  assert.ok(lines[1]?.startsWith('approval '), 'new command approval precedes the older ask');
+  assert.ok(lines[2]?.startsWith(`ask ${asked.ask}`));
+  assert.match(cli.stdout, /1 stages · 1 lanes · 1 items/);
+  assert.match(cli.stdout, /Check the build  from aide-1 \[aide\]  · 0 m/);
+  assert.doesNotMatch(cli.stdout, /Full question|Full command|Request body|Message body|more/);
+  const messages = lines.filter(line => line.startsWith('message '));
+  assert.equal(messages.length, 7);
+  assert.deepEqual(messages.map(line => line.match(/Message (\d)/)?.[1]), ['6', '5', '4', '3', '2', '1', '0']);
+  assert.ok(lines.filter(line => /^(ask|approval|plan|qa|message) /.test(line)).every(line => / · \d+ m$/.test(line)));
+  const notifications = lines.filter(line => line.startsWith('notification: '));
+  assert.ok(notifications.length > 0, 'the fixture includes legacy notifications');
+  assert.deepEqual(notifications, frame.notifications.map(note => `notification: ${note.severity === 'warn' ? '⚠ ' : ''}${note.text}`));
+  assert.ok(lines.indexOf(notifications[0]!) > lines.indexOf(messages.at(-1)!), 'legacy notifications follow the four response sections');
+  assert.equal(lines.at(-1), `needs you: ${frame.needsYou}`);
+  assert.equal(frame.needsYou, 11);
 });

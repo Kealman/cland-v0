@@ -206,6 +206,7 @@ export class InboxBoard {
     const byId = new Map(topics.map((t) => [t.id, t]));
     const asks: InboxAsk[] = open.slice().reverse().map((a) => {
       const t = byId.get(a.topic);
+      const fromRole = p.store.roleOf(a.from);
       return p.visibility.place('inbox', {
         id: a.id,
         topic: { id: a.topic, title: t?.title ?? a.topic, ...(t?.item ? { item: t.item } : {}) },
@@ -213,7 +214,8 @@ export class InboxBoard {
         options: a.options,
         free: a.free,
         from: a.from,
-        label: withRole(a.from, p.store.roleOf(a.from)),
+        ...(fromRole ? { fromRole } : {}),
+        label: withRole(a.from, fromRole),
         ts: a.ts,
         since: a.ts,
       }, 'ask');
@@ -233,13 +235,14 @@ export class InboxBoard {
       seen.add(proc.sessionId);
       const now = live.get(proc.sessionId);
       const name = now?.name ?? proc.name;
-      approvals.push({ id: proc.sessionId, session: name, label: now?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.sessionId) ?? p.now().toISOString(), attach: proc.attach, ...(proc.approvalCommand ? { command: proc.approvalCommand } : {}) });
+      const role = now?.role ?? proc.role;
+      approvals.push({ id: proc.sessionId, session: name, ...(role ? { role } : {}), label: now?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.sessionId) ?? p.now().toISOString(), attach: proc.attach, ...(proc.approvalCommand ? { command: proc.approvalCommand } : {}) });
     }
     // a session the adapters did not launch has no state of its own; one that has (a resumed launch under another name) still counts
     for (const s of presence) {
       if (s.state !== 'waiting for approval' || seen.has(s.sessionId)) continue;
       seen.add(s.sessionId);
-      approvals.push({ id: s.sessionId, session: s.name, label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? p.now().toISOString(), attach: null });
+      approvals.push({ id: s.sessionId, session: s.name, ...(s.role ? { role: s.role } : {}), label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? p.now().toISOString(), attach: null });
     }
     const placedApprovals = approvals.map(a => p.visibility.place('inbox', a, 'approval'));
     const notifications = p.store.notifications().map(n => p.visibility.place('inbox', n));
@@ -265,7 +268,10 @@ export class InboxBoard {
     }
     const items = p.items();
     const plans: InboxPlan[] = items.filter(i => i.state === 'open' && i.plan && !i.planError && i.approval?.required && i.approval.state === 'pending')
-      .map(i => ({ id: i.id, subject: i.id, title: i.title, since: i.updated, layer: 'now' as const }));
+      .map(i => ({ id: i.id, subject: i.id, title: i.title, stages: i.plan!.stages.length,
+        lanes: i.plan!.stages.reduce((n, s) => n + s.lanes.length, 0),
+        items: i.plan!.stages.reduce((n, s) => n + s.lanes.reduce((m, lane) => m + lane.length, 0), 0),
+        since: i.updated, layer: 'now' as const }));
     const rows: InboxWait[] = [
       ...asks.filter(a => a.layer === 'now').map(a => ({ kind: 'ask' as const, id: a.id, subject: a.topic.item ?? a.topic.id, since: a.ts })),
       ...placedApprovals.filter(a => a.layer === 'now').map(a => ({ kind: 'approval' as const, id: a.id, subject: a.session, since: a.since })),

@@ -1,13 +1,4 @@
--- The inbox (spec section 5, Inbox.dc.html, #33): in the right panel (␣n) and full width in the centre (␣N).
--- Now and Watch each have four sections in a fixed order; Background stays in Agents:
---   ASKS            the Coordinator's open asks: `1`–`9` answer with that option, `i` a free answer in the topic's
---                   composer, ↵ opens the topic
---   APPROVALS       sessions waiting for approval: ↵ attaches the session in the centre, where its harness asks
---   WAITING FOR YOU topics waiting for the human without an open ask: ↵ opens the topic
---   NOTIFICATIONS   verdicts, role changes, deaths, long idles: `d` dismisses one, `D` all; ↵ opens the item or
---                   the session it names
--- Warnings, asks and approvals are never dismissed. Everything comes from the hub (`inbox.list`, the `inbox` event) and
--- renders through `state.changed()`, so no update ever raises a prompt.
+-- The four now sections (§3.7), shared by the panel and full-width inbox.
 local api = vim.api
 local state = require('cland.state')
 local visibility = require('cland.visibility')
@@ -43,48 +34,8 @@ local function notification_glyph(n)
   return M.GLYPH[n.kind] or { '·', 'ClandDim' }
 end
 
---- Draw one layer with the existing ask, approval, topic and notification actions.
-local function render_layer(c, ib)
-  if #ib.asks > 0 then
-    c:add({})
-    section(c, 'asks · answer here', #ib.asks, nil, true)
-    for _, a in ipairs(ib.asks) do
-      local ask = { id = a.id, topic = a.topic and a.topic.id, question = a.question, options = a.options or {}, free = a.free }
-      local where = a.topic and ((a.topic.item and a.topic.item ~= vim.NIL) and a.topic.item or a.topic.title) or ''
-      c:add({ { ' ? ', 'ClandAmber' }, { where, 'ClandBlue' } }, { { tostring(a.label or state.label(a.from or '', a.fromRole)) .. ' · ' .. clock(a.ts) .. ' ', 'ClandDim' } }, { ask = ask, topic = ask.topic, session = a.from })
-      for _, l in ipairs(ask_card.split(a.question)) do
-        c:add({ { '   ' .. l, 'ClandBold' } }, nil, { ask = ask, topic = ask.topic, session = a.from })
-      end
-      for i, o in ipairs(a.options or {}) do
-        for k, l in ipairs(ask_card.split(o)) do
-          local badge = k == 1 and { ' ' .. i .. ' ', 'ClandBadgeN' } or { (' '):rep(#tostring(i) + 2) }
-          c:add({ { '   ' }, badge, { ' ' .. l } }, nil, { ask = ask, topic = ask.topic, option = i })
-        end
-      end
-      c:add({ { '   ' .. (a.free ~= false and 'i free answer · ' or '') .. '↵ open the topic', 'ClandFaint' } }, nil, { ask = ask, topic = ask.topic })
-    end
-  end
-  if #ib.approvals > 0 then
-    c:add({})
-    section(c, 'approvals · answer in the session', #ib.approvals, nil, true)
-    for _, p in ipairs(ib.approvals) do
-      c:add({ { ' ▲ ', 'ClandAmber' }, { tostring(p.label or p.session), 'ClandBold' } }, { { '↵ attach ', 'ClandDim' } }, { session = p.session, approval = true })
-    end
-  end
-  if #ib.waiting > 0 then
-    c:add({})
-    section(c, 'waiting for you · topics', #ib.waiting, nil, true)
-    for _, t in ipairs(ib.waiting) do
-      local right = {}
-      local unread = tonumber(t.unread) or 0
-      if unread > 0 then
-        right[#right + 1] = { ' ' .. unread .. ' ', 'ClandBadge' }
-        right[#right + 1] = { ' ' }
-      end
-      right[#right + 1] = { clock(t.lastMessageAt ~= vim.NIL and t.lastMessageAt or t.updatedAt) .. ' ', 'ClandDim' }
-      c:add({ { ' ● ', 'ClandAmber' }, { tostring(t.title) } }, right, { topic = t.id })
-    end
-  end
+-- The legacy notification list remains below the now sections until T-288.
+local function render_notifications(c, ib)
   if #ib.notifications > 0 then
     c:add({})
     local dismissable = false
@@ -99,11 +50,128 @@ local function render_layer(c, ib)
   end
 end
 
---- The hub owns placement; older frames without layers remain visible in Now.
-function M.render(c, full)
-  if state.needs_you() == 0 then
-    c:add({ { ' ✓ nothing needs you', 'ClandGreen' } })
+M.selected, M.expanded = {}, {}
+local hl = require('cland.hl')
+local function since(r) return r.since or r.ts end
+local function first_line(s) return tostring(s or ''):match('[^\r\n]*') end
+function M.age(ts)
+  local at = require('cland.thread').epoch(ts)
+  if not at then return '?' end
+  local m = math.max(0, math.floor((os.time() - at) / 60))
+  if m < 60 then return m .. ' m' end
+  if m < 1440 then return math.floor(m / 60) .. ' h ' .. m % 60 .. ' m' end
+  return math.floor(m / 1440) .. ' d ' .. math.floor(m % 1440 / 60) .. ' h'
+end
+
+local function now_rows(list, kind)
+  local out = {}
+  for _, r in ipairs(list or {}) do
+    if (visibility.layer(r) or 'now') == 'now' then out[#out + 1] = { kind = kind, value = r } end
   end
+  return out
+end
+
+-- Detail and fold text must remain readable in a narrow panel, including long single-line commands.
+local function wrapped(text, width)
+  local out = {}
+  for _, line in ipairs(ask_card.split(text)) do
+    repeat
+      local count, used = 0, 0
+      for i = 0, vim.fn.strchars(line) - 1 do
+        local ch = vim.fn.strcharpart(line, i, 1)
+        local w = api.nvim_strwidth(ch)
+        if used + w > width then break end
+        used, count = used + w, count + 1
+      end
+      count = math.max(1, count)
+      out[#out + 1] = vim.fn.strcharpart(line, 0, count)
+      line = vim.fn.strcharpart(line, count)
+    until line == ''
+  end
+  return out
+end
+
+local function render_row(c, entry, selected)
+  local r, kind = entry.value, entry.kind
+  local info = { inbox_key = kind .. ':' .. r.id }
+  local left = {}
+  if kind == 'ask' then
+    info.ask = { id = r.id, topic = r.topic and r.topic.id, question = r.question, options = r.options or {}, free = r.free }
+    info.topic, info.session = info.ask.topic, r.from
+    local where = r.topic and (r.topic.item ~= vim.NIL and r.topic.item or r.topic.title) or ''
+    left = { { ' ? ', 'ClandAmber' }, { where .. ' ', 'ClandBlue' }, { first_line(r.question), 'ClandBold' } }
+  elseif kind == 'approval' then
+    info.approval, info.session = true, r.session
+    left = { { ' ▲ ', 'ClandAmber' }, { r.session .. ' ', 'ClandBold' }, { first_line(r.command or 'waiting for approval') } }
+  elseif kind == 'plan' then
+    info.plan, info.item = true, r.id
+    left = { { ' ▲ ', 'ClandAmber' }, { r.id .. ' ', 'ClandBlue' }, { r.title .. ' · ' .. (r.stages or '?') .. ' stages · ' .. (r.lanes or '?') .. ' lanes · ' .. (r.items or '?') .. ' items' } }
+  else
+    info.topic, info.item, info.session = r.topic and r.topic.id, r.subject, r.from
+    local glyph = kind == 'message' and '●' or ({ review = '✓', qa = '◇', handover = '⇄' })[r.request] or '·'
+    local where = kind == 'request' and r.subject or (r.topic and (r.topic.item ~= vim.NIL and r.topic.item or r.topic.title) or r.title)
+    left = { { ' ' .. glyph .. ' ', 'ClandAmber' }, { tostring(where or '') .. ' ', 'ClandBlue' }, { (kind == 'request' and r.request .. ' · ' or '') .. first_line(r.text) } }
+  end
+  local right = {}
+  local sender = r.from or (kind == 'approval' and r.session) or r.label
+  if sender then right[#right + 1] = { sender .. ' · ', hl.role_group('agent', r.fromRole or r.role) } end
+  right[#right + 1] = { M.age(since(r)) .. ' ', 'ClandDim' }
+  c:add(left, right, info)
+  if selected ~= info.inbox_key then return end
+  local detail_index = 0
+  local function detail(chunks, option)
+    detail_index = detail_index + 1
+    c:add(chunks, nil, vim.tbl_extend('force', info, { detail = true, inbox_detail = detail_index, option = option }))
+  end
+  if kind == 'ask' then
+    for _, line in ipairs(wrapped(r.question, c.width - 4)) do detail({ { '   ' .. line, 'ClandBold' } }) end
+    for i, option in ipairs(r.options or {}) do
+      for k, line in ipairs(wrapped(option, c.width - 8)) do
+        detail({ { '   ' }, { k == 1 and (' ' .. i .. ' ') or '   ', 'ClandBadgeN' }, { ' ' .. line } }, i)
+      end
+    end
+    detail({ { '   ' .. (r.free ~= false and 'i free answer · ' or '') .. '↵ open the topic', 'ClandFaint' } })
+  elseif kind == 'approval' and r.command then
+    for _, line in ipairs(wrapped(r.command, c.width - 4)) do detail({ { '   ' .. line, 'ClandBold' } }) end
+  end
+end
+
+function M.render_sections(c, buf)
+  local ib = state.S.inbox
+  local asks = now_rows(ib.asks, 'ask')
+  vim.list_extend(asks, now_rows(ib.approvals, 'approval'))
+  local sections = {
+    { 'asks and approvals', asks }, { 'plan approvals', now_rows(ib.plans, 'plan') },
+    { 'requests to you', now_rows(ib.requests, 'request') }, { 'messages to you', now_rows(ib.messages, 'message') },
+  }
+  for _, group in ipairs(sections) do
+    local name, rows = group[1], group[2]
+    for i, entry in ipairs(rows) do entry.order = i end
+    table.sort(rows, function(a, b)
+      local x, y = since(a.value) or '', since(b.value) or ''
+      return x > y or (x == y and a.order < b.order)
+    end)
+    if #rows > 0 then
+      c:add({})
+      section(c, name, #rows, nil, true)
+      for i, entry in ipairs(rows) do
+        if i <= 5 or M.expanded[name] then render_row(c, entry, M.selected[buf]) end
+      end
+      if #rows > 5 then
+        local oldest = rows[#rows].value
+        local text = (M.expanded[name] and '▾' or '▸') .. ' ' .. (#rows - 5) .. ' more · the oldest waits ' .. M.age(since(oldest)) .. ', since ' .. clock(since(oldest))
+        for _, line in ipairs(wrapped(text, c.width - 2)) do
+          c:add({ { ' ' .. line, 'ClandDim' } }, nil, { inbox_fold = name, inbox_key = 'fold:' .. name })
+        end
+      end
+    end
+  end
+end
+
+--- Keep sections and the events footer independent for the parallel events-view work.
+function M.render(c, full, buf)
+  if state.needs_you() == 0 then c:add({ { ' ✓ nothing needs you', 'ClandGreen' } }) end
+  M.render_sections(c, buf)
   local layers = { 'now', 'watch' }
   if state.S.ui.inbox_archive then table.insert(layers, 'archive') end
   -- The hub sends notifications oldest first, breaking equal timestamps by insertion order.
@@ -121,7 +189,7 @@ function M.render(c, full)
   end
   for _, layer in ipairs(layers) do
     local ib, count = {}, 0
-    for _, kind in ipairs({ 'asks', 'approvals', 'waiting', 'notifications' }) do
+    for _, kind in ipairs({ 'notifications' }) do
       ib[kind] = {}
       for _, entry in ipairs(kind == 'notifications' and notifications or state.S.inbox[kind]) do
         if (visibility.layer(entry) or 'now') == layer then
@@ -133,7 +201,7 @@ function M.render(c, full)
     if count > 0 or layer == 'archive' then
       c:add({})
       section(c, layer, count, nil, layer == 'now')
-      render_layer(c, ib)
+      render_notifications(c, ib)
     end
   end
   if earlier > 0 then
@@ -142,9 +210,9 @@ function M.render(c, full)
   end
   c:add({ { require('cland.events').inbox_line(), 'ClandPlanChange' } }, nil, { events = true })
   if full then
-    return { ' 1-9 answer · i free answer · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
+    return { ' 1-9 answer · i free answer · za more · ↵ open or attach · d dismiss · D all · A archive · ␣N or ␣␣ back' }
   end
-  return { ' 1-9 answer · i free · ↵ act · d/D dismiss · A archive · ␣N full width' }
+  return { ' 1-9 answer · i free · za more · ↵ act · d/D dismiss · A archive · ␣N full width' }
 end
 
 --- Follow a selected notification across redraws; a capped-out selection lands on the inert footer.
@@ -157,6 +225,55 @@ function M.notification_row(c, id)
     if info and info.earlier_notifications then earlier = r end
   end
   return earlier
+end
+
+function M.follow_row(c, info)
+  if not info then return nil end
+  if info.notification then return M.notification_row(c, info.notification) end
+  for r = 1, #c.lines do
+    local candidate = c.info[r]
+    if candidate and candidate.inbox_key == info.inbox_key and info.inbox_key and candidate.inbox_detail == info.inbox_detail then return r end
+  end
+  -- A selected row pushed past the five-row cap lands on its section's inert fold line.
+  local kind = info.inbox_key and info.inbox_key:match('^([^:]+):')
+  local group = ({ ask = 'asks and approvals', approval = 'asks and approvals', plan = 'plan approvals', request = 'requests to you', message = 'messages to you' })[kind]
+  for r = 1, #c.lines do
+    if c.info[r] and group and c.info[r].inbox_fold == group then return r end
+  end
+end
+
+function M.cursor(buf)
+  local win = api.nvim_get_current_win()
+  if api.nvim_win_get_buf(win) ~= buf then return end
+  local panels = require('cland.panels')
+  local info = panels.row_at(buf, api.nvim_win_get_cursor(win)[1])
+  local key = info and info.inbox_key
+  if M.selected[buf] == key then return end
+  M.selected[buf] = key
+  state.changed()
+end
+
+-- Only displayed ages cause a redraw. This local clock never requests a hub frame.
+local timer
+local function start_clock()
+  if timer then return end
+  timer = (vim.uv or vim.loop).new_timer()
+  local previous
+  timer:start(1000, 1000, vim.schedule_wrap(function()
+    local visible = false
+    for _, win in ipairs(api.nvim_list_wins()) do
+      local role = vim.b[api.nvim_win_get_buf(win)].cland_role
+      if role == 'inbox' or role == 'inbox_full' then visible = true; break end
+    end
+    if not visible then return end
+    local signature = {}
+    for _, kind in ipairs({ 'asks', 'approvals', 'plans', 'requests', 'messages' }) do
+      for _, r in ipairs(state.S.inbox[kind]) do signature[#signature + 1] = M.age(since(r)) end
+    end
+    local current = table.concat(signature, '|')
+    if current ~= previous then previous = current; state.changed() end
+  end))
+  api.nvim_create_autocmd('VimLeavePre', { once = true, callback = function() timer:stop(); timer:close() end })
 end
 
 -- Acting from a row ------------------------------------------------------------------------------------------
@@ -188,6 +305,8 @@ function M.open(buf)
   local layout = require('cland.layout')
   if info.events then
     layout.show({ kind = 'events' }, { insert = false })
+  elseif info.plan then
+    layout.show({ kind = 'plan', id = info.item }, { insert = false })
   elseif info.approval and info.session then
     layout.show({ kind = 'session', id = info.session }, { insert = true })
   elseif info.topic then
@@ -241,9 +360,17 @@ end
 
 --- The inbox's keys on `buf` (the panel's buffer or the full-width one).
 function M.keys(buf)
+  start_clock()
+  api.nvim_create_autocmd('CursorMoved', { buffer = buf, callback = function() M.cursor(buf) end })
   local function map(lhs, fn, desc)
     require('cland.actions').map('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })
   end
+  map('za', function()
+    local info = row(buf)
+    if not (info and info.inbox_fold) then return state.say('za folds an inbox section: put the cursor on more') end
+    M.expanded[info.inbox_fold] = not M.expanded[info.inbox_fold]
+    state.changed()
+  end, 'fold or unfold the inbox section')
   map('e', function() require('cland.layout').show({ kind = 'events' }, { insert = false }) end, 'Events view')
   map('<CR>', function()
     M.open(buf)
@@ -292,11 +419,11 @@ function M.render_full()
   for _, w in ipairs(wins) do
     local cur = api.nvim_win_get_cursor(w)
     local info = panels.row_at(b, cur[1])
-    cursors[w] = { row = cur[1], notification = info and info.notification }
+    cursors[w] = { row = cur[1], info = info }
   end
   local width = #wins > 0 and api.nvim_win_get_width(wins[1]) or 80
   local c = panels.canvas(math.min(width, 120))
-  local footer = M.render(c, true)
+  local footer = M.render(c, true, b)
   c:add({})
   for _, f in ipairs(footer) do
     c:add({ { f, 'ClandFaint' } })
@@ -304,7 +431,7 @@ function M.render_full()
   panels.rows[b] = c:apply(b)
   for _, w in ipairs(wins) do
     local cur = cursors[w]
-    local target = M.notification_row(c, cur.notification) or cur.row
+    local target = M.follow_row(c, cur.info) or cur.row
     pcall(api.nvim_win_set_cursor, w, { math.min(target, #c.lines), 0 })
   end
 end

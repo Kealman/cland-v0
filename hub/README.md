@@ -200,15 +200,17 @@ Each departure passes through the existing log tap as `{"event":"inbox-departure
 | Request | Result `value` |
 | --- | --- |
 | `{"type":"topic.answer","id":…,"ask":"<ask id>","option":2}` or `"text":"…"` | `{"message":TopicMessage,"outcomes":[…]}` |
-| `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","waiting","notifications","needsYou"}`. Response rows carry their classified layers before the hub compares inbox publications, so a pin/mute publishes new placement even when `needsYou` stays unchanged (T-235). |
+| `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","plans","requests","messages","waiting","notifications","needsYou"}`. Response rows carry their classified layers before the hub compares inbox publications, so a pin/mute publishes new placement even when `needsYou` stays unchanged (T-235). |
 | `{"type":"inbox.dismiss","id":…,"notification":"<notification id>"}` | `Inbox`; an ask's or a session's name is refused (`asks and approvals are not dismissed: answer them`), a warn-level notification too (`warn events are informational and are not dismissed`), an unknown id too; dismissing twice is harmless |
 | `{"type":"inbox.dismiss_all","id":…}` | `Inbox`, its ordinary notifications gone; warn-level notifications, asks and approvals stay |
 
 | Command | What it does |
 | --- | --- |
-| `cland inbox [--json]` | The inbox from a terminal: one block per open ask (the ask id, the topic title and its bound item, the asker's label, the question, the numbered options), then one line per approval, waiting topic and notification, last `needs you: <n>`. `--json` prints the `Inbox` value as the hub returns it. |
+| `cland inbox [--json]` | Four now-layer sections, in order: asks and approvals, plan approvals, requests to you, messages to you. Nonempty headers carry counts; rows are newest first, uncapped, with id, subject/topic, first line, sender and waiting age. Plans show their title and stage/lane/item counts. The legacy `notification: …` lines (with `⚠` for warnings) follow the four sections until T-288 retires them. The final line is `needs you: <n>`. `--json` prints the unchanged hub frame. |
 | `cland topic answer <ask id> <option number>` | Answers an ask with its option n (1-based): prints `answered <ask id> in <topic title>: <the answer>`. |
 | `cland topic answer <ask id> --text "<free answer>"` | Answers an ask with a free answer (refused when the ask takes options only). The hub's refusals (an ask that is not open, an option out of range, a free answer to an options-only ask) print `cland: <error>` with exit code 1. |
+
+Inbox asks include optional `fromRole`; command approvals include optional `role` and `command`. Pending plan rows include `title`, `stages` (number of stages), `lanes` (total lanes across stages), and `items` (total planned item entries). Requests and messages carry their sender's `fromRole` and `topic` reference (id, title and optional bound item), plus `since`, the persisted beginning of the wait. Clients use `since` for waiting ages and retain unknown metadata from older hubs as unknown. The Neovim client caps each section at five rows with an explicit fold; the CLI prints every row. `waiting` and `notifications` remain in the frame for the legacy notification surface until T-288.
 
 Subscribers get `{"type":"inbox","inbox":Inbox}` whenever any of it changed (an ask, a session's state, a topic, a notification, a dismissal), coalesced to one per turn of the event loop and only when it differs from the last one sent. The idle threshold is `[inbox] idle_minutes` in `.cland/config.toml` (default 30; `CLAND_IDLE_NOTIFY_MS` overrides it, for tests); the clock starts at each transition to `idle`.
 

@@ -88,25 +88,25 @@ for (const scenario of cases) {
         assert.match(screen, header);
         if (expected === 0) assert.match(screen, /✓ nothing needs you/);
         const required = ['ask', 'approval', 'waiting'];
-        const expectedNow = required.filter((_, i) => layers[i] === 'now');
-        const expectedWatch = required.filter((_, i) => layers[i] === 'watch');
+        const expectedNow = required.filter((_, i) => layers[i] === 'now').sort();
+        const expectedWatch: string[] = []; // Now-only inbox: muted responses leave this surface.
         // A mute can change rows without changing a zero count; wait for the actual redraw too.
         const rows = await eventually('inbox response rows reach their new layers', async () => {
           const rendered = await c.lua<{ now: string[]; watch: string[] }>(`
           local buf = vim.api.nvim_get_current_buf()
-          local out, seen, layer = { now = {}, watch = {} }, {}, nil
+          local out, seen = { now = {}, watch = {} }, {}
           for i, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
-            if line:match('^ NOW') then layer = 'now' elseif line:match('^ WATCH') then layer = 'watch' end
             local row = require('cland.panels').row_at(buf, i)
             local id = row and (row.ask and 'ask' or row.approval and 'approval' or row.topic == 'waiting' and 'waiting')
-            if id and layer and not seen[id] then table.insert(out[layer], id); seen[id] = true end
+            if id and not seen[id] then table.insert(out.now, id); seen[id] = true end
           end
+          table.sort(out.now)
           return out
           `);
           return JSON.stringify(rendered.now) === JSON.stringify(expectedNow) && JSON.stringify(rendered.watch) === JSON.stringify(expectedWatch) ? rendered : undefined;
         });
         assert.deepEqual(rows.now, expectedNow, 'Now renders exactly the required responses counted by the chip');
-        assert.deepEqual(rows.watch, expectedWatch, 'muted responses remain visible in Watch');
+        assert.deepEqual(rows.watch, expectedWatch, 'non-now responses are absent from the inbox');
       }
       await c.input('<Esc><Space>N');
       await c.waitScreen(s => !s.includes('INBOX · FULL WIDTH'), 'return from full-width inbox');

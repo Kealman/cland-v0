@@ -42,6 +42,11 @@ return {
     vim.api.nvim_win_set_width(require('cland.layout').win.left,60)
     qa.keys('<Space>n')
     qa.wait_for(function()
+      return qa.screen():find('ASKS AND APPROVALS', 1, true)
+    end, 5000, 'the inbox section')
+    -- Only the selected ask unfolds its full question and options.
+    qa.keys('gg/^ ? T-2<CR>')
+    qa.wait_for(function()
       local s = qa.screen()
       return s:find('T-2 T-1 › Items panel', 1, true) and s:find('Which should win?', 1, true)
     end, 5000, 'the items panel and the inbox')

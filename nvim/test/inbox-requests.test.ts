@@ -47,6 +47,7 @@ test('the chip equals cland inbox before and after an Aide review request is rep
     socket.write(JSON.stringify({ set: { inbox: after }, emit: { type: 'inbox', inbox: after } }) + '\n');
   });
   await c.waitScreen(s => /needs you\s+0\b/.test(s.split('\n')[0] ?? '') && /nothing needs you/.test(s), 'reply snapshot clears chip and inbox');
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = (await cland(root, 'hub', 'journal', '--json')).stdout;
   assert.match(journal, /"event":"inbox-departure".*"reason":"replied"/);
 });

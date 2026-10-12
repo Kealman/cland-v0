@@ -5,10 +5,10 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { Inbox, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
-export const INBOX_USAGE = `  inbox [--json]          the human's inbox: one block per open ask (the ask id, the topic title and
-                          its bound item, the asker, the question, the numbered options), then one line
-                          per approval, waiting topic and notification, last 'needs you: <n>'
-                          (--json for the Inbox as the hub returns it)
+export const INBOX_USAGE = `  inbox [--json]          four sections: asks and approvals, plan approvals, requests to you, messages to you
+                          newest first, all rows with ids, subjects, senders and waiting ages;
+                          then legacy notification lines, last 'needs you: <n>'
+                          (--json for the hub's Inbox frame)
 `;
 export const TOPIC_USAGE = `  topic answer <ask id> <option number>
                           answer an ask with its option n (1-based): prints
@@ -19,17 +19,36 @@ export const TOPIC_USAGE = `  topic answer <ask id> <option number>
 `;
 const NO_HUB = 'cland: no hub runs for this project — run `cland hub start`\n';
 
-/** One block per open ask, then one line per approval, waiting topic and notification, then `needs you`. */
+const firstLine = (text: string): string => text.split(/\r?\n/, 1)[0] ?? '';
+function age(since: string, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
+  if (!Number.isFinite(minutes)) return '?';
+  if (minutes < 60) return `${minutes} m`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} h ${minutes % 60} m`;
+  return `${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
+}
+
+/** The four now sections, uncapped. JSON remains the unmodified hub frame. */
 function describe(v: Inbox): string {
-  const lines: string[] = [];
-  for (const a of v.asks) {
-    lines.push(`ask ${a.id}  ${a.topic.title}${a.topic.item ? ` (${a.topic.item})` : ''}  from ${a.label}`);
-    lines.push(`  ${a.question}`);
-    for (const [i, o] of a.options.entries()) lines.push(`    ${i + 1}. ${o}`);
+  const lines: string[] = [], now = Date.now();
+  const sender = (from: string, role?: string) => role ? `${from} [${role}]` : from;
+  const sections = [
+    { title: 'Asks and approvals', rows: [
+      ...v.asks.filter(a => !a.layer || a.layer === 'now').map(a => ({ since: a.since, text: `ask ${a.id}  ${a.topic.title}${a.topic.item ? ` (${a.topic.item})` : ''}  ${firstLine(a.question)}  from ${a.label}` })),
+      ...v.approvals.filter(a => !a.layer || a.layer === 'now').map(a => ({ since: a.since, text: `approval ${a.id}  ${a.session}  ${firstLine(a.command ?? 'waiting for approval')}  from ${a.label}` })),
+    ] },
+    { title: 'Plan approvals', rows: (v.plans ?? []).map(p => ({ since: p.since, text: `plan ${p.id}  ${p.title}  ${p.stages ?? '?'} stages · ${p.lanes ?? '?'} lanes · ${p.items ?? '?'} items` })) },
+    { title: 'Requests to you', rows: (v.requests ?? []).map(r => ({ since: r.since, text: `${r.request} ${r.id}  ${r.subject}  ${firstLine(r.text)}  from ${sender(r.from, r.fromRole)}` })) },
+    { title: 'Messages to you', rows: (v.messages ?? []).filter(m => !m.layer || m.layer === 'now').map(m => ({ since: m.since, text: `message ${m.id}  ${m.topic.item ?? m.topic.title} (${m.topic.id})  ${firstLine(m.text)}  from ${sender(m.from, m.fromRole)}` })) },
+  ];
+  for (const section of sections) {
+    if (!section.rows.length) continue;
+    lines.push(`${section.title} (${section.rows.length})`);
+    for (const row of section.rows.sort((a, b) => b.since.localeCompare(a.since))) lines.push(`${row.text}  · ${age(row.since, now)}`);
   }
-  for (const ap of v.approvals) lines.push(`approval: ${ap.label} waiting for approval`);
-  for (const w of v.waiting) lines.push(`waiting: ${w.title} (${w.id})`);
-  for (const n of v.notifications) lines.push(`notification: ${n.severity === 'warn' ? '⚠ ' : ''}${n.text}`);
+  // T-288 retires the legacy notification output; preserve it until that item lands.
+  for (const note of v.notifications) lines.push(`notification: ${note.severity === 'warn' ? '⚠ ' : ''}${note.text}`);
+  if (v.needsYou === 0) lines.push('✓ nothing needs you');
   lines.push(`needs you: ${v.needsYou}`);
   return lines.join('\n');
 }

@@ -69,12 +69,12 @@ group('items', {{'gn','Now-layer items'}, {'gw','Watch-layer items'}, {'gb','Bac
 group('topics', {{'za','Toggle background topics'}, {'A','Show or hide archived topics'}})
 group('events', {{'<CR>', 'Open event subject'}, {'A', 'Page 200 older events'}, {'za', 'Fold or unfold event day'}, {'0', 'Show all event kinds'}, {'w', 'Toggle warning events'}, {'s', 'Filter events by subject'}, {'F', 'Clear events filter'}, {'gM', 'Mute or restore event subject'}})
 for i, kind in ipairs(require('cland.event_kinds')) do add('events', tostring(i), 'Filter ' .. kind .. ' events') end
-group('inbox', {{'e', 'Events view'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
+group('inbox', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 for _, scope in ipairs({'inbox','inbox_full','thread'}) do
   for n=1,9 do add(scope, tostring(n), 'Answer selected ask with option ' .. n) end
   add(scope, 'i', 'Free answer to selected ask' .. (scope == 'thread' and ' or focus composer' or ''))
 end
-group('inbox_full', {{'e', 'Events view'}, {'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
+group('inbox_full', {{'za', 'Fold or unfold inbox section'}, {'e', 'Events view'}, {'<CR>','Open inbox row'}, {'d','Dismiss selected notification'}, {'D','Dismiss all notifications'}, {'A','Show or hide inbox archive'}})
 group('thread', {{'<CR>','Toggle agent run or open artifact chip'}, {'ga','Artifacts in this topic'},
   {'zo','Open agent run'}, {'za','Toggle agent run'}, {'zc','Close agent run'},
   {'zR','Open all agent runs'}, {'zM','Fold all agent runs'}})
