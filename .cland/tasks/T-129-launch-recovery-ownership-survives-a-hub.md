@@ -2,19 +2,20 @@
 id: T-129
 kind: task
 title: "Launch recovery ownership survives a hub restart: a failed spawn's pending cleanup is persisted and gates reuse until it settles"
-state: open
-status: backlog
+state: closed
+status: done
+criterion_seq: 3
 labels:
   - hub
   - tech-debt
   - ready-for-agent
-assignee: null
+assignee: impl-129
 parent: T-229
 blocked_by: []
-topic: null
-branch: null
+topic: topic-156
+branch: t/T-129-launch-recovery-ownership-survives-a-hub
 created: 2026-10-09T22:17:07.427Z
-updated: 2026-10-11T17:48:37.148Z
+updated: 2026-10-11T22:20:01.449Z
 ---
 
 ## Parent
@@ -33,9 +34,15 @@ T-79 keeps a failed spawn's files and recovery state while the child's exit is u
 
 ## Acceptance criteria
 
-- [ ] A failed spawn with an unverified child, followed by a hub restart: relaunch is refused until the recovery settles, and the files are not reused, which a test proves.
-- [ ] A child confirmed dead after the restart leads to cleanup and a released session.
-- [ ] `npm run typecheck && npm test` pass.
+- [x] C1. A failed spawn with an unverified child, followed by a hub restart: relaunch is refused until the recovery settles, and the files are not reused, which a test proves.
+  - done: impl-129 · 2026-10-11T21:39:36.251Z
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T129-1 · 2026-10-11T22:19:42.250Z · commit a482ace8264d94433be5477a60fe2c5ffafe59ab
+- [x] C2. A child confirmed dead after the restart leads to cleanup and a released session.
+  - done: impl-129 · 2026-10-11T21:39:36.840Z
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T129-1 · 2026-10-11T22:19:42.250Z · commit a482ace8264d94433be5477a60fe2c5ffafe59ab
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-129 · 2026-10-11T22:19:27.454Z
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T129-1 · 2026-10-11T22:19:42.250Z · commit a482ace8264d94433be5477a60fe2c5ffafe59ab
 
 ## Notes
 
@@ -61,3 +68,31 @@ In each case, a later spawn or watch failure clears that identity's role. A-497 
 ### coord · 2026-10-10T08:11:51.073Z
 
 T-141's final review (rev-67-141-10, A-500) cleared at d2481e5. A-500 lists the unresolved launch-identity classes left for T-129, each with a probe pinned to that head. Start from them together with A-487 (findings 3 and 4) and A-497 (Medium 1).
+
+### impl-129 · 2026-10-11T21:22:57.863Z
+
+Claimed at dev 0e3d011. Read T-102 and the deferred T-141 findings (A-487/A-497/A-500). Reproduction seam is the requested fake-harness protocol launch/restart path; resource rollback currently consists of in-memory closures in LaunchFiles/FailedLaunches.
+
+### impl-129 · 2026-10-11T21:40:34.057Z
+
+Implemented and pushed a482ace8264d94433be5477a60fe2c5ffafe59ab after merging origin/dev badc088. Durable resource rollback is attached to the existing pending-stop receipt before cleanup begins; failed relaunch retains its conversation. Deferred T-141 identity findings have red/green regressions. Evidence: A-1399, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1399-t-129-implementation-and-regression-evidence-at-a482ace.md. Targeted checks pass (4 protocol, 63 name-reservation, 64 native-boundary, 6 lifecycle), plus typecheck. Review requested to reviewer and resolved to rev-17; launching final suite all for that merged head. C3 awaits its result. QA policy none/per-item with no QA criteria.
+
+### impl-129 · 2026-10-11T22:19:27.598Z
+
+Final full verification passed at exact head a482ace8264d94433be5477a60fe2c5ffafe59ab: cland suite all run 4746c2a5-425d-4c5c-baac-937796011b2f, exit 0, typecheck plus 1584/1584 tests (zero failures/cancellations/skips). Durable log A-1414, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1414-suite-4746c2a5-425d-4c5c-baac-937796011b2f-all-at-a482ace.log. C3 is now done; all criteria await the final Reviewer verdict. No code/head changes after the submitted suite.
+
+### rev-17 · 2026-10-11T22:19:42.250Z
+
+verdict: review
+result: clear
+by: rev-17 [reviewer]
+run: rev-20261012-17-T129-1
+commit: a482ace8264d94433be5477a60fe2c5ffafe59ab
+
+No findings (high/medium/low); Standards and Spec clear. C1/C2 verified by failed-spawn/restart cases for captured and unknown child start identities, preserved failed-relaunch conversation, and OpenCode content/mode restoration with shared-file isolation. Durable receipts retain child/file ownership and fence reuse through settlement. Deferred T-141 claimant routing, early subscription, later foreign identity and foreign row/hold cases are covered and pass. Code review A-1400; red/green evidence A-1399. C3 verified from A-1414: exact unchanged reviewed head, typecheck/full suites pass 1584/1584, zero failures/cancellations/skips, exit 0. All C1-C3 verified; T-102 remains separate scope.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-11T22:20:01.449Z
+
+Merged ef576e8cfbb743fdac7752095b9685b1754e8df7 onto dev.

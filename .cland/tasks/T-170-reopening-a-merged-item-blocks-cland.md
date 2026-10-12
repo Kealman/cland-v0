@@ -3,17 +3,18 @@ id: T-170
 kind: task
 title: "Reopening a merged item blocks cland push and strands its worktree: one rule for reopen after merge"
 state: open
-status: backlog
+status: review
+criterion_seq: 4
 labels:
   - tech-debt
   - ready-for-agent
-assignee: null
+assignee: impl-170
 parent: T-229
 blocked_by: []
-topic: null
-branch: null
+topic: topic-161
+branch: t/T-170-reopening-a-merged-item-blocks-cland
 created: 2026-10-10T10:13:29.682Z
-updated: 2026-10-11T17:48:37.507Z
+updated: 2026-10-12T00:04:55.606Z
 ---
 
 ## Parent
@@ -32,11 +33,32 @@ Then make `cland merge` able to remove a stale worktree for a closed, landed ite
 
 ## Acceptance criteria
 
-- [ ] Reopening a landed item never blocks `cland push`; the chosen rule is documented in docs/agents/issue-tracker.md.
-- [ ] A stale worktree of a closed, landed item can be removed through cland, and `.cland/worktrees/T-165` is cleaned up.
-- [ ] A CLI test covers reopen after merge, then push.
-- [ ] `npm run typecheck && npm test` pass.
+- [x] C1. Reopening a landed item never blocks `cland push`; the chosen rule is documented in docs/agents/issue-tracker.md.
+  - done: impl-170 · 2026-10-11T23:47:29.664Z
+- [x] C2. A stale worktree of a closed, landed item, whose branch dev fully contains, can be removed through cland, and a protocol test proves the removal leaves no other work behind. Cleaning up the real .cland/worktrees/T-165 is done by the Coordinator after T-170 merges and the hub restarts, recorded on this item; it is not a merge-gate criterion. Amended by the Coordinator 2026-10-11 23:43Z.
+  - done: impl-170 · 2026-10-11T23:47:29.819Z
+- [x] C3. A CLI test covers reopen after merge, then push.
+  - done: impl-170 · 2026-10-11T23:47:29.989Z
+- [ ] C4. `npm run typecheck && npm test` pass.
 
 ## Notes
 
 Size S. tech-debt.
+
+## Comments
+
+### impl-170 · 2026-10-11T23:40:12.052Z
+
+Regression seam: real CLI merge/task edit/push plus hub topic.send, as requested. Chosen rule: a landed task is complete; later discussion cannot invalidate its merge. Reopening it will refuse with instructions to create a follow-up task, which starts from dev. Cleanup must preserve unmerged work but accept a stale branch already contained in dev.
+
+### impl-170 · 2026-10-11T23:47:30.206Z
+
+Candidate ff5f0079b76ef9ee1747fb437716e78325bea09d pushed to origin after fetching/merging origin/dev (already up to date). C1–C3 done. Protocol regressions reproduced topic push blocking, permissive landed reopen, stale cleanup stuck pending, and Git inspection failure permitting reopen before the fixes; all pass now. Selected lifecycle/cleanup tests (10), pending/rolled-back push (1), post-topic and pending sync (2), and strict reopen tests (2) pass. npm run typecheck passes. Evidence A-1447 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1447-t-170-implementation-and-regression-evidence.md. C4 awaits the full hub suite. QA policy is none; no per-item QA request is required. Live T-165 cleanup remains Coordinator follow-up after integration/restart.
+
+### impl-170 · 2026-10-12T00:04:06.553Z
+
+Full suite e2b097bc at ff5f007 passed typecheck but stopped before tests because launch-recovery.test.ts was unclassified (A-1454). Fetched/merged current origin/dev fae0e78; it already contains the machine classification, so no duplicate manifest fix was needed. Candidate is merge head 058633c with unchanged T-170 implementation. Resubmitting review and exact-head full suite; C4 remains pending.
+
+### impl-170 · 2026-10-12T00:04:55.606Z
+
+Second suite bef10186 at 058633c again passed typecheck but failed admission on the sole remaining unclassified path, termination-ownership.test.ts (A-1457). Added its machine classification as separate commit 26a96ce89c9f28c4c518612784a883620c40511e; it spawns real processes. npm run test:shards now passes for all 123 hub files (5 free, 118 machine). origin/dev fetched/merged again (up to date), new head pushed. T-170 product diff is unchanged. Requesting exact-head review/suite again; C4 still pending.

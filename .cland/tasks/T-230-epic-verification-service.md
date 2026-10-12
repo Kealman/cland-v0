@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:48:08.530Z
-updated: 2026-10-11T17:49:19.566Z
+updated: 2026-10-12T00:05:42.079Z
 ---
 
 ## Goal
@@ -57,4 +57,6 @@ stages:
         - T-234
       - - T-213
       - - T-215
+      - - T-250
+      - - T-251
 ```

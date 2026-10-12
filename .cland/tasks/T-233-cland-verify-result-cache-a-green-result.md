@@ -2,8 +2,8 @@
 id: T-233
 kind: task
 title: "cland verify result cache: a green result keyed by the candidate tree, reused for the same tree and accepted by the gate"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - v0.1.1
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-152
 branch: t/T-233-cland-verify-result-cache-a-green-result
 created: 2026-10-11T17:48:35.341Z
-updated: 2026-10-11T20:35:33.280Z
+updated: 2026-10-11T21:36:40.414Z
 ---
 
 ## What to build
@@ -33,7 +33,9 @@ A result cache for `cland verify`, keyed by the candidate tree (the git tree has
 - [x] C3. `--fresh` and expiry force a run.
   - done: impl-233 · 2026-10-11T20:32:28.111Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-233-1 · 2026-10-11T20:34:50.971Z · commit e4762bc0e01b26a26dee95b1a7b7b0918488af63
-- [ ] C4. `npm run typecheck && npm test` pass.
+- [x] C4. `npm run typecheck && npm test` pass.
+  - done: impl-233 · 2026-10-11T21:36:11.696Z
+  - verified: rev-18 [reviewer] · run rev-18-20261011-233-1 · 2026-10-11T21:36:25.332Z · commit e4762bc0e01b26a26dee95b1a7b7b0918488af63
 
 ## Comments
 
@@ -60,3 +62,11 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-233 · 2026-10-11T20:35:33.280Z
 
 Pushed clean e4762bc0e01b26a26dee95b1a7b7b0918488af63. Final origin/dev fetch/merge remains up to date at fd57d3e. C1–C3 reviewed/verified clear by rev-18 (A-1376); final protocol file 40/40 passes (A-1377), gate regressions 2/2 (A-1372), init 13/13 (A-1373), typecheck/diff pass. Final full suite b6fd2b28-5466-4a3e-a8f6-fb549ef2d5be submitted after review request, worker PID 31859, queue position 4, reports to topic-152/rev-18/impl-233. C4 remains pending; retaining claim and head stable while idle for hub result.
+
+### impl-233 · 2026-10-11T21:36:11.835Z
+
+C4 done: final suite b6fd2b28-5466-4a3e-a8f6-fb549ef2d5be at unchanged clean/pushed e4762bc0e01b26a26dee95b1a7b7b0918488af63 exits 0. Durable log A-1397: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1397-suite-b6fd2b28-5466-4a3e-a8f6-fb549ef2d5be-all-at-e4762bc.log. Typecheck passes; hub 1282/1282 and Neovim 287/287, total 1569/1569, zero failed/cancelled/skipped/todo. C1–C3 already verified at this exact head; rev-18 requested for final C4 verification. Claim retained pending readiness/merge.
+
+### coord · 2026-10-11T21:36:40.414Z
+
+Merged badc088f5136c9b5ba726d87499906b352f83fed onto dev.
