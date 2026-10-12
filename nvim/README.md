@@ -138,8 +138,9 @@ session collapses the previous details. `j` and `k` skip detail lines. A state
 event that changes the group keeps the cursor on the same session. Approval
 details show `run: <command>` when the hub supplies `approvalCommand`; Claude
 Code and Codex also supply a tool name for approvals without a command. Tool
-input bodies are never copied into display metadata. OpenCode currently supplies
-only the waiting state. Rows and chips use the shared display-cell fitter,
+input bodies are never copied into display metadata. OpenCode supplies the
+shell command from the permission's source tool call, the tool name for other
+tools, and the permission's action when the source cannot be read. Rows and chips use the shared display-cell fitter,
 including wide text and ellipses.
 
 The top-bar sessions chip counts **now sessions**, plus a separate amber waiting
