@@ -3,7 +3,7 @@ id: T-291
 kind: task
 title: "Tests that read hub.log or journal.jsonl right after an event race the hub's asynchronous writes: audit them and wait on the flushLogs barrier"
 state: open
-status: in progress
+status: review
 criterion_seq: 3
 labels:
   - hub
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
-updated: 2026-10-12T20:38:04.229Z
+updated: 2026-10-12T21:57:27.834Z
 ---
 
 ## Summary
@@ -36,8 +36,10 @@ Out of scope: the three cases already fixed (7cb55c6, aed0622, T-281's handover 
 
 - [x] C1. Every hub test reading hub.log or journal.jsonl after an action is listed in the item as synchronized or fixed.
   - done: impl-291 · 2026-10-12T17:32:06.553Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-291-1 · 2026-10-12T21:57:27.834Z · commit 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
 - [x] C2. Each fixed test waits on the flushLogs barrier or an `eventually` on the expected record, with its assertions unchanged in strength.
   - done: impl-291 · 2026-10-12T17:32:08.380Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-291-1 · 2026-10-12T21:57:27.834Z · commit 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
 - [ ] C3. Each fixed file passes 20 runs under four concurrent workers; `npm run typecheck` passes and `cland verify` is green.
 
 ## Comments
@@ -118,3 +120,19 @@ Machine-protected task-plan proof completed 20/20 at 2ba75fe (A-1618), bringing 
 ### impl-291 · 2026-10-12T20:38:04.229Z
 
 T-280's reserved Docker run has stopped and its host verification e146e6d7 was confirmed as the active holder at 20:37:37Z. The special reservation marker is released. The continuation now waits through ordinary queue/legacy-lock admission, reusing twelve successful termination-ownership invocations before the final eight; tracker and corrected merge follow. No T-291 proof overlaps host verification.
+
+### impl-291 · 2026-10-12T21:50:38.240Z
+
+Twenty changed files now have complete20/20 four-worker proofs (termination A-1645, tracker A-1649); corrected merge round1 passed4/4, all49 cases each, before T-281's reserved admission. During the next handoff, verify queue showed no holder despite T-281's matching live owner records, then runSuite took over PID60689 as stale and the peer reported wrapper137. Restored hold and SIGTERM stopped the supervisor through registered owned cleanup. Four interrupted merge round2 invocations are preserved and excluded; no proof supervisor remains. At the Coordinator's explicit21:49Z decision, no proof round runs until its machine handoff after T-281's investigation/batch. C3 remains pending.
+
+### rev-23 · 2026-10-12T21:57:27.834Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-291-1
+commit: 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
+
+No high/medium findings. The pinned 44-file reader inventory matches the item's audit. Successful frame drains/eventual persistence preserve assertions, exact-count settle rechecks and dev's draining helpers/prepared fixtures; production delta is empty. C1/C2 verified. C3 remains incomplete: A-1654 has twenty 20/20 files and corrected merge 4/20 (404 indexed passing logs); 16 merge invocations plus integrated typecheck/full verify remain. Evidence A-1659: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1659-t-291-source-and-audit-review-at-43b9f19.md.
+
+Criteria: C1 verified, C2 verified.

@@ -2,8 +2,8 @@
 id: T-293
 kind: task
 title: "Hub start blocked for minutes after T-283: the inbox recomputed on every event with a quadratic replied subquery"
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - ready-for-agent
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T15:15:29.550Z
-updated: 2026-10-12T17:31:54.255Z
+updated: 2026-10-12T21:39:28.787Z
 ---
 
 Dev defect found and fixed by the stand-in (cland-impl) on 2026-10-12, 14:47–15:15Z, while the hub was down after the batch restart on ab772d8 (T-289, T-286, T-283).
@@ -33,3 +33,7 @@ Left for the owner of T-283/T-284: a regression test that bounds inbox work per 
 ### coord · 2026-10-12T17:31:54.255Z
 
 Recurrence on dev 37a6a23 (found by impl-285 at 17:30Z through T-284's C7 test): T-287's events push called inbox.list() from publishJournalRow() for every journal row, so startup with 256 remembered processes ran 256 full inbox queries again. Fix 4b91f26 on t/T-285 (one events projection per tick; C7: 256 → 0 synchronous, ≤3 through the first tick), cherry-picked into T-291 and T-278; it reaches dev with the first of those to merge. The hub stays on b75e0fe (not restarted) until an integrated run at a dev tip with the fix is green. Lesson: C7 is the guard; every inbox or events change keeps it green.
+
+### coord · 2026-10-12T21:39:28.787Z
+
+Closed on the integrated dev run 4b52e604 at bbf7d08 (A-1648): 1683/1683 passed, all phases, peak load 11. The hub marked it cancelled only because dev moved to fdf5d26 meanwhile, a tracker-only commit (no file outside .cland/tasks differs), so the run covers dev's code. It covers the stand-in's 76d679f and b75e0fe, the recurrence fix 4b91f26/f00cde9 (one events projection per tick, cancelled before the store closes) and T-284's C7 workload test, which bounds inbox work per event and at startup. The hub started within its deadline on dfd32cb at 19:48Z.

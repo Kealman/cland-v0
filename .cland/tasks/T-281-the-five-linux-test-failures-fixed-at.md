@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T21:28:55.292Z
+updated: 2026-10-12T22:08:12.908Z
 ---
 
 ## Summary
@@ -59,7 +59,9 @@ Constraints:
 - [ ] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
 - [x] C5. `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
   - done: impl-281 · 2026-10-12T21:23:29.415Z
-- [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+- [x] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+  - done: impl-281 · 2026-10-12T22:08:10.489Z
+  - verified: rev-26 [reviewer] · run rev-20261013-281-host · 2026-10-12T22:08:12.908Z · commit 0e80988b97f73a9f052954d34b68e974c72bf625
 
 ## Comments
 
@@ -86,3 +88,19 @@ Criteria: C2 failed (handover.test.ts:213 reads hub.log without awaiting the req
 ### impl-281 · 2026-10-12T21:28:50.551Z
 
 Review fix: 0aa2b498 asserts the hub.status flushLogs:true frame before every handover audit read, retaining the exact records and wait. Focused refusal passes on macOS and Linux. The 8ee27aa proof batch was intentionally stopped after aide's ten consecutive green runs to replace the candidate; no failure was retried and C3 was not marked done. The revised full batch will run at 0aa2b498 when the integrated dev suite releases the machine slot. Docker Desktop was quit during that wait; it will be started again only for my remaining runs, with 4 CPUs unchanged and --init.
+
+### impl-281 · 2026-10-12T21:43:08.455Z
+
+Docker lifecycle correction: AppleScript quit had left the backend alive, so I cleared its stalled shutdown via docker desktop stop --force, then docker desktop start completed. docker info confirms 4 CPUs; settings unchanged. A queued wrapper timed out during that lifecycle transition before starting any Linux test. The candidate remains 0aa2b498, and I am waiting for T-291's targeted merge proof to release the actual machine slot before starting the revised proof batch.
+
+### impl-281 · 2026-10-12T21:54:00.839Z
+
+Blocked platform evidence: the Coordinator-authorized restart also exited 137 externally after five consecutive aide runs passed 7/7. Both owner records still named PID 45702/token tSRH51LX0x8UkQ; Docker remained running, OOMKilled:false. No third hand-run batch is being started. The Coordinator stopped hand-run admission until T-309 diagnoses the live-holder kills, instructed me to stop the container and Desktop, and authorized the ordinary queued C6 macOS cland verify all run. The T-281 implementation patch is unchanged at 0aa2b498; C3 and C4 remain pending.
+
+### impl-281 · 2026-10-12T21:55:53.795Z
+
+C6 ordinary host run: 9737b169-bc56-40ae-9a4f-c9ffeb2b31ae submitted at pushed merge head 0e80988 after fetching and merging origin/dev; worktree clean. The handover merge conflict retained the asserted flushLogs barrier and exact-record wait. Result addressed to rev-26 and impl-281. Docker/container stopped. Corrected final interruption log is A-1656: aide ten rounds, handover five rounds plus partial sixth; A-1657 explains that Docker exec outlived the killed host supervisor and continued writing. The whole interrupted batch is excluded, and C3/C4 remain blocked on T-309.
+
+### impl-281 · 2026-10-12T22:08:12.773Z
+
+C6 complete: ordinary macOS cland verify all run 9737b169-bc56-40ae-9a4f-c9ffeb2b31ae at 0e80988 passed 1685/1685, fail 0, skipped 0, duration 720.04 s. Log A-1661; each phase emitted suite skip details 0 without count duplication. Linux C3/C4 remain blocked until T-309 lands and the Coordinator hands the machine back; Docker Desktop is stopped.
