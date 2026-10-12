@@ -46,6 +46,8 @@ export type Daemon = {
   log: LogFn;
   /** Resolves once the daemon has stopped (by `stop`, or by a client's `hub.stop`). */
   stopped: Promise<void>;
+  /** The CLI must exit rather than await an abandoned native storage operation. */
+  readonly storageAbandoned: boolean;
   stop: () => Promise<void>;
 };
 
@@ -114,8 +116,10 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   } : undefined;
   // tests only: how often verdict freshness reads the branch tips (the default is TIP_CHECK_MS)
   const tipCheckMs = Number(process.env.CLAND_TEST_TIP_CHECK_MS ?? 0);
+  const storageStallMs = Number(process.env.CLAND_TEST_TRACKER_STALL_MS ?? 0);
+  const stopTimeoutMs = Number(process.env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
   const config = readProjectConfig(l.config, root, error => log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }));
-  const tracker = new Tracker({ planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  const tracker = new Tracker({ planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
@@ -232,7 +236,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   if (ws === null || edge === null) {
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
-    return { layout: l, discovery: null, hub, log, stopped, stop };
+    return { layout: l, discovery: null, hub, log, stopped, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
@@ -250,5 +254,5 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
     const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
     log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, log, stopped, stop };
+  return { layout: l, discovery, hub, log, stopped, stop, get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
 }

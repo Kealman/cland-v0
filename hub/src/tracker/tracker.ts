@@ -61,6 +61,19 @@ import { watchFolder, type FolderWatch } from '../watch.ts';
 export const DEBOUNCE_MS = 100;
 /** A hand edit landing this soon after the hub wrote the same item is reported as a conflict. */
 export const CONCURRENT_MS = 2000;
+/** Detection only: the queue remains held until the operation finishes. */
+export const STORAGE_STALL_MS = 5000;
+/** Maximum storage drain on shutdown, below the CLI's stop fallback. */
+export const STORAGE_STOP_MS = 2000;
+
+export type StorageOperation = { operation: string; item: string | null; startedAt: string | null };
+export type TrackerStorageStatus = {
+  stalled: boolean;
+  active: (StorageOperation & { elapsedMs: number }) | null;
+  queued: number;
+  abandoned: StorageOperation[];
+};
+type StorageWork = StorageOperation & { started: number | null; stalled: boolean; timer?: NodeJS.Timeout; abandon: () => void };
 
 /**
  * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
@@ -193,6 +206,11 @@ export class Tracker {
   isPlanContainer(kind: Kind): boolean { return this.levels[1] !== undefined && kind === this.levels[1]; }
   readonly #files: TrackerFiles;
   #queue: Promise<unknown> = Promise.resolve();
+  readonly #storageWork = new Set<StorageWork>();
+  readonly #storageStallMs: number;
+  readonly #stopTimeoutMs: number;
+  #storageAbandoned = false;
+  #abandonedOperations: StorageOperation[] = [];
   readonly #root: string;
   readonly #dir: string;
   readonly #index: TrackerIndex;
@@ -241,7 +259,7 @@ export class Tracker {
   readonly #announced = new Map<string, ItemSummary>();
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { storageStallMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: readonly string[]; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     for (const entry of options.planHistory ?? []) {
       if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
       const id = typeof entry.planHistoryId === 'string' ? entry.planHistoryId : typeof entry.agentsNotice === 'string' ? entry.agentsNotice : randomUUID();
@@ -259,7 +277,20 @@ export class Tracker {
     this.#planApproval = options.planApproval ?? 'none';
     this.#qaDefault = options.qaDefault ?? { scope: 'none', when: 'per-item' };
     this.levels = Object.freeze([...(options.levels ?? DEFAULT_LEVELS)]);
-    this.#files = options.files ?? files;
+    this.#storageStallMs = options.storageStallMs ?? STORAGE_STALL_MS;
+    this.#stopTimeoutMs = options.stopTimeoutMs ?? STORAGE_STOP_MS;
+    const storage = options.files ?? files;
+    // Once shutdown abandons storage, no continuation can issue another native operation.
+    this.#files = {
+      open: (...args) => this.#storageCall(() => storage.open(...args)),
+      readFile: (...args) => this.#storageCall(() => storage.readFile(...args)),
+      writeFile: (...args) => this.#storageCall(() => storage.writeFile(...args)),
+      rename: (...args) => this.#storageCall(() => storage.rename(...args)),
+      link: (...args) => this.#storageCall(() => storage.link(...args)),
+      unlink: (...args) => this.#storageCall(() => storage.unlink(...args)),
+      readdir: (...args) => this.#storageCall(() => storage.readdir(...args)),
+      stat: (...args) => this.#storageCall(() => storage.stat(...args)),
+    };
     this.#watchResumed = options.watchResumed ?? untimed;
     this.#root = options.root;
     this.#writeGate = options.writeGate;
@@ -343,13 +374,13 @@ export class Tracker {
     if (this.#stopping || indexed?.kind !== 'task' || indexed.state !== 'open'
       || (!indexed.branch && !this.#index.verdicts().get(id)?.length) || (!this.#index.verdicts().get(id)?.length && indexed.status !== 'ready')) return;
     this.#readyChecks.add(id);
-    this.#runBackground(() => this.#serial(async () => {
-      try { await this.#checkReady(id); }
-      catch (err) { this.#watchResumed(() => {
+    this.#runBackground(() => this.#serial(async resumed => {
+      try { await this.#checkReady(id, resumed); }
+      catch (err) { resumed(() => {
         this.#readyErrors.set(id, err instanceof Error ? err.message : String(err));
         this.#readyAgain.add(id);
       }); throw err; }
-      finally { this.#watchResumed(() => {
+      finally { resumed(() => {
         this.#readyChecks.delete(id);
         if (!this.#readyAgain.delete(id)) { this.#retryDelays.delete(id); this.#retryCounts.delete(id); this.#readyErrors.delete(id); return; }
         if (this.#stopping) return;
@@ -362,14 +393,14 @@ export class Tracker {
         }
         const delay = Math.min((this.#retryDelays.get(id) ?? 25) * 2, 1000);
         this.#retryDelays.set(id, delay);
-        const timer = setTimeout(() => this.#watchResumed(() => {
+        const timer = setTimeout(() => resumed(() => {
           this.#readyRetries.delete(id);
           this.#scheduleReady(id, true);
         }), delay);
         timer.unref();
         this.#readyRetries.set(id, timer);
       }); }
-    }, this.#watchResumed));
+    }, this.#watchResumed, { operation: 'ready check', item: id }));
   }
 
   #readyStatus(view: ItemView): Status | null {
@@ -386,8 +417,7 @@ export class Tracker {
     }
   }
 
-  async #checkReady(id: string): Promise<void> {
-    const resumed = this.#watchResumed;
+  async #checkReady(id: string, resumed: Resumed): Promise<void> {
     const { file, revision } = resumed(() => ({ ...this.#require(id), revision: this.#revisions.get(id) }));
     const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
     const checking = resumed(() => {
@@ -531,16 +561,16 @@ export class Tracker {
         poll: () => {
           if (this.#polling || this.#stopping) return;
           this.#polling = true;
-          this.#runBackground(() => this.#serial(async () => {
+          this.#runBackground(() => this.#serial(async resumed => {
             try {
               const stamp = await this.#folderStampAsync();
-              await this.#watchResumed(() => {
+              await resumed(() => {
                 if (stamp === this.#polled) return;
                 this.#polled = stamp;
-                return this.#rescanAsync(this.#watchResumed);
+                return this.#rescanAsync(resumed);
               });
-            } finally { this.#watchResumed(() => { this.#polling = false; }); }
-          }, this.#watchResumed));
+            } finally { resumed(() => { this.#polling = false; }); }
+          }, this.#watchResumed, { operation: 'watch poll', item: null }));
         },
       },
       { log: this.#log, event: 'task-watch-error' },
@@ -578,8 +608,17 @@ export class Tracker {
     this.#readyRetries.clear();
     if (this.#rescanTimer) clearTimeout(this.#rescanTimer);
     this.#stopping = (async () => {
-      await Promise.allSettled([...this.#background]);
-      await this.#queue.catch(() => {});
+      let timer: NodeJS.Timeout | undefined;
+      const drained = Promise.allSettled([...this.#background, this.#queue]).then(() => true);
+      const deadline = new Promise<false>(resolve => { timer = setTimeout(() => resolve(false), this.#stopTimeoutMs); });
+      const complete = await Promise.race([drained, deadline]);
+      clearTimeout(timer);
+      if (!complete) {
+        this.#storageAbandoned = true;
+        this.#abandonedOperations = [...this.#storageWork].map(({ operation, item, startedAt }) => ({ operation, item, startedAt }));
+        for (const work of this.#storageWork) { clearTimeout(work.timer); work.abandon(); }
+        this.#log({ event: 'tracker-storage-abandoned', timeoutMs: this.#stopTimeoutMs, operations: this.#abandonedOperations });
+      }
       this.#index.close();
     })();
     return this.#stopping;
@@ -694,8 +733,8 @@ export class Tracker {
     if (migrated) {
       // Bootstrap indexes synchronously before the hub serves requests. Its migrations still write through
       // the same queue, reading again with the pre-scan state so an offline close/reopen keeps its meaning.
-      this.#runBackground(() => this.#serial(() => this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'status migration',
-        current => { this.#normalizeStatus(current, statusBasis); }, this.#watchResumed), this.#watchResumed));
+      this.#runBackground(() => this.#serial(resumed => this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'status migration',
+        current => { this.#normalizeStatus(current, statusBasis); }, resumed), this.#watchResumed, { operation: 'status migration', item: id }));
     }
     this.#log({ event: 'task-reindexed', id, file: name, source: 'hand' });
     this.#changed(id);
@@ -728,7 +767,7 @@ export class Tracker {
 
   /** One admitted scan owns its listing and reads; later mutations cannot interleave a renamed path. */
   rescanAsync(resumed: Resumed = untimed): Promise<void> {
-    return this.#serial(() => this.#rescanAsync(resumed), resumed);
+    return this.#serial(resumed => this.#rescanAsync(resumed), resumed, { operation: 'rescan', item: null });
   }
 
   async #rescanAsync(resumed: Resumed): Promise<void> {
@@ -749,7 +788,7 @@ export class Tracker {
   }
 
   #syncFileAsync(name: string, resumed: Resumed): Promise<void> {
-    return this.#serial(() => this.#readWatchedFile(name, resumed), resumed);
+    return this.#serial(resumed => this.#readWatchedFile(name, resumed), resumed, { operation: 'watch read', item: `T-${fileNumber(name)}` });
   }
 
   async #readWatchedFile(name: string, resumed: Resumed): Promise<void> {
@@ -869,7 +908,7 @@ export class Tracker {
 
   /** Plans use the same admitted read/modify/publication cycle as other item writes. */
   setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}, reason?: string): Promise<ItemView> {
-    return this.#serial(() => {
+    return this.#serial(resumed => {
       checkText(yaml, 'plan YAML');
       if (reason !== undefined) checkText(reason, 'plan change reason');
       let plan: EpicPlan;
@@ -879,7 +918,7 @@ export class Tracker {
         if (!this.isPlanContainer(item.fm.kind)) throw new TrackerError('a plan belongs only to an epic');
         item.body = withPlan(item.body, plan);
       }, resumed, undefined, authorize, undefined, undefined, false, reason);
-    }, resumed);
+    }, resumed, { operation: 'plan set', item: normalizeId(rawId) ?? rawId });
   }
 
   approvePlan(actor: Actor, rawId: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
@@ -888,7 +927,7 @@ export class Tracker {
       if (actor.human !== true && actor.role !== 'aide') throw new ToolForbidden(actor.role, 'task.plan:approve', 'only the human or an Aide approves a plan');
     };
     let record: NonNullable<Item['fm']['plan_approval']>;
-    return this.#serial(() => this.#mutate(rawId, actor, 'plan approved', item => {
+    return this.#serial(resumed => this.#mutate(rawId, actor, 'plan approved', item => {
       check();
       const state = this.#planState(item);
       if (!this.isPlanContainer(item.fm.kind) || !state.plan || state.planError) throw new TrackerError('approve needs a valid epic plan');
@@ -900,7 +939,7 @@ export class Tracker {
       const event: PlanHistoryEntry = { id: randomUUID(), ts: record.at, event: 'approved', by: record.by };
       this.#rememberPlanEvent(id, event);
       this.#log({ event: 'task-plan-approved', id, ...record, ts: event.ts, planHistoryId: event.id });
-    }, undefined, true), resumed);
+    }, undefined, true), resumed, { operation: 'plan approve', item: normalizeId(rawId) ?? rawId });
   }
 
   /** Launch approval is an indexed fact; safe to recheck after every lifecycle await. */
@@ -928,7 +967,7 @@ export class Tracker {
 
   /** Explicit, resumable migration: write the plan before removing each legacy label. */
   migrateQa(actor: Actor, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ migrated: string[]; fallback: string[]; report: string }> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       const migrated: string[] = [], fallback: string[] = [];
       const labelled: Item[] = [];
       // Warnings live in task comments, atomically with retirement. Recover them on every retry,
@@ -975,7 +1014,7 @@ export class Tracker {
         this.#log({ event: 'task-qa-migrated', migrated, fallback, report, by: actor.name });
         return { migrated, fallback, report };
       });
-    }, resumed);
+    }, resumed, { operation: 'QA migration', item: null });
   }
 
   // ---------------------------------------------------------------- reading
@@ -1011,7 +1050,7 @@ export class Tracker {
   }
 
   #readViewAsync(rawId: string, resumed: Resumed, evidence: boolean): Promise<ItemView> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       const { id, file } = this.#require(rawId);
       let text: string;
       try {
@@ -1027,7 +1066,7 @@ export class Tracker {
         // Evidence and claims are read after the file await, within the same tracker admission.
         return evidence ? this.#mergeViewOf(view) : view;
       });
-    }, resumed);
+    }, resumed, { operation: 'view', item: normalizeId(rawId) ?? rawId });
   }
 
   #ancestorIds(parent: string | null): string[] {
@@ -1259,7 +1298,7 @@ export class Tracker {
 
   /** Idempotent follow-ups, kept separate so a failure names the step after a successful landing. */
   finishMerge(actor: Actor, rawId: string, comment: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ step: string; error: string } | null> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       let step = 'close';
       try {
         const id = this.#require(rawId).id;
@@ -1282,7 +1321,7 @@ export class Tracker {
           return null;
         });
       } catch (err) { return resumed(() => ({ step, error: err instanceof Error ? err.message : String(err) })); }
-    }, resumed);
+    }, resumed, { operation: 'finish merge', item: normalizeId(rawId) ?? rawId });
   }
 
   list(filter: ListFilter = {}): ItemSummary[] {
@@ -1326,11 +1365,54 @@ export class Tracker {
   // ---------------------------------------------------------------- writing
 
   /** Admit every operation on one tail: file names and frontmatter ids can change while work waits. */
-  #serial<T>(work: () => Promise<T> | T, resumed: Resumed): Promise<T> {
+  #serial<T>(work: (resumed: Resumed) => Promise<T> | T, resumed: Resumed, operation: Pick<StorageOperation, 'operation' | 'item'>): Promise<T> {
     if (this.#stopping) return Promise.reject(new TrackerError('tracker is stopping'));
-    const run = this.#queue.then(() => resumed(work), () => resumed(work));
+    let abandon!: () => void;
+    const abandoned = new Promise<never>((_, reject) => { abandon = () => reject(new TrackerError('tracker storage abandoned during shutdown')); });
+    const entry: StorageWork = { ...operation, startedAt: null, started: null, stalled: false, abandon };
+    this.#storageWork.add(entry);
+    const guarded = this.#guardStorage(resumed);
+    const admitted = () => guarded(() => {
+      entry.started = performance.now();
+      entry.startedAt = new Date().toISOString();
+      entry.timer = setTimeout(() => {
+        entry.stalled = true;
+        this.#log({ event: 'tracker-storage-stalled', operation: entry.operation, item: entry.item, startedAt: entry.startedAt, thresholdMs: this.#storageStallMs });
+      }, this.#storageStallMs);
+      entry.timer.unref();
+      return work(guarded);
+    });
+    const run = this.#queue.then(admitted, admitted).finally(() => {
+      clearTimeout(entry.timer);
+      this.#storageWork.delete(entry);
+    });
+    // Never advance the actual queue tail on a detection timer or a caller rejection.
     this.#queue = run.catch(() => {});
-    return run;
+    return Promise.race([run, abandoned]);
+  }
+
+  #assertStorageOpen(): void {
+    if (this.#storageAbandoned) throw new TrackerError('tracker storage abandoned during shutdown');
+  }
+
+  #guardStorage(resumed: Resumed): Resumed {
+    return callback => resumed(() => { this.#assertStorageOpen(); return callback(); });
+  }
+
+  #storageCall<T>(work: () => Promise<T>): Promise<T> {
+    if (this.#storageAbandoned) return Promise.reject(new TrackerError('tracker storage abandoned during shutdown'));
+    return work();
+  }
+
+  /** Synchronous health snapshot: status must answer even when the storage queue is held. */
+  storageStatus(): TrackerStorageStatus {
+    const active = [...this.#storageWork].find(work => work.started !== null);
+    return {
+      stalled: active?.stalled ?? false,
+      active: active ? { operation: active.operation, item: active.item, startedAt: active.startedAt, elapsedMs: performance.now() - active.started! } : null,
+      queued: [...this.#storageWork].filter(work => work.started === null).length,
+      abandoned: this.#abandonedOperations.map(operation => ({ ...operation })),
+    };
   }
 
   /**
@@ -1341,6 +1423,8 @@ export class Tracker {
    * and reported: the hub's write is the file, the hand edit is overwritten (last writer wins).
    */
   async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, planWriter?: Actor, planReason?: string): Promise<Item> {
+    const active = [...this.#storageWork].find(work => work.started !== null);
+    if (active) active.item = item.fm.id;
     this.#normalizeStatus(item);
     const text = serializeItem(item);
     const written = parseItem(text, name, this.levels);
@@ -1449,6 +1533,10 @@ export class Tracker {
       result = { written };
     } catch (error) { result = { error }; }
     // Publication, result construction and the close's synchronous prefix are one continuation.
+    if (this.#storageAbandoned) {
+      await fd.close();
+      this.#assertStorageOpen();
+    }
     return resumed(async () => {
       try {
         if ('error' in result) throw result.error;
@@ -1475,7 +1563,7 @@ export class Tracker {
   }
 
   create(actor: Actor, input: CreateInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
-    return this.#serial(() => this.#create(actor, input, resumed, authorize), resumed);
+    return this.#serial(resumed => this.#create(actor, input, resumed, authorize), resumed, { operation: 'create', item: null });
   }
 
   async #create(actor: Actor, input: CreateInput, resumed: Resumed, authorize: () => void): Promise<ItemView> {
@@ -1532,7 +1620,7 @@ export class Tracker {
    * it. `resumed` times each synchronous continuation after Git and file I/O.
    */
   comment(actor: Actor, rawId: string, text: string, verdict?: VerdictInput, resumed: Resumed = untimed, currentActor?: () => Actor): Promise<ItemView> {
-    return this.#serial(() => this.#comment(actor, rawId, text, verdict, resumed, currentActor), resumed);
+    return this.#serial(resumed => this.#comment(actor, rawId, text, verdict, resumed, currentActor), resumed, { operation: 'comment', item: normalizeId(rawId) ?? rawId });
   }
 
   #comment(actor: Actor, rawId: string, text: string, verdict: VerdictInput | undefined, resumed: Resumed, currentActor?: () => Actor): Promise<ItemView> {
@@ -1743,7 +1831,7 @@ export class Tracker {
   }
 
   edit(actor: Actor, rawId: string, input: EditInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       if (input.kind !== undefined && !this.kinds.includes(input.kind)) throw new TrackerError(`unknown kind "${input.kind}" (one of ${this.kinds.join(', ')})`);
       if (input.state !== undefined && !STATES.includes(input.state)) throw new TrackerError(`unknown state "${input.state}" (open or closed)`);
       if (input.title !== undefined && !input.title.trim()) throw new TrackerError('the title cannot be empty');
@@ -1822,7 +1910,7 @@ export class Tracker {
         }
         return { ...view, claim: this.#index.claimOf(view.id) };
       });
-    }, resumed);
+    }, resumed, { operation: 'edit', item: normalizeId(rawId) ?? rawId });
   }
 
   #criterionEvent(id: string, criterion: string, mark: string): void {
@@ -1902,7 +1990,7 @@ export class Tracker {
 
   /** Criteria share the tracker queue and reauthorize after every file await. */
   criterion(actor: Actor, rawId: string, input: { op: string; criterion?: string; text?: string; note?: string; run?: string }, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       const id = this.#require(rawId).id;
       const check = () => {
         authorize();
@@ -1936,11 +2024,11 @@ export class Tracker {
         this.#criterionEvent(id, criterion, input.op === 'verify' ? 'verified' : input.op === 'fail' ? 'failed' : input.op);
         return view;
       });
-    }, resumed);
+    }, resumed, { operation: 'criterion', item: normalizeId(rawId) ?? rawId });
   }
 
   close(actor: Actor, rawId: string, comment?: string, resumed: Resumed = untimed, authorize: () => void = () => {}, override?: string): Promise<ItemView> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       const checkOverride = () => {
         authorize();
         if (override !== undefined) {
@@ -1981,7 +2069,7 @@ export class Tracker {
         this.#closed(view.id);
         return { ...view, claim: this.#index.claimOf(view.id) };
       });
-    }, resumed);
+    }, resumed, { operation: 'close', item: normalizeId(rawId) ?? rawId });
   }
 
   #releaseOnClose(id: string): void {
@@ -1994,7 +2082,7 @@ export class Tracker {
   }
 
   link(actor: Actor, rawId: string, input: LinkInput, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       const { id } = this.#require(rawId);
       const parent = input.parent === undefined ? undefined : input.parent === null ? null : this.#ref(input.parent, id, 'parent');
       const add = (input.blocked_by ?? []).map((b) => this.#ref(b, id, 'blocked_by'));
@@ -2012,13 +2100,13 @@ export class Tracker {
         if (topic !== undefined) this.#topicBinding?.bound(id, topic);
         return view;
       });
-    }, resumed);
+    }, resumed, { operation: 'link', item: normalizeId(rawId) ?? rawId });
   }
 
   /** Ranking holds the same queue as all other tracker writes. Disk ranks are checked again after
    * every temporary-write await; an external move refuses rather than committing a stale plan. */
   rank(actor: Actor, rawId: string, input: { top?: boolean; before?: string; after?: string }, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ item: ItemView; changed: string[]; siblings: string[] }> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       if (input.top !== undefined && typeof input.top !== 'boolean') throw new TrackerError('top must be a boolean');
       for (const key of ['before', 'after'] as const) if (input[key] !== undefined && typeof input[key] !== 'string') throw new TrackerError(`${key} must be an item id`);
       if (Number(input.top === true) + Number(input.before !== undefined) + Number(input.after !== undefined) !== 1) throw new TrackerError('rank needs exactly one of top, before or after');
@@ -2088,7 +2176,7 @@ export class Tracker {
           throw error;
         });
       }
-    }, resumed);
+    }, resumed, { operation: 'rank', item: normalizeId(rawId) ?? rawId });
   }
 
   /** Reads remain inside rank's admission (calling viewAsync here would queue behind ourselves). */
@@ -2116,13 +2204,13 @@ export class Tracker {
 
   /** The hub's own write of an item's `topic` field (a binding it already made: `topic.create` with an item). */
   writeTopic(actor: Actor, rawId: string, topic: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<ItemView> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       return this.#mutate(rawId, actor, 'link', (item) => {
         if (item.fm.state === 'closed') throw new TrackerError(`${item.fm.id} is closed: a closed unit of work gets no new topic`);
         if (item.fm.topic !== null && item.fm.topic !== topic) throw new TrackerError(`${item.fm.id} already has a topic`);
         item.fm.topic = topic;
       }, resumed, undefined, authorize);
-    }, resumed);
+    }, resumed, { operation: 'topic binding', item: normalizeId(rawId) ?? rawId });
   }
 
   // ---------------------------------------------------------------- imports
@@ -2142,7 +2230,7 @@ export class Tracker {
   }
 
   filesAsync(resumed: Resumed = untimed): Promise<Array<{ file: string; text: string; item: Item }>> {
-    return this.#serial(() => this.#filesAsync(resumed), resumed);
+    return this.#serial(resumed => this.#filesAsync(resumed), resumed, { operation: 'import files', item: null });
   }
 
   async #filesAsync(resumed: Resumed): Promise<Array<{ file: string; text: string; item: Item }>> {
@@ -2158,15 +2246,15 @@ export class Tracker {
 
   /** Synchronous batch admission reserves the import lookup/ID space before its first await. */
   serializeImports<T>(work: (batch: TrackerImportBatch) => Promise<T>, resumed: Resumed): Promise<T> {
-    return this.#serial(() => work({
-      filesAsync: (timing = resumed) => this.#filesAsync(timing),
-      reserveIdAsync: (timing = resumed) => this.#reserveIdAsync(timing),
-      writeItem: (actor, op, item, existing, timing = resumed, authorize = () => {}) => this.#writeItem(actor, op, item, existing, timing, authorize),
-    }), resumed);
+    return this.#serial(resumed => work({
+      filesAsync: (timing = resumed) => this.#filesAsync(this.#guardStorage(timing)),
+      reserveIdAsync: (timing = resumed) => this.#reserveIdAsync(this.#guardStorage(timing)),
+      writeItem: (actor, op, item, existing, timing = resumed, authorize = () => {}) => this.#writeItem(actor, op, item, existing, this.#guardStorage(timing), authorize),
+    }), resumed, { operation: 'import', item: null });
   }
 
   reserveIdAsync(resumed: Resumed = untimed): Promise<string> {
-    return this.#serial(() => this.#reserveIdAsync(resumed), resumed);
+    return this.#serial(resumed => this.#reserveIdAsync(resumed), resumed, { operation: 'reserve id', item: null });
   }
 
   async #reserveIdAsync(resumed: Resumed): Promise<string> {
@@ -2186,7 +2274,7 @@ export class Tracker {
    * not change, so `updated` moves only with a real change.
    */
   writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<'created' | 'updated' | 'unchanged'> {
-    return this.#serial(() => this.#writeItem(actor, op, item, existing, resumed, authorize), resumed);
+    return this.#serial(resumed => this.#writeItem(actor, op, item, existing, resumed, authorize), resumed, { operation: op, item: item.fm.id });
   }
 
   async #writeItem(actor: Actor, op: string, item: Item, existing: { file: string; text: string } | null, resumed: Resumed, authorize: () => void): Promise<'created' | 'updated' | 'unchanged'> {
@@ -2278,7 +2366,7 @@ export class Tracker {
     const names = this.#adoptions.get(sessionId) ?? new Set<string>();
     names.add(name);
     this.#adoptions.set(sessionId, names);
-    this.#runBackground(() => this.#serial(() => this.#adopt(sessionId), this.#watchResumed));
+    this.#runBackground(() => this.#serial(resumed => this.#adopt(sessionId), this.#watchResumed, { operation: 'session adoption', item: null }));
   }
 
   #adopt(sessionId: string): void {
@@ -2307,16 +2395,16 @@ export class Tracker {
 
   /** Stop/death releases verification work; the Implementer's claim remains independent. */
   releaseHolds(sessionId: string, name?: string): void {
-    this.#runBackground(() => this.#serial(() => {
+    this.#runBackground(() => this.#serial(resumed => {
       const released = new Set(this.#index.releaseHolds(this.#sessionId(sessionId)));
       // A role-known session before its first hello is identified by name, as claims are.
       if (name) for (const id of this.#index.releaseHolds(`name:${name}`)) released.add(id);
       for (const id of released) this.#changed(id);
-    }, this.#watchResumed));
+    }, this.#watchResumed, { operation: 'release holds', item: null }));
   }
 
   hold(actor: Actor, rawId: string, release = false, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ id: string; holds: VerifierHold[] }> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       const { id } = this.#require(rawId);
       const check = () => {
         this.#ensureSession(actor);
@@ -2336,7 +2424,7 @@ export class Tracker {
           () => this.#index.setHold(id, this.#sessionId(actor.id), { ...hold, sessionId: this.#sessionId(actor.id) }));
       }
       return resumed(() => ({ id, holds: this.#index.holdsOf(id) }));
-    }, resumed);
+    }, resumed, { operation: 'hold', item: normalizeId(rawId) ?? rawId });
   }
 
   /** The live claim is an index fact, read without opening the item file. */
@@ -2344,7 +2432,7 @@ export class Tracker {
 
   /** Claims share the file queue: an Implementer's or Aide's new claim persists in progress before it is announced. */
   claim(actor: Actor, rawId: string, options: { release?: boolean; force?: boolean } = {}, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ id: string; claim: Claim | null }> {
-    return this.#serial(async () => {
+    return this.#serial(async resumed => {
       authorize();
       const { id } = this.#require(rawId);
       const check = () => {
@@ -2385,7 +2473,7 @@ export class Tracker {
           ...(held && held.sessionId !== this.#sessionId(actor.id) ? { took: held.session } : {}) });
         return { id, claim: this.#index.claimOf(id) };
       });
-    }, resumed);
+    }, resumed, { operation: 'claim', item: normalizeId(rawId) ?? rawId });
   }
 }
 

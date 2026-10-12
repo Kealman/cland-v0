@@ -58,6 +58,8 @@ function describe(s: HubStatus): string {
     lines.push(`requests: ${s.requests.slow} slow${last ? ` (latest ${last.tool} from ${last.client}, ${last.ms} ms at ${last.at})` : ''} · ${s.requests.slowAnswers ?? 0} slow answers · ${s.requests.replayed} answered again (too fast)`);
   }
   const launched = s.harnesses ?? [];
+  const storage = s.tracker?.storage;
+  if (storage?.stalled) lines.push(`tracker storage: stalled · ${storage.active?.operation} · ${storage.active?.item ?? 'tracker-wide'} · ${Math.round(storage.active?.elapsedMs ?? 0)} ms · ${storage.queued} queued`);
   if (launched.length) lines.push(`launched: ${launched.length}`);
   for (const h of launched) lines.push(`  ${withRole(h.name, h.role)}  ${h.harness}  ${h.status}  [${h.state}]  pid ${h.pid ?? '?'}${h.attach ? `  — ${h.attach}` : ''}`);
   return `${lines.join('\n')}\n`;
@@ -249,6 +251,9 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io): Pro
   const where = daemon.discovery ? `127.0.0.1:${daemon.discovery.port} and ${daemon.discovery.socket}${stdio ? ' and stdio' : ''}` : 'stdio only, no listeners';
   (stdio ? process.stderr : process.stdout).write(`hub serving ${root} on ${where} (pid ${process.pid})\n`);
   await daemon.stopped;
+  // A native operation can retain the event loop after bounded storage abandonment.
+  // All shutdown logs are flushed before stopped resolves; do not leave a dying writer alive.
+  if (daemon.storageAbandoned) process.exit(1);
   return 0;
 }
 

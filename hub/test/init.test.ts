@@ -335,7 +335,7 @@ test('a hub started in an initialised project has General and Agents, serves the
   const ui = await connectUi(t, discovery);
   const statusReply = await ui.request({ type: 'hub.status' });
   assert.deepEqual((statusReply.value as { keys: { layouts: string[] } }).keys, { layouts: ['ru'] });
-  assert.deepEqual((statusReply.value as { tracker: { levels: string[] } }).tracker, { levels: ['initiative', 'feature'] });
+  assert.deepEqual((statusReply.value as { tracker: { levels: string[] } }).tracker.levels, ['initiative', 'feature']);
   const topics = (await ui.request({ type: 'topic.list' })).value as { topics: Array<{ id: string; title: string }> };
   assert.deepEqual(
     topics.topics.map((x) => [x.id, x.title]),

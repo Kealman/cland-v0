@@ -1189,7 +1189,9 @@ export class Dispatcher {
         case 'hub.status': {
           const status = (): HubFrame => {
             const verification = this.#suites?.snapshot();
-            return { type: 'result', id: frame.id, ok: true, value: { ...control.status(), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+            const base = control.status();
+            const tracker = this.#options.tracker;
+            return { type: 'result', id: frame.id, ok: true, value: { ...base, ...(tracker ? { tracker: { levels: [...tracker.levels], ...base.tracker, storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
           };
           if (frame.flushLogs === true && control.flushLogs) {
             const resumed = this.#guard.resumer(frame.type, client);

@@ -78,6 +78,8 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'topic-status',
   // the tracker
   'task-written',
+  'tracker-storage-stalled',
+  'tracker-storage-abandoned',
   'task-plan-changed',
   'task-plan-approved',
   'task-qa-migrated',

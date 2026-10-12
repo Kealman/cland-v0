@@ -10,7 +10,8 @@ import { importIssues, type ImportedIssue } from '../src/tracker/import-github.t
 import { RequestGuard } from '../src/hub/budget.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { connectWsUi, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, pidAlive, startDaemon, startHub, tempProject } from './harness.ts';
+import { taskWriteGate } from './tracker-write-gate.ts';
 
 const human = { id: 'human', name: 'human', role: null };
 const deferred = () => {
@@ -566,3 +567,139 @@ test('a failed child scan drains slow reads before admitting the next tracker wr
   assert.equal(tracker.view('T-1').state, 'open');
   assert.equal(tracker.view('T-1').comments[0]?.text, 'after refusal');
 });
+
+test('a held tracker write reports a stall in hub status and bounded hub stop reports abandonment', async t => {
+  const root = await tempProject(t);
+  const gate = await taskWriteGate(t, root);
+  const { discovery } = await startDaemon(t, root, {
+    ...gate.env, CLAND_TEST_TRACKER_STALL_MS: '30', CLAND_TEST_TRACKER_STOP_MS: '30',
+  });
+  assert.equal((await cland(root, 'task', 'create', 'Stalled')).code, 0);
+  const path = join(root, '.cland', 'tasks', 'T-1-stalled.md');
+  const before = await files.readFile(path, 'utf8');
+  const ui = await connectUi(t, discovery);
+  await gate.arm();
+  ui.send({ type: 'task.comment', id: 'held', item: 'T-1', text: 'held comment' });
+  await gate.entered();
+  const logPath = join(root, '.cland', 'log', 'hub.log');
+  const log = () => files.readFile(logPath, 'utf8').then(text => text.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line)));
+  const stalled = await eventually('held write emits tracker-storage-stalled', async () =>
+    (await log()).find(entry => entry.event === 'tracker-storage-stalled' && entry.operation === 'comment'), 2000);
+  assert.equal(stalled.operation, 'comment');
+  assert.equal(stalled.item, 'T-1');
+  const status = await cland(root, 'hub', 'status', '--json');
+  assert.equal(status.code, 0);
+  const health = JSON.parse(status.stdout).tracker.storage;
+  assert.equal(health.stalled, true);
+  assert.equal(health.active.operation, 'comment');
+  assert.equal(health.active.item, 'T-1');
+  assert.match((await cland(root, 'hub', 'status')).stdout, /tracker storage: stalled.*comment.*T-1/);
+  const start = performance.now();
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  assert.ok(performance.now() - start < 4000, 'stop must not wait for the held write or CLI kill fallback');
+  assert.equal(pidAlive(discovery.pid), false);
+  const abandoned = (await log()).find(entry => entry.event === 'tracker-storage-abandoned');
+  assert.ok(abandoned.operations.some((op: { operation: string; item: string | null }) => op.operation === 'comment' && op.item === 'T-1'));
+  assert.equal(await files.readFile(path, 'utf8'), before, 'a held temporary write was never published');
+});
+
+test('tracker stop abandons a held write and queued view, and a released write cannot resume publication', async t => {
+  const root = await tempProject(t);
+  const entered = deferred(), release = deferred();
+  let hold = false;
+  const events: Record<string, unknown>[] = [];
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), storageStallMs: 20, stopTimeoutMs: 20,
+    log: entry => events.push(entry), files: { ...files, writeFile: async (...args) => {
+      await files.writeFile(...args);
+      if (hold) { hold = false; entered.resolve(); await release.promise; }
+    } },
+  });
+  t.after(async () => { release.resolve(); await tracker.stop(); });
+  const item = await tracker.create(human, { title: 'Held' });
+  const before = await files.readFile(join(root, item.path), 'utf8');
+  hold = true;
+  const writing = tracker.comment(human, item.id, 'abandoned');
+  const refusedWrite = assert.rejects(writing, /tracker storage abandoned/);
+  await entered.promise;
+  const reading = tracker.viewAsync(item.id);
+  const refusedRead = assert.rejects(reading, /tracker storage abandoned/);
+  const stopping = tracker.stop();
+  assert.equal(tracker.stop(), stopping, 'stop is idempotent');
+  let timer: NodeJS.Timeout;
+  try {
+    await Promise.race([stopping, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('unbounded tracker stop')), 500); })]);
+  } finally { clearTimeout(timer!); release.resolve(); }
+  await Promise.all([refusedWrite, refusedRead]);
+  await new Promise(done => setImmediate(done)); // let the native write's actual continuation run
+  assert.deepEqual(tracker.storageStatus().abandoned.map(op => [op.operation, op.item]), [['comment', 'T-1'], ['view', 'T-1']]);
+  assert.equal(events.filter(e => e.event === 'tracker-storage-abandoned').length, 1);
+  assert.equal(await files.readFile(join(root, item.path), 'utf8'), before);
+  await assert.rejects(tracker.comment(human, item.id, 'later'), /tracker is stopping/);
+});
+
+test('stall detection leaves the queue held and clears health when the operation finishes', async t => {
+  const root = await tempProject(t);
+  const entered = deferred(), release = deferred(), stalled = deferred();
+  let hold = false;
+  const events: Record<string, unknown>[] = [];
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), storageStallMs: 100,
+    log: entry => { events.push(entry); if (entry.event === 'tracker-storage-stalled' && entry.operation === 'comment') stalled.resolve(); },
+    files: { ...files, writeFile: async (...args) => {
+      await files.writeFile(...args);
+      if (hold) { hold = false; entered.resolve(); await release.promise; }
+    } },
+  });
+  t.after(async () => { release.resolve(); await tracker.stop(); });
+  const item = await tracker.create(human, { title: 'Recovers' });
+  hold = true;
+  const writing = tracker.comment(human, item.id, 'first');
+  await entered.promise;
+  let answered = false;
+  const second = tracker.comment(human, item.id, 'second').then(() => { answered = true; });
+  await stalled.promise;
+  assert.equal(tracker.storageStatus().stalled, true);
+  assert.equal(tracker.storageStatus().queued, 1);
+  assert.equal(answered, false, 'a stall never admits the next write');
+  assert.equal(tracker.view(item.id).comments.length, 0);
+  release.resolve();
+  await Promise.all([writing, second]);
+  assert.deepEqual(tracker.storageStatus(), { stalled: false, active: null, queued: 0, abandoned: [] });
+  assert.deepEqual(tracker.view(item.id).comments.map(c => c.text), ['first', 'second']);
+  assert.equal(events.filter(e => e.event === 'tracker-storage-stalled' && e.operation === 'comment').length, 1);
+  await tracker.stop();
+  assert.equal(events.some(e => e.event === 'tracker-storage-abandoned'), false);
+});
+
+for (const held of ['watch read', 'import reserve'] as const) {
+  test(`shutdown also abandons a held ${held} without late index work`, async t => {
+    const root = await tempProject(t);
+    const entered = deferred(), release = deferred();
+    let hold = false;
+    const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), stopTimeoutMs: 20,
+      files: { ...files,
+        readFile: async (...args) => {
+          const text = await files.readFile(...args);
+          if (hold && held === 'watch read') { hold = false; entered.resolve(); await release.promise; }
+          return text;
+        },
+        readdir: async (...args) => {
+          const names = await files.readdir(...args);
+          if (hold && held === 'import reserve') { hold = false; entered.resolve(); await release.promise; }
+          return names;
+        },
+      },
+    });
+    t.after(async () => { release.resolve(); await tracker.stop(); });
+    await tracker.create(human, { title: 'Held read' });
+    hold = true;
+    const work = held === 'watch read' ? tracker.rescanAsync()
+      : tracker.serializeImports(batch => batch.reserveIdAsync(callback => callback()), callback => callback());
+    const refused = assert.rejects(work, /tracker storage abandoned/);
+    await entered.promise;
+    await tracker.stop();
+    await refused;
+    release.resolve();
+    await new Promise(done => setImmediate(done));
+    assert.equal(tracker.storageStatus().abandoned[0]?.operation, held === 'watch read' ? 'rescan' : 'import');
+  });
+}
