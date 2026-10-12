@@ -5,7 +5,7 @@ title: A Neovim prototype of the explorer and the card on prototype/explorer
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: T-264
 blocked_by:
   - T-259
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T09:10:35.904Z
-updated: 2026-10-12T09:12:26.640Z
+updated: 2026-10-12T10:03:45.607Z
 ---
 
 ## Question
