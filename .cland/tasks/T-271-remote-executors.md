@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-12T11:35:19.517Z
+updated: 2026-10-12T11:38:44.526Z
 ---
 
 ## Goal
@@ -83,3 +83,9 @@ When this epic closes, the Coordinator sets `executor = "droplet"` for the proje
 - Branches: `prototype/remote-executor` (`docs/research/remote-executor.md`: "What an executor interface needs"; `hub/prototype/remote-executor/`), `research/do-microvms` (`docs/research/do-microvms.md`, the experiment in section 7 and Appendix A).
 - ADRs: `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - GLOSSARY: Territory.
+
+## Comments
+
+### human · 2026-10-12T11:38:44.526Z
+
+Addendum recorded (2026-10-12, the human through cland-impl): local and remote execution stay switchable, a per-run choice with a per-project default; the scheduler, result cache and reporting are shared; no silent fallback. In docs/spec/v0.1.2.md §3.14 and this epic's Contents.

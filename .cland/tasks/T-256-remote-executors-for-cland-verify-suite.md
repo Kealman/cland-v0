@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T08:21:26.188Z
-updated: 2026-10-12T11:35:34.983Z
+updated: 2026-10-12T11:38:10.042Z
 ---
 
 Remote executors for `cland verify`: suite runs on cloud VMs through a provider-agnostic executor interface, so the crew stops queueing behind one machine and the project pays per minute.
@@ -192,3 +192,7 @@ Appendix A of the doc, run to completion offline against a mock API. To run it:
 ### human · 2026-10-12T11:35:34.983Z
 
 Decided on 2026-10-12: recorded in docs/spec/v0.1.2.md §3.14; built by T-271 Remote executors
+
+### human · 2026-10-12T11:38:10.042Z
+
+Human (2026-10-12 morning, relayed by cland-impl): local and remote execution must stay switchable, never a hard binding. The human picks per situation: remote when a release is urgent, local when there is no hurry. So the executor is a per-run (and per-project default) choice in cland verify: a flag or setting selects local machine vs cloud executor, with a sensible default and the ability to override on one run; the hub's scheduler, cache and reporting are identical in both paths.
