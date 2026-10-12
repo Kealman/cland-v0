@@ -178,6 +178,10 @@ test('every cland mapping has matching registry metadata; missing keys and drift
     require('cland').help()
   `);
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+  assert.deepEqual(await c.lua("local out={}; for _,a in ipairs(require('cland.actions').all()) do if a.id=='inbox:D' or a.id=='inbox_full:D' or a.title:lower():find('dismiss',1,true) then out[#out+1]=a.id end end; return out"), []);
+  await c.input('<Esc><Space>p>Dismiss');
+  await c.waitScreen(s => s.includes('(no match)'), 'retired dismissal absent from palette');
+  await c.input('<Esc>');
   const sessionKeys = ['<CR>', '<C-v>', 'l', 'x', 'c', 'za'];
   const sessionActions = await c.lua<Array<{ key: string; mapped: boolean }>>(`
     local a=require('cland.actions'); local b=require('cland.panels').buf('sessions'); local out={}

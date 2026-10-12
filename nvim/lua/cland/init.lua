@@ -310,7 +310,7 @@ M.HELP = {
   '          > actions · # items · @ sessions · ~ artifacts · / topics; Tab kind · C-v split · Esc close',
   'Composer  Enter sends · Shift+Enter or Alt+Enter newline · ␣c focuses it · ␣P drafts a prompt · @role or @name pulls others in',
   'Topics    ␣t panel: n new · c close · r resolve · ↵ open · ␣r resolve this thread · gi its item',
-  'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free · r reply · ↵ open or attach · d decline/read · D dismiss all · A archive',
+  'Inbox     ␣n panel, ␣N full width: 1-9 answer an ask · i free · r reply · ↵ open or attach · d decline/read · A archive',
   '          za more · A seven-day archive · e events (or ↵ on the events line)',
   'Events    1-8 kinds · 0 all · w warnings · s subject · F clear · gM mute · A older · za day fold',
   '          :Cland topic new <title> | close | resolve',

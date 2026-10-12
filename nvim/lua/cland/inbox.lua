@@ -6,48 +6,12 @@ local ask_card = require('cland.ask_card')
 
 local M = {}
 
--- A shared budget across the displayed layers, in both inbox views (nvim/README.md).
-M.NOTIFICATION_LIMIT = 50
-
---- Each notification kind's glyph and colour.
-M.GLYPH = {
-  verdict = { '✓', 'ClandGreen' },
-  ['verdict not clear'] = { '✗', 'ClandRed' },
-  role = { '↔', 'ClandBlue' },
-  death = { '!', 'ClandRed' },
-  idle = { '○', 'ClandDim' },
-}
-
 local function clock(ts)
   return require('cland.thread').clock(ts)
 end
 
 local function section(c, name, count, extra, amber)
   c:add({ { ' ' .. name:upper() .. (extra or ''), amber and 'ClandAmber' or 'ClandSection' } }, { { tostring(count) .. ' ', amber and 'ClandAmber' or 'ClandDim' } })
-end
-
-local function notification_glyph(n)
-  if visibility.warning(n) then return visibility.WARN end
-  if n.kind == 'verdict' and n.result == 'not clear' then
-    return M.GLYPH['verdict not clear']
-  end
-  return M.GLYPH[n.kind] or { '·', 'ClandDim' }
-end
-
--- The legacy notification list remains below the now sections until T-288.
-local function render_notifications(c, ib)
-  if #ib.notifications > 0 then
-    c:add({})
-    local dismissable = false
-    for _, note in ipairs(ib.notifications) do
-      if not visibility.warning(note) then dismissable = true end
-    end
-    section(c, 'notifications', #ib.notifications, dismissable and ' · d dismiss · D all' or nil)
-    for _, note in ipairs(ib.notifications) do
-      local g = notification_glyph(note)
-      c:add({ { ' ' .. g[1] .. ' ', g[2] }, { tostring(note.text) } }, { { clock(note.ts) .. ' ', 'ClandDim' } }, { notification = note.id, warning = visibility.warning(note), item = note.item, session = note.session })
-    end
-  end
 end
 
 M.selected, M.expanded = {}, {}
@@ -173,41 +137,6 @@ end
 function M.render(c, full, buf)
   if state.needs_you() == 0 then c:add({ { ' ✓ nothing needs you', 'ClandGreen' } }) end
   M.render_sections(c, buf)
-  local layers = { 'now', 'watch' }
-  -- The hub sends notifications oldest first, breaking equal timestamps by insertion order.
-  -- Reverse only the display copy; hidden Background/Archive entries spend no row budget.
-  local notifications, earlier = {}, 0
-  for i = #state.S.inbox.notifications, 1, -1 do
-    local note = state.S.inbox.notifications[i]
-    if vim.tbl_contains(layers, visibility.layer(note) or 'now') then
-      if #notifications < M.NOTIFICATION_LIMIT then
-        table.insert(notifications, note)
-      else
-        earlier = earlier + 1
-      end
-    end
-  end
-  for _, layer in ipairs(layers) do
-    local ib, count = {}, 0
-    for _, kind in ipairs({ 'notifications' }) do
-      ib[kind] = {}
-      for _, entry in ipairs(kind == 'notifications' and notifications or state.S.inbox[kind]) do
-        if (visibility.layer(entry) or 'now') == layer then
-          table.insert(ib[kind], entry)
-          count = count + 1
-        end
-      end
-    end
-    if count > 0 or layer == 'archive' then
-      c:add({})
-      section(c, layer, count, nil, layer == 'now')
-      render_notifications(c, ib)
-    end
-  end
-  if earlier > 0 then
-    c:add({})
-    c:add({ { ' ' .. earlier .. ' earlier · Agents log (␣L)', 'ClandDim' } }, nil, { earlier_notifications = true })
-  end
   c:add({ { require('cland.events').inbox_line(), 'ClandPlanChange' } }, nil, { events = true })
   c:add({ { ' ' .. (state.S.ui.inbox_archive and '▾' or '▸') .. ' archive · ' .. (state.S.inbox.archiveToday or 0) .. ' rows left today · A', 'ClandDim' } })
   if state.S.ui.inbox_archive then
@@ -221,26 +150,13 @@ function M.render(c, full, buf)
     if #rows == 0 then c:add({ { ' No rows left in the last seven days', 'ClandDim' } }) end
   end
   if full then
-    return { ' 1-9 answer · i free · r reply · za more · ↵ open · d decline/read · D dismiss all · A archive · ␣N or ␣␣ back' }
+    return { ' 1-9 answer · i free · r reply · za more · ↵ open · d decline/read · A archive · ␣N or ␣␣ back' }
   end
-  return { ' 1-9 answer · i free · r reply · za more · ↵ act · d decline/read · D dismiss all · A archive · ␣N full width' }
-end
-
---- Follow a selected notification across redraws; a capped-out selection lands on the inert footer.
-function M.notification_row(c, id)
-  if not id then return nil end
-  local earlier
-  for r = 1, #c.lines do
-    local info = c.info[r]
-    if info and info.notification == id then return r end
-    if info and info.earlier_notifications then earlier = r end
-  end
-  return earlier
+  return { ' 1-9 answer · i free · r reply · za more · ↵ act · d decline/read · A archive · ␣N full width' }
 end
 
 function M.follow_row(c, info)
   if not info then return nil end
-  if info.notification then return M.notification_row(c, info.notification) end
   for r = 1, #c.lines do
     local candidate = c.info[r]
     if candidate and candidate.inbox_key == info.inbox_key and info.inbox_key and candidate.inbox_detail == info.inbox_detail then return r end
@@ -323,8 +239,7 @@ function M.reply(buf)
   state.say('r replies to a request or message, or gives a free answer to an ask')
 end
 
---- ↵: the topic of an ask or a waiting topic, the attached session of an approval, the item (else the session) of a
---- notification.
+--- ↵: open the selected row's topic, command approval's session, plan or events view.
 function M.open(buf)
   local info = row(buf)
   if not info then
@@ -346,7 +261,7 @@ function M.open(buf)
   end
 end
 
---- d: dismiss an ordinary notification; warnings stay visible, asks and approvals wait for answers.
+--- d: decline a request or mark one message read; asks and approvals wait for answers.
 function M.dismiss(buf)
   local info = row(buf)
   if info and info.inbox_kind == 'request' then return request({ type = 'inbox.decline', request = info.message }) end
@@ -354,41 +269,7 @@ function M.dismiss(buf)
   if info and info.plan then return state.say('answer this plan approval in its plan: ↵ opens it', 'ClandAmberBar') end
   if info and info.approval then return state.say('answer this command approval in its session: ↵ attaches', 'ClandAmberBar') end
   if info and info.ask then return state.say('answer this ask: 1-9 chooses an option, i or r gives a free answer', 'ClandAmberBar') end
-  if info and info.warning then
-    return state.say('warn events are informational and are not dismissed', 'ClandAmberBar')
-  end
-  if info and info.notification then
-    -- gone at once; the hub's answer (and its `inbox` event) is the inbox as it now is
-    local list = state.S.inbox.notifications
-    for i, note in ipairs(list) do
-      if note.id == info.notification then
-        table.remove(list, i)
-        break
-      end
-    end
-    state.changed()
-    return request({ type = 'inbox.dismiss', notification = info.notification })
-  end
-  if info and (info.ask or info.approval) then
-    return state.say('asks and approvals are not dismissed: answer them (1-9, i, or ↵ to attach)', 'ClandAmberBar')
-  end
-  state.say('d dismisses a notification')
-end
-
-function M.dismiss_all()
-  if #state.S.inbox.notifications == 0 then
-    return state.say('no notifications to dismiss')
-  end
-  local keep = {}
-  for _, note in ipairs(state.S.inbox.notifications) do
-    if visibility.warning(note) then table.insert(keep, note) end
-  end
-  if #keep == #state.S.inbox.notifications then
-    return state.say('warn events are informational and are not dismissed', 'ClandAmberBar')
-  end
-  state.S.inbox.notifications = keep
-  state.changed()
-  request({ type = 'inbox.dismiss_all' })
+  state.say('d declines a request or marks a message read')
 end
 
 --- The inbox's keys on `buf` (the panel's buffer or the full-width one).
@@ -410,9 +291,8 @@ function M.keys(buf)
   end, 'open or attach')
   map('d', function()
     M.dismiss(buf)
-  end, 'decline a request, mark a message read, or dismiss a notification')
+  end, 'decline a request or mark a message read')
   map('r', function() M.reply(buf) end, 'reply to the inbox row')
-  map('D', M.dismiss_all, 'dismiss every notification')
   map('A', function()
     state.S.ui.inbox_archive = not state.S.ui.inbox_archive
     state.changed()

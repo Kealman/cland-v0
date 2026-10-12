@@ -90,8 +90,9 @@ test('the Reviewer and QA clauses in the roles.toml defaults say how a request a
     assert.match(clause, /file:line/, `${kind}: findings located`);
     assert.match(clause, /`send`/, `${kind}: reports back`);
     assert.match(clause, /\/codex:rescue/, `${kind}: the fallback`);
-    // the human only when the human mentioned the role or the session in a topic (66fd974); questions go to the Coordinator
-    assert.match(clause, /When the human mentions you in a topic .*Otherwise do not write to the human; questions go to the Coordinator\./s, `${kind}: the human only on a mention`);
+    // Explicit human action requests are the exception; ordinary replies require a mention and decision questions climb.
+    assert.match(clause, /When the human mentions you in a topic .*Other messages to the human require that mention; decision questions go to the Coordinator\./s, `${kind}: ordinary human replies require a mention`);
+    assert.match(clause, /`send` kind `request` with no `to`/, `${kind}: human action requests use the request kind`);
   }
   assert.match(reviewer, /no edits|do not edit|never edit/i, 'the Reviewer edits nothing');
   assert.match(qa, /nvim_input/, 'QA drives a headless Neovim with nvim_input');

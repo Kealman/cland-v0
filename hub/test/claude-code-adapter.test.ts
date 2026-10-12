@@ -14,7 +14,7 @@ type Harness = { name: string; harness: string; pid: number | null; harnessId: s
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 type StateEvent = { type: 'session.state'; session: string; state: string; source: string; approvalCommand?: string };
 
-test('a Claude Code StopFailure is recorded in Agents and the inbox and reported to the sender', async (t) => {
+test('a Claude Code StopFailure is recorded in Agents and the events view and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 600_000, turnMs: 1000 });
   const { discovery } = await startDaemon(t, root, fake.env);
@@ -30,8 +30,8 @@ test('a Claude Code StopFailure is recorded in Agents and the inbox and reported
   assert.equal((await coord.call<{ ok: boolean }>('send', { to: ['impl'], text: 'fail this turn' })).ok, true);
   const expected = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
   await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
-  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> };
-  assert.ok(inbox.notifications.some((n) => n.kind === 'turn-failed' && n.text === expected));
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string }> };
+  assert.ok(events.rows.some((n) => n.text === expected));
   await coord.waitForEvent((e) => e.params.content.includes(expected));
 });
 
@@ -70,7 +70,11 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
     return p?.state === state ? p : undefined;
   });
 
-const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+const hubLog = async (root: string, ui: FrameClient) => {
+  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(flushed.ok, true, flushed.error);
+  return readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+};
 
 test('a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod', async (t) => {
   const root = await tempProject(t);
@@ -85,7 +89,7 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
 
   const launchMark = ui.frames.length;
   const launched = await launch(ui, 'coord', { role: 'coordinator', model: 'claude-fake-1' });
-  assert.match(await hubLog(root), /"event":"session-launched".*"early":1/, 'the early SessionStart was kept and replayed');
+  assert.match(await hubLog(root, ui), /"event":"session-launched".*"early":1/, 'the early SessionStart was kept and replayed');
   // the session's first turn is its role clause, injected as soon as the launch's bridge and SessionStart are in
   await clauseAnswered(ui, 'coord');
   await aTurn(ui, 'coord', launchMark);
@@ -104,7 +108,7 @@ test('a launched Claude Code session: the spoke connects, a UI message goes queu
   const present = await presentAs(ui, 'coord', 'idle');
   assert.equal(present.role, 'coordinator');
   assert.equal(present.sessionId, launched.sessionId);
-  assertFirstLaunchClause(await hubLog(root), 'coord');
+  assertFirstLaunchClause(await hubLog(root, ui), 'coord');
 
   // attach is the harness's own command; run in a terminal, it attaches (twice: two clients)
   const attach = (await ui.request({ type: 'session.attach', session: 'coord' })).value as { command: string };
@@ -203,7 +207,7 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   assert.equal(gone.attach, null);
   const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'impl-1' && f.state === 'unknown');
   assert.equal(event.source, 'process');
-  const logged = (await hubLog(root)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const logged = (await hubLog(root, ui)).split('\n').filter((l) => l.includes('"harness-exited"'));
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl-1"/);
 
@@ -212,11 +216,11 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   assert.notEqual(again.sessionId, launched.sessionId);
   await presentAs(ui, 'impl-1', 'idle');
   // the new process's mod has its bridge (a process of its own, which a loaded machine starts late)
-  await eventually('the new bridge', async () => ((await hubLog(root)).split('"event":"bridge-connected","session":"impl-1"').length > 2 ? true : undefined));
+  await eventually('the new bridge', async () => ((await hubLog(root, ui)).split('"event":"bridge-connected","session":"impl-1"').length > 2 ? true : undefined));
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'are you back?', to: ['impl-1'] });
   const id = (sent.value as { message: { id: string } }).message.id;
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 45_000);
-  const log = await hubLog(root);
+  const log = await hubLog(root, ui);
   assert.ok(!log.includes(`"inject-unconfirmed","session":"impl-1","id":"${id}"`), `injected at once, through the new process:\n${log.split('\n').filter((l) => /impl-1|bridge|inject/.test(l)).slice(-40).join('\n')}`);
 });
 
@@ -230,9 +234,9 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
   await presentAs(ui, 'coord', 'idle');
 
   // the first turn a launched session gets is its role clause, a hub notice with no topic: the fake drops it
-  const clause = await eventually('the clause recorded', async () => /"event":"role-clause","session":"coord"[^\n]*"id":"([^"]+)"/.exec(await hubLog(root))?.[1]);
-  await eventually('the unconfirmed inject logged', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
-  const injected = async () => (await hubLog(root)).includes(`"event":"injected","id":"${clause}"`);
+  const clause = await eventually('the clause recorded', async () => /"event":"role-clause","session":"coord"[^\n]*"id":"([^"]+)"/.exec(await hubLog(root, ui))?.[1]);
+  await eventually('the unconfirmed inject logged', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}"`) ? true : undefined));
+  const injected = async () => (await hubLog(root, ui)).includes(`"event":"injected","id":"${clause}"`);
   await sleep(1000); // polls keep finding the session idle: that is no new idle, nothing is retried
   assert.equal(await injected(), false, 'not confirmed: still delivered');
 
@@ -267,7 +271,7 @@ test('after a hub restart, resume re-finds the running session through the proce
   assert.equal(resumed.pid, launched.pid);
   assert.equal(resumed.sessionId, launched.sessionId);
   // a late hook of the launch's clause turn can make the row idle before the resume itself is logged
-  await eventually('the resume logged', async () => (/"event":"session-resumed","session":"coord"/.test(await hubLog(root)) ? true : undefined));
+  await eventually('the resume logged', async () => (/"event":"session-resumed","session":"coord"/.test(await hubLog(root, ui2)) ? true : undefined));
   await presentAs(ui2, 'coord', 'idle');
 
   // hooks and the mod reach the new hub: a message is injected and the turn's states arrive

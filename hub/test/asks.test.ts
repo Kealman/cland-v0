@@ -1,6 +1,6 @@
 // Asks and the inbox (spec 4.5 and 5, #33): only the Coordinator asks; an open ask keeps its topic waiting for the
 // human and is listed in the inbox; the human's answer carries `answer_to`, reaches the asker and clears the wait;
-// `resolve` withdraws, closing cancels; approvals follow the sessions' states; role notifications are dismissed; "needs you" is asks + approvals + waiting topics. A real hub
+// `resolve` withdraws, closing cancels; approvals follow the sessions' states; role changes reach events; "needs you" is asks + approvals + waiting topics. A real hub
 // (in-process, or the daemon where the tracker and the adapters are needed), scripted spokes over MCP, a UI client
 // speaking the frames; nothing inside either side is reached into.
 import { test, type TestContext } from 'node:test';
@@ -14,8 +14,7 @@ type Card = { question: string; options: string[]; free: boolean; state: string;
 type TopicMessage = { id: string; topic: string; from: string; fromKind: string; to: string[]; text: string; answerTo?: string; ask?: Card };
 type InboxAsk = { id: string; topic: { id: string; title: string }; question: string; options: string[]; free: boolean; from: string; label: string };
 type Approval = { session: string; label: string; harness: string | null; attach: string | null };
-type Notification = { id: string; kind: string; text: string; item?: string; session?: string; result?: string };
-type Inbox = { asks: InboxAsk[]; approvals: Approval[]; waiting: Topic[]; notifications: Notification[]; needsYou: number };
+type Inbox = { asks: InboxAsk[]; approvals: Approval[]; waiting: Topic[]; needsYou: number };
 type AskResult = { ok: boolean; ask: string; topic: { id: string }; error?: string; code?: string; permission?: string; role?: string | null; reason?: string };
 
 async function hubFor(t: TestContext, options: Parameters<typeof startHub>[0] = {}): Promise<Hub> {
@@ -236,7 +235,7 @@ test('closing the topic cancels its open asks; a topic left waiting without an a
   assert.equal((await topicOf(ui, topic.id)).status, 'closed', 'the note does not reopen it');
 });
 
-test('on a project: closing the item cancels the ask; verdicts are watch and role changes are dismissed one by one or all; asks are not dismissable', async (t) => {
+test('on a project: closing the item cancels the ask; verdicts and role changes reach events; retired dismissal frames leave asks waiting', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
@@ -258,36 +257,20 @@ test('on a project: closing the item cancels the ask; verdicts are watch and rol
   await coord.waitForEvent((e) => String(e.params.content).includes('was cancelled: T-1 was closed'));
   assert.equal((await topicOf(ui, topic.id)).status, 'closed');
 
-  // Not-clear verdicts are watch; bookkeeping role changes are background.
-  mark = ui.frames.length;
   await ok(ui, { type: 'task.comment', item, text: 'Two findings.', verdict: { verdict: 'review', result: 'not clear', run: 'r-1' }, as: { name: 'rev-1', role: 'reviewer' } });
-  assert.equal((await inbox(ui)).notifications.some(n => n.kind === 'verdict'), true);
-  let listed: Inbox;
   await ok(ui, { type: 'role.set', session: 'rev-1', role: 'reviewer' });
-  listed = await inboxEvent(ui, (i) => i.notifications.some((n) => n.kind === 'role' && n.session === 'rev-1'), mark);
-  assert.deepEqual(
-    listed.notifications.filter(n => n.kind === 'role').map((n) => [n.kind, n.text]),
-    [
-      ['role', 'coord is Coordinator: assigned'],
-      ['role', 'rev-1 is Reviewer: assigned'],
-    ],
-  );
-  assert.equal(listed.needsYou, 0, 'notifications never require human action');
-
-  // Ordinary notifications dismiss; asks and warnings remain.
+  const events = await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' });
+  assert.ok(events.rows.some(r => r.kind === 'verdict' && r.warning));
+  assert.ok(events.rows.some(r => r.text === 'rev-1 is Reviewer: assigned'));
+  assert.equal((await inbox(ui)).needsYou, 0, 'events never require human action');
   const b = await ask(coord, 'general', 'Anything else?', ['no']);
-  assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: b.ask })).error), /asks and approvals are not dismissed/);
-  const first = listed.notifications[0] as Notification;
-  const after = await ok<Inbox>(ui, { type: 'inbox.dismiss', notification: first.id });
-  assert.deepEqual(after.notifications.map((n) => n.kind), ['verdict', 'role']);
-  assert.equal(after.asks.length, 1);
-  mark = ui.frames.length;
-  const none = await ok<Inbox>(ui, { type: 'inbox.dismiss_all' });
-  assert.deepEqual(none.notifications.map(n => [n.kind, n.result]), [['verdict', 'not clear']]);
-  assert.equal(none.asks.length, 1, 'dismiss-all leaves the asks');
-  await inboxEvent(ui, (i) => i.notifications.length === 1 && i.notifications[0]?.result === 'not clear' && i.asks.length === 1, mark);
-  assert.equal((await ui.request({ type: 'inbox.dismiss', notification: first.id })).ok, true, 'dismissing twice is harmless');
-  assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: 'n-nope' })).error), /no notification "n-nope"/);
+  for (const type of ['inbox.dismiss', 'inbox.dismiss_all']) {
+    const refused = await ui.request({ type, notification: b.ask });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error!, /events view/);
+  }
+  assert.equal((await inbox(ui)).asks.length, 1, 'retired frames leave the ask waiting');
+
 });
 
 test('a session entering waiting for approval is an approval within one event, with its attach command, and leaves when the state changes; needsYou = asks + approvals + waiting', async (t) => {
@@ -316,7 +299,7 @@ test('a session entering waiting for approval is an approval within one event, w
   assert.equal(listed.asks.length, 1);
   assert.equal(listed.needsYou, 2, 'one ask and one approval');
   assert.equal((await ok<{ needsYou: number }>(ui, { type: 'hub.status' })).needsYou, 2);
-  assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: 'impl-1' })).error), /asks and approvals are not dismissed/);
+  assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: 'impl-1' })).error), /events view/);
 
   mark = ui.frames.length;
   await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'tool-done', at: Date.now(), payload: {} });
@@ -325,7 +308,7 @@ test('a session entering waiting for approval is an approval within one event, w
   // Long idle defaults to watch (CLAND_IDLE_NOTIFY_MS here; [inbox] idle_minutes in config).
   await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'turn-end', at: Date.now(), payload: {} });
   await sleep(500);
-  assert.equal((await inbox(ui)).notifications.some(n => n.kind === 'idle'), true);
+  assert.ok((await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.text.includes('idle 1 min')));
 });
 
 test('a launched session that renamed itself is one approval, with its attach command (review of #33)', async (t) => {
@@ -390,15 +373,17 @@ test('deleting a topic with an open ask refreshes the subscribed inbox (review o
   assert.equal(refreshed.needsYou, 0);
 });
 
-test('a verdict written as text is watch in the inbox', async (t) => {
+test('a verdict written as text appears in events without adding an inbox row', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   await ok(ui, { type: 'task.create', title: 'Textual verdict' });
   await ok(ui, { type: 'task.comment', item: 'T-1', text: 'verdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-7\n\nAll green.', as: { name: 'qa-1', role: 'qa' } });
-  assert.equal((await inbox(ui)).notifications.some(n => n.kind === 'verdict'), true);
-  // a plain comment is no notification
+  assert.ok((await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.kind === 'verdict'));
+  assert.equal((await inbox(ui)).needsYou, 0);
+  const before = (await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.filter(r => r.kind === 'verdict').length;
+  // A plain comment adds no verdict event.
   await ok(ui, { type: 'task.comment', item: 'T-1', text: 'Just a note.', as: { name: 'qa-1', role: 'qa' } });
-  assert.equal((await inbox(ui)).notifications.filter((n) => n.kind === 'verdict').length, 1);
+  assert.equal((await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.filter(r => r.kind === 'verdict').length, before);
 });

@@ -109,7 +109,7 @@ test('a coalesced explicit event keeps later default lead provenance after an Ai
   assert.ok(delivered.params.content.includes(`${text} (×2)`), delivered.params.content);
 });
 
-test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with watch inbox notifications', async t => {
+test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
   const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '800' });
@@ -166,7 +166,9 @@ test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord release death event' });
   assert.match((await coord.waitForEvent(e => e.params.content.includes('release death event'))).params.content, /impl died/);
   const inbox = await ui.request({ type: 'inbox.list' });
-  assert.ok((inbox.value as { notifications: Array<{ kind: string; layer: string }> }).notifications.filter(n => ['death', 'idle', 'verdict'].includes(n.kind)).every(n => n.layer === 'watch'));
+  assert.equal('notifications' in (inbox.value as object), false);
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; warning?: boolean }> };
+  assert.ok(events.rows.some(r => r.text.includes('impl died') && r.warning));
   assert.equal((inbox.value as { needsYou: number }).needsYou, 0);
 });
 
@@ -430,6 +432,7 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   const deliveries = await readyHistory();
   assert.equal(deliveries.length, 1, JSON.stringify(deliveries));
   assert.equal(deliveries[0]?.detail?.digest, 'now');
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
   assert.equal(journal.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord')).length, 1);
 });

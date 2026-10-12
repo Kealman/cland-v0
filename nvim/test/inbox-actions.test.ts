@@ -34,7 +34,6 @@ for (const view of ['panel', 'full']) test(`${view}: r replies to the selected r
     approvals: [{ id: 'cmd-1', session: 'worker', label: 'worker', command: 'touch approved', since: ts }],
     plans: [{ id: 'T-1', title: 'Pending plan', since: ts }], requests: [request],
     messages: ['First message', 'Second message'].map((text, i) => ({ id: `message-${i}`, topic: messageTopic, subject: messageTopic.id, from: 'qa', text, since: ts, ts, layer: 'now' })),
-    notifications: [{ id: 'legacy', text: 'Legacy note', kind: 'idle', layer: 'watch', ts }],
   };
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path,
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox, topics: [topic('general'), topic('agents'), requestTopic, messageTopic] }) });
@@ -66,7 +65,8 @@ for (const view of ['panel', 'full']) test(`${view}: r replies to the selected r
   assert.ok(lines.indexOf('First message') < lines.indexOf('Second review') && lines.indexOf('Second review') < lines.lastIndexOf('Review the build'), 'archive is newest first');
   assert.match(lines, /\d{4}-\d{2}-\d{2}T/); assert.doesNotMatch(lines, /Body hidden/);
   await c.input('A'); await c.waitScreen(s => !s.includes('declined') && s.includes('▸ archive'), 'archive hidden');
-  await select(c, 'Legacy note'); await c.input('d'); await c.waitScreen(s => !s.includes('Legacy note'), 'legacy notification dismissal retained');
+  await c.input('D'); // No cland action is bound to the retired key.
+  assert.deepEqual(await c.lua("local out={}; for _,m in ipairs(vim.api.nvim_buf_get_keymap(0,'n')) do if m.lhs=='D' then out[#out+1]=m.lhs end end; return out"), []);
   frames = (await control(path, { requests: true })).requests as Array<Record<string, unknown>>;
   assert.ok(frames.some(f => f.type === 'topic.send' && f.topic === 'review-topic' && f.replyTo === 'request-1' && f.text === 'Reviewed'));
   assert.deepEqual(frames.filter(f => f.type === 'inbox.decline').map(f => f.request), ['request-2']);
@@ -78,7 +78,10 @@ for (const view of ['panel', 'full']) test(`${view}: r replies to the selected r
   assert.match(actions.find(a => a.id === `${scope}:r`)!.title, /Reply/);
   assert.match(actions.find(a => a.id === `${scope}:d`)!.title, /Decline.*mark message read/);
   assert.match(actions.find(a => a.id === `${scope}:A`)!.title, /seven-day/);
-  await c.input(' ?'); await c.waitScreen(s => s.includes('r reply') && s.includes('d decline/read') && s.includes('A seven-day archive'), 'help follows registry');
+  assert.ok(!actions.some(a => a.id === `${scope}:D` || /dismiss.*notification/i.test(a.title)));
+  assert.deepEqual(frames.filter(f => f.type === 'inbox.dismiss' || f.type === 'inbox.dismiss_all'), []);
+  await c.input(' ?'); const help = await c.waitScreen(s => s.includes('r reply') && s.includes('d decline/read') && s.includes('A seven-day archive'), 'help follows registry');
+  assert.doesNotMatch(help, /D dismiss|dismiss.*notification/i);
 });
 
 test('r on a message arms its exact reply, sending archives it as answered; empty inbox keeps the archive line', { skip }, async t => {

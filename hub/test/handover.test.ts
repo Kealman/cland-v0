@@ -32,11 +32,13 @@ const NOTE = { goals_now: 'Ship T-1.', work_in_flight: 'T-1 importer, half done.
 
 const isRole = (e: ChannelEvent) => e.params.meta?.kind === 'role';
 
-const audits = async (root: string): Promise<Audit[]> =>
-  (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'))
+const audits = async (root: string, ui: FrameClient): Promise<Audit[]> => {
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  return (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'))
     .split('\n')
     .filter((l) => l.includes('"event":"audit"'))
     .map((l) => JSON.parse(l) as Audit);
+};
 
 const ok = (r: { code: number | null; stdout: string; stderr: string }) => {
   assert.equal(r.code, 0, `exit ${r.code}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
@@ -109,12 +111,9 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   // Agents: both notices, the note recorded with the first
   await agentsNotice(ui, /^coord \[Coordinator\] handed the Coordinator role over to next, with a handover note:\n\n## Goals now\n\nShip the tracker import/);
   await agentsNotice(ui, 'next [Coordinator] took over the Coordinator role from coord.');
-  // the inbox: one role notification for the handover, from its Agents notice, none from its two session.role events
-  const notes = await eventually('the handover notification', async () => {
-    const n = ((await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; text: string }> }).notifications;
-    return n.some((x) => /handed the Coordinator role over/.test(x.text)) ? n : undefined;
-  });
-  assert.deepEqual(notes.filter((x) => x.kind === 'role' && /handover/.test(x.text)).map((x) => x.text), ['coord [Coordinator] handed the Coordinator role over to next, with a handover note']);
+  // One journal row records the handover, from its Agents notice.
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string }> };
+  assert.deepEqual(events.rows.filter(r => /handed the Coordinator role over/.test(r.text)).map(r => r.text), ['coord [Coordinator] handed the Coordinator role over to next, with a handover note']);
   // the UI's events: both sessions' roles, the Coordinator filled by B; and the status
   await ui.waitFor((f) => f.type === 'role.filled' && f.session === 'next');
   const roleEvents = ui.frames.slice(before).filter((f) => f.type === 'session.role' || f.type === 'role.filled' || f.type === 'role.vacant');
@@ -131,7 +130,7 @@ test('the Coordinator hands over with a note: B gets clause and note in one even
   await ui.waitFor((f) => f.type === 'task' && f.id === 'T-1' && (f as { item?: { claim?: { session?: string } } }).item?.claim?.session === 'next');
 
   // the audit log: the call, its addressee, the note only as its length
-  const record = await eventually('handover audit recorded', async () => (await audits(root)).find(r => r.tool === 'role.handover'));
+  const record = await eventually('handover audit recorded', async () => (await audits(root, ui)).find(r => r.tool === 'role.handover'));
   assert.deepEqual([record?.session, record?.role, record?.outcome, record?.args.to, record?.args.noteChars], ['coord', 'coordinator', 'ok', 'next', NOTE_MD.length]);
 
   // A's next tool call as Coordinator is refused
@@ -208,7 +207,7 @@ test('a handover without a complete note is refused with the typed error naming 
   const impl = await b.call<Result>('role.handover', { to: 'coord', note: NOTE });
   assert.deepEqual([impl.code, impl.permission, impl.role], ['forbidden', 'role.handover', 'implementer']);
   // the refusals are audited
-  const records = (await audits(root)).filter((r) => r.tool === 'role.handover');
+  const records = (await audits(root, ui)).filter((r) => r.tool === 'role.handover');
   assert.deepEqual(
     records.map((r) => [r.session, r.outcome]),
     [
@@ -307,7 +306,7 @@ test('revocation mid-turn: the human reassigns while the launched Coordinator is
   await eventually('the answer refused', async () => (/tool send → .*"code":"forbidden"/.test(await fake.log(job)) ? true : undefined), 20_000);
   assert.match(await fake.log(job), /tool send → .*"role":null,"reason":"a session with no role has no tools"/);
   await agentsNotice(ui, 'coord tried send to the human: forbidden (a session with no role has no tools)');
-  const refused = (await audits(root)).find((r) => r.session === 'coord' && r.tool === 'send' && r.outcome === 'forbidden');
+  const refused = (await audits(root, ui)).find((r) => r.session === 'coord' && r.tool === 'send' && r.outcome === 'forbidden');
   assert.equal(refused?.role, null);
   // and the revocation reached the session, injected as its next turn
   await eventually('the revocation injected', async () => (/submitted: <channel [^\n]*from="hub"[^\n]*>\ncland hub: coord no longer holds the role Coordinator \(handed over to next\)/.test(await fake.log(job)) ? true : undefined), 20_000);

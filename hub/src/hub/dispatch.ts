@@ -1041,6 +1041,11 @@ export class Dispatcher {
     };
 
     const clientRequest = (frame: Record<string, unknown>) => {
+      // Retired frames are outside the protocol, but old clients need a useful refusal.
+      if (frame.type === 'inbox.dismiss' || frame.type === 'inbox.dismiss_all') {
+        return peer.send({ type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
+          error: 'Inbox notifications retired: use the events view (events.list) to see what happened.' });
+      }
       if (!isClientRequest(frame)) {
         const id = typeof frame.id === 'string' ? frame.id : '?';
         peer.send({ type: 'result', id, ok: false, error: `unknown request type "${String(frame.type)}"` });
@@ -1150,10 +1155,6 @@ export class Dispatcher {
             return answer(core.declineInboxRequest(frame.request));
           case 'inbox.read':
             return answer(core.readInboxMessage(frame.message));
-          case 'inbox.dismiss':
-            return answer(core.inbox.dismiss(frame.notification));
-          case 'inbox.dismiss_all':
-            return answer(core.inbox.dismissAll());
           case 'worktree.list':
           case 'worktree.prune': {
             // Git work, awaited; prune is the human's (a session's shell is refused before this): without items the

@@ -90,7 +90,11 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
     return p?.state === state ? p : undefined;
   });
 
-const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+const hubLog = async (root: string, ui: FrameClient) => {
+  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(flushed.ok, true, flushed.error);
+  return readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+};
 
 /** The human writes in General to the session (General alone goes to the coordinator role). */
 async function sendGeneral(ui: FrameClient, text: string, to: string[] = ['impl']): Promise<string> {
@@ -146,7 +150,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const present = await presentAs(ui, 'impl', 'idle');
   assert.equal(present.role, 'coordinator');
   assert.equal(present.sessionId, launched.sessionId);
-  assertFirstLaunchClause(await hubLog(root), 'impl');
+  assertFirstLaunchClause(await hubLog(root, ui), 'impl');
 
   // session.list: the session, its state, and the capability table with its heuristic waiting states
   const list = (await ui.request({ type: 'session.list' })).value as { processes: Harness[]; adapters: Record<string, unknown> };
@@ -260,7 +264,7 @@ test('a changing OpenCode catalog falls back to the latest successful list at th
   }
 });
 
-test('a failed OpenCode turn is recorded in Agents and the inbox and reported to the sender', async (t) => {
+test('a failed OpenCode turn is recorded in Agents and the events view and reported to the sender', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const { discovery } = await startDaemon(t, root, fake.env);
@@ -280,8 +284,8 @@ test('a failed OpenCode turn is recorded in Agents and the inbox and reported to
   await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text === expected);
   const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
   assert.equal(history.messages.filter((m) => m.kind === 'turn-failed' && m.text === expected).length, 1);
-  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; session?: string; text: string }> };
-  assert.ok(inbox.notifications.some((n) => n.kind === 'turn-failed' && n.session === 'impl' && n.text === expected));
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ session?: string; text: string }> };
+  assert.ok(events.rows.some((n) => n.session === 'impl' && n.text === expected));
   await coord.waitForEvent((e) => e.params.content.includes(expected));
   assert.equal((await status(ui)).harnesses.find((h) => h.name === launched.name)?.status, 'running');
 });
@@ -516,7 +520,7 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
   assert.equal(gone.attach, null);
   const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'impl' && f.state === 'unknown');
   assert.equal(event.source, 'process');
-  const logged = (await hubLog(root)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const logged = (await hubLog(root, ui)).split('\n').filter((l) => l.includes('"harness-exited"'));
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl"/);
 
@@ -552,7 +556,7 @@ test('after a hub restart, resume re-finds the OpenCode server and session throu
   assert.equal(resumed.harnessId, launched.harnessId);
   assert.equal(resumed.harnessSessionId, launched.harnessSessionId);
   assert.equal(resumed.attach, launched.attach, 'attach still points at the same server and session');
-  assert.match(await hubLog(root), /"event":"session-resumed","session":"impl"/);
+  assert.match(await hubLog(root, ui2), /"event":"session-resumed","session":"impl"/);
   await presentAs(ui2, 'impl', 'idle');
 
   const id = await sendGeneral(ui2, 'still there?');

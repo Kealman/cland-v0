@@ -1,7 +1,7 @@
 // The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
 // Each row records when its wait began; departures persist in hub.db and reach the journal
 // through the log tap. Publications are coalesced, but waits settle on every observed change.
-import { messageVerdict, warningSeverity, type Visibility } from './visibility.ts';
+import { messageVerdict, type Visibility } from './visibility.ts';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
@@ -94,7 +94,7 @@ export class InboxBoard {
 
   // ---------------------------------------------------------------- what feeds it
 
-  /** Every hub event passes here: what may change a section schedules a new `inbox` event; some are notifications. */
+  /** Every hub event passes here: what may change a section schedules a new `inbox` event; informational changes also reach the events journal. */
   observe(event: HubEvent): void {
     if (this.#closed) return;
     switch (event.type) {
@@ -192,9 +192,7 @@ export class InboxBoard {
 
   #notify(kind: NotificationKind, text: string, extra: { item?: string; session?: string; result?: string } = {}): void {
     const id = `n-${randomUUID().slice(0, 8)}`;
-    this.#port.store.addNotification({ id, kind, text, ts: this.#port.now().toISOString(), ...extra });
     this.#port.log({ event: 'notification', id, kind, text, ...extra });
-    this.#changed();
   }
 
   // ---------------------------------------------------------------- what it shows
@@ -245,7 +243,6 @@ export class InboxBoard {
       approvals.push({ id: s.sessionId, session: s.name, ...(s.role ? { role: s.role } : {}), label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? p.now().toISOString(), attach: null });
     }
     const placedApprovals = approvals.map(a => p.visibility.place('inbox', a, 'approval'));
-    const notifications = p.store.notifications().map(n => p.visibility.place('inbox', n));
     const candidates = p.store.inboxMessages();
     const requests: InboxRequest[] = [];
     const messages: InboxMessage[] = [];
@@ -314,7 +311,7 @@ export class InboxBoard {
     const needsYou = rows.length;
     const now = p.now(), today = new Date(now);
     today.setHours(0, 0, 0, 0);
-    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, notifications, needsYou,
+    return { asks, approvals: placedApprovals, plans, requests, messages, waiting, needsYou,
       archiveToday: p.store.inboxDeparturesToday(today.toISOString()),
       ...(archive ? { archive: p.store.inboxDepartures(new Date(now.getTime() - 7 * 86400_000).toISOString()) } : {}) };
   }
@@ -356,28 +353,6 @@ export class InboxBoard {
     this.#port.store.markMessageRead(id);
     this.#depart({ kind: 'message', id, subject: row.subject, since: row.since }, 'read');
     this.#changed();
-    return this.list();
-  }
-
-  /** Dismiss an ordinary notification; warnings, asks, approvals and unknown ids are refused. */
-  dismiss(id: string): Inbox {
-    if (!this.#port.store.notificationExists(id)) {
-      if (this.#port.store.ask(id) || this.list().approvals.some((a) => a.session === id)) throw new Error('asks and approvals are not dismissed: answer them');
-      throw new Error(`no notification "${id}"`);
-    }
-    const note = this.#port.store.notifications().find(n => n.id === id);
-    if (note && warningSeverity('inbox', note)) throw new Error('warn events are informational and are not dismissed');
-    this.#port.store.dismissNotifications(id);
-    this.#changed();
-    return this.list();
-  }
-
-  dismissAll(): Inbox {
-    let dismissed = 0;
-    for (const note of this.#port.store.notifications()) {
-      if (!warningSeverity('inbox', note)) dismissed += this.#port.store.dismissNotifications(note.id);
-    }
-    if (dismissed > 0) this.#changed();
     return this.list();
   }
 

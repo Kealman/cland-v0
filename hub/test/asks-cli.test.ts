@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { cland, spawnSpoke, startDaemon, tempProject, type Session } from './harness.ts';
 
 type InboxAsk = { id: string; topic: { id: string; title: string; item?: string | null }; question: string; options: string[]; free: boolean; from: string; label: string };
-type Inbox = { asks: InboxAsk[]; approvals: Array<{ session: string }>; waiting: Array<{ id: string; title: string }>; notifications: Array<{ id: string; kind: string }>; needsYou: number };
+type Inbox = { asks: InboxAsk[]; approvals: Array<{ session: string }>; waiting: Array<{ id: string; title: string }>; needsYou: number };
 type AskResult = { ok: boolean; ask: string; topic: { id: string }; error?: string };
 
 async function coordinator(t: import('node:test').TestContext, root: string): Promise<Session> {

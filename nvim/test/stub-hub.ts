@@ -24,7 +24,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { parseCriteria } from '../../hub/src/tracker/criteria.ts';
 import { VisibilityPreferenceFile } from '../../hub/src/hub/visibility-preferences.ts';
-import { Visibility, warningSeverity } from '../../hub/src/hub/visibility.ts';
+import { Visibility } from '../../hub/src/hub/visibility.ts';
 import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
 
 export type Scenario = {
@@ -55,10 +55,10 @@ export type Scenario = {
   rankError?: string;
   /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
   holdSnapshots?: string[];
-  /** The inbox (#33): `inbox.list` answers it, `topic.answer` and `inbox.dismiss*` change it and push an `inbox` event.
+  /** The inbox (#33): `inbox.list` answers it, `topic.answer`, `inbox.decline` and `inbox.read` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
   visibility?: import('../../hub/src/hub/visibility.ts').VisibilityOverrides;
-  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; plans?: Array<Record<string, unknown>>; requests?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; notifications?: Array<Record<string, unknown>>; needsYou?: number | null; archiveToday?: number; archive?: Array<Record<string, unknown>> };
+  inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; plans?: Array<Record<string, unknown>>; requests?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; needsYou?: number | null; archiveToday?: number; archive?: Array<Record<string, unknown>> };
 };
 
 type Frame = Record<string, unknown> & { type?: string; id?: string };
@@ -176,7 +176,7 @@ function inboxValue(archive = false): Record<string, unknown> {
     + approvals.filter(r => policy.place('inbox', r, 'approval').layer === 'now').length
     + plans.length + requests.length
     + messages.filter(r => (r.layer ?? policy.place('inbox', r, 'waiting').layer) === 'now').length;
-  return { asks, approvals, waiting, plans, requests, messages, notifications: ib.notifications ?? [], archiveToday: ib.archiveToday ?? 0,
+  return { asks, approvals, waiting, plans, requests, messages, archiveToday: ib.archiveToday ?? 0,
     ...(archive ? { archive: ib.archive ?? [] } : {}),
     ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? count }) };
 }
@@ -333,17 +333,8 @@ function answer(f: Frame) {
     case 'topic.answer':
       return answerAsk(f);
     case 'inbox.dismiss':
-    case 'inbox.dismiss_all': {
-      const ib = (scenario.inbox ??= {});
-      if (f.type === 'inbox.dismiss') {
-        const note = (ib.notifications ?? []).find(n => n.id === f.notification);
-        if (!note) return fail(f.id, `no notification "${String(f.notification)}"`);
-        if (warningSeverity('inbox', note)) return fail(f.id, 'warn events are informational and are not dismissed');
-        ib.notifications = (ib.notifications ?? []).filter((n) => n.id !== f.notification);
-      } else ib.notifications = (ib.notifications ?? []).filter(n => warningSeverity('inbox', n));
-      write({ type: 'inbox', inbox: inboxValue() });
-      return ok(f.id, inboxValue());
-    }
+    case 'inbox.dismiss_all':
+      return fail(f.id, 'Inbox notifications retired: use the events view (events.list) to see what happened.');
     case 'task.list':
       return ok(f.id, { items: scenario.items ?? [] });
     case 'task.rank': {

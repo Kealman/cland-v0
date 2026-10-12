@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
-import type { HarnessProcessView, Inbox } from '../src/protocol.ts';
+import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
@@ -28,8 +28,8 @@ async function assertStopped(ui: Awaited<ReturnType<typeof connectUi>>, root: st
   const messages = (history.value as { messages: Array<{ kind: string; text: string }> }).messages;
   assert.equal(messages.some(m => m.kind === 'session-death'), false);
   assert.ok(messages.some(m => m.kind === 'role-revoke' && m.text.includes('its session was stopped')));
-  const inbox = await ui.request({ type: 'inbox.list' });
-  assert.equal((inbox.value as Inbox).notifications.some(n => n.kind === 'death'), false);
+  const events = await ui.request({ type: 'events.list' });
+  assert.equal((events.value as EventsPage).rows.some(r => r.warning && r.session === 'impl'), false);
 }
 
 for (const harness of ['codex', 'claude-code', 'opencode'] as const)

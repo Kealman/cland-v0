@@ -39,10 +39,8 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   assert.deepEqual(value.plan.stages[0]!.lanes, [[a.id, b.id], [c.id]]);
   assert.deepEqual(value.plan.stages[1]!.lanes, [[d.id]], 'cross-lane dependencies wait for the next stage');
   assert.equal(value.approval?.state, 'pending');
-  await eventually('plan watch notification', async () => {
-    const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Array<{ kind: string; item: string; layer: string }> };
-    return inbox.notifications.find(n => n.kind === 'plan' && n.item === epic.id && n.layer === 'watch');
-  });
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as { plans: Array<{ id: string; layer: string }> };
+  assert.ok(inbox.plans.some(p => p.id === epic.id && p.layer === 'now'));
   const launch = () => ui.request({ type: 'session.launch', name: 'impl-lane', role: 'implementer', harness: 'claude-code', item: a.id });
   const deniedLaunch = await launch();
   assert.equal(deniedLaunch.ok, false);

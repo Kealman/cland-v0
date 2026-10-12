@@ -244,7 +244,7 @@ export class HubCore {
   readonly #topicStatuses = new Map<string, TopicStatus>();
   /** The Coordinator's asks to the human (#33). */
   readonly asks: Asks;
-  /** The human's inbox (#33): open asks, approvals, waiting topics, notifications. */
+  /** The human's inbox (§3.7): asks/command approvals, plans, requests and messages. */
   readonly inbox: InboxBoard;
   readonly visibility: Visibility;
 
@@ -308,7 +308,7 @@ export class HubCore {
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
       idle: (session, minutes) => this.publishEvent({ session }, 'session.state', `${session} idle ${minutes} min`, { lifecycle: 'long idle' }),
     });
-    // the inbox hears every event first: what changes a section, what is a notification
+    // The inbox observes section changes and journals informational notifications.
     this.#listeners.add((e) => this.inbox.observe(e));
   }
 

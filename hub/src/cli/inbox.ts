@@ -7,7 +7,7 @@ import { askHubFrame } from './socket-client.ts';
 
 export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and approvals, plan approvals, requests to you, messages to you
                           newest first, all rows with ids, subjects, senders and waiting ages;
-                          then legacy notification lines, last 'needs you: <n>'
+                          last 'needs you: <n>'
                           (--json for the hub's Inbox frame)
                           --archive prints departures from the last seven days, newest first, with when and why
 `;
@@ -47,8 +47,6 @@ function describe(v: Inbox): string {
     lines.push(`${section.title} (${section.rows.length})`);
     for (const row of section.rows.sort((a, b) => b.since.localeCompare(a.since))) lines.push(`${row.text}  · ${age(row.since, now)}`);
   }
-  // T-288 retires the legacy notification output; preserve it until that item lands.
-  for (const note of v.notifications) lines.push(`notification: ${note.severity === 'warn' ? '⚠ ' : ''}${note.text}`);
   if (v.needsYou === 0) lines.push('✓ nothing needs you');
   lines.push(`needs you: ${v.needsYou}`);
   return lines.join('\n');

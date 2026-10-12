@@ -207,24 +207,8 @@ export type InboxDeparture = { kind: InboxRowKind; id: string; subject: string; 
 
 export type NotificationKind = 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
-/** Something worth the human's eye: informational, never blocking; warnings are not dismissable. */
-export type InboxNotification = {
-  layer?: Layer;
-  /** Warn events stay visible without dismissal or a resolution rule. */
-  severity?: 'warn';
-  id: string;
-  kind: NotificationKind;
-  text: string;
-  ts: string;
-  item?: string;
-  session?: string;
-  /** `verdict`: `clear` or `not clear`. */
-  result?: string;
-  dismissed: boolean;
-};
-
-/** The four now sections (§3.7); waiting and notifications remain for older renderers. */
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; notifications: InboxNotification[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
+/** The four now sections (§3.7); waiting remains as topic metadata for older clients. */
+export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; archiveToday?: number; archive?: InboxDeparture[] };
 
 /** Journal rows, newest first; cursors are opaque continuations over the append-only file. */
 export const EVENT_KINDS = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'] as const;
@@ -269,7 +253,7 @@ export type HubEvent =
   | { type: 'topic'; topic: Topic }
   /** An ask's state changed (answered, withdrawn, cancelled): the thread's card follows it. */
   | { type: 'ask'; topic: string; ask: string; card: AskCard }
-  /** The inbox changed (an ask, an approval, a waiting topic, a notification): all of it, as `inbox.list` answers. */
+  /** The inbox changed (an ask, an approval, a plan, a request, a message): all of it, as `inbox.list` answers. */
   | { type: 'inbox'; inbox: Inbox }
   /** No live session holds the Coordinator any more: the UI shows "no coordinator". */
   | { type: 'role.vacant'; role: 'coordinator'; ts: string }
@@ -577,10 +561,6 @@ export type ClientRequest =
   | { type: 'inbox.read'; id: string; message: string }
   /** At most 200 journal rows older than before: EventsPage. */
   | { type: 'events.list'; id: string; before?: string; limit?: number; filter?: EventsFilter }
-  /** Dismiss one notification: `Inbox`. Asks and approvals are not dismissable. */
-  | { type: 'inbox.dismiss'; id: string; notification: string }
-  /** Dismiss every notification: `Inbox`. */
-  | { type: 'inbox.dismiss_all'; id: string }
   /** The task worktrees with their items and the sessions inside (T-58): `{ worktrees: WorktreeEntry[] }`. */
   | { type: 'worktree.list'; id: string }
   /** The human's prune: without items (or `dryRun`), the closed items' worktrees `{ candidates }`; with items, each
@@ -752,7 +732,6 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'topic.list':
     case 'subscribe':
     case 'role.list':
-    case 'inbox.dismiss_all':
       return true;
     case 'inbox.list':
       return f.archive === undefined || typeof f.archive === 'boolean';
@@ -762,8 +741,6 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.message === 'string';
     case 'events.list':
       return (f.before === undefined || (typeof f.before === 'string' && (/^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)) || /^events:[A-Za-z0-9_-]+$/.test(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0)) && isEventsFilter(f.filter);
-    case 'inbox.dismiss':
-      return typeof f.notification === 'string';
     case 'worktree.list':
       return true;
     case 'worktree.prune':

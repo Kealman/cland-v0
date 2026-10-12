@@ -29,7 +29,7 @@ return {
     },
     inbox = {
       asks = { { id = 'a1', topic = { id = 'topic-1', title = 'Spoke identity', item = 'T-2' }, question = 'Which should win?', options = { 'the pid', 'the name' }, free = true, from = 'coord-1', label = 'coord-1 [Coordinator]', ts = at } },
-      approvals = {}, waiting = {}, notifications = {},
+      approvals = {}, waiting = {},
     },
   },
   run = function(qa)

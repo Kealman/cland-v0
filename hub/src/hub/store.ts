@@ -3,7 +3,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
-import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, InboxNotification, Message, NotificationKind, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
@@ -101,16 +101,6 @@ create table if not exists asks (
   closed_at text
 );
 create index if not exists asks_open on asks (state, topic);
-create table if not exists notifications (
-  id text primary key,
-  kind text not null,
-  text text not null,
-  ts text not null,
-  item text,
-  session text,
-  result text,
-  dismissed integer not null default 0
-);
 create table if not exists counters (
   name text primary key,
   value integer not null
@@ -272,17 +262,6 @@ export const cardOf = (a: AskRow): AskCard => ({
   ...(a.forwarded !== undefined ? { forwarded: a.forwarded } : {}),
   ...(a.answer !== undefined ? { answer: a.answer } : {}),
   ...(a.option !== undefined ? { option: a.option } : {}),
-});
-
-const toNotification = (row: Row): InboxNotification => ({
-  id: row.id as string,
-  kind: row.kind as NotificationKind,
-  text: row.text as string,
-  ts: row.ts as string,
-  ...(row.item !== null && row.item !== undefined ? { item: row.item as string } : {}),
-  ...(row.session !== null && row.session !== undefined ? { session: row.session as string } : {}),
-  ...(row.result !== null && row.result !== undefined ? { result: row.result as string } : {}),
-  dismissed: row.dismissed === 1,
 });
 
 const toTopic = (row: Row): Topic => {
@@ -1382,29 +1361,6 @@ export class Store implements HygieneMemory {
   /** The answer's message id, once it is recorded. */
   setAskAnswer(id: string, answer: string): void {
     this.#db.prepare('update asks set answer_id = ? where id = ?').run(answer, id);
-  }
-
-  // ---------------------------------------------------------------- notifications (#33)
-
-  addNotification(n: { id: string; kind: NotificationKind; text: string; ts: string; item?: string; session?: string; result?: string }): void {
-    this.#db
-      .prepare('insert into notifications (id, kind, text, ts, item, session, result) values (?, ?, ?, ?, ?, ?, ?)')
-      .run(n.id, n.kind, n.text, n.ts, n.item ?? null, n.session ?? null, n.result ?? null);
-  }
-
-  /** The notifications not dismissed, oldest first. */
-  notifications(): InboxNotification[] {
-    return (this.#db.prepare('select * from notifications where dismissed = 0 order by ts, rowid').all() as Row[]).map(toNotification);
-  }
-
-  /** Dismiss one notification (all of them without an id); returns how many were dismissed. */
-  dismissNotifications(id?: string): number {
-    const r = id === undefined ? this.#db.prepare('update notifications set dismissed = 1 where dismissed = 0').run() : this.#db.prepare('update notifications set dismissed = 1 where id = ? and dismissed = 0').run(id);
-    return Number(r.changes);
-  }
-
-  notificationExists(id: string): boolean {
-    return this.#db.prepare('select 1 from notifications where id = ?').get(id) !== undefined;
   }
 
   /** A rename: what still waits for the old name (in flight to the live session) waits for the new one; a

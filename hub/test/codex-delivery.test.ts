@@ -9,9 +9,13 @@ import { join } from 'node:path';
 import { clandWithEnv, connectUi, eventually, fakeCodex, sleep, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Harness = { name: string; pid: number | null; state: string };
-type Notification = { kind: string; text: string; session?: string };
+type Event = { text: string; session?: string };
 
-const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+const hubLog = async (root: string, ui: FrameClient) => {
+  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  assert.equal(flushed.ok, true, flushed.error);
+  return readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+};
 
 async function launch(ui: FrameClient, name: string, extra: Record<string, unknown> = {}): Promise<Harness> {
   const r = await ui.request({ type: 'session.launch', name, harness: 'codex', ...extra }, 30_000);
@@ -33,7 +37,7 @@ async function send(ui: FrameClient, text: string, to: string): Promise<string> 
 
 const pongs = (ui: FrameClient, text: string) => ui.frames.filter((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`).length;
 
-test('an inject whose answer never came is uncertain: never replayed at the next idle, noted in the inbox, sent again only by session.retry', async (t) => {
+test('an inject whose answer never came is uncertain: never replayed at the next idle, noted in the events view, sent again only by session.retry', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1500 });
   const { discovery } = await startDaemon(t, root, fake.env);
@@ -46,16 +50,16 @@ test('an inject whose answer never came is uncertain: never replayed at the next
   const id = await send(ui, text, 'coord');
   // the turn runs (its pong comes back) but turn/start's result never does
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`, 15_000);
-  await eventually('uncertain', async () => ((await hubLog(root)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
+  await eventually('uncertain', async () => ((await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
   // the session went idle after the turn: nothing is replayed
   await idle(ui, 'coord');
   await sleep(1500);
   assert.equal(pongs(ui, text), 1, 'the message ran once');
   assert.equal(((await fake.log(coord.pid as number)).match(/item: <channel [^\n]*>\nplease lose the answer/g) ?? []).length, 1);
   assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
-  const inbox = (await ui.request({ type: 'inbox.list' })).value as { notifications: Notification[] };
-  const note = inbox.notifications.find((n) => n.kind === 'delivery-uncertain');
-  assert.ok(note, JSON.stringify(inbox.notifications));
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Event[] };
+  const note = events.rows.find((n) => n.text.includes('may or may not have reached'));
+  assert.ok(note, JSON.stringify(events.rows));
   assert.equal(note.session, 'coord');
   assert.match(note.text, new RegExp(`cland session retry coord ${id}`));
 
@@ -80,9 +84,9 @@ test('a lost connection to an idle app-server: what failed to inject meanwhile i
   await idle(ui, 'coord');
 
   process.kill(coord.pid as number, 'SIGUSR2');
-  await eventually('the hub lost the connection', async () => ((await hubLog(root)).includes('"event":"harness-reconnect-failed"') ? true : undefined));
+  await eventually('the hub lost the connection', async () => ((await hubLog(root, ui)).includes('"event":"harness-reconnect-failed"') ? true : undefined));
   const id = await send(ui, 'are you there', 'coord');
-  await eventually('the inject failed', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${id}"`) ? true : undefined));
+  await eventually('the inject failed', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${id}"`) ? true : undefined));
   // the connection comes back; the session was idle and stays idle: no transition, and still the message goes in
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: are you there', 15_000);
@@ -117,7 +121,7 @@ for (const [what, text] of [
 
     const id = await send(ui, text, 'coord');
     await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`, 15_000);
-    await eventually('uncertain', async () => ((await hubLog(root)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
+    await eventually('uncertain', async () => ((await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${id}"`) ? true : undefined));
     // the connection is back and the session idle: nothing is replayed
     await idle(ui, 'coord');
     await sleep(1500);

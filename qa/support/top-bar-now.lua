@@ -56,17 +56,16 @@ return function(columns)
         local rendered = vim.api.nvim_eval_statusline(require('cland.bars').topbar(), { use_tabline = true, maxwidth = columns }).str
         qa.expect(vim.api.nvim_strwidth(rendered) <= columns, 'top bar fits display cells')
       end
-      local notifications = {}
+      local events = {}
       for i = 1, 427 do
-        local kinds = { 'death', 'verdict', 'verdict', 'release', 'role', 'idle' }
-        notifications[#notifications + 1] = { id = 'note-' .. i, kind = kinds[(i - 1) % 6 + 1],
-          result = i % 6 == 2 and 'not clear' or 'clear', text = 'notification ' .. i, ts = at }
+        events[#events + 1] = { type = 'event', row = { id = 'event-' .. i, kind = i % 2 == 0 and 'verdict' or 'session',
+          warning = i % 3 == 0, glyph = '·', subject = { kind = 'session', id = 'impl-1' }, text = 'event ' .. i, ts = at } }
       end
-      local ib = { asks = {}, approvals = {}, waiting = {}, notifications = notifications, needsYou = 0 }
+      command({ emits = events })
+      qa.wait_for(function() return #require('cland.events').latest == 200 end, 5000, 'event flood received')
+      local ib = { asks = {}, approvals = {}, waiting = {}, needsYou = 0 }
       local function inbox()
         command({ set = { inbox = ib }, emit = { type = 'inbox', inbox = ib } })
-        qa.wait_for(function() return #require('cland.state').S.inbox.notifications == #ib.notifications end,
-          5000, 'notification flood received')
         count(ib.needsYou)
       end
       inbox()
@@ -102,7 +101,7 @@ return function(columns)
       ib.approvals = {}
       ib.waiting = {}
       ib.needsYou = 0
-      inbox() -- All 427 notifications remain; the hub's zero still wins.
+      inbox() -- Informational events never change the hub's response count.
     end,
   }
 end

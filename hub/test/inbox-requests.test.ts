@@ -359,10 +359,8 @@ test('cland inbox prints all four sections, all rows with ages, plan size and fi
   assert.equal(messages.length, 7);
   assert.deepEqual(messages.map(line => line.match(/Message (\d)/)?.[1]), ['6', '5', '4', '3', '2', '1', '0']);
   assert.ok(lines.filter(line => /^(ask|approval|plan|qa|message) /.test(line)).every(line => / · \d+ m$/.test(line)));
-  const notifications = lines.filter(line => line.startsWith('notification: '));
-  assert.ok(notifications.length > 0, 'the fixture includes legacy notifications');
-  assert.deepEqual(notifications, frame.notifications.map(note => `notification: ${note.severity === 'warn' ? '⚠ ' : ''}${note.text}`));
-  assert.ok(lines.indexOf(notifications[0]!) > lines.indexOf(messages.at(-1)!), 'legacy notifications follow the four response sections');
+  assert.doesNotMatch(cli.stdout, /notification:/);
+  assert.equal('notifications' in frame, false);
   assert.equal(lines.at(-1), `needs you: ${frame.needsYou}`);
   assert.equal(frame.needsYou, 11);
 });

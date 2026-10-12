@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Inbox } from '../../hub/src/protocol.ts';
+import type { Inbox, EventsPage } from '../../hub/src/protocol.ts';
 import { Store } from '../../hub/src/hub/store.ts';
 import { connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
@@ -13,14 +13,14 @@ const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
 
 const cases = [
-  { name: 'defaults with notifications', config: '', count: 3, layers: ['now', 'now', 'now'] },
+  { name: 'defaults with events', config: '', count: 3, layers: ['now', 'now', 'now'] },
   {
-    name: 'notifications raised to Now',
+    name: 'events raised to Now',
     config: 'inbox.other = "now"\ninbox.clear = "now"\ninbox.not_clear = "now"\ninbox.death = "now"\n',
     count: 3, layers: ['now', 'now', 'now'],
   },
   {
-    name: 'responses in Watch, Background and Archive with Now notifications',
+    name: 'responses in Watch, Background and Archive with Now events',
     config: 'inbox.ask = "watch"\ninbox.approval = "background"\ninbox.waiting = "archive"\ninbox.other = "now"\ninbox.clear = "now"\n',
     count: 0, layers: ['watch', 'background', 'archive'],
   },
@@ -71,9 +71,11 @@ for (const scenario of cases) {
       assert.equal((await request<{ needsYou: number }>({ type: 'hub.status' })).needsYou, expected);
       assert.deepEqual([inbox.asks.length, inbox.approvals.length, inbox.waiting.length], [1, 1, 1], 'the ask topic is not counted twice as waiting');
       assert.deepEqual([inbox.asks[0]?.layer, inbox.approvals[0]?.layer, inbox.waiting[0]?.layer], layers);
-      assert.ok(inbox.notifications.some(n => n.kind === 'role'));
-      assert.ok(inbox.notifications.some(n => n.result === 'clear'));
-      assert.ok(inbox.notifications.some(n => n.result === 'not clear'));
+      assert.equal('notifications' in inbox, false);
+      const events = await request<EventsPage>({ type: 'events.list' });
+      assert.ok(events.rows.some(r => r.kind === 'session' && r.text.includes('is Coordinator')));
+      assert.ok(events.rows.some(r => r.kind === 'verdict' && r.text.includes('review clear')));
+      assert.ok(events.rows.some(r => r.kind === 'verdict' && r.text.includes('review not clear') && r.warning));
       // Compare literal expectations with rendered text, rather than deriving a count from local rows.
       for (const keys of ['<Esc><Space>n', '<Esc><Space>N']) {
         if (keys.includes('<Space>n')) {
@@ -113,11 +115,6 @@ for (const scenario of cases) {
     };
 
     await check(scenario.count, scenario.layers);
-    if (scenario.config.includes('inbox.clear = "now"')) {
-      const inbox = await request<Inbox>({ type: 'inbox.list' });
-      assert.equal(inbox.notifications.find(n => n.result === 'clear')?.layer, 'now', 'an ordinary notification really was raised to Now');
-      assert.equal(inbox.notifications.find(n => n.result === 'not clear')?.layer, 'watch', 'warnings retain D17 placement');
-    }
     const set = (surface: string, target: string, mode: string) => request({ type: 'visibility.set', surface, target, mode });
     const muted = scenario.layers.map(layer => ({ now: 'watch', watch: 'background', background: 'archive', archive: 'archive' })[layer]!);
     // Muting required topics/session removes their contributions, even while their inbox rows remain.

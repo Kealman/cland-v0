@@ -133,3 +133,38 @@ test('events pages clamp limits, cross UTF-8 block boundaries and terminate at t
   assert.deepEqual(empty, { rows: [], before: null, more: false });
   assert.equal((await ui.request({ type: 'events.list', before: '900000000' })).ok, false);
 });
+
+test('inbox retires notifications and dismissal frames while verdicts and role changes remain events', async t => {
+  const { startDaemon, cland } = await import('./harness.ts');
+  const root = await tempProject(t);
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const created = await ui.request({ type: 'task.create', title: 'Events replace notifications' });
+  const item = (created.value as { item: { id: string } }).item.id;
+  for (const result of ['clear', 'not clear']) {
+    const verdict = await ui.request({ type: 'task.comment', item, text: `Review ${result}.`, verdict: { verdict: 'review', result, run: `retired-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
+    assert.equal(verdict.ok, true, verdict.error);
+  }
+  const page = (await ui.request({ type: 'events.list' })).value as EventsPage;
+  assert.ok(page.rows.some(r => r.kind === 'session' && r.text.includes('coord is Coordinator')));
+  assert.ok(page.rows.some(r => r.kind === 'verdict' && r.text.includes('review clear') && !r.warning));
+  assert.ok(page.rows.some(r => r.kind === 'verdict' && r.text.includes('review not clear') && r.warning));
+  const inbox = await ui.request({ type: 'inbox.list' });
+  assert.equal('notifications' in (inbox.value as object), false);
+  assert.equal((inbox.value as { needsYou: number }).needsYou, 0);
+  for (const type of ['inbox.dismiss', 'inbox.dismiss_all']) {
+    const refused = await ui.request({ type, notification: 'legacy' });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error!, /events view.*events.list/);
+  }
+  // A legacy refusal keeps the connection usable and never clears journal rows.
+  assert.equal((await ui.request({ type: 'events.list' })).ok, true);
+  const cli = await cland(root, 'inbox');
+  assert.equal(cli.code, 0, cli.stderr);
+  assert.doesNotMatch(cli.stdout, /notification:/);
+  assert.ok(ui.frames.filter(f => f.type === 'inbox').every(f => !('notifications' in (f.inbox as object))));
+});

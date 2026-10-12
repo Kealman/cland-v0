@@ -158,7 +158,7 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
 const topBar = (s: string) => s.split('\n')[0] ?? '';
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
 
-test('the chip and inbox header show only the hub count through notification floods, messages and resolutions', { skip }, async t => {
+test('the chip and inbox header show only the hub count through event floods, messages and resolutions', { skip }, async t => {
   const bound = topic('topic-count', 'Count item', 'open', { item: 'T-12' });
   const c = await startShell(t, s => { s.inbox = {}; s.topics = [topic('general', 'General', 'open'), bound]; });
   await c.input('<Esc><Space>n');
@@ -176,14 +176,14 @@ test('the chip and inbox header show only the hub count through notification flo
   const message = (id: string, extra: Record<string, unknown> = {}) => ({ type: 'message', topic: bound,
     message: { id, from: 'coord-1', fromKind: 'agent', fromRole: 'coordinator', to: ['human'], text: id, ts: ts(10), topic: bound.id, ...extra } });
   const ib = { asks: [] as Record<string, unknown>[], approvals: [] as Record<string, unknown>[],
-    waiting: [] as Record<string, unknown>[], notifications: [] as Record<string, unknown>[] };
+    waiting: [] as Record<string, unknown>[] };
   const inbox = async (needsYou: number) => c.control({ set: { inbox: { ...ib, needsYou } }, emit: { type: 'inbox', inbox: { ...ib, needsYou } } });
   await count(0);
-  // The live-build symptom: hundreds of unresolved notifications while the hub says zero.
-  ib.notifications = Array.from({ length: 427 }, (_, i) => {
-    const kind = ['death', 'verdict', 'verdict', 'release', 'role', 'idle'][i % 6];
-    return { id: `notification-${i}`, kind, result: i % 6 === 1 ? 'not clear' : 'clear', text: `notification ${i}`, ts: ts(10) };
-  });
+  // Hundreds of informational events never supply a human response count.
+  await c.control({ emits: Array.from({ length: 427 }, (_, i) => ({ type: 'event', row: {
+    id: `event-${i}`, kind: i % 2 ? 'verdict' : 'session', warning: i % 3 === 0, glyph: '·',
+    subject: { kind: 'session', id: 'impl-1' }, text: `event ${i}`, ts: ts(10),
+  } })) });
   await inbox(0);
   await count(0);
   // The hub owns the number even when the rows are unchanged and contain no asks.
@@ -208,14 +208,11 @@ test('the chip and inbox header show only the hub count through notification flo
   ib.waiting = [{ ...bound, id: 'topic-waiting', title: 'Waiting decision', status: 'waiting for human' }];
   await inbox(3);
   await count(3);
-  ib.notifications = [{ id: 'failed', kind: 'verdict', result: 'not clear', text: 'T-12 review not clear', ts: ts(10) }];
-  await inbox(3); // Notifications never alter the hub’s count.
+  await c.control({ emits: [
+    { type: 'event', row: { id: 'failed', kind: 'verdict', warning: true, glyph: '⚠', subject: { kind: 'item', id: 'T-12' }, text: 'T-12 review not clear', ts: ts(10) } },
+    { type: 'event', row: { id: 'died', kind: 'session', warning: true, glyph: '⚠', subject: { kind: 'session', id: 'impl-2' }, text: 'impl-2 died', ts: ts(10) } },
+  ] });
   await count(3);
-  ib.notifications.push({ id: 'died', kind: 'death', text: 'impl-2 died', ts: ts(10) });
-  await inbox(3);
-  await count(3);
-  ib.notifications.push(...['role', 'idle', 'verdict'].map(kind => ({ id: kind, kind, result: 'clear', text: `ordinary ${kind}`, ts: ts(10) })));
-  await inbox(3);
   await c.control({ emits: Array.from({ length: 100 }, (_, i) => message(`flood-${i}`, { to: i % 2 ? ['human'] : ['coord-1'] })) });
   await count(3);
   await c.input('<Esc>:Cland view thread topic-count<CR>');
@@ -264,8 +261,8 @@ test('the count stays unknown until the hub says, follows hub.status, and stays 
   assert.match(topBar(answered), /needs you {2}17 /, 'local answer never decrements the hub value');
   assert.match(rightOf(answered), /17 need you/);
   // A payload without a number keeps the last known value rather than deriving one from its rows.
-  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [] } } });
-  const retained = await c.waitScreen(s => !rightOf(s).includes('NOTIFICATIONS'), 'rows replaced without a count');
+  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [] } } });
+  const retained = await c.waitScreen(s => rightOf(s).includes('archive') && !rightOf(s).includes('ASKS AND APPROVALS') && !rightOf(s).includes('MESSAGES TO YOU'), 'rows replaced without a count');
   assert.match(topBar(retained), /needs you {2}17 /);
   assert.match(rightOf(retained), /17 need you/);
 });
@@ -550,7 +547,7 @@ test('a burst of hub events never raises a hit-enter prompt', { skip }, async (t
     { type: i % 2 ? 'role.vacant' : 'role.filled', role: 'coordinator', session: 'coord-1', ts: ts(12) },
     { type: 'task', id: 'T-12', item: { ...item, title: `Hub daemon ${i}` } },
     { type: 'ask', topic: 'general', ask: 'no-such-ask', card: { state: 'answered' } },
-    { type: 'inbox', inbox: { asks: [{ id: 'a9', topic: { id: 'general', title: 'General' }, question: `q ${i}\nwith a second line`, options: ['one\ntwo', 'three'], free: true, from: 'coord-1', ts: ts(12) }], approvals: [], waiting: [], notifications: [{ id: `n${i}`, kind: 'death', text: 'died\nbadly', ts: ts(12) }], needsYou: 1 } },
+    { type: 'inbox', inbox: { asks: [{ id: 'a9', topic: { id: 'general', title: 'General' }, question: `q ${i}\nwith a second line`, options: ['one\ntwo', 'three'], free: true, from: 'coord-1', ts: ts(12) }], approvals: [], waiting: [], needsYou: 1 } },
     // malformed: a handler must not raise into the message area
     { type: 'topic', topic: 'not a table' },
     { type: 'task', id: 'T-99', item: 'nope' },
@@ -1206,7 +1203,7 @@ function withItems(s: Scenario): void {
   ];
   // the ask badge counts the open asks in the bound topic (#33), not the topic's status
   const openAsk = (id: string, question: string) => ({ id, topic: { id: 'topic-2', title: 'Items panel work', item: 'T-2' }, question, options: ['yes', 'no'], free: true, from: 'coord-1', label: 'coord-1 [Coordinator]', ts: ts(1) });
-  s.inbox = { asks: [openAsk('a-2', 'Tree or flat list?'), openAsk('a-3', 'Show closed items?')], approvals: [], waiting: [], notifications: [] };
+  s.inbox = { asks: [openAsk('a-2', 'Tree or flat list?'), openAsk('a-3', 'Show closed items?')], approvals: [], waiting: [] };
   s.items = [
     item('T-1', 'epic', 'Workbench shell'),
     item('T-2', 'task', 'Items panel', { parent: 'T-1', status: 'in progress', claim: claimBy('impl-2'), topic: 'topic-2', branch: 't/2-items-panel', labels: ['ui', 'slice-1'] }),
@@ -1790,7 +1787,7 @@ test('overlapping delayed panel snapshots keep topic, session, artifact and inbo
     { type: 'presence', sessions: [{ name: 'external', role: 'qa', state: 'idle' }] },
     { type: 'role.vacant', role: 'coordinator' },
     { type: 'artifact', artifact: { ...artifact, status: 'archived' } },
-    { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } },
+    { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], needsYou: 0 } },
   ] });
   await c.waitScreen(x => x.includes('coord-1 [Implementer]'), 'live session row');
   await onSessionRow(c, 'coord-1');
@@ -1801,7 +1798,7 @@ test('overlapping delayed panel snapshots keep topic, session, artifact and inbo
     topics: [topic('general', 'General', 'open'), topic('agents', 'Agents', 'open'), latestTopic],
     processes: [{ ...proc('coord-1', 'implementer', 'idle'), usage: { total: { cost: 2.40 } } }],
     presence: [{ name: 'external', role: 'qa', state: 'idle' }], coordinator: null,
-    inbox: { asks: [], approvals: [], waiting: [], notifications: [] },
+    inbox: { asks: [], approvals: [], waiting: [] },
     artifacts: [{ ...artifact, status: 'archived' }],
   } });
   await c.lua("require('cland').refresh()");
@@ -1886,7 +1883,7 @@ function withAgentsLog(s: Scenario): void {
 
 const ASK_OPTIONS = ['the name recorded by the spoke', 'the harness session id', 'ask me later'];
 
-/** An open ask in topic-1 (bound to T-12), an approval, a topic waiting without an ask, three notifications. */
+/** An open ask in topic-1 (bound to T-12), an approval, a topic waiting without an ask. */
 function withInbox(s: Scenario): void {
   s.topics = [
     topic('general', 'General', 'open'),
@@ -1906,11 +1903,6 @@ function withInbox(s: Scenario): void {
     approvals: [{ id: 'cmd1', session: 'impl-1', label: 'impl-1 [Implementer]', harness: 'claude-code', since: ts(2), attach: 'claude attach impl-1-bg' }],
     waiting: [topic('topic-5', 'Spoke reconnect: flaky test', 'waiting for human', { unread: 2 })],
     messages: [{ id: 'waiting-report', topic: { id: 'topic-5', title: 'Spoke reconnect: flaky test' }, text: 'Needs a reply', from: 'coord-1', fromRole: 'coordinator', since: ts(2), layer: 'now' }],
-    notifications: [
-      { id: 'n1', kind: 'verdict', text: 'T-19 review not clear · rev-1', ts: ts(3), item: 'T-19', session: 'rev-1', result: 'not clear', dismissed: false },
-      { id: 'n2', kind: 'verdict', result: 'clear', text: 'T-19 QA clear: rev-1', ts: ts(4), session: 'rev-1', dismissed: false },
-      { id: 'n3', kind: 'death', text: 'impl-3 [Implementer] died: its harness exited', ts: ts(5), session: 'impl-3', dismissed: false },
-    ],
   };
 }
 
@@ -1974,14 +1966,14 @@ test('r on a message in the Agents log prepares a reply to its sender; the hub g
 /** The inbox in the right panel, focused. */
 async function openInbox(c: Shell): Promise<string> {
   await c.input('<Esc><Space>n');
-  return c.waitScreen((x) => x.includes('INBOX') && rightOf(x).includes('NOTIFICATIONS'), 'the inbox panel');
+  return c.waitScreen((x) => x.includes('INBOX') && rightOf(x).includes('ASKS AND APPROVALS') && rightOf(x).includes('? T-12'), 'the inbox panel and its ask row');
 }
 
-test('the inbox puts asks and approvals first, messages next, then legacy notifications; the chip is hub-owned', { skip }, async (t) => {
+test('the inbox puts asks and approvals first, messages next and events outside the inbox; the chip is hub-owned', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   const s = await openInbox(c);
   const panel = rightOf(s);
-  const order = ['ASKS AND APPROVALS', '▲ impl-1', '? T-12', 'MESSAGES TO YOU', 'NOTIFICATIONS'].map(w => panel.indexOf(w));
+  const order = ['ASKS AND APPROVALS', '▲ impl-1', '? T-12', 'MESSAGES TO YOU'].map(w => panel.indexOf(w));
   assert.ok(order.every(at => at >= 0), panel);
   assert.deepEqual([...order].sort((a,b) => a-b), order);
   assert.match(topBar(s), /▲ needs you {2}3 /);
@@ -2030,22 +2022,15 @@ test('Enter on an approval attaches the session in the centre', { skip }, async 
   assert.deepEqual((await requestsOf(c, 'session.attach')).map((f) => f.session), ['impl-1']);
 });
 
-test('d dismisses ordinary notifications; D retains warnings, asks and approvals', { skip }, async (t) => {
+test('the inbox has no notification rows or dismissal keys', { skip }, async t => {
   const c = await startShell(t, withInbox);
   await openInbox(c);
-  await c.input('gg/T-19 QA clear<CR>d');
-  let s = await c.waitScreen((x) => !rightOf(x).includes('T-19 QA clear') && rightOf(x).includes('T-19 review not clear'), 'one dismissed');
-  assert.deepEqual((await requestsOf(c, 'inbox.dismiss')).map((f) => f.notification), ['n2']);
-  await c.input('gg/T-19 review not clear<CR>d');
-  s = await c.waitScreen(x => statusLine(x).includes('warn events are informational and are not dismissed'), 'warning retained');
+  const before = await c.lua('return vim.api.nvim_buf_get_lines(0,0,-1,false)');
   await c.input('D');
-  s = await c.waitScreen(x => statusLine(x).includes('warn events are informational and are not dismissed'), 'only warnings remain');
-  assert.equal((await requestsOf(c, 'inbox.dismiss_all')).length, 0);
-  assert.ok(rightOf(s).includes('T-19 review not clear'));
-  assert.ok(rightOf(s).includes('impl-3 [Implementer] died'));
-  assert.match(rightOf(s), /\? T-12/);
-  assert.match(rightOf(s), /▲ impl-1/);
-  assert.match(topBar(s), /needs you {2}3 /, 'dismissing notifications never changes the hub count');
+  assert.deepEqual(await c.lua('return vim.api.nvim_buf_get_lines(0,0,-1,false)'), before);
+  assert.doesNotMatch((before as string[]).join('\n'), /NOTIFICATIONS|D dismiss|earlier.*Agents log/);
+  assert.deepEqual(await requestsOf(c, 'inbox.dismiss'), []);
+  assert.deepEqual(await requestsOf(c, 'inbox.dismiss_all'), []);
 });
 
 test('the ask card in the thread: the question, numbered options and the free-answer hint; 2 on it answers, and the answer shows beneath', { skip }, async (t) => {
@@ -2152,9 +2137,9 @@ test('an ask answered while the client was away shows answered after the reconne
 test('the inbox full width (␣N) shows the same sections and acts the same', { skip }, async (t) => {
   const c = await startShell(t, withInbox);
   await c.input('<Esc><Space>N');
-  let s = await c.waitScreen((x) => statusLine(x).includes('Inbox · full width') && centreOf(x).includes('NOTIFICATIONS'), 'the inbox full width');
+  let s = await c.waitScreen((x) => statusLine(x).includes('Inbox · full width') && centreOf(x).includes('MESSAGES TO YOU'), 'the inbox full width');
   const centre = centreOf(s);
-  const order = ['ASKS AND APPROVALS', '▲ impl-1', '? T-12', 'MESSAGES TO YOU', 'NOTIFICATIONS'].map((w) => centre.indexOf(w));
+  const order = ['ASKS AND APPROVALS', '▲ impl-1', '? T-12', 'MESSAGES TO YOU'].map((w) => centre.indexOf(w));
   assert.ok(order.every((at) => at >= 0), centre);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   assert.match(s, /INBOX · FULL WIDTH/);
@@ -2162,18 +2147,18 @@ test('the inbox full width (␣N) shows the same sections and acts the same', { 
   s = await c.waitScreen((x) => !centreOf(x).includes('Which should win') && centreOf(x).includes('APPROVALS'), 'answered with 3');
   assert.deepEqual((await requestsOf(c, 'topic.answer')).map((f) => [f.ask, f.option]), [['a1', 3]]);
   // an inbox event replaces the rows
-  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [], needsYou: 0 } } });
+  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], needsYou: 0 } } });
   s = await c.waitScreen((x) => centreOf(x).includes('✓ nothing needs you') && topBar(x).includes('✓ needs you 0'), 'an empty inbox');
 });
 
 test('visibility overrides drive thread folds, palette dimming and session counts; the needs-you chip remains hub-owned', { skip }, async t => {
   const c = await startShell(t, s => {
     s.visibility = { inbox: { idle: 'now' }, messages: { agent: 'now' }, sessions: { idle: 'now' }, items: { backlog: 'watch' } };
-    s.inbox = { asks: [], approvals: [], waiting: [], notifications: [{ id: 'idle-now', kind: 'idle', text: 'impl-1 idle 30 min', ts: ts(12) }] };
+    s.inbox = { asks: [], approvals: [], waiting: [] };
     s.messages!.general!.push({ id: 'raised', from: 'impl-1', fromKind: 'agent', fromRole: 'implementer', to: ['coord-1'], kind: 'report', text: 'Raised agent report', topic: 'general', ts: ts(12) });
     s.processes![1]!.state = 'idle';
   });
-  await c.waitScreen(s => /needs you\s+0/.test(topBar(s)), 'a raised idle is informational even in Now');
+  await c.waitScreen(s => /needs you\s+0/.test(topBar(s)), 'an idle session never contributes to needsYou');
   const values = await c.lua<{ message: string; idle: string; backlog: string; dim: boolean; now: number }>(`local s = require('cland.state'); local t = require('cland.views').topic('general').thread; return {message = t.blocks[#t.blocks].layer, idle = s.session('impl-1').layer, backlog = s.item('T-13').layer, dim = require('cland.palette').dim('items', s.item('T-13')), now = s.counts().now}`);
   assert.equal(values.message, 'now');
   assert.equal(values.idle, 'now');
@@ -2181,8 +2166,8 @@ test('visibility overrides drive thread folds, palette dimming and session count
   assert.equal(values.dim, false);
   assert.equal(values.now, 2);
   // The same classified-now row cannot override a hub count of zero.
-  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], notifications: [{ id: 'idle-now', kind: 'idle', text: 'impl-1 idle 30 min', ts: ts(12) }], needsYou: 0 } } });
-  await c.waitScreen(s => /needs you\s+0/.test(topBar(s)), 'the chip obeys the hub despite a now notification');
+  await c.control({ emit: { type: 'inbox', inbox: { asks: [], approvals: [], waiting: [], needsYou: 0 } } });
+  await c.waitScreen(s => /needs you\s+0/.test(topBar(s)), 'the chip obeys the hub after visibility overrides');
 });
 
 test('a current-release change updates other item placements and palette dimming without a snapshot reload', { skip }, async t => {

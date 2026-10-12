@@ -383,7 +383,7 @@ test('visible hub updates retain the node through reflow; no-op task details and
   const longer = { ...reflow, topic: 'topic-10' };
   scenario.items = scenario.items!.map(it => it.id === updated.id ? longer : it);
   await c.control({ set: { items: scenario.items } });
-  await c.control({ emits: [{ type: 'task', id: longer.id, item: longer }, { type: 'inbox', inbox: { asks: [{ id: 'ask-10', topic: { id: 'topic-10' }, question: 'Choose?' }], notifications: [] } }] });
+  await c.control({ emits: [{ type: 'task', id: longer.id, item: longer }, { type: 'inbox', inbox: { asks: [{ id: 'ask-10', topic: { id: 'topic-10' }, question: 'Choose?' }] } }] });
   await c.waitScreen(s => s.includes('?1'), 'ask badge'); await node(c, 'T-14');
   assert.equal(await c.lua("return require('cland.graph').model.nodes['T-14'].row"), movedRow, 'existing badge rows remain stable');
   const noOp = { ...longer, updated: '2026-10-10T13:00:00Z', comments: [{ author: 'coord', at: '2026-10-10T13:00:00Z', text: 'Invisible comment' }] };
