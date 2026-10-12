@@ -107,6 +107,47 @@ async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: string, 
   return r;
 }
 
+test('merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications', async t => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  // This task predates the manifest. Only dev has it, so checking the task tree misses the gap.
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/base.test.ts'), '// hermetic base test\n');
+  await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/base.test.ts': 'free' } }));
+  git(root, 'add', 'hub'); git(root, 'commit', '-qm', 'Introduce shards on dev');
+  ok(await cland(root, 'push'));
+  await mkdir(join(work.path, 'hub/test'), { recursive: true });
+  await mkdir(join(work.path, 'hub/src'), { recursive: true });
+  await writeFile(join(work.path, 'hub/test/new.test.ts'), 'setTimeout(() => {}, 1);\n');
+  await writeFile(join(work.path, 'hub/src/new.test.ts'), '// another new test\n');
+  git(work.path, 'add', 'hub'); git(work.path, 'commit', '-qm', 'Add tests without classifications');
+  await review(rev, work.id);
+  const refusal = await refused(ui, root, work.id, 'merge-shards', ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
+  assert.match(refusal.error!, /unclassified hub tests/);
+  assert.ok(refusal.error!.includes('"hub/src/new.test.ts": "machine",'));
+  assert.ok(refusal.error!.includes('"hub/test/new.test.ts": "machine",'));
+  assert.match(refusal.error!, /hub\/test\/shards.json/);
+  assert.equal(existsSync(join(root, 'hub/test/new.test.ts')), false, 'refusal leaves root checkout alone');
+  const view = json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json'));
+  assert.equal(view.item.state, 'open');
+  git(work.path, 'fetch', 'origin'); git(work.path, 'merge', '--no-edit', 'origin/dev');
+  await writeFile(join(work.path, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
+    'hub/test/base.test.ts': 'free', 'hub/src/new.test.ts': 'free', 'hub/test/new.test.ts': 'free',
+  } }));
+  git(work.path, 'commit', '-qam', 'Incorrect free classification');
+  await review(rev, work.id, 'clear', 'incorrect-free');
+  const resource = await refused(ui, root, work.id, 'merge-shards', ['hub/test/new.test.ts']);
+  assert.match(resource.error!, /free hub test touches machine resources/);
+  await writeFile(join(work.path, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
+    'hub/test/base.test.ts': 'free', 'hub/src/new.test.ts': 'machine', 'hub/test/new.test.ts': 'machine',
+  } }));
+  git(work.path, 'commit', '-qam', 'Classify new tests');
+  await review(rev, work.id, 'clear', 'classified');
+  const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
+  assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
+  assert.equal(await readFile(join(root, 'hub/test/new.test.ts'), 'utf8'), 'setTimeout(() => {}, 1);\n');
+});
+
 test('an in-flight legacy item reaches ready and merge only after every criterion is done and verified', async (t) => {
   const { root, ui, rev, discovery } = await project(t);
   const work = await task(root);

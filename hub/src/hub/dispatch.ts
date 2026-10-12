@@ -12,7 +12,7 @@
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
-import { Suites, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
+import { Suites, SuiteAdmissionError, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
 import { describeSelection } from '../suite-selection.ts';
 import { isAbsolute } from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
@@ -240,6 +240,7 @@ export class Dispatcher {
   static #failure(id: string, err: unknown): HubFrame {
     if (err instanceof PushError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof ReleaseError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}) };
+    if (err instanceof SuiteAdmissionError) return { type: 'result', id, ok: false, error: err.message, code: err.code, files: err.files };
     if (err instanceof MergeError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}), ...(err.recovery ? { recovery: err.recovery } : {}) };
     if (err instanceof ArtifactError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof NoteIncomplete) return { type: 'result', id, ok: false, error: err.message, code: 'note-incomplete', missing: err.missing };

@@ -46,6 +46,89 @@ async function fixture(t: import('node:test').TestContext, testScript: string, t
   return { root, discovery, ui, env, topic, results, launch, spoke };
 }
 
+test('verify refuses every unclassified hub test before reserving a queue slot, then admits classifications', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await mkdir(join(f.root, 'hub/src'), { recursive: true });
+  await writeFile(join(f.root, 'hub/test/new.test.ts'), 'setTimeout(() => {}, 1);\n');
+  await writeFile(join(f.root, 'hub/src/new.test.ts'), '// another test\n');
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {} }));
+  // A hand holder makes an incorrectly admitted request remain observable in the queue.
+  await mkdir(join(f.root, 'suite.lock'));
+  const before = await f.ui.request({ type: 'hub.status' });
+  const failed = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  assert.equal(failed.ok, false, JSON.stringify(failed));
+  assert.equal((failed as { code?: string }).code, 'verify-shards');
+  assert.deepEqual((failed as { files?: string[] }).files, ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
+  assert.ok(failed.error!.includes('"hub/src/new.test.ts": "machine",'));
+  assert.ok(failed.error!.includes('"hub/test/new.test.ts": "machine",'));
+  const status = await f.ui.request({ type: 'hub.status' });
+  assert.deepEqual((status.value as HubStatus).suites, (before.value as HubStatus).suites, 'refusal creates no durable suite');
+  const queue = await f.ui.request({ type: 'suite.queue' });
+  assert.deepEqual((queue.value as VerificationQueue).waiters, []);
+  const cli = await clandWithEnv(f.root, f.env, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
+  assert.notEqual(cli.code, 0);
+  assert.match(cli.stderr, /verify-shards.*unclassified hub tests/s);
+  assert.equal((await f.results()).length, 0, 'refusal publishes no suite result');
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
+    'hub/src/new.test.ts': 'free', 'hub/test/new.test.ts': 'free',
+  } }));
+  const resource = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  assert.equal(resource.ok, false);
+  assert.match(resource.error!, /free hub test touches machine resources/);
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {
+    'hub/src/new.test.ts': 'machine', 'hub/test/new.test.ts': 'machine',
+  } }));
+  const job = await f.launch();
+  assert.equal(job.pid, null);
+  assert.equal(job.position, 1, 'refused requests consume no queue position');
+  await rm(join(f.root, 'suite.lock'), { recursive: true });
+  const result = await eventually('classified suite passed', async () => (await f.results())[0]);
+  assert.match(result.text, /all exit 0/);
+});
+
+for (const capture of ['before change', 'after change'] as const) test(`verify classifies the submitted head without a queue slot when HEAD is captured ${capture}`, async t => {
+  const bin = await tempProject(t, 'cland-suite-shard-head-');
+  const realGit = (await promisify(execFile)('which', ['git'])).stdout.trim();
+  await writeFile(join(bin, 'git'), `#!${process.execPath}
+import { existsSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { setTimeout as pause } from 'node:timers/promises';
+const args = process.argv.slice(2);
+if (args.join(' ') === 'rev-parse HEAD' && existsSync('hold-head')) {
+  const captured = ${JSON.stringify(capture)} === 'before change' ? spawnSync(${JSON.stringify(realGit)}, args, { encoding: 'utf8' }) : null;
+  writeFileSync('head-held', 'held');
+  while (!existsSync('release-head')) await pause(25);
+  const result = captured ?? spawnSync(${JSON.stringify(realGit)}, args, { encoding: 'utf8' });
+  process.stdout.write(result.stdout); process.stderr.write(result.stderr); process.exitCode = result.status ?? 1;
+} else process.exitCode = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' }).status ?? 1;
+`, { mode: 0o700 });
+  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, '', { PATH: `${bin}:${process.env.PATH ?? ''}` });
+  const git = (...args: string[]) => promisify(execFile)(realGit, args, { cwd: f.root });
+  await git('init', '-b', 'dev');
+  await git('config', 'user.name', 'Shard head test'); await git('config', 'user.email', 'shards@example.invalid');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\nsuite.lock*\nhold-head\nhead-held\nrelease-head\n');
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {} }));
+  await git('add', '.'); await git('commit', '-m', 'Classified baseline');
+  await mkdir(join(f.root, 'suite.lock'));
+  await writeFile(join(f.root, 'hold-head'), 'hold');
+  const pending = f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  await eventually('head capture held', () => stat(join(f.root, 'head-held')).then(() => true, () => undefined));
+  await writeFile(join(f.root, 'hub/test/advanced.test.ts'), '// unclassified new head\n');
+  await git('add', 'hub'); await git('commit', '-m', 'Advance to unclassified head');
+  // The worktree is now classified, so immutable-head lint / the final HEAD fence must decide.
+  await writeFile(join(f.root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: { 'hub/test/advanced.test.ts': 'free' } }));
+  await writeFile(join(f.root, 'release-head'), 'release');
+  const failed = await pending;
+  assert.equal(failed.ok, false, JSON.stringify(failed));
+  assert.match(failed.error!, capture === 'before change' ? /head changed during submission/ : /verify-shards.*advanced\.test\.ts/s);
+  const status = await f.ui.request({ type: 'hub.status' });
+  assert.deepEqual((status.value as HubStatus).suites, [], 'head change cannot reserve a suite');
+  const queue = await f.ui.request({ type: 'suite.queue' });
+  assert.deepEqual((queue.value as VerificationQueue).waiters, []);
+});
+
 test('verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart', async t => {
   const f = await fixture(t, 'node -e "process.exit(0)"');
   const lock = join(f.root, 'suite.lock');

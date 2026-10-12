@@ -4,6 +4,7 @@ import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from
 import { access, lstat, mkdir, realpath, stat } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MergeError } from './merge.ts';
+import { lintHubShardTree, ShardManifestError } from './suite-shards.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
 import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
@@ -629,6 +630,8 @@ export async function squashTask(
       throw new MergeError('merge-conflict', `rebase ${branch} on ${base}; conflicts: ${files.join(', ')}`, files);
     });
   }
+  try { await lintHubShardTree(root, tree); }
+  catch (err) { resumed(() => { throw new MergeError('merge-shards', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
   const touched = await territoryGitAsync(root, ['diff', '--name-only', '-z', before, tree, '--']);
   const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--']);
   const untracked = await territoryGitAsync(root, ['ls-files', '--others', '--exclude-standard', '-z']);

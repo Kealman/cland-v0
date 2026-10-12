@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { open, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lintHubShards, lintHubShardTree, ShardManifestError } from '../suite-shards.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { pidAlive } from '../project.ts';
 import { promisify } from 'node:util';
@@ -52,6 +53,15 @@ export function suiteSummary(log: string): string {
   const failures = text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ )/.test(line)).slice(0, 12).map(line => line.slice(0, 200));
   const timings = text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
   return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}`;
+}
+
+export class SuiteAdmissionError extends Error {
+  readonly code = 'verify-shards';
+  readonly files: string[];
+  constructor(error: unknown) {
+    super(`verify-shards: ${error instanceof Error ? error.message : String(error)}`);
+    this.files = error instanceof ShardManifestError ? error.files : [];
+  }
 }
 
 export class Suites {
@@ -135,10 +145,15 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
-    await mkdir(dir, { recursive: true, mode: 0o700 });
     const git = async (args: string[]) => exec('git', args, { cwd: input.cwd }).then(r => r.stdout.trim(), () => 'unknown');
     const [head, branch, selection] = await Promise.all([git(['rev-parse', 'HEAD']), git(['branch', '--show-current']), selectPackageSuite(input.cwd, input.mode as SuiteRequest)]);
     const tree = await candidateTree(input.cwd, head);
+    // Bind lint to the captured committed build as well as the files a dirty package will execute.
+    try {
+      if (head !== 'unknown') await lintHubShardTree(input.cwd, head);
+      await lintHubShards(input.cwd);
+    } catch (error) { throw new SuiteAdmissionError(error); }
+    await mkdir(dir, { recursive: true, mode: 0o700 });
     const cached = !input.fresh && tree ? this.#cached(tree, selection.mode) : undefined;
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
@@ -156,6 +171,7 @@ export class Suites {
         await writeFile(job.log, `Cached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nRequested head ${head}\n\n${originalLog}`, { mode: 0o600 });
       }
     }
+    if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during submission; submit verification again');
     authorize();
     if (this.#closed) throw new Error('hub is closing');
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
