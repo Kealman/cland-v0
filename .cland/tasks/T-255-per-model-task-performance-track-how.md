@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T06:08:23.359Z
-updated: 2026-10-12T09:30:40.594Z
+updated: 2026-10-12T09:36:01.233Z
 ---
 
 Observation from the human (2026-10-12 morning, after v0.1.1), relayed by the stand-in cland-impl.
@@ -67,3 +67,7 @@ Gaps, and what would close them:
 - Model variety. The v0.1.2 crew pins sol again. Close it with a rotation rule per size class and a fixed Reviewer model.
 
 Open questions for the grilling are in section 9 of the doc: the routing objective and unit; who reviews a candidate model; rotation share and which open models (through OpenCode?); who sets the size class; the rework definition and window; verifier metrics; mid-task model changes (T-50, T-51); where the per-task row lives; and whether the Coordinator's model counts.
+
+### human · 2026-10-12T09:36:01.233Z
+
+Decided (2026-10-12): instrumentation only in v0.1.2: session usage journaled at each publication and at stop, a required size field on tasks, a regression_of link, the model of every launch including sub-agents, the verdict scope on verdict records. No model rotation in this build: the human will measure later on another project with many models; the crew stays as decided. The metric set (first-pass yield, rounds to first clear, reviewer-found defects, escaped defects, cost per landed task; compared within size class, run and Reviewer model) is recorded for that later measurement. Recorded in docs/spec/v0.1.2.md §3.12.

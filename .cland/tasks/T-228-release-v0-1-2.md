@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-12T09:12:27.669Z
+updated: 2026-10-12T09:36:01.487Z
 ---
 
 ## Goal
@@ -54,6 +54,8 @@ Round 3, 2026-10-12 (charting the explorer map; the human answered yes to all bu
 5. Categories as a root container kind seeded at migration; agents file with --parent C-n; promotion by message; the Coordinator's idle_from; the tech-debt label retires.
 6. The side panel at release scope: epics as folded rows with fractions and breakdowns.
 7. Mockups and the prototype as tickets of the explorer map T-264 (T-259 explorer boards, T-260 card boards, T-261 inbox and events boards, T-262 the Neovim prototype after the mockups, T-263 the final wording), with one research ticket T-258 (summary fallback, prior art) running AFK.
+
+T-255, 2026-10-12 (after the research research/model-performance): instrumentation only in v0.1.2 (usage journaled, a required size field, regression_of, the model of every launch, the verdict scope); no model rotation, the human measures later on another project; the crew stays. Recorded in docs/spec/v0.1.2.md §3.12.
 
 ## Open
 
