@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:49:01.590Z
-updated: 2026-10-12T09:35:30.557Z
+updated: 2026-10-12T09:51:33.482Z
 ---
 
 ## Open question
@@ -41,3 +41,7 @@ Research done: `docs/research/account-limits.md` on branch `research/account-lim
 Recommendation (section 5): a user-level accounts registry (`~/.config/cland/accounts.toml`, paths only, no secrets) named from `roles.toml` and launches; the account as an environment overlay on every process the adapter starts or queries, recorded per session; limits pushed from running sessions (Codex as today; Claude by forwarding `session.measure` from the cland mod) and pulled rarely, through the harness itself, for idle accounts; an accounts block at the top of the sessions panel that renders the windows the source sends; pinned accounts per role or launch and a "limited" mark set from the hit signals. Automatic failover or round-robin on a near limit is exposed under all three providers' terms, so build it only if the human accepts that, as an opt-in.
 
 Found on the way: Claude Code issue anthropics/claude-code#95822 (open): short-lived `claude` commands near token expiry (`auth status`, `--bg`, `agents --json`) can spend the refresh token and log a config dir out. cland's adapter polls `claude agents --json` every 5 s; polling idle accounts would be the worst case.
+
+### human · 2026-10-12T09:51:33.482Z
+
+Decided (2026-10-12): an accounts registry at user level (~/.config/cland/accounts.toml, names and paths, no secrets), accounts by name in roles.toml and launches, the account recorded on the session and applied as the environment of every adapter process; limits from running sessions first (Codex rateLimits events, Claude's status-line rate_limits via the cland mod), idle accounts polled at most every 15 minutes through the harness only, never the provider endpoints with tokens cland reads, nothing for OpenCode; an accounts block at the top of the sessions panel with the windows per account; routing without rotation: accounts pinned by hand, a limit-hit marks the account limited, refuses launches and asks the human, no failover or round-robin. Recorded in docs/spec/v0.1.2.md §3.13. T-265 precedes multi-account use.

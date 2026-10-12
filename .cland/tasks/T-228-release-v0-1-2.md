@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-12T09:36:01.487Z
+updated: 2026-10-12T09:51:33.868Z
 ---
 
 ## Goal
@@ -56,6 +56,8 @@ Round 3, 2026-10-12 (charting the explorer map; the human answered yes to all bu
 7. Mockups and the prototype as tickets of the explorer map T-264 (T-259 explorer boards, T-260 card boards, T-261 inbox and events boards, T-262 the Neovim prototype after the mockups, T-263 the final wording), with one research ticket T-258 (summary fallback, prior art) running AFK.
 
 T-255, 2026-10-12 (after the research research/model-performance): instrumentation only in v0.1.2 (usage journaled, a required size field, regression_of, the model of every launch, the verdict scope); no model rotation, the human measures later on another project; the crew stays. Recorded in docs/spec/v0.1.2.md §3.12.
+
+T-240 and T-256, 2026-10-12 (after the research and the prototype): accounts registry, limits from sessions and rare harness polls, an accounts block in the panel, routing without rotation (spec §3.13); the executor behind a provider-agnostic interface with the first backend chosen after the MicroVM research, T-267 (the suite's spend) and T-266 (Linux portability) first in the hub lane (spec §3.14, §4 order amended).
 
 ## Open
 

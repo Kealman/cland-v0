@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T08:21:26.188Z
-updated: 2026-10-12T09:36:23.012Z
+updated: 2026-10-12T09:51:33.620Z
 ---
 
 Remote executors for `cland verify`: suite runs on cloud VMs through a provider-agnostic executor interface, so the crew stops queueing behind one machine and the project pays per minute.
@@ -110,3 +110,7 @@ The write-up also covers what an executor interface needs and the open questions
 - Passing CLAND_SUITE_SELECTION, since a bundle has no origin/dev.
 - Image or snapshot caching to cut the 76 s acquire time.
 - A hub-independent watchdog, and a scoped token.
+
+### human · 2026-10-12T09:51:33.620Z
+
+Decided (2026-10-12, on the prototype): cland's own executor behind a provider-agnostic interface (create from an image or snapshot, wait, deliver the tree with CLAND_SUITE_SELECTION, run, collect, destroy; watchdog, orphan sweep, spend cap; a remote budget beside the local cap of one). The first backend is chosen after the MicroVM research: MicroVMs if their conditions are better, droplets otherwise; the other is the second backend, each proven by one run. Before the executor: T-267 (the suite's own spend: 36k git and 20k ps spawns per run) and T-266 (Linux portability). Recorded in docs/spec/v0.1.2.md §3.14 and the order in §4.
