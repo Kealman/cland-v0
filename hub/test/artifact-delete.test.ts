@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { connectUi, eventually, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import { isClientRequest, isSpokeRequest, type Artifact, type TopicMessage } from '../src/protocol.ts';
 
 test('only the human can delete artifact bytes; the index and topic chip retain the deletion', async t => {
@@ -51,6 +51,7 @@ test('deleting an absorbed id removes only its moved file and preserves its dele
   await ui.waitFor(f => f.type === 'artifact' && (f.artifact as Artifact).id === folder.id);
   assert.equal((await ui.request({type:'artifact.delete',artifact:source.id})).ok, false);
   assert.equal((await ui.request({type:'hub.stop'})).ok, true);
+  await eventually('old hub terminated before restart', () => !pidAlive(discovery.pid) ? true : undefined);
   const restarted = await startDaemon(t, root);
   const reconnected = await connectUi(t, restarted.discovery);
   const replayed = (await reconnected.request({type:'topic.history',topic:'general'})).value as {messages:TopicMessage[]};

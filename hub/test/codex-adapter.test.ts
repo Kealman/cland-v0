@@ -392,8 +392,14 @@ test('a Codex app-server that dies: the state turns unknown and the hub logs it 
   assert.equal(gone.attach, null);
   const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'impl-1' && f.state === 'unknown');
   assert.equal(event.source, 'process');
-  const logged = (await hubLog(root)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const exitLogLines = async () => (await hubLog(root)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const logged = await eventually('the crash log persisted', async () => {
+    const lines = await exitLogLines();
+    return lines.length > 0 ? lines : undefined;
+  });
   assert.equal(logged.length, 1, 'one log event for the crash');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal((await exitLogLines()).length, 1, 'still one log event after settling');
 
   // relaunched on its own thread: a new app-server resumes the rollout
   const r = await ui.request({ type: 'session.resume', session: 'impl-1', relaunch: true }, 30_000);

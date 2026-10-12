@@ -1123,6 +1123,22 @@ node hub/bin/cland.ts --version
 
 ### Tests
 
+The spawn census counts `child_process` calls inside the suite's Node processes,
+with command totals and sources ranked by test file and helper. Run
+`node hub/test/spawn-census.mjs run .tmp/census-before` from the repository root;
+it preloads the recorder through `NODE_OPTIONS`, runs `npm test -- --all` under the
+ordinary machine-wide suite locks, and writes `report.md`, `aggregate.json` and
+`suite.log`. The report records the measured head and runner's `suite duration`
+line; invocation wall time also includes queue wait. Compare two runs with
+`node hub/test/spawn-census.mjs compare .tmp/census-before/aggregate.json .tmp/census-after/aggregate.json`.
+The census cannot see non-Node descendants (including git hooks and
+`git-receive-pack`) or subtrees that replace or strip `NODE_OPTIONS`; its report
+names test files with those overrides and sandbox-exec launches that may deny log
+writes. A denied log open leaves the child uninstrumented and preserves its behavior. Shell calls count as `sh -c`. Records
+contain only the command basename, first argument, test file, helper and timestamp,
+never environments or remaining arguments. Append-only records remain in the
+printed temporary root for inspection; failed runs produce partial reports.
+
 Automatic Node module compile-cache activation is disabled: warm loads fail on
 the supported Node 24 engine range. The [qualification check and measurements](../docs/node-compile-cache.md)
 record the reproduction, per-process-cache cost and upstream follow-up (T-220).
