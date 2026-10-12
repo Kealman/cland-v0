@@ -2,7 +2,7 @@
 id: T-262
 kind: question
 title: A Neovim prototype of the explorer and the card on prototype/explorer
-state: open
+state: closed
 labels:
   - wayfinder:prototype
 assignee: cland-design
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T09:10:35.904Z
-updated: 2026-10-12T10:54:49.718Z
+updated: 2026-10-12T11:10:15.216Z
 ---
 
 ## Question
@@ -108,3 +108,11 @@ CLAND_COMMAND='["node","/Users/evgeniyivanov/Projects/cland/v0/hub/bin/cland.ts"
 17. E-230 is closed with its stage S2 still open. Should closing an epic close its stages?
 18. Where should the last activity come from: summaries, the journal or the events view?
 19. The model is rebuilt on every hub event. That is fine at 270 items; at ten times as many, a dirty check or lazy folds would be needed.
+
+### human · 2026-10-12T11:10:15.078Z
+
+Resolution (2026-10-12). The human tried the prototype (prototype/explorer, ba5bc9c; worktree ../cland-explorer) and accepted it. Answers to its open points: a release with no epics keeps its direct tasks folded; the card takes the right panel's place when the centre is narrow; m sends to General and M creates the item's topic and sends there; the hub supplies the closing time, verified/total in task.list, the latest verify result and the §3.12 fields. The other points decided from the spec: see docs/spec/v0.1.2.md §3.8 and §3.9 (the prototype's answers).
+
+### human · 2026-10-12T11:10:15.216Z
+
+Resolved: prototype accepted; see the resolution comment; spec v0.1.2 §3.8, §3.9
