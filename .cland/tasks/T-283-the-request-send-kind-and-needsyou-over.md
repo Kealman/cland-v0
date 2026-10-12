@@ -3,7 +3,7 @@ id: T-283
 kind: task
 title: The request send kind and needsYou over the inbox's four kinds
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: T-274
 blocked_by: []
-topic: null
-branch: null
+topic: topic-171
+branch: t/T-283-the-request-send-kind-and-needsyou-over
 created: 2026-10-12T11:57:19.566Z
-updated: 2026-10-12T11:57:19.566Z
+updated: 2026-10-12T12:00:33.993Z
 ---
 
 ## Summary

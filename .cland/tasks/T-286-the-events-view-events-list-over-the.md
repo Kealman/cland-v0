@@ -3,7 +3,7 @@ id: T-286
 kind: task
 title: "The events view: events.list over the journal, ␣E, day groups and paging"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: T-274
 blocked_by: []
-topic: null
-branch: null
+topic: topic-169
+branch: t/T-286-the-events-view-events-list-over-the
 created: 2026-10-12T11:57:19.740Z
-updated: 2026-10-12T11:57:19.740Z
+updated: 2026-10-12T12:00:29.546Z
 ---
 
 ## Summary

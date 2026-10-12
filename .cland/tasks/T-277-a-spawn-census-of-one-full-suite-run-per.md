@@ -3,7 +3,8 @@ id: T-277
 kind: task
 title: A spawn census of one full suite run, per test file and helper
 state: open
-status: backlog
+status: in progress
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -11,10 +12,10 @@ labels:
 assignee: null
 parent: T-268
 blocked_by: []
-topic: null
-branch: null
+topic: topic-170
+branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T11:54:20.551Z
+updated: 2026-10-12T12:06:36.880Z
 ---
 
 ## Summary
@@ -48,9 +49,23 @@ Constraints:
 
 ## Acceptance criteria
 
-- [ ] One documented command runs the full suite with the recorder preloaded and writes a Markdown report and a JSON aggregate: totals per command, and per command the sources ranked by test file and by helper, with the run's wall time and head.
-- [ ] The census artifact of the branch head is published in this item's topic and names the ten largest sources of `git`, of `ps` and of Node spawns, with counts; its totals for `git` and `ps` are of the order the T-256 prototype measured (tens of thousands), or the report explains the difference.
-- [ ] The report names the test files whose subtrees replace or strip `NODE_OPTIONS` as uncounted, and records no environment values or arguments beyond the first.
-- [ ] A test covers the recorder and the aggregation on a small fixture (a spawn from a test file, from a helper and from a Node grandchild, each attributed correctly) and the comparison of two aggregates.
-- [ ] `hub/README.md` describes the census, how to run and compare it, and its blind spots.
-- [ ] The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+- [x] C1. One documented command runs the full suite with the recorder preloaded and writes a Markdown report and a JSON aggregate: totals per command, and per command the sources ranked by test file and by helper, with the run's wall time and head.
+  - done: impl-277 · 2026-10-12T12:06:36.023Z
+- [ ] C2. The census artifact of the branch head is published in this item's topic and names the ten largest sources of `git`, of `ps` and of Node spawns, with counts; its totals for `git` and `ps` are of the order the T-256 prototype measured (tens of thousands), or the report explains the difference.
+- [x] C3. The report names the test files whose subtrees replace or strip `NODE_OPTIONS` as uncounted, and records no environment values or arguments beyond the first.
+  - done: impl-277 · 2026-10-12T12:06:36.294Z
+- [x] C4. A test covers the recorder and the aggregation on a small fixture (a spawn from a test file, from a helper and from a Node grandchild, each attributed correctly) and the comparison of two aggregates.
+  - done: impl-277 · 2026-10-12T12:06:36.500Z
+- [x] C5. `hub/README.md` describes the census, how to run and compare it, and its blind spots.
+  - done: impl-277 · 2026-10-12T12:06:36.695Z
+- [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+
+## Comments
+
+### impl-277 · 2026-10-12T12:00:49.449Z
+
+Read T-277, T-268 and §3.14. Implementation: test-only --import recorder, per-process append-only logs, package-runner command plus report/compare, and a small subprocess fixture test classified machine. No production seam.
+
+### impl-277 · 2026-10-12T12:06:36.880Z
+
+Tooling is committed at 487550c. The fixture covers all spawn APIs, helper and grandchild attribution, privacy, incomplete final lines, comparison, exec/execFile promisify results/errors/child, and filesystem guards. Fixture and shard lint pass; all 64 adapter-native-boundary tests pass with the preload. The clean full baseline census is running.
