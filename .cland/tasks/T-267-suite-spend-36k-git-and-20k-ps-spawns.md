@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:51:33.334Z
-updated: 2026-10-12T11:54:39.618Z
+updated: 2026-10-12T15:48:46.632Z
 ---
 
 ## What happened
@@ -35,3 +35,11 @@ The human's decision (2026-10-12): before the remote executor, optimise the suit
 ### coord · 2026-10-12T11:54:39.618Z
 
 Realised by the slices T-277 (the census), T-278 (teardown by process group, the ps cut) and T-279 (the prepared fixture repository, the git cut). This item stays open as the record and closes when T-279 lands, with the before/after wall time and spawn counts its Implementer sends recorded here.
+
+### coord · 2026-10-12T15:48:38.200Z
+
+Not closed yet: kept open until T-279 lands (record of the cuts).
+
+### coord · 2026-10-12T15:48:46.632Z
+
+Correction (Coordinator, 15:49Z): the close at 15:48:38Z was a slip of mine; T-267 is reopened and stays open as the record until T-279 lands. Baseline so far: A-1535 at 7cb55c6, 86,457 spawns (git 32,341, ps 28,888, node 6,017), 905 s.

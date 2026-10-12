@@ -2,8 +2,8 @@
 id: T-277
 kind: task
 title: A spawn census of one full suite run, per test file and helper
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T15:47:20.503Z
+updated: 2026-10-12T15:48:15.485Z
 ---
 
 ## Summary
@@ -164,3 +164,7 @@ commit: 96981e46973a72e7fd18f1e5a429b5d760412d83
 No remaining high/medium findings. C1–C5 source/merge/qualified-baseline review retained (A-1536/A-1546/A-1535). C6 established by durable full cland verify 409cd84b at this exact head: typechecks pass; hub free 30/30, hub machine 1316/1316, Neovim 294/294; 1640/1640 total, exit 0, zero failures/skips/cancellations/todos. No tests weakened, skipped or retried by reviewed changes. Evidence A-1554: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1554-t-277-final-review-full-green-at-96981e4.md; suite A-1553.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-12T15:47:44.570Z
+
+Merged 8e5ec1e30217a0d45ecfb5cbdbce52c227c0e01a onto dev.

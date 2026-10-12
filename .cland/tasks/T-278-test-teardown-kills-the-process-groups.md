@@ -3,7 +3,8 @@ id: T-278
 kind: task
 title: Test teardown kills the process groups it started; the machine-wide scan once per phase
 state: open
-status: backlog
+status: in progress
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ assignee: null
 parent: T-268
 blocked_by:
   - T-277
-topic: null
-branch: null
+topic: topic-175
+branch: t/T-278-test-teardown-kills-the-process-groups
 created: 2026-10-12T11:54:20.614Z
-updated: 2026-10-12T11:54:39.263Z
+updated: 2026-10-12T16:02:13.520Z
 ---
 
 ## Summary
@@ -48,9 +49,18 @@ Constraints:
 
 ## Acceptance criteria
 
-- [ ] No test teardown lists every process on the machine or reads every process's cwd; only the runner's per-phase sweep does, once per phase (a Reviewer can check the call sites; a test proves that a teardown spawns no machine-wide listing).
-- [ ] The census on the branch head, compared with slice 1's baseline, shows the full run's `ps` spawns cut by at least half; the comparison artifact is published in this item's topic.
-- [ ] A test proves that a teardown kills a process group the test started, including a grandchild in that group, and leaves a process of another group with the same command alone; a test proves a crashed test's leftover is cleaned and printed by the per-phase sweep.
-- [ ] In a full run, the per-phase sweeps print no more leftover cleanups than the baseline run did.
-- [ ] `hub/README.md` describes the teardown and the per-phase safety net.
-- [ ] The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+- [x] C1. No test teardown lists every process on the machine or reads every process's cwd; only the runner's per-phase sweep does, once per phase (a Reviewer can check the call sites; a test proves that a teardown spawns no machine-wide listing).
+  - done: impl-278 · 2026-10-12T16:02:10.274Z
+- [ ] C2. The census on the branch head, compared with slice 1's baseline, shows the full run's `ps` spawns cut by at least half; the comparison artifact is published in this item's topic.
+- [x] C3. A test proves that a teardown kills a process group the test started, including a grandchild in that group, and leaves a process of another group with the same command alone; a test proves a crashed test's leftover is cleaned and printed by the per-phase sweep.
+  - done: impl-278 · 2026-10-12T16:02:11.563Z
+- [ ] C4. In a full run, the per-phase sweeps print no more leftover cleanups than the baseline run did.
+- [x] C5. `hub/README.md` describes the teardown and the per-phase safety net.
+  - done: impl-278 · 2026-10-12T16:02:13.520Z
+- [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+
+## Comments
+
+### impl-278 · 2026-10-12T15:53:55.688Z
+
+Baseline A-1535 read: cleanup helper processes accounts for 12,007 ps calls; shared production probe runner 13,220, including infrastructure/lock waits (5,654). Implementation separates registered group/PID teardown from root discovery; directory cleanup uses registrations from its TestContext and known protocol/CLI PIDs. Runner root sweep is consolidated to one discovery pass per phase, with targeted revalidation/waits. Production exit waiting will probe the captured PIDs; full-tree capture and freeze remain.

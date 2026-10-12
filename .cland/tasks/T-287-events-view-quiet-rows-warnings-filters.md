@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-174
 branch: t/T-287-events-view-quiet-rows-warnings-filters
 created: 2026-10-12T11:57:19.803Z
-updated: 2026-10-12T15:30:30.322Z
+updated: 2026-10-12T16:58:24.209Z
 ---
 
 ## Summary
@@ -72,21 +72,26 @@ Out of scope: the retirement of the inbox's notification list (the next ticket);
 - [x] C1. Launches, stops, claims, status moves, criterion marks and topic closes are dimmed; five equal events on one subject within 60 seconds show as one row ×5.
   - done: impl-287 · 2026-10-12T15:28:57.611Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C2. Not-clear verdicts, deaths, override-raised events and a red suite on `dev` show as warnings; a red suite on a task branch does not; no row repeats something still waiting in the inbox.
   - done: impl-287 · 2026-10-12T15:14:28.531Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C3. `1`–`8`, `0`, `w`, `s` with each palette prefix and `F` filter the view as described, and the filter survives a workbench restart through `ui.json`.
   - done: impl-287 · 2026-10-12T15:14:28.850Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C4. `gM` hides the subject's rows through the events-view mute list in `ui.json` and the view says how many subjects it hides; `gM` again restores them; the hub's `visibility` mutes and the inbox are unchanged by it.
   - done: impl-287 · 2026-10-12T15:14:29.215Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C5. Opening the view sets the last look in `ui.json`; the inbox's events line counts the newer rows and warnings apart, reads "200+" past the cap, and drops to zero after the view opens.
   - done: impl-287 · 2026-10-12T15:14:29.850Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C6. Targeted tests pass (hub frame tests of the classes, merging and filters on a real hub; nvim headless tests on the stub hub for the keys, `ui.json` and the events line), and `nvim/README.md` and `hub/README.md` describe the classes, the filters, `gM` and the last look.
-  - done: impl-287 · 2026-10-12T15:14:30.287Z
-  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+  - done: impl-287 · 2026-10-12T16:21:19.320Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 
 ## Comments
 
@@ -125,5 +130,31 @@ run: rev-2026-10-12-287-2
 commit: a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
 
 No remaining high/medium findings. Startup restores recent journal groups beyond the first page before live announcements, preserving predecessor/count on the first equal event. UI aliases preserve the full replacement chain until visible cursors move. Real-frame restart and headless hidden/batched cursor regressions cover both A-1547 traces, including older pages. C1–C6 checked; classes, filters/persistence, independent mutes, last-look counts and READMEs retained. A-1542/A-1549 report targeted tests/typechecks passing. Full suite pending; cancelled A-1548 is not pass evidence. Evidence A-1552: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1552-t-287-re-review-clear-at-a14ab6d.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-23 · 2026-10-12T16:16:27.465Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-287-3
+commit: a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
+
+Medium: hub/src/hub/daemon.ts:156 unconditional startup restoration throws when the journal cannot open, changing the established degraded-journal lifecycle and failing unchanged journal-async.test.ts:181. Preserve error reporting, rejecting stop and lock release while tolerating unavailable optional restoration.
+Medium: nvim/lua/cland/events.lua:7 and actions.lua:71 operational EventKind release literals conflict with the blanket Lua tracker-container guard (:103); resolve the domain boundary while retaining guard coverage of real tracker Kind choices. EventKind release is required by spec; do not rename it to a configured container or evade/weaken the test.
+Full c2addeba at exact head: exit 1, 1346/1348 hub tests pass, zero skips/cancellations; Neovim not run. C1–C5 evidence retained. A-1560: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1560-t-287-full-verification-failures-at-a14ab6d.md; suite A-1559.
+
+Criteria: C6 failed (Full verify c2addeba failed degraded-journal daemon startup and the Lua container-kind guard; Neovim phase was not reached.).
+
+### rev-23 · 2026-10-12T16:22:57.854Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-287-4
+commit: a310840c1f8a2e969ad8056982cf66df2de0ac89
+
+No remaining high/medium findings in the delta. Optional restoration logs failure without clearing Journal error; unchanged stop-rejection/successor-lock assertions retained. Guard exempts only event_kinds.lua with explicit domain comment, validates its complete pure ordered declaration against protocol.EVENT_KINDS, and preserves full tracker-literal checks everywhere else including events.lua; added regressions reject extra statements and tracker literals. Coordinator condition met. C1–C6 checked with A-1552/A-1561; fresh full verify pending, no full-green claim. A-1562: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1562-t-287-verification-fix-delta-clear-at-a310840.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

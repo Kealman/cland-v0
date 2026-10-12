@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-173
 branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
-updated: 2026-10-12T15:29:37.158Z
+updated: 2026-10-12T16:45:53.613Z
 ---
 
 ## Summary
@@ -70,7 +70,7 @@ Out of scope: `r`, `d` on the new rows, and `A` (the next ticket); the events li
 - [x] C5. `cland inbox` prints the four sections in the same order with ages and ends with `needs you: <n>` equal to the chip.
   - done: impl-284 · 2026-10-12T14:47:34.673Z
 - [x] C6. Targeted tests pass (nvim headless tests on the stub hub, read with `screenstring()`; a hub test of `cland inbox` on a real hub), and `nvim/README.md` describes the four sections, their order, the five-row fold and the ages.
-  - done: impl-284 · 2026-10-12T14:47:34.805Z
+  - done: impl-284 · 2026-10-12T16:45:18.764Z
 - [x] C7. A regression test bounds the inbox's work per hub event and at startup on a store with thousands of messages (T-293's first follow-up), and the finding on T-293's second point (whether a durable wait start is recorded one tick late) is stated in the item.
   - done: impl-284 · 2026-10-12T15:28:59.385Z
 
@@ -83,3 +83,39 @@ Implemented the four now sections in both views and CLI, per-section five-row fo
 ### impl-284 · 2026-10-12T15:27:31.984Z
 
 C7 / T-293 regression and timing audit: hub/test/inbox-workload.test.ts seeds 3,200 messages (same-topic answers and cross-topic explicit replies) and 256 remembered processes, starts the actual project hub and drives two 100-frame topic-read event bursts through the JSON-lines protocol. Native SQLite tracing observes real queries without substituting their results. Startup stays within a fixed ≤3 inbox-query budget including its first tick; observed 0 synchronous queries at serving. Each 100-event burst performs no synchronous full query and exactly one next-tick recompute. Reintroducing the pre-b75e0fe observe()->list() call made the test fail on 512 startup queries; the temporary mutation was removed. Timing audit through request/reply protocol frames: inbox_waits is persisted one tick after send, but its since equals the original message.ts, not the recompute time. A request resolved by the human within the same tick never reaches inbox_waits and has no inbox-departure/archive record. The audit test records this existing coalescing limitation; the frame rendering adds no per-event recompute.
+
+### rev-24 · 2026-10-12T16:02:35.649Z
+
+verdict: review
+result: not clear
+by: rev-24 [reviewer]
+run: rev-2026-10-12-284-1
+commit: ca7290a0083378db1a78337515397b2741b2ad12
+
+Medium — hub/src/cli/inbox.ts:48: describe drops all legacy notifications after the four sections, so not-clear verdict/death warnings disappear from plain cland inbox; visibility.test.ts:502 fails /notification: ⚠ / in full verify 1a5e5929 at this exact head. Preserve warning visibility through the planned legacy retirement; do not remove its assertion without equivalent coverage and an explicit contract decision.
+Validation: 1345/1347 tests passed, full exit 1. A second artifact-delete restart failure at hub/test/artifact-delete.test.ts:54 remains unattributed to this diff. C7 workload/timing tests passed; the same-tick durable-wait omission is explicitly audited and documented as required.
+Evidence: review artifact in topic-173 and A-1555 durable suite log. C6 failed; no criteria verified in this not-clear verdict.
+
+Criteria: C6 failed (Exact-head full verification fails the existing real-hub CLI warning compatibility test: the four-section renderer omits legacy notification warnings; Neovim phase was not reached.).
+
+### impl-284 · 2026-10-12T16:04:34.975Z
+
+Review correction: the D17 test passed alone on clean dev but failed on ca7290a because plain cland inbox omitted legacy notification lines. Restored those lines after the four response sections, preserving notification: ⚠ … and final needs you. D17's assertion is unchanged and passes on the corrected branch. The real-hub four-section CLI test now asserts legacy notification output and ordering. Merged origin/dev 8e5ec1e containing the existing verified-exit fix for the absorbed-artifact restart race; its targeted test passes. A-1555 remains the failed ca7290a run; a fresh full suite follows delta review request.
+
+### rev-24 · 2026-10-12T16:43:28.186Z
+
+verdict: review
+result: not clear
+by: rev-24 [reviewer]
+run: rev-2026-10-12-284-2
+commit: 764a0168ad4b1a9f719094b66aa55b02e327b3a4
+
+Medium — nvim/test/qa-cases/STATE-001.lua:46: the case expects the full question while its ask remains unselected, so the new clipped collapsed row never satisfies its predicate. Full verify b2c09803 shows this exact screen and fails qa.test.ts:167 and :389. Select the ask through normal UI keys, then retain the exact full-question screen/state and read-only PASS assertions; do not lengthen the timeout or weaken predicates.
+Prior CLI warning regression is fixed: unchanged D17 coverage passes, as do artifact restart, four-section CLI, C7 workload/audit, both inbox views and age advancement. Full run: 1644/1646 pass, exit 1, zero skips. C6 failed; no criteria verification marks on this verdict.
+Evidence A-1564 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1564-t-284-review-at-764a016-qa-fixture-migration-incomplete.md; suite A-1563.
+
+Criteria: C6 failed (STATE-001 never selects the collapsed ask before waiting for its full question; both ordinary qa.state and read-only rescue headless cases deterministically time out in full verify b2c09803.).
+
+### impl-284 · 2026-10-12T16:45:21.702Z
+
+Review correction after A-1563: both Neovim failures run STATE-001.lua, which expected the full question on an unselected, collapsed row. Added an inbox-section readiness wait and selected the ask through keys before the existing exact full-question/state predicate. The two targeted tests failed deterministically before the fix and pass afterward (2/2, 2.98 s), including the all-writes-denied rescue path. No product code or assertions changed. A-1563 remains the failed previous-head run; delta review and a fresh full suite follow.
