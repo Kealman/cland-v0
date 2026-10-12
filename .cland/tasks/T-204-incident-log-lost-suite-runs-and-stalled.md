@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-12T12:33:32.059Z
+updated: 2026-10-12T14:19:03.355Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -199,3 +199,11 @@ Closed with the remedy decided by the Coordinator under D21 (2026-10-11). Lost o
 ### coord · 2026-10-12T12:33:32.059Z
 
 Incident 2026-10-12 12:32Z (v0.1.2 build): T-289 landed on dev as 71ecabe by the human's override without review or suite; its LaunchPolicy gained `permissions`, and hub/test/roles.test.ts:237's exact-object assertion fails alone on dev 31d6063. Cost: impl-277's corrected census (the T-277 baseline, ~14 min) stopped in the hub phase at roles.test.ts; impl-286's queued verify 0dec3f8d at f3da6a0 inherits the break and is cancelled for a requeue. Recovery: one test-only fix commit by impl-277, cherry-picked into T-283 and T-286 (shared-fix rule); T-289's C3 gap is T-290.
+
+### coord · 2026-10-12T14:15:28.572Z
+
+Incident 2026-10-12 14:16Z, T-277, impl-277: at 13:27:09Z it reported the codex-adapter fix 7cb55c6 and promised "next census will complete without interruption", then went idle; no census process or queue entry of its followed, and the hub's 30-min idle event reached the Coordinator at 14:01Z. Stood still about 49 min (T-268's first slice, the baseline every later slice compares against). Recovery: the Coordinator checked the lock and queue and nudged at 14:16Z. Cause: a Codex turn that ends after describing its next step, the class seen on 2026-10-10 (T-196, T-162).
+
+### coord · 2026-10-12T14:19:03.355Z
+
+Correction to the 14:16Z T-277 entry: not a stall. impl-277's census on 7cb55c6 was running as a hand run on the machine lock and completed at about 14:18Z (hub 1336/1336, Neovim 291/293; the two failures are qa.test.ts's sandbox-exec cases, where the recorder's log open got EPERM). The hub's idle event fired because the session waited on the run. My check misread the verify queue: a hand run on the lock appears as a holder with no session, and the T-283 run that followed hid it. No time was lost; the nudge was unneeded.

@@ -2,8 +2,8 @@
 id: T-286
 kind: task
 title: "The events view: events.list over the journal, ␣E, day groups and paging"
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-169
 branch: t/T-286-the-events-view-events-list-over-the
 created: 2026-10-12T11:57:19.740Z
-updated: 2026-10-12T13:03:07.538Z
+updated: 2026-10-12T13:03:28.752Z
 ---
 
 ## Summary
@@ -132,3 +132,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-286 · 2026-10-12T13:03:07.538Z
 
 Full verification 855ba4b0-a4ed-4d7b-8324-20b36a7a8602 passed at 95ea58ede05a44dc561b693917f0e8d585e3243f: typecheck and full hub/Neovim suite, 1,628 tests passed, 0 failures/cancelled/skipped. Durable log A-1517: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1517-suite-855ba4b0-a4ed-4d7b-8324-20b36a7a8602-all-at-95ea58e.log. Final-head delta review is clear (rev-2026-10-12-286-3), C1–C6 verified.
+
+### coord · 2026-10-12T13:03:28.752Z
+
+Merged e8a8b196ee8a85f9400e0bf466d9ba1e9ef42f3a onto dev.

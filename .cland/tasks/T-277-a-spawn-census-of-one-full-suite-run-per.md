@@ -3,7 +3,7 @@ id: T-277
 kind: task
 title: A spawn census of one full suite run, per test file and helper
 state: open
-status: in progress
+status: review
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T12:52:47.999Z
+updated: 2026-10-12T14:30:08.334Z
 ---
 
 ## Summary
@@ -51,13 +51,19 @@ Constraints:
 
 - [x] C1. One documented command runs the full suite with the recorder preloaded and writes a Markdown report and a JSON aggregate: totals per command, and per command the sources ranked by test file and by helper, with the run's wall time and head.
   - done: impl-277 · 2026-10-12T12:06:36.023Z
-- [ ] C2. The census artifact of the branch head is published in this item's topic and names the ten largest sources of `git`, of `ps` and of Node spawns, with counts; its totals for `git` and `ps` are of the order the T-256 prototype measured (tens of thousands), or the report explains the difference.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+- [x] C2. The census artifact is published in this item's topic and names the ten largest sources of `git`, of `ps` and of Node spawns, with counts; its totals for `git` and `ps` are of the order the T-256 prototype measured (tens of thousands), or the report explains the difference. The completed census at 7cb55c6 serves as the baseline, with the two sandbox-exec cases of qa.test.ts named as uncounted (the recorder's denied log, fixed afterwards on this branch); a later recorder-only change does not require a new baseline run (the Coordinator's decision of 2026-10-12).
+  - done: impl-277 · 2026-10-12T14:22:27.994Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
 - [x] C3. The report names the test files whose subtrees replace or strip `NODE_OPTIONS` as uncounted, and records no environment values or arguments beyond the first.
   - done: impl-277 · 2026-10-12T12:06:36.294Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
 - [x] C4. A test covers the recorder and the aggregation on a small fixture (a spawn from a test file, from a helper and from a Node grandchild, each attributed correctly) and the comparison of two aggregates.
   - done: impl-277 · 2026-10-12T12:06:36.500Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
 - [x] C5. `hub/README.md` describes the census, how to run and compare it, and its blind spots.
   - done: impl-277 · 2026-10-12T12:06:36.695Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-277-1 · 2026-10-12T14:30:08.334Z · commit 0f153a74e7f9f717f01c194030ea5ea3ad64c651
 - [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
 
 ## Comments
@@ -81,3 +87,23 @@ The corrected recorder restores descendant coverage, but the full census is bloc
 ### coord · 2026-10-12T12:52:47.999Z
 
 Two shared test-only commits made on this branch on the Coordinator's authority, each cherry-pickable unchanged: 811f0d2 (T-289's launch-policy assertions in roles.test.ts; already in T-283 and T-286) and 37062d3 (artifact-delete.test.ts waits for the old daemon's verified exit after hub.stop before restart; 30/30 with and without the preload, A-1514; `cland hub stop` from the CLI already waits for exit, so no hub-side gap). 37062d3 goes to another branch only if its run hits that race.
+
+### impl-277 · 2026-10-12T13:21:16.156Z
+
+The census passed both authorized test repairs, then failed codex-adapter.test.ts:396 because exit state was visible while 0 harness-exited lines were yet readable. The exact trace was retained through graceful interruption. Under the Coordinator's classification rule, clean dev e8a8b19 passed 20/20 isolated and 20/20 four-worker cases in each preload mode (80 total); neither mode reproduced. Hook-only median 44.27µs/call; real ps cost noisy. A-1522 contains all evidence. Requested direction from lead T-277 because classification is inconclusive and async logging conflicts with the required crash-loss bound.
+
+### impl-277 · 2026-10-12T14:22:28.482Z
+
+Published baseline A-1535 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1535-t-277-full-suite-spawn-census-baseline-at-7cb55c6. Full package run completed all phases (exit 1, two recorder-denied sandbox cases explicitly named); accepted by revised C2. Totals 86,457; git 32,341; ps 28,888; node 6,017; duration 905.46s, lock wait 778.15s. Fixed recorder denied-open fallback and named sandbox gaps at 0f153a7; fixture 2/2 and unchanged sandbox cases 2/2 pass with active preload. Fetched origin/dev and merge is already current; pushed final review head.
+
+### rev-23 · 2026-10-12T14:30:08.334Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-277-1
+commit: 0f153a74e7f9f717f01c194030ea5ea3ad64c651
+
+No source/baseline findings. C1–C5 checked: seven spawn wrappers with inherited attribution/privacy and synchronous append durability; package-runner command/report/compare; fixture coverage; shard classification and README; separately authorized test repairs retain exact assertions. A-1535 satisfies revised C2: accepted complete 7cb55c6 census with explicitly qualified two sandbox gaps, 86,457 calls (git 32,341; ps 28,888; node 6,017), top-ten sources, wall/lock times and prototype comparison. Durable aggregate sums match all test/helper/source rankings; read-only Node 24 identical-aggregate comparison has zero deltas. C6 remains unverified pending macOS full cland verify 2c67624e at this exact head; no full-suite green claimed. Evidence A-1536: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1536-t-277-source-and-baseline-review-clear-at-0f153a7.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
