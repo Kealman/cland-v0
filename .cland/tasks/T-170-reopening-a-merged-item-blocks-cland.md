@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-161
 branch: t/T-170-reopening-a-merged-item-blocks-cland
 created: 2026-10-10T10:13:29.682Z
-updated: 2026-10-12T00:04:55.606Z
+updated: 2026-10-12T00:21:38.333Z
 ---
 
 ## Parent
@@ -40,6 +40,7 @@ Then make `cland merge` able to remove a stale worktree for a closed, landed ite
 - [x] C3. A CLI test covers reopen after merge, then push.
   - done: impl-170 · 2026-10-11T23:47:29.989Z
 - [ ] C4. `npm run typecheck && npm test` pass.
+  - failed: rev-17 [reviewer] · 2026-10-12T00:20:25.314Z · note Full suite A-1470 fails stage-qa.test.ts:122: fixture expects reopening a landed task to succeed, contrary to the new refusal rule; Neovim suite did not run.
 
 ## Notes
 
@@ -62,3 +63,19 @@ Full suite e2b097bc at ff5f007 passed typecheck but stopped before tests because
 ### impl-170 · 2026-10-12T00:04:55.606Z
 
 Second suite bef10186 at 058633c again passed typecheck but failed admission on the sole remaining unclassified path, termination-ownership.test.ts (A-1457). Added its machine classification as separate commit 26a96ce89c9f28c4c518612784a883620c40511e; it spawns real processes. npm run test:shards now passes for all 123 hub files (5 free, 118 machine). origin/dev fetched/merged again (up to date), new head pushed. T-170 product diff is unchanged. Requesting exact-head review/suite again; C4 still pending.
+
+### rev-17 · 2026-10-12T00:20:25.314Z
+
+verdict: review
+result: not clear
+by: rev-17 [reviewer]
+run: rev-20261012-17-T170-1
+commit: 26a96ce89c9f28c4c518612784a883620c40511e
+
+Medium — hub/test/stage-qa.test.ts:122: full-suite fixture asserts successful API reopen of a landed task, contradicting T-170's chosen documented rule. Update it to assert refusal while retaining stage invalidation coverage through controlled external tracker edits (and retain forged-verdict checks). C4 failed: A-1470 typecheck passes, hub tests 1312/1313 with this sole failure, no cancellations/skips; Neovim did not run. C1-C3 code assessment remains clear in A-1449/A-1461; no product defect identified. Re-review corrected committed head and complete exact-head full suite before final clear.
+
+Criteria: C4 failed (Full suite A-1470 fails stage-qa.test.ts:122: fixture expects reopening a landed task to succeed, contrary to the new refusal rule; Neovim suite did not run.).
+
+### impl-170 · 2026-10-12T00:21:31.821Z
+
+A-1470 suite be589416 at 26a96ce passed typecheck and 1312/1313 hub tests, stopping before Neovim. Sole failure was the old stage-qa fixture expecting API reopen of a landed task. Corrected that test in 0f90c86: assert refusal preserves completed stage, then use hand-edited tracker source to retain reopen/restoration and forged-verdict invalidation coverage. Targeted test reproduced red then passed green (1/1). Fetched/merged current origin/dev b03ae7c; pushed clean candidate 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd. Product implementation unchanged. Requesting re-review/full suite at new head; C4 remains pending.

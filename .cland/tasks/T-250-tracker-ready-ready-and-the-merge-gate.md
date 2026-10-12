@@ -2,8 +2,8 @@
 id: T-250
 kind: task
 title: 'tracker-ready "ready and the merge gate agree … qa_default per-item=true": merge yields no result within 30 s under load'
-state: open
-status: in progress
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - v0.1.1
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-159
 branch: t/T-250-tracker-ready-ready-and-the-merge-gate
 created: 2026-10-11T21:10:12.396Z
-updated: 2026-10-12T00:04:51.658Z
+updated: 2026-10-12T00:50:07.238Z
 ---
 
 ## What happened
@@ -37,12 +37,15 @@ Find out whether the merge is slow because of load (real Git work plus the gate'
   - done: impl-250 · 2026-10-11T23:12:45.411Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-250-1 · 2026-10-11T23:14:03.076Z · commit b529bfc25d2c7476bcebd05ed4194fa4563e7784
   - verified: rev-18 [reviewer] · run rev-18-20261011-250-3 · 2026-10-11T23:37:03.141Z · commit c7db08bb37b2a5450f46142673f48ec3966bb3f1
+  - verified: rev-18 [reviewer] · run rev-18-20261012-250-5 · 2026-10-12T00:17:06.350Z · commit f85accd7be2d99c5a60fb38f1e0ee39103720466
 - [x] C2. The case passes repeatedly under induced load (parallel CPU stress), recorded in an artifact, with assertions unchanged.
   - done: impl-250 · 2026-10-11T23:12:45.606Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-250-1 · 2026-10-11T23:14:03.076Z · commit b529bfc25d2c7476bcebd05ed4194fa4563e7784
   - verified: rev-18 [reviewer] · run rev-18-20261011-250-3 · 2026-10-11T23:37:03.142Z · commit c7db08bb37b2a5450f46142673f48ec3966bb3f1
-- [ ] C3. `npm run typecheck && npm test` pass.
-  - failed: rev-18 [reviewer] · 2026-10-12T00:04:51.658Z · note A-1453 exits 1: launch-recovery.test.ts:122 fails no rollout found; 1302/1303 hub, Neovim not run.
+  - verified: rev-18 [reviewer] · run rev-18-20261012-250-5 · 2026-10-12T00:17:06.351Z · commit f85accd7be2d99c5a60fb38f1e0ee39103720466
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-250 · 2026-10-12T00:49:26.470Z
+  - verified: rev-18 [reviewer] · run rev-18-20261012-250-5 · 2026-10-12T00:49:43.030Z · commit f85accd7be2d99c5a60fb38f1e0ee39103720466
 
 ## Comments
 
@@ -109,3 +112,27 @@ commit: c7db08bb37b2a5450f46142673f48ec3966bb3f1
 Medium — hub/test/launch-recovery.test.ts:122: recovered conversation retry fails with no rollout found. Initial relaunch follows launch acceptance without observing first turn persistence, while the fake requires a completed turn; this is a readiness hypothesis to reproduce, not a proven cause. C3 fails from A-1453 (typecheck pass; 1302/1303 hub; Neovim omitted; exit 1). C1/C2 marks retained; no defect in freshness coalescing established. Details: A-1459 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1459-t-250-second-c3-failure-retained-rollout-readiness.md
 
 Criteria: C3 failed (A-1453 exits 1: launch-recovery.test.ts:122 fails no rollout found; 1302/1303 hub, Neovim not run.).
+
+### impl-250 · 2026-10-12T00:15:52.509Z
+
+Coordinator requested isolated launch-recovery comparisons and five historical repeats, then classified the no-rollout failure as a rare T-129 fixture race and filed it separately (decision 8d52ba85). A-1463 and A-1466 record all results. Current head f85accd7be2d99c5a60fb38f1e0ee39103720466 integrates origin/dev (including T-102/T-213/T-234), plus exact shared machine classification for termination-ownership.test.ts committed separately at 9728a5f. Integrated isolated launch-recovery passed 4/4; manifest lint 5 free/118 machine passed. Latest fetched/merged origin/dev before full submission; pushed current head. T-250 freshness implementation/regression/result fixture unchanged from b529bfc, load evidence A-1432 applicable. No T-129 test source changes. C3 remains pending a fresh managed all run; if only the separately filed launch-recovery case fails, report to Coordinator before re-running.
+
+### rev-18 · 2026-10-12T00:17:06.351Z
+
+verdict: review
+result: clear
+by: rev-18 [reviewer]
+run: rev-18-20261012-250-5
+commit: f85accd7be2d99c5a60fb38f1e0ee39103720466
+
+No high or medium task-source findings. Original freshness/controlled regression/tracker-ready source is byte-identical to b529bfc; reviewed Node 24 phase/load evidence A-1432 remains applicable. New dev integration and machine entry leave all 123 tests classified (5 free/118 machine). A-1466 documents the separately filed recovery fixture investigation without establishing absence of an interaction. C1/C2 freshly verified; C3 awaits a complete green exact-head full suite. Details: A-1468 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1468-t-250-integrated-source-re-review-at-f85accd-c1-c2-clear.md
+
+Criteria: C1 verified, C2 verified.
+
+### impl-250 · 2026-10-12T00:49:27.016Z
+
+Final managed full suite d49c08db-a6c6-4580-b581-87352067e301 passed at exact current pushed head f85accd7be2d99c5a60fb38f1e0ee39103720466: typecheck + all package suites, 1600/1600 passed, zero failures/cancellations/skips. Log A-1476 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1476-suite-d49c08db-a6c6-4580-b581-87352067e301-all-at-f85accd.log. Working tree clean; C3 marked done, clearing the earlier failed-suite mark. All acceptance criteria done; awaiting reviewer's exact-head C3 verification and hub ready event.
+
+### coord · 2026-10-12T00:50:07.238Z
+
+Merged 8fedc015f829561027525a8e7c54079fc7e9fff8 onto dev.

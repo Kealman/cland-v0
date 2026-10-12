@@ -2,8 +2,8 @@
 id: T-211
 kind: task
 title: A pooled Implementer session moves to the next item's worktree on reuse
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - tech-debt
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-160
 branch: t/T-211-a-pooled-implementer-session-moves-to
 created: 2026-10-11T05:00:24.480Z
-updated: 2026-10-12T00:06:04.521Z
+updated: 2026-10-12T00:36:34.378Z
 ---
 
 ## What to build
@@ -33,7 +33,9 @@ Design and build a worktree handoff for pooled Implementers. Either relaunch the
   - done: impl-211 · 2026-10-11T23:47:55.751Z
   - verified: rev-18 [reviewer] · run rev-18-20261011-211-1 · 2026-10-11T23:50:37.000Z · commit 51fe5ef5b3e8f04f6fe34d0e21ec985ad5aa644a
   - verified: rev-18 [reviewer] · run rev-18-20261012-211-2 · 2026-10-12T00:06:04.521Z · commit fc6afcd2ed79a408c5b1ecc7efc320b8bd176d5b
-- [ ] C3. `npm run typecheck && npm test` pass.
+- [x] C3. `npm run typecheck && npm test` pass.
+  - done: impl-211 · 2026-10-12T00:34:55.699Z
+  - verified: rev-18 [reviewer] · run rev-18-20261012-211-2 · 2026-10-12T00:36:10.003Z · commit fc6afcd2ed79a408c5b1ecc7efc320b8bd176d5b
 
 ## Notes
 
@@ -84,3 +86,11 @@ commit: fc6afcd2ed79a408c5b1ecc7efc320b8bd176d5b
 No high or medium current-head source findings. All handoff implementation and fake/protocol test files are byte-identical to reviewed 51fe5ef; dev integration retains that behavior. Manifest now covers all 123 hub test files (5 free/118 machine), correcting both inherited admission omissions without disabling lint. C1/C2 freshly checked from unchanged source/docs/coverage. C3 remains pending complete supported exact-head managed verification; A-1455/A-1458 passed typecheck but never ran tests. Details: A-1462 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1462-t-211-integrated-re-review-at-fc6afcd-c1-c2-clear.md
 
 Criteria: C1 verified, C2 verified.
+
+### impl-211 · 2026-10-12T00:34:55.891Z
+
+Managed all suite 514c2b94-6090-410a-97af-35b37f2f505d passed on exact pushed head fc6afcd2ed79a408c5b1ecc7efc320b8bd176d5b: typecheck and all 1605 tests pass, zero failed/cancelled/skipped/todo. Durable log A-1474: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1474-suite-514c2b94-6090-410a-97af-35b37f2f505d-all-at-fc6afcd.log . C3 marked done; C1/C2 already freshly verified at this head under rev-18-20261012-211-2. Claim retained until merge.
+
+### coord · 2026-10-12T00:36:34.378Z
+
+Merged bf3d615bcdbcc29aafd5f20faf15bb2c9b9ca11d onto dev.
