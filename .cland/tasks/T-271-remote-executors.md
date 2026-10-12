@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-12T11:38:44.526Z
+updated: 2026-10-12T11:39:02.150Z
 ---
 
 ## Goal
@@ -32,6 +32,7 @@ Not in this epic: the MicroVM and Fly backends themselves; macOS runners (T-256'
 Choices where the spec is silent:
 
 - The executor is chosen in `config.toml` under `[verify]`: `executor = "local"` (the default) or `"droplet"`, `remote_budget` (4), `region` with fallbacks (the regions where the account is offered `c-8`: lon1, nyc1 and sfo2 in the prototype), `size` (`c-8`), `run_timeout_minutes` (75), `lifetime_minutes` (110) and `daily_spend_usd` (5). With a remote executor the queue admits a run to a free remote slot; the local slot takes it only when the remote budget is full or the run asks for `--local`.
+- The executor is also a per-run choice: `cland verify --executor local|droplet` (and the same field on the session's verify request) overrides the project default for that run; local and remote stay switchable and never a hard binding, the human picks remote when a release is urgent and local when there is no hurry (the human's addendum of 2026-10-12, spec §3.14). The scheduler, the result cache and the reporting are the same on both paths; the fallback to local past the cap or without a token is announced with a warn-level event, never silent.
 - A missing token, a refused create or a spent daily cap sends the run to the local queue with a warn-level event naming the cause; nothing retries a create in a loop.
 - `prepare` builds a snapshot keyed by the Node version, the Neovim pin, the `package-lock.json` hash and the base commit, with the packages, `node_modules` and a mirror of the repository baked in; a run delivers a bundle of the candidate against that base; a new key prepares a new snapshot and deletes the old one.
 - `acquire` writes a durable lease (provider, resource id, name, tag, address, key, creation time) before it returns, so a restarted hub reattaches through the lease or destroys the machine. Each lease gets a detached watchdog on the hub host that deletes the machine at `lifetime_minutes` whatever the hub does; the sweep runs at hub start and every ten minutes and deletes every tagged machine without a live lease.
