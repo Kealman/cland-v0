@@ -3,7 +3,8 @@ id: T-281
 kind: task
 title: The five Linux test failures fixed at their cause; platform skips listed by reason
 state: open
-status: backlog
+status: review
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -13,10 +14,10 @@ parent: T-268
 blocked_by:
   - T-279
   - T-280
-topic: null
-branch: null
+topic: topic-181
+branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T20:35:40.204Z
+updated: 2026-10-12T21:25:17.711Z
 ---
 
 ## Summary
@@ -50,15 +51,22 @@ Constraints:
 
 ## Acceptance criteria
 
-- [ ] The fake Claude session survives a hook that exits before reading its stdin; a test reproduces that hook on macOS and proves the session keeps answering.
-- [ ] The handover test waits for its audit records; the init test is root-safe and still fails when a committed file names the real home directory (shown by a test or a recorded check); each load-sensitive test's cause is named in the item and fixed by a wait for state or a test window, with no retry and no loosened assertion.
-- [ ] In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
-- [ ] The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
-- [ ] `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
-- [ ] The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+- [x] C1. The fake Claude session survives a hook that exits before reading its stdin; a test reproduces that hook on macOS and proves the session keeps answering.
+  - done: impl-281 · 2026-10-12T21:22:45.572Z
+- [x] C2. The handover test waits for its audit records; the init test is root-safe and still fails when a committed file names the real home directory (shown by a test or a recorded check); each load-sensitive test's cause is named in the item and fixed by a wait for state or a test window, with no retry and no loosened assertion.
+  - done: impl-281 · 2026-10-12T21:23:28.977Z
+- [ ] C3. In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
+- [ ] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
+- [x] C5. `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
+  - done: impl-281 · 2026-10-12T21:23:29.415Z
+- [ ] C6. The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
 
 ## Comments
 
 ### coord · 2026-10-12T20:35:40.204Z
 
 Note from T-280's container run (impl-280, 2026-10-12 20:35Z): the local Ubuntu 24.04 container must run with `docker run --init` (or a real init as PID 1). Started with `sleep infinity` as PID 1, it accumulated 1,218 unreaped zombies during the suite, which contaminates every process-disappearance and restart test. Docker Desktop on this Mac exposes 4 CPUs; leave the human's settings as they are (4 is the local upper bound, the 8 vCPU evidence is T-282's droplet run). Start Docker Desktop only for the run and quit it afterwards.
+
+### impl-281 · 2026-10-12T21:21:58.883Z
+
+Diagnosis so far: aide and tracker-ready share the fake Claude hook-stdin EPIPE. A Linux baseline of tracker-ready failed at 2 !== 3 with rev exited and its hold gone; a one-purpose exception monitor recorded EPIPE at fake-claude.ts:227 (A-1640). Changing only the fake stdin error handling made the unchanged test pass. There is no hold-count settling race to paper over. The handover baseline missed the last forbidden audit record; it now waits for that record then asserts the original six records in order. Root init baseline failed on App/root text; the check now recognizes absolute path/component boundaries and its real-home injection still fails the assertion. The verifier marker test waits for worktree setup and a complete harness spawn: a controlled 16-second fake startup exceeds its original 15-second wait. Its test-only window is configurable (30 seconds by default for that marker); the fixture gate now waits for explicit release instead of expiring after 20 seconds. No production timeout, assertion, retry or skip was changed. Docker Desktop was started for these runs with settings unchanged; the Ubuntu 24.04 container uses --init and --cpus=4.

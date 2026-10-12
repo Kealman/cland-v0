@@ -2,8 +2,8 @@
 id: T-280
 kind: task
 title: One process listing that both the BSD and the procps ps accept
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-179
 branch: t/T-280-one-process-listing-that-both-the-bsd
 created: 2026-10-12T11:54:20.717Z
-updated: 2026-10-12T21:12:26.978Z
+updated: 2026-10-12T21:12:50.102Z
 ---
 
 ## Summary
@@ -194,3 +194,7 @@ commit: 857b769bc03d3d2afbb134f6c8734bbe3b8e13da
 No high/medium findings. C1–C4 assessment retained; C5 verified by full exact-head cland verify 96700814 in A-1637: typecheck, hub-free 30/30, hub-machine 1351/1351, Neovim 303/303, total 1684/1684, zero skips/cancellations, exit 0. Portable recorded/live identity and corrected one-sweep regressions pass. Ubuntu C3 limitations remain as A-1626 records. Evidence A-1638: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1638-t-280-final-review-complete-exact-head-verification.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-12T21:12:50.102Z
+
+Merged 40f0e49cc7602d5dbaaf8febe67849e6d1488316 onto dev.

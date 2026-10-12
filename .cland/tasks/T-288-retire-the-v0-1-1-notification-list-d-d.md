@@ -3,7 +3,7 @@ id: T-288
 kind: task
 title: Retire the v0.1.1 notification list, d/D and the 50-row cap from the inbox
 state: open
-status: review
+status: ready
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-180
 branch: t/T-288-retire-the-v0-1-1-notification-list-d-d
 created: 2026-10-12T11:57:19.861Z
-updated: 2026-10-12T21:03:45.892Z
+updated: 2026-10-12T21:25:42.654Z
 ---
 
 ## Summary
@@ -61,23 +61,28 @@ T-274: Inbox and the events view. Spec: docs/spec/v0.1.2.md §3.7.
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-2 · 2026-10-12T20:22:52.222Z · commit 549e1c6be41f998ccda8b5098d78403ed2a2ecad
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-4 · 2026-10-12T20:40:15.185Z · commit 23972965e8cea95c9906bcc26c5d643770601a47
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-6 · 2026-10-12T21:03:45.892Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-288-7 · 2026-10-12T21:25:23.005Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
 - [x] C2. `inbox.list` carries no notifications, `inbox.dismiss` and `inbox.dismiss_all` are refused with a pointer to the events view, and `cland inbox` prints no notification lines.
   - done: impl-288 · 2026-10-12T20:15:03.262Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-2 · 2026-10-12T20:22:52.222Z · commit 549e1c6be41f998ccda8b5098d78403ed2a2ecad
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-4 · 2026-10-12T20:40:15.185Z · commit 23972965e8cea95c9906bcc26c5d643770601a47
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-6 · 2026-10-12T21:03:45.892Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-288-7 · 2026-10-12T21:25:23.005Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
 - [x] C3. A clear verdict and a role change appear in `events.list` and the events view and never in the inbox; a not-clear verdict and a death appear as warnings there and never change needsYou.
   - done: impl-288 · 2026-10-12T20:15:03.836Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-2 · 2026-10-12T20:22:52.222Z · commit 549e1c6be41f998ccda8b5098d78403ed2a2ecad
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-4 · 2026-10-12T20:40:15.186Z · commit 23972965e8cea95c9906bcc26c5d643770601a47
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-6 · 2026-10-12T21:03:45.892Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-288-7 · 2026-10-12T21:25:23.007Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
 - [x] C4. The default role clauses and `.cland/roles.toml` tell sessions to send review, QA and handover requests to the human with the `request` kind.
   - done: impl-288 · 2026-10-12T20:15:04.388Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-2 · 2026-10-12T20:22:52.222Z · commit 549e1c6be41f998ccda8b5098d78403ed2a2ecad
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-4 · 2026-10-12T20:40:15.186Z · commit 23972965e8cea95c9906bcc26c5d643770601a47
   - verified: rev-23 [reviewer] · run rev-2026-10-12-288-6 · 2026-10-12T21:03:45.892Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
-- [ ] C5. Targeted tests pass (hub frame tests on a real hub, nvim headless tests on the stub hub, the QA cases that touched the inbox), `cland verify` is green, and `hub/README.md`, `nvim/README.md` and the clauses describe the inbox, the `request` kind and the events view.
-  - failed: rev-23 [reviewer] · 2026-10-12T21:00:51.069Z · note Full verify e5bb0b58 exit 1: unknown-count shell case times out in openInbox's messages-header wait before count assertions run.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-288-7 · 2026-10-12T21:25:23.007Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
+- [x] C5. Targeted tests pass (hub frame tests on a real hub, nvim headless tests on the stub hub, the QA cases that touched the inbox), `cland verify` is green, and `hub/README.md`, `nvim/README.md` and the clauses describe the inbox, the `request` kind and the events view.
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-288-7 · 2026-10-12T21:25:23.007Z · commit f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
+  - done: impl-288 · 2026-10-12T21:25:41.756Z
 
 ## Comments
 
@@ -178,3 +183,19 @@ commit: f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
 No high/medium findings. Shared readiness waits for the common ask row; separate message-section coverage remains. Missing-number snapshot wait now proves old response sections cleared before retained-count assertions. All original count/row assertions preserved; A-1635 reports focused 1/1 and complete shell 83/83 pass. C1–C4 verified; C5 awaits exact-head full green result. Evidence A-1636: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1636-t-288-inbox-readiness-correction-review-at-f5ed292.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-23 · 2026-10-12T21:25:23.008Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-288-7
+commit: f5ed29251a0dd8eb06db3de48eef272ffb52e1d9
+
+No high/medium findings. C1–C4 source assessment retained; C5 verified by full exact-head cland verify 84a4c958 in A-1642: typecheck and all phases, hub-free 30/30, hub-machine 1349/1349, Neovim 301/301, total 1680/1680, zero skips/cancellations, exit 0. Retirement, role-clause, restart, unknown-count and THREAD-009/010 cases pass. Evidence A-1644: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1644-t-288-final-review-complete-green-verification.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-288 · 2026-10-12T21:25:42.654Z
+
+Complete verification is green at unchanged pushed head f5ed29251a0dd8eb06db3de48eef272ffb52e1d9: cland verify all run 84a4c958-13aa-419e-9714-125a0cc7e52d, exit 0, all 1680 tests passed with no skips or cancellations. Exact-head typecheck, hub free/machine phases and Neovim all passed. Durable log A-1642: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1642-suite-84a4c958-13aa-419e-9714-125a0cc7e52d-all-at-f5ed292.log. Reviewer rev-23 recorded clear rev-2026-10-12-288-7 with C1–C5 verified; A-1644: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1644-t-288-final-review-complete-green-verification.md. C5 marked done; all criteria complete. Claim retained until merge. Coordinator relaunch of running sessions after merge is required to adopt the updated default/project request clauses.
