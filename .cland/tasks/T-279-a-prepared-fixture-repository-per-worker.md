@@ -2,8 +2,8 @@
 id: T-279
 kind: task
 title: A prepared fixture repository per worker; the hub phase's repeated setup batched
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-178
 branch: t/T-279-a-prepared-fixture-repository-per-worker
 created: 2026-10-12T11:54:20.662Z
-updated: 2026-10-12T20:14:50.230Z
+updated: 2026-10-12T20:15:23.445Z
 ---
 
 ## Summary
@@ -124,3 +124,7 @@ commit: 5d92ef5fcc6306f6d262442b0acb8de74fbcfe4e
 No remaining high/medium findings. C1–C5 A-1612 assessment retained; C6 established by ordinary full d8e587d2/A-1615 at unchanged head: typechecks pass;30/30 free+1343/1343 machine+299/299 Neovim=1672/1672, zero failures/skips/cancellations/todos, exit0. Isolation and freshness-race regressions plus previously timed-out palette case pass. Revised C2 measured comparison retained; no halving claim; compile cache remains disabled. A-1617: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1617-t-279-final-review-full-green-at-5d92ef5.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-12T20:15:23.445Z
+
+Merged 9f0f52220b3afc3f957db375d7ce32ead0950c10 onto dev.

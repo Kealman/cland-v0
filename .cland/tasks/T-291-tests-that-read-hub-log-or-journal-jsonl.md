@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
-updated: 2026-10-12T19:10:11.716Z
+updated: 2026-10-12T20:38:04.229Z
 ---
 
 ## Summary
@@ -110,3 +110,11 @@ Implementation commits: b0fc308 (test-only barriers and settle checks), de2e10b 
 ### impl-291 · 2026-10-12T19:10:11.716Z
 
 At the Coordinator's 19:05Z direction, four-worker stress proofs are paused while T-278's full verification holds the machine. Seventeen files have complete 20/20 proofs and stand. Remaining: task-plan, termination-ownership, tracker and corrected merge; four in-flight task-plan invocations were stopped through registered process cleanup and are retained as interrupted evidence. The remaining proofs will check the verification queue and acquire the existing joint hub/Neovim legacy leases for each four-worker round, releasing between rounds to admit queued suites. No stress processes remain active; C3 is still pending.
+
+### impl-291 · 2026-10-12T20:19:18.370Z
+
+Machine-protected task-plan proof completed 20/20 at 2ba75fe (A-1618), bringing the completed file count to eighteen. Termination-ownership completed three protected rounds (12/20), all passing. At the Coordinator's reservation for T-280's Ubuntu full run and host verification, the supervisor was stopped outside any proof round and both leases are released. A persistent reservation marker now blocks admission even when the host queue shows no holder. Resume requires impl-280's explicit Ubuntu-complete/host-start note; completed rounds are retained and will not repeat. Tracker and corrected merge still await their fresh 20-run proofs.
+
+### impl-291 · 2026-10-12T20:38:04.229Z
+
+T-280's reserved Docker run has stopped and its host verification e146e6d7 was confirmed as the active holder at 20:37:37Z. The special reservation marker is released. The continuation now waits through ordinary queue/legacy-lock admission, reusing twelve successful termination-ownership invocations before the final eight; tracker and corrected merge follow. No T-291 proof overlaps host verification.

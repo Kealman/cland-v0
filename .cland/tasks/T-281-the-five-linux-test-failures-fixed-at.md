@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T11:54:39.408Z
+updated: 2026-10-12T20:35:40.204Z
 ---
 
 ## Summary
@@ -56,3 +56,9 @@ Constraints:
 - [ ] The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
 - [ ] `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
 - [ ] The suite is green on macOS through `cland verify`, and no test is weakened, skipped or retried.
+
+## Comments
+
+### coord · 2026-10-12T20:35:40.204Z
+
+Note from T-280's container run (impl-280, 2026-10-12 20:35Z): the local Ubuntu 24.04 container must run with `docker run --init` (or a real init as PID 1). Started with `sleep infinity` as PID 1, it accumulated 1,218 unreaped zombies during the suite, which contaminates every process-disappearance and restart test. Docker Desktop on this Mac exposes 4 CPUs; leave the human's settings as they are (4 is the local upper bound, the 8 vCPU evidence is T-282's droplet run). Start Docker Desktop only for the run and quit it afterwards.
