@@ -1,0 +1,81 @@
+---
+id: T-305
+kind: task
+title: "Archive by hand: d archives a session row, A shows the archive, and archived sessions leave the groups and the default session.list"
+state: open
+status: backlog
+labels:
+  - v0.1.2
+  - ready-for-agent
+  - hub
+  - nvim
+assignee: null
+parent: T-275
+blocked_by:
+  - T-304
+topic: null
+branch: null
+created: 2026-10-12T21:34:31.202Z
+updated: 2026-10-12T21:35:04.223Z
+---
+
+## Summary
+
+`d` on a stopped session row archives it. `A` shows or hides the archive section. An archived session leaves every group of the sessions panel and the default `session.list`. `session.list` with `archived` and `cland session list --archived` list the archived sessions. The journal keeps every record. Resuming an archived session takes it out of the archive.
+
+## Parent
+
+T-275: Sessions: stopped sessions, verifiers' items, the queue line. Spec: `docs/spec/v0.1.2.md` §3.5, Archive (decided in T-257).
+
+## What to build
+
+**The hub: an archived mark on the process-table row.** The process table (`harness_processes` in `hub.db`, `hub/src/adapters/processes.ts`) records two things:
+
+- when each session stopped or exited (`stopped_at`), which the next ticket's rules also need;
+- whether it is archived (`archived_at`), and by whom: `hand` or, later, `rule`.
+
+The table is keyed by name. A new launch under an archived name replaces the row, as a reused name does today. Write the migration so that existing rows are kept: stopped rows get no `stopped_at` until they are read from the journal or stop again. State which of the two you chose in the item.
+
+**The frames and the CLI.**
+
+- `session.archive` takes `session` and archives a stopped or exited session. A running session is refused with "stop it first" (open point 1 in the README). The answer is the updated process view.
+- `session.list` leaves out archived rows by default and returns `archived: <count>` beside `processes`. `session.list` with `archived: true` returns only the archived rows. The CLI is `cland session list --archived`, with or without `--json`.
+- A `session.process` frame carries `archived: true` when a row is archived, so the UIs move it at once.
+- In the visibility classifier (`hub/src/hub/visibility.ts`), an archived row's session class is `archived`, which places it in the `archive` layer, as archived artifacts are placed.
+- The journal records `session-archived` with the session, the session id, `by` and the actor. Nothing removes earlier journal records.
+- Permissions: the human, through the UI or the CLI, and the Coordinator may archive (`session.archive` in the Coordinator's tool list). Other roles are refused through the permission table. Role tools are fixed at launch, so a Coordinator relaunch after the merge picks up the tool.
+- `cland session archive <name>` exists for the human's shell.
+
+**Resuming from the archive.** `session.resume` (ticket 02) on an archived row clears the archived mark and journals it. The resumed row comes back to its group. This applies equally to rows archived by hand and to those archived later by rule.
+
+**The panel.** In `nvim/lua/cland/panels.lua` and `sessions.lua`:
+
+- `d` on a stopped row archives it, with the note `<name> archived · A shows the archive`. `d` on a live row says to stop it first with `x`.
+- `A`, already bound in the sessions panel, now fetches and shows the archived sessions in the ARCHIVE section, newest first. It still also shows rows that the human's mutes (`gM`) placed in the archive layer.
+- `r` works on archive rows.
+- Archived sessions appear in no group of NOW, WATCH or the background fold. They also leave the top-bar session counts and the palette's `@` sessions source.
+- The footer and `␣?` list `d archive`. Both keys go through the action registry.
+
+**Demo** (the epic's words). `d` on a stopped Aide moves it to the archive, and `cland session list --json` no longer lists it.
+
+**Out of scope.** Automatic archival, the "more" fold's limit of 20 with the archived count, and `cland session prune` (the next ticket). Archiving sessions that cland did not launch: `d` on such a row says there is no record to archive.
+
+**Constraints.**
+
+- Tests go through the frame protocol first, with a real hub and the CLI on a temporary project. The fake harnesses come second. The Neovim UI is tested headless on the stub hub.
+- No new seams inside the hub.
+- Helpers stay out of `hub/test/harness.ts`.
+- A test that reads `hub.log` or `journal.jsonl` waits on the `hub.status` `flushLogs` barrier.
+- Recomputes are coalesced once per tick (T-293).
+- Every key goes through the action registry.
+- Suites run through `cland verify`, and only when the queue shows no holder.
+- Commit on the task branch and push it to `origin`. `dev` is reached only through `cland merge`. Everything is in English.
+
+## Acceptance criteria
+
+- [ ] C1. `d` on a stopped session archives it. The row leaves every group and the panel's counts, and `A` shows it in the archive section. A live row is refused with its reason.
+- [ ] C2. The default `session.list` and `cland session list --json` leave out archived rows and return the archived count. `--archived` (`archived: true`) returns exactly the archived rows.
+- [ ] C3. The journal keeps the session's launch and stop records and adds `session-archived`. A hub test on a real hub checks it after the `flushLogs` barrier.
+- [ ] C4. Resuming an archived session clears its archived mark, and the row returns to its group. A hub test covers it.
+- [ ] C5. A Neovim headless test on the stub hub runs `d` on a stopped Aide, checks the archive section after `A`, and checks that the row is absent from the groups.
+- [ ] C6. `hub/README.md` describes `session.archive`, `session.list`'s `archived` request and count, and the CLI. `nvim/README.md`'s session layers section describes `d` and `A`. The Coordinator's default clause names archiving.

@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.436Z
-updated: 2026-10-12T11:35:19.885Z
+updated: 2026-10-12T21:35:21.321Z
 ---
 
 ## Goal
@@ -85,3 +85,41 @@ The human uses the panel to steer the rest of the build: stopped crew sessions c
 - GLOSSARY: Session, Aide, Claim, Pool.
 - ADRs: `docs/adr/0001-roles-are-hub-held-state.md`, `docs/adr/0005-neovim-is-the-host.md`.
 - Mockups: `docs/design/main-screen/SessionsPanel.dc.html`; `screens/v01-sessions-panel.png`.
+
+## Plan
+
+```yaml
+stages:
+  - name: the verifier's item and resume
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-303
+      - - T-304
+  - name: archive by hand and the verify line
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-305
+      - - T-307
+  - name: archive by rule and prune
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-306
+  - name: the human's npm test through the queue
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-308
+```
+
+## Comments
+
+### coord · 2026-10-12T21:35:18.471Z
+
+Tickets cut on 2026-10-12 (Coordinator): T-303 the verifier's item (latest hold +N, a pending request dimmed); T-304 resume; T-305 archive by hand (after T-304); T-306 archive by rule and prune (after T-305); T-307 the verify line and the queue view; T-308 the human's npm test through the queue. Decisions on the drafts' open points: (1) `d` on a live session is refused; only a stopped row archives. (2) Resume restores the item claim only, never a verifier hold (a verifier takes its hold again). (3) `prune --older-than` counts from the session's stop time. (4) The human's npm test waiter queues behind integrated dev runs and ahead of ranked items. (5) Only full or phase runs of `npm test` queue; explicit single-file targets stay free, as docs/agents/tests.md already says. (6) `--force` skips both the queue and the legacy lease, and the hub journals that it did. (7) No journal backfill of stop times: a stopped row without one takes the time of the first sweep that sees it, so it archives 24 hours later; this keeps startup free of journal reads (T-293's lesson). (8) The column reads `T-b review +1`: the latest hold with its role, then +N. Hot files: panels.lua and the stub hub (T-303 to T-307), sessions.ts and processes.ts (T-304 to T-306), default-roles.ts (T-304, T-305, T-306, T-308; it adds Coordinator tools, so the Coordinator relaunches after those merge), run-suite.ts (T-308, which collides with T-281 and T-282 and therefore goes last). Every hub-event-driven recompute is coalesced once per tick (T-293); keep T-284's C7 workload test green.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-12T21:25:17.711Z
+updated: 2026-10-12T21:28:55.292Z
 ---
 
 ## Summary
@@ -54,7 +54,7 @@ Constraints:
 - [x] C1. The fake Claude session survives a hook that exits before reading its stdin; a test reproduces that hook on macOS and proves the session keeps answering.
   - done: impl-281 · 2026-10-12T21:22:45.572Z
 - [x] C2. The handover test waits for its audit records; the init test is root-safe and still fails when a committed file names the real home directory (shown by a test or a recorded check); each load-sensitive test's cause is named in the item and fixed by a wait for state or a test window, with no retry and no loosened assertion.
-  - done: impl-281 · 2026-10-12T21:23:28.977Z
+  - done: impl-281 · 2026-10-12T21:28:49.130Z
 - [ ] C3. In an Ubuntu 24.04 container limited to 8 CPUs, as an ordinary user, each of `aide`, `handover`, `init`, `lead-permissions` and `tracker-ready` passes ten runs in a row alone; the log is published as an artifact in this item's topic.
 - [ ] C4. The runner lists every skipped test with file, name and reason on macOS and on Linux, and the hub's suite report counts are unchanged by it.
 - [x] C5. `hub/README.md` describes the skip summary, any new test-window knob and how to run the suite on Linux.
@@ -70,3 +70,19 @@ Note from T-280's container run (impl-280, 2026-10-12 20:35Z): the local Ubuntu 
 ### impl-281 · 2026-10-12T21:21:58.883Z
 
 Diagnosis so far: aide and tracker-ready share the fake Claude hook-stdin EPIPE. A Linux baseline of tracker-ready failed at 2 !== 3 with rev exited and its hold gone; a one-purpose exception monitor recorded EPIPE at fake-claude.ts:227 (A-1640). Changing only the fake stdin error handling made the unchanged test pass. There is no hold-count settling race to paper over. The handover baseline missed the last forbidden audit record; it now waits for that record then asserts the original six records in order. Root init baseline failed on App/root text; the check now recognizes absolute path/component boundaries and its real-home injection still fails the assertion. The verifier marker test waits for worktree setup and a complete harness spawn: a controlled 16-second fake startup exceeds its original 15-second wait. Its test-only window is configurable (30 seconds by default for that marker); the fixture gate now waits for explicit release instead of expiring after 20 seconds. No production timeout, assertion, retry or skip was changed. Docker Desktop was started for these runs with settings unchanged; the Ubuntu 24.04 container uses --init and --cpus=4.
+
+### rev-26 · 2026-10-12T21:26:24.711Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261012-281-1
+commit: 8ee27aa737710137a0cfcd923a509641a989e364
+
+Medium: hub/test/handover.test.ts:213 polls hub.log after role.handover without awaiting and asserting hub.status with flushLogs:true, contrary to the standing T-291 rule; file polling retains a bounded asynchronous-log race. Await the barrier and retain the ordered six-record assertion. No additional material code finding. C1/C5 code and focused evidence checked; C3/C4/C6 remain unverified pending platform proof artifacts and ordinary macOS cland verify evidence. Review evidence published in this topic.
+
+Criteria: C2 failed (handover.test.ts:213 reads hub.log without awaiting the required successful hub.status flushLogs barrier.).
+
+### impl-281 · 2026-10-12T21:28:50.551Z
+
+Review fix: 0aa2b498 asserts the hub.status flushLogs:true frame before every handover audit read, retaining the exact records and wait. Focused refusal passes on macOS and Linux. The 8ee27aa proof batch was intentionally stopped after aide's ten consecutive green runs to replace the candidate; no failure was retried and C3 was not marked done. The revised full batch will run at 0aa2b498 when the integrated dev suite releases the machine slot. Docker Desktop was quit during that wait; it will be started again only for my remaining runs, with 4 CPUs unchanged and --init.

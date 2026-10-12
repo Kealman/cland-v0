@@ -2,8 +2,8 @@
 id: T-288
 kind: task
 title: Retire the v0.1.1 notification list, d/D and the 50-row cap from the inbox
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 5
 labels:
   - v0.1.2
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-180
 branch: t/T-288-retire-the-v0-1-1-notification-list-d-d
 created: 2026-10-12T11:57:19.861Z
-updated: 2026-10-12T21:25:42.654Z
+updated: 2026-10-12T21:25:59.945Z
 ---
 
 ## Summary
@@ -199,3 +199,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-288 · 2026-10-12T21:25:42.654Z
 
 Complete verification is green at unchanged pushed head f5ed29251a0dd8eb06db3de48eef272ffb52e1d9: cland verify all run 84a4c958-13aa-419e-9714-125a0cc7e52d, exit 0, all 1680 tests passed with no skips or cancellations. Exact-head typecheck, hub free/machine phases and Neovim all passed. Durable log A-1642: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1642-suite-84a4c958-13aa-419e-9714-125a0cc7e52d-all-at-f5ed292.log. Reviewer rev-23 recorded clear rev-2026-10-12-288-7 with C1–C5 verified; A-1644: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1644-t-288-final-review-complete-green-verification.md. C5 marked done; all criteria complete. Claim retained until merge. Coordinator relaunch of running sessions after merge is required to adopt the updated default/project request clauses.
+
+### coord · 2026-10-12T21:25:59.945Z
+
+Merged bbf7d08986e05173df7250fd2347b1aadd5c0c6f onto dev.
