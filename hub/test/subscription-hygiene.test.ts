@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -367,15 +368,7 @@ test('the cap retains final subject events and leaves mixed progress uncapped', 
 test('subtree subjects include sessions working on descendant items and survive their death', async t => {
   const root = await tempProject(t);
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
-  git('init', '-q', '-b', 'main');
-  git('config', 'user.name', 'Test');
-  git('config', 'user.email', 'test@example.com');
-  git('config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git('add', '.');
-  git('commit', '-qm', 'Initial');
-  const initialized = await cland(root, 'init', '--json');
-  assert.equal(initialized.code, 0, initialized.stderr);
+  await copyPreparedProject(root);
   const fake = await fakeClaude(t, { pollMs: 10_000 });
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);

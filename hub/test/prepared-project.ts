@@ -1,0 +1,80 @@
+// Worker-local seeds are private. Copy every file (including objects), never hardlink
+// or share mutable Git/.cland state. The package runner sweeps the worker's tmpdir.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { cp, mkdir, mkdtemp, readdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after, type TestContext } from 'node:test';
+import { cland, tempProject } from './harness.ts';
+import { ownDirectory } from './process-cleanup.ts';
+import { provisionTerritory } from '../src/territory.ts';
+import { Report } from '../src/init/files.ts';
+
+type Shape = 'repository' | 'territory' | 'release' | 'verification' | 'native-territory';
+const seeds = new Map<Shape, Promise<string>>();
+const cleanups: Array<() => Promise<void>> = [];
+after(async () => { for (const cleanup of cleanups.reverse()) await cleanup(); });
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+
+async function build(shape: Shape): Promise<string> {
+  const root = await realpath(await mkdtemp(join(tmpdir(), `cland-prepared-${process.pid}-${shape}-`)));
+  cleanups.push(ownDirectory(undefined, root));
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'config', 'user.name', 'Test');
+  git(root, 'config', 'user.email', 'test@example.com');
+  git(root, 'config', 'commit.gpgsign', 'false');
+  await writeFile(join(root, 'README.md'), 'project\n');
+  if (shape === 'native-territory') await writeFile(join(root, '.gitignore'), '.cland/\n');
+  if (shape === 'verification') await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: 'node -e "process.exit(0)"' } }));
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'Initial');
+  if (shape === 'release') {
+    await mkdir(`${root}-github`);
+    cleanups.push(ownDirectory(undefined, `${root}-github`));
+    git(root, 'clone', '-q', '--bare', '.', `${root}-github`);
+    git(root, 'remote', 'add', 'origin', `${root}-github`);
+  }
+  if (shape === 'native-territory') provisionTerritory(new Report(root), root);
+  else if (shape !== 'repository') {
+    const result = await cland(root, 'init');
+    assert.equal(result.code, 0, result.stderr || result.stdout);
+  }
+  return root;
+}
+
+/** Fill an already owned empty tempProject with a private copy of a prepared shape. */
+export async function copyPreparedProject(root: string, shape: Shape = 'territory', github?: string): Promise<void> {
+  assert.deepEqual(await readdir(root), [], 'prepared copies need an empty owned project');
+  let seed = seeds.get(shape);
+  if (!seed) {
+    seed = build(shape);
+    seeds.set(shape, seed);
+  }
+  const source = await seed;
+  await cp(source, root, { recursive: true, verbatimSymlinks: true });
+  if (shape === 'release') {
+    assert.ok(github, 'a release fixture needs its own GitHub stand-in');
+    await cp(`${source}-github`, github, { recursive: true, verbatimSymlinks: true });
+  }
+  // Only Git config contains operational absolute paths; hooks and skills use
+  // relative paths. Reflog messages are historical and need no relocation.
+  const config = join(root, '.git/config');
+  let text = await readFile(config, 'utf8');
+  if (github) text = text.replaceAll(`${source}-github`, github);
+  await writeFile(config, text.replaceAll(source, root));
+}
+
+/** Same lifetime/process ownership as tempProject; default is after cland init. */
+export async function preparedProject(t: TestContext, shape: Exclude<Shape, 'release'> = 'territory', prefix = 'cland-proj-'): Promise<string> {
+  const root = await tempProject(t, prefix);
+  await copyPreparedProject(root, shape);
+  return root;
+}
+
+export async function preparedReleaseProject(t: TestContext, prefix = 'cland-release-'): Promise<{ root: string; github: string }> {
+  const root = await tempProject(t, prefix);
+  const github = await tempProject(t, 'cland-github-');
+  await copyPreparedProject(root, 'release', github);
+  return { root, github };
+}

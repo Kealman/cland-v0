@@ -17,8 +17,12 @@ const ancestor = (root: string, older: string, newer: string) => git(root, ['mer
 /** No Git operation in progress, no linked checkout of main, and a managed local territory. */
 export async function releaseState(root: string, resumed: Resumed): Promise<{ main: string; dev: string }> {
   if (!await hasTerritory(root)) throw new ReleaseError('release-territory', 'this project has no managed territory');
-  for (const state of ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer']) {
-    const path = await git(root, ['rev-parse', '--git-path', state]);
+  const states = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer'];
+  const paths = (await git(root, ['rev-parse', ...states.flatMap(state => ['--git-path', state])])).split('\n');
+  for (const [index, state] of states.entries()) {
+    // A Git directory can contain a newline. Keep the original single-path
+    // behavior when the batch's line boundaries are ambiguous.
+    const path = paths.length === states.length ? paths[index]!.trim() : await git(root, ['rev-parse', '--git-path', state]);
     const present = await access(resolve(root, path)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
     resumed(() => { if (present) throw new ReleaseError('release-state', `${state} is in progress; finish or abort it first`); });
   }

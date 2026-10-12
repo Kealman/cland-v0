@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CLI_ENTRY, cland, clandWithEnv, connectUi, connectWsUi, startHub, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type CliResult, type FrameClient } from './harness.ts';
+import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import type { Sessions } from '../src/adapters/sessions.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -28,15 +29,7 @@ type Entry = { item: string; path: string; branch: string | null; state: string 
 
 /** A Git project on `main` with one commit, put on its territory by `cland init` (the root moves to `dev`). */
 async function project(t: TestContext, options: { territory?: boolean } = {}): Promise<string> {
-  const root = await tempProject(t, 'cland-worktrees-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  if (options.territory !== false) ok(await cland(root, 'init', '--json'));
+  const root = await preparedProject(t, options.territory === false ? 'repository' : 'territory', 'cland-worktrees-');
   return root;
 }
 

@@ -5,19 +5,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cland, connectUi, eventually, fakeClaude, fakeCodex, NO_PS, pidAlive, startDaemon, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, Inbox } from '../src/protocol.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 async function initGitProject(root: string) {
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
 }
 
 async function assertStopped(ui: Awaited<ReturnType<typeof connectUi>>, root: string) {

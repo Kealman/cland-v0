@@ -8,16 +8,13 @@ import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
 import { cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 async function fixture(t: test.TestContext, gated = false, count = 3, launchLead = false, ancestryFailure = false) {
   const root = await tempProject(t);
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test'); git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n'); git(root, 'add', '.'); git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
   const gate = gated ? await taskWriteGate(t, root) : undefined;
   const fake = launchLead ? await fakeClaude(t) : undefined;
   const failAncestry = join(root, '.cland', 'fail-ancestry');

@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev, type PushResult } from '../src/territory-push.ts';
 import { withTerritoryLockAsync } from '../src/territory.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -15,14 +16,7 @@ const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); re
 const refs = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n');
 async function repository(t: TestContext) {
   const root = await tempProject(t, 'cland-push-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await fs.writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  ok(await cland(root, 'init'));
+  await copyPreparedProject(root);
   return { root, territory: join(root, '.cland', 'territory.git') };
 }
 async function project(t: TestContext) {

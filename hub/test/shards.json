@@ -69,6 +69,7 @@
     "hub/test/pid-identity.test.ts": "machine",
     "hub/test/plan-approval.test.ts": "machine",
     "hub/test/plan-gate.test.ts": "machine",
+    "hub/test/prepared-project.test.ts": "machine",
     "hub/test/presence.test.ts": "machine",
     "hub/test/process-cleanup.test.ts": "machine",
     "hub/test/progress.test.ts": "machine",

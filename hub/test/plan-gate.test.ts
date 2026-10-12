@@ -8,18 +8,13 @@ import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { QaPolicy, EpicPlan } from '../src/tracker/plan.ts';
 import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 async function setup(t: test.TestContext, fallback: QaPolicy = { scope: 'none', when: 'per-item' }, options: { levels?: string[]; gate?: boolean } = {}) {
   const root = await tempProject(t);
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
   await writeFile(join(root, '.cland/config.toml'), `${options.levels ? `[tracker]\nlevels = ${JSON.stringify(options.levels)}\n` : ''}[plan]\nqa_default = {scope = "${fallback.scope}", when = "${fallback.when}"}\n`);
   const gate = options.gate ? await taskWriteGate(t, root) : undefined;
   const { discovery } = await startDaemon(t, root, gate?.env);

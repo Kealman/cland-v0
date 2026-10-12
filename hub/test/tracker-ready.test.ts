@@ -6,6 +6,7 @@ import nativeFiles from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { cland, clandWithEnv, connectUi, eventually, fakeClaude, pidAlive, sleep, spawnSpoke, startDaemon } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { Presence } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
@@ -57,15 +58,7 @@ test('verifier holds move status beside the Implementer claim, and release on ve
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 async function repository(root: string) {
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  const init = await cland(root, 'init');
-  assert.equal(init.code, 0, init.stderr);
+  await copyPreparedProject(root);
 }
 
 for (const qaRequired of [false, true]) {

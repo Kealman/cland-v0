@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { preparedReleaseProject } from './prepared-project.ts';
 import type { ReleaseResult } from '../src/release.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -11,19 +12,7 @@ const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); re
 const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 
 async function project(t: TestContext) {
-  const root = await tempProject(t, 'cland-release-item-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  const github = await tempProject(t, 'cland-github-');
-  git(root, 'clone', '-q', '--bare', '.', github);
-  git(root, 'remote', 'add', 'origin', github);
-  ok(await cland(root, 'init'));
-  git(root, 'checkout', '-q', 'dev');
+  const { root, github } = await preparedReleaseProject(t, 'cland-release-item-');
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const territory = join(root, '.cland', 'territory.git');

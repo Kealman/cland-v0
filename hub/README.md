@@ -1133,6 +1133,22 @@ node hub/bin/cland.ts --version
 
 ### Tests
 
+`hub/test/prepared-project.ts` supplies `preparedProject(t)` (a repository after
+`cland init`, with its territory), `preparedProject(t, 'repository')` (main with
+one Initial commit), and `preparedReleaseProject(t)` (also a private bare GitHub
+stand-in). The `native-territory` shape provisions only the territory and ignores
+`.cland/`, for the existing native-boundary tests. The merge tests use the `verification` shape, with a tiny package in
+its initial commit. `copyPreparedProject(root)` fills an empty directory already
+owned by `tempProject` when a helper accepts a root instead of a test context.
+Each shape is built once per worker process under its temporary root; a cached
+promise serializes concurrent callers. Seeds stay private and unchanged after
+preparation. Copies have independent files, including objects, refs, index,
+config, hooks, worktrees and `.cland` state, with remote paths relocated to the
+copy. No objects are hardlinked or shared. Test teardown owns copies just as it
+owns `tempProject`; worker teardown removes seeds and the runner's phase sweep
+also covers them. Tests asserting repository/territory construction, init
+reports or a custom initial history must still build their own fixtures.
+
 The spawn census counts `child_process` calls inside the suite's Node processes,
 with command totals and sources ranked by test file and helper. Run
 `node hub/test/spawn-census.mjs run .tmp/census-before` from the repository root;

@@ -6,6 +6,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 test('retained Reviewer pool reuses an idle member for review, caps busy and pending launches, and releases failed admissions', async t => {
@@ -111,13 +112,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) for (const keepConte
 test(`an Implementer pool moves to the next task worktree after merge (${harness}, keep_context=${keepContext})`, async t => {
   const root = await tempProject(t);
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
   const fake = await pooledHarness(t, harness);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -228,13 +223,7 @@ test('singleton and per-item caps survive concurrent launch requests; crew claus
 test('merge stops per-item implementers before cleanup, while stop_after never and pools remain running', async t => {
   const root = await tempProject(t);
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
   const fake = await fakeClaude(t);
   const { discovery } = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, discovery);

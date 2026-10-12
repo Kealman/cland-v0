@@ -12,22 +12,14 @@ import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { HarnessAdapter } from '../src/adapters/contract.ts';
 import { connectWsUi, eventually, frameClient, startHub, tempProject, TEST_SECRET } from './harness.ts';
-import { provisionTerritory, removeTaskWorktree, territoryGitAsync } from '../src/territory.ts';
-import { Report } from '../src/init/files.ts';
+import { copyPreparedProject } from './prepared-project.ts';
+import { removeTaskWorktree, territoryGitAsync } from '../src/territory.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 
 async function territoryHub(t: TestContext, log?: (entry: Record<string, unknown>) => void, files?: TrackerFiles) {
   const root = await tempProject(t, 'cland-territory-native-');
   const git = (...args: string[]) => territoryGitAsync(root, args);
-  await git('init', '-q', '-b', 'main');
-  await git('config', 'user.name', 'Test');
-  await git('config', 'user.email', 'test@example.com');
-  await git('config', 'commit.gpgsign', 'false');
-  await fs.promises.writeFile(join(root, 'README.md'), 'project\n');
-  await fs.promises.writeFile(join(root, '.gitignore'), '.cland/\n');
-  await git('add', '.');
-  await git('commit', '-qm', 'Initial');
-  provisionTerritory(new Report(root), root);
+  await copyPreparedProject(root, 'native-territory');
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), ...(files ? { files } : {}) });
   const hub = await startHub({ tracker, roles: fixedRoles(), ...(log ? { log } : {}) });
   t.after(async () => { await hub.close(); await tracker.stop(); });

@@ -6,21 +6,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
 import { CLI_ENTRY, eventually, cland, clandWithEnv, connectUi, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
 
 test('draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives restart', async t => {
   const root = await tempProject(t);
-  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
-  git('init', '-q', '-b', 'main');
-  git('config', 'user.name', 'Test');
-  git('config', 'user.email', 'test@example.com');
-  git('config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git('add', '.');
-  git('commit', '-qm', 'Initial');
-  const initialized = await cland(root, 'init', '--json');
-  assert.equal(initialized.code, 0, initialized.stderr);
+  await copyPreparedProject(root);
   const draft = join(root, '.agents/skills/plan-epic/draft.mjs');
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');

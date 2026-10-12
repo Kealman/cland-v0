@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
 test('default item subscriptions follow claims and explicit subscriptions widen them', async t => {
@@ -366,14 +367,7 @@ test('anonymous hellos cannot give another name the claimant default identity', 
 for (const restart of [false, true]) test(`the item lead runs not-clear, re-review and QA; only ready starts the Coordinator (${restart ? 'after restart' : 'connected'})`, async t => {
   const root = await tempProject(t);
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
   let { discovery } = await startDaemon(t, root);
   let ui = await connectUi(t, discovery);
   let coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });

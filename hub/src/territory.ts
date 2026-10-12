@@ -331,13 +331,22 @@ export async function hasTerritory(root: string): Promise<boolean> {
  * The branch task branches start from: the territory's `cland.taskBase` when set, else `dev` when the project has
  * it, else `main`; null when none of them has a commit. The override names a local branch that must exist.
  */
-export async function taskBase(root: string): Promise<string | null> {
-  const configured = (await hasTerritory(root)) ? await maybeGitAsync(territoryPath(root), ['config', '--get', 'cland.taskBase']) : null;
+export async function taskBase(root: string, tips?: ReadonlyMap<string, string>): Promise<string | null> {
+  // Read both values together, retaining Git's config/include/last-value rules.
+  // Freshness supplies the branch tips it just read in this operation; other
+  // callers still resolve their branches here. Nothing survives the operation.
+  const config = await maybeGitAsync(territoryPath(root), ['config', '--null', '--get-regexp', '^cland\\.(managed|taskbase)$']);
+  const values = new Map((config ?? '').split('\0').filter(Boolean).map(entry => {
+    const newline = entry.indexOf('\n');
+    return [entry.slice(0, newline).toLowerCase(), entry.slice(newline + 1).trim()];
+  }));
+  const configured = values.get('cland.managed') === 'true' ? values.get('cland.taskbase') : null;
+  const exists = async (branch: string) => tips ? tips.has(branch) : (await refAsync(root, `refs/heads/${branch}`)) !== null;
   if (configured) {
-    if ((await refAsync(root, `refs/heads/${configured}`)) === null) throw new Error(`the territory's cland.taskBase names ${configured}, which has no local branch`);
+    if (!await exists(configured)) throw new Error(`the territory's cland.taskBase names ${configured}, which has no local branch`);
     return configured;
   }
-  for (const branch of ['dev', 'main']) if ((await refAsync(root, `refs/heads/${branch}`)) !== null) return branch;
+  for (const branch of ['dev', 'main']) if (await exists(branch)) return branch;
   return null;
 }
 

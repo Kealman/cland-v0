@@ -6,6 +6,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { preparedProject, copyPreparedProject } from './prepared-project.ts';
 import { Store } from '../src/hub/store.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -17,16 +18,7 @@ const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); re
 const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 
 async function project(t: TestContext, env: Record<string, string> = {}, verification = false) {
-  const root = await tempProject(t, 'cland-merge-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  if (verification) await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e \"process.exit(0)\"', test: 'node -e \"process.exit(0)\"' } }));
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  ok(await cland(root, 'init'));
+  const root = await preparedProject(t, verification ? 'verification' : 'territory', 'cland-merge-');
   if (verification) {
     const config = join(root, '.cland', 'config.toml');
     await writeFile(config, (await readFile(config, 'utf8')).replace(/^lock_path = .*$/m, `lock_path = ${JSON.stringify(join(root, '.cland', 'suite.lock'))}`));
@@ -919,14 +911,7 @@ test('a close write failure reports merged follow-up failure; retry closes and p
 /** Real Git and a real network hub; the injected runner only pauses real reads, never replaces their answers. */
 async function observableProject(t: TestContext, run?: (real: Git) => Git, clock?: { now: number }, sink?: (entry: Record<string, unknown>) => void) {
   const root = await tempProject(t, 'cland-merge-observe-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  ok(await cland(root, 'init'));
+  await copyPreparedProject(root);
   const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), git: run?.(gitIn(root)) ?? gitIn(root) });
   const records: Array<Record<string, unknown>> = [];
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: r => { sink?.(r); records.push(r); }, ...(clock ? { guard: { now: () => clock.now } } : {}) });
@@ -1280,4 +1265,40 @@ test('a cached green suite at a new identical tree never revives a stale criteri
   await refused(ui, root, work.id, 'criteria-incomplete');
   await verify(git(work.path, 'rev-parse', 'HEAD'), 'review-changed');
   json(await cland(root, 'merge', work.id, '--json'));
+});
+
+test('a task moving during a batched freshness read is rejected at the merge decision; the next operation sees its fresh review', async t => {
+  const entered = Promise.withResolvers<void>();
+  const released = Promise.withResolvers<void>();
+  t.after(() => released.resolve());
+  let hold = false;
+  const { root, ui, rev, work } = await observableProject(t, real => async (args, input) => {
+    const result = await real(args, input);
+    if (hold && args[0] === 'for-each-ref') {
+      hold = false;
+      entered.resolve();
+      await released.promise;
+    }
+    return result;
+  });
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  hold = true;
+  const merging = ui.request({ type: 'merge', item: work.id }, 30_000);
+  await entered.promise;
+  await writeFile(join(work.path, 'parser.txt'), 'changed during the read\n');
+  git(work.path, 'commit', '-qam', 'Move during freshness read');
+  released.resolve();
+  const refused = await merging;
+  assert.equal(refused.ok, false, JSON.stringify(refused));
+  assert.ok(['review-pending', 'review-stale'].includes((refused as { code?: string }).code ?? ''), JSON.stringify(refused));
+  assert.equal(git(root, 'rev-parse', 'dev'), before);
+  await eventually('moved branch settles stale', async () => {
+    const read = await ui.request({ type: 'task.view', item: work.id });
+    return (read.value as { item: ItemView }).item.verdicts.at(-1)?.current === false ? true : undefined;
+  });
+  await review(rev, work.id, 'clear', 'fresh-review');
+  const merged = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(merged.ok, true, merged.error);
+  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'changed during the read\n');
 });

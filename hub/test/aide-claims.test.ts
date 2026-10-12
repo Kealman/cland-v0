@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { TaskWorktree } from '../src/territory.ts';
 
@@ -11,15 +12,7 @@ const git = (cwd: string, ...args: string[]): string => execFileSync('git', args
 
 async function project(t: TestContext) {
   const root = await tempProject(t, 'cland-aide-claims-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  const init = await cland(root, 'init');
-  assert.equal(init.code, 0, init.stderr);
+  await copyPreparedProject(root);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', sessionId: 'aide-id', role: 'aide' });

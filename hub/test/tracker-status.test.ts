@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { copyPreparedProject } from './prepared-project.ts';
 
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -171,14 +172,7 @@ test('a not-clear review or QA verdict returns a handed-over task to in progress
 test('merge preserves its gate and publishes done with closed state', async t => {
   const root = await tempProject(t);
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  assert.equal((await cland(root, 'init')).code, 0);
+  await copyPreparedProject(root);
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
