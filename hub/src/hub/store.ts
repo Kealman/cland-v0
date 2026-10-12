@@ -199,6 +199,7 @@ const LATE_INDEXES = `
 create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
 create index if not exists messages_seq on messages (topic, seq);
+create index if not exists messages_reply_to on messages (reply_to, seq);
 create index if not exists deliveries_digest on deliveries (session, digest_id);
 create index if not exists deliveries_verifier_queue on deliveries (verifier_item) where verifier_item is not null and state = 'queued';
 `;
@@ -1269,8 +1270,8 @@ export class Store implements HygieneMemory {
     ) select m.*, m.seq <= t.read_seq as was_read,
       json_array_length(m.to_json) = 0 as to_human,
       m.seq = latest.seq as latest,
-      exists (select 1 from messages h where h.from_kind = 'human' and h.seq > m.seq
-        and (h.topic = m.topic or (m.notice = 'request' and h.reply_to = m.id))) as replied
+      (exists (select 1 from messages h where h.topic = m.topic and h.seq > m.seq and h.from_kind = 'human')
+        or (m.notice = 'request' and exists (select 1 from messages h where h.reply_to = m.id and h.seq > m.seq and h.from_kind = 'human'))) as replied
       from messages m join topics t on t.id = m.topic
       left join latest_messages latest on latest.topic = m.topic
       where m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event')
