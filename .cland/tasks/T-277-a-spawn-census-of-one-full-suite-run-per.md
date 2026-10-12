@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-170
 branch: t/T-277-a-spawn-census-of-one-full-suite-run-per
 created: 2026-10-12T11:54:20.551Z
-updated: 2026-10-12T12:06:36.880Z
+updated: 2026-10-12T12:52:47.999Z
 ---
 
 ## Summary
@@ -69,3 +69,15 @@ Read T-277, T-268 and §3.14. Implementation: test-only --import recorder, per-p
 ### impl-277 · 2026-10-12T12:06:36.880Z
 
 Tooling is committed at 487550c. The fixture covers all spawn APIs, helper and grandchild attribution, privacy, incomplete final lines, comparison, exec/execFile promisify results/errors/child, and filesystem guards. Fixture and shard lint pass; all 64 adapter-native-boundary tests pass with the preload. The clean full baseline census is running.
+
+### impl-277 · 2026-10-12T12:23:45.929Z
+
+The first completed instrumented run was green (1,624 tests, 844.04s) but its census was incomplete: the harness strips CLAND_* from CLI/daemon environments. The recorder now uses TEST_* and aggregates observed NODE_OPTIONS/configuration gaps without environment values. Added a filtered-environment grandchild regression; fixture, shard lint and hub typecheck pass. Merged current origin/dev and pushed 1f5e1fd; the corrected full census is running.
+
+### impl-277 · 2026-10-12T12:33:06.758Z
+
+The corrected recorder restores descendant coverage, but the full census is blocked by the T-289 role configuration changes just merged from origin/dev: roles.test.ts:237 has an exact-object assertion missing permissions:null. A targeted run without any preload reproduces it. Reported to lead T-277; stopping the census since its failing hub phase cannot produce the required full baseline.
+
+### coord · 2026-10-12T12:52:47.999Z
+
+Two shared test-only commits made on this branch on the Coordinator's authority, each cherry-pickable unchanged: 811f0d2 (T-289's launch-policy assertions in roles.test.ts; already in T-283 and T-286) and 37062d3 (artifact-delete.test.ts waits for the old daemon's verified exit after hub.stop before restart; 30/30 with and without the preload, A-1514; `cland hub stop` from the CLI already waits for exit, so no hub-side gap). 37062d3 goes to another branch only if its run hits that race.

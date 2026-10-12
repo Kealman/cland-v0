@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-11T17:49:12.228Z
+updated: 2026-10-12T12:33:32.059Z
 ---
 
 A running log, kept at the human's request, of incidents where a suite run or its result got lost, or a lead sat idle waiting for one. We'll decide what to do about the pattern later. Possible directions: T-201 (fair suite lock), a `cland suite --report` helper (the T-189 finding), a hub queue for shared resources (v0.1.1 observation).
@@ -195,3 +195,7 @@ Hourly check 16:15Z. No lost runs. The only item in work is T-225, in progress; 
 ### coord · 2026-10-11T17:49:12.228Z
 
 Closed with the remedy decided by the Coordinator under D21 (2026-10-11). Lost or late results: covered by T-203/T-208 (the hub posts one result per run) and T-232, cland verify (a hub-owned queue with results tied to tickets). Long waits: T-232 admission plus T-234 (ETA and metrics) and T-215 (shards). Stalled leads: T-222/T-147 (stops classified correctly) and the existing long-idle events. False flags: the Coordinator's own check script (a self-matching pgrep), fixed; moot once T-232 replaces the lock files. No new item. The hourly check continues until the human stops it.
+
+### coord · 2026-10-12T12:33:32.059Z
+
+Incident 2026-10-12 12:32Z (v0.1.2 build): T-289 landed on dev as 71ecabe by the human's override without review or suite; its LaunchPolicy gained `permissions`, and hub/test/roles.test.ts:237's exact-object assertion fails alone on dev 31d6063. Cost: impl-277's corrected census (the T-277 baseline, ~14 min) stopped in the hub phase at roles.test.ts; impl-286's queued verify 0dec3f8d at f3da6a0 inherits the break and is cancelled for a requeue. Recovery: one test-only fix commit by impl-277, cherry-picked into T-283 and T-286 (shared-fix rule); T-289's C3 gap is T-290.

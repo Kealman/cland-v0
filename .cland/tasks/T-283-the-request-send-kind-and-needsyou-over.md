@@ -3,7 +3,8 @@ id: T-283
 kind: task
 title: The request send kind and needsYou over the inbox's four kinds
 state: open
-status: in progress
+status: ready
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-171
 branch: t/T-283-the-request-send-kind-and-needsyou-over
 created: 2026-10-12T11:57:19.566Z
-updated: 2026-10-12T12:00:33.993Z
+updated: 2026-10-12T12:49:30.940Z
 ---
 
 ## Summary
@@ -66,9 +67,53 @@ Out of scope: the four sections' drawing and `cland inbox`'s new layout (the nex
 
 ## Acceptance criteria
 
-- [ ] `send` with `kind: "request"` to the human, a `request` of `review`, `qa` or `handover` and a known subject is accepted from any role, including one the human did not mention; with addressees, a bad request value or a missing subject it is refused with a reason naming the fix.
-- [ ] `inbox.list` returns the four kinds newest first with a waiting start on every row, and needsYou equals their total (asks and command approvals, pending plans under `approval = "human"`, open requests, now-layer messages to the human including a waiting topic's latest message).
-- [ ] Each leave rule removes its row and lowers needsYou: an answered ask, an approval granted in the session, an approved plan, a reply or a human verdict on a request's subject, a message read through `topic.read` or answered in its topic; each departure is journaled with its reason.
-- [ ] After `cland hub stop` and a new start, a left row stays gone, a read message stays read and a waiting request is still counted.
-- [ ] The headless workbench's chip equals `cland inbox`'s needs-you count before and after the reply of the demo.
-- [ ] Targeted tests pass (hub frame tests on a real hub with the CLI, the fake harnesses for the approval, nvim headless tests on the stub hub for the chip), and `hub/README.md` documents the `request` kind, the four kinds and the leave reasons.
+- [x] C1. `send` with `kind: "request"` to the human, a `request` of `review`, `qa` or `handover` and a known subject is accepted from any role, including one the human did not mention; with addressees, a bad request value or a missing subject it is refused with a reason naming the fix.
+  - done: impl-283 · 2026-10-12T12:34:35.258Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-283-2 · 2026-10-12T12:49:29.761Z · commit 18a0fa908cad4f21a56473b678e6f97f0b959cee
+- [x] C2. `inbox.list` returns the four kinds newest first with a waiting start on every row, and needsYou equals their total (asks and command approvals, pending plans under `approval = "human"`, open requests, now-layer messages to the human including a waiting topic's latest message).
+  - done: impl-283 · 2026-10-12T12:48:09.736Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-283-2 · 2026-10-12T12:49:29.761Z · commit 18a0fa908cad4f21a56473b678e6f97f0b959cee
+- [x] C3. Each leave rule removes its row and lowers needsYou: an answered ask, an approval granted in the session, an approved plan, a reply or a human verdict on a request's subject, a message read through `topic.read` or answered in its topic; each departure is journaled with its reason.
+  - done: impl-283 · 2026-10-12T12:34:36.120Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-283-2 · 2026-10-12T12:49:29.761Z · commit 18a0fa908cad4f21a56473b678e6f97f0b959cee
+- [x] C4. After `cland hub stop` and a new start, a left row stays gone, a read message stays read and a waiting request is still counted.
+  - done: impl-283 · 2026-10-12T12:34:36.235Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-283-2 · 2026-10-12T12:49:29.761Z · commit 18a0fa908cad4f21a56473b678e6f97f0b959cee
+- [x] C5. The headless workbench's chip equals `cland inbox`'s needs-you count before and after the reply of the demo.
+  - done: impl-283 · 2026-10-12T12:34:36.352Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-283-2 · 2026-10-12T12:49:29.761Z · commit 18a0fa908cad4f21a56473b678e6f97f0b959cee
+- [x] C6. Targeted tests pass (hub frame tests on a real hub with the CLI, the fake harnesses for the approval, nvim headless tests on the stub hub for the chip), and `hub/README.md` documents the `request` kind, the four kinds and the leave reasons.
+  - done: impl-283 · 2026-10-12T12:34:36.466Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-283-2 · 2026-10-12T12:49:29.762Z · commit 18a0fa908cad4f21a56473b678e6f97f0b959cee
+
+## Comments
+
+### impl-283 · 2026-10-12T12:26:20.064Z
+
+Implemented explicit request fields and human-only validation, four-kind needsYou, SQLite wait/departure records and existing read watermarks. Targeted real daemon/MCP/CLI tests pass for validation, replies, restart persistence, independent message reads, plans, asks and fake Claude command approvals. Headless stub protocol demo passes with the chip equal to real cland inbox snapshots before/after an Aide request reply. Preparing docs, regression checks and exact-head review.
+
+### rev-23 · 2026-10-12T12:43:24.720Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-283-1
+commit: 3990794853911564b0f7203388ab878dab4b96a3
+
+Medium: hub/src/hub/store.ts:1266 (also 1272) computes latest across all records before excluding progress/event/hub rows. In a waiting-for-human topic with no open ask, append such an excluded row after the eligible unread agent report: inbox.ts:259–261 stops counting the report, the excluded row cannot replace it, and needsYou falls while the topic still waits. No read/answer departure is journaled. Select the latest eligible message using the same exclusions and cover this append/count/leave sequence through the real-hub frame protocol. Source trace is pinned to 3990794; the later approval-sorting commit b2d8583 does not change this finding.
+Standards: no actionable findings. Other criteria and reported targeted passes inspected; full verify remains held for the canonical unrelated roles.test.ts fix. C2 failed; no verified marks on this verdict.
+Evidence A-1512: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1512-t-283-review-not-clear-at-3990794.md.
+
+Criteria: C2 failed (Latest-message selection includes excluded progress/hub records, which can hide the unread message of a waiting topic and lower needsYou without a read or answer.).
+
+### rev-23 · 2026-10-12T12:49:29.762Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-283-2
+commit: 18a0fa908cad4f21a56473b678e6f97f0b959cee
+
+No findings. A-1512's C2 issue is resolved: the shared latest_messages CTE excludes progress/event/request/ask records before selecting the latest eligible ordinary message for both flags and admission. The real-daemon regression preserves the original waiting report/count after progress and a hub notice, then confirms exactly one read departure. Approval sorting now uses restored durable since values. Canonical 811f0d2 matches 06371a7's stable patch-id unchanged; exact assertions retain all prior fields and add permissions:null. C1–C6 checked at this head using the full review, this delta and updated targeted evidence A-1515 (hub 9/9 and typecheck), plus original A-1509 headless/CLI/ask/plan evidence. Worktree clean. A-1516: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1516-t-283-review-clear-at-18a0fa9.md. Full cland verify all remains pending; no full-suite pass is claimed.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
