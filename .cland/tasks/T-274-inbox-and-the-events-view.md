@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.306Z
-updated: 2026-10-12T11:35:14.306Z
+updated: 2026-10-12T11:58:20.213Z
 ---
 
 ## Goal
@@ -85,3 +85,41 @@ From this epic on the human steers the rest of the build from the inbox: the Coo
 - GLOSSARY: Request, Event, Events view, Ask, Layer.
 - ADRs: `docs/adr/0005-neovim-is-the-host.md`, `docs/adr/0007-events-reach-sessions-as-deliveries.md`.
 - Mockups: `docs/design/main-screen/InboxNow.dc.html`, `Events.dc.html`; `screens/v012-inbox-now.png`, `screens/v012-events.png`.
+
+## Plan
+
+```yaml
+stages:
+  - name: the request kind and the events frame
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-283
+      - - T-286
+  - name: the four sections and the quiet events view
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-284
+      - - T-287
+  - name: acting from a row
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-285
+  - name: the old list retires
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-288
+```
+
+## Comments
+
+### coord · 2026-10-12T11:58:20.213Z
+
+Tickets cut on 2026-10-12 (Coordinator): T-283 the request kind and needsYou → T-284 the four sections → T-285 acting from a row; in parallel T-286 the events view and events.list → T-287 quiet rows, warnings, filters, gM, the last look; both chains join at T-288, the old list retires. Native edges; a four-stage plan with two lanes. Decisions where the drafts asked: (1) the journal gap before T-286 is accepted, no backfill from hub.db; the README says older periods lack suite and artifact rows. (2) No default usage threshold in this epic; the usage kind may stay empty until the per-session usage records of T-270. (3) The inbox's A moves from the archive layer toggle (T-191) to the seven-day inbox archive. (4) gM is an events-view-only mute list in ui.json; the hub's visibility mutes and the inbox are untouched. (5) A withdrawn or cancelled ask and a plan that leaves unapproved journal their own state as the reason. (6) The request kind is the one exception to the send:human rule, for any role. (7) Requests come from the explicit kind only; no first line is parsed. (8) T-288 also waits for T-287 so the view is complete before the list goes. Hot file: nvim/lua/cland/inbox.lua is edited by five tickets; the events-view tickets keep their inbox change to the one events line, and new test helpers stay out of hub/test/harness.ts, which the hub lane is rewriting.
