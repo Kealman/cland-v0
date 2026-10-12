@@ -11,6 +11,11 @@ export type ModelEntry = { id: string; providerID: string; status?: string; enab
 /** One event of the stream: `data: {id, type, created, location?, data}`. */
 export type ServerEvent = { id?: string; type: string; created?: number; data?: Record<string, unknown> };
 
+/** Pending permission data shared by the SSE event and permission list. */
+export type PermissionRequest = { id: string; action?: unknown; source?: unknown };
+
+const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
 export class HttpError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
@@ -74,14 +79,34 @@ export class OpenCodeClient {
   }
 
   /** What the server says the session is doing now: running, and its pending permission requests and forms. */
-  async snapshot(sessionId: string): Promise<{ running: boolean; permissions: string[]; forms: string[] }> {
+  async snapshot(sessionId: string): Promise<{ running: boolean; permissions: PermissionRequest[]; forms: string[] }> {
     const sid = encodeURIComponent(sessionId);
     const [active, permissions, forms] = await Promise.all([
       this.request<{ data: Record<string, unknown> }>('GET', '/api/session/active'),
-      this.request<{ data: Array<{ id: string }> }>('GET', `/api/session/${sid}/permission`),
+      this.request<{ data: PermissionRequest[] }>('GET', `/api/session/${sid}/permission`),
       this.request<{ data: Array<{ id: string }> }>('GET', `/api/session/${sid}/form`),
     ]);
-    return { running: sessionId in (active.data ?? {}), permissions: (permissions.data ?? []).map((p) => p.id), forms: (forms.data ?? []).map((f) => f.id) };
+    return { running: sessionId in (active.data ?? {}), permissions: permissions.data ?? [], forms: (forms.data ?? []).map((f) => f.id) };
+  }
+
+  /** v2 permissions reference an assistant tool part; resources contain parsed fragments, not the full command. */
+  async approvalCommand(sessionId: string, permission: PermissionRequest): Promise<string | undefined> {
+    const fallback = typeof permission.action === 'string' ? permission.action : undefined;
+    const source = record(permission.source);
+    if (source.type !== 'tool' || typeof source.messageID !== 'string' || typeof source.id !== 'string') return fallback;
+    try {
+      const response = await this.request<{ data: unknown }>('GET', `/api/session/${encodeURIComponent(sessionId)}/message/${encodeURIComponent(source.messageID)}`);
+      const message = record(response.data);
+      if (message.type !== 'assistant' || !Array.isArray(message.content)) return fallback;
+      const tool = message.content.map(record).find(part => part.type === 'tool' && part.id === source.id);
+      if (!tool || typeof tool.name !== 'string') return fallback;
+      const state = record(tool.state);
+      const command = record(state.input).command;
+      return permission.action === 'shell' && tool.name === 'shell' && state.status !== 'streaming' && typeof command === 'string' ? command : tool.name;
+    } catch {
+      // Missing source data must not hide the waiting state or leak the HTTP response into events.
+      return fallback;
+    }
   }
 
   /**

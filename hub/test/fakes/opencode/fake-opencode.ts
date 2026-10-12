@@ -25,7 +25,9 @@
 // FAKE_OPENCODE_TURN_MS of "thinking" (default 300; a text containing "take your time" thinks 2000 ms), the answer
 // through the spoke's `send` ("pong: <text>", into the message's topic, replying to it), `session.step.ended
 // {tokens, cost}`; at last `session.execution.succeeded`. A steered input joins the running turn; a queued one waits
-// for the next. A text containing "needs approval" first raises `permission.asked` and waits for its reply; one
+// for the next. A text containing "needs approval" first raises `permission.asked` and waits for its reply;
+// "shell approval" references a shell tool, otherwise edit. "without source" omits the tool reference.
+// GET …/message/{id} supplies the referenced assistant tool part. /test/message can hold those lookups. A text
 // containing "needs a form" raises `form.created` and waits for a reply or a cancel.
 //
 // State lives under FAKE_OPENCODE_HOME: sessions/<ses>.json (shared by every server, like OpenCode's database),
@@ -157,7 +159,10 @@ async function serve(args: string[]): Promise<number> {
   type Input = { id: string; text: string };
   type Run = { inputs: Input[]; queued: Input[] };
   const runs = new Map<string, Run>();
-  const permissions = new Map<string, Map<string, Pending & { action: string }>>();
+  const permissions = new Map<string, Map<string, Pending & { request: Record<string, unknown> }>>();
+  const messages = new Map<string, Record<string, unknown>>();
+  let messagePaused = false;
+  const messageWaiters = new Set<() => void>();
   const forms = new Map<string, Map<string, Pending & { title: string }>>();
   const of = <V>(m: Map<string, Map<string, V>>, sid: string) => m.get(sid) ?? m.set(sid, new Map()).get(sid)!;
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -169,9 +174,17 @@ async function serve(args: string[]): Promise<number> {
     if (body.includes('fail this turn') || session.model.id === 'exo-free') throw new Error('Upstream request failed: Endpoint is unavailable\nupstream details');
     if (body.includes('needs approval')) {
       const id = rid('per');
+      const messageID = rid('msg');
+      const toolID = rid('tool');
+      const tool = body.includes('shell approval') ? 'shell' : 'edit';
+      const request = { id, sessionID: session.id, action: tool, resources: ['private-resource'], ...(body.includes('without source') ? {} : { source: { type: 'tool', messageID, id: toolID } }), metadata: { secret: 'private-permission-metadata' } };
+      messages.set(messageID, { id: messageID, type: 'assistant', content: [
+        { type: 'tool', id: 'unrelated', name: 'shell', state: { status: 'running', input: { command: 'wrong command' } } },
+        { type: 'tool', id: toolID, name: tool, state: { status: 'running', input: { command: 'touch approved && echo done', workdir: 'private-workdir', patchText: 'private-patch', secret: 'private-tool-input' } } },
+      ] });
       const reply = await new Promise<string>((resolve) => {
-        of(permissions, session.id).set(id, { resolve, action: 'external_directory' });
-        emit('permission.asked', { id, sessionID: session.id, action: 'external_directory', resources: ['/etc/fake'] });
+        of(permissions, session.id).set(id, { resolve, request });
+        emit('permission.asked', request);
       });
       log(`permission ${id} → ${reply}`);
       await sleep(turnMs);
@@ -234,6 +247,13 @@ async function serve(args: string[]): Promise<number> {
         streamPaused = (await readBody(req)).paused === true;
         if (streamPaused) for (const stream of streams) stream.end();
         return send(res, 200, { data: true });
+      }
+      if (url.pathname === '/test/message') {
+        if (method === 'POST') {
+          messagePaused = (await readBody(req)).paused === true;
+          if (!messagePaused) for (const resolve of messageWaiters) resolve();
+        }
+        return send(res, 200, { data: { waiting: messageWaiters.size } });
       }
       if (url.pathname === '/api/event' && method === 'GET') {
         if (streamPaused) return send(res, 503, { message: 'test stream paused' });
@@ -330,7 +350,15 @@ async function serve(args: string[]): Promise<number> {
           else run.queued.push({ id, text });
           return;
         }
-        if (parts[3] === 'permission' && parts.length === 4 && method === 'GET') return send(res, 200, { data: [...of(permissions, sid)].map(([id, p]) => ({ id, sessionID: sid, action: p.action, resources: [] })) });
+        if (parts[3] === 'message' && parts[4] && method === 'GET') {
+          const message = messages.get(parts[4]);
+          if (messagePaused) await new Promise<void>(resolve => {
+            const release = () => { messageWaiters.delete(release); resolve(); };
+            messageWaiters.add(release);
+          });
+          return send(res, message ? 200 : 404, message ? { data: message } : { _tag: 'MessageNotFoundError' });
+        }
+        if (parts[3] === 'permission' && parts.length === 4 && method === 'GET') return send(res, 200, { data: [...of(permissions, sid).values()].map(p => p.request) });
         if (parts[3] === 'permission' && parts[5] === 'reply' && method === 'POST') {
           const pending = of(permissions, sid).get(parts[4] as string);
           if (!pending) return send(res, 404, { _tag: 'PermissionNotFoundError' });

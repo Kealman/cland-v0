@@ -35,7 +35,7 @@ for (const preassigned of [false, true]) test(`an Implementer begins on its laun
 type Presence = { name: string; sessionId: string; state: string; role: string | null };
 type Harness = { name: string; harness: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string; attach: string | null; model: string | null; usage?: Record<string, unknown> };
 type Status = { sessions: Presence[]; harnesses: Harness[] };
-type StateEvent = { type: 'session.state'; session: string; state: string; source: string };
+type StateEvent = { type: 'session.state'; session: string; state: string; source: string; approvalCommand?: string };
 
 type FakeOpenCode = {
   env: Record<string, string>;
@@ -367,6 +367,96 @@ test('a message sent while the session works steers the running turn; one sent w
   assert.deepEqual(states.slice(states.indexOf('busy')), ['busy', 'idle']);
 });
 
+test('OpenCode shell approval displays only the referenced command and clears it after the reply', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
+  await clauseAnswered(ui, 'impl');
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, 'this one needs approval: shell approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const event = await ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.approvalCommand === 'touch approved && echo done');
+  assert.equal(event.state, 'waiting for approval');
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; approvalCommand?: string }> };
+  assert.equal(rows.processes.find(p => p.name === 'impl')?.approvalCommand, 'touch approved && echo done');
+  assert.doesNotMatch(JSON.stringify(stateEvents(ui, 'impl')), /private-|wrong command/);
+  const pending = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
+  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.data[0]?.id}/reply`, { decision: 'once' });
+  await presentAs(ui, 'impl', 'idle');
+  const cleared = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(cleared.processes[0]?.approvalCommand, undefined);
+  assert.ok(stateEvents(ui, 'impl').filter(e => e.state !== 'waiting for approval').every(e => e.approvalCommand === undefined));
+
+  const nextEpisode = stateEvents(ui, 'impl').length;
+  await sendGeneral(ui, 'this one needs approval: shell approval without source');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  const fallback = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(fallback.processes[0]?.approvalCommand, 'shell', 'missing command data falls back to the tool name');
+  assert.ok(stateEvents(ui, 'impl').slice(nextEpisode).every(e => e.approvalCommand !== 'touch approved && echo done'));
+  const next = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
+  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${next.data[0]?.id}/reply`, { decision: 'once' });
+  await presentAs(ui, 'impl', 'idle');
+});
+
+test('OpenCode restores a pending shell command from the permission snapshot after SSE misses its request', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
+  await clauseAnswered(ui, 'impl');
+  await presentAs(ui, 'impl', 'idle');
+  await api(launched, root, 'POST', '/test/stream', { paused: true });
+  await sendGeneral(ui, 'this one needs approval: shell approval');
+  const pending = await eventually('permission raised while stream is down', async () => {
+    const result = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
+    return result.data[0];
+  });
+  await api(launched, root, 'POST', '/test/stream', { paused: false });
+  await ui.waitFor(f => f.type === 'session.state' && f.session === 'impl' && f.approvalCommand === 'touch approved && echo done');
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(rows.processes[0]?.approvalCommand, 'touch approved && echo done');
+  assert.doesNotMatch(JSON.stringify(stateEvents(ui, 'impl')), /private-|wrong command/);
+  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.id}/reply`, { decision: 'once' });
+  await presentAs(ui, 'impl', 'idle');
+});
+
+test('OpenCode ignores a late command lookup after its approval ends and another approval begins', async (t) => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const launched = await launch(ui, 'impl', { role: 'coordinator' });
+  await clauseAnswered(ui, 'impl');
+  await presentAs(ui, 'impl', 'idle');
+  await api(launched, root, 'POST', '/test/message', { paused: true });
+  await sendGeneral(ui, 'this one needs approval: shell approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  await eventually('command lookup held', async () => {
+    const result = await api(launched, root, 'GET', '/test/message') as { data: { waiting: number } };
+    return result.data.waiting > 0 ? true : undefined;
+  });
+  const pending = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
+  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${pending.data[0]?.id}/reply`, { decision: 'once' });
+  await presentAs(ui, 'impl', 'idle');
+  await sendGeneral(ui, 'this edit needs approval');
+  await presentAs(ui, 'impl', 'waiting for approval');
+  await eventually('both lookups held', async () => {
+    const result = await api(launched, root, 'GET', '/test/message') as { data: { waiting: number } };
+    return result.data.waiting === 2 ? true : undefined;
+  });
+  await api(launched, root, 'POST', '/test/message', { paused: false });
+  const edit = await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`) as { data: Array<{ id: string }> };
+  await api(launched, root, 'POST', `/api/session/${launched.harnessSessionId}/permission/${edit.data[0]?.id}/reply`, { decision: 'once' });
+  await presentAs(ui, 'impl', 'idle');
+  assert.ok(stateEvents(ui, 'impl').every(e => e.approvalCommand !== 'touch approved && echo done'), 'the answered shell command must not reach the next waiting episode');
+});
+
 test('a pending permission is waiting for approval within one event, and the reply brings the turn back; a form is waiting for human', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t, { pollMs: 10_000 });
@@ -383,6 +473,11 @@ test('a pending permission is waiting for approval within one event, and the rep
   const asked = stateEvents(ui, 'impl').slice(clauseTurn).map((e) => e.state);
   // permission.asked is the event right after busy: no state in between
   assert.deepEqual(asked.slice(asked.indexOf('busy')), ['busy', 'waiting for approval']);
+  const event = stateEvents(ui, 'impl').at(-1);
+  assert.equal(event?.approvalCommand, 'edit', 'a non-shell approval exposes only its tool name, even if input has a command');
+  assert.doesNotMatch(JSON.stringify(stateEvents(ui, 'impl')), /private-|touch approved|wrong command/);
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(rows.processes[0]?.approvalCommand, 'edit');
   const pending = (await api(launched, root, 'GET', `/api/session/${launched.harnessSessionId}/permission`)) as { data: Array<{ id: string }> };
   assert.equal(pending.data.length, 1);
   // the human approves in the TUI (the reply endpoint): the turn goes on, then ends
@@ -391,6 +486,8 @@ test('a pending permission is waiting for approval within one event, and the rep
   await presentAs(ui, 'impl', 'idle');
   const after = stateEvents(ui, 'impl').map((e) => e.state);
   assert.deepEqual(after.slice(after.lastIndexOf('waiting for approval')), ['waiting for approval', 'busy', 'idle']);
+  const cleared = (await ui.request({ type: 'session.list' })).value as { processes: Array<{ approvalCommand?: string }> };
+  assert.equal(cleared.processes[0]?.approvalCommand, undefined);
 
   await sendGeneral(ui, 'this one needs a form');
   await presentAs(ui, 'impl', 'waiting for human');

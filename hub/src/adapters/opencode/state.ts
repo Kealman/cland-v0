@@ -12,12 +12,14 @@
 // "Waiting" is not a status of the server: it is running plus a pending request, so both waiting states are
 // heuristic. A pending approval outranks a pending form, which outranks running.
 import type { SessionState } from '../../protocol.ts';
-import { formatModel, type ModelRef, type ServerEvent } from './client.ts';
+import { formatModel, type ModelRef, type PermissionRequest, type ServerEvent } from './client.ts';
 import { turnError } from '../turn-error.ts';
 
 export type Usage = { model?: string; inputTokens: number; outputTokens: number; reasoningTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cost: number };
 
-export type Change = { state?: SessionState; usage?: Usage; model?: string; ended?: true; turnError?: string };
+export type Change = { state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string };
+
+type PendingPermission = { id: string; approvalCommand: string | undefined };
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -25,10 +27,11 @@ const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v)
 export class SessionTracker {
   readonly sessionId: string;
   running = false;
-  readonly permissions = new Set<string>();
+  readonly permissions = new Map<string, PendingPermission>();
   readonly forms = new Set<string>();
   model: string | undefined;
   #last: SessionState | null = null;
+  #lastCommand: string | undefined;
 
   constructor(sessionId: string) {
     this.sessionId = sessionId;
@@ -41,11 +44,11 @@ export class SessionTracker {
   }
 
   /** Replace what is known with a snapshot the server gave (after the stream (re)connected). */
-  reset(snapshot: { running: boolean; permissions: string[]; forms: string[] }): Change {
+  reset(snapshot: { running: boolean; permissions: PermissionRequest[]; forms: string[] }): Change {
     this.running = snapshot.running;
     this.permissions.clear();
     this.forms.clear();
-    for (const id of snapshot.permissions) this.permissions.add(id);
+    for (const permission of snapshot.permissions) this.#permission(permission);
     for (const id of snapshot.forms) this.forms.add(id);
     return this.#emit(true);
   }
@@ -53,6 +56,18 @@ export class SessionTracker {
   /** The stream ended: nothing is known until it is back. */
   forget(): void {
     this.#last = null;
+    this.permissions.clear();
+  }
+
+  /** A late message lookup cannot describe an answered request or a new waiting episode. */
+  describePermission(pending: PendingPermission, command: string | undefined): Change {
+    if (this.permissions.get(pending.id) !== pending) return {};
+    pending.approvalCommand = command;
+    return this.#emit();
+  }
+
+  #permission(permission: PermissionRequest): void {
+    this.permissions.set(permission.id, { id: permission.id, approvalCommand: str(permission.action) });
   }
 
   /** Apply one event; the change it makes, if any (a state only when it differs from the last one emitted). */
@@ -74,7 +89,7 @@ export class SessionTracker {
         return { ...this.#emit(), ended: true, ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error) } : {}) };
       case 'permission.asked': {
         const id = str(d.id);
-        if (id) this.permissions.add(id);
+        if (id) this.#permission({ ...d, id });
         return this.#emit();
       }
       case 'permission.replied': {
@@ -121,8 +136,10 @@ export class SessionTracker {
 
   #emit(always = false): Change {
     const state = this.state();
-    if (!always && state === this.#last) return {};
+    const approvalCommand = this.permissions.values().next().value?.approvalCommand;
+    if (!always && state === this.#last && approvalCommand === this.#lastCommand) return {};
     this.#last = state;
-    return { state };
+    this.#lastCommand = approvalCommand;
+    return { state, ...(approvalCommand !== undefined ? { approvalCommand } : {}) };
   }
 }

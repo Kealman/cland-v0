@@ -27,7 +27,7 @@ import { dirname } from 'node:path';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
 import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
-import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef } from './opencode/client.ts';
+import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef, type PermissionRequest } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
 import { processAlive } from './processes.ts';
@@ -307,7 +307,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
       this.#host.usageChanged?.(w.process.sessionId);
     }
-    if (change.state) this.#host.signal(w.process.sessionId, { state: change.state, source: 'sse', at });
+    if (change.state) this.#host.signal(w.process.sessionId, { state: change.state, source: 'sse', at, ...(change.approvalCommand !== undefined ? { approvalCommand: change.approvalCommand } : {}) });
+  }
+
+  #describePermission(w: Watch, request: PermissionRequest): void {
+    const pending = w.tracker.permissions.get(request.id);
+    if (!pending) return;
+    void w.client.approvalCommand(w.tracker.sessionId, request).then(command => {
+      if (this.#watched.get(w.process.sessionId) !== w) return;
+      this.#apply(w, w.tracker.describePermission(pending, command), Date.now());
+    });
   }
 
   /** Keep one subscription to the server's events, re-opened (with a fresh snapshot) until the session is unwatched. */
@@ -329,6 +338,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
               }
             }
             this.#apply(w, w.tracker.apply(e), e.created ?? Date.now());
+            if (e.type === 'permission.asked' && d.sessionID === w.tracker.sessionId && typeof d.id === 'string') this.#describePermission(w, { ...d, id: d.id });
           },
           () => {
             failures = 0;
@@ -337,6 +347,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
               .snapshot(w.tracker.sessionId)
               .then((s) => {
                 this.#apply(w, w.tracker.reset(s), Date.now());
+                for (const permission of s.permissions) this.#describePermission(w, permission);
                 // the stream is back: what failed to inject while it was down is retried, state change or not
                 this.#host.reconnected?.(w.process.sessionId);
               })
