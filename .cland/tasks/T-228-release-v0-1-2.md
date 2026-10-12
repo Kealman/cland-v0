@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-12T08:59:33.434Z
+updated: 2026-10-12T09:12:27.669Z
 ---
 
 ## Goal
@@ -45,9 +45,19 @@ Round 2, 2026-10-12 (the human answered yes to all; recorded in docs/spec/v0.1.2
 7. T-247: the inbox is the now layer only, sections by kind, newest first, capped; events move to an events view; the form from a mockup in the explorer map.
 8. The explorer map's destination: spec v0.1.2 sections for the explorer and the item card with accepted mockups and a Neovim prototype, ready for epics; the map holds T-243, T-244, T-237, T-245 and the inbox mockup; `docs/spec/v0.1.2.md` started as a draft.
 
+Round 3, 2026-10-12 (charting the explorer map; the human answered yes to all but amended editing; recorded in docs/spec/v0.1.2.md §3.8 to §3.11, GLOSSARY, and on T-243, T-244, T-245, T-237):
+
+1. The explorer: an outline tree in the centre, root the current release, folded roots for categories, unscheduled, other releases; the card follows the cursor; s rescopes with breadcrumbs; ␣e, gi, D.
+2. Rows per level with done/total, status bars, stage, lead; live by rank, done after, in the done colour.
+3. Summary: a ## Summary section by the creator, first-paragraph fallback; the card replaces the item view.
+4. No hand editing from the explorer (the human: it would add chaos; steering goes through the Coordinator): the one action is a quick message to the Coordinator in the item's topic, also on a selection ("plan these").
+5. Categories as a root container kind seeded at migration; agents file with --parent C-n; promotion by message; the Coordinator's idle_from; the tech-debt label retires.
+6. The side panel at release scope: epics as folded rows with fractions and breakdowns.
+7. Mockups and the prototype as tickets of the explorer map T-264 (T-259 explorer boards, T-260 card boards, T-261 inbox and events boards, T-262 the Neovim prototype after the mockups, T-263 the final wording), with one research ticket T-258 (summary fallback, prior art) running AFK.
+
 ## Open
 
-Round 3: charting the explorer map breadth-first (structure and navigation, rows, the card and the summary source, editing, categories, keys and place, the side panel at release scope, mockups and prototype).
+The explorer map T-264 runs: the mockups and the research AFK, the human reacts to the mockups, then the prototype, then /to-spec on this item. The AFK tickets T-240, T-255, T-256 report back to their items.
 
 ## Comments
 

@@ -151,8 +151,12 @@ A versioned set of epics planned and shipped together: an item of kind release w
 _Avoid_: deploy, publish, sync, push, milestone, iteration
 
 **Unscheduled**:
-An item that belongs to no release: it has no parent, or its parents reach no release. The items panel shows these as their own group under the current release.
+An item with no container at all: no parent. The explorer and the items panel show these as their own root; an item in a category is not unscheduled.
 _Avoid_: backlog (that is a status), orphan, loose
+
+**Category**:
+A root-level container for items that belong to no release or epic: Tech debt, Bugs, Follow-ups, Ideas and others the human adds. Items gather there from the agents' work until the human or the Coordinator promotes them into a release or an epic.
+_Avoid_: label, bucket, backlog (that is a status), unscheduled (no container at all)
 
 **Status**:
 Where a task is in its workflow: backlog, planned, in progress, review, qa, ready or done. The hub moves it on claims, verdicts, merges and closes; the Coordinator and the human may set it directly. Containers, questions and specs have none.
@@ -165,3 +169,19 @@ _Avoid_: priority, order, weight, position
 **Artifact**:
 A file, or a folder with an entry file, that a session or the human shows to others: it has an id `A-<n>`, a kind, a status and an author. The human's and an Aide's artifacts live until deleted by hand; an agent's lives with its topic unless kept or promoted into the repository.
 _Avoid_: attachment, upload, document, file (that is a kind), output
+
+**Explorer**:
+The centre view of the item tree: a release, its epics and their tasks, with the categories and the unscheduled items as further roots; it folds in place, scopes to a node and shows the Card of the row under the cursor. It changes nothing by hand: the human steers through a message to the Coordinator.
+_Avoid_: tree view, browser, board (the side panel), item view (now the Card)
+
+**Card**:
+The human's picture of one item in the Explorer: the Summary, the facts, the progress, the latest verdict and the relations, with the agents' text folded away.
+_Avoid_: item view, details pane, preview
+
+**Summary**:
+One to three sentences in an item that say what it is about, written by whoever creates the item; the first paragraph of the first section after Parent stands in when it is missing.
+_Avoid_: description (that is the whole body), abstract, goal (an epic's section)
+
+**Events view**:
+The list of notifications and events the inbox no longer shows, newest first and capped: where the human looks when something happened, not when something needs them.
+_Avoid_: log (the Agents topic is the sessions' output), notifications panel
