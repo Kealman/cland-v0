@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:51:33.334Z
-updated: 2026-10-12T11:35:23.532Z
+updated: 2026-10-12T11:54:39.618Z
 ---
 
 ## What happened
@@ -29,3 +29,9 @@ The human's decision (2026-10-12): before the remote executor, optimise the suit
 - [ ] A measurement artifact names the sources of the git, ps and Node spawns with counts per test file and helper.
 - [ ] The full suite's git and ps spawn counts drop by at least half, with the wall time before and after recorded.
 - [ ] No test is weakened or skipped to get there; the suite stays green on macOS and on Linux.
+
+## Comments
+
+### coord · 2026-10-12T11:54:39.618Z
+
+Realised by the slices T-277 (the census), T-278 (teardown by process group, the ps cut) and T-279 (the prepared fixture repository, the git cut). This item stays open as the record and closes when T-279 lands, with the before/after wall time and spawn counts its Implementer sends recorded here.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.526Z
-updated: 2026-10-12T11:35:13.526Z
+updated: 2026-10-12T11:55:01.627Z
 ---
 
 ## Goal
@@ -78,3 +78,46 @@ Every later run of the build is cheaper: the crew's `cland verify` runs, the Rev
 - Tickets: T-267 and T-266, children of this epic; T-256 (decided, §3.14); T-218 (research, A-1142); T-174, T-220 and T-221 (earlier cuts of the suite).
 - Branch: `prototype/remote-executor` (`docs/research/remote-executor.md`, `hub/prototype/remote-executor/`).
 - GLOSSARY: Territory, Task branch.
+
+## Plan
+
+```yaml
+stages:
+  - name: census
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-277
+  - name: teardown by process group
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-278
+  - name: fixtures and the portable listing
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-279
+      - - T-280
+  - name: the Linux failures
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-281
+  - name: the acceptance run
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-282
+```
+
+## Comments
+
+### coord · 2026-10-12T11:54:39.541Z
+
+Tickets cut on 2026-10-12 (Coordinator): T-277 the spawn census → T-278 teardown by process group → T-279 the prepared fixture repository (closes T-267's cuts) and, in parallel, T-280 the portable process listing → T-281 the five Linux failures and the skip list → T-282 the acceptance run on a c-8 droplet (closes T-266). Edges are native. Decisions where the drafts asked: (1) the census runs as a hand run through the package runner on the machine-wide suite lock, since the hub's verify worker cannot carry the NODE_OPTIONS preload; no hub change. (2) The ps cut may touch production probes in hub/src/system-processes.ts with semantics unchanged (T-278). (3) Causes first for the two load-sensitive tests; a wait that is too short gets a test-only window knob, a race gets a wait for state (T-281). (4) "No environment variable beyond PATH" reads as an ordinary login (HOME, USER, LANG as the login sets them), nothing added. (5) The skip count on Linux as an ordinary user is five (four with opencode installed); reasons matter, not the count. (6) T-267 and T-266 stay open as the record of the findings and close when their slices land (T-267 after T-279, T-266 after T-282), with the figures the Implementers send. (7) T-282 may produce no code; it then closes on its review verdict and evidence without a merge. The Implementer of T-282 tells the Coordinator in its topic before creating the droplet, so the human gets the notification they asked for.

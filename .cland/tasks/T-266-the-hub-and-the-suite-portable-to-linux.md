@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:38:22.090Z
-updated: 2026-10-12T11:35:23.403Z
+updated: 2026-10-12T11:54:39.670Z
 ---
 
 ## What happened
@@ -35,3 +35,9 @@ The hub and its suite run on Linux without environment tricks: a portable proces
 - [ ] `npm run typecheck && npm test` on Ubuntu 24.04 (8 vCPU) passes with no environment variable beyond PATH, with the six platform skips listed by reason.
 - [ ] `hub/src/system-processes.ts` lists processes the same way on macOS and Linux, covered by a test on both `ps` dialects.
 - [ ] The five failures above are fixed at their cause, not retried.
+
+## Comments
+
+### coord · 2026-10-12T11:54:39.670Z
+
+Realised by the slices T-280 (the portable process listing), T-281 (the five failures at their cause, the skip list) and T-282 (the acceptance run on a c-8 droplet and locally). This item stays open as the record and closes when T-282 lands, with the droplet and local results recorded here. Skip count as an ordinary user: five (four with opencode installed), per the Coordinator's note on T-268.
