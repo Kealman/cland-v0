@@ -50,7 +50,7 @@ _Avoid_: queue, farm, cluster
 
 **Event**:
 A change the hub announces: a session's state, a task's status, claim, verdict or criterion, a topic's wait, a usage threshold, an artifact. Delivered to subscribed sessions like a message, digested at the next turn by default.
-_Avoid_: notification (that is the human's inbox), signal, hook, trigger
+_Avoid_: notification (that is the events view, not the inbox), signal, hook, trigger
 
 **Subscription**:
 A session's standing request to receive certain events about a subject: a session, an item, a topic, a role or a node of the item tree. A lead holds one for its subtree by default.
@@ -111,6 +111,10 @@ _Avoid_: log, console, drivers channel, mirror
 **Ask**:
 A decision question sent up the lead chain in a topic: each lead answers locally or forwards it unchanged one level, and only the Coordinator asks the human. An open ask keeps its topic waiting for its current receiving party.
 _Avoid_: prompt, poll, question dialog, request
+
+**Request**:
+A message to the human that asks for an act of theirs: a review, a QA run or a handover. It waits in the inbox until the human answers, gives the verdict or declines it.
+_Avoid_: ask (that is a question or an approval), ping, mention
 
 ## Work
 

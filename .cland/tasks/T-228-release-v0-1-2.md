@@ -2,7 +2,7 @@
 id: T-228
 kind: release
 version: 0.1.2
-title: "Release: v0.1.2"
+title: Working with items
 state: open
 labels: []
 assignee: null
@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-11T17:47:48.610Z
-updated: 2026-10-12T09:51:33.868Z
+updated: 2026-10-12T10:03:34.174Z
 ---
 
 ## Goal

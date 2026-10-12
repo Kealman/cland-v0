@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:11:53.038Z
-updated: 2026-10-12T09:11:53.038Z
+updated: 2026-10-12T10:03:35.316Z
 ---
 
 ## Destination
@@ -24,14 +24,17 @@ This map stands on its own (a map cannot sit under a release); T-228 links to it
 
 ## Decisions so far
 
-(none yet)
+- Summary fallback on the existing items, and prior art for tree explorers with a detail pane (T-258, .cland/tasks/T-258-summary-fallback-on-the-existing-items-and.md): the plain first paragraph reads as a summary for 63% of 264 items, the refined rule (first non-boilerplate section, first prose paragraph without provenance, two sentences, 50 words) for 87.5%; copy: folds in a model keyed by id, the cursor restored by id then neighbour then ancestor, the card in its own window following the cursor, scoping with a real back stack, counts from children; avoid: Vim folds over a rewritten buffer, line-number cursor restore, a detail that loads only on Enter. docs/research/explorer-prior-art.md on research/explorer-prior-art.
+- Explorer mockups: the release root, an epic unfolded, the categories root (T-259, .cland/tasks/T-259-explorer-mockups-the-release-root-an-epic.md): three boards accepted with proposals P1 to P22; m is the one action; epic state derives from tasks; stage groups; direct tasks row; D everywhere; spec §3.8, §3.10, §3.11.
+- Item card mockups: an epic and a task, with the quick message to the Coordinator (T-260, .cland/tasks/T-260-item-card-mockups-an-epic-and-a-task-with.md): two boards accepted; Enter focuses the card, the composer one line until m, container cards derive from the subtree; spec §3.9.
+- Inbox mockup on the now-layer principle, and the events view (T-261, .cland/tasks/T-261-inbox-mockup-on-the-now-layer-principle.md): two boards accepted with proposals P1 to P18; four sections with leave rules, the request kind, the events view with ␣E, 200 rows, filters, coalescing; spec §3.7, GLOSSARY Event and Request.
 
 ## Not yet specified
 
-- The events view (§3.7): its form, keys and cap; decided with the inbox mockup or right after it.
 - Search and filter inside the explorer (text, label, status) and the palette's `#` prefix on it.
 - Large trees: what the explorer does with hundreds of done items and several releases (paging, lazy folds).
-- The quick message to the Coordinator: what context rides with it, how the Coordinator's clause reads it, its keys; the prototype proposes.
+- The quick message to the Coordinator: how the Coordinator's clause reads it and acts (the composition and the keys are decided, §3.8); the prototype shows the composer.
+- The summary fallback in code: detecting provenance sentences and lead-ins (§3.9); the explorer epic decides from the T-258 script.
 - The migration mechanics of prefixes (§3.1) and categories (§3.10) as one command; the explorer epic's plan decides.
 - What the card shows for a release, a map and a question, the kinds beyond epic and task.
 

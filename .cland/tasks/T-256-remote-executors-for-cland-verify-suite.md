@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T08:21:26.188Z
-updated: 2026-10-12T09:51:33.620Z
+updated: 2026-10-12T09:59:54.355Z
 ---
 
 Remote executors for `cland verify`: suite runs on cloud VMs through a provider-agnostic executor interface, so the crew stops queueing behind one machine and the project pays per minute.
@@ -114,3 +114,77 @@ The write-up also covers what an executor interface needs and the open questions
 ### human · 2026-10-12T09:51:33.620Z
 
 Decided (2026-10-12, on the prototype): cland's own executor behind a provider-agnostic interface (create from an image or snapshot, wait, deliver the tree with CLAND_SUITE_SELECTION, run, collect, destroy; watchdog, orphan sweep, spend cap; a remote budget beside the local cap of one). The first backend is chosen after the MicroVM research: MicroVMs if their conditions are better, droplets otherwise; the other is the second backend, each proven by one run. Before the executor: T-267 (the suite's own spend: 36k git and 20k ps spawns per run) and T-266 (Linux portability). Recorded in docs/spec/v0.1.2.md §3.14 and the order in §4.
+
+### human · 2026-10-12T09:59:54.355Z
+
+Research (2026-10-12): DigitalOcean MicroVMs as the remote executor, the product the human saw in the control panel.
+Branch research/do-microvms at d1d63c9 on the territory, never merged: docs/research/do-microvms.md, with sources.
+Everything below is documented by DigitalOcean or read from this team's account with read-only API calls; nothing
+was created.
+
+What it is
+
+A DigitalOcean MicroVM runs one linux/amd64 container image in its own Firecracker virtual machine, with its own
+kernel, reached through an authenticated HTTPS endpoint, doctl or the API, with no SSH and no public IP. It pauses
+when it has received no inbound traffic for an idle timeout set at creation (5 min by default, 4 h at most, 2 h on
+this team) and resumes on the next request, exec or console with memory, files and processes intact; a checkpoint
+copies memory and disk, so new MicroVMs start warm. It is a public preview since 2026-10-09 (private preview from
+2026-10-01), in MKC1 (Kansas City) only, not recommended for production, and the 8 vCPU / 16 GiB / 320 GB size
+exists at $0.312/h, billed per second while running (this team may create it; 16 vCPU is not on our plan).
+
+Facts
+
+- Pricing: $0.022 per vCPU-hour and $0.0085 per GiB-hour, per second while running; creating, pausing and paused
+  time are free; storage $0.05 per GiB-month for the disk used and for checkpoints; egress $0.01/GiB.
+- Limits on this team: 50 MicroVMs including paused ones; 16 GiB and 320 GiB per MicroVM; idle timeout at most 2 h.
+  Exec: 60 s per command, 32 at once and 60 a minute for the whole team, 1 MiB request, 4 MiB output. The endpoint
+  reaches one HTTP port only. Settings are fixed at creation.
+- Published nowhere: pid and thread limits, cgroups, dedicated or shared vCPUs, real create, checkpoint and resume
+  times, disk speed.
+- API: /v2/microvms with list, create, get, delete, pause, resume, exec, console, checkpoints and options.
+  doctl compute microvm exists from 1.173.0 (hidden) and is shown from 1.181.0; this Mac has 1.131.0. godo and the
+  Terraform provider (2.105.0) support it; pydo and the TypeScript SDK do not.
+
+Comparison
+
+                        droplet c-8                  MicroVM 8 vCPU, 16 GiB           Fly performance-8x
+  start                 26.9 s to SSH; 86 s to a     "milliseconds" (claimed); a      create: low tens of s;
+                        ready tree (measured)        checkpoint clone "usually"       stopped start: < 1 s
+                                                     returns running
+  provisioning          cloud-init or snapshot       image, then a checkpoint         image; pool of stopped
+                                                     cloned per run                   Machines
+  access                SSH                          exec API (60 s per command),     Machines API exec,
+                                                     one HTTPS port                   fly ssh
+  per 13-min run        $0.054                       $0.068                           $0.079
+  warm pool per day     $6.00 running                $0.005-0.03 paused or as a       $8.80 running;
+                                                     checkpoint                       $0.015 stopped
+  limits                25 droplets; c-8 in 4        50 per team; MKC1 only; team     scaling limits
+                        regions; far above need      exec budget; pid limits unknown  unpublished
+  API maturity          GA                           public preview, 3 days old       GA
+  billing               per s, 60 s minimum          per s running; create free       per s running
+
+Recommendation
+
+1. Droplets first, as planned. Build the executor interface on acquire, deliver, prepare, start, status,
+   log(offset), cancel, release and reap, not on SSH, so the other backends fit.
+2. MicroVMs second, behind the same interface, once the experiment below passes. A checkpoint clone replaces the
+   snapshot and the boot, creation is free, and auto-pause caps what a stray costs (a stray c-8 costs $6 a day).
+3. Fly Machines third.
+Set MicroVMs aside if the experiment hits a process limit or runs more than about 10 % slower than the droplet.
+
+Proposed experiment (a human runs it: it creates billable resources)
+
+One full suite on an 8 vCPU MicroVM, the counterpart of the droplet prototype. A base MicroVM from the public nginx
+image is provisioned through exec (packages, latest Node 24, an ordinary user); the dev bundle goes in through exec
+(15 calls for 6 MB); clone, npm ci and the pinned Neovim; a checkpoint; a clone of it runs typecheck and
+npm test -- --all as the ordinary user with PS_PERSONALITY=bsd, with samplers for processes, threads, zombies, the
+pids cgroup, memory and CPU steal. Then a pause test, and a 1 vCPU idle test: does a busy loop alone keep it awake,
+and does an exec every 30 s. It passes with no failure beyond the droplet's, limits of at least ten times the
+droplet's peaks (95 processes, 694 threads), typecheck and suite within about 1070 s, and steal under 5 %.
+Cost about $0.12 (about $0.45 if the suite hangs until its 75-minute timeout); about 30 minutes. The script is
+Appendix A of the doc, run to completion offline against a mock API. To run it:
+
+  cd ~/Projects/cland/v0
+  git show research/do-microvms:docs/research/do-microvms.md | sed -n '/^#!\/usr\/bin\/env bash$/,/^```$/p' | sed '$d' > /tmp/microvm-experiment.sh
+  eval "$(grep -E '^export DIGITALOCEAN_TOKEN=' ~/.zshrc)"
+  REF=dev OUT=/tmp/cland-microvm-exp bash /tmp/microvm-experiment.sh 2>&1 | tee /tmp/cland-microvm-exp.log
