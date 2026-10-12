@@ -41,13 +41,17 @@ export class OpenCodeClient {
   }
 
   /** `GET /api/session/{id}`: the session, or null when the server does not know it. */
-  async session(id: string): Promise<{ id: string; title?: string; model?: ModelRef } | null> {
+  async session(id: string): Promise<{ id: string; title?: string; model?: ModelRef; location?: { directory: string } } | null> {
     try {
-      return (await this.request<{ data: { id: string; title?: string; model?: ModelRef } }>('GET', `/api/session/${encodeURIComponent(id)}`)).data;
+      return (await this.request<{ data: { id: string; title?: string; model?: ModelRef; location?: { directory: string } } }>('GET', `/api/session/${encodeURIComponent(id)}`)).data;
     } catch (err) {
       if (err instanceof HttpError && err.status === 404) return null;
       throw err;
     }
+  }
+
+  async moveSession(id: string, directory: string): Promise<void> {
+    await this.request('POST', `/api/session/${encodeURIComponent(id)}/move`, { directory, delivery: 'queue' });
   }
 
   async createSession(body: { id?: string; title: string; model: ModelRef | null; directory: string }): Promise<{ id: string; model?: ModelRef }> {

@@ -433,6 +433,7 @@ async function appServer(args: string[]): Promise<number> {
         const t = load(params.threadId as string);
         if (!t || t.turns === 0) return { error: { code: -32600, message: `no rollout found for thread id ${String(params.threadId)}` } };
         if (typeof params.model === 'string') t.model = params.model;
+        if (typeof params.cwd === 'string') { t.cwd = params.cwd; save(t); }
         c.subscribed.add(t.id);
         if (existsSync(join(HOME, 'idle-subscribe'))) {
           rmSync(join(HOME, 'idle-subscribe'));

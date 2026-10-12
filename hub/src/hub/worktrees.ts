@@ -213,9 +213,7 @@ export class TaskWorktrees {
         return { process, claim: null, worktree, ...(reason ? { reason } : {}) };
       }
       const launched = await this.#launchIn(sessions, request, view.id, worktree, reason, yields, other, resumed, authorize);
-      return request.role === 'implementer' && sessions.retainedPool(request.role)
-        ? { ...launched, note: 'Implementer pools reuse only the same worktree; each different item needs a fresh session because native harness cwd cannot be moved.' }
-        : launched;
+      return launched;
     } finally {
       release();
     }

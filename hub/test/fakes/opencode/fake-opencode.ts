@@ -304,7 +304,15 @@ async function serve(args: string[]): Promise<number> {
         const session = getSession(sid);
         if (!session) return notFound(res, sid);
         void loadLocation();
-        if (parts.length === 3 && method === 'GET') return send(res, 200, { data: session });
+        if (parts.length === 3 && method === 'GET') return send(res, 200, { data: { ...session, location: { directory: session.directory } } });
+        if (parts[3] === 'move' && method === 'POST') {
+          const body = await readBody(req);
+          send(res, 204, undefined);
+          await sleep(100); // Admission precedes the location change at the delivery boundary.
+          session.directory = String(body.directory);
+          writeFileSync(sessionFile(sid), JSON.stringify(session));
+          return;
+        }
         if (parts[3] === 'prompt' && method === 'POST') {
           const body = await readBody(req);
           const text = String(body.text ?? '');

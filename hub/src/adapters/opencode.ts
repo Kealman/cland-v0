@@ -140,7 +140,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       const files = this.#files(p.name);
@@ -155,6 +155,21 @@ export class OpenCodeAdapter implements HarnessAdapter {
         const client = new OpenCodeClient(url, password);
         let model: ModelRef | null = p.model ? parseModel(p.model) : null;
         let session = p.harnessSessionId ? yield* wait(client.session(p.harnessSessionId)) : null;
+        if (retainConversation) {
+          if (!session) throw new Error(`cannot retain OpenCode conversation ${p.harnessSessionId}: session not found`);
+          const conversation = session.id;
+          authorize();
+          yield* wait(client.moveSession(conversation, p.cwd));
+          const deadline = Date.now() + this.#spawnDeadlineMs;
+          while (session?.location?.directory !== p.cwd) {
+            if (Date.now() >= deadline) throw new Error(`OpenCode conversation ${conversation} did not move to ${p.cwd}`);
+            yield* wait(new Promise(resolve => setTimeout(resolve, 50)));
+            const moved = yield* wait(client.session(conversation));
+            if (!moved) throw new Error(`OpenCode conversation ${conversation} disappeared during handoff`);
+            session = moved;
+          }
+          authorize();
+        }
         if (!session) {
           if (!model)
             model = yield* wait(this.#freeModel(client, resumed));
@@ -203,7 +218,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: null }, false, resumed, request.launchToken, authorize);
+    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: request.resumeConversation ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */

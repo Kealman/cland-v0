@@ -113,15 +113,24 @@ export class Sessions {
     if (names.size >= rule.size) throw new Error(`crew.${role}: ${rule.policy} size ${rule.size} reached (${[...names].join(', ')}); wait for an idle pool member or stop a session`);
   }
 
-  /** Retained verifiers run at the root and receive each item's committed build in their brief. */
+  #implementerPool(role: string | null): boolean {
+    return role === 'implementer' && this.#core.crew?.get().crew[role]?.policy === 'pool';
+  }
+
+  /** Verifiers keep their root process; Implementers restart in the next task worktree. */
   async #reuse(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView | null> {
-    if (!request.item || !this.retainedPool(role)) return null;
+    const implementer = this.#implementerPool(role);
+    if (!request.item || (!implementer && !this.retainedPool(role))) return null;
     const cwd = resolve(this.#root, request.cwd ?? '.');
-    const candidate = this.#table.running().find(p => !this.#reusing.has(p.sessionId) && this.#reuseEligible(p, role, cwd));
+    const candidate = this.#table.running().find(p => !this.#reusing.has(p.sessionId)
+      && (!implementer || !request.harness || request.harness === p.harness)
+      && this.#reuseEligible(p, role, implementer ? p.cwd : cwd));
     if (!candidate) return null;
     this.#reusing.add(candidate.sessionId);
     try {
       const brief = request.brief === undefined ? undefined : await this.#resolveBrief(candidate.name, request.brief, resumed, authorize);
+      if (implementer && (candidate.cwd !== cwd || !this.retainedPool(role)))
+        return await this.#restartPool(candidate, request, role, cwd, brief, resumed, authorize);
       return resumed(() => {
         authorize();
         const current = this.#table.bySessionId(candidate.sessionId);
@@ -137,10 +146,45 @@ export class Sessions {
     } finally { resumed(() => this.#reusing.delete(candidate.sessionId)); }
   }
 
-  #reuseEligible(p: HarnessProcess, role: string | null, cwd: string): boolean {
+  /** Keep native history independently of the new launch's credential and cleanup ownership. */
+  async #restartPool(candidate: HarnessProcess, request: LaunchRequest, role: string | null, cwd: string, brief: Message | undefined, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
+    const info = await stat(cwd).catch(() => null);
+    const { current, resumeConversation } = resumed(() => {
+      authorize();
+      if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
+      const current = this.#table.bySessionId(candidate.sessionId);
+      if (!current || !this.#implementerPool(role) || !this.#reuseEligible(current, role, current.cwd)) throw new Error('idle pool member changed during admission; retry');
+      const resumeConversation = this.retainedPool(role) ? current.harnessSessionId : undefined;
+      if (resumeConversation === null) throw new Error(`cannot retain context for "${current.name}": native conversation identity is unknown`);
+      // Keep the pool slot reserved across the verified stop and new launch admission.
+      this.#crewAdmissions.set(current.name, role!);
+      return { current, resumeConversation };
+    });
+    const handoffAuthorized = () => {
+      authorize();
+      if (!this.#implementerPool(role) || this.retainedPool(role) !== (resumeConversation !== undefined)) throw new Error('crew policy changed during pool handoff; retry');
+    };
+    try {
+      const stopped = await resumed(() => this.#stop(current.name, resumed, handoffAuthorized, () => {
+        const now = this.#table.bySessionId(candidate.sessionId);
+        if (!now || !this.#reuseEligible(now, role, now.cwd, false)) throw new Error('idle pool member changed before handoff; retry');
+      }));
+      const process = await resumed(() => {
+        this.#crewAdmissions.delete(current.name);
+        return this.#launchNew({ ...request, name: stopped.name, harness: current.harness, model: request.model ?? current.model }, role, resumed, handoffAuthorized, resumeConversation, brief ? { ...brief, to: [stopped.name] } : undefined);
+      });
+      return resumed(() => {
+        if (!brief) this.#core.store.setMeta(`pool-handoff:${process.sessionId}`, request.item!);
+        this.#log({ event: 'session-reused', session: process.name, requested: request.name, sessionId: process.sessionId, previousSessionId: candidate.sessionId, role, item: request.item, restarted: true, keptContext: resumeConversation !== undefined });
+        return process;
+      });
+    } finally { resumed(() => this.#crewAdmissions.delete(current.name)); }
+  }
+
+  #reuseEligible(p: HarnessProcess, role: string | null, cwd: string, checkLifecycle = true): boolean {
     return p.status === 'running' && p.role === role && p.cwd === cwd
       && !!this.#core.connectionOf(p.sessionId) && this.#core.sessionState(p.sessionId) === 'idle'
-      && !this.#core.sessionHolds(p).length && !this.#lifecycle.has(p.sessionId)
+      && !this.#core.sessionHolds(p).length && (!checkLifecycle || !this.#lifecycle.has(p.sessionId))
       && !this.#core.store.meta(`pool-handoff:${p.sessionId}`)
       && !this.#pendingStops.has(p.sessionId) && !this.#core.store.hasPendingWork(p.name)
       && !this.#inflightHasSession(p.sessionId);
@@ -518,7 +562,7 @@ export class Sessions {
     return resumed(() => reused ?? this.#launchNew(request, role, resumed, authorize));
   }
 
-  async #launchNew(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
+  async #launchNew(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message): Promise<HarnessProcessView> {
     const effectiveRequest = { ...request, role };
     const existing = this.#table.get(request.name);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
@@ -526,6 +570,7 @@ export class Sessions {
     const reserved = this.#core.nameReservation(request.name);
     if (reserved) throw new Error(reserved);
     if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
+    if (this.#crewAdmissions.has(request.name)) throw new Error(`session "${request.name}" is reserved for a pool handoff`);
     const existingIds = this.#knownLaunchIds();
     // Ticket every named role before I/O: even a nonexclusive cached definition may become exclusive at fresh.
     this.#checkCrew(request.name, role);
@@ -567,7 +612,7 @@ export class Sessions {
       const cwd = checking.cwd;
       let info;
       try { info = await checking.info; } catch { info = null; }
-      const brief = request.brief === undefined ? undefined : await this.#resolveBrief(request.name, request.brief, resumed, authorize);
+      const brief = resolvedBrief ?? (request.brief === undefined ? undefined : await this.#resolveBrief(request.name, request.brief, resumed, authorize));
       return await resumed(() => {
         // Re-read the grant and exclusivity after stat, with refusal and rollback in this same timed stretch.
         try {
@@ -580,7 +625,7 @@ export class Sessions {
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); });
+          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -619,7 +664,7 @@ export class Sessions {
     });
   }
 
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string): Promise<HarnessProcessView> {
     const role = request.role ?? null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
@@ -637,8 +682,9 @@ export class Sessions {
     let accepted = false;
     try {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
+      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
       resumed(() => {
+        if (resumeConversation && owned!.harnessSessionId !== resumeConversation) throw new Error(`harness did not retain conversation ${resumeConversation}`);
         const proven = !launchIdentityRefusal(identity, owned!.sessionId, this.#knownLaunchIds());
         if (proven) identity.sessionIds.add(owned!.sessionId);
         identity.returnedId = owned!.sessionId;
@@ -736,9 +782,14 @@ export class Sessions {
     return this.adapter(p.harness).attachCommand(p);
   }
 
-  async stop(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+  stop(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+    return this.#stop(name, resumed, authorize);
+  }
+
+  async #stop(name: string, resumed: Resumed, authorize: () => void, poolHandoff?: () => void): Promise<HarnessProcessView> {
     authorize();
     const identity = this.#process(name).sessionId;
+    if (!poolHandoff && this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
     let released = false;
     let p: HarnessProcess;
@@ -747,8 +798,10 @@ export class Sessions {
       await resumed(() => {
         authorize();
         const current = this.#table.bySessionId(identity);
+        if (!poolHandoff && this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
         if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
+        poolHandoff?.();
         p = current;
         return this.adapter(p.harness).stop(p, resumed, authorize);
       });
@@ -770,6 +823,7 @@ export class Sessions {
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
     authorize();
     const identity = this.#process(name).sessionId;
+    if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
     this.#resuming++;
     try {
@@ -779,6 +833,7 @@ export class Sessions {
         if (this.#closed) throw new Error('the hub is closing');
         authorize();
         const current = this.#table.bySessionId(identity);
+        if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
         if ([...this.#pendingStops.values()].some(entry => entry.process.sessionId === identity || entry.process.name === current.name)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
         return this.#resume(current.name, relaunch, resumed);

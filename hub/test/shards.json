@@ -101,6 +101,7 @@
     "hub/test/system-processes.test.ts": "machine",
     "hub/test/task-plan.test.ts": "machine",
     "hub/test/task-worktrees.test.ts": "machine",
+    "hub/test/termination-ownership.test.ts": "machine",
     "hub/test/territory-cli.test.ts": "machine",
     "hub/test/territory-lock.test.ts": "machine",
     "hub/test/topic-model.test.ts": "machine",

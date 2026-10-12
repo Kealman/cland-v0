@@ -581,7 +581,7 @@ export class CodexAdapter implements HarnessAdapter {
         const policy = yield* wait(this.#threadPolicy(request.cwd, request, files, resumed));
         ({ pid, client } = yield* wait(this.#startServer(base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));
         authorize();
-        const started = yield* wait(client.request<ThreadResult>('thread/start', { cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread }));
+        const started = yield* wait(client.request<ThreadResult>(request.resumeConversation ? 'thread/resume' : 'thread/start', { ...(request.resumeConversation ? { threadId: request.resumeConversation } : {}), cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread }));
         const threadId = started.thread.id;
         const p: HarnessProcess = {
           ...base,

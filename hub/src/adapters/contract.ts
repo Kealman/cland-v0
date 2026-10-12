@@ -80,6 +80,8 @@ export type LaunchPolicy = {
 
 export type SpawnRequest = LaunchPolicy & {
   name: string;
+  /** Restart an idle pool member on its native conversation, with a fresh cland launch identity. */
+  resumeConversation?: string;
   /** Hub-issued credential carried by this launch's spoke hello; never inferred from a session name. */
   launchToken?: string;
   role: string | null;

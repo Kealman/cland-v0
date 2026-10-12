@@ -1,9 +1,11 @@
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { fileURLToPath } from 'node:url';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 test('retained Reviewer pool reuses an idle member for review, caps busy and pending launches, and releases failed admissions', async t => {
@@ -61,7 +63,7 @@ test('retained Reviewer pool reuses an idle member for review, caps busy and pen
   assert.match(refused.error!, /size 2/);
 });
 
-test('Codex native first turn carries the current crew rule and an Implementer pool explains its worktree boundary', async t => {
+test('Codex native first turn carries the current crew rule for an Implementer pool', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
   const { discovery } = await startDaemon(t, root, fake.env);
@@ -72,8 +74,7 @@ test('Codex native first turn carries the current crew rule and an Implementer p
   const item = (made.value as { item: { id: string } }).item.id;
   const launched = await ui.request({ type: 'session.launch', name: 'native-impl', role: 'implementer', harness: 'codex', item });
   assert.equal(launched.ok, true, launched.error);
-  const { process, note } = launched.value as { process: HarnessProcessView; note: string };
-  assert.match(note, /fresh session.*native harness cwd/);
+  const { process } = launched.value as { process: HarnessProcessView };
   const inputs = await eventually('native input recorded', async () => {
     const text = await readFile(join(fake.home, 'log', `${process.pid}.inputs.jsonl`), 'utf8').catch(() => '');
     return text.includes('Sub-agent delegation is disabled') ? text : undefined;
@@ -81,6 +82,125 @@ test('Codex native first turn carries the current crew rule and an Implementer p
   const first = JSON.parse(inputs.split('\n')[0]!) as { text: string };
   assert.match(first.text, /you hold the role Implementer/);
   assert.match(first.text, /Sub-agent delegation is disabled/);
+});
+
+async function pooledHarness(t: TestContext, harness: string) {
+  if (harness === 'claude-code') {
+    const fake = await fakeClaude(t);
+    return { env: fake.env, home: fake.home, log: (p: HarnessProcessView) => fake.log(p.harnessId!), live: fake.sessions };
+  }
+  if (harness === 'codex') {
+    const fake = await fakeCodex(t);
+    return { env: fake.env, home: fake.home, log: (p: HarnessProcessView) => fake.log(p.pid!), live: fake.servers };
+  }
+  const home = await tempProject(t, 'fake-pooled-opencode-');
+  const live = async () => {
+    const files = await readdir(join(home, 'servers')).catch(() => []);
+    const rows = await Promise.all(files.map(async f => JSON.parse(await readFile(join(home, 'servers', f), 'utf8')) as { pid: number; cwd: string }));
+    return rows.filter(row => pidAlive(row.pid));
+  };
+  t.after(async () => { for (const row of await live()) await killDaemon(row.pid); });
+  return {
+    home, live,
+    env: { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, CLAND_ADAPTER_POLL_MS: '200' },
+    log: (p: HarnessProcessView) => readFile(join(home, 'prompts', `${p.harnessSessionId}.log`), 'utf8').catch(() => ''),
+  };
+}
+
+for (const harness of ['claude-code', 'codex', 'opencode']) for (const keepContext of [true, false])
+test(`an Implementer pool moves to the next task worktree after merge (${harness}, keep_context=${keepContext})`, async t => {
+  const root = await tempProject(t);
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'config', 'user.name', 'Test');
+  git(root, 'config', 'user.email', 'test@example.com');
+  git(root, 'config', 'commit.gpgsign', 'false');
+  await writeFile(join(root, 'README.md'), 'project\n');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Initial');
+  assert.equal((await cland(root, 'init')).code, 0);
+  const fake = await pooledHarness(t, harness);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  for (const [key, value] of [['implementer.policy', 'pool'], ['implementer.keep_context', keepContext]] as const)
+    assert.equal((await ui.request({ type: 'crew.set', key, value })).ok, true);
+  const create = async (title: string) => ((await ui.request({ type: 'task.create', title })).value as { item: { id: string } }).item.id;
+  const first = await create('First pooled item');
+  const second = await create('Second pooled item');
+  type Launch = { process: HarnessProcessView; claim: { sessionId: string; session: string }; worktree: { path: string; branch: string } };
+  const launched = await ui.request({ type: 'session.launch', name: 'pooled-impl', role: 'implementer', harness, item: first });
+  assert.equal(launched.ok, true, launched.error);
+  const one = launched.value as Launch;
+  const held = await ui.request({ type: 'session.launch', name: 'too-early', role: 'implementer', harness, item: second });
+  assert.equal(held.ok, false, 'a current claim prevents reuse');
+  assert.match(held.error!, /pool size 1/);
+  await writeFile(join(one.worktree.path, 'shipped.txt'), 'first item\n');
+  git(one.worktree.path, 'add', 'shipped.txt'); git(one.worktree.path, 'commit', '-qm', 'Ship first');
+  const merged = await ui.request({ type: 'merge', item: first, override: 'Exercise pooled handoff' }, 30_000);
+  assert.equal(merged.ok, true, merged.error);
+  await eventually('pool member idle after merge', async () => {
+    const rows = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
+    return rows.find(p => p.name === one.process.name)?.state === 'idle' && (harness !== 'claude-code' || (await fake.log(one.process)).includes('hooks Stop done')) ? true : undefined;
+  });
+  assert.equal(git(one.worktree.path, 'status', '--porcelain'), '');
+  const invalid = await ui.request({ type: 'session.launch', name: 'invalid-brief', role: 'implementer', harness, item: second, brief: 'A-999999' });
+  assert.equal(invalid.ok, false);
+  assert.match(invalid.error!, /unknown or unavailable brief/);
+  assert.equal((await fake.live()).find(p => p.pid === one.process.pid)?.cwd, one.worktree.path, 'invalid brief leaves the original harness running');
+  const brief = `Implement ${second} in its task worktree. Second item brief.`;
+  let briefSource = brief;
+  if (!keepContext) {
+    const made = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Next item brief', topic: 'general', content: brief, status: 'draft' });
+    assert.equal(made.ok, true, made.error);
+    briefSource = (made.value as { artifact: { id: string } }).artifact.id;
+  }
+  const delayed = harness === 'codex' && keepContext;
+  if (delayed) await writeFile(join(fake.home, 'hold-thread-resume'), 'hold');
+  const pending = ui.request({ type: 'session.launch', name: 'requested-next', role: 'implementer', harness, item: second, brief: briefSource }, 30_000);
+  if (delayed) {
+    try {
+      await eventually('native resume is pending', async () => existsSync(join(fake.home, 'thread-resume-running')) ? true : undefined);
+      for (const type of ['session.stop', 'session.resume']) {
+        const overlapping = await ui.request({ type, session: one.process.name, relaunch: true });
+        assert.equal(overlapping.ok, false);
+        assert.match(overlapping.error!, /reserved for a pool handoff/);
+      }
+      const capped = await ui.request({ type: 'session.launch', name: 'overlap', role: 'implementer', harness });
+      assert.equal(capped.ok, false);
+      assert.match(capped.error!, /pool size 1/);
+    } finally { await writeFile(join(fake.home, 'release-thread-resume'), 'release'); }
+  }
+  const handoff = await pending;
+  assert.equal(handoff.ok, true, handoff.error);
+  const two = handoff.value as Launch;
+  assert.equal(two.process.name, one.process.name);
+  assert.notEqual(two.process.sessionId, one.process.sessionId, 'new launch owns a fresh cland identity');
+  if (keepContext) assert.equal(two.process.harnessSessionId, one.process.harnessSessionId, 'native context survives');
+  else assert.notEqual(two.process.harnessSessionId, one.process.harnessSessionId, 'native context is reset');
+  assert.notEqual(two.process.pid, one.process.pid);
+  assert.equal(two.process.cwd, two.worktree.path);
+  assert.notEqual(two.worktree.path, one.worktree.path);
+  assert.equal(two.process.item, second);
+  assert.equal(two.claim.sessionId, two.process.sessionId);
+  assert.equal(two.claim.session, two.process.name);
+  assert.equal(git(two.worktree.path, 'branch', '--show-current'), two.worktree.branch);
+  await eventually('clean merged worktree is released by the handoff', () => !existsSync(one.worktree.path) ? true : undefined);
+  await eventually('second brief reaches moved harness', async () => (await fake.log(two.process)).includes(brief) ? true : undefined);
+  const native = (await fake.live()).find(p => p.pid === two.process.pid);
+  assert.equal(native?.cwd, two.worktree.path);
+  assert.equal((await fake.live()).length, 1, 'pool cap is preserved');
+  if (harness === 'opencode') {
+    const session = JSON.parse(await readFile(join(fake.home, 'sessions', `${two.process.harnessSessionId}.json`), 'utf8')) as { directory: string };
+    assert.equal(session.directory, two.worktree.path, 'stored native location moves before brief delivery');
+  }
+  if (harness === 'codex') {
+    await eventually('second native turn finishes', async () => {
+      const rows = ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes;
+      return rows.find(p => p.sessionId === two.process.sessionId)?.state === 'idle' ? true : undefined;
+    });
+    const thread = JSON.parse(await readFile(join(fake.home, 'threads', `${two.process.harnessSessionId}.json`), 'utf8')) as { cwd: string; turns: number };
+    assert.equal(thread.cwd, two.worktree.path);
+    assert.equal(thread.turns > 1, keepContext, 'resumed history survives the native handoff');
+  }
 });
 
 test('singleton and per-item caps survive concurrent launch requests; crew clauses reload on live sessions', async t => {
