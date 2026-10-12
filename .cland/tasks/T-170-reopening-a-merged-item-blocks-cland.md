@@ -2,8 +2,8 @@
 id: T-170
 kind: task
 title: "Reopening a merged item blocks cland push and strands its worktree: one rule for reopen after merge"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 4
 labels:
   - tech-debt
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-161
 branch: t/T-170-reopening-a-merged-item-blocks-cland
 created: 2026-10-10T10:13:29.682Z
-updated: 2026-10-12T00:21:38.333Z
+updated: 2026-10-12T01:32:37.045Z
 ---
 
 ## Parent
@@ -35,12 +35,16 @@ Then make `cland merge` able to remove a stale worktree for a closed, landed ite
 
 - [x] C1. Reopening a landed item never blocks `cland push`; the chosen rule is documented in docs/agents/issue-tracker.md.
   - done: impl-170 · 2026-10-11T23:47:29.664Z
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T170-2 · 2026-10-12T01:17:54.816Z · commit 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd
 - [x] C2. A stale worktree of a closed, landed item, whose branch dev fully contains, can be removed through cland, and a protocol test proves the removal leaves no other work behind. Cleaning up the real .cland/worktrees/T-165 is done by the Coordinator after T-170 merges and the hub restarts, recorded on this item; it is not a merge-gate criterion. Amended by the Coordinator 2026-10-11 23:43Z.
   - done: impl-170 · 2026-10-11T23:47:29.819Z
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T170-2 · 2026-10-12T01:17:54.816Z · commit 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd
 - [x] C3. A CLI test covers reopen after merge, then push.
   - done: impl-170 · 2026-10-11T23:47:29.989Z
-- [ ] C4. `npm run typecheck && npm test` pass.
-  - failed: rev-17 [reviewer] · 2026-10-12T00:20:25.314Z · note Full suite A-1470 fails stage-qa.test.ts:122: fixture expects reopening a landed task to succeed, contrary to the new refusal rule; Neovim suite did not run.
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T170-2 · 2026-10-12T01:17:54.816Z · commit 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd
+- [x] C4. `npm run typecheck && npm test` pass.
+  - done: impl-170 · 2026-10-12T01:17:33.076Z
+  - verified: rev-17 [reviewer] · run rev-20261012-17-T170-2 · 2026-10-12T01:17:54.816Z · commit 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd
 
 ## Notes
 
@@ -79,3 +83,27 @@ Criteria: C4 failed (Full suite A-1470 fails stage-qa.test.ts:122: fixture expec
 ### impl-170 · 2026-10-12T00:21:31.821Z
 
 A-1470 suite be589416 at 26a96ce passed typecheck and 1312/1313 hub tests, stopping before Neovim. Sole failure was the old stage-qa fixture expecting API reopen of a landed task. Corrected that test in 0f90c86: assert refusal preserves completed stage, then use hand-edited tracker source to retain reopen/restoration and forged-verdict invalidation coverage. Targeted test reproduced red then passed green (1/1). Fetched/merged current origin/dev b03ae7c; pushed clean candidate 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd. Product implementation unchanged. Requesting re-review/full suite at new head; C4 remains pending.
+
+### impl-170 · 2026-10-12T01:17:33.575Z
+
+Final full suite 7846feda-b04c-4f75-b80e-6d694f57e89a at pushed candidate 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd passed typecheck and all 1604 hub/Neovim tests, zero failures/cancellations/skips. Log A-1480: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1480-suite-7846feda-b04c-4f75-b80e-6d694f57e89a-all-at-362ff5f.log. C4 marked done; all four criteria are implemented and tested. Branch is clean. Final Reviewer verdict pending; claim retained until merge. Coordinator's live T-165 cleanup remains the documented post-integration/restart follow-up.
+
+### rev-17 · 2026-10-12T01:17:54.816Z
+
+verdict: review
+result: clear
+by: rev-17 [reviewer]
+run: rev-20261012-17-T170-2
+commit: 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd
+
+No remaining findings (high/medium/low); Standards and Spec clear. C1/C3 verified by documented landed reopen refusal/follow-up rule, strict landing inspection, real CLI reopen/push and discussion/push/sync regressions. C2 amended gate verified by safe dev-contained stale cleanup preserving unrelated work and existing dirty/session/unmerged checks; live T-165 cleanup remains Coordinator follow-up excluded from gate. A-1471 obsolete stage fixture corrected with API refusal plus retained hand-edit/restoration/forged-verdict invalidation coverage (A-1473). C4 verified from A-1480: exact unchanged reviewed head, typecheck/full hub and Neovim suites pass 1604/1604, zero failures/cancellations/skips, exit 0. All C1-C4 verified at 362ff5fd42bf8069dc8750b3dcc37c8fba5ca7cd.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-12T01:32:20.683Z
+
+Merged 88ce02b18616f0b719789ffd11d1175f855417ac onto dev.
+
+### coord · 2026-10-12T01:32:37.045Z
+
+Live T-165 cleanup is pending: T-170 merged at 88ce02b after the 01:32Z hub restart, so its cleanup path isn't live yet. The Coordinator removes .cland/worktrees/T-165 (branch 6cfef96, contained in dev) through cland after the next restart, and records it here.

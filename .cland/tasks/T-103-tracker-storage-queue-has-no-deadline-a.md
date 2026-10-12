@@ -3,18 +3,19 @@ id: T-103
 kind: task
 title: "Tracker storage queue has no deadline: a hung write stalls all tracker work"
 state: open
-status: backlog
+status: review
+criterion_seq: 4
 labels:
   - hub
   - tech-debt
   - ready-for-agent
-assignee: null
+assignee: impl-103
 parent: T-229
 blocked_by: []
-topic: null
-branch: null
+topic: topic-163
+branch: t/T-103-tracker-storage-queue-has-no-deadline-a
 created: 2026-10-09T19:23:07.021Z
-updated: 2026-10-11T17:48:37.625Z
+updated: 2026-10-12T01:43:22.638Z
 ---
 
 ## Parent
@@ -33,11 +34,24 @@ T-77 made every tracker mutation, import and serving-time watcher read go throug
 
 ## Acceptance criteria
 
-- [ ] A held write past the threshold produces the event and the status flag, which a test proves.
-- [ ] Hub stop with a held write finishes within its bound and reports the abandoned operation.
-- [ ] The recovery decision is documented, and if implemented, a late write cannot commit after its deadline.
-- [ ] `npm run typecheck && npm test` pass.
+- [x] C1. A held write past the threshold produces the event and the status flag, which a test proves.
+  - done: impl-103 · 2026-10-12T01:43:15.051Z
+- [x] C2. Hub stop with a held write finishes within its bound and reports the abandoned operation.
+  - done: impl-103 · 2026-10-12T01:43:15.264Z
+- [x] C3. The recovery decision is documented, and if implemented, a late write cannot commit after its deadline.
+  - done: impl-103 · 2026-10-12T01:43:15.581Z
+- [ ] C4. `npm run typecheck && npm test` pass.
 
 ## Notes
 
 Size M; triage before scheduling.
+
+## Comments
+
+### impl-103 · 2026-10-12T01:36:13.495Z
+
+Recovery decision (accepted by coord): fail-fast, not in-process fencing tokens. A native rename/link already issued to the OS cannot be revoked by a token; releasing a timed-out queue would let it race the next write. T-103 adds stall detection without serving-time cancellation, plus bounded shutdown and an abandonment report. Automatic termination on a serving-time stall is deferred to a v0.1.2 follow-up; no late-commit recovery implementation is part of C3. Shutdown must prevent subsequent work from starting and exit the daemon if storage cannot drain.
+
+### impl-103 · 2026-10-12T01:43:15.812Z
+
+Implementation pushed at d8042bde941eaf038df9d452450ac27cf6aadb4f. Targeted tracker-async coverage passed 35/35 and native-boundary coverage passed 29/29. Durable implementation handoff: A-1486, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1486-t-103-implementation-and-verification-handoff.md. origin/dev fetched and already integrated before final suite. No per-item QA brief is present; inherited QA policy is affected/after-stage, with no QA criteria on this task.
