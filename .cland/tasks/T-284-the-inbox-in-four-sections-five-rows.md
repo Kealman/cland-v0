@@ -3,7 +3,7 @@ id: T-284
 kind: task
 title: The inbox in four sections, five rows each, with ages, in Neovim and the CLI
 state: open
-status: review
+status: ready
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-173
 branch: t/T-284-the-inbox-in-four-sections-five-rows
 created: 2026-10-12T11:57:19.628Z
-updated: 2026-10-12T16:45:53.613Z
+updated: 2026-10-12T17:21:38.983Z
 ---
 
 ## Summary
@@ -61,18 +61,25 @@ Out of scope: `r`, `d` on the new rows, and `A` (the next ticket); the events li
 
 - [x] C1. The panel and full-width inbox show the now layer in four sections in the order asks and approvals, plan approvals, requests to you, messages to you, each newest first with its count; senders are in their role colour.
   - done: impl-284 · 2026-10-12T14:47:22.059Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.370Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 - [x] C2. A section with more than five rows shows five and a "N more" line naming the oldest wait and its time; `za` on it unfolds and folds the rest.
   - done: impl-284 · 2026-10-12T14:47:34.246Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.371Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 - [x] C3. Every row shows its waiting age, and the age advances without a hub frame.
   - done: impl-284 · 2026-10-12T14:47:34.414Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.371Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 - [x] C4. The selected ask unfolds its options and free-answer hint in place and the selected approval its full command; other rows stay one line, and Enter on a plan row opens the plan view.
   - done: impl-284 · 2026-10-12T14:47:34.552Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.371Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 - [x] C5. `cland inbox` prints the four sections in the same order with ages and ends with `needs you: <n>` equal to the chip.
   - done: impl-284 · 2026-10-12T14:47:34.673Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.371Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 - [x] C6. Targeted tests pass (nvim headless tests on the stub hub, read with `screenstring()`; a hub test of `cland inbox` on a real hub), and `nvim/README.md` describes the four sections, their order, the five-row fold and the ages.
   - done: impl-284 · 2026-10-12T16:45:18.764Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.371Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 - [x] C7. A regression test bounds the inbox's work per hub event and at startup on a store with thousands of messages (T-293's first follow-up), and the finding on T-293's second point (whether a durable wait start is recorded one tick late) is stated in the item.
   - done: impl-284 · 2026-10-12T15:28:59.385Z
+  - verified: rev-24 [reviewer] · run rev-2026-10-12-284-3 · 2026-10-12T17:21:38.371Z · commit d09c4d855e355302eb1f480eb5aa4115ba5fa8db
 
 ## Comments
 
@@ -119,3 +126,21 @@ Criteria: C6 failed (STATE-001 never selects the collapsed ask before waiting fo
 ### impl-284 · 2026-10-12T16:45:21.702Z
 
 Review correction after A-1563: both Neovim failures run STATE-001.lua, which expected the full question on an unselected, collapsed row. Added an inbox-section readiness wait and selected the ask through keys before the existing exact full-question/state predicate. The two targeted tests failed deterministically before the fix and pass afterward (2/2, 2.98 s), including the all-writes-denied rescue path. No product code or assertions changed. A-1563 remains the failed previous-head run; delta review and a fresh full suite follow.
+
+### impl-284 · 2026-10-12T17:20:03.904Z
+
+Full verify 40925663 is green at 76c65162: 1646/1646, A-1568. Under the Coordinator's batch rule, merged origin/dev including T-287. inbox.lua merged cleanly; manually resolved nvim/README.md by retaining T-284 Topics/Inbox documentation and T-287 Events documentation, and actions.lua by retaining inbox za with all events-filter registrations in separate contexts. The authorized targeted set passes: inbox-sections 3, inbox snapshot 1, events 2, events-quiet 2, CLI inbox 1, full palette/registry file 18. Additional headless checks reject duplicate za within inbox/events contexts, permit it in a distinct context, validate all expected inbox/event keys and audit mappings, and verify palette/Space-? listings. Added two keys-summary hint lines because Space-? omitted the merged keys; no callbacks changed. Requesting delta review of the integration/manual resolutions and text-only help correction, without another full suite as authorized.
+
+### rev-24 · 2026-10-12T17:21:38.371Z
+
+verdict: review
+result: clear
+by: rev-24 [reviewer]
+run: rev-2026-10-12-284-3
+commit: d09c4d855e355302eb1f480eb5aa4115ba5fa8db
+
+No high, medium or low findings remain. C1–C7 verified at d09c4d855e355302eb1f480eb5aa4115ba5fa8db.
+Both prior findings are fixed without weakening assertions. The integrated README/action registry preserves inbox folds and all events actions; inbox.lua changes only its independent events footer, and help additions are text-only.
+Evidence: A-1571 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1571-t-284-integrated-head-review-clear-at-d09c4d8.md. Full run 40925663 is green at pre-integration 76c65162 (1646/1646, no skips; A-1568). Authorized integration checks on the combined tree pass 28/28 (A-1570), including inbox/CLI/events plus registry duplicate/context and palette/help listings. Coordinator batch authorization explicitly substitutes these checks and delta review for another full run; integrated dev verification follows T-291. No claim of a full suite run at this combined head.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

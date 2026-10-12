@@ -2,8 +2,8 @@
 id: T-287
 kind: task
 title: Events view quiet rows, warnings, filters in ui.json, gM and the last look
-state: open
-status: ready
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-174
 branch: t/T-287-events-view-quiet-rows-warnings-filters
 created: 2026-10-12T11:57:19.803Z
-updated: 2026-10-12T16:58:24.209Z
+updated: 2026-10-12T16:58:52.761Z
 ---
 
 ## Summary
@@ -73,25 +73,31 @@ Out of scope: the retirement of the inbox's notification list (the next ticket);
   - done: impl-287 · 2026-10-12T15:28:57.611Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-5 · 2026-10-12T16:58:52.760Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C2. Not-clear verdicts, deaths, override-raised events and a red suite on `dev` show as warnings; a red suite on a task branch does not; no row repeats something still waiting in the inbox.
   - done: impl-287 · 2026-10-12T15:14:28.531Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-5 · 2026-10-12T16:58:52.760Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C3. `1`–`8`, `0`, `w`, `s` with each palette prefix and `F` filter the view as described, and the filter survives a workbench restart through `ui.json`.
   - done: impl-287 · 2026-10-12T15:14:28.850Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-5 · 2026-10-12T16:58:52.760Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C4. `gM` hides the subject's rows through the events-view mute list in `ui.json` and the view says how many subjects it hides; `gM` again restores them; the hub's `visibility` mutes and the inbox are unchanged by it.
   - done: impl-287 · 2026-10-12T15:14:29.215Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-5 · 2026-10-12T16:58:52.760Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C5. Opening the view sets the last look in `ui.json`; the inbox's events line counts the newer rows and warnings apart, reads "200+" past the cap, and drops to zero after the view opens.
   - done: impl-287 · 2026-10-12T15:14:29.850Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-2 · 2026-10-12T15:30:28.664Z · commit a14ab6d017ff3b11d441d3f60dff34e5e2078a3d
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-5 · 2026-10-12T16:58:52.761Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 - [x] C6. Targeted tests pass (hub frame tests of the classes, merging and filters on a real hub; nvim headless tests on the stub hub for the keys, `ui.json` and the events line), and `nvim/README.md` and `hub/README.md` describe the classes, the filters, `gM` and the last look.
   - done: impl-287 · 2026-10-12T16:21:19.320Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-287-4 · 2026-10-12T16:22:57.854Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
+  - verified: rev-23 [reviewer] · run rev-2026-10-12-287-5 · 2026-10-12T16:58:52.761Z · commit a310840c1f8a2e969ad8056982cf66df2de0ac89
 
 ## Comments
 
@@ -156,5 +162,25 @@ run: rev-2026-10-12-287-4
 commit: a310840c1f8a2e969ad8056982cf66df2de0ac89
 
 No remaining high/medium findings in the delta. Optional restoration logs failure without clearing Journal error; unchanged stop-rejection/successor-lock assertions retained. Guard exempts only event_kinds.lua with explicit domain comment, validates its complete pure ordered declaration against protocol.EVENT_KINDS, and preserves full tracker-literal checks everywhere else including events.lua; added regressions reject extra statements and tracker literals. Coordinator condition met. C1–C6 checked with A-1552/A-1561; fresh full verify pending, no full-green claim. A-1562: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1562-t-287-verification-fix-delta-clear-at-a310840.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-287 · 2026-10-12T16:58:43.033Z
+
+Full verification 95a66860-16a9-4e33-b098-0258bd578f16 passed at a310840c1f8a2e969ad8056982cf66df2de0ac89: all 1647/1647 tests passed, no failures/skips/cancellations. Durable log A-1566: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1566-suite-95a66860-16a9-4e33-b098-0258bd578f16-all-at-a310840.log. Review clear C1–C6 at the same head; branch unchanged.
+
+### coord · 2026-10-12T16:58:46.168Z
+
+Merged 1ad72711b2d530f065d897863715e8f9e4ab262f onto dev.
+
+### rev-23 · 2026-10-12T16:58:52.761Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-12-287-5
+commit: a310840c1f8a2e969ad8056982cf66df2de0ac89
+
+No remaining high/medium findings. All C1–C6 verified at unchanged exact head. Durable full verify 95a66860/A-1566: typechecks pass; 30/30 hub free, 1321/1321 hub machine, 296/296 Neovim; total 1647/1647, exit 0, zero failures/skips/cancellations/todos. Restart coalescing, hidden/batched selection and older pages, failed-journal stop/lock, exact-file EventKind guard, keys/prefs/mutes/last-look all pass. Source/Coordinator condition evidence A-1552/A-1562 retained. Final evidence A-1567: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1567-t-287-final-review-full-green-at-a310840.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
