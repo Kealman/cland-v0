@@ -179,7 +179,7 @@ The human's picture of one item in the Explorer: the Summary, the facts, the pro
 _Avoid_: item view, details pane, preview
 
 **Summary**:
-One to three sentences in an item that say what it is about, written by whoever creates the item; the first paragraph of the first section after Parent stands in when it is missing.
+One to three sentences in an item that say what it is about, written by whoever creates the item; the first paragraph of the first section that is not Parent stands in when it is missing.
 _Avoid_: description (that is the whole body), abstract, goal (an epic's section)
 
 **Events view**:
