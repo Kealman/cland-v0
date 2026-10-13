@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T12:25:30.883Z
+updated: 2026-10-13T12:27:37.371Z
 ---
 
 ## Summary
