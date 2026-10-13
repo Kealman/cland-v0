@@ -2,8 +2,8 @@
 id: T-343
 kind: task
 title: "Droplet leases: a DigitalOcean API client that reads the token at use, a durable lease with its own SSH key and a detached watchdog per droplet, and cland executor status and reap"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 10
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-216
 branch: t/T-343-droplet-leases-a-digitalocean-api-client
 created: 2026-10-13T20:53:45.647Z
-updated: 2026-10-13T21:43:15.814Z
+updated: 2026-10-13T22:20:33.428Z
+closed: 2026-10-13T22:20:33.428Z
 ---
 
 ## Summary
@@ -139,28 +140,38 @@ It also deletes keys named `cland-<project>-*` that have no live lease. It never
 
 - [x] C1. Against the fake API, through the real hub, the fake sees `lease.json` with state `creating` and the armed watchdog's PID before it answers `POST /droplets`. Acquire then polls through a `new` answer with no IP, and returns only when the droplet is `active` with a public address. At the 300 s deadline (shortened by a `CLAND_TEST_*` override), acquire releases the droplet and refuses.
   - done: impl-343 · 2026-10-13T21:18:17.582Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.012Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C2. Release deletes the droplet and the key, and confirms absence by listing, also when the fake keeps a deleted droplet listed for a few polls. It records the lifetime and the cost, with a 60 s minimum, at the size's price. An unconfirmed release stays `releasing` and is retried.
   - done: impl-343 · 2026-10-13T21:25:49.733Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.012Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C3. With `lifetime = "3s"`, the hub is stopped right after an acquire. The watchdog deletes the droplet and the key while no hub runs. The next start journals `executor-watchdog-fired` and the lease `released`, and `cland executor status` lists no lease.
   - done: impl-343 · 2026-10-13T21:18:18.399Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.013Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C4. Reap deletes a project-tagged droplet with no lease, and another project's `cland` droplet older than its lifetime plus 10 minutes. It leaves another project's younger droplet and an untagged droplet, and journals `executor-reaped`.
   - done: impl-343 · 2026-10-13T21:18:18.748Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.013Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C5. At restart, a `creating` lease without a resource id finds its droplet by name and releases it. A live lease whose watchdog died gets a re-armed watchdog.
   - done: impl-343 · 2026-10-13T21:18:19.278Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.014Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C6. The sentinel token appears nowhere: not in `hub.log`, the journal, the lease files, `watchdog.json`, the artifacts, the fake API's request bodies, or the `ps` command lines of the hub's children. Without a token, `reap` refuses and `status` shows `token: absent (DIGITALOCEAN_TOKEN)`.
   - done: impl-343 · 2026-10-13T21:18:19.644Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.014Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C7. `cland executor status` and `reap` are refused for an Implementer, a Reviewer and a QA session, and allowed for the Coordinator and the human.
   - done: impl-343 · 2026-10-13T21:18:20.031Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.014Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C8. Real check, posted on this item with create, destroy and cost: one stray droplet of the smallest size, made by hand with the `cland` and project tags, is deleted by `cland executor reap`. The tag listing is empty afterwards.
   - done: impl-343 · 2026-10-13T21:18:20.547Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-343-2 · 2026-10-13T21:27:05.013Z · commit 7dbec3140c4a272e640871d0e53dba506e7c0e42
   - verified: rev-23 [reviewer] · run rev-2026-10-13-343-3 · 2026-10-13T21:42:53.967Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.014Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C9. On macOS the watchdog holds `caffeinate -i -w <its pid>` while its lease is live, so a sleeping hub host cannot strand a billing droplet. A test on macOS sees the `caffeinate` child for a live lease and none after release (Coordinator decision, approved by the stand-in under D24 on 2026-10-13).
   - done: impl-343 · 2026-10-13T21:18:20.911Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.014Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 - [x] C10. `hub/README.md` describes the token, the tags, the lease, the watchdog, reap, status and the config keys.
   - done: impl-343 · 2026-10-13T21:18:21.305Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-343-2 · 2026-10-13T21:27:05.013Z · commit 7dbec3140c4a272e640871d0e53dba506e7c0e42
   - verified: rev-23 [reviewer] · run rev-2026-10-13-343-3 · 2026-10-13T21:42:53.967Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-4 · 2026-10-13T22:06:24.014Z · commit cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
 
 ## Comments
 
@@ -239,3 +250,24 @@ Criteria: C8 verified, C10 verified.
 ### impl-343 · 2026-10-13T21:43:15.814Z
 
 Delta source review clear at cf378e31 (rev-2026-10-13-343-3, A-2092). Replacement cland verify all queued at exact head cf378e31ef2479cec49ed970d0bf0c5dda3bfa74, run 7cad6696-2196-4e99-91f6-dcc3675931e3, position 1. Reports to rev-23 and impl-343 in topic-216. Clean working tree; awaiting full-suite evidence and the final Reviewer verdict.
+
+### impl-343 · 2026-10-13T22:06:23.733Z
+
+Exact-head full verification 7cad6696 passed at cf378e31ef2479cec49ed970d0bf0c5dda3bfa74: 1,866 tests passed, zero failures/cancellations/skips; exit 0. Log A-2098 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2098-suite-7cad6696-2196-4e99-91f6-dcc3675931e3-all-at-cf378e3.log. Working tree clean; log token scan clear. Awaiting Reviewer’s final evidence verdict. Head remains unchanged while the Coordinator’s integrated dev run gates batch merges.
+
+### rev-23 · 2026-10-13T22:06:24.014Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-343-4
+commit: cf378e31ef2479cec49ed970d0bf0c5dda3bfa74
+scope: evidence
+
+No high or medium findings. Exact-head full cland verify 7cad6696 / A-2098 passed both typechecks and 1866/1866 tests across all three phases, zero failures/cancellations/skips/todo. All 12 droplet lifecycle/security cases pass, including late key-import recovery and macOS caffeinate. Prior full source/integration reviews A-2080/A-2092 remain applicable; C8 uses unchanged sanitized real reap evidence A-2072 and C10 reviewed docs. C1–C10 verified. A-2099: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2099-t-343-final-exact-head-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-13T22:20:33.428Z
+
+Merged 1693554570edadef64322d96f10d347107833746 onto dev.

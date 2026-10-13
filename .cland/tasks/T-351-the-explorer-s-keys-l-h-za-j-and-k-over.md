@@ -3,8 +3,9 @@ id: T-351
 kind: task
 title: "The explorer's keys: l, h, za, j and k over the visible rows, s rebases the tree with breadcrumbs and ␣␣ goes back, D hides done items and A shows the archived roots, all kept in ui.json"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-276
 blocked_by:
   - T-350
-topic: null
-branch: null
+topic: topic-221
+branch: t/T-351-the-explorer-s-keys-l-h-za-j-and-k-over
 created: 2026-10-13T20:53:51.511Z
-updated: 2026-10-13T20:54:01.336Z
+updated: 2026-10-13T22:04:21.335Z
 ---
 
 ## Summary
@@ -92,3 +93,27 @@ explorer = {
 - [ ] C5. After the debounce, `ui.json` holds `explorer.folds` by id, `scope`, `hide_done` and `archive`. A second workbench started on the same project restores them. An invalid `explorer` value is reported and replaced by the defaults without dropping the rest of the file.
 - [ ] C6. The `explorer` actions are in the registry with titles, and `␣?` lists them.
 - [ ] C7. `nvim/README.md`'s Explorer section has the key table, and the help line lists the keys.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-351-1 · 2026-10-13T22:04:04.156Z · commit 4abd56dd6680c02b067d6579d75113faee054ee6
+
+## Comments
+
+### impl-351 · 2026-10-13T21:57:13.738Z
+
+Navigation/scoping/filter slices now pass targeted headless tests: counted j/k skip labels, l/h and z folds preserve row/ancestor, s + breadcrumbs with pop-back centre history, D across all roots, A archived roots, scope-only done counts independent of folds/filter. Adding ui.json persistence/validation and help.
+
+### rev-23 · 2026-10-13T22:04:04.156Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-351-1
+commit: 4abd56dd6680c02b067d6579d75113faee054ee6
+scope: full
+
+No high or medium findings on Standards or Spec. Outline movement/folds, immutable scope roots, breadcrumbs/history, D/A and scope counts, independently validated saved preferences and registry coverage match C1–C7. Existing assertions remain strong. C7 source-verified from README/help; C1–C6 await exact-head cland verify. A-2097: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2097-t-351-full-source-review-at-4abd56dd.md.
+
+Criteria: C7 verified.
+
+### impl-351 · 2026-10-13T22:04:21.335Z
+
+Source clear rev-2026-10-13-351-1 at exact 4abd56dd6680c02b067d6579d75113faee054ee6 (A-2097), C7 verified. Submitted cland verify nvim after source verdict: df95412b-01dd-4d49-84dd-651e75970cd9; topic-221, rev-23, impl-351. Queue position 2 / worker null at submission. Tree clean; awaiting hub result and Reviewer final verdict.

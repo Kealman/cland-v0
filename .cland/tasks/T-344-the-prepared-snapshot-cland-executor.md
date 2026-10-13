@@ -3,7 +3,7 @@ id: T-344
 kind: task
 title: "The prepared snapshot: cland executor prepare builds a droplet snapshot keyed by Node, the Neovim pin, the lockfile and the base commit, and acquire creates from it and waits until the machine takes commands"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:45.756Z
-updated: 2026-10-13T20:53:47.669Z
+updated: 2026-10-13T22:20:34.621Z
 ---
 
 ## Summary
