@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-13T10:33:51.549Z
+updated: 2026-10-13T18:25:09.921Z
 ---
 
 ## Goal
@@ -93,6 +93,8 @@ This epic builds on that driver as its first backend rather than starting from t
 - `doctl create --wait` returned before the droplet was active.
 - A typecheck failure reached a droplet because no local gate ran first.
 - The four creates cost about $0.17.
+
+**Open question from E-268 (2026-10-13).** A c-8 runs the hub phase alone in about 1420 s, where the Mac runs the whole suite in about 870 s. The 45-minute c-8 cap from the D25 amendment fits today. Remote executors need either a larger droplet, such as c-16, or the suite split across two droplets per run.
 
 ## Comments
 

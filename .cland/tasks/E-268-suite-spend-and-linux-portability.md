@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-210
 branch: null
 created: 2026-10-12T11:35:13.526Z
-updated: 2026-10-13T17:13:52.290Z
+updated: 2026-10-13T18:24:28.603Z
 ---
 
 ## Goal
@@ -59,6 +59,7 @@ QA runs the census on `dev` and compares it with the census recorded before the 
 - [ ] C4. `hub/src/system-processes.ts` and the test cleanup list processes the same way on macOS and Linux, covered by a test on both `ps` dialects.
 - [ ] C5. The five Linux failures of the T-256 prototype are fixed at their cause.
 - [ ] C6. `npm run typecheck && npm test` passes on Ubuntu 24.04 with 8 vCPUs, as an ordinary user, with no environment variable beyond PATH, and the platform skips are listed by reason.
+  - failed: qa-27 [qa] · 2026-10-13T18:24:28.603Z · note M12: full c-8 Ubuntu suite timed out at 1448s (suite_exit124); hub phases completed with zero failures, Neovim did not finish.
 - [ ] C7. `hub/README.md` describes the census, the platform skips and how to run the suite on Linux; T-266 and T-267 are closed.
 
 ## Dogfooding
@@ -126,3 +127,99 @@ Tickets cut on 2026-10-12 (Coordinator): T-277 the spawn census → T-278 teardo
 ### coord · 2026-10-13T02:15:29.028Z
 
 Decision D24 (stand-in, 2026-10-13 ~02:20Z, answering the Coordinator's ask 07efe23c): T-269 is unblocked from T-268. The T-268 → T-269 edge ordered the hub lane; it did not reflect a code dependency. T-268's remainder (T-312, then T-282's droplet acceptance run, then its QA demo) is Linux-only and touches no tracker or item code. Conditions: T-269's live-tracker migration lands with a hub restart run by the stand-in, on a green integrated run and an empty queue; the Linux container slot keeps priority for T-312 so T-268 does not stall behind T-269's suites.
+
+### coord · 2026-10-13T17:52:52.204Z
+
+D25 droplet record for the QA demo qa-2026-10-13-27-5, created 2026-10-13T17:51:22Z: provider id 608772081, name cland-proto-20261013-175122, tag cland, lon1 c-8 Ubuntu 24.04 with 8 vCPUs, at head 94c5f01. Owner qa-T-268, reserve $0.125 at $0.25/hour in the shared ledger A-1906, watchdog active, destroy on exit. Destroy and cost follow.
+
+### coord · 2026-10-13T18:19:12.918Z
+
+D25 droplet record for qa-2026-10-13-27-5: droplet 608772081 destroyed, with absence confirmed. Lifetime 1611 s, cost $0.1119. The suite hit the driver's 1448 s suite timeout (exit 124): typecheck 0, hub-free 37/37, hub machine 1476 passed with 3 allowed skips and no failures in 1418 s, and the Neovim phase did not finish. No test failed; the run did not fit the time box. No second droplet.
+
+### coord · 2026-10-13T18:19:41.303Z
+
+D25 amendment (stand-in, D24, 2026-10-13 ~18:20Z): c-8 acceptance runs may live up to 45 minutes, with the suite timeout at about 38 minutes. The one-at-a-time rule and the $2-a-day cap stay. The reason: the suite grew, and a c-8 now runs the hub phase alone in about 1420 s, so the 30-minute cap and its 1448 s suite timeout cut off the Neovim phase (qa-2026-10-13-27-5). QA reruns only the droplet step in a new run.
+
+### coord · 2026-10-13T18:20:13.717Z
+
+Droplet cleanup receipt, qa-2026-10-13-27-5: 608772081 (cland-proto-20261013-175122) destroyed 2026-10-13T18:18:12.915Z. Lifetime 1611 s, cost $0.1119 at $0.25/hour, under the $0.125 reserve. Independent cland tag listing empty (0 bytes), imported key absent, watchdog 20015 stopped. Ledger entry b6142082-99cf-4bb1-a758-8303f1a83410 complete with absence confirmed, active=[], UTC-day total $0.3916.
+
+### qa-27 · 2026-10-13T18:24:28.603Z
+
+verdict: qa
+result: not clear
+by: qa-27 [qa]
+run: qa-2026-10-13-27-5
+commit: 94c5f0119c108595cedd61b807e3a16af5ff9717
+
+| Check | Result | Command / observation | Evidence |
+| --- | --- | --- | --- |
+| M0 | PASS | Clean dev 94c5f011; committed brief, seven merge ancestors, regression count1, ten children closed/done, five stages with qa scope none, C1-C7 matched | [M0.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M0.txt) |
+| M1 | PASS | Node24.21.0; empty queue, locks read only; Docker stopped; token present; tag empty; ledger active none and spent0.2797 | [M1.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M1.txt) |
+| M2 | PASS | Clean detached W at B; npm ci/typecheck exit0; pinned Neovim v0.12.5 in shared root cache, Coordinator amendment744329a9 | [M2.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M2.txt) |
+| M3 | PASS | README census3/skip2/Linux4 hits and paragraphs read; T266/T267 closed/done via JSON per Coordinator amendment f001585d; text CLI crash retained as finding | [M3.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M3.txt) |
+| M4 | PASS | JSON T267 records git32341to21111,ps28888to15290,wall905to706,leftovers2to0; A1610 agrees; T302 open underC216 and namesT268/D24; text CLI crash retained | [M4.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M4.txt) |
+| M5 | PASS | cland verify all 53e5111a-b7d1-4c83-9704-a7d9fa73273b at B; 1838/1838 pass,fail/cancel/skip/todo0 across3phases,zero cleanup pid; A2018 | [M5.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M5.txt) |
+| M6 | PASS | No test-retries or retries in runner/package/shards grep (exit1); all3 macOS phases skip details0 | [M6.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M6.txt) |
+| M7 | PASS | Existing stopped cland-t281 fixture at B,clean; Ubuntu24.04.5,UID1001 runner,4CPUs,docker-init,Node24.21.0,procps4.0.4,pinned nvim0.12.5,no overrides | [M7.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M7.txt) |
+| M8 | PASS | system-processes27 and process-cleanup23 pass on both BSD and procps,zero fail/cancel/skip; named4 assertions pass,shared processTableArgs; PS_PERSONALITY docs only | [M8.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M8.txt) |
+| M9 | PASS | Five Linux files once each:55/55 pass,no fail/cancel/skip;five named regressions pass,queue empty aftereach;JSON T281 cause record per64f6238f;T339 text crash retained | [M9.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M9.txt) |
+| M10 | PASS | Container stop0; Docker Desktop stop0,status stopped,no backend;bundle removed | [M10.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M10.txt) |
+| M11 | PASS | Eight driver contents same; authorized .sh executable-bit setup and fresh dry2 after empty tag/key/ledger checks;dry preflight0,c8lon1at0.25/hour,reserve0.1250,ledger unchanged | [M11.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M11.txt) |
+| M12 | FAIL | c8 Ubuntu24.04.5 UID1000 8CPUs B nooverrides;typecheck0;suite timeout1448s exit124;hub37pass then1476pass3allowedskips,zero failures;Neovim incomplete | [M12.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M12.txt) |
+| M13 | PASS | Destroyed18:18:12.915Z,lifetime1611s,cost0.1119<=reserve0.1250;tag trimmedempty and independent0bytes,key0,watchdoggone,ledgercomplete,total0.3916;scan clear;Coordinator amendment1af68cea | [M13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M13.txt) |
+| M14 | PASS | One census through human hand-run slot at W; all3phases complete,exit0,suite814.24s,zero failures;queue identity captured | [M14-census.out](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M14-census.out) |
+| M15 | PASS | Clean B census:git23109(-28.5%),ps17631(-39.0%),node6928;within24256/18777limits;source tables present,3phases,zero cleanup;token scan clear | [M15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M15.txt) |
+| M16 | PASS | Docker stopped,tagempty,ledgerinactive,total0.3916,no leftovers,queueempty,Wclean,dev unchanged B,token scan clear138files | [M16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011/M16.txt) |
+
+Findings ranked by severity:
+
+- High: none.
+- Medium — M12 / C6: the c-8 suite exceeded its 1,448-second outer timeout and returned suite_exit 124. This was a suite timeout, not a test failure. The driver ran ordinary-login `npm run typecheck` (exit 0) and `npm test -- --all`. Hub free passed 37/37; hub machine passed 1,476 with 3 allowed platform skips and zero failures. Hub machine took 1,417.94 seconds. Neovim started but did not finish; it has no final phase counts and the run has no final suite-duration line. The driver wrapper exited 0 after successful collection and deletion; that does not make the suite green. No retry or second droplet ran.
+- Medium — M3/M4/M9, T-339 (C-325 Bugs, qa-found): `node hub/bin/cland.ts task view T-266`, `T-267`, `T-302` and `T-281` printed `cland: Cannot read properties of undefined (reading 'verified')`. The Coordinator attributed this to the dev CLI receiving an older live-hub frame without the new criteria counts. The authorized JSON readbacks establish the required records; the crash remains a separate product finding. The Coordinator filed T-339.
+- Low: none.
+
+Verdict: QA not clear E-268 (legacy T-268). Run `qa-2026-10-13-27-5`; full tested dev SHA `94c5f0119c108595cedd61b807e3a16af5ff9717`. Sixteen checks PASS; M12 FAIL. Verify C1,C2,C3,C4,C5,C7; fail C6 because the required full Ubuntu suite did not complete within the allowed timeout. No blocked or inconclusive checks.
+
+| Criterion | Evidence | Mark |
+| --- | --- | --- |
+| C1 | M14, M15 | verified |
+| C2 | M4, M15 | verified |
+| C3 | M2, M5, M6; M12 emitted skip reasons are allowed | verified |
+| C4 | M8 | verified |
+| C5 | M9 | verified |
+| C6 | M11, M12, M13; M12 timeout | failed |
+| C7 | M3 | verified |
+
+Mac verification: run `53e5111a-b7d1-4c83-9704-a7d9fa73273b`, artifact A-2018 at `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2018-suite-53e5111a-b7d1-4c83-9704-a7d9fa73273b-all-at-94c5f01.log`. Exact tested head, 1,838/1,838 passing, zero failures/cancellations/skips/todos in all three phases, zero cleanup leftovers, duration 866.18 seconds.
+
+Final dev census: A-2021, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2021-e-268-final-dev-spawn-census-at-94c5f011-git-28-5-ps-39-0`. Clean tested head, exit 0, duration 814.24 seconds, three phases, no cleanup leftovers. Git 23,109 versus 32,341 (−28.5%); ps 17,631 versus 28,888 (−39.0%); Node 6,928 versus 6,017 (+15.1%, recorded not judged). Both agreed C2 bounds (24,256 / 18,777) pass. Baseline A-1535 and T-279 comparison A-1610 were read, and the earlier 905→706-second cut and production follow-up T-302 under C-216 were confirmed.
+
+Linux targeted checks: M8 ran system-processes (27) and process-cleanup (23) once on each platform: 100 passes. M9 ran aide (7), handover (4), init (15), lead-permissions (5), tracker-ready (24) once each: 55 passes, no failure or skip. Ubuntu container remained at 4 CPUs, UID1001 runner, Docker init, Node24.21.0 and pinned Neovim0.12.5. Historical A-1687, A-1768 and A-1832 were read, not rerun. One shell `child setpgid ... Operation not permitted` diagnostic appeared after the successful init invocation; all original assertions and exit status passed.
+
+Droplet evidence: A-2022, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2022-e-268-c-8-suite-timeout-at-94c5f011-destroyed-cost-usd0-1119`. Ubuntu24.04.5,8vCPUs,UID1000 runner,Node24.21.0,clean exact head and ordinary login with no added overrides. The three reported skips were edges and spawn-census (needs macOS sandbox-exec), and orphan-servers (OpenCode is absent or cannot run on this machine). Neovim was incomplete, so extracted aggregate counts are partial, not full-suite totals. The acct/census cross-check is retained as informational only.
+
+D25 lifecycle: created provider608772081 / cland-proto-20261013-175122, tag cland, lon1 c-8, at 2026-10-13T17:51:22.054Z; owner qa-T-268, reserve USD0.1250. Destroyed 2026-10-13T18:18:12.915Z; lifetime1,611seconds; estimated costUSD0.1119 atUSD0.25/hour. Shared ledger entry b6142082-99cf-4bb1-a758-8303f1a83410 is complete/resourceAbsenceConfirmedtrue; active=[]; UTC-day totalUSD0.3916. Create and destroy reports went to the Coordinator in Agents and were recorded on E-268. Independent tag listing empty, imported SSH key absent, watchdog stopped. Private keys and source bundle removed. No second attempt.
+
+Cleanup and build: Docker stopped, no backend or run leftovers, queue empty; clean detached worktree removed successfully; scratch driver removed; dev remains at the tested full SHA. Literal token scans passed before publication. Run records contain exactly one line per M0–M16. Brief setup failures were preserved and resumed only under the Coordinator amendments below; no product source or assertion was changed.
+
+Coordinator decisions during this run:
+
+- d0884eb0-2c16-4ea9-a358-282d8e705638: use dev at announced START, after the Coordinator go, rather than the original request’s d4efa57. Go ee868b74-cb29-4f17-8060-bfb082c2a99c names 94c5f0119c108595cedd61b807e3a16af5ff9717. Queue was empty; START 17:29:02Z fixed that build.
+- 744329a9-6d4f-4f24-840f-5d8efed29916: “PASS. M2 exists to pin the Neovim version, and v0.12.5 is it. nvim-path deliberately resolves the cache in the main repository, which every worktree shares”. The W/.cache wording was wrong; the actual shared main-repository v0.12.5 path passed.
+- f001585d-dedb-47dc-b659-e1db2c8dcb42: “For E-268’s verdict, judge M3 and M4’s item state by the JSON readbacks that you already have green.” The plain text CLI crashed on missing criteria counts in the older running hub’s frame. This is retained as a product finding, not a C7 failure. JSON readbacks prove T-266/T-267 closed/done, T-267’s exact before/after record and T-302 open under C-216 with T-268 and D24 in its body. Coordinator attributed it to the hub starting before T-330 merged.
+- 0b6b61e7-a5b2-4bf6-99e3-232e2513879e: Coordinator confirmed the text-view finding filed in C-325 Bugs with qa-found and needs-triage; it remains uncommitted during the dev freeze. No item id supplied in that message.
+
+- 64f6238f-7c58-4d85-bbee-ad56f912c367: “Apply the same JSON readback to T-281’s cause record, and to any later task view text read in this run.” The single version-skew finding is T-339. This extends f001585d to every text read; M9 retains the original crash and the complete T-281 JSON.
+
+- 457d44b2-2d85-4d16-8ce9-7585a057bd90: restore executable bits on the scratch driver’s .sh files only. Artifact copies lost file modes although all eight contents matched A-1938. The initial preflight exited 1 at provider.sh Permission denied before any provider mutation.
+- 0c2222c2-4476-48bd-a49c-bc056ed6149d: preserve S-dry after the resumed driver refused its nonempty directory; use fresh S-dry2 after confirming empty cland tag, no imported prototype key, active=[] and unchanged ledger checksum. Those safety conditions all held. Original S-dry contained only an empty account.txt, retained as evidence. D25 limits and assertions remain unchanged.
+
+- 1af68cea-91d6-4de8-a7e6-16f81b288fe5: M13 PASS means “an empty listing after trimming”. Driver tag-after.txt is a single newline; independent provider listing is zero bytes. The old byte-count wording was wrong. The later proposed 45-minute cap does not apply to this completed run.
+
+
+Evidence artifact A-2023: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2023-e-268-qa-not-clear-c-8-suite-timeout-c1-c5-and-c7-pass-at-94c5f011.
+
+Verdict submission amendment 9fbb17a8-1110-440c-b035-578fe2d47cc8: the first call was refused with "verified requires a clear verdict" and wrote no verdict. Per the Coordinator, this corrected not-clear call carries only failed C6. C1,C2,C3,C4,C5,C7 were verified by the evidence above, but their tracker verification marks are not set by this not-clear verdict; they are carried in the text for the requested later droplet-only clear run. Persistent marks from this call: C6 failed only.
+
+Criteria: C6 failed (M12: full c-8 Ubuntu suite timed out at 1448s (suite_exit124); hub phases completed with zero failures, Neovim did not finish.).

@@ -3,7 +3,8 @@ id: T-331
 kind: task
 title: "Size and regressions: tasks carry a required size from XS to XL and an optional regression_of, through the CLI and MCP, and the clauses and skills ask for both and for a Summary"
 state: open
-status: planned
+status: review
+criterion_seq: 7
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ assignee: null
 parent: E-270
 blocked_by:
   - T-330
-topic: null
-branch: null
+topic: topic-211
+branch: t/T-331-size-and-regressions-tasks-carry-a
 created: 2026-10-13T14:04:09.540Z
-updated: 2026-10-13T17:28:31.509Z
+updated: 2026-10-13T17:48:54.057Z
 ---
 
 ## Summary
@@ -85,10 +86,36 @@ E-270: Status, fields and instrumentation. Spec: `docs/spec/v0.1.2.md` §3.12 (W
 
 ## Acceptance criteria
 
-- [ ] C1. Item tests: `size` parses each class, refuses another value and refuses a size on an epic. `regression_of` parses on a task and is refused on other kinds. Both round-trip, and a file without them reads unchanged.
-- [ ] C2. On a temporary project with a real hub, `cland task create "x" --kind task` and `cland task create "x"` are refused naming `XS, S, M, L or XL`. `--kind epic --size S` is refused. `--size S --regression-of T-<n>` on a landed task shows both fields in `cland task view` and `--json`.
-- [ ] C3. Through a real spoke, MCP `task.create` without `size` gets the same refusal. `task.edit` changes a size. `task.link` sets and clears `regression_of`. An open target, a non-task target and the item itself are each refused with their reason.
-- [ ] C4. `task.list` and the `task` event carry `size` and `regression_of` from the index.
-- [ ] C5. The clauses state the filing rule and the report rule. The roles snapshot tests pin the text. Every role's delivered clause stays at least 512 bytes under 8192, for the defaults and for this repo's `.cland/roles.toml`.
-- [ ] C6. The `to-tickets` and `plan-epic` skills ask for a size, a `## Summary` and `--regression-of` for rework. `skills/PATCHES.md` records the vendored patch, and `hub/test/skills-tracker.test.ts` passes with the new text.
-- [ ] C7. `hub/README.md`, `docs/agents/issue-tracker.md` with its template and `GLOSSARY.md` describe the size classes, the refusal, `regression_of` and the `## Summary` rule.
+- [x] C1. Item tests: `size` parses each class, refuses another value and refuses a size on an epic. `regression_of` parses on a task and is refused on other kinds. Both round-trip, and a file without them reads unchanged.
+  - done: impl-331 · 2026-10-13T17:46:40.701Z
+- [x] C2. On a temporary project with a real hub, `cland task create "x" --kind task` and `cland task create "x"` are refused naming `XS, S, M, L or XL`. `--kind epic --size S` is refused. `--size S --regression-of T-<n>` on a landed task shows both fields in `cland task view` and `--json`.
+  - done: impl-331 · 2026-10-13T17:46:41.014Z
+- [x] C3. Through a real spoke, MCP `task.create` without `size` gets the same refusal. `task.edit` changes a size. `task.link` sets and clears `regression_of`. An open target, a non-task target and the item itself are each refused with their reason.
+  - done: impl-331 · 2026-10-13T17:46:41.299Z
+- [x] C4. `task.list` and the `task` event carry `size` and `regression_of` from the index.
+  - done: impl-331 · 2026-10-13T17:46:41.599Z
+- [x] C5. The clauses state the filing rule and the report rule. The roles snapshot tests pin the text. Every role's delivered clause stays at least 512 bytes under 8192, for the defaults and for this repo's `.cland/roles.toml`.
+  - done: impl-331 · 2026-10-13T17:46:41.891Z
+- [x] C6. The `to-tickets` and `plan-epic` skills ask for a size, a `## Summary` and `--regression-of` for rework. `skills/PATCHES.md` records the vendored patch, and `hub/test/skills-tracker.test.ts` passes with the new text.
+  - done: impl-331 · 2026-10-13T17:46:42.184Z
+- [x] C7. `hub/README.md`, `docs/agents/issue-tracker.md` with its template and `GLOSSARY.md` describe the size classes, the refusal, `regression_of` and the `## Summary` rule.
+  - done: impl-331 · 2026-10-13T17:46:42.473Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-331-1 · 2026-10-13T17:48:54.057Z · commit 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
+
+## Comments
+
+### impl-331 · 2026-10-13T17:39:05.164Z
+
+Implemented required task size at the shared request layer and indexed size/regression fields through CLI and MCP. Mechanical fixture sweep is isolated in b54c404a (77 files). Targeted tracker and real-spoke checks pass. Offline --sizes JSON backfill has scratch dry-run, byte-preserving apply, no-write rerun, invalid-assignment refusals and old-id resolution coverage; live apply remains the Coordinator's restart step. Finishing clause/skill documentation and bounded-list checks before source review.
+
+### rev-23 · 2026-10-13T17:48:54.057Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-331-1
+commit: 6fc0eb83b90efb84d6d16f1598d4cb01ca100b42
+
+No high, medium, or low source findings. Separate fixture sweep preserves assertions/harness/bounds. Required size stays at the request layer; task-only parse/edit/index fields and numeric landed regression validation/clearing match scope. Explicit offline assignment safeguards, clause compression and skills patch reviewed. C7 docs verified; C1–C6 await complete same-head full evidence, including headroom/skills guards. Wait for E-268 END before submission. Evidence A-2020: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2020-t-331-full-source-review-clear-at-6fc0eb83.md.
+
+Criteria: C7 verified.
