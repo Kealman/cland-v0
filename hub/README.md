@@ -1211,8 +1211,9 @@ are also available for humans and isolated CI.
 
 `cland verify [all|hub|nvim] [--fresh] --report <topic|session> [--to <session>]…`
 persists requests in the hub database before admission. Waiting requests have no
-worker PID. The Coordinator's integrated dev runs go first, then item rank at
-submission, then enqueue order. The queue survives hub restart. A known dead
+worker PID. The Coordinator's integrated dev runs go first, then human `npm test`
+waiters in enqueue order, then item rank at submission, then other runs in enqueue
+order. The queue survives hub restart. A known dead
 requester's queued run is cancelled with one hub note to its original recipients;
 a disconnected spoke alone does not prove death. `cland suite` is a transition alias.
 
@@ -1263,8 +1264,9 @@ cached result as evidence; no tree equivalence is applied to review or QA marks.
 A human's `npm test` outside a cland session asks this same scheduler for a
 connection-owned slot before taking the compatibility lease. The runner prints
 its queue position, holder elapsed time and ETA as they change, and at least once
-a minute. Integrated Coordinator dev runs come first, then ranked item runs;
-humans join unranked runs in enqueue order. Their waiters have `kind: "hand run"`
+a minute. Integrated Coordinator dev runs come first, then human waiters in
+enqueue order, then ranked item runs, then other runs in enqueue order. Human
+waiters have `kind: "hand run"`
 and `session: "human"`. Admission reserves ten seconds to acquire the lease;
 closing the connection removes the waiter, and an unused reservation expires.
 The journal records `verification-human-queued`, `verification-human-admitted`
@@ -1290,9 +1292,11 @@ The human runner frames sit beside `suite.start`:
 | `{"type":"suite.forced","id":…, "mode":…, "cwd":…, "head":…, "pid":…, "token":…}` | `{}` after journalling the bypass; no slot or lease is taken. |
 
 `cland verify queue [--json]` shows the holder (including compatibility **hand run**
-holders), the scheduler's ordered waiters, elapsed waits and estimated time until
-admission. Its human-facing form is the sessions panel's one-line `verify:`
-summary (holder, run time, waiting count and next ETA). Enter on the summary
+holders, labelled `human` for an admitted human slot), the scheduler's ordered
+waiters, elapsed waits and estimated time until admission. Integrated dev comes
+first, then human `npm test` waiters in enqueue order, then ranked items, then
+other runs in enqueue order. Its human-facing form is the sessions panel's
+one-line `verify:` summary (holder, run time, waiting count and next ETA). Enter on the summary
 or the palette's **Open verification queue** opens the centre queue view with
 ordered waiters, elapsed waits, admission ETAs and timing metrics; `q` returns.
 Both follow the same queue live from `verification.queue` events;

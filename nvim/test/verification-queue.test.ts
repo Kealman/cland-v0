@@ -36,6 +36,12 @@ test('sessions queue line follows hub snapshots and events, including events rac
   await c.input('<Esc><C-l>gg<CR><Space>s');
   await c.waitScreen(s => s.includes('1. next') && s.includes('waiting 5s') && s.includes('admission ETA ~20s'), 'waiter identity and ETA in queue view');
   await c.input('q<Space>s');
+  const human = { ...busy, holder: { ...busy.holder!, kind: 'hand run', session: 'human' } };
+  await control({ emit: { type: 'verification.queue', queue: human } });
+  await c.waitScreen(s => s.includes('verify: human 1s · 1 waiting · next ~20s'), 'admitted human summary');
+  await c.input('<C-l>gg<CR><Space>s');
+  await c.waitScreen(s => s.includes('Holder: human') && s.includes('pid 42') && s.includes('/candidate'), 'human holder in queue view');
+  await c.input('q<Space>s');
   const hand = { ...busy, holder: { ...busy.holder!, kind: 'hand run', id: null, session: null }, waiters: [{ ...busy.waiters[0]!, waitMs: 8000, etaMs: null }] };
   await control({ set: { holdSnapshots: ['hub.status'] } });
   await c.lua("require('cland').refresh_sessions()");

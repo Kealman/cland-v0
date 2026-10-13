@@ -4,7 +4,7 @@
 // the UI on the Unix socket, the CLI as its own process, the fake Claude Code for launches.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
@@ -48,6 +48,33 @@ test('every crew role receives the Aide speaking-for-the-human instruction in it
     }
 
   }
+});
+
+for (const source of ['defaults', 'project'] as const) test(`${source} clause snapshots describe the human queue and stopped-session lifecycle`, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
+  if (source === 'project') await writeFile(join(root, '.cland', 'roles.toml'), await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
+  const { discovery } = await startDaemon(t, root);
+  const ui = await connectUi(t, discovery);
+  for (const role of ['coordinator', 'implementer', 'reviewer', 'qa', 'aide']) {
+    const name = 'queue-' + role;
+    assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
+    const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: 'queue-' + role, role });
+    t.after(() => spoke.close());
+    const clause = (await spoke.waitForEvent(isClause)).params.content;
+    assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
+    assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
+    if (role === 'coordinator') {
+      assert.match(clause, /cland session resume <name> --relaunch/);
+      assert.match(clause, /cland session resume <name> --fresh/);
+      assert.match(clause, /cland session archive <name>/);
+      assert.match(clause, /cland session prune --older-than 7d/);
+      assert.match(clause, /journal is retained/i);
+    }
+  }
+  const definitions = parseRoles(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'));
+  for (const tool of ['session.archive', 'session.prune']) assert.ok(definitions.get('coordinator')?.permissions.tools?.includes(tool), `${source}: ${tool}`);
 });
 
 test('roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults', async (t) => {

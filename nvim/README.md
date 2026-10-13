@@ -170,6 +170,8 @@ sessions remain visible. The archived count comes from `session.list` and live
 Background by default. Aides keep their hub Now layer even when stopped.
 `d` archives a stopped session and says `<name> archived · A shows the archive`.
 Live rows say to stop first with `x`; an unlaunched row has no record to archive.
+`cland session prune --older-than 7d` deletes archived session records whose stop
+time is older than that duration; `--dry-run` previews names. The journal is retained.
 `A` fetches and shows or hides Archive, independently of the background fold,
 newest archived first. It also shows rows placed in the archive layer by `gM`.
 Explicitly archived sessions leave NOW, WATCH, the background groups, top-bar

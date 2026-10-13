@@ -33,7 +33,7 @@ local function eta(ms)
 end
 
 local function holder_name(holder)
-  return holder.kind == 'hand run' and 'hand run' or holder.session or 'human'
+  return holder.kind == 'hand run' and holder.session ~= 'human' and 'hand run' or holder.session or 'human'
 end
 
 function M.summary()

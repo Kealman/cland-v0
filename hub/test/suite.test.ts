@@ -1340,6 +1340,9 @@ test('a human package runner waits in the hub order and takes the compatibility 
   await writeFile(join(f.root, 'crew-finish'), 'yes');
   await eventually('human admitted and running', async () => await stat(join(f.root, 'human-started')).catch(() => undefined));
   assert.equal((await f.queue()).holder?.session, 'human');
+  const admitted = await cland(f.root, 'verify', 'queue');
+  assert.equal(admitted.code, 0, admitted.stderr);
+  assert.match(admitted.stdout, /^holder: human ·/);
   await writeFile(join(f.root, 'human-finish'), 'yes');
   assert.equal(await human.done, 0, human.output());
   await eventually('human slot left', async () => (await f.journal()).find(e => e.event === 'verification-human-left'));
@@ -1420,7 +1423,59 @@ test('without an answering hub plain human runs retain the lease and --force run
   assert.equal((await f.journal()).some(e => e.event === 'verification-forced' || e.event === 'verification-human-queued'), false);
 });
 
-test('human slots share enqueue order while ranked item requests retain priority', async t => {
+test('frames admit integrated dev, then a human slot, then ranked item work', async t => {
+  const f = await fixture(t, `${process.execPath} admission.mjs`);
+  const git = async (...args: string[]) => promisify(execFile)('git', args, { cwd: f.root });
+  await writeFile(join(f.root, 'admission.mjs'), `import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+const n = existsSync('admissions') ? readFileSync('admissions', 'utf8').trim().split('\\n').length + 1 : 1;
+appendFileSync('admissions', n + '\\n'); while (!existsSync('finish-' + n)) await new Promise(r => setTimeout(r, 25));`);
+  await git('init', '--initial-branch=dev');
+  await git('config', 'user.name', 'Admission test');
+  await git('config', 'user.email', 'admission@example.invalid');
+  await writeFile(join(f.root, '.gitignore'), '.cland/\nsuite.lock*\nadmissions\nfinish-*\n');
+  await git('add', '.'); await git('commit', '-m', 'base');
+  await mkdir(join(f.root, 'suite.lock'));
+  const submit = async (name: string) => {
+    const r = await f.ui.request({ type: 'suite.start', as: { name }, mode: 'all', fresh: true, cwd: f.root, report: f.topic, to: ['rev'] });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const job = r.value as { id: string; pid: number | null };
+    assert.equal(job.pid, null);
+    return job;
+  };
+  const ranked = await submit('impl');
+  const human = await connectUi(t, f.discovery, 'cli');
+  const slot = await human.request({ type: 'suite.slot', mode: 'hub-only', cwd: f.root, head: 'fixture-head', pid: process.pid, token: 'priority-human' });
+  assert.equal(slot.ok, true, JSON.stringify(slot));
+  const humanId = (slot.value as { id: string }).id;
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+  const coord = await spawnSpoke({ discover: true, cwd: f.root, name: 'coord', sessionId: 'coord-admission', role: 'coordinator' });
+  t.after(() => coord.close()); await coord.waitForPresence(['coord']);
+  const integrated = await submit('coord');
+  const queue = async () => (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  assert.deepEqual((await queue()).waiters.map(w => w.id), [integrated.id, humanId, ranked.id]);
+  await rm(join(f.root, 'suite.lock'), { recursive: true });
+  await eventually('integrated dev admitted first', async () => (await queue()).holder?.id === integrated.id ? true : undefined);
+  await eventually('first worker executing', async () => (await readFile(join(f.root, 'admissions'), 'utf8').catch(() => '')) === '1\n' ? true : undefined);
+  assert.deepEqual((await queue()).waiters.map(w => w.id), [humanId, ranked.id]);
+  await writeFile(join(f.root, 'finish-1'), 'yes');
+  await eventually('human admitted second', async () => (await queue()).holder?.id === humanId ? true : undefined);
+  assert.equal((await queue()).holder?.session, 'human');
+  assert.deepEqual((await queue()).waiters.map(w => w.id), [ranked.id]);
+  assert.equal(await readFile(join(f.root, 'admissions'), 'utf8'), '1\n', 'ranked worker has not started');
+  human.close();
+  await eventually('ranked item admitted last', async () => (await queue()).holder?.id === ranked.id ? true : undefined);
+  await eventually('second worker executing', async () => (await readFile(join(f.root, 'admissions'), 'utf8')) === '1\n2\n' ? true : undefined);
+  assert.deepEqual((await queue()).waiters, []);
+  await writeFile(join(f.root, 'finish-2'), 'yes');
+  await eventually('both exact-head results posted', async () => (await f.results()).length === 2 ? true : undefined);
+  const head = (await git('rev-parse', 'HEAD')).stdout.trim();
+  for (const result of await f.results()) {
+    assert.match(result.text, /exit 0/);
+    assert.ok(result.text.includes(`head ${head}`));
+  }
+});
+
+test('human slots retain enqueue order ahead of ranked item requests', async t => {
   const f = await humanRunnerFixture(t);
   await mkdir(f.locks.hub);
   const first = await connectUi(t, f.discovery, 'cli');
@@ -1429,7 +1484,7 @@ test('human slots share enqueue order while ranked item requests retain priority
   const job = await f.launch();
   const second = await connectUi(t, f.discovery, 'cli');
   const b = (await second.request({ ...input, token: 'second-human' })).value as { id: string };
-  assert.deepEqual((await f.queue()).waiters.map(w => w.id), [job.id, a.id, b.id]);
+  assert.deepEqual((await f.queue()).waiters.map(w => w.id), [a.id, b.id, job.id]);
   first.close(); second.close();
   await eventually('both human sockets left', async () => (await f.queue()).waiters.length === 1 ? true : undefined);
   await writeFile(join(f.root, 'crew-finish'), 'yes');

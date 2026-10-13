@@ -209,13 +209,12 @@ export class Suites {
     this.#options.log?.({ event: 'verification-forced', session: 'human', cwd: input.cwd, worktree: input.cwd, head: input.head, mode: input.mode, pid: input.pid, holder: queue.holder });
   }
   #locks(): string[] { return this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock']; }
-  // Humans have no item rank: integrated dev and ranked items precede them.
-  // Unranked runs and humans share enqueue order; existing runs win exact timestamp ties.
+  // Integrated dev precedes human waiters, then item rank; each group retains enqueue order.
   #ordered(): Array<SuiteJob | HumanSlot> {
     return [...this.#queue(), ...[...this.#humans.values()].filter(s => !s.left && !s.admittedAt)].sort((a, b) => {
       const integrated = (s: SuiteJob | HumanSlot) => 'actor' in s && s.integrated === true;
       const rank = (s: SuiteJob | HumanSlot) => 'actor' in s ? s.priority ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
-      return Number(integrated(b)) - Number(integrated(a)) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
+      return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
   #cached(tree: string, mode: SuiteSelection['mode']): SuiteJob | undefined {
