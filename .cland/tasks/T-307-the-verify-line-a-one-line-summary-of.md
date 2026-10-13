@@ -3,7 +3,7 @@ id: T-307
 kind: task
 title: "The verify line: a one-line summary of the suite queue in the sessions panel header, opening the queue view"
 state: open
-status: review
+status: ready
 criterion_seq: 4
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-188
 branch: t/T-307-the-verify-line-a-one-line-summary-of
 created: 2026-10-12T21:34:31.743Z
-updated: 2026-10-13T01:22:50.051Z
+updated: 2026-10-13T01:23:11.445Z
 ---
 
 ## Summary
@@ -83,12 +83,16 @@ The run time and the waits advance without a hub frame. The clock is local, refr
 
 - [x] C1. The header shows the one-line summary in each state: idle, free with waiters, a holder with waiters, a hand run, and an unknown ETA. The run time advances without a hub frame.
   - done: impl-307 · 2026-10-13T01:22:15.030Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.571Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
 - [x] C2. Enter on the summary line and the palette action "Open verification queue" open the queue view in the centre. It shows the holder, the waiters in order with their waits and admission ETAs, and the metrics line, and `q` closes it.
   - done: impl-307 · 2026-10-13T01:22:15.430Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.572Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
 - [x] C3. A Neovim headless test on the stub hub runs the demo: one running and two waiting give the header's holder, run time and `2 waiting`, and Enter gives the order and ETAs. The existing race test between snapshot and event still passes.
   - done: impl-307 · 2026-10-13T01:22:15.733Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.572Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
 - [x] C4. `nvim/README.md` describes the summary line, its states and the queue view with its keys. The `cland verify queue` paragraph of `hub/README.md` names the panel's summary line and view as its human-facing form.
   - done: impl-307 · 2026-10-13T01:22:16.050Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-307-1 · 2026-10-13T01:23:10.572Z · commit fd230d3b046c96293f53c8b583e1f65d4a75628f
 
 ## Comments
 
@@ -107,3 +111,15 @@ Per Coordinator's shared-fix instruction: cancelled queued f327cdf4 before execu
 ### impl-307 · 2026-10-13T01:22:50.051Z
 
 Final exact-head hub suite bcff8924-bc67-4212-8b7d-faafa33a2bfb passed at fd230d3b046c96293f53c8b583e1f65d4a75628f: full mode, 1,713 tests passed, zero failures/skips. Log A-1723. Reviewer source assessment A-1722 clear; requested final criterion verdict with this run. C1–C4 implementer done marks recorded.
+
+### rev-23 · 2026-10-13T01:23:10.572Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-307-1
+commit: fd230d3b046c96293f53c8b583e1f65d4a75628f
+
+No high or medium findings. C1–C4 verified from source and exact-head full bcff8924: typecheck and 1713/1713 tests pass, zero failures/cancellations/skips. Queue demo/local clock/navigation and retained snapshot/event race tests pass. Evidence A-1724: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1724-t-307-final-review-at-fd230d3.md; full log A-1723.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
