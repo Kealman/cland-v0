@@ -416,6 +416,7 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 | `lua/cland/views.lua` | One topic view per topic, the topic actions (create, close, resolve, read), the item view and the board through their modules, the Agents log through `agents_log.lua`, and the inbox full width through `inbox.lua`. |
 | `lua/cland/items.lua` | Hub status/rank/levels, release scope, glyphs, filters, folds, map groups and badges, the `task` event, and the items panel (tree, filters, keys). |
 | `lua/cland/item_view.lua` | The item view: the fields column, the body, the verdicts and comments from `task.view`; `e` edits the file. |
+| `lua/cland/explorer.lua` | The centre outline from item summaries: roots, status bars, stage groups, rank then close order, in-memory folds and cursor identity. |
 | `lua/cland/board.lua` | The board: seven hub-status columns scoped to open parents of the current release; parent filters; `↵` opens the card under the cursor. |
 | `lua/cland/graph.lua` | The experimental graph view over `graph_layout.lua`: release parent cycle, hub node fields, criteria adapter, folded tray, node cursor and edge focus, winbar, scrolling and visible-change updates. |
 | `lua/cland/sessions.lua` | Session terminals: the attach command from `session.attach`, one request in flight per session, re-attaching after a restart. The panel's stop (`session.stop` after the confirmation line) and the capability table float. |
@@ -645,3 +646,13 @@ this demo against a real hub and headless Neovim, plus folds, keep/unkeep, move,
 promotion, archive and retrying an attachment after a refused send.
 
 Item motions accept every kind prefix supplied by `hub.status.tracker.prefixes`, in either case. `gi` on a legacy `T-107` reference opens the canonical epic `E-107`; item views and graph scopes use the canonical id. Threads highlight recognized kind prefixes, and `A-12` remains an artifact reference. A bare number is accepted when choosing an item or graph scope. Saved release choices and plan receipts may keep old prefixes: item lookup compares their numbers.
+
+## Explorer
+
+`␣e` or `:Cland explorer` opens the current release as a centre outline. `:Cland explorer [id]` scopes it to an item; any item prefix resolves. `za` toggles the row's fold, and plain `j` and `k` move through the lines. Folds stay in memory. The release starts open one level, followed by folded Categories, Unscheduled and Other releases roots. Direct tasks sit under their own folded row after the epics, including a release with no epics. The winbar counts done nodes under its scope; in the root view this is only the named release, excluding the other roots.
+
+The release row carries its version, title, epics done/total and status bar. Two label rows show its tasks' fraction, bar and status counts. Epic rows show tasks done/total, the task bar, counts in progress/review/QA, the current plan stage and the Lead (or Coordinator while no lead levels are configured). Task rows show the claim or verifier hold, latest review and QA verdicts with their rounds, and verified/total criteria from the summary. Done rows show the closing time; blocked tasks name their open blockers. Columns drop from the right as the centre narrows, and lines never wrap.
+
+Live siblings follow hub rank and final sibling order. Done siblings follow them in closing order from `closed`; legacy items without a closing time come first, ordered by `updated`. An epic with a plan groups live tasks under stage labels with the state, merged fraction and QA policy, followed by tasks not in the plan and one done section in closing order. Closed stages remain visible. Containers derive their status from their tasks rather than owning a workflow status.
+
+Done titles use `ClandDone` (`#98bfa2`) with a green ● and no strikethrough. Bars use green for done/ready, amber for review/QA, teal for in progress, a dim hollow cell for planned and dark backlog cells. Plans are requested once per visible epic and cached; drawing a row needs no `task.view`. An unanswered list shows `loading the items…`; an answered tracker with no release shows `no open release` and its folded roots.

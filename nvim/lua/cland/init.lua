@@ -195,6 +195,7 @@ local refresh_items = single_flight(function(done)
     if err then
       state.S.items_note = 'items: ' .. tostring(err)
     else
+      state.S.items_loaded = true
       state.S.items, state.S.items_note = value and value.items or {}, nil
       state.S.sibling_orders = {}
       for _, event in ipairs(events) do
@@ -330,6 +331,7 @@ M.HELP = {
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
   'Centre    ␣g General · ␣L Agents log · ␣b board · ␣G graph · ␣N inbox full width · ␣E events · ␣␣ the previous centre view',
+  'Explorer  ␣e · :Cland explorer [id] · za toggle fold · j k move',
   'Graph     h/j/k/l nodes · ^/$ ends · ↵ item · gi/gt/gs · p/P parent · d done · o turn · r edges · :Cland graph [T-n]',
   'Agents    ␣L the log: lifecycle events and agent-to-agent messages · r on a message replies to its sender',
   'Motions   gi its item · gt its topic · gs its session (a reference under the cursor wins)',
@@ -363,7 +365,12 @@ function M.help()
   for _, action in ipairs(require('cland.actions').all()) do
     if action.id == 'items:<CR>' then
       table.insert(lines, 6, ' Items     ' .. action.key .. ' · ' .. action.title)
-      break
+    elseif action.id == 'global:<leader>e' then
+      for r, line in ipairs(lines) do
+        if line:match('^ Explorer ') then
+          lines[r] = ' Explorer  ' .. action.key .. ' · ' .. action.title .. ' · :Cland explorer [id] · za toggle fold · j k move'
+        end
+      end
     end
   end
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -412,6 +419,7 @@ local function keymaps()
   map('<leader>b', function()
     layout.toggle_view({ kind = 'board' })
   end, 'board')
+  map('<leader>e', function() require('cland.explorer').open() end, 'explorer')
   map('<leader>G', function() require('cland.graph').open() end, 'experimental graph')
   -- ␣a is the artifacts picker; the Agents log is ␣L
   map('<leader>a', function()

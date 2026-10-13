@@ -34,7 +34,7 @@ group('global', {
   {'<leader>i', 'Toggle items panel'}, {'<leader>n', 'Toggle inbox panel'},
   {'<leader>s', 'Toggle sessions panel'}, {'<leader>t', 'Toggle topics panel'},
   {'<leader>T', 'Toggle topics dock'}, {'<leader>N', 'Toggle inbox full width'},
-  {'<leader>b', 'Toggle board view'}, {'<leader>G', 'Open experimental graph'}, {'<leader>a', 'Palette: artifacts'},
+  {'<leader>e', 'Open explorer'}, {'<leader>b', 'Toggle board view'}, {'<leader>G', 'Open experimental graph'}, {'<leader>a', 'Palette: artifacts'},
   {'<leader>E', 'Events view'}, {'<leader>L', 'Toggle Agents log'}, {'<leader>g', 'Open General'},
   {'<leader>c', 'Focus composer'}, {'<leader>P', 'Draft a prompt'},
   {'<leader>p', 'Open palette'}, {'<leader>l', 'Launch a session'}, {'<leader>A', 'Launch an Aide'},
@@ -88,6 +88,7 @@ group('log', {{'r','Reply to message sender'}, {'<CR>','Open artifact chip'}, {'
   {'f','Filter Agents by item or session'}, {'F','Clear Agents filter'}})
 group('composer', {{'<M-CR>','Newline in message'}}, 'i')
 add('composer', 'q', 'Cancel reply')
+group('explorer', {{'za','Toggle explorer fold'}, {'j','Move down one line'}, {'k','Move up one line'}})
 group('plan', {{'a','Approve epic plan'}, {'d','Discuss plan with the Lead'}, {'e','Edit epic plan file'}})
 group('item', {{'e','Edit item file'}, {'L','Agents log for this item'},
   {'ca','Add criterion'}, {'ce','Edit selected criterion'}, {'cd','Remove selected criterion (confirm)'}})
@@ -275,6 +276,7 @@ local function views() return require('cland.views') end
 command('view events', 'Events view', function() layout().show({kind='events'}, {insert=false}) end, 'global:<leader>E')
 command('help', 'Keys', function() require('cland').help() end, 'global:<leader>?')
 command('refresh', 'Refresh from hub', function() require('cland').refresh() end)
+command('explorer', 'Open explorer', function(args) require('cland.explorer').open(args[1]) end, 'global:<leader>e')
 command('graph', 'Open experimental graph', function(args) require('cland.graph').open(args[1]) end, 'global:<leader>G')
 command('launch', 'Launch a session', function(args) require('cland.launcher').open({name=args[1]}) end, 'global:<leader>l')
 command('session resume', 'Resume session', function(args) require('cland.sessions').resume(args[1]) end, 'sessions:r')

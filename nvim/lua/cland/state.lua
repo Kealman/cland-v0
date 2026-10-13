@@ -24,6 +24,7 @@ function M.reset(opts)
     roles = {}, -- role.list's roles: {role, label, exclusive, launch = {harness, model, effort}, holders}
     sessions_note = nil, -- { text, group }: the last launch or stop outcome, shown atop the sessions panel
     items = {}, -- task.list summaries
+    items_loaded = false, -- distinguish an empty tracker from an unanswered snapshot
     tracker = { levels = {} }, -- hub.status's loaded container ladder; unknown until the hub answers
     sibling_orders = {}, -- final task rank events, keyed by parent (empty string for roots)
     items_note = nil, -- why the items panel is empty

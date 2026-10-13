@@ -43,6 +43,8 @@ function M.setup()
   set('WinBarNC', { fg = P.dim, bg = P.bar })
   set('MsgArea', { fg = P.dim, bg = P.bg })
 
+  set('ClandDone', { fg = '#98bfa2' })
+  set('ClandCellBacklog', { fg = '#3d4756' })
   set('ClandText', { fg = P.text })
   set('ClandDone', { fg = P.done })
   set('ClandBold', { fg = P.text, bold = true })

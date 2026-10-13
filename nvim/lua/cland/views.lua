@@ -162,6 +162,8 @@ function M.title(v)
   elseif v.kind == 'session' then
     local s = state.session(v.id)
     return s and s.label or v.id
+  elseif v.kind == 'explorer' then
+    return 'Explorer · ' .. require('cland.explorer').title(v.id)
   elseif v.kind == 'plan' then
     local it = state.item(v.id)
     return v.id .. (it and (' ' .. it.title) or '') .. ' · plan'
@@ -179,6 +181,7 @@ end
 --- The buffer of a centre view other than a thread or a session: the item view and the board (#36), the Agents
 --- log (#34), the inbox full width (#33), else a placeholder.
 function M.placeholder(v)
+  if v.kind == 'explorer' then return require('cland.explorer').render() end
   if v.kind == 'events' then return require('cland.events').buffer() end
   if v.kind == 'plan' and v.id then return require('cland.plan').render(v.id) end
   if v.kind == 'artifact' then
@@ -223,6 +226,7 @@ local function lines_for(v)
 end
 
 function M.render_placeholder(v)
+  if v.kind == 'explorer' then return require('cland.explorer').render() end
   if v.kind == 'events' then return require('cland.events').render() end
   if v.kind == 'plan' and v.id then return require('cland.plan').render(v.id) end
   if v.kind == 'artifact' then

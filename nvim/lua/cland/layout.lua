@@ -289,7 +289,8 @@ local function centre_opts(w, kind)
     wo.wrap = false
     wo.winhighlight = 'Normal:ClandTerm,NormalNC:ClandTerm'
   else
-    wo.wrap = kind ~= 'graph'
+    wo.wrap = kind ~= 'graph' and kind ~= 'explorer'
+    if kind == 'explorer' then wo.foldenable = false end
     wo.winhighlight = ''
   end
 end

@@ -189,6 +189,8 @@ function M.context()
       return v.id .. ' · session · ' .. how
     end
     return v.id .. ' · session · ' .. how .. ' · ' .. (s.live and s.state or 'down') .. (s.item and (' · ' .. s.item) or '')
+  elseif v.kind == 'explorer' then
+    return require('cland.explorer').context()
   elseif v.kind == 'plan' then
     return v.id .. ' · epic plan'
   elseif v.kind == 'item' then
@@ -245,6 +247,8 @@ function M.status()
   local role = vim.b.cland_role
   if mode == 't' then
     hint = 'C-h/j/k/l focus · C-\\ leaves · then ␣␣ back'
+  elseif role == 'explorer' then
+    hint = 'za toggle fold · j k move · ␣␣ back'
   elseif role == 'composer' and mode == 'i' then
     hint = 'Enter sends · S-Enter newline · Esc leaves'
   elseif role == 'inbox' or role == 'inbox_full' then
@@ -313,6 +317,7 @@ end
 function M.winbar(win)
   local buf = api.nvim_win_get_buf(win)
   local role = vim.b[buf].cland_role
+  if role == 'explorer' then return require('cland.explorer').winbar(win) end
   if role == 'graph' then return require('cland.graph').winbar(win) end
   if role == 'items' then
     return head(win, 'ITEMS', { { require('cland.items').summary(), 'ClandDimBar' } })
