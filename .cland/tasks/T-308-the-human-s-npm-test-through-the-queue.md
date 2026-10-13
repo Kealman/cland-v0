@@ -3,7 +3,7 @@ id: T-308
 kind: task
 title: "The human's npm test through the queue: the local runner waits for a slot in the hub's suite queue, unless --force"
 state: open
-status: backlog
+status: review
 labels:
   - v0.1.2
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: T-275
 blocked_by: []
-topic: null
-branch: null
+topic: topic-192
+branch: t/T-308-the-human-s-npm-test-through-the-queue
 created: 2026-10-12T21:34:31.980Z
-updated: 2026-10-12T21:35:03.870Z
+updated: 2026-10-13T04:23:38.071Z
 ---
 
 ## Summary
@@ -82,3 +82,25 @@ Such an invocation does the following before it takes the lease:
 - [ ] C3. An invocation that inherits a worker's lease, as the hub's own `cland verify` worker does, or that runs inside a cland session, never asks the queue. A test covers both.
 - [ ] C4. `npm run typecheck` passes, and the existing suite-runner and suite tests pass unchanged.
 - [ ] C5. `hub/README.md`'s Tests section describes the human's queue path, the no-hub fallback, `--force` and its journal record, and the new frame. The Implementer, Reviewer and QA default clauses state that `npm test` from a session shell is not the human's queue path and that full runs go through `cland verify`.
+
+## Comments
+
+### impl-308 · 2026-10-13T03:42:59.417Z
+
+Claimed and read T-275/T-246/T-307 plus the T-309 merge. Implementing a connection-scoped human slot in the existing scheduler, preserving inherited leases and session-shell compatibility paths. Tests use scratch hubs, fixture targets and isolated locks; no live queue or machine lock use.
+
+### impl-308 · 2026-10-13T03:51:46.536Z
+
+Pushed review candidate cace176102433af9ec4e1e980ce18744ccd2ddd5. Eight new scratch-hub cases passed (seven queue/runner cases plus ordering); git diff --check is clean. Review requested and queued for the next live verifier. Evidence: A-1775 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1775-t-308-review-human-queue-admission-and-forced-runs.md. Final verify all waits for the protected T-312 Linux slot release; Coordinator notified. No per-item QA required by inherited policy.
+
+### impl-308 · 2026-10-13T04:01:05.458Z
+
+Coordinator requested shared shutdown fix 64cb036b9467454065b437f270896323cc68b954 before final verification. Cherry-picked it unchanged and pushed new head 89f4d180d33a8ef8058b0108d722ae0beb4959bc. The T-308 patch is unchanged. Queued review should use this new head (and any subsequent dev integration before final suite), instead of the initial cace176. Final verify still waits for the protected T-312 slot.
+
+### impl-308 · 2026-10-13T04:06:52.661Z
+
+Full run 611153f6-aece-488c-aade-50474d8f5ae8 at 89f4d18 exited 2 during typecheck, before package tests. Evidence A-1779. Fixed the two dispatch narrowing errors by checking isClientRequest before the frame discriminant (behavior unchanged), committed/pushed b17e3cf1be9c6c04bb0936fc1a476b7969cc7126. Fetched and merged origin/dev (already up to date). This is the current review candidate; requeueing full verify with the existing review request pending.
+
+### impl-308 · 2026-10-13T04:10:09.263Z
+
+Per Coordinator instruction cancelled run 502dc777 (A-1784; exit 143). It passed typecheck and the free shard before cancellation. Cherry-picked shared follow-up ffced58a80974ba968ddcd9aa95accdb614992e5 unchanged after 64cb036; pushed current review candidate cc6d94b01486c0ef9cc2f2862c30fb5bb80ca248 after fetching/merging origin/dev (already up to date). Replacing full verify at this head; the T-308 patch is unchanged.

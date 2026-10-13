@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T03:37:37.529Z
+updated: 2026-10-13T04:12:00.576Z
 ---
 
 ## Summary
@@ -52,7 +52,8 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
   - done: impl-312 · 2026-10-13T03:19:17.710Z
 - [ ] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
 - [ ] C4. The suite is green on macOS through `cland verify`.
-- [ ] C5. C5. The hub-phase hang of freshness.test.ts in the first T-312 Linux all-phase run (2026-10-13 ~03:00Z, worker idle in epoll while every other worker had finished) has its cause named in the item and fixed there, with no timeout raised, no skip and no retry. The file passes ten runs in a row alone in the Ubuntu container, and the evidence of the hang is published as an artifact in this item's topic.
+- [x] C5. C5. The hub-phase hang of freshness.test.ts in the first T-312 Linux all-phase run (2026-10-13 ~03:00Z, worker idle in epoll while every other worker had finished) has its cause named in the item and fixed there, with no timeout raised, no skip and no retry. The file passes ten runs in a row alone in the Ubuntu container, and the evidence of the hang is published as an artifact in this item's topic.
+  - done: impl-312 · 2026-10-13T04:06:46.233Z
 
 ## Comments
 
@@ -87,3 +88,11 @@ Audit also checked hub/src/hub/worktrees.test.ts outside hub/test: its direct tr
 ### impl-312 · 2026-10-13T03:37:37.529Z
 
 Evidence-count correction from review: each Linux orphan file in the original forty-run proof has 24 tests total, 23 passes, zero failures and one existing real-OpenCode-prerequisite skip, not 24 actual passes. All ten observer correlations remain found:true with distinct observed old/new PIDs. Corrected full proof bundle is A-1768; A-1760 was archived as a superseded summary, and identical original logs/hang captures remain in A-1768. C2 remains done: all ten complete files succeeded, and no skip was introduced. Pinned Codex contract source excerpts and verified SHA256s are now published in A-1767, with the TurnStart recording/persistence call chain and the distinction that real admission replies are not persistence barriers.
+
+### impl-312 · 2026-10-13T04:06:46.673Z
+
+A-1780 publishes the complete second Linux slot at integrated c79a8a5. Ten isolated freshness files passed 6/6 each with normal exit and no deadline hit; the full hub phase passed freshness too, completing C5. Typecheck passed. Full hub totals: 1393 tests, 1389 passes, 1 fail, 3 existing skips; nvim full phase did not start. The failure was uncaught ERR_INVALID_STATE, database is not open, from deferred HubCore.eventsProject → InboxBoard → closed ProcessTable, in session-async-processes' claim-conflict slow-request test; no logging assertion was weakened. Container and Desktop stop=0, both leases released 04:04:26Z. After cleanup, supplied shared shutdown fix 64cb036 was fetched and cherry-picked unchanged as 6a8205d, pushed. Coordinator assigned impl-313 to confirm that shared fix covers this second path; any follow-up will also be cherry-picked unchanged. C3/C4 remain pending. The next authorized Linux request is one all-phase run only; original forty proofs and these ten freshness proofs stand.
+
+### impl-312 · 2026-10-13T04:12:00.576Z
+
+Third-slot candidate 1e138fc is pushed and published in A-1785: supplied 64cb036/ffced58 are unchanged cherry-picks (6a8205d/2e1e517), then origin/dev fetched/merged. Independent real-frame regression from impl-313 and rev-26 review confirm the first patch missed HubCore's journalImmediate; the follow-up closes Core before Dispatcher/adapters and async drains, covering the exact A-1780 eventsProject/InboxBoard closed-table stack. At the candidate, events-quiet 6/6 and session-async-processes 5/5 pass; all original four isolated-proof files are unchanged from 5e8842a. Coordinator approved exactly one all-phase Linux run at 1e138fc/A-1785 after T-313 and T-308 existing queued runs finish and queue is empty, with no additional handoff unless a hub restart is posted. Earlier failed evidence stays in A-1780; C3/C4 remain incomplete.
