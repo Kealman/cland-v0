@@ -43,6 +43,9 @@ export type HarnessProcess = {
   /** The Lead’s epic or release, or the item whose task worktree the session was launched in (`session.launch` with an item; its cwd is that
    *  worktree), else null. */
   item?: string | null;
+  /** Original launch brief text or artifact id; null on older rows. */
+  launchBrief?: string | null;
+  effort?: string | null;
   /** The process's start time as `ps -o lstart=` printed it when the hub recorded the pid: what proves a live pid is
    *  still this process before any signal (`system-processes.ts` `endProcess`). Null when unknown. */
   pidStarted?: string | null;
@@ -87,6 +90,8 @@ export type LaunchPolicy = {
 
 export type SpawnRequest = LaunchPolicy & {
   name: string;
+  /** Only explicit fresh resume retains a stopped cland identity on a new conversation. */
+  sessionId?: string;
   /** Restart an idle pool member on its native conversation, with a fresh cland launch identity. */
   resumeConversation?: string;
   /** Hub-issued credential carried by this launch's spoke hello; never inferred from a session name. */

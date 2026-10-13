@@ -54,7 +54,11 @@ test('a delayed failing relaunch cannot undo another relaunch that commits to th
     return { found: true, process: { ...p, status: 'running' }, state: 'unknown' };
   } });
   const a = f.sessions.resume('impl', true);
-  const failure = assert.rejects(a, /late A failure/);
+  const failure = a.then(value => {
+    assert.equal(value.found, false);
+    assert.match(value.reason!, /late A failure/);
+    assert.deepEqual(value.fresh, { brief: null });
+  });
   await entered.promise;
   const b = f.sessions.resume('impl', true);
   await new Promise(resolve => setImmediate(resolve));

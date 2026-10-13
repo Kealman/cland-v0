@@ -1,5 +1,6 @@
 // `cland session …`: launch and manage harness sessions through the project's hub (spec 4.3).
 import { hubDiscovery, readDiscovery } from '../project.ts';
+import type { SessionResumeAnswer } from '../adapters/sessions.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { withRole } from '../names.ts';
@@ -12,8 +13,9 @@ export const SESSION_USAGE = `  session launch <name> [--role r] [--model m] [--
   session list    the sessions the hub launched, with their state (--json for JSON)
   session attach <name>   print the command that attaches a terminal to the session
   session stop <name>     stop the session through its harness
-  session resume <name> [--relaunch]   re-find the session's process; --relaunch starts a new one on the same
-                  conversation, stopping the old one first when it still runs (the session keeps its role)
+  session resume <name> [--relaunch | --fresh]   re-find the session's process; --relaunch starts a new one on the same
+                  conversation, stopping the old one first when it still runs (keeps its role and valid item claim); --fresh starts a new
+                  conversation with the recorded brief when native resume cannot
   session retry <name> <message id>    send again a message whose inject got no answer
                   (its delivery is uncertain: the turn may have started; never retried on its own)
 `;
@@ -75,9 +77,11 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
       return 0;
     }
     case 'resume': {
-      if (!name) throw new Error('usage: cland session resume <name> [--relaunch]');
-      const v = (await askHubFrame(d, { type: 'session.resume', session: name, relaunch: rest.includes('--relaunch') }, 60_000)) as { found: boolean; reason?: string; process: HarnessProcessView };
-      out(v, v.found ? `resumed ${line(v.process)}` : `not found: ${v.reason ?? ''}\n${line(v.process)}`);
+      if (!name) throw new Error('usage: cland session resume <name> [--relaunch | --fresh]');
+      const v = (await askHubFrame(d, { type: 'session.resume', session: name, relaunch: rest.includes('--relaunch'), fresh: rest.includes('--fresh') }, 60_000)) as SessionResumeAnswer;
+      const notes = v.notes.length ? `\n    ${v.notes.join(' · ')}` : '';
+      const hint = v.fresh ? `\n    cland session resume ${name} --fresh (${v.fresh.brief === null ? 'no brief recorded' : 'with its recorded brief'})` : '';
+      out(v, v.found ? `resumed ${line(v.process)}${notes}` : `cannot resume ${name}: ${v.reason ?? ''}${notes}${hint}`);
       return v.found ? 0 : 1;
     }
     case 'retry': {

@@ -291,7 +291,7 @@ local function session_row(c, s, group)
   end
 end
 
-local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop', ' za more · A archive' }
+local SESSIONS_FOOTER = { ' ↵ attach · C-v split · c capabilities', ' l launch · a Aide · x stop · r resume', ' za more · A archive' }
 
 local function render_sessions(c)
   local list = state.sessions()
@@ -312,7 +312,12 @@ local function render_sessions(c)
   end
   local confirm = state.S.ui.confirm
   if confirm then
-    wrapped(c, 'stop ' .. confirm.session .. '? y stops it · n keeps it', 'ClandAmber')
+    if confirm.kind == 'resume' then
+      wrapped(c, 'cannot resume ' .. confirm.session .. ': ' .. confirm.reason .. ' · f launches it fresh with its brief · n keeps it stopped', 'ClandAmber')
+      if confirm.brief == nil or confirm.brief == vim.NIL then wrapped(c, 'no brief recorded', 'ClandDim') end
+    else
+      wrapped(c, 'stop ' .. confirm.session .. '? y stops it · n keeps it', 'ClandAmber')
+    end
     c:add({})
   end
   local note = state.S.sessions_note
@@ -561,6 +566,7 @@ function M.session_keys(b)
   map('<C-v>', on_row(function(name)
     require('cland.layout').show_split({ kind = 'session', id = name })
   end), 'attach in a vertical split')
+  map('r', on_row(sessions.resume), 'resume the session')
   map('x', on_row(sessions.ask_stop), 'stop the session (asks first)')
   map('L', on_row(function(name)
     require('cland.agents_log').open({ session = name })

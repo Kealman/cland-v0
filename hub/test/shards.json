@@ -88,6 +88,7 @@
     "hub/test/routing.test.ts": "machine",
     "hub/test/session-async-processes.test.ts": "machine",
     "hub/test/session-brief.test.ts": "machine",
+    "hub/test/session-resume.test.ts": "machine",
     "hub/test/session-events.test.ts": "machine",
     "hub/test/session-holds.test.ts": "machine",
     "hub/test/session-launch.test.ts": "machine",

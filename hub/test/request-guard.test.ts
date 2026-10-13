@@ -180,7 +180,7 @@ for (const aggregate of [false, true]) for (const operation of ['launch', 'item-
       capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
       spawn: async (r) => {
         await wait();
-        return { name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, pidStarted: null, harnessId: null, sessionId: 'test-session', harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' };
+        return { name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, pidStarted: null, harnessId: null, sessionId: 'test-session', harnessSessionId: 'test-conversation', startedAt: new Date().toISOString(), status: 'running' };
       },
       attachCommand: () => 'attach-test',
       watch: () => { if (nextPart) { nextPart = false; block(200); } },

@@ -155,6 +155,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         const client = new OpenCodeClient(url, password);
         let model: ModelRef | null = p.model ? parseModel(p.model) : null;
         let session = p.harnessSessionId ? yield* wait(client.session(p.harnessSessionId)) : null;
+        if (relaunch && !session) throw new Error(`cannot resume OpenCode conversation ${p.harnessSessionId}: session not found`);
         if (retainConversation) {
           if (!session) throw new Error(`cannot retain OpenCode conversation ${p.harnessSessionId}: session not found`);
           const conversation = session.id;
@@ -218,7 +219,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: request.resumeConversation ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
+    return this.#launch({ name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */

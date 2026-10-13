@@ -571,7 +571,7 @@ export class CodexAdapter implements HarnessAdapter {
       yield* wait(this.#checkVersion(request.cwd, resumed));
       authorize();
       const files = new LaunchFiles(resumed);
-      const sessionId = randomUUID();
+      const sessionId = request.sessionId ?? randomUUID();
       this.#tmpRun = yield* wait(tmpRunDir(resumed));
       const socket = this.#socketPath(sessionId);
       const base = { name: request.name, role: request.role, sessionId, cwd: request.cwd };

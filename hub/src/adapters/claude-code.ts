@@ -322,7 +322,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    return this.#launch({ name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -514,7 +514,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
       yield* wait(this.stop(p, options.resumed));
-      const process = yield* wait(this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, null, resumed, undefined, () => {}, options.policy?.permissions ?? null));
+      const process = yield* wait(this.#launch({ name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, undefined, () => {}, options.policy?.permissions ?? null));
       return { found: true, process, state: 'unknown' };
     }).call(this), options.resumed ?? untimed);
   }

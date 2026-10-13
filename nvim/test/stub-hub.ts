@@ -48,6 +48,9 @@ export type Scenario = {
   launchError?: string;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
   stopError?: string;
+  resumeReason?: string;
+  resumeNotes?: string[];
+  resumeBrief?: string | null;
   /** `task.view` never answers (a disconnect while the client waits for it). */
   holdView?: boolean;
   /** Rank results can be delivered without events to test that UI movement waits for the hub. */
@@ -293,6 +296,14 @@ function answer(f: Frame) {
       Object.assign(p, { status: 'stopped', state: 'unknown', attach: null });
       write({ type: 'session.state', session: p.name, sessionId: p.sessionId, state: 'unknown', source: 'stopped', ts: now() });
       return ok(f.id, { process: p });
+    }
+    case 'session.resume': {
+      const p = scenario.processes?.find(x => x.name === f.session);
+      if (!p) return fail(f.id, `no session "${String(f.session)}" was launched by this hub`);
+      if (scenario.resumeReason && f.fresh !== true) return ok(f.id, { found: false, process: p, reason: scenario.resumeReason, fresh: { brief: scenario.resumeBrief ?? null }, notes: [] });
+      Object.assign(p, { status: 'running', state: 'idle' });
+      write({ type: 'session.process', process: p });
+      return ok(f.id, { found: true, process: p, role: p.role, claim: null, notes: scenario.resumeNotes ?? [] });
     }
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });

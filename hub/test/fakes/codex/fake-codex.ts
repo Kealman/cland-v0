@@ -57,7 +57,7 @@
 // Launch admission probes: hold-version / hold-thread-start wait for release-version / release-thread-start,
 // publishing version-running / thread-start-running before their response.
 // Recovery probes: hold-thread-resume waits for release-thread-resume, publishing thread-resume-running;
-// fail-thread-resume refuses the request without ending the server.
+// fail-thread-resume or cannot-resume refuses native resume without ending the server; fresh thread/start still works.
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
@@ -427,7 +427,7 @@ async function appServer(args: string[]): Promise<number> {
           writeFileSync(join(HOME, 'thread-resume-running'), 'ready');
           while (!existsSync(join(HOME, 'release-thread-resume'))) await sleep(5);
         }
-        if (existsSync(join(HOME, 'fail-thread-resume'))) return { error: { code: -32603, message: 'planted thread resume failure' } };
+        if ((existsSync(join(HOME, 'fail-thread-resume')) || existsSync(join(HOME, 'cannot-resume')))) return { error: { code: -32603, message: 'planted thread resume failure' } };
         const refusal = permissionsRefusal(params);
         if (refusal) return { error: { code: -32600, message: refusal } };
         const t = load(params.threadId as string);

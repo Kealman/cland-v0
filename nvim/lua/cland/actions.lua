@@ -50,11 +50,11 @@ for _, scope in ipairs({'items', 'sessions', 'topics', 'inbox'}) do
   group(scope, {{'<CR>', scope == 'sessions' and 'Attach selected session (or toggle background fold)' or 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
 end
 group('sessions', {{'l','Launch a session'}, {'a','Launch an Aide'}, {'<C-v>','Attach session in split'},
-  {'x','Stop selected session (confirm)'}, {'L','Agents log for selected session'},
+  {'x','Stop selected session (confirm)'}, {'r','Resume session'}, {'f','Launch session fresh with its brief'}, {'L','Agents log for selected session'},
   {'c','Session adapter capabilities'}, {'y','Confirm stopping session'},
   {'za','Toggle background sessions fold'}, {'zo','Open background sessions fold'}, {'zc','Close background sessions fold'},
   {'zR','Open all background sessions'}, {'zM','Fold all background sessions'}, {'<Tab>','Toggle background sessions fold'},
-  {'A','Show or hide session archive'}, {'n','Keep session running'}, {'<Esc>','Cancel stopping session'}})
+  {'A','Show or hide session archive'}, {'n','Keep session unchanged'}, {'<Esc>','Cancel session confirmation'}})
 group('topics', {{'n','New topic'}, {'c','Close selected topic'}, {'r','Resolve selected topic'}})
 for i, title in ipairs({'Release board','Items in work','Items needing you','Done items','Map items','All items'}) do
   add('items', tostring(i), title)
@@ -271,6 +271,7 @@ command('help', 'Keys', function() require('cland').help() end, 'global:<leader>
 command('refresh', 'Refresh from hub', function() require('cland').refresh() end)
 command('graph', 'Open experimental graph', function(args) require('cland.graph').open(args[1]) end, 'global:<leader>G')
 command('launch', 'Launch a session', function(args) require('cland.launcher').open({name=args[1]}) end, 'global:<leader>l')
+command('session resume', 'Resume session', function(args) require('cland.sessions').resume(args[1]) end, 'sessions:r')
 command('aide', 'Launch an Aide', function() require('cland.launcher').aide() end, 'global:<leader>A')
 for _, preset in ipairs({'charting','watch','steady'}) do
   command('preset ' .. preset, 'Preset: ' .. preset, function() layout().preset(preset) end)

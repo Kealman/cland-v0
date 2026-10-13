@@ -11,6 +11,7 @@ local M = { terms = {}, notes = {} }
 function M.setup(client)
   M.client = client
   M.waiting = {}
+  M.resuming = {}
   -- an attach asked for before the hub answered (at start, after a restart) goes out once it connects
   client:on('connected', function()
     local waiting = M.waiting
@@ -177,19 +178,22 @@ local function note(text, group)
   state.changed()
 end
 
-local CONFIRM_KEYS = { 'y', 'n', '<Esc>' }
+local CONFIRM_KEYS = { 'y', 'f', 'n', '<Esc>' }
 
---- Answer the pending confirmation: `yes` stops the session through the hub (`session.stop`).
-function M.resolve_stop(yes)
+local function clear_confirm()
   local confirm = state.S.ui.confirm
   state.S.ui.confirm = nil
   local b = require('cland.panels').bufs.sessions
   if b and api.nvim_buf_is_valid(b) then
-    for _, k in ipairs(CONFIRM_KEYS) do
-      pcall(vim.keymap.del, 'n', k, { buffer = b })
-    end
+    for _, k in ipairs(CONFIRM_KEYS) do pcall(vim.keymap.del, 'n', k, { buffer = b }) end
   end
   state.changed()
+  return confirm
+end
+
+--- Answer the pending confirmation: `yes` stops the session through the hub (`session.stop`).
+function M.resolve_stop(yes)
+  local confirm = clear_confirm()
   if not (confirm and yes) then
     return
   end
@@ -227,6 +231,7 @@ function M.ask_stop(name)
   if not s.live then
     return note(name .. ' is not running (' .. tostring(s.status) .. ')', 'ClandDim')
   end
+  clear_confirm()
   state.S.ui.confirm = { session = name }
   local b = require('cland.panels').bufs.sessions
   if b and api.nvim_buf_is_valid(b) then
@@ -240,6 +245,70 @@ function M.ask_stop(name)
     map('<Esc>', false)
   end
   state.changed()
+end
+
+local function resume_request(name, fresh)
+  if not (M.client and M.client:connected()) then
+    return note('cannot resume ' .. name .. ': not connected to the hub', 'ClandRed')
+  end
+  if M.resuming[name] then return end
+  M.resuming[name] = true
+  note((fresh and 'launching ' or 'resuming ') .. name .. '…', 'ClandDim')
+  M.client:request({ type = 'session.resume', session = name, relaunch = not fresh, fresh = fresh }, function(err, value)
+    M.resuming[name] = nil
+    if err then return note('resume ' .. name .. ' refused: ' .. tostring(err):gsub('\n', ' '), 'ClandRed') end
+    if value and value.found then
+      local p = value.process
+      if p then
+        for i, row in ipairs(state.S.processes) do
+          if row.name == p.name then state.S.processes[i] = p end
+        end
+      end
+      local text = name .. (fresh and ' launched fresh' or ' resumed')
+      if #(value.notes or {}) > 0 then text = text .. ' · ' .. table.concat(value.notes, ' · ') end
+      note(text, 'ClandDim')
+      pcall(require('cland').refresh_sessions)
+    elseif value and type(value.fresh) == 'table' then
+      clear_confirm()
+      state.S.ui.confirm = { kind = 'resume', session = name, reason = value.reason or 'harness cannot resume', brief = value.fresh.brief }
+      state.S.sessions_note = nil
+      local b = require('cland.panels').bufs.sessions
+      if b and api.nvim_buf_is_valid(b) then
+        for lhs, yes in pairs({ f = true, n = false, ['<Esc>'] = false }) do
+          require('cland.actions').map('n', lhs, function() M.resolve_resume(yes) end, { buffer = b, nowait = true, silent = true })
+        end
+      end
+      state.changed()
+    else
+      note('cannot resume ' .. name .. ': ' .. (value and value.reason or 'no answer'), 'ClandRed')
+    end
+  end)
+end
+
+function M.resolve_resume(yes)
+  local confirm = clear_confirm()
+  if not confirm or confirm.kind ~= 'resume' then return end
+  if yes then resume_request(confirm.session, true)
+  else note(confirm.session .. ' kept stopped', 'ClandDim') end
+end
+
+--- Selected stopped row or an explicitly named session. Live rows never send a relaunch.
+function M.resume(name)
+  if not name then
+    name = vim.b.cland_session
+    if not name then
+      local b = require('cland.panels').bufs.sessions
+      local win = b and vim.fn.bufwinid(b) or -1
+      local row = win ~= -1 and require('cland.panels').row_at(b, api.nvim_win_get_cursor(win)[1])
+      name = row and row.session
+    end
+  end
+  local s = name and state.session(name)
+  if not s then return note('select or name a stopped session to resume', 'ClandDim') end
+  if not s.launched then return note(name .. ' was not launched by cland', 'ClandRed') end
+  if s.live then return note(name .. ' is running', 'ClandDim') end
+  clear_confirm()
+  resume_request(name, false)
 end
 
 M.CAP_ORDER = { 'busy', 'idle', 'waiting for approval', 'waiting for human' }

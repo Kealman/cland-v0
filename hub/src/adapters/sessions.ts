@@ -36,10 +36,14 @@ export type LaunchRequest = { name: string; role?: string | null; model?: string
 /** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
 export class InvalidLaunchCwd extends Error {}
 
-type LaunchOwnership = { name: string; prior: string | null; existingIds: Set<string>; sessionIds: Set<string>; anonymousSessionId: string | null; returnedId: string | null };
+/** Item claims stay with the cland identity; verifier holds must be retaken after a stop. */
+export type SessionResumeAnswer = { found: boolean; reason?: string; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; fresh?: { brief: string | null } };
+
+type LaunchOwnership = { name: string; prior: string | null; existingIds: Set<string>; sessionIds: Set<string>; anonymousSessionId: string | null; returnedId: string | null; retainedId?: string };
 
 function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: Set<string>): string | null {
   if (id === UNKNOWN_SESSION) return `launch "${launch.name}" must prove a stable session identity, not unknown`;
+  if (id === launch.retainedId) return null;
   return launch.existingIds.has(id) || (currentIds.has(id) && !launch.sessionIds.has(id)) ? `launch "${launch.name}" cannot prove pre-existing session identity (${id}); use the launch's new identity` : null;
 }
 
@@ -468,6 +472,10 @@ export class Sessions {
     // Brief settlement belongs to this receipt's launch credential. A failure here keeps the stopped
     // process's receipt for retry; it never bypasses the owned-process stop above.
     if (entry.ownership) this.#core.cancelLaunchBrief(entry.ownership.credential);
+    if (entry.restoreRow) {
+      const current = this.#table.get(entry.restoreRow.name);
+      if (!current || current.sessionId === entry.restoreRow.sessionId) this.#table.put(entry.restoreRow);
+    }
     this.#recoveryObservers.get(process.sessionId)?.();
     this.#table.clearPendingStop(process.sessionId);
     for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
@@ -564,9 +572,10 @@ export class Sessions {
     return resumed(() => reused ?? this.#launchNew(request, role, resumed, authorize));
   }
 
-  async #launchNew(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message): Promise<HarnessProcessView> {
+  async #launchNew(request: LaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message, retainedId?: string): Promise<HarnessProcessView> {
     const effectiveRequest = { ...request, role };
     const existing = this.#table.get(request.name);
+    if (retainedId && existing?.sessionId !== retainedId) throw new Error(`session "${request.name}" was replaced; retry the fresh resume`);
     if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     if ([...this.#pendingStops.values()].some(entry => entry.process.name === request.name)) throw new Error(`failed launch of "${request.name}" is still supervised; cleanup is pending`);
     const reserved = this.#core.nameReservation(request.name);
@@ -584,7 +593,7 @@ export class Sessions {
     this.#launching.set(request.name, launching);
     const priorIdentity = existing?.sessionId ?? this.#core.store.sessionIdOf(request.name);
     const launchToken = randomUUID();
-    const identity: LaunchOwnership = { name: request.name, prior: priorIdentity === UNKNOWN_SESSION ? null : priorIdentity, existingIds, sessionIds: new Set(), anonymousSessionId: null, returnedId: null };
+    const identity: LaunchOwnership = { name: request.name, prior: priorIdentity === UNKNOWN_SESSION ? null : priorIdentity, existingIds, sessionIds: new Set(), anonymousSessionId: null, returnedId: null, ...(retainedId ? { retainedId } : {}) };
     this.#launchIdentities.set(launchToken, identity);
     const abort = () => {
       if (this.#launching.get(request.name) !== launching) return;
@@ -627,7 +636,7 @@ export class Sessions {
           if (!info?.isDirectory()) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (process.env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation);
+          return this.#spawnLaunch(effectiveRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -666,14 +675,15 @@ export class Sessions {
     });
   }
 
-  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string): Promise<HarnessProcessView> {
+  async #spawnLaunch(request: LaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string, retainedId?: string): Promise<HarnessProcessView> {
     const role = request.role ?? null;
+    const restoreRow = retainedId ? this.#table.get(request.name) : null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
     const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
     const harness = request.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
     const forHarness = defaults !== null && defaults.harness === harness;
-    const model = request.model ?? (forHarness ? defaults.model : null);
-    const effort = request.effort ?? (forHarness ? defaults.effort : null);
+    const model = retainedId ? request.model ?? null : request.model ?? (forHarness ? defaults.model : null);
+    const effort = retainedId ? request.effort ?? null : request.effort ?? (forHarness ? defaults.effort : null);
     const policy = this.#launchPolicy(role);
     const adapter = this.adapter(harness);
     const clause = role !== null && this.#core.roles ? clauseText(request.name, role, this.#core.roleDefinition(role)) : null;
@@ -684,9 +694,10 @@ export class Sessions {
     let accepted = false;
     try {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ name: request.name, launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
+      owned = await adapter.spawn({ name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, authorize);
       resumed(() => {
         if (resumeConversation && owned!.harnessSessionId !== resumeConversation) throw new Error(`harness did not retain conversation ${resumeConversation}`);
+        if (retainedId && owned!.sessionId !== retainedId) throw new Error(`fresh resume did not retain cland identity ${retainedId}`);
         const proven = !launchIdentityRefusal(identity, owned!.sessionId, this.#knownLaunchIds());
         if (proven) identity.sessionIds.add(owned!.sessionId);
         identity.returnedId = owned!.sessionId;
@@ -695,7 +706,7 @@ export class Sessions {
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
       const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed) : null);
-      const p: HarnessProcess = { ...owned, item, pidStarted };
+      const p: HarnessProcess = { ...owned, item, pidStarted, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
         authorize();
@@ -744,7 +755,7 @@ export class Sessions {
         // A rejected foreign adapter identity owns no row, terminal fact or verifier hold.
         const rejectedId = !(cause instanceof LaunchRecoveryPending) && !identity.sessionIds.has(owned.sessionId);
         const process: HarnessProcess = { ...owned, ...(rejectedId ? { sessionId: randomUUID() } : {}), item, status: 'stopped' };
-        const entry: PendingStop = { process, ...(cause instanceof LaunchRecoveryPending ? { files: cause.files } : {}), error: detail, priorSessionId: conflict ? null : identity.prior, ownership: { credential: launchToken, sessionIds: [...identity.sessionIds], anonymousSessionId: identity.anonymousSessionId }, stages: { stopped: false, rowRemoved: false, roleRolledBack: false }, ...(role !== null && reservation ? { rollback: { role, previous: reservation.previous, previousSessionId: conflict ? null : reservation.previousSessionId } } : {}) };
+        const entry: PendingStop = { process, ...(restoreRow ? { preserveRow: true, restoreRow } : {}), ...(cause instanceof LaunchRecoveryPending ? { files: cause.files } : {}), error: detail, priorSessionId: conflict ? null : identity.prior, ownership: { credential: launchToken, sessionIds: [...identity.sessionIds], anonymousSessionId: identity.anonymousSessionId }, stages: { stopped: false, rowRemoved: false, roleRolledBack: false }, ...(role !== null && reservation ? { rollback: { role, previous: reservation.previous, previousSessionId: conflict ? null : reservation.previousSessionId } } : {}) };
         resumed(() => {
           this.#pendingStops.set(process.sessionId, entry);
           this.#retryStops();
@@ -762,7 +773,7 @@ export class Sessions {
           const proven = [...identity.sessionIds];
           for (const id of proven.length ? proven : [null]) this.#core.releaseLaunchRole(request.name, role, reservation.previous, 'launch-failed', id, reservation.previousSessionId);
         }
-        if (!owned) for (const id of identity.sessionIds) this.#core.store.endSubscriptions(id);
+        if (!owned && !retainedId) for (const id of identity.sessionIds) this.#core.store.endSubscriptions(id);
         const original = cause instanceof LaunchRecoveryPending ? cause.cause : cause;
         if (original instanceof Error) { original.message = detail; throw original; }
         throw new Error(detail);
@@ -822,8 +833,9 @@ export class Sessions {
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
-  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false): Promise<SessionResumeAnswer> {
     authorize();
+    if (fresh) return this.#freshResume(name, resumed, authorize);
     const identity = this.#process(name).sessionId;
     if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
@@ -843,9 +855,39 @@ export class Sessions {
     } finally { resumed(() => { this.#resuming--; slot.release(); }); }
   }
 
-  async #resume(name: string, relaunch: boolean, resumed: Resumed): Promise<{ found: boolean; reason?: string; process: HarnessProcessView }> {
+  async #freshResume(name: string, resumed: Resumed, authorize: () => void): Promise<SessionResumeAnswer> {
+    const original = this.#process(name);
+    if (original.status === 'running') throw new Error(`session "${name}" is running; stop it before launching fresh`);
+    if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+    const request = resumed(() => {
+      authorize();
+      const current = this.#process(name);
+      if (current.sessionId !== original.sessionId) throw new Error(`session "${name}" was replaced; retry`);
+      const role = current.role && this.#core.holderOf(current.role, name) ? null : current.role;
+      return { name, role, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
+    });
+    const process = await resumed(() => this.#launchNew(request, request.role, resumed, authorize, undefined, undefined, original.sessionId));
+    return resumed(() => {
+      const work = this.#resumeWork(this.#process(process.name), original.role);
+      if (original.launchBrief == null) work.notes.push('no brief recorded');
+      this.#log({ event: 'session-resumed', session: process.name, harness: process.harness, relaunched: true, fresh: true, ...work });
+      return { found: true, process, ...work };
+    });
+  }
+
+  async #resume(name: string, relaunch: boolean, resumed: Resumed): Promise<SessionResumeAnswer> {
     let p = this.#process(name);
     const adapter = this.adapter(p.harness);
+    const desiredRole = p.role;
+    if (relaunch && !p.harnessSessionId) return { found: false, reason: 'no harness conversation id recorded', process: this.view(p), ...this.#resumeWork(p), fresh: { brief: p.launchBrief ?? null } };
+    let reservation: { previous: string | null; previousSessionId: string | null } | null = null;
+    if (relaunch && p.status !== 'running' && p.role !== null && this.#core.roles) {
+      // Reserve before the resumed hello. An occupied exclusive role belongs to its new holder.
+      if (this.#core.holderOf(p.role, name)) {
+        this.#table.update(name, { role: null });
+        p = this.#process(name);
+      } else reservation = this.#core.reserveLaunchRole(name, p.role);
+    }
     // a relaunch is a new harness process on the same conversation, whatever became of the old one: one that
     // still runs is stopped first (its row keeps the role: this is not the session's end, so nothing is vacated)
     // the row as it is now, by the session's id: while the adapter works the session may rename itself (the
@@ -878,29 +920,38 @@ export class Sessions {
         });
         let detail = cause.message;
         try { await this.#stopFailedLaunch(entry, resumed); }
-        catch (error) { detail += `; spawned process cleanup failed: ${error instanceof Error ? error.message : String(error)}; cleanup is pending and the failed launch remains supervised`; }
-        return resumed(() => {
-          if (cause.cause instanceof Error) { cause.cause.message = detail; throw cause.cause; }
-          throw new Error(detail);
-        });
+        catch (error) {
+          resumed(() => { if (reservation && desiredRole) this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId); });
+          throw new Error(`${detail}; spawned process cleanup failed: ${error instanceof Error ? error.message : String(error)}; cleanup is pending and the failed launch remains supervised`);
+        }
+        r = { found: false, reason: detail };
+      } else {
+        if (!relaunch) throw cause;
+        r = { found: false, reason: cause instanceof Error ? cause.message : String(cause) };
       }
-      throw cause;
     }
     const publish = (found: Extract<ResumeResult, { found: true }>, pidStarted: string | null) => {
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
-      const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, pidStarted };
+      const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted };
       this.#table.put(process);
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));
-      this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running' });
+      if (reservation) this.#core.launchSettled(process.name);
+      const work = this.#resumeWork(process, desiredRole);
+      this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running', ...work });
       if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at: Date.now() }, false);
-      return { found: true, process: this.view(process) };
+      return { found: true, process: this.view(process), ...work };
     };
     const settled = resumed(() => {
       if (!r.found) {
         if (p.status === 'running') this.#exited(p.sessionId, r.reason);
-        return { answer: { found: false, reason: r.reason, process: this.view(row()) } };
+        if (reservation && desiredRole) {
+          this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
+          this.#table.update(row().name, { role: desiredRole });
+        }
+        const current = row();
+        return { answer: { found: false, reason: r.reason, process: this.view(current), ...this.#resumeWork(current, desiredRole), ...(relaunch ? { fresh: { brief: current.launchBrief ?? null } } : {}) } };
       }
       const current = row();
       const cached = r.process.pid === current.pid ? current.pidStarted : null;
@@ -911,6 +962,15 @@ export class Sessions {
     if ('answer' in settled) return settled.answer!;
     const pidStarted = await settled.identity;
     return resumed(() => publish(settled.resumed, pidStarted));
+  }
+
+  #resumeWork(p: HarnessProcess, desiredRole = p.role): Pick<SessionResumeAnswer, 'role' | 'claim' | 'notes'> {
+    const claim = this.#core.sessionHolds(p).find(h => h.role === 'item')?.item ?? null;
+    const notes: string[] = [];
+    if (desiredRole && p.role !== desiredRole) notes.push(`${desiredRole} role was not restored: another session holds it`);
+    if (p.item && claim !== p.item) notes.push(`${p.item} claim was not restored: the item closed or is no longer held by this session`);
+    if (desiredRole === 'reviewer' || desiredRole === 'qa') notes.push('verifier holds were not restored; retake the hold before verifying');
+    return { role: p.role, claim, notes };
   }
 
   /** After all adapters/callbacks are installed, reconcile terminal rows and interrupted launch reservations. */

@@ -6,7 +6,7 @@ import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, readFile, realpath, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, realpath, stat, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -605,4 +605,34 @@ test('a opencode Lead receives its epic claim, role clause and direct node addre
   const viewed = await ui.request({ type: 'task.view', item: id });
   assert.equal(viewed.ok, true, viewed.error);
   assert.equal((viewed.value as { item: { claim: { session: string } } }).item.claim.session, 'lead-1');
+});
+
+// T-304: a missing native conversation needs explicit consent to launch fresh.
+test('a stopped OpenCode session whose native conversation disappeared offers fresh instead of recreating its id', { skip: NO_PS }, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeOpenCode(t);
+  const { discovery } = await startDaemon(t, root, fake.env);
+  const ui = await connectUi(t, discovery);
+  const before = await launch(ui, 'impl', { role: 'implementer', brief: 'Start the replacement from this OpenCode brief.' });
+  await eventually('first input reaches OpenCode', async () => (await fake.prompts(before.harnessSessionId!)).includes('OpenCode brief') || undefined);
+  assert.equal((await ui.request({ type: 'session.stop', session: 'impl' }, 30_000)).ok, true);
+  await rm(join(fake.home, 'sessions', `${before.harnessSessionId}.json`));
+  const r = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
+  assert.equal(r.ok, true, r.error);
+  const value = r.value as { found: boolean; reason: string; fresh: { brief: string } };
+  assert.equal(value.found, false);
+  assert.match(value.reason, /session not found/);
+  assert.equal(value.fresh.brief, 'Start the replacement from this OpenCode brief.');
+  await writeFile(join(fake.home, 'fail-session'), 'refuse the fresh launch');
+  const refused = await ui.request({ type: 'session.resume', session: 'impl', fresh: true }, 30_000);
+  assert.equal(refused.ok, false);
+  const listed = (await ui.request({ type: 'session.list' })).value as { processes: Harness[] };
+  assert.equal(listed.processes[0]?.harnessSessionId, before.harnessSessionId, 'failed fresh launch preserves the stopped conversation row');
+  await rm(join(fake.home, 'fail-session'));
+  const fresh = await ui.request({ type: 'session.resume', session: 'impl', fresh: true }, 30_000);
+  assert.equal(fresh.ok, true, fresh.error);
+  const after = (fresh.value as { process: Harness }).process;
+  assert.equal(after.sessionId, before.sessionId);
+  assert.notEqual(after.harnessSessionId, before.harnessSessionId);
+  await eventually('fresh first input carries OpenCode brief', async () => (await fake.prompts(after.harnessSessionId!)).includes('OpenCode brief') || undefined);
 });

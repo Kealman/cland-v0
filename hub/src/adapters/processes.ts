@@ -53,7 +53,9 @@ create table if not exists harness_processes (
   started_at text not null,
   status text not null,
   pid_started text,
-  item text
+  item text,
+  brief text,
+  effort text
 );
 create index if not exists harness_processes_session on harness_processes (session_id);
 create table if not exists harness_pending_stops (
@@ -70,6 +72,8 @@ export type PendingStop = {
   files?: LaunchFilesState;
   /** Failed relaunches retain the prior conversation row for another explicit resume. */
   preserveRow?: boolean;
+  /** A failed explicit fresh resume restores its stopped launch row after cleanup. */
+  restoreRow?: HarnessProcess;
   error: string;
   stopIntent?: boolean;
   published?: boolean;
@@ -94,6 +98,8 @@ const toProcess = (r: Row): HarnessProcess => ({
   status: r.status as HarnessProcess['status'],
   pidStarted: (r.pid_started as string | null) ?? null,
   item: (r.item as string | null) ?? null,
+  launchBrief: (r.brief as string | null) ?? null,
+  effort: (r.effort as string | null) ?? null,
 });
 
 export class ProcessTable {
@@ -108,6 +114,8 @@ export class ProcessTable {
     const columns = new Set((this.#db.prepare('pragma table_info(harness_processes)').all() as Row[]).map((r) => r.name as string));
     if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
+    if (!columns.has('brief')) this.#db.exec('alter table harness_processes add column brief text');
+    if (!columns.has('effort')) this.#db.exec('alter table harness_processes add column effort text');
     if (!columns.has('item')) this.#db.exec('alter table harness_processes add column item text');
   }
 
@@ -130,12 +138,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, item, brief, effort) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, item = excluded.item`,
+           pid_started = excluded.pid_started, item = excluded.item, brief = excluded.brief, effort = excluded.effort`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null);
+      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null);
     this.#changed(p.name);
   }
 
