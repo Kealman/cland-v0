@@ -1,0 +1,154 @@
+// The local worker and its process ownership stay behind this backend.
+import { spawn } from 'node:child_process';
+import { open, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { pidAlive } from '../project.ts';
+import { processStartedAsync } from '../hub/lock.ts';
+import { systemProcesses, endProcess } from '../system-processes.ts';
+import { compatibilityOccupied, compatibilityHolder } from '../suite-lock.ts';
+import type { Executor, Lease, Platform, Released, RunRef, RunStatus } from './executor.ts';
+
+export type LocalWorker = { pid: number | null; started: string | null; outcome: { code: number; cause: string } | null; cancelled?: boolean };
+type Resource = LocalWorker & { run: RunRef; platform?: Platform; attempted?: boolean };
+
+export class LocalExecutor implements Executor {
+  readonly #leases = new Map<string, Lease>();
+  readonly #starting = new Map<string, Promise<void>>();
+  #reserved: string | null = null;
+  readonly #locks: string[];
+  readonly #checkpoint: (lease: Lease, worker: LocalWorker) => void;
+  readonly #admit: (run: string) => void;
+  constructor(locks: string[], checkpoint: (lease: Lease, worker: LocalWorker) => void, admit: (run: string) => void) {
+    this.#locks = locks; this.#checkpoint = checkpoint; this.#admit = admit;
+  }
+  holder(): ReturnType<typeof compatibilityHolder> { return compatibilityHolder(this.#locks); }
+  occupied(): Promise<boolean> { return compatibilityOccupied(this.#locks); }
+  /** Old jobs stored these facts directly. Their persisted identity remains authoritative. */
+  restore(run: RunRef, worker: LocalWorker, previous?: Lease): Lease {
+    const lease: Lease = { kind: 'local', run: run.id, created: previous?.created ?? run.queued ?? new Date().toISOString(), deadline: previous?.deadline ?? new Date(Date.now() + 15000).toISOString(), resource: { ...(previous?.resource as Partial<Resource> | undefined), pid: worker.pid, started: worker.started, outcome: worker.outcome, ...(worker.cancelled ? { cancelled: true } : {}), run } };
+    this.#leases.set(run.id, lease);
+    if (worker.pid && !worker.outcome) this.#reserved = run.id;
+    return lease;
+  }
+  async acquire(run: RunRef, deadline: string): Promise<Lease> {
+    const existing = this.#leases.get(run.id);
+    if (existing) return existing;
+    if (this.#reserved !== null) throw new Error('local executor slot is occupied');
+    // The scheduler checks compatibility admission. A hand run racing that check
+    // is fenced by the worker's atomic compatibility acquisition, as before.
+    const lease = this.restore(run, { pid: null, started: null, outcome: null });
+    lease.deadline = deadline;
+    this.#reserved = run.id;
+    this.#checkpoint(lease, lease.resource as Resource);
+    return lease;
+  }
+  async prepare(_identity: string): Promise<void> {}
+  async deliver(_lease: Lease, _run: RunRef): Promise<void> {}
+  start(lease: Lease, run: RunRef): Promise<void> {
+    const existing = this.#starting.get(run.id);
+    if (existing) return existing;
+    const work = this.#start(lease, run).finally(() => this.#starting.delete(run.id));
+    this.#starting.set(run.id, work);
+    return work;
+  }
+  async #start(lease: Lease, run: RunRef): Promise<void> {
+    const resource = lease.resource as Resource;
+    // A start already attempted never launches a second worker, even after its exit.
+    if (resource.attempted || resource.pid || resource.outcome) return;
+    const input = join(dirname(run.result), 'job.json');
+    await writeFile(input, JSON.stringify(run), { mode: 0o600 });
+    const fd = await open(run.log, 'a');
+    try {
+      this.#admit(run.id);
+      const env = { ...process.env };
+      delete env.NODE_TEST_CONTEXT;
+      delete env.CLAND_SUITE_LEASE;
+      resource.attempted = true;
+      this.#checkpoint(lease, resource);
+      const child = spawn(process.execPath, [fileURLToPath(new URL('../hub/suite-worker.ts', import.meta.url)), input], { cwd: run.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
+      child.once('error', error => {
+        resource.outcome ??= { code: 1, cause: `worker could not start: ${error.message}` };
+        this.#checkpoint(lease, resource);
+      });
+      child.once('close', (code, signal) => {
+        if (signal || code !== 0) resource.outcome ??= { code: code ?? 1, cause: signal ? `worker killed by ${signal}` : `worker exited ${code}` };
+        this.#checkpoint(lease, resource);
+      });
+      child.unref();
+      resource.pid = child.pid ?? null;
+      resource.started = resource.pid ? await processStartedAsync(resource.pid) : null;
+      this.#checkpoint(lease, resource);
+      if (!resource.pid || !resource.started) throw new Error('cannot establish suite worker process identity');
+      this.#admit(run.id);
+      await writeFile(run.gate, 'ready');
+    } finally { await fd.close(); }
+  }
+  async status(lease: Lease): Promise<RunStatus> {
+    const resource = lease.resource as Resource;
+    const receipt = await readFile(resource.run.result, 'utf8').then(text => JSON.parse(text) as Omit<RunStatus, 'state'>, () => null);
+    if (receipt) return { ...receipt, state: 'done' };
+    // A killed worker may have measured the platform without reaching its receipt.
+    const line = resource.platform ? null : (await this.log(lease, 0)).text.match(/^platform (\S+) (\S+) (\S+) · Node (\S+) · Neovim (\S+)$/m);
+    const platform: Platform | undefined = resource.platform ?? (line ? { os: line[1]!, arch: line[2]!, release: line[3]!, node: line[4]!, nvim: line[5]! } : undefined);
+    if (platform) resource.platform = platform;
+    const measured = platform ? { platform } : {};
+    if (resource.outcome) return { ...resource.outcome, ...measured, state: 'done' };
+    if (resource.pid && pidAlive(resource.pid)) {
+      const current = await processStartedAsync(resource.pid);
+      if (resource.started === null || current === null || current === resource.started) return { ...measured, state: 'running' };
+    }
+    return { ...measured, state: 'lost', code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
+  }
+  async log(lease: Lease, offset: number): Promise<{ text: string; next: number }> {
+    const fd = await open((lease.resource as Resource).run.log, 'r');
+    try {
+      const length = Math.max(0, (await fd.stat()).size - offset);
+      const bytes = Buffer.alloc(length);
+      const { bytesRead } = await fd.read(bytes, 0, length, offset);
+      return { text: bytes.subarray(0, bytesRead).toString('utf8'), next: offset + bytesRead };
+    } finally { await fd.close(); }
+  }
+  async cancel(lease: Lease, signal: string): Promise<void> {
+    const resource = lease.resource as Resource;
+    resource.cancelled = true;
+    if (!resource.pid || !resource.started || !pidAlive(resource.pid)) return;
+    if (await processStartedAsync(resource.pid) !== resource.started) return;
+    // Identity verification precedes the worker's existing group interrupt protocol.
+    try { process.kill(-resource.pid, signal as NodeJS.Signals); } catch {}
+  }
+  async release(lease: Lease): Promise<Released> {
+    const resource = lease.resource as Resource;
+    const { pid, started } = resource;
+    const receipt = await readFile(resource.run.result, 'utf8').then(text => JSON.parse(text) as { code: number }, () => null);
+    if (receipt?.code === 0 && !resource.cancelled) {
+      if (this.#reserved === lease.run) this.#reserved = null;
+      return { lifetimeMs: null, costUsd: null };
+    }
+    if (pid && !started && pidAlive(pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
+    if (pid && started) {
+      if (!await endProcess({ pid, pidStarted: started }, () => {}, resource.cancelled ? 10000 : 500, undefined, { allowReused: true })) throw new Error('suite cleanup could not verify the worker identity');
+      const rows = await systemProcesses();
+      const leader = rows.find(row => row.pid === pid);
+      if (!leader || leader.started === started) {
+        for (const row of rows.filter(row => row.group === pid && row.pid !== pid)) {
+          if (!await endProcess({ pid: row.pid, pidStarted: row.started }, () => {}, 500, undefined, { allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
+        }
+      }
+    }
+    if (this.#reserved === lease.run) this.#reserved = null;
+    return { lifetimeMs: null, costUsd: null };
+  }
+  /** Restored leases reattach to receipts/live identities; Suites settles and reports them. */
+  async reap(olderThanMs = 0): Promise<void> {
+    for (const lease of this.#leases.values()) {
+      if (Date.now() - Date.parse(lease.created) < olderThanMs) continue;
+      const status = await this.status(lease);
+      if (status.state === 'lost') {
+        const resource = lease.resource as Resource;
+        resource.outcome ??= { code: status.code ?? 1, cause: status.cause ?? 'worker disappeared' };
+        this.#checkpoint(lease, resource);
+      }
+    }
+  }
+}

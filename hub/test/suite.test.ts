@@ -63,7 +63,8 @@ test('verify card follows branch jobs through finish and cache, updates the UI s
     const card = (list.value as { items: ItemSummary[] }).items.find(i => i.id === item.id);
     return card?.verify?.id === job.id && card.verify.artifact ? card : undefined;
   });
-  assert.deepEqual(card.verify, { id: job.id, state: 'finished', result: 'passed', head, finished: card.verify!.finished, artifact: report.artifacts[0]!.id });
+  assert.deepEqual(card.verify, { executor: 'local', id: job.id, state: 'finished', result: 'passed', head, finished: card.verify!.finished, artifact: report.artifacts[0]!.id });
+  assert.equal(card.verify!.executor, 'local');
   assert.ok(card.verify!.finished);
   const frames = f.ui.frames.slice(from).filter(frame => frame.type === 'task' && (frame.item as ItemSummary)?.id === item.id);
   assert.equal(frames.filter(frame => (frame.item as ItemSummary).verify?.result === 'passed').length, 1, 'one terminal card, including the artifact');
@@ -71,6 +72,7 @@ test('verify card follows branch jobs through finish and cache, updates the UI s
   assert.equal(f.spoke.events.filter(n => n.params.content.includes(item.id)).length, 0, 'no item event delivery');
   const detail = await f.ui.request({ type: 'task.view', item: item.id });
   assert.deepEqual((detail.value as { item: ItemView }).item.verify, card.verify);
+  assert.equal(JSON.parse((await cland(f.root, 'task', 'view', item.id, '--json')).stdout).item.verify.executor, 'local');
   const cached = await f.launch();
   assert.equal(cached.cached?.run, job.id);
   await eventually('cached card', async () => {
@@ -327,6 +329,10 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
   assert.equal(cached.waitMs, 0); assert.equal(cached.runMs, 0);
   assert.equal(cached.finished, run.finished, 'expiry still refers to original completion');
   assert.notEqual(cached.completedAt, run.completedAt, 'metrics refer to this request');
+  assert.equal(run.executor, 'local');
+  assert.ok(run.platform);
+  assert.equal(cached.executor, run.executor);
+  assert.deepEqual(cached.platform, run.platform);
   const stats = status.verification!.metrics;
   assert.equal(stats.count, 2);
   assert.equal(stats.run.count, 2);
@@ -338,6 +344,11 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
   const recorded = journal.filter(e => e.event === 'verification-timing');
   assert.equal(recorded.length, 2);
   assert.equal(recorded.find(e => e.id === hit.id)?.runMs, 0);
+  for (const id of [first.id, hit.id]) for (const event of ['verification-timing', 'suite-result']) {
+    const entry = journal.find(e => e.id === id && e.event === event);
+    assert.equal(entry?.executor, 'local');
+    assert.deepEqual(entry?.platform, run.platform);
+  }
   await writeFile(join(lock, 'holder.json'), JSON.stringify({ pid: process.pid, started: null, since: new Date().toISOString(), token: 'hand' }));
   const fresh = await f.launch('all', '--fresh');
   const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
@@ -431,6 +442,7 @@ test(`a broad deciding-file list publishes once below the ${cap}-byte cap and st
   assert.match(result.text, /package-local diff against fetched dev/);
   assert.match(result.text, /full list in log/);
   assert.ok(!result.text.includes('�'));
+  assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   const log = await readFile(result.artifacts[0]!.path, 'utf8');
   assert.ok(names.every(name => log.includes(name)), 'every deciding path remains in the log');
   await eventually('bounded report settled', async () => {
@@ -454,6 +466,7 @@ test('suite CLI exits before its worker, posts one artifact-backed result as cal
   assert.equal(result.from, 'impl'); assert.equal(result.fromRole, 'implementer');
   assert.deepEqual(result.to.sort(), ['impl', 'rev']);
   assert.match(result.text, /all exit 0/); assert.match(result.text, /tests 2; pass 2; fail 0/);
+  assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   const artifact = result.artifacts[0]!;
   assert.equal(artifact.creator, 'impl');
   assert.match(await readFile(artifact.path, 'utf8'), /\$ npm run typecheck/);
@@ -671,6 +684,10 @@ test('hub restart recovers a worker that outlives it, without replaying the resu
   };
   const results = await eventually('restart result', async () => { const r = await history(); return r.length ? r : undefined; });
   assert.equal(results.length, 1); assert.match(results[0]!.text, /all exit 0/);
+  assert.match(results[0]!.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
+  const recoveredStatus = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+  assert.equal(recoveredStatus.suites!.find(run => run.id === job.id)!.executor, 'local');
+  assert.equal(recoveredStatus.suites!.find(run => run.id === job.id)!.platform?.nvim, 'none');
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const next = await startDaemon(t, f.root);
   const nextUi = await connectUi(t, next.discovery);
@@ -1209,6 +1226,7 @@ test('verify reuses a green candidate tree after a tracker-only commit and repor
   assert.equal(same.cached?.run, original.id);
   const repeated = await eventually('same-head cached result', async () => (await f.results())[1]);
   assert.match(repeated.text, /cached/);
+  assert.equal(repeated.text.split('\n').find(line => line.startsWith('Executor ')), green.text.split('\n').find(line => line.startsWith('Executor ')));
   assert.ok(repeated.text.includes(original.id) && repeated.text.includes(a));
   await git('checkout', 'dev');
   await writeFile(join(f.root, '.cland', 'tasks', 'cache-note.md'), 'tracker-only');
@@ -1336,6 +1354,7 @@ test('a bounded cached report retains both heads, original run and candidate tre
   assert.ok(Buffer.byteLength(result.text) <= 384);
   assert.ok(result.text.includes('cached') && result.text.includes(head) && result.text.includes(original.id) && result.text.includes(hit.cached!.head) && result.text.includes(hit.cached!.tree));
   assert.equal(result.artifacts.length, 1);
+  assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   await eventually('bounded cache settled', async () => {
     const status = await f.ui.request({ type: 'hub.status' });
     return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(j => j.reported) ? true : undefined;

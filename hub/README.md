@@ -1283,6 +1283,20 @@ order. The queue survives hub restart. A known dead
 requester's queued run is cancelled with one hub note to its original recipients;
 a disconnected spoke alone does not prove death. `cland suite` is a transition alias.
 
+Results include `Executor local · <os> <arch> · Node <version> · Neovim <pin>`
+after the branch and head line. The worker records OS, architecture, OS release,
+the Node on its PATH in the candidate worktree and the candidate's
+`nvim/NVIM_VERSION` pin (`none` when absent). Cards name the executor, status and
+journal records carry the executor/platform, and cache hits keep the original
+run's executor and platform. Older jobs without an executor read as `local`.
+
+**Executors.** `hub/src/executor/executor.ts` defines acquire, deliver, prepare,
+start, status, log, cancel, release and reap. The backend owns its durable lease's
+resource payload; detached starts outlive the hub and status reattaches after
+restart. `local` is the default and the only executor so far. The local backend
+owns the existing suite worker, compatibility slot and process cleanup; the hub
+shares the queue, cache, timings, verify card and report across executors.
+
 `[verification].budget` defaults to 1. Higher values are retained in config but
 capped at 1 with a `verification-budget-capped` log note. T-215 retains this
 conservative budget: only five hermetic hub files qualify for overlap, too little

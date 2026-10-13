@@ -543,16 +543,18 @@ export class Dispatcher {
   async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
     const core = this.#options.core;
     const messageId = `suite:${job.id}`;
+    const platform = job.platform;
+    const execution = `Executor ${job.executor}${platform ? ` · ${platform.os} ${platform.arch} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}`;
     if (job.requesterDied) {
       // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
       const key = `suite-death:${job.id}`;
       if (core.store.meta(key)) return;
       core.store.transaction(() => {
-        const id = core.noticeTo(job.topic, { kind: 'report', to: job.to, text: core.boundedText(`suite result ${job.id}\n${job.mode} exit ${job.outcome!.code}; ${job.outcome!.cause}\nBranch ${job.branch} · head ${job.head}`) });
+        const id = core.noticeTo(job.topic, { kind: 'report', to: job.to, text: core.boundedText(`suite result ${job.id}\n${job.mode} exit ${job.outcome!.code}; ${job.outcome!.cause}\nBranch ${job.branch} · head ${job.head}\n${execution}`) });
         if (!id) throw new Error('cancelled suite topic is unavailable');
         core.store.setMeta(key, id);
       });
-      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode });
+      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null });
       return;
     }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
@@ -576,7 +578,7 @@ export class Dispatcher {
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const outcome = job.outcome!;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
-    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}${provenance}\nLog ${artifact.id}: ${artifact.path}`;
+    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}\n${suiteSummary(log)}${provenance}\nLog ${artifact.id}: ${artifact.path}`;
     let text = report(2048);
     // File counts and the artifact retain the complete decision when a broad diff
     // or a smaller configured cap cannot fit every path in the topic message.
@@ -584,12 +586,12 @@ export class Dispatcher {
     if (!core.textFits(text)) {
       // Long branch names, failures or log paths can exhaust even the no-files
       // report. Keep the result/mode/log pointer first and respect any byte cap.
-      text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached\nRequested head ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}: ${artifact.path}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${suiteSummary(log)}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
+      text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${suiteSummary(log)}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
       : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
     if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
-    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, counts: suiteSummary(log), mode: job.selection?.mode ?? job.mode });
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, counts: suiteSummary(log), mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null });
     this.#log({ event: 'audit', session: caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {

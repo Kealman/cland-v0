@@ -6,10 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { platform as osPlatform, arch, release } from 'node:os';
+import type { Platform } from '../executor/executor.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import type { SuiteSelection } from '../suite-selection.ts';
+
+export function suiteCommands(job: { mode: string; selection?: SuiteSelection }): string[][] {
+  return [['run', 'typecheck'], ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
+}
 
 export async function suiteWorker(input: string): Promise<void> {
   const job = JSON.parse(await readFile(input, 'utf8')) as { cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; head?: string; queued?: string; tree?: string | null };
@@ -30,6 +36,7 @@ export async function suiteWorker(input: string): Promise<void> {
   if (admitted && job.queued) process.stdout.write(`verification queue wait ${((Date.now() - Date.parse(job.queued)) / 1000).toFixed(2)}s\n`);
   let code = 0;
   let cause = admitted ? '' : 'hub stopped before worker admission completed';
+  let platform: Platform | undefined;
   const leases: Lease[] = [];
   const token = randomUUID();
   const dirs = job.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'];
@@ -48,7 +55,11 @@ export async function suiteWorker(input: string): Promise<void> {
     // then let their unchanged package runner take the legacy locks itself.
     const runner = await readFile(join(job.cwd, 'hub', 'test', 'run-suite.ts'), 'utf8').catch(() => null);
     const borrowable = runner === null || runner.includes('inheritedLease');
-    const commands = [['run', 'typecheck'], ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
+    const node = (await promisify(execFile)('node', ['--version'], { cwd: job.cwd, env: process.env })).stdout.trim();
+    const nvim = await readFile(join(job.cwd, 'nvim', 'NVIM_VERSION'), 'utf8').then(text => text.trim(), () => 'none');
+    platform = { os: osPlatform(), arch: arch(), release: release(), node, nvim };
+    process.stdout.write(`platform ${platform.os} ${platform.arch} ${platform.release} · Node ${node} · Neovim ${nvim}\n`);
+    const commands = suiteCommands(job);
     if (!admitted) code = 1;
     for (const [index, args] of (admitted ? commands : []).entries()) {
       if (index === 1 && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
@@ -82,7 +93,7 @@ export async function suiteWorker(input: string): Promise<void> {
   }
   if (signal) { code = signal === 'SIGINT' ? 130 : 143; cause = `worker interrupted by ${signal}`; }
   process.stdout.write(`\nFinished: exit ${code}${cause ? `; ${cause}` : ''}\n`);
-  await writeFile(`${job.result}.tmp`, JSON.stringify({ code, cause, finished: new Date().toISOString() }), { mode: 0o600 });
+  await writeFile(`${job.result}.tmp`, JSON.stringify({ code, cause, finished: new Date().toISOString(), ...(platform ? { platform } : {}) }), { mode: 0o600 });
   await rename(`${job.result}.tmp`, job.result);
 }
 

@@ -594,6 +594,8 @@ export type RoleList = {
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  executor: import('./executor/executor.ts').ExecutorKind;
+  platform?: import('./executor/executor.ts').Platform;
   id: string; pid: number | null; topic: string; reported: boolean;
   outcome: { code: number; cause: string } | null; error: string | null;
   state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;

@@ -193,3 +193,6 @@ _Avoid_: description (that is the whole body), abstract, goal (an epic's section
 **Events view**:
 The list of notifications and events the inbox no longer shows, newest first and capped: where the human looks when something happened, not when something needs them.
 _Avoid_: log (the Agents topic is the sessions' output), notifications panel
+
+**Executor**:
+Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor.

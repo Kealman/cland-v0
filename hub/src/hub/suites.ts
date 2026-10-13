@@ -1,24 +1,23 @@
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { open, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { lintHubShards, lintHubShardTree, ShardManifestError } from '../suite-shards.ts';
 import { candidateTree } from '../verification-tree.ts';
-import { pidAlive } from '../project.ts';
 import { promisify } from 'node:util';
 import type { SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
-import { systemProcesses, endProcess } from '../system-processes.ts';
-import { processStartedAsync } from './lock.ts';
-import { compatibilityOccupied, compatibilityHolder } from '../suite-lock.ts';
+import { LocalExecutor } from '../executor/local.ts';
+import type { Executor, ExecutorKind, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  executor: ExecutorKind; platform?: Platform; lease?: Lease;
+  machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
@@ -34,8 +33,8 @@ export type SuiteJob = {
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
-export type VerifyResult = { id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
-const verifyResult = (job: SuiteJob): VerifyResult => ({ id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
+export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
+const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
@@ -43,6 +42,7 @@ const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
 const exec = promisify(execFile);
 const METRICS_WINDOW = 20;
+const runRef = (job: SuiteJob): RunRef => ({ id: job.id, cwd: job.cwd, head: job.head, mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 function elapsed(since: string | undefined | null, now: number): number | null {
   const start = Date.parse(since ?? '');
   return Number.isFinite(start) ? Math.max(0, now - start) : null;
@@ -89,16 +89,30 @@ export class Suites {
   readonly #options: SuiteSchedulerOptions;
   readonly #humans = new Map<object, HumanSlot>();
   #lastQueue = '';
-  #compatibility: Awaited<ReturnType<typeof compatibilityHolder>> = null;
+  readonly #local: LocalExecutor;
+  readonly #executor: Executor;
+  readonly #reaping: Promise<void>;
+  #compatibility: Awaited<ReturnType<LocalExecutor['holder']>> = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
     this.#budget = Math.min(options.budget ?? 1, 1);
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
+    this.#local = new LocalExecutor(this.#locks(), (lease, worker) => {
+      if (this.#closed) return;
+      const job = this.#jobs.find(job => job.id === lease.run);
+      if (!job) return;
+      job.lease = lease; job.pid = worker.pid; job.started = worker.started;
+      job.outcome ??= worker.outcome;
+      this.#save(job);
+    }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); });
+    this.#executor = this.#local;
     for (const [index, job] of this.#jobs.entries()) {
       this.#order.set(job.id, index);
+      job.executor ??= 'local';
       job.state ??= job.outcome || job.reported ? 'finished' : 'running';
+      if (!job.cached && !job.reported && job.state !== 'queued') job.lease = this.#local.restore(runRef(job), job, job.lease);
       // T-232 stores the worker's ps start identity and exit receipt. Recover a
       // second-resolution estimate without replacing the identity used for cleanup.
       const started = Date.parse(job.started ?? '');
@@ -114,6 +128,7 @@ export class Suites {
     }
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
+    this.#reaping = this.#executor.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
     this.#timer = setInterval(() => { void this.#check(); }, 1000);
     this.#timer.unref();
   }
@@ -147,7 +162,7 @@ export class Suites {
     const completed = Date.parse(completedAt);
     job.waitMs = job.cached ? 0 : job.pid && !job.admittedAt ? null : elapsed(job.queued, Date.parse(job.admittedAt ?? completedAt));
     job.runMs = job.cached || (!job.admittedAt && !job.pid) ? 0 : elapsed(job.admittedAt, completed);
-    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
+    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
   }
   async cancel(id: string | undefined, actor: SuiteActor | null, authorize: () => void): Promise<{ id: string; topic: string; cancelled: true }> {
     if (this.#closed) throw new Error('hub is closing');
@@ -193,13 +208,16 @@ export class Suites {
     authorize();
     // Recheck after I/O: concurrent submissions cannot both reserve a session.
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    const job: SuiteJob = { ...input, integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, executor: 'local', integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
       const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
       if (originalLog !== null && await candidateTree(input.cwd, head) === tree) {
+        job.executor = cached.executor;
+        if (cached.platform) job.platform = { ...cached.platform };
+        if (cached.machine) job.machine = { ...cached.machine };
         job.cached = { run: cached.id, head: cached.head, tree: tree! };
         job.finished = cached.finished!;
         job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
@@ -261,38 +279,18 @@ export class Suites {
     return this.#jobs.filter(j => j.state === 'queued' && !j.outcome).sort((a, b) => Number(b.integrated === true) - Number(a.integrated === true) || (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER) || (a.queued ?? '').localeCompare(b.queued ?? ''));
   }
   async #launch(job: SuiteJob): Promise<void> {
-    const dir = join(this.#root, '.cland', 'run', 'suites', job.id);
     job.state = 'launching'; job.admittedAt = new Date().toISOString(); this.#launching.add(job.id); this.#save(job);
-    const admit = () => { if (job.outcome) throw new Error('suite cancelled before worker admission'); };
     try {
       // A queued build cannot silently turn into a different tested head.
       const head = await exec('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
       if (head !== job.head) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
-      await writeFile(join(dir, 'job.json'), JSON.stringify(job), { mode: 0o600 });
-      const fd = await open(job.log, 'a');
-      try {
-        admit();
-        const env = { ...process.env };
-        // Package scripts need a fresh Node test context.
-        delete env.NODE_TEST_CONTEXT;
-        delete env.CLAND_SUITE_LEASE;
-        const child = spawn(process.execPath, [fileURLToPath(new URL('./suite-worker.ts', import.meta.url)), join(dir, 'job.json')], { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
-        child.once('error', error => { if (this.#closed) return; job.outcome ??= { code: 1, cause: `worker could not start: ${error.message}` }; this.#save(job); });
-        child.once('close', (code, signal) => {
-          if (this.#closed) return;
-          if (signal || code !== 0) job.outcome ??= { code: code ?? 1, cause: signal ? `worker killed by ${signal}` : `worker exited ${code}` };
-          // A zero worker exit is a pass only when its durable package result exists.
-          this.#save(job); void this.#check();
-        });
-        child.unref();
-        job.pid = child.pid ?? null;
-        job.started = job.pid ? await processStartedAsync(job.pid) : null;
-        this.#save(job);
-        if (!job.pid || !job.started) throw new Error('cannot establish suite worker process identity');
-        admit();
-        job.state = 'running'; this.#save(job);
-        await writeFile(job.gate, 'ready');
-      } finally { await fd.close(); }
+      const run = runRef(job);
+      job.lease = await this.#executor.acquire(run, new Date(Date.now() + 15000).toISOString());
+      this.#save(job);
+      await this.#executor.prepare(job.tree ?? job.head);
+      await this.#executor.deliver(job.lease, run);
+      await this.#executor.start(job.lease, run);
+      job.state = 'running'; this.#save(job);
     } catch (error) {
       // Keep the failure receipt: the inspector only terminates identity-verified processes.
       job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save(job);
@@ -311,11 +309,12 @@ export class Suites {
     return this.#checking;
   }
   async #tick(): Promise<void> {
+    await this.#reaping;
     await Promise.all(this.#jobs.map(job => this.#inspectJob(job)));
     if (this.#closed) return;
     const active = this.#jobs.filter(j => !j.reported && (j.state !== 'queued' && !j.outcome || j.outcome && j.outcome.code !== 0 && !j.cleaned)).length;
     if (active >= this.#budget) return;
-    this.#compatibility = await compatibilityHolder(this.#locks());
+    this.#compatibility = await this.#local.holder();
     for (const [owner, slot] of this.#humans) {
       if (slot.left || !slot.admittedAt) continue;
       if (this.#compatibility?.holder?.token === slot.token) return;
@@ -323,7 +322,7 @@ export class Suites {
       this.leave(owner, 'admission grace expired');
     }
     const next = this.#ordered()[0];
-    if (!next || await compatibilityOccupied(this.#locks()) || this.#closed) return;
+    if (!next || await this.#local.occupied() || this.#closed) return;
     if ('actor' in next) {
       if (next.state === 'queued' && !next.outcome) await this.#launch(next);
     } else if (!next.left && !next.admittedAt && [...this.#humans.values()].includes(next)) {
@@ -346,36 +345,25 @@ export class Suites {
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
     }
     try {
-      const receipt = await readFile(job.result, 'utf8').then(text => JSON.parse(text) as { code: number; cause: string; finished?: string }, () => null);
-      if (receipt && !job.cancelled && !job.requesterDied) {
-        job.outcome = { code: receipt.code, cause: receipt.cause };
-        if (receipt.finished) job.finished = receipt.finished;
+      const receipt = job.lease ? await this.#executor.status(job.lease) : null;
+      if (receipt?.platform) job.platform = receipt.platform;
+      if (receipt?.finished) job.finished = receipt.finished;
+      if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied) {
+        job.outcome = { code: receipt.code ?? 1, cause: receipt.cause ?? '' };
       }
       if (job.cached && !this.#store.message(`suite:${job.id}`) && await candidateTree(job.cwd, job.head) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
       }
       if (!job.outcome) {
-        if (job.pid && pidAlive(job.pid)) {
-          const current = await processStartedAsync(job.pid);
-          if (job.started === null || current === null || current === job.started) return;
-        }
+        if (receipt && ['pending', 'running', 'paused'].includes(receipt.state)) return;
         job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
       }
       job.state = 'finished';
       this.#save(job);
-      if (job.outcome.code !== 0 && !job.cleaned) {
-        if (job.pid && !job.started && pidAlive(job.pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
-        if (job.pid && job.started) {
-          // Launch failures can leave the worker live; endProcess rechecks its positive PID
-          // immediately before signalling. Missing/reused leaders preserve unrelated processes.
-          if (!await endProcess({ pid: job.pid, pidStarted: job.started }, () => {}, job.cancelled ? 10000 : 500, undefined, { allowReused: true })) throw new Error('suite cleanup could not verify the worker identity');
-          const rows = await systemProcesses();
-          const leader = rows.find(row => row.pid === job.pid);
-          if (!leader || leader.started === job.started) {
-            for (const row of rows.filter(row => row.group === job.pid && row.pid !== job.pid)) {
-              if (!await endProcess({ pid: row.pid, pidStarted: row.started }, () => {}, 500, undefined, { allowReused: true })) throw new Error('suite crash cleanup could not verify a surviving process');
-            }
-          }
+      if (!job.cleaned) {
+        if (job.lease) {
+          if (job.cancelled) await this.#executor.cancel(job.lease, 'SIGTERM');
+          await this.#executor.release(job.lease);
         }
         job.cleaned = true; this.#save(job);
       }
@@ -399,6 +387,7 @@ export class Suites {
   }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
+      executor: job.executor, ...(job.platform ? { platform: job.platform } : {}),
       id: job.id, pid: job.pid, topic: job.topic, reported: job.reported, outcome: job.outcome, error: job.error,
       state: job.state ?? 'running', queued: job.queued ?? null, priority: job.priority ?? null,
       item: job.item ?? null, head: job.head, branch: job.branch, integrated: job.integrated ?? false,
@@ -409,7 +398,7 @@ export class Suites {
     }));
   }
   async queue(): Promise<VerificationQueue> {
-    this.#compatibility = await compatibilityHolder(this.#options.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock']);
+    this.#compatibility = await this.#local.holder();
     return this.snapshot();
   }
   /** Project metadata reads never wait for compatibility OS probes. The scheduler
@@ -450,5 +439,5 @@ export class Suites {
         return waiter;
       }), metrics };
   }
-  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#inspecting.values()); }
+  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); clearInterval(this.#timer); await Promise.allSettled(this.#starting); await this.#checking; await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
 }

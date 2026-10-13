@@ -36,6 +36,7 @@
     "hub/test/edges.test.ts": "machine",
     "hub/test/events-quiet.test.ts": "machine",
     "hub/test/events.test.ts": "machine",
+    "hub/test/executor.test.ts": "machine",
     "hub/test/epic-close.test.ts": "machine",
     "hub/test/freshness.test.ts": "machine",
     "hub/test/handover-integrity.test.ts": "machine",
