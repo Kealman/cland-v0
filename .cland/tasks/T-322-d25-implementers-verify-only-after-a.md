@@ -3,7 +3,8 @@ id: T-322
 kind: task
 title: "D25: Implementers verify only after a clear review verdict, at the exact reviewed head (clauses and skills)"
 state: open
-status: backlog
+status: review
+criterion_seq: 3
 labels:
   - tech-debt
   - hub
@@ -11,10 +12,10 @@ labels:
 assignee: null
 parent: E-216
 blocked_by: []
-topic: null
-branch: null
+topic: topic-201
+branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T10:34:03.049Z
+updated: 2026-10-13T10:39:51.813Z
 ---
 
 ## Summary
@@ -38,6 +39,14 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
 
 ## Acceptance criteria
 
-- [ ] C1. The default Implementer clause, and the Lead clause where it requests review, state the D25 order: review first, verify after a clear verdict at the exact reviewed head, and a new review after a fix. `.cland/roles.toml` carries the same text.
-- [ ] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
+- [x] C1. The default Implementer clause, and the Lead clause where it requests review, state the D25 order: review first, verify after a clear verdict at the exact reviewed head, and a new review after a fix. `.cland/roles.toml` carries the same text.
+  - done: impl-322 · 2026-10-13T10:39:49.880Z
+- [x] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
+  - done: impl-322 · 2026-10-13T10:39:50.842Z
 - [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
+
+## Comments
+
+### impl-322 · 2026-10-13T10:35:20.373Z
+
+D25 implementation started. Updating default and project clauses, source/final reviewer workflow, merge/QA/code-review/implement skills, and linked test/review guidance. No hub behavior or gate change. Full verification will follow a clear source review at its exact head.

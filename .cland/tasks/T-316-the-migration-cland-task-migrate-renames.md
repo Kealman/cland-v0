@@ -3,7 +3,7 @@ id: T-316
 kind: task
 title: "The migration: cland task migrate renames, rewrites, retitles, seeds the four categories, retires the tech-debt label and reindexes"
 state: open
-status: review
+status: ready
 criterion_seq: 10
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-197
 branch: t/T-316-the-migration-cland-task-migrate-renames
 created: 2026-10-13T02:27:23.140Z
-updated: 2026-10-13T10:23:40.706Z
+updated: 2026-10-13T10:35:31.820Z
 ---
 
 ## Summary
@@ -89,24 +89,34 @@ Open task branches need no rebase, as the test above proves.
 
 - [x] C1. A hub test on a temporary project runs `cland task migrate --dry-run --json`, then `cland task migrate --json`, and shows the applied plan equal to the dry run's. The files, the index and `cland task list --json` agree afterwards.
   - done: impl-316 · 2026-10-13T09:22:33.634Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.647Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C2. A second run prints `nothing to do` and writes nothing. A tree half-migrated by hand completes on the next run with no duplicate number.
   - done: impl-316 · 2026-10-13T10:23:28.430Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.647Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C3. A hub test shows each refusal: a merge in flight, a tracker write in flight, an Implementer caller, a linked worktree and a ladder without `category`. None writes a file.
   - done: impl-316 · 2026-10-13T09:22:34.645Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.647Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C4. `git diff --stat` after the run shows renames and frontmatter changes only. Every body and every comment is byte for byte unchanged.
   - done: impl-316 · 2026-10-13T09:22:35.641Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C5. The squash test above passes in both cases.
   - done: impl-316 · 2026-10-13T09:22:36.539Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C6. The journal holds one `task-migrated` record with the counts, read after the `flushLogs` barrier.
   - done: impl-316 · 2026-10-13T09:22:37.187Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C7. The Implementer runs the dry run and the run on a scratch copy of `dev`'s `.cland/tasks/` and attaches both outputs to the item topic as one artifact. They match, and a second run reports nothing to do.
   - done: impl-316 · 2026-10-13T09:22:38.049Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C8. `hub/README.md`'s tracker section and `docs/agents/issue-tracker.md` (and its template) describe `cland task migrate`, its refusals and what it leaves alone.
   - done: impl-316 · 2026-10-13T09:22:39.464Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C9. `cland task migrate` runs with the hub stopped, working on the item files and hub.db directly, and refuses while a hub answers on the project. `hub/README.md` and `docs/agents/issue-tracker.md` give the live-tracker procedure: stop the hub, `git tag pre-migration` on dev, copy `.cland/hub.db` beside it, run the migration, restart the hub on the migrated tree, relaunch every role session (their clauses and briefs carry T- ids). They also give the rollback, the tag plus the hub.db copy, restorable in minutes. A test on a temporary project runs the migration with the hub stopped and shows the refusal with a hub running.
   - done: impl-316 · 2026-10-13T09:22:40.847Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 - [x] C10. After the migration on a scratch copy, every old `T-<n>` id the human types or reads still resolves to its item: `cland task view` and the other CLI task commands, the MCP task tools, topic bindings, journal rows and the inbox rows naming items, and `gi` in a thread. A hub test with a real hub restarted on the migrated tree covers each surface. The explorer inherits the same resolver when it lands (T-276).
   - done: impl-316 · 2026-10-13T09:22:41.692Z
+  - verified: rev-26 [reviewer] · run rev-20261013-316-source-2 · 2026-10-13T10:35:26.648Z · commit 6ce64bebd8ada292722e9f306132332b8286b520
 
 ## Comments
 
@@ -129,3 +139,15 @@ commit: c3dd2e400b9ca3c34936830f27d88babf6682bd6
 Medium: hub/src/tracker/offline-migrate.ts:69 — empty file plan returns before Tracker/index repair. Crash after final file or seed rename but before index.put leaves migrated files and stale/missing index rows; rerun reports nothing to do without restoring agreement. C2 resumability is incomplete (also affects C1 post-apply agreement). Lead confirmed and is adding offline CLI regression. Preserve clean no-op no-write behavior. Other C1–C10 source/docs/temporary-project evidence and shared fix assessed in artifact posted to topic-197; required new-head full verification remains. No live migration, edits or tests performed by Reviewer.
 
 Criteria: C2 failed (offline-migrate.ts:69 skips index repair when files are already migrated; crash after final file rename before index.put leaves stale/missing rows on rerun.).
+
+### rev-26 · 2026-10-13T10:35:26.648Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-316-source-2
+commit: 6ce64bebd8ada292722e9f306132332b8286b520
+
+Source review under D25: no high/medium findings remain. C1–C10 source/targeted criteria checked; C2 stale-index repair and clean no-op regression resolved (A-1900/A-1898). Offline fences/resumption, shared planner, frontmatter/prose preservation, territory squash cases, migration journal barrier, scratch equality/no-op, maintenance/rollback and restarted old-id surfaces reviewed. Shared2c0f43d unchanged checked separately. This clear verdict precedes the required full cland verify at this exact head under Coordinator instruction4bbd9fbd; no accepted full receipt at6ce64be is claimed. A-1899 old-head acceptance was cancelled. Exact-head full result remains required before merge, after T-321 protected slot. Source verdict artifact posted.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.

@@ -3,7 +3,7 @@ id: T-317
 kind: task
 title: "Agents file into categories: the clauses and the qa, triage and to-tickets skills file with --parent C-n, and idle_from in crew.toml feeds the Coordinator's idle-work rule"
 state: open
-status: review
+status: ready
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T10:14:50.833Z
+updated: 2026-10-13T10:36:19.165Z
 ---
 
 ## Summary
@@ -76,16 +76,22 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (Agents, Idle
 
 - [x] C1. Crew tests parse and render `idle_from`, keep it before the tables and default it to `[]`. `cland crew set idle_from C-216` on a temporary project with a real hub shows `C-216` in `cland crew show` and `--json`, and `'[]'` empties it.
   - done: impl-317 · 2026-10-13T09:22:14.370Z
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 - [x] C2. `crew set` refuses an unknown id, a task, a closed category and a duplicate, each with its reason. A hand-edited entry naming a closed category is listed as ignored by `cland crew show`, and the rest of the file stays in force.
   - done: impl-317 · 2026-10-13T10:14:09.700Z
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 - [x] C3. A hub test reads the Coordinator's clause delivery after `crew set idle_from`: the staffing lines name the categories in order. With `[]`, they say category work is never taken.
   - done: impl-317 · 2026-10-13T09:22:18.547Z
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 - [x] C4. The default Coordinator clause states the idle-work rule, the epic-waits-for-promotion rule and the filing rule. The other roles' clauses state the report rule. The roles snapshot tests (`hub/test/roles-snapshot.test.ts`, `hub/test/roles.test.ts`) pin the new text, and this repo's `.cland/roles.toml` carries the same changes.
   - done: impl-317 · 2026-10-13T09:22:19.344Z
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 - [x] C5. The `qa`, `triage` and `to-tickets` skills and the tracker doc describe filing with `--parent C-<n>`. `hub/test/skills-tracker.test.ts` and `hub/test/skills-qa.test.ts` pass with the new text, and `skills/PATCHES.md` records the two vendored patches.
   - done: impl-317 · 2026-10-13T09:22:19.989Z
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 - [x] C6. `hub/README.md`'s crew staffing section describes `idle_from`, its validation and the staffing line.
   - done: impl-317 · 2026-10-13T09:22:20.480Z
+  - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
 
 ## Comments
 
@@ -108,3 +114,15 @@ Criteria: C2 failed (Category validation in crew.ts:49–50 hardcodes compiler-t
 ### impl-317 · 2026-10-13T10:14:09.287Z
 
 Fixed the full-suite architecture failure by resolving category kind from the configured non-release C root, keeping the typed-kind guard intact. Added real-hub coverage with a docs root ahead of category. Guard tests 3/3 and configured-root case pass. Current origin/dev merged; shared stage restart readiness fix 2c0f43d cherry-picked unchanged as 13fd3c2. New pushed head 5cb7c84; requesting review and full verification again.
+
+### rev-26 · 2026-10-13T10:36:16.784Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-317-source-2
+commit: 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
+
+Source review under D25: no high/medium finding remains. C1–C6 checked: canonical ordered idle list, semantic set/refusal and hand reload, real-spoke clause refresh, default/project idle and category reporting/filling rules with unchanged grants, minimal vendored patches/templates and README. C2 typed-kind architectural violation resolved by configured non-release C-root selection with unchanged guard and added docs-before-category real-hub case. Shared2c0f43d unchanged separately reviewed. A-1879/A-1895 and source verdict artifact record evidence. D25 requires clear source before full verification; already queued5c53298c keeps its place and its accepted exact-head result remains required before merge. No full green result claimed here. Coordinator relaunch after merge required.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
