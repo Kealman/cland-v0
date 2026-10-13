@@ -8,11 +8,12 @@
 
 import { parseDocument } from 'yaml';
 import { ToolForbidden } from '../roles/permissions.ts';
-import { planMigration, type MigrationPlan } from './migrate.ts';
+import type { VerifyResult } from '../hub/suites.ts';
+import { planMigration, type MigrationPlan, type ClosingTimes } from './migrate.ts';
 import { PlanError, parsePlan, planInBody, planOverride, planOverrideKey, withPlan, type QaPolicy, type EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank, rankChanges } from './rank.ts';
 import type { MarkedCriterion } from '../protocol.ts';
-import { annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
+import { countCriteria, summarizeCriteria, type CriteriaCounts, annotateCriteria, criterionRefusal, criteriaSource, parseCriteria, type Criterion, type CriterionWarning } from './criteria.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer, Ladder, type Levels } from './kinds.ts';
 import { landedTask, taskBase, territoryPath } from '../territory.ts';
@@ -112,6 +113,8 @@ export type ItemView = IndexedItem & {
   planHistory?: PlanHistoryEntry[];
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
+  criteriaCounts: CriteriaCounts;
+  verify?: VerifyResult | null;
   criteriaWarnings: CriterionWarning[];
   comments: Comment[];
   verdicts: IndexedVerdict[];
@@ -122,7 +125,7 @@ export type ItemView = IndexedItem & {
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & { layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & { criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
@@ -265,6 +268,9 @@ export class Tracker {
   #identityOf: (id: string) => string = id => this.#sessionIds.get(id) ?? id;
   #identityAdopted: (name: string, id: string) => void = () => {};
   readonly #announced = new Map<string, ItemSummary>();
+  #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
+  readonly #verifyChanges = new Map<string, { item: string | null; branch: string }>();
+  #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
   constructor(options: { storageStallMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
@@ -535,11 +541,12 @@ export class Tracker {
    * The `task` event for `id`. `ifMoved`: only when its freshness changed from what was last announced and none of
    * it is still being computed (that announces itself once known), so a tip read does not flood the UI.
    */
-  #announce(id: string, ifMoved: boolean, siblings?: string[]): void {
+  #announce(id: string, ifMoved: boolean, siblings?: string[], silent = false): void {
     const indexed = this.#index.get(id);
     id = indexed?.id ?? id;
-    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#inboxPlan(id), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
-    const shown = item ? JSON.stringify([item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
+    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#verifyOf(indexed), ...this.#inboxPlan(id), criteria: this.#index.criteriaCounts(indexed, this.#criteriaTip(indexed)), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    if (silent && JSON.stringify(this.#announced.get(`T-${idNumber(id)}`)?.verify) === JSON.stringify(item?.verify)) return;
+    const shown = item ? JSON.stringify([item.criteria, item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
     if (ifMoved && (this.#shown.get(`T-${idNumber(id)}`) === shown || (item && pending(item.verdicts)))) return;
     const previous = this.#announced.get(`T-${idNumber(id)}`);
     // Keep the pre-change path before removal/reparenting changes the indexed tree.
@@ -547,7 +554,7 @@ export class Tracker {
     for (let ancestor: string | null | undefined = previous?.id; ancestor && !previousAncestry.includes(ancestor); ancestor = this.#announced.get(`T-${idNumber(ancestor)}`)?.parent) previousAncestry.push(ancestor);
     const events: string[] = [];
     const postedVerdicts: Verdict[] = [];
-    if (previous && item) {
+    if (!silent && previous && item) {
       if (previous.status !== item.status) events.push(`status changed ${previous.status ?? 'none'} → ${item.status ?? 'none'}`);
       if (item.claim && (!previous.claim || !this.sameSession(previous.claim.sessionId, item.claim.sessionId))) events.push(`claimed by ${item.claim.session}`);
       const remaining = new Map<string, number>();
@@ -676,6 +683,9 @@ export class Tracker {
   stop(): Promise<void> {
     if (this.#stopping) return this.#stopping;
     this.#fresh.stop();
+    if (this.#verifyImmediate) clearImmediate(this.#verifyImmediate);
+    this.#verifyImmediate = null;
+    this.#verifyChanges.clear();
     this.#watcher?.close();
     this.#watcher = null;
     for (const t of this.#pending.values()) clearTimeout(t);
@@ -1100,7 +1110,7 @@ export class Tracker {
 
   /** Offline applier: one storage admission, rename first, then patch only frontmatter.
    * The caller owns the project hub lock; no watcher or serving client runs here. */
-  migrate(actor: Actor): Promise<MigrationPlan> {
+  migrate(actor: Actor, closingTimes: ClosingTimes = new Map()): Promise<MigrationPlan> {
     return this.#serial(async resumed => {
       const entries: Array<{ file: string; item: Item; text: string }> = [];
       for (const file of (await this.#files.readdir(this.#dir)).filter(name => this.#fileNumber(name) !== null)) {
@@ -1108,7 +1118,7 @@ export class Tracker {
         entries.push({ file, text, item: parseItem(text, file, this.ladder) });
       }
       const max = Math.max(this.#index.highWater(), 0, ...entries.map(e => this.#fileNumber(e.file)!));
-      const plan = planMigration(entries, max + 1, this.ladder.containers);
+      const plan = planMigration(entries, max + 1, this.ladder.containers, closingTimes);
       const filesChange = Object.entries(plan).some(([key, changes]) => key !== 'unresolved' && changes.length);
       for (const entry of entries) {
         const { file, item } = entry;
@@ -1129,13 +1139,20 @@ export class Tracker {
         }
         if (plan.labels.some(c => c.file === file)) set('labels', item.fm.labels.filter(label => label !== 'tech-debt'));
         for (const c of plan.moves.filter(c => c.file === file)) set('parent', c.to);
+        const closed = plan.closed.find(c => c.file === file);
+        const closedOnly = !!closed && !changed;
+        if (closed) set('closed', closed.time);
         const name = plan.renames.find(c => c.from === file)?.to ?? file;
         if (name !== file) await this.#files.rename(join(this.#dir, file), join(this.#dir, name));
         let text = entry.text;
         if (changed) {
           const newline = entry.text.startsWith('---\r\n') ? '\r\n' : '\n';
           const yaml = doc.toString().replace(/\n/g, newline);
-          text = `---${newline}${yaml}---${newline}` + entry.text.slice(match[0].length);
+          // A closing-time-only backfill preserves even hand-formatted YAML and delimiters.
+          const headerEnd = match[0].indexOf(match[1]!) + match[1]!.length;
+          text = closedOnly
+            ? entry.text.slice(0, headerEnd) + `${newline}closed: ${closed!.time}` + entry.text.slice(headerEnd)
+            : `---${newline}${yaml}---${newline}` + entry.text.slice(match[0].length);
           const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
           try {
             await this.#files.writeFile(tmp, text);
@@ -1334,8 +1351,9 @@ export class Tracker {
     const indexed = this.#index.get(id);
     if (!indexed) throw new TrackerError(`no item ${id}`);
     if (source === 'file' && this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(id, { item, source: 'hand' });
+    const { closed: _indexedClosed, ...indexedFields } = indexed;
     const view: ItemView = {
-      ...indexed,
+      ...indexedFields,
       verdictBase: this.#fresh.base(),
       ...item.fm,
       parent: item.fm.parent ? this.#referenceId(item.fm.parent) ?? item.fm.parent : null,
@@ -1358,6 +1376,7 @@ export class Tracker {
       claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id),
     };
     if (view.kind === 'task') {
+      view.verify = this.#verify(view.id, view.branch);
       view.merged = view.state === 'closed' && this.#index.mergeReceipt(id)?.base === 'dev';
       // Use durable hub write order and normalized writer/claim identity, just as merge does.
       // A missing or altered recorded comment invalidates the evidence rather than breaking a UI read.
@@ -1367,13 +1386,16 @@ export class Tracker {
     return view;
   }
 
-  #criteriaOf(item: Item): { criteria: Criterion[]; criteriaWarnings: CriterionWarning[] } {
+  #criteriaTip(item: Pick<IndexedItem, 'id' | 'kind' | 'state' | 'branch'>): string | null {
+    const branch = isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch;
+    const receipt = item.kind === 'task' && item.state === 'closed' ? this.#index.mergeReceipt(item.id) : null;
+    return receipt?.tip ?? this.#fresh.tip(branch);
+  }
+
+  #criteriaOf(item: Item): { criteria: Criterion[]; criteriaCounts: CriteriaCounts; criteriaWarnings: CriterionWarning[] } {
     const parsed = parseCriteria(item.body, this.ladder.containers.includes(item.fm.kind));
-    const branch = isPlanningContainer(item.fm.kind, this.ladder) ? 'dev' : item.fm.branch;
-    // A landed task keeps its final build's marks after its branch is pruned.
-    // Reopened or manually closed tasks without a receipt still use live branch freshness.
-    const receipt = item.fm.kind === 'task' && item.fm.state === 'closed' ? this.#index.mergeReceipt(item.fm.id) : null;
-    return { ...parsed, criteria: annotateCriteria(parsed.criteria, receipt?.tip ?? this.#fresh.tip(branch)) };
+    const tip = this.#criteriaTip(item.fm);
+    return { ...parsed, criteria: annotateCriteria(parsed.criteria, tip), criteriaCounts: countCriteria(summarizeCriteria(parsed.criteria), tip) };
   }
 
   #ancestry(item: Item): ItemView['ancestry'] {
@@ -1563,15 +1585,34 @@ export class Tracker {
     const claims = this.#index.claims();
     const verdicts = this.#index.verdicts();
     const base = this.#fresh.base();
-    return this.#index.list(filter).map((i) => ({ ...i, ...this.#inboxPlan(i.id), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
+    return this.#index.list(filter).map((i) => ({ ...i, ...this.#verifyOf(i), ...this.#inboxPlan(i.id), criteria: this.#index.criteriaCounts(i, this.#criteriaTip(i)), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
   }
 
   summary(raw: string): ItemSummary | null {
     const id = this.resolveId(raw);
     const item = id ? this.#index.get(id) : null;
-    return item ? { ...item, ...this.#inboxPlan(item.id), claim: this.#index.claimOf(item.id),
+    return item ? { ...item, ...this.#verifyOf(item), ...this.#inboxPlan(item.id), criteria: this.#index.criteriaCounts(item, this.#criteriaTip(item)), claim: this.#index.claimOf(item.id),
       holds: this.#index.holdsOf(item.id), verdictBase: this.#fresh.base(),
       verdicts: this.#annotateVerdicts(item.id, item.kind, item.branch, this.#index.verdicts(item.id).get(item.id) ?? []) } : null;
+  }
+
+  useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null): void { this.#verify = lookup; }
+
+  #verifyOf(item: IndexedItem): { verify?: VerifyResult | null } {
+    return item.kind === 'task' ? { verify: this.#verify(item.id, item.branch) } : {};
+  }
+
+  /** Saves in one tick share one indexed lookup and one silent summary publication per affected task. */
+  verifyChanged(item: string | null, branch: string): void {
+    this.#verifyChanges.set(JSON.stringify([item, branch]), { item, branch });
+    if (this.#verifyImmediate) return;
+    this.#verifyImmediate = setImmediate(() => {
+      this.#verifyImmediate = null;
+      const ids = new Set<string>();
+      for (const change of this.#verifyChanges.values()) for (const id of this.#index.verifyItems(change.item, change.branch)) ids.add(id);
+      this.#verifyChanges.clear();
+      for (const id of ids) this.#announce(id, false, undefined, true);
+    });
   }
 
   ancestry(raw: string): string[] {
@@ -1804,7 +1845,11 @@ export class Tracker {
         catch (err) { throw new TrackerError(`${id}: ${join(TASKS_REL, file)} cannot be read (${err instanceof ItemParseError ? err.message : String(err)}); fix the file by hand first`); }
         if (meta && meta.hash !== hashOf(text)) this.#log({ event: 'task-conflict', id, file, winner: 'hub', op, note: 'a hand edit not yet indexed was read and the hub write applied on top of it; last writer wins' });
         const wasClosedTask = item.fm.kind === 'task' && item.fm.state === 'closed';
+        const wasClosed = item.fm.state === 'closed';
         change(item);
+        if (item.fm.state === 'open') delete item.fm.closed;
+        else if (!wasClosed) item.fm.closed = this.#now().toISOString();
+        else if (op === 'close') item.fm.closed ??= this.#now().toISOString();
         const receipt = wasClosedTask && item.fm.state === 'open' ? this.#index.mergeReceipt(id) : null;
         const prepare = receipt ? async () => {
           await beforeRename?.();
@@ -2176,6 +2221,8 @@ export class Tracker {
         if (input.remove_labels) fm.labels = fm.labels.filter((l) => !input.remove_labels?.includes(l));
         if (input.assignee !== undefined) fm.assignee = input.assignee || null;
         if (fm.state === 'closed' && (previousState === 'open' || input.state === 'closed' || input.status === 'done')) {
+          if (previousState === 'open') fm.closed = this.#now().toISOString();
+          else fm.closed ??= this.#now().toISOString();
           closing = { id: fm.id, kinds: [previousKind, fm.kind] };
           if (closing.kinds.some(kind => isPlanningContainer(kind, this.ladder))) epicEvidence = this.#viewOf(fm.id, this.#require(fm.id).file, { ...item, fm: { ...fm, kind: this.ladder.planning[0]! } }, 'proposal');
         }

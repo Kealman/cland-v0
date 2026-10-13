@@ -141,7 +141,8 @@ test('archive startup batches hundreds of stops; item and stop bursts schedule o
   // A native tracer counts queries without retaining node:test's per-call stack/arguments on this large store.
   DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
     if (args[0].startsWith('update harness_processes set archived_at')) batches++;
-    if (args[0].includes('coalesce(m.merged_at')) lifecycleLookups++;
+    // The lifecycle lookup now prefers the frontmatter column before its receipt fallback.
+    if (args[0].includes('coalesce(i.closed, m.merged_at')) lifecycleLookups++;
     if (args[0] === 'select count(*) as n from harness_processes where archived_at is not null') archiveCounts++;
     return prepare.apply(this, args);
   };

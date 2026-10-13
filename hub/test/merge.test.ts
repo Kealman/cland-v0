@@ -65,6 +65,9 @@ test('a current hub review lands one squash commit in the root and territory, cl
     assert.deepEqual(v.item.criteria, []);
     return v.item.status === 'ready' ? true : undefined;
   });
+  const itemPath = join(root, '.cland/tasks/T-1-ship-the-parser.md');
+  const retainedClosed = '2001-01-01T00:00:00.000Z';
+  await writeFile(itemPath, (await readFile(itemPath, 'utf8')).replace(/^updated:.*\n/m, line => `${line}closed: ${retainedClosed}\n`));
   const merged = json<{ commit: string; base: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(merged.base, 'dev');
   assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
@@ -72,8 +75,11 @@ test('a current hub review lands one squash commit in the root and territory, cl
   assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), merged.commit);
   assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
   assert.equal(git(root, 'show', '-s', '--format=%B', merged.commit), 'Ship the parser (T-1)\n\nItem: T-1\nReviewed-by: rev (rev-1)');
-  const view = json<{ item: { state: string; claim: unknown; comments: Array<{ text: string }> } }>(await cland(root, 'task', 'view', work.id, '--json'));
+  const view = json<{ item: { state: string; closed: string; claim: unknown; comments: Array<{ text: string }> } }>(await cland(root, 'task', 'view', work.id, '--json'));
   assert.equal(view.item.state, 'closed');
+  assert.match(view.item.closed, /^\d{4}-\d\d-\d\dT/);
+  assert.notEqual(view.item.closed, retainedClosed, 'merge records the new close after a hand reopen');
+  assert.equal(parseItem(await readFile(join(root, '.cland/tasks/T-1-ship-the-parser.md'), 'utf8')).fm.closed, view.item.closed);
   assert.equal(view.item.claim, null);
   assert.ok(view.item.comments.at(-1)?.text.includes(merged.commit));
   assert.equal(existsSync(work.path), false);
@@ -249,7 +255,7 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
   ok(await cland(root, 'task', 'edit', work.id, '--assignee', 'impl'));
   const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: work.id });
   assert.equal(claimed.ok, true, claimed.error);
-  const read = async () => json<{ item: { path: string; status: string; criteria: Array<{ id: string | null; marks: Array<{ kind: string; current?: boolean }> }>; verdicts: Array<{ current?: boolean }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const read = async () => json<{ item: { path: string; status: string; criteriaCounts: { total: number; done: number; verified: number; stale: number; failed: number }; criteria: Array<{ id: string | null; marks: Array<{ kind: string; current?: boolean }> }>; verdicts: Array<{ current?: boolean }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
   const file = join(root, (await read()).path);
   await writeFile(file, await readFile(file, 'utf8') + '\n## Acceptance criteria\n\n- [x] Parses input\n- [ ] Reports errors\n');
   await review(rev, work.id);
@@ -288,6 +294,10 @@ test('an in-flight legacy item reaches ready and merge only after every criterio
   await killDaemon(discovery.pid);
   await startDaemon(t, root);
   const landed = await read();
+  const counts = { total: 2, done: 0, verified: 2, stale: 0, failed: 0 };
+  assert.deepEqual(landed.criteriaCounts, counts);
+  const listed = json<{ items: Array<{ id: string; criteria: typeof counts }> }>(await cland(root, 'task', 'list', '--json'));
+  assert.deepEqual(listed.items.find(item => item.id === work.id)?.criteria, counts);
   assert.ok(landed.criteria.every(criterion => criterion.marks.some(mark => mark.kind === 'verified' && mark.current === true)), 'closed tasks retain their verified fractions after branch cleanup and restart');
 });
 

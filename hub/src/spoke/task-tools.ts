@@ -29,12 +29,12 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.view',
-    description: 'One item: its fields, file path, root-to-item ancestry, body, comments, verdicts, and live claim.',
+    description: 'One item: fields (including closed), file path, ancestry, body, comments, verdicts, claim, full criteria with criteriaCounts, and the task latest verify result.',
     inputSchema: { type: 'object', properties: { id: itemId }, required: ['id'] },
   },
   {
     name: 'task.list',
-    description: 'List items from the index. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
+    description: 'List items from the index, including closed, criteria counts and the task latest verify result. `under` selects descendants of an item (excluding itself). Filters combine; `label` items must all be present; `verdict` is `review=clear`, `qa=not clear`, … (the latest verdict of that kind).',
     inputSchema: { type: 'object', properties: { under: itemId, state: STATE, label: strs, kind: KIND, assignee: str, verdict: str } },
   },
   {

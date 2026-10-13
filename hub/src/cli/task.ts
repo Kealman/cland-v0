@@ -202,6 +202,9 @@ function viewText(i: ItemView): string {
     `  verdict base ${i.verdictBase ?? '-'}`,
     `  created   ${i.created}`,
     `  updated   ${i.updated}`,
+    ...(i.verify ? [`  verify    ${i.verify.id} · ${i.verify.state} · ${i.verify.result ?? '-'} · head ${i.verify.head} · finished ${i.verify.finished ?? '-'} · artifact ${i.verify.artifact ?? '-'}${i.verify.cached ? ' · cached' : ''}`] : []),
+    `  criteria  ${i.criteriaCounts.verified} verified / ${i.criteriaCounts.total} total · ${i.criteriaCounts.done} done · ${i.criteriaCounts.stale} stale · ${i.criteriaCounts.failed} failed`,
+    ...(i.closed ? [`  closed    ${i.closed}`] : []),
     ...(i.github ? [`  github    ${i.github.repo}#${i.github.number}  ${i.github.url}`] : []),
     `  file      ${i.path}`,
     ...(i.warnings ?? []).map(warning => `  warning   ${warning}`),
@@ -245,8 +248,10 @@ function listText(items: ItemSummary[]): string {
 }
 
 function migrationText(plan: MigrationPlan): string {
-  if (!Object.entries(plan).some(([part, changes]) => part !== 'unresolved' && changes.length)) return 'nothing to do\n';
+  const nothing = !Object.entries(plan).some(([part, changes]) => part !== 'unresolved' && changes.length);
   const lines = [
+    ...(nothing ? ['nothing to do'] : []),
+    ...plan.closed.map(c => `closed ${c.item}: ${c.time} (${c.source})`),
     ...plan.renames.map(c => `rename ${c.from} → ${c.to}`),
     ...plan.ids.map(c => `id ${c.item}: ${c.from} → ${c.to}`),
     ...plan.references.map(c => `${c.field}${c.index === undefined ? '' : `[${c.index}]`} ${c.item}: ${c.from} → ${c.to}`),
@@ -257,7 +262,7 @@ function migrationText(plan: MigrationPlan): string {
     ...plan.moves.map(c => `move ${c.item}: no parent → ${c.to}`),
   ];
   if (!lines.length) return 'nothing to do\n';
-  lines.push(Object.entries(plan).map(([part, changes]) => `${changes.length} ${part}`).join(', '));
+  if (!nothing || plan.unresolved.length) lines.push(Object.entries(plan).map(([part, changes]) => `${changes.length} ${part}`).join(', '));
   return lines.join('\n') + '\n';
 }
 

@@ -14,6 +14,7 @@ import type { Store } from './store.ts';
 import { systemProcesses, endProcess } from '../system-processes.ts';
 import { processStartedAsync } from './lock.ts';
 import { compatibilityOccupied, compatibilityHolder } from '../suite-lock.ts';
+import { idNumber } from '../tracker/item.ts';
 import { selectPackageSuite, describeSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
@@ -33,7 +34,10 @@ export type SuiteJob = {
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
-export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void };
+export type VerifyResult = { id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
+const verifyResult = (job: SuiteJob): VerifyResult => ({ id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
+
+export type SuiteSchedulerOptions = { budget?: number; cacheMaxAgeMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const KEY = 'suite-jobs';
@@ -71,6 +75,10 @@ export class Suites {
   readonly #root: string;
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
+  readonly #latestItems = new Map<number, SuiteJob>();
+  readonly #latestBranches = new Map<string, SuiteJob>();
+  readonly #order = new Map<string, number>();
+  readonly #cards = new Map<string, string>();
   readonly #timer: ReturnType<typeof setInterval>;
   #checking: Promise<void> | null = null;
   readonly #inspecting = new Map<string, Promise<void>>();
@@ -88,7 +96,8 @@ export class Suites {
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
     this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
-    for (const job of this.#jobs) {
+    for (const [index, job] of this.#jobs.entries()) {
+      this.#order.set(job.id, index);
       job.state ??= job.outcome || job.reported ? 'finished' : 'running';
       // T-232 stores the worker's ps start identity and exit receipt. Recover a
       // second-resolution estimate without replacing the identity used for cleanup.
@@ -103,11 +112,34 @@ export class Suites {
         this.#recordTiming(job, completion);
       }
     }
+    for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
     this.#timer = setInterval(() => { void this.#check(); }, 1000);
     this.#timer.unref();
   }
-  #save = () => { this.#store.setMeta(KEY, JSON.stringify(this.#jobs)); };
+  #save = (job?: SuiteJob) => {
+    this.#store.setMeta(KEY, JSON.stringify(this.#jobs));
+    if (job) this.#remember(job, true);
+  };
+  #remember(job: SuiteJob, announce: boolean): void {
+    if (!this.#order.has(job.id)) this.#order.set(job.id, this.#order.size);
+    const later = (previous: SuiteJob | undefined) => !previous || this.#order.get(job.id)! >= this.#order.get(previous.id)!;
+    if (job.item && later(this.#latestItems.get(idNumber(job.item)))) this.#latestItems.set(idNumber(job.item), job);
+    if (job.branch && later(this.#latestBranches.get(job.branch))) this.#latestBranches.set(job.branch, job);
+    // A successful report checkpoints the log artifact across async I/O. Publish its
+    // terminal card once with that artifact, or immediately if reporting is blocked.
+    if (announce && job.state === 'finished' && !job.reported && !job.error) return;
+    const card = JSON.stringify(verifyResult(job));
+    const moved = this.#cards.get(job.id) !== card;
+    this.#cards.set(job.id, card);
+    if (announce && moved) this.#options.onJob?.(job);
+  }
+  /** Latest submission by item or branch, reconstructed once at startup and maintained on saves. */
+  latest(item: string, branch: string | null): VerifyResult | null {
+    const byItem = this.#latestItems.get(idNumber(item)), byBranch = branch ? this.#latestBranches.get(branch) : undefined;
+    const job = !byItem ? byBranch : !byBranch ? byItem : this.#order.get(byItem.id)! > this.#order.get(byBranch.id)! ? byItem : byBranch;
+    return job ? verifyResult(job) : null;
+  }
   #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.outcome.code !== 0 && !job.cleaned));
   #recordTiming(job: SuiteJob, completedAt: string): void {
     if (job.completedAt) return;
@@ -131,7 +163,7 @@ export class Suites {
     if (!job.cancelled) {
       if (job.outcome || job.reported) throw new Error('suite already finished');
       // Persist before signalling: restart, late receipts and reporting retries retain this outcome.
-      job.cancelled = true; job.outcome = { code: 143, cause: 'cancelled' }; this.#save();
+      job.cancelled = true; job.outcome = { code: 143, cause: 'cancelled' }; this.#save(job);
     }
     void this.#inspectJob(job);
     return { id: job.id, topic: job.topic, cancelled: true };
@@ -178,7 +210,7 @@ export class Suites {
     authorize();
     if (this.#closed) throw new Error('hub is closing');
     if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
-    this.#jobs.push(job); this.#save();
+    this.#jobs.push(job); this.#save(job);
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
@@ -230,7 +262,7 @@ export class Suites {
   }
   async #launch(job: SuiteJob): Promise<void> {
     const dir = join(this.#root, '.cland', 'run', 'suites', job.id);
-    job.state = 'launching'; job.admittedAt = new Date().toISOString(); this.#launching.add(job.id); this.#save();
+    job.state = 'launching'; job.admittedAt = new Date().toISOString(); this.#launching.add(job.id); this.#save(job);
     const admit = () => { if (job.outcome) throw new Error('suite cancelled before worker admission'); };
     try {
       // A queued build cannot silently turn into a different tested head.
@@ -245,25 +277,25 @@ export class Suites {
         delete env.NODE_TEST_CONTEXT;
         delete env.CLAND_SUITE_LEASE;
         const child = spawn(process.execPath, [fileURLToPath(new URL('./suite-worker.ts', import.meta.url)), join(dir, 'job.json')], { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
-        child.once('error', error => { if (this.#closed) return; job.outcome ??= { code: 1, cause: `worker could not start: ${error.message}` }; this.#save(); });
+        child.once('error', error => { if (this.#closed) return; job.outcome ??= { code: 1, cause: `worker could not start: ${error.message}` }; this.#save(job); });
         child.once('close', (code, signal) => {
           if (this.#closed) return;
           if (signal || code !== 0) job.outcome ??= { code: code ?? 1, cause: signal ? `worker killed by ${signal}` : `worker exited ${code}` };
           // A zero worker exit is a pass only when its durable package result exists.
-          this.#save(); void this.#check();
+          this.#save(job); void this.#check();
         });
         child.unref();
         job.pid = child.pid ?? null;
         job.started = job.pid ? await processStartedAsync(job.pid) : null;
-        this.#save();
+        this.#save(job);
         if (!job.pid || !job.started) throw new Error('cannot establish suite worker process identity');
         admit();
-        job.state = 'running'; this.#save();
+        job.state = 'running'; this.#save(job);
         await writeFile(job.gate, 'ready');
       } finally { await fd.close(); }
     } catch (error) {
       // Keep the failure receipt: the inspector only terminates identity-verified processes.
-      job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save();
+      job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save(job);
     } finally { this.#launching.delete(job.id); if (job.cancelled) void this.#inspectJob(job); }
   }
   #check(): Promise<void> {
@@ -330,7 +362,7 @@ export class Suites {
         job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
       }
       job.state = 'finished';
-      this.#save();
+      this.#save(job);
       if (job.outcome.code !== 0 && !job.cleaned) {
         if (job.pid && !job.started && pidAlive(job.pid)) throw new Error('suite cleanup waiting for a verified worker identity; process preserved');
         if (job.pid && job.started) {
@@ -345,22 +377,23 @@ export class Suites {
             }
           }
         }
-        job.cleaned = true; this.#save();
+        job.cleaned = true; this.#save(job);
       }
       this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
-      this.#save();
+      this.#save(job);
       await this.#report(job, id => {
         if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
-        job.artifact = id; this.#save();
+        job.artifact = id; this.#save(job);
       });
-      job.reported = true; job.error = null; this.#save();
-    } catch (error) { job.error = error instanceof Error ? error.message : String(error); this.#save(); }
+      job.reported = true; job.error = null; this.#save(job);
+    } catch (error) { job.error = error instanceof Error ? error.message : String(error); this.#save(job); }
   }
   requesterExited(sessionId: string): void {
     for (const job of this.#jobs) {
       if (job.actor?.sessionId !== sessionId || job.state !== 'queued' || job.outcome) continue;
       job.requesterDied = true;
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
+      this.#save(job);
     }
     this.#save(); void this.#check();
   }

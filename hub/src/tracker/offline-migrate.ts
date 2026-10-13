@@ -1,5 +1,7 @@
 // Prefix migration is an offline maintenance operation. Hold the same lock as hub
 // startup, so neither a new hub nor a second migrator can race the file/index writes.
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
 import { readdir, readFile, realpath } from 'node:fs/promises';
@@ -7,14 +9,16 @@ import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { layout, projectRoot, readDiscovery } from '../project.ts';
 import { acquireLockAsync, HubLocked } from '../hub/lock.ts';
-import { Journal, journalPath } from '../hub/journal.ts';
+import { Journal, journalPath, readJournal } from '../hub/journal.ts';
 import { jsonLinesLog } from '../log.ts';
 import { defaultConfig, parseConfig } from '../init/config.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
 import type { FrameActor } from '../cli/actor.ts';
+import { validTimestamp } from './criteria.ts';
+import { parseItemReference } from './prefixes.ts';
 import { fileNumber, parseItem } from './item.ts';
 import { Ladder, kindsFor } from './kinds.ts';
-import { planMigration, type MigrationPlan } from './migrate.ts';
+import { planMigration, type MigrationPlan, type ClosingTime } from './migrate.ts';
 import { Tracker, type Actor } from './tracker.ts';
 
 export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor): Promise<MigrationPlan> {
@@ -49,6 +53,11 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
     const pending = names.find(name => name.startsWith('.criterion-capture-') || name.endsWith('.tmp'));
     if (pending) throw new Error(`tracker write or criterion capture in flight: ${join(l.tasks, pending)}`);
     let highWater = 0;
+    const closingTimes = new Map<number, ClosingTime[]>();
+    const receipts = new Map<number, string>();
+    const addTime = (n: number, time: unknown, source: ClosingTime['source']) => {
+      if (typeof time === 'string' && validTimestamp(time)) closingTimes.set(n, [...closingTimes.get(n) ?? [], { time, source }]);
+    };
     const indexed = new Map<number, { file: string; hash: string }>();
     if (existsSync(l.db)) {
       const db = new DatabaseSync(l.db, { readOnly: true });
@@ -57,6 +66,13 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
         if (has('tracker_merges')) {
           const receipt = db.prepare("select m.item_id from tracker_merges m left join tracker_items i on i.id = m.item_id where i.state is null or i.state != 'closed' or m.checkout_recovery is not null limit 1").get();
           if (receipt) throw new Error(`merge receipt prepared but unfinished for ${receipt.item_id}; finish cland merge before task migrate`);
+        }
+        if (has('tracker_merges')) {
+          const columns = new Set(db.prepare('pragma table_info(tracker_merges)').all().map(r => r.name));
+          for (const row of db.prepare(`select item_id, commit_sha, ${columns.has('merged_at') ? 'merged_at' : 'null as merged_at'} from tracker_merges`).all()) {
+            const n = parseItemReference(String(row.item_id), kindsFor(ladder))?.n;
+            if (n !== undefined) { addTime(n, row.merged_at, 'receipt'); receipts.set(n, String(row.commit_sha)); }
+          }
         }
         if (has('tracker_meta')) highWater = Number(db.prepare("select value from tracker_meta where key = 'high_water'").get()?.value ?? 0);
         if (has('tracker_items')) {
@@ -74,7 +90,21 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
       entries.push({ file, item: parseItem(text, file, ladder), hash: createHash('sha256').update(text).digest('hex') });
       highWater = Math.max(highWater, fileNumber(file, kindsFor(ladder))!);
     }
-    const plan = planMigration(entries, highWater + 1, ladder.containers);
+    for (const record of readJournal(journalPath(l.dir), { kinds: ['task-written'] })) {
+      if (record.op !== 'close' || typeof record.id !== 'string') continue;
+      const n = parseItemReference(record.id, kindsFor(ladder))?.n;
+      if (n !== undefined) addTime(n, record.ts, 'journal');
+    }
+    // Resolve only missing times, never turn a missing receipt/commit into an updated-time guess.
+    for (const entry of entries) {
+      const n = fileNumber(entry.file, kindsFor(ladder))!;
+      if (entry.item.fm.state !== 'closed' || entry.item.fm.closed || closingTimes.has(n)) continue;
+      const commit = receipts.get(n);
+      if (!commit || !/^[0-9a-f]{4,64}$/i.test(commit)) continue;
+      const time = await promisify(execFile)('git', ['show', '-s', '--format=%cI', `${commit}^{commit}`], { cwd: root }).then(r => r.stdout.trim(), () => null);
+      addTime(n, time, 'commit');
+    }
+    const plan = planMigration(entries, highWater + 1, ladder.containers, closingTimes);
     const filesChange = Object.entries(plan).some(([key, value]) => key !== 'unresolved' && value.length);
     const indexCurrent = indexed.size === entries.length && entries.every(entry => {
       const row = indexed.get(fileNumber(entry.file, kindsFor(ladder))!);
@@ -87,7 +117,7 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
     const journal = new Journal(journalPath(l.dir));
     const log = journal.tap(jsonLinesLog(line => appendFileSync(l.log, line)));
     const tracker = new Tracker({ root: resolve(root), db: l.db, levels: config.tracker.levels, log });
-    try { return await tracker.migrate(actor); }
+    try { return await tracker.migrate(actor, closingTimes); }
     finally { await tracker.stop(); await journal.close(); }
   } finally { await lock.release(); }
 }

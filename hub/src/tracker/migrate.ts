@@ -1,7 +1,10 @@
+import { validTimestamp } from './criteria.ts';
 import { fileNameOf, type Item } from './item.ts';
 import { DEFAULT_LEVELS, Ladder, kindsFor } from './kinds.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
 
+export type ClosingTime = { time: string; source: 'receipt' | 'journal' | 'commit' };
+export type ClosingTimes = ReadonlyMap<number, readonly ClosingTime[]>;
 export type MigrationFile = { file: string; item: Item };
 type Change = { file: string; item: string; from: string; to: string };
 type Reference = Change & { field: 'parent' | 'blocked_by'; index?: number };
@@ -9,7 +12,8 @@ export type MigrationPlan = {
   renames: Array<{ from: string; to: string }>;
   ids: Change[];
   references: Reference[];
-  unresolved: Array<{ file: string; item: string; field: 'parent' | 'blocked_by'; reference: string; index?: number }>;
+  unresolved: Array<{ file: string; item: string; field: 'parent' | 'blocked_by' | 'closed'; reference: string; index?: number }>;
+  closed: Array<ClosingTime & { file: string; item: string }>;
   titles: Change[];
   categories: Array<
     { action: 'convert'; file: string; id: string; title: string; fromKind: string; kind: 'category' }
@@ -25,8 +29,8 @@ const stripTitle = (title: string): string => title.replace(/^(?:epic|release|sp
  * Entries identify source files so an applier can patch only named frontmatter fields.
  * Bodies, comments and unrelated metadata are deliberately absent from the delta.
  */
-export function planMigration(files: readonly MigrationFile[], nextNumber: number, containers: readonly string[] = new Ladder(DEFAULT_LEVELS).containers): MigrationPlan {
-  const plan: MigrationPlan = { renames: [], ids: [], references: [], unresolved: [], titles: [], categories: [], labels: [], moves: [] };
+export function planMigration(files: readonly MigrationFile[], nextNumber: number, containers: readonly string[] = new Ladder(DEFAULT_LEVELS).containers, closingTimes: ClosingTimes = new Map()): MigrationPlan {
+  const plan: MigrationPlan = { renames: [], ids: [], references: [], unresolved: [], titles: [], categories: [], labels: [], moves: [], closed: [] };
   const kinds = [...kindsFor(DEFAULT_LEVELS), ...containers, 'category'];
   const numberOf = (entry: MigrationFile): number => {
     const match = /^([a-z]-\d+)(?:-[^/]*)?\.md$/i.exec(entry.file);
@@ -62,6 +66,12 @@ export function planMigration(files: readonly MigrationFile[], nextNumber: numbe
   for (const entry of sorted) {
     const { file, item: { fm } } = entry;
     const id = canonical(entry);
+    if (fm.state === 'closed' && fm.closed === undefined) {
+      const candidates = closingTimes.get(numberOf(entry)) ?? [];
+      const candidate = ['receipt', 'journal', 'commit'].flatMap(source => candidates.filter(c => c.source === source && validTimestamp(c.time)).sort((a, b) => Date.parse(b.time) - Date.parse(a.time)))[0];
+      if (candidate) plan.closed.push({ file, item: id, ...candidate });
+      else plan.unresolved.push({ file, item: id, field: 'closed', reference: 'no closing-time source' });
+    }
     const change = (from: string, to: string): Change => ({ file, item: fm.id, from, to });
     const name = file.replace(/^[a-z]-\d+/i, id);
     if (name !== file) plan.renames.push({ from: file, to: name });

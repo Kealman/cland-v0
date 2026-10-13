@@ -3,6 +3,7 @@
 // Pure: text in, text out; nothing here touches the disk.
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { parseItemReference } from './prefixes.ts';
+import { validTimestamp } from './criteria.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, ladderOf, type LadderInput } from './kinds.ts';
 // Keep Kind visible to the compiler after inference/destructuring; every configured string remains assignable.
 export type Kind = string & {};
@@ -38,6 +39,8 @@ export type Frontmatter = {
   branch: string | null;
   created: string;
   updated: string;
+  /** Closing time supplied by a hub close or the offline backfill; absent for unresolved legacy closes. */
+  closed?: string;
   /** Where the item was imported from (`cland task import-github`); absent on items made here. */
   github?: GithubRef;
 };
@@ -192,6 +195,10 @@ export function parseItem(text: string, fileName?: string, levels: LadderInput =
     created: str(r.created) ?? '',
     updated: str(r.updated) ?? '',
   };
+  if (r.closed !== undefined) {
+    if (typeof r.closed !== 'string' || !validTimestamp(r.closed)) throw new ItemParseError('closed must be an ISO timestamp');
+    fm.closed = r.closed;
+  }
   if (r.version !== undefined && r.version !== null) {
     const refusal = versionRefusal(kind, r.version, levels);
     if (refusal) throw new ItemParseError(refusal);
@@ -307,6 +314,7 @@ export function serializeItem(item: Item): string {
     branch: fm.branch,
     created: fm.created,
     updated: fm.updated,
+    ...(fm.closed !== undefined ? { closed: fm.closed } : {}),
     ...(fm.github ? { github: { repo: fm.github.repo, number: fm.github.number, url: fm.github.url } } : {}),
   };
   const yaml = stringifyYaml(ordered, { lineWidth: 0, flowCollectionPadding: false });

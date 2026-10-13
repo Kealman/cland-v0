@@ -15,7 +15,7 @@ export type Criterion = {
   malformedMarks: CriterionWarning[];
 };
 
-function validTimestamp(value: string): boolean {
+export function validTimestamp(value: string): boolean {
   const fields = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
   if (!fields) return false;
   const year = Number(fields[1]), month = Number(fields[2]), day = Number(fields[3]);
@@ -126,4 +126,22 @@ export function criterionRefusal(op: unknown, actor: { role: string | null; huma
 export function annotateCriteria(criteria: Criterion[], tip: string | null): Criterion[] {
   return criteria.map(c => ({ ...c, marks: c.marks.map(m => m.kind === 'verified'
     ? { ...m, current: !!tip && m.commit === tip } : m) }));
+}
+
+/** Compact indexed marks: checkbox state alone never implies completion. */
+export type CriterionSummary = { done: boolean; failed: boolean; verified: Array<string | null> };
+export type CriteriaCounts = { total: number; done: number; verified: number; stale: number; failed: number };
+export function summarizeCriteria(criteria: readonly Criterion[]): CriterionSummary[] {
+  return criteria.map(c => ({ done: c.marks.some(m => m.kind === 'done'), failed: c.marks.some(m => m.kind === 'failed'),
+    verified: c.marks.flatMap(m => m.kind === 'verified' ? [m.commit ?? null] : []) }));
+}
+export function countCriteria(criteria: readonly CriterionSummary[], tip: string | null): CriteriaCounts {
+  const counts: CriteriaCounts = { total: criteria.length, done: 0, verified: 0, stale: 0, failed: 0 };
+  for (const c of criteria) {
+    if (c.failed) counts.failed++;
+    else if (tip && c.verified.includes(tip)) counts.verified++;
+    else if (c.verified.length) counts.stale++;
+    else if (c.done) counts.done++;
+  }
+  return counts;
 }

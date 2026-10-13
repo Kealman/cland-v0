@@ -24,6 +24,7 @@ const apply = (files: MigrationFile[], plan: MigrationPlan): MigrationFile[] => 
     for (const c of plan.categories) if (c.action === 'convert' && c.file === source) fm.kind = c.kind;
     if (plan.labels.some(c => c.file === source)) fm.labels = fm.labels.filter(l => l !== 'tech-debt');
     for (const c of plan.moves.filter(c => c.file === source)) fm.parent = c.to;
+    for (const c of plan.closed.filter(c => c.file === source)) fm.closed = c.time;
     entry.file = plan.renames.find(c => c.from === source)?.to ?? source;
   }
   for (const c of plan.categories) if (c.action === 'create') {
@@ -69,7 +70,7 @@ test('plans every prefix, exact title stripping, references and labels without t
   assert.deepEqual(plan.titles.map(c => c.to), ['v0.1.1', 'Feature', 'Why', 'Route', 'Design', 'Build']);
   assert.ok(plan.references.some(c => c.item === 'T-6' && c.field === 'parent' && c.to === 'E-2'));
   assert.deepEqual(plan.references.filter(c => c.field === 'blocked_by').map(c => [c.index, c.to]), [[0, 'Q-3'], [2, 'M-4']]);
-  assert.deepEqual(plan.unresolved.map(c => c.reference), ['T-999']);
+  assert.deepEqual(plan.unresolved.filter(c => c.field !== 'closed').map(c => c.reference), ['T-999']);
   assert.ok(plan.references.some(c => c.item === 'T-9' && c.to === 'C-8'));
   assert.deepEqual(plan.categories.map(c => [c.action, c.id, c.title]), [['convert', 'C-8', 'Tech debt'], ['create', 'C-30', 'Bugs'], ['create', 'C-31', 'Follow-ups'], ['create', 'C-32', 'Ideas']]);
   assert.ok(plan.categories.filter(c => c.action === 'create').every(c => c.kind === 'category' && c.state === 'open' && c.body === ''));
@@ -132,5 +133,26 @@ test('seeds reuse open categories by their planned titles and replace closed roo
   assert.deepEqual(plan.categories.map(c => [c.id, c.title]), [['C-10', 'Tech debt'], ['C-11', 'Follow-ups'], ['C-12', 'Ideas']]);
   assert.deepEqual(plan.titles.map(c => [c.item, c.to]), [['C-2', 'Bugs']]);
   assert.equal(plan.moves[0]!.to, 'C-10');
-  empty(planMigration(apply(files, plan), 13));
+  const rerun = planMigration(apply(files, plan), 13);
+  assert.deepEqual(rerun.unresolved.map(c => c.field), ['closed', 'closed']);
+  empty({ ...rerun, unresolved: [] });
+});
+
+test('closing-time candidates follow receipt, latest journal, then commit and skip already closed times', () => {
+  const files = [1, 2, 3, 4, 5, 6].map(n => file(n, 'task', { state: n === 6 ? 'open' : 'closed', ...(n === 5 ? { closed: '2026-10-01T10:00:00Z' } : {}) }));
+  const times = new Map([
+    [1, [{ source: 'commit' as const, time: '2026-10-01T10:00:00Z' }, { source: 'journal' as const, time: '2026-10-02T10:00:00Z' }, { source: 'receipt' as const, time: '2026-10-03T10:00:00Z' }]],
+    [2, [{ source: 'commit' as const, time: '2026-10-01T10:00:00Z' }, { source: 'journal' as const, time: '2026-10-02T10:00:00Z' }]],
+    [3, [{ source: 'commit' as const, time: '2026-10-01T10:00:00Z' }]],
+  ]);
+  const before = structuredClone(files);
+  const plan = planMigration(files, 10, ['release', 'category', 'epic'], times);
+  assert.deepEqual(files, before);
+  assert.deepEqual(plan.closed.map(c => [c.item, c.time, c.source]), [
+    ['T-1', '2026-10-03T10:00:00Z', 'receipt'], ['T-2', '2026-10-02T10:00:00Z', 'journal'], ['T-3', '2026-10-01T10:00:00Z', 'commit'],
+  ]);
+  assert.deepEqual(plan.unresolved.map(c => [c.item, c.field]), [['T-4', 'closed']]);
+  const rerun = planMigration(apply(files, plan), 14, ['release', 'category', 'epic'], times);
+  empty({ ...rerun, unresolved: [] });
+  assert.deepEqual(rerun.unresolved.map(c => c.item), ['T-4']);
 });

@@ -1,7 +1,7 @@
 // The tracker's index and claims: tables of their own in the hub's SQLite file, through a connection of
 // their own. The index is derived from the files and rebuilt from them at every start; claims are hub
 // state (a session's live hold on an item) and are never written to a file.
-import { parseCriteria } from './criteria.ts';
+import { parseCriteria, summarizeCriteria, countCriteria, type CriterionSummary, type CriteriaCounts } from './criteria.ts';
 import type { EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
@@ -122,6 +122,7 @@ export type IndexedItem = {
   branch: string | null;
   created: string;
   updated: string;
+  closed?: string;
   file: string;
 };
 
@@ -156,13 +157,15 @@ type Row = Record<string, string | number | null>;
 export class TrackerIndex {
   readonly #db: DatabaseSync;
   readonly #kinds: readonly string[] | undefined;
+  /** Marks already selected with each index row, retained only for that returned object. */
+  readonly #criteria = new WeakMap<IndexedItem, CriterionSummary[]>();
 
   constructor(path: string, kinds?: readonly string[]) {
     this.#kinds = kinds;
     this.#db = new DatabaseSync(path);
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;');
     this.#db.exec(SCHEMA);
-    this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file)');
+    this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file); create index if not exists tracker_items_branch on tracker_items (branch)');
     // Additive columns for databases created by earlier hub versions.
     const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
     if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
@@ -170,6 +173,8 @@ export class TrackerIndex {
     if (!itemColumns.has('criteria_ids')) {
       this.#db.exec("alter table tracker_items add column criteria_ids text not null default '[]'; update tracker_items set hash = ''");
     }
+    if (!itemColumns.has('criteria_summary')) this.#db.exec("alter table tracker_items add column criteria_summary text not null default '[]'; update tracker_items set hash = ''");
+    if (!itemColumns.has('closed')) this.#db.exec("alter table tracker_items add column closed text; update tracker_items set hash = ''");
     if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
     const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
     if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
@@ -227,11 +232,12 @@ export class TrackerIndex {
       this.#db.prepare('delete from tracker_items where id = ?').run(fm.id);
       this.#db
         .prepare(
-          `insert into tracker_items (id, n, file, kind, version, title, state, status, rank, assignee, parent, topic, branch, created, updated, hash, source, indexed_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into tracker_items (id, n, file, kind, version, title, state, status, rank, assignee, parent, topic, branch, created, updated, closed, hash, source, indexed_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, meta.hash, meta.source, meta.indexedAt);
-      this.#db.prepare('update tracker_items set criteria_ids = ? where id = ?').run(JSON.stringify(parseCriteria(item.body).criteria.flatMap(c => c.id ? [c.id] : [])), fm.id);
+        .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, fm.closed ?? null, meta.hash, meta.source, meta.indexedAt);
+      const criteria = parseCriteria(item.body, !['task', 'question', 'spec', 'map'].includes(fm.kind)).criteria;
+      this.#db.prepare('update tracker_items set criteria_ids = ?, criteria_summary = ? where id = ?').run(JSON.stringify(criteria.flatMap(c => c.id ? [c.id] : [])), JSON.stringify(summarizeCriteria(criteria)), fm.id);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
       for (const l of fm.labels) label.run(fm.id, l);
       const blocker = this.#db.prepare('insert or ignore into tracker_blocked_by (item_id, blocker) values (?, ?)');
@@ -247,6 +253,14 @@ export class TrackerIndex {
       });
       this.#raiseHighWater(idNumber(fm.id));
     });
+  }
+
+  verifyItems(item: string | null, branch: string): string[] {
+    return this.#db.prepare("select id from tracker_items where kind = 'task' and (n = ? or branch = ?)").all(item ? idNumber(item) : null, branch).map(row => this.#canonical(String(row.id)));
+  }
+
+  criteriaCounts(item: IndexedItem, tip: string | null): CriteriaCounts {
+    return countCriteria(this.#criteria.get(item) ?? [], tip);
   }
 
   criterionIds(id: string): string[] {
@@ -387,7 +401,7 @@ export class TrackerIndex {
 
   #hydrate(r: Row): IndexedItem {
     const id = r.id as string;
-    return {
+    const item: IndexedItem = {
       id: this.#canonical(id),
       kind: r.kind as Kind,
       rank: effectiveRank({ id, rank: r.rank as number | null }),
@@ -403,8 +417,11 @@ export class TrackerIndex {
       branch: (r.branch as string | null) ?? null,
       created: r.created as string,
       updated: r.updated as string,
+      ...(r.closed !== null ? { closed: r.closed as string } : {}),
       file: r.file as string,
     };
+    this.#criteria.set(item, JSON.parse(r.criteria_summary as string) as CriterionSummary[]);
+    return item;
   }
 
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
@@ -471,7 +488,7 @@ export class TrackerIndex {
   /** Indexed lifecycle time, without materialising bodies, verdicts or journal history. */
   closedAt(id: string): string | null {
     id = this.#key(id);
-    const row = this.#db.prepare(`select coalesce(m.merged_at, t.value, i.updated) as at from tracker_items i
+    const row = this.#db.prepare(`select coalesce(i.closed, m.merged_at, t.value, i.updated) as at from tracker_items i
       left join tracker_merges m on m.item_id = i.id
       left join tracker_meta t on t.key = 'closed-at:' || i.id
       where i.id = ? and i.state = 'closed'`).get(id) as Row | undefined;

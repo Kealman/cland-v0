@@ -99,6 +99,7 @@ test('closed epic stages read closed without task writes; reopening restores der
   const shown = await cland(f.root, 'task', 'plan', 'show', f.epic.id, '--json');
   assert.deepEqual(JSON.parse(shown.stdout).stages.map((s: { state: string }) => s.state), ['closed', 'closed']);
   assert.deepEqual((await f.read(f.epic.id)).stages?.map(s => s.state), ['closed', 'closed']);
+  assert.equal((await f.read(f.epic.id)).closed, undefined, 'a hand close has no invented card time');
   assert.equal((await f.read(f.c.id)).status, 'backlog');
   assert.equal((await f.ui.request({ type: 'task.edit', item: f.a.id, status: 'backlog' })).ok, true);
   assert.equal((await f.ui.request({ type: 'task.comment', item: f.epic.id, text: 'Closed stage evidence is read-only' })).ok, true);

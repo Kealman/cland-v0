@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { MigrationPlan } from '../src/tracker/migrate.ts';
 
 const indexSnapshot = (root: string) => {
@@ -20,6 +20,71 @@ const filesSnapshot = async (root: string) => {
   const dir = join(root, '.cland/tasks');
   return Promise.all((await readdir(dir)).sort().map(async name => [name, await readFile(join(dir, name), 'utf8')]));
 };
+
+test('offline closed backfill previews receipt, journal and commit sources and changes only closed lines once', async t => {
+  const root = await preparedProject(t);
+  await startDaemon(t, root);
+  // Seed the categories in a separate maintenance window so this plan contains only closing times.
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  assert.equal((await cland(root, 'task', 'migrate')).code, 0);
+  await startDaemon(t, root);
+  const items: Array<{ id: string; path: string }> = [];
+  for (const title of ['receipt', 'journal', 'commit', 'unresolved', 'already']) {
+    const made = await cland(root, 'task', 'create', title, '--json');
+    assert.equal(made.code, 0, made.stderr);
+    const item = JSON.parse(made.stdout).item;
+    items.push(item);
+    assert.equal((await cland(root, 'task', 'close', item.id)).code, 0);
+  }
+  await flushProjectLogs(t, root);
+  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  // Legacy tracker copy: strip the new field and remove newer closes from the copied journal.
+  for (const item of items.slice(0, 4)) {
+    const path = join(root, item.path);
+    await writeFile(path, (await readFile(path, 'utf8')).replace(/^closed:.*\n/m, '').replace(/^labels: \[\]/m, 'labels: [] # retain this hand formatting').replace(/^title: /m, 'title:   '));
+  }
+  const journal = join(root, '.cland/journal.jsonl');
+  await writeFile(journal, [
+    { event: 'task-written', op: 'close', id: items[0]!.id, ts: '2026-10-02T10:00:00.000Z' },
+    { event: 'task-written', op: 'close', id: items[1]!.id, ts: '2026-10-01T10:00:00.000Z' },
+    { event: 'task-written', op: 'close', id: items[1]!.id, ts: '2026-10-02T10:00:00.000Z' },
+    { event: 'task-written', op: 'edit', id: items[3]!.id, ts: '2026-10-03T10:00:00.000Z' },
+  ].map(r => JSON.stringify(r)).join('\n') + '\n');
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const commitTime = execFileSync('git', ['show', '-s', '--format=%cI', commit], { cwd: root, encoding: 'utf8' }).trim();
+  const db = new DatabaseSync(join(root, '.cland/hub.db'));
+  try {
+    for (const [index, mergedAt] of [[0, '2026-10-03T10:00:00.000Z'], [1, null], [2, null]] as const) {
+      db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, merged_at) values (?, ?, ?, ?, ?, ?)').run(items[index]!.id, `t/${items[index]!.id}`, commit, 'dev', commit, mergedAt);
+    }
+  } finally { db.close(); }
+  const before = await filesSnapshot(root), beforeIndex = indexSnapshot(root);
+  const preview = await cland(root, 'task', 'migrate', '--dry-run', '--json');
+  assert.equal(preview.code, 0, preview.stderr);
+  const plan: MigrationPlan = JSON.parse(preview.stdout);
+  assert.deepEqual(plan.closed.map(c => [c.item, c.time, c.source]), [
+    [items[0]!.id, '2026-10-03T10:00:00.000Z', 'receipt'], [items[1]!.id, '2026-10-02T10:00:00.000Z', 'journal'], [items[2]!.id, commitTime, 'commit'],
+  ]);
+  assert.deepEqual(plan.unresolved.map(c => [c.item, c.field]), [[items[3]!.id, 'closed']]);
+  assert.deepEqual(await filesSnapshot(root), before);
+  assert.deepEqual(indexSnapshot(root), beforeIndex);
+  assert.match((await cland(root, 'task', 'migrate', '--dry-run')).stdout, /closed T-\d+: .* \(receipt\)/);
+  const applied = await cland(root, 'task', 'migrate', '--json');
+  assert.equal(applied.code, 0, applied.stderr);
+  assert.deepEqual(JSON.parse(applied.stdout), plan);
+  const after = await filesSnapshot(root);
+  assert.deepEqual(after.map(([name, text]) => [name, text!.replace(/^closed:.*\n/m, '')]), before.map(([name, text]) => [name, text!.replace(/^closed:.*\n/m, '')]));
+  const noOpIndex = indexSnapshot(root);
+  const rerun = await cland(root, 'task', 'migrate');
+  assert.equal(rerun.code, 0, rerun.stderr);
+  assert.match(rerun.stdout, /^nothing to do\n/);
+  assert.match(rerun.stdout, /unresolved closed/);
+  assert.deepEqual(await filesSnapshot(root), after);
+  assert.deepEqual(indexSnapshot(root), noOpIndex);
+  await startDaemon(t, root);
+  const view = await cland(root, 'task', 'view', items[0]!.id, '--json');
+  assert.equal(JSON.parse(view.stdout).item.closed, '2026-10-03T10:00:00.000Z');
+});
 
 test('offline migration matches its preview, preserves prose and resolves old ids after a real hub restart', async t => {
   const root = await tempProject(t);

@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
+import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +46,69 @@ async function fixture(t: import('node:test').TestContext, testScript: string, t
   };
   return { root, discovery, ui, env, topic, results, launch, spoke };
 }
+
+test('verify card follows branch jobs through finish and cache, updates the UI silently and survives restart', async t => {
+  const f = await fixture(t, 'node -e "process.exit(0)"');
+  const git = await cacheRepository(f);
+  const head = await git('rev-parse', 'HEAD');
+  const made = await f.ui.request({ type: 'task.create', title: 'Branch card', branch: 'candidate' });
+  const item = (made.value as { item: ItemView }).item;
+  await f.ui.request({ type: 'subscribe' });
+  await f.spoke.call('subscribe', { subject: { item: item.id }, events: ['task'], digest: 'now' });
+  const from = f.ui.frames.length;
+  const job = await f.launch();
+  const report = await eventually('first result', async () => (await f.results())[0]);
+  const card = await eventually('branch verify has the log artifact', async () => {
+    const list = await f.ui.request({ type: 'task.list' });
+    const card = (list.value as { items: ItemSummary[] }).items.find(i => i.id === item.id);
+    return card?.verify?.id === job.id && card.verify.artifact ? card : undefined;
+  });
+  assert.deepEqual(card.verify, { id: job.id, state: 'finished', result: 'passed', head, finished: card.verify!.finished, artifact: report.artifacts[0]!.id });
+  assert.ok(card.verify!.finished);
+  const frames = f.ui.frames.slice(from).filter(frame => frame.type === 'task' && (frame.item as ItemSummary)?.id === item.id);
+  assert.equal(frames.filter(frame => (frame.item as ItemSummary).verify?.result === 'passed').length, 1, 'one terminal card, including the artifact');
+  for (const frame of frames) assert.equal((frame as { events?: unknown }).events, undefined);
+  assert.equal(f.spoke.events.filter(n => n.params.content.includes(item.id)).length, 0, 'no item event delivery');
+  const detail = await f.ui.request({ type: 'task.view', item: item.id });
+  assert.deepEqual((detail.value as { item: ItemView }).item.verify, card.verify);
+  const cached = await f.launch();
+  assert.equal(cached.cached?.run, job.id);
+  await eventually('cached card', async () => {
+    const list = await f.ui.request({ type: 'task.list' });
+    const card = (list.value as { items: ItemSummary[] }).items.find(i => i.id === item.id);
+    return card?.verify?.id === cached.id && card.verify.artifact ? card : undefined;
+  });
+  assert.match((await cland(f.root, 'task', 'view', item.id)).stdout, /verify +.*passed.*cached/);
+  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  await startDaemon(t, f.root);
+  const after = JSON.parse((await cland(f.root, 'task', 'list', '--json')).stdout).items.find((i: { id: string }) => i.id === item.id);
+  assert.equal(after.verify.id, cached.id);
+  assert.deepEqual(after.verify.cached, cached.cached);
+});
+
+for (const result of ['failed', 'cancelled'] as const) test(`verify card exposes ${result} by item, with queued results left null`, async t => {
+  const f = await fixture(t, 'node -e "process.exit(1)"');
+  const read = async () => ((await f.ui.request({ type: 'task.list' })).value as { items: ItemSummary[] }).items[0]!;
+  assert.equal((await read()).verify, null);
+  if (result === 'cancelled') await mkdir(join(f.root, 'suite.lock'));
+  const job = await f.launch();
+  if (result === 'cancelled') {
+    const queued = (await read()).verify!;
+    assert.equal(queued.id, job.id);
+    assert.equal(queued.state, 'queued');
+    assert.equal(queued.result, null);
+    assert.equal(queued.finished, null);
+    assert.equal(queued.artifact, null);
+    assert.equal((await f.ui.request({ type: 'suite.cancel', suite: job.id })).ok, true);
+  }
+  const card = await eventually(`${result} card with artifact`, async () => {
+    const card = await read();
+    return card.verify?.result === result && card.verify.artifact ? card : undefined;
+  });
+  assert.equal(card.verify!.state, 'finished');
+  assert.ok(card.verify!.finished);
+  assert.equal(card.verify!.id, job.id);
+});
 
 test('verify refuses every unclassified hub test before reserving a queue slot, then admits classifications', async t => {
   const f = await fixture(t, 'node -e "process.exit(0)"');
