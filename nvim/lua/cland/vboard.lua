@@ -257,6 +257,7 @@ function M.render(c)
       if #more > 0 then fold(c, 'background', 'more', more, f) end
     end
   end
+  if f ~= 'you' and f ~= 'done' then items.categories_line(c) end
   return { ' K J rank · T top · ↵ open · za fold', ' gn now · gw watch · gb more · gA archive' }
 end
 

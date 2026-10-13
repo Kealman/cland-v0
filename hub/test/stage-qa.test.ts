@@ -239,7 +239,10 @@ test('stage receipt hashes remain compatible with legacy parent ids', async t =>
   assert.equal(stopped.code, 0, stopped.stderr);
   const { discovery } = await startDaemon(t, f.root);
   const ui = await connectUi(t, discovery);
-  const restored = ((await ui.request({ type: 'task.view', item: legacyParent })).value as { item: ItemView }).item;
+  const restored = await eventually('restarted hub checks legacy stage build ancestry', async () => {
+    const item = ((await ui.request({ type: 'task.view', item: legacyParent })).value as { item: ItemView }).item;
+    return item.stages?.[0]?.state === 'closed' ? item : undefined;
+  });
   assert.equal(restored.stages?.[0]?.state, 'closed');
   assert.equal(restored.stages?.[0]?.verdict?.stage_hash, legacyHash);
 });

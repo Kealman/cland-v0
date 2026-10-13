@@ -360,6 +360,12 @@ function M.help()
   local lines = vim.tbl_map(function(l)
     return ' ' .. l
   end, M.HELP)
+  for _, action in ipairs(require('cland.actions').all()) do
+    if action.id == 'items:<CR>' then
+      table.insert(lines, 6, ' Items     ' .. action.key .. ' · ' .. action.title)
+      break
+    end
+  end
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   vim.b[buf].cland_role = 'help'

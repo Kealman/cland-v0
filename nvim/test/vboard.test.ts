@@ -43,6 +43,94 @@ async function start(t: TestContext, scenario = fixture) {
   });
 }
 const panel = (c: Awaited<ReturnType<typeof start>>) => c.lua<string[]>("return vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false)");
+const categories: Scenario = {
+  tracker: { levels: ['release', 'category', 'epic'], ladder: [['release', 'category'], ['epic']] },
+  items: [
+    { id: 'R-228', kind: 'release', title: 'Working with items', version: '0.1.2', state: 'open' },
+    { id: 'E-269', kind: 'epic', title: 'Prefixes and categories', parent: 'R-228', state: 'open' },
+    task(318, 'planned', 'E-269'),
+    { id: 'C-216', kind: 'category', title: 'Tech debt', state: 'open' },
+    { id: 'C-400', kind: 'category', title: 'Ideas', state: 'open' },
+    { id: 'C-401', kind: 'category', title: 'Archived category', state: 'closed' },
+    { id: 'E-402', kind: 'epic', title: 'Debt epic', parent: 'C-216', state: 'open' },
+    task(403, 'backlog', 'E-402', { rank: 20 }),
+    task(404, 'backlog', 'C-216', { rank: 10 }),
+    task(405, 'done', 'C-216'),
+    task(406, 'backlog', 'C-401'),
+  ],
+};
+
+test('release scope ends with live counts of open categories and their open descendants', { skip }, async t => {
+  const c = await start(t, categories);
+  const screen = await c.waitScreen(s => s.includes('categories 2 · 3 open'), 'category count line');
+  assert.match(screen, /R-228 Working with items/);
+  assert.match(screen, /T-318 E-269 › Row 318/);
+  const lines = await panel(c);
+  assert.equal(lines.filter(line => line.trim()).at(-3)?.trim(), 'categories 2 · 3 open', 'last content row before the two footer lines');
+  await c.control({ emit: { type: 'task', id: 'T-407', item: task(407, 'backlog', 'E-402') } });
+  await c.waitScreen(s => s.includes('categories 2 · 4 open'), 'new descendant increments the count');
+  for (const key of ['2', '1']) {
+    await c.input(key);
+    await c.waitScreen(s => s.includes(key === '2' ? 'in work ·' : 'board ·'), 'filter changed');
+    assert.match((await panel(c)).join('\n'), /categories 2 · 4 open/);
+  }
+  for (const [key, label] of [['gn', 'now'], ['gw', 'watch'], ['gb', 'background'], ['gA', 'archive']]) {
+    await c.input(key!);
+    await c.waitScreen(s => s.includes(label! + ' ·') && s.includes('categories 2 · 4 open'), 'category counts under the layer filter');
+  }
+  for (const key of ['3', '4', '5']) {
+    await c.input(key);
+    await c.waitScreen(s => s.includes(({ '3': 'needs you', '4': 'DONE ·', '5': 'map ·' })[key]!), 'filter without categories');
+    assert.doesNotMatch((await panel(c)).join('\n'), /categories \d/);
+  }
+  await c.input('1');
+  await c.waitScreen(s => s.includes('categories 2 · 4 open'), 'release board restored');
+  for (const id of ['C-216', 'C-400']) {
+    const item = { ...categories.items!.find(it => it.id === id), state: 'closed' };
+    await c.control({ emit: { type: 'task', id, item } });
+  }
+  await c.waitScreen(s => !s.includes('categories 2 · 4 open') && !s.includes('categories 1 ·'), 'no open category hides the line');
+  assert.doesNotMatch((await panel(c)).join('\n'), /categories \d/);
+});
+
+test('category roots follow the configured ladder and the count line belongs only to release scope', { skip }, async t => {
+  const c = await start(t, {
+    tracker: { levels: ['release', 'initiative', 'epic'], ladder: [['release', 'initiative'], ['epic']] },
+    items: [
+      { id: 'R-1', kind: 'release', title: 'Release', version: '0.1.2', state: 'open' },
+      { id: 'E-2', kind: 'epic', title: 'Epic scope', parent: 'R-1', state: 'open' },
+      { id: 'I-3', kind: 'initiative', title: 'Root peer', state: 'open' },
+      task(4, 'backlog', 'I-3'),
+    ],
+  });
+  await c.waitScreen(s => s.includes('categories 1 · 1 open'), 'custom root kind counted');
+  await c.input('e');
+  await c.waitScreen(s => s.includes('E-2 Epic scope') && !s.includes('categories 1 · 1 open'), 'epic scope without count line');
+  await c.input('6');
+  await c.waitScreen(s => s.includes('all · 4 items') && s.includes('I-3 Root peer'), 'all under epic scope retains the ordinary tree');
+  assert.doesNotMatch((await panel(c)).join('\n'), /categories \d/);
+});
+
+test('Enter reaches folded categories in all, za reveals ranked open items, and help lists the action', { skip }, async t => {
+  const c = await start(t, categories);
+  await c.waitScreen(s => s.includes('categories 2 · 3 open'), 'count line before navigation');
+  await c.input('/categories 2<CR><CR>');
+  const screen = await c.waitScreen(s => s.includes('all ·') && /▸ ○ C-216 Tech debt +3 open/.test(s), 'folded categories under all');
+  assert.match(screen, /▸ ○ C-400 Ideas +0 open/);
+  assert.doesNotMatch(screen, /Row 40[345]/);
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /categories 2 · 3 open/, 'cursor on the categories heading');
+  await c.input('jza');
+  const expanded = await c.waitScreen(s => /▾ ○ C-216 Tech debt/.test(s) && s.includes('T-403 Row 403'), 'category unfolded');
+  assert.ok(expanded.indexOf('T-404 Row 404') < expanded.indexOf('T-403 Row 403'), 'open descendants follow rank');
+  assert.doesNotMatch(expanded, /T-405 Row 405/, 'closed items stay out of the open section');
+  assert.match(String(await c.lua('return vim.api.nvim_get_current_line()')), /C-216 Tech debt/, 'cursor follows the category fold');
+  await c.input('za');
+  await c.waitScreen(s => /▸ ○ C-216 Tech debt/.test(s) && !s.includes('T-403 Row 403'), 'category folded again');
+  await c.input('<Space>?');
+  await c.waitScreen(s => s.includes('Open row or show categories in all'), 'Enter action in key help');
+  await c.input('q<Space>p>Open row or show categories');
+  await c.waitScreen(s => s.includes('Open row or show categories in all') && s.includes('↵ in items'), 'Enter action in palette');
+});
 test('release board excludes legacy trees and done orphans; all reveals every item at 80 and 120 columns', { skip }, async t => {
   const scenario: Scenario = { items: [
     { id: 'T-130', kind: 'release', title: 'Current release', version: '0.1.0', state: 'open' },

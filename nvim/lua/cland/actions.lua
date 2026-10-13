@@ -47,7 +47,9 @@ end
 add('global', '<C-\\>', 'Leave Terminal mode', 't')
 add('global', '<S-CR>', 'Send Shift+Enter to harness', 't')
 for _, scope in ipairs({'items', 'sessions', 'topics', 'inbox'}) do
-  group(scope, {{'<CR>', scope == 'sessions' and 'Attach selected session, open verification queue or toggle background fold' or 'Open row in centre'}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
+  local enter = scope == 'sessions' and 'Attach selected session, open verification queue or toggle background fold'
+    or (scope == 'items' and 'Open row or show categories in all' or 'Open row in centre')
+  group(scope, {{'<CR>', enter}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
 end
 M.register({ id = 'verification.open', title = 'Open verification queue', run = function()
   require('cland.layout').show({ kind = 'verification' }, { insert = false })

@@ -311,6 +311,41 @@ function M.is_level(it)
   return M.level_of(it) ~= nil
 end
 
+--- Categories are the other root kinds in the hub's ladder, not a fixed kind name.
+function M.is_category(it)
+  return M.level_of(it) == 1 and it.kind ~= state.S.tracker.levels[1]
+end
+
+function M.open_categories()
+  local out = {}
+  for _, it in ipairs(state.S.items) do
+    if M.is_category(it) and it.state == 'open' then out[#out + 1] = it end
+  end
+  table.sort(out, function(a, b) return M.num(a.id) < M.num(b.id) end)
+  return out
+end
+
+function M.category_items(category)
+  return vim.tbl_filter(function(it)
+    return it.id ~= category.id and it.state == 'open' and require('cland.vboard').under(it, category.id)
+  end, M.all())
+end
+
+--- A selectable heading shared by the release board and the all tree.
+function M.categories_line(c)
+  local scope, list, total = M.scope(), M.open_categories(), 0
+  if not scope or scope.kind ~= state.S.tracker.levels[1] or #list == 0 then return false end
+  for _, category in ipairs(list) do total = total + #M.category_items(category) end
+  c:add({ { ' categories ' .. #list .. ' · ' .. total .. ' open', 'ClandSection' } }, nil, { categories = true })
+  if M.follow_categories then c.cursor_to = #c.lines; M.follow_categories = nil end
+  return true
+end
+
+function M.show_categories()
+  M.follow_categories = true
+  M.set_filter('all')
+end
+
 function M.scopes()
   local out = {}
   for _, it in ipairs(M.ordered()) do
@@ -471,12 +506,13 @@ end
 function M.folded(it)
   local override = state.S.ui.items_folds[it.id]
   if override ~= nil then return override end
+  if M.is_category(it) then return true end
   if it.state == 'closed' then return true end
   local current = M.current_release()
   return it.kind == state.S.tracker.levels[1] and (not current or current.id ~= it.id)
 end
 
-local function row(c, it, depth)
+local function row(c, it, depth, open_count, flat)
   local g, ghl = M.glyph(it)
   local kids = #M.children(it.id) > 0
   local container = kids or M.is_container(it)
@@ -485,12 +521,14 @@ local function row(c, it, depth)
   local epic = plan.owner(it.id)
   local tag = epic and plan.stage_tag(epic, it.id)
   local changed = epic and plan.changes(epic).items[it.id]
-  local fold = container and (M.folded(it) and '▸ ' or '▾ ') or ''
+  local fold = container and not flat and (M.folded(it) and '▸ ' or '▾ ') or ''
   c:add(
     { { ' ' .. ('  '):rep(depth) .. fold }, { g, ghl }, { ' ' }, { it.id, 'ClandDim' }, { tag and (' ' .. tag .. ' ›') or '', 'ClandDim' }, { changed and ' △' or '', 'ClandPlanChange' }, { ' ' .. (it.title or ''), title_hl } },
-    right_of(it, container),
-    { item = it.id, fold = container and it.id or nil }
+    open_count and { { open_count .. ' open', 'ClandDim' } } or right_of(it, container),
+    { item = it.id, fold = container and not flat and it.id or nil }
   )
+  local board = require('cland.vboard')
+  if board.follow_fold == it.id then c.cursor_to = #c.lines; board.follow_fold = nil end
 end
 
 local function section(c, text, n, group)
@@ -504,6 +542,7 @@ function M.render(c)
   if vim.tbl_contains(M.LAYERS, M.filter()) then
     section(c, M.filter())
     for _, it in ipairs(M.ordered()) do if it.layer == M.filter() then row(c, it, 0) end end
+    M.categories_line(c)
     return { ' ↵ open · gt topic · gs session', ' gn now · gw watch · gb more · gA archive' }
   end
   if M.filter() == 'all' then
@@ -516,7 +555,27 @@ function M.render(c)
       if not hidden then row(c, it, depth) end
       for _, child in ipairs(M.children(it.id)) do walk(child, depth + 1, hidden or M.folded(it)) end
     end
+    local categories = M.open_categories()
+    local scope = M.scope()
+    local grouped = scope and scope.kind == state.S.tracker.levels[1] and #categories > 0
+    if grouped then
+      for _, category in ipairs(categories) do
+        seen[category.id] = true
+        for _, it in ipairs(M.all()) do
+          if require('cland.vboard').under(it, category.id) then seen[it.id] = true end
+        end
+      end
+    end
     for _, it in ipairs(M.ordered()) do walk(it, 0, false) end
+    if grouped then
+      M.categories_line(c)
+      for _, category in ipairs(categories) do
+        local open = M.category_items(category)
+        row(c, category, 0, #open)
+        -- This temporary section is a flat ranked list of open descendants.
+        if not M.folded(category) then for _, it in ipairs(open) do row(c, it, 1, nil, true) end end
+      end
+    end
     if #state.S.items == 0 then c:add({ { ' No items in .cland/tasks yet.', 'ClandDim' } }) end
     return { ' ↵ open · gt topic · gs session', ' 1-6 or f filter · za fold · ␣b board' }
   end

@@ -108,6 +108,8 @@ function M.row_key(info)
     return 'verification'
   elseif info.item then
     return 'item:' .. info.item
+  elseif info.categories then
+    return 'categories'
   elseif info.session then
     return 'session:' .. info.session
   elseif info.fold then
@@ -530,7 +532,9 @@ local function open_row(buf)
     return
   end
   local layout = require('cland.layout')
-  if info.fold then
+  if info.categories then
+    require('cland.items').show_categories()
+  elseif info.fold then
     if vim.b[buf].cland_role == 'items' then
       require('cland.vboard').fold('toggle')
       return
