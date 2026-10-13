@@ -9,12 +9,11 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-228
-blocked_by:
-  - E-271
+blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.048Z
-updated: 2026-10-12T11:35:19.640Z
+updated: 2026-10-13T23:43:19.757Z
 ---
 
 ## Goal
@@ -83,3 +82,55 @@ The crew's own launches name their accounts from this epic on: the human writes 
 - Branch: `research/account-limits` (`docs/research/account-limits.md`, section 5; the probes in `docs/research/account-limits/`).
 - GLOSSARY: Harness, Adapter, Session, Role.
 - Upstream: anthropics/claude-code#95822.
+
+## Plan
+
+```yaml
+stages:
+  - name: safer polling and the registry
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-265
+      - - T-361
+  - name: Claude Code on an account and limits from running sessions
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-362
+      - - T-363
+  - name: idle accounts and the accounts block
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-364
+      - - T-365
+  - name: limited accounts, the clauses and the docs
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-366
+        - T-367
+```
+
+## Comments
+
+### coord · 2026-10-13T23:43:19.757Z
+
+Decision (stand-in, D24, 2026-10-13 23:23Z, lane flow): unlinked from E-271. The edge ordered the hub lane. No E-272 ticket depends on E-271's code: executors run suites, accounts govern harness sessions. The shared files are additive (protocol.ts, dispatch.ts, JOURNALLED, README prose, default-roles.ts clauses). E-273 still waits for both epics.
+Coordinator decisions on the drafts' open questions, adopted as recommended:
+- b2: a registry entry with no path names the harness default, at most one per harness. Otherwise limits go under default:<harness>, and the row records the effective directory.
+- b3: the resolved environment is recorded on the session row at launch, and relaunch, resume and handoff reuse it.
+- b4: API-key variables are removed for named Claude accounts and their idle polls.
+- b5: hub start and the timer keep the 15-min floor across restarts. Panel open and after-hit polls wait at least 5 min.
+- b6: a limit hit is only StopFailure.error == rate_limit.
+- b7: relaunches and pool handoffs onto a limited account are refused. A hub-restart re-find of a running session is allowed.
+- b8: account list is open to all role shells, account clear only to the human and the Coordinator. Neither is an MCP tool.
+- b9: signed-out is no limited mark in this epic.
+- b10: a missing directory refuses the launch, naming the sign-in command.
+- b11: the account-limits journal record is kept, written only on change.
+T-265 was amended with a Summary, Parent, What to build and single-line criteria. The two-directory demo moves to T-362.

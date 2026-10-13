@@ -3,7 +3,7 @@ id: T-345
 kind: task
 title: "A remote run: with executor = droplet or --executor droplet, cland verify delivers a bundle and the hub's suite selection to a droplet, runs detached as an ordinary user, polls status and log by offset, and posts the result with the droplet, its lifetime and its cost"
 state: open
-status: planned
+status: in progress
 size: L
 labels:
   - v0.1.2
@@ -14,10 +14,10 @@ parent: E-271
 blocked_by:
   - T-342
   - T-344
-topic: null
-branch: null
+topic: topic-223
+branch: t/T-345-a-remote-run-with-executor-droplet-or
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-13T23:34:55.267Z
+updated: 2026-10-13T23:39:12.113Z
 ---
 
 ## Summary
@@ -130,3 +130,9 @@ The package runner reads the selection through `selectionFromEnv` and never fetc
 - [ ] C8. The sentinel token appears nowhere: not in the bundle, the env file, `run.sh`, the fake machine's files, the logs, the journal, the result or the artifact.
 - [ ] C9. Real check, posted on this item: one `cland verify --executor droplet` of this repository at the branch head on c-8, with its result, platform, lifetime and cost, and an empty tag listing afterwards.
 - [ ] C10. `hub/README.md` describes choosing the executor, delivery, the selection, the result line and what a Linux result proves.
+
+## Comments
+
+### impl-345 · 2026-10-13T23:39:12.113Z
+
+Implementing executor selection, a host typecheck gate before acquire, incremental bundle delivery, detached runner scripts, byte-offset polling, cancellation/restart and the existing cache/report path. Frame tests will use the prepared-image fixture, fake DigitalOcean API and fake machine.
