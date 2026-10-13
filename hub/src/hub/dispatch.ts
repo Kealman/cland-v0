@@ -1,4 +1,5 @@
 import { prefixOf } from '../tracker/prefixes.ts';
+import { DropletExecutor } from '../executor/droplet/droplet.ts';
 // The hub's frame dispatcher: one conversation per connection, transport-agnostic. A transport hands it
 // raw frames and a peer to answer through (send a frame, close); the WebSocket edge, the Unix socket edge
 // and the stdio edge share it, so the protocol lives in one place.
@@ -109,7 +110,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['executor.status', 'executor.reap', 'task.migrate', 'crew.show', 'crew.set', 'artifact.list', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.queue']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -138,6 +139,10 @@ export class Dispatcher {
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
   readonly #suites: Suites | null;
+  readonly #droplets: DropletExecutor | null;
+  readonly #dropletReady: Promise<void>;
+  readonly #dropletTimer: ReturnType<typeof setInterval> | null;
+  #dropletWork: Promise<void> | null = null;
 
   constructor(options: DispatcherOptions) {
     this.#options = options;
@@ -149,6 +154,14 @@ export class Dispatcher {
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
+    this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log) : null;
+    this.#dropletReady = this.#droplets?.reconcile().catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
+    const retryMs = Number(process.env.CLAND_TEST_DROPLET_RETRY_MS);
+    this.#dropletTimer = this.#droplets ? setInterval(() => {
+      if (this.#closed || this.#dropletWork) return;
+      this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.reconcile(false)).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
+    }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 15000) : null;
+    this.#dropletTimer?.unref();
     this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null);
     // what a read shows changed: no earlier answer is replayed
@@ -191,6 +204,9 @@ export class Dispatcher {
 
   async close(): Promise<void> {
     this.#closed = true;
+    if (this.#dropletTimer) clearInterval(this.#dropletTimer);
+    await this.#dropletReady;
+    await this.#dropletWork;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
     this.#merges?.stop();
@@ -1331,6 +1347,17 @@ export class Dispatcher {
           const reason = 'item migration belongs to the Coordinator or the human';
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, reason);
           return peer.send(Dispatcher.#failure(frame.id, new Error('the hub is running; stop the hub and run cland task migrate from the project root shell')));
+        }
+        if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap')) {
+          if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, 'executor controls belong to the Coordinator or the human');
+          if (!this.#droplets) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for executors')));
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, frame.type, 'executor controls belong to the Coordinator or the human');
+          };
+          return later(frame.type, this.#dropletReady.then(async () => { authorize(); return frame.type === 'executor.status' ? await this.#droplets!.inspect() : await this.#droplets!.reap(authorize); }).then(
+            value => ({ type: 'result' as const, id: frame.id, ok: true, value }), err => Dispatcher.#failure(frame.id, err),
+          ));
         }
         if (isClientRequest(frame) && (frame.type === 'crew.show' || frame.type === 'crew.set')) {
           const crew = core.crew;

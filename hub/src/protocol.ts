@@ -523,6 +523,7 @@ export type ClientRequest =
   | ArtifactPromote
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'crew.show'; id: string }
+  | { type: 'executor.status' | 'executor.reap'; id: string }
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
   | { type: 'hub.status'; id: string; flushLogs?: boolean }
@@ -746,6 +747,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'task.migrate':
       return f.dryRun === true;
     case 'crew.show':
+    case 'executor.status':
+    case 'executor.reap':
     case 'hub.subscriptions':
     case 'hub.status':
     case 'hub.stop':

@@ -24,6 +24,13 @@ export const journalPath = (clandDir: string): string => join(clandDir, JOURNAL_
  * listeners, sockets, heartbeats, subscriptions, adapter retries, file-watch errors.
  */
 export const JOURNALLED: ReadonlySet<string> = new Set([
+  'executor-reaped',
+  'executor-watchdog-fired',
+  'executor-watchdog-rearmed',
+  'executor-lease-released',
+  'executor-lease-active',
+  'executor-release-unconfirmed',
+  'executor-reconcile-failed',
   'verification-timing',
   'verification-human-queued',
   'verification-human-admitted',

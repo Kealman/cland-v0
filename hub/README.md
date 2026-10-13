@@ -1231,6 +1231,65 @@ node hub/bin/cland.ts --version
 
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
+### Remote executors: droplets
+
+The droplet lifecycle uses DigitalOcean's REST API. Set `DIGITALOCEAN_TOKEN` in the
+shell that starts the hub. Each API call reads it at use and sends it only in the
+Authorization header; cland never saves its value or sends it to a droplet. Calls
+have a 15-second bound and do not retry creates. The lifecycle needs permission
+to read the account, sizes and regions, and to create, read and delete droplets
+and account SSH keys. See the [DigitalOcean API reference](https://docs.digitalocean.com/reference/api/reference/).
+
+`cland executor status [--json]` reports token presence, live leases, their names,
+ids, sizes, regions, ages and deadlines, whether each watchdog is alive, today's
+released-lease cost in USD, and the number of droplets tagged `cland`.
+`cland executor reap [--json]` deletes this project's tagged droplets with no live
+lease, and any `cland` droplet older than the configured lifetime plus ten minutes.
+It also removes this project's orphaned account SSH keys. Both commands belong
+to the human and the Coordinator; reap requires the token.
+
+Every droplet carries `cland` and `cland-p-<hash>`, where the hash is twelve hex
+digits derived from the project root path and name. Reap leaves droplets without
+`cland` alone. Another project's young `cland` droplet is also left alone.
+
+Before create, cland writes and fsyncs a lease in
+`.cland/run/executor/leases/<lease>/lease.json` (mode 0600), mirrors it in `hub.db`
+under `executor-leases`, generates its own ed25519 SSH key there, and arms a
+detached watchdog on the hub host. The token stays in the inherited environment;
+the watchdog command line holds only its entry file and the lease directory.
+On macOS it runs `caffeinate -i -w <pid>` while live to inhibit idle sleep.
+At the lifetime deadline it checks the droplet's name and tags, deletes the
+droplet and key, retries until both are absent, and writes `watchdog.json`.
+It survives a stopped or crashed hub. Restart consumes that receipt into the
+`executor-watchdog-fired` journal event, recovers interrupted creates by name,
+releases active leases with no run, and re-arms dead watchdogs for live leases.
+
+Release confirms deletion by listing droplets and keys before marking a lease
+released or removing its key files. An unconfirmed deletion stays `releasing`;
+the hub retries it every fifteen seconds and its watchdog remains armed. A lost
+create or SSH key import response retains the lease while the resource may still
+appear. Released
+leases stay on disk for their accounting history. Cost uses the size's hourly
+price, from create to the first accepted delete call, with a sixty-second minimum.
+
+The defaults in `.cland/config.toml` are:
+
+```toml
+[verification]
+lifetime = "110m"
+
+[verification.droplet]
+size = "c-8"
+regions = ["lon1", "nyc1", "sfo2"]
+image = "ubuntu-24-04-x64"
+```
+
+Droplet settings are read again at every acquire; invalid values are refused with
+their config key named. The first available configured region offering the size
+wins. Acquire polls until the droplet is active with a public IPv4 address, under
+a five-minute bound. This lifecycle stage does not yet expose droplet suite runs
+or image preparation; those are the next remote executor stages.
+
 ### Tests
 
 `hub/test/prepared-project.ts` supplies `preparedProject(t)` (a repository after
