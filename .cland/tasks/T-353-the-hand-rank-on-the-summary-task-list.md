@@ -2,8 +2,8 @@
 id: T-353
 kind: task
 title: "The hand rank on the summary: task.list, task.view and the task event say when an item's file names its rank, so the card shows the raw rank only when it was set by hand"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-220
 branch: t/T-353-the-hand-rank-on-the-summary-task-list
 created: 2026-10-13T20:53:51.723Z
-updated: 2026-10-13T21:43:31.208Z
+updated: 2026-10-13T22:51:01.509Z
+closed: 2026-10-13T22:51:01.509Z
 ---
 
 ## Summary
@@ -57,16 +58,21 @@ E-276: The explorer and the card. This is the one hub field the card reads that 
 
 - [x] C1. A hub test on a temporary project: an item without a frontmatter rank has `rank = n × 10` and no `rank_set` in `task.list` and `task.view`. An item with a rank in its file has `rank_set: true`.
   - done: impl-353 · 2026-10-13T21:39:11.250Z
+  - verified: rev-26 [reviewer] · run rev-20261013-353-final-1 · 2026-10-13T22:50:46.159Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
 - [x] C2. A `task.rank` move sets `rank_set: true` on each item whose file it wrote, and the `task` event a subscribed UI receives carries it.
   - done: impl-353 · 2026-10-13T21:39:12.115Z
+  - verified: rev-26 [reviewer] · run rev-20261013-353-final-1 · 2026-10-13T22:50:46.159Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
 - [x] C3. A hand edit that removes the `rank:` line clears `rank_set` after the re-index.
   - done: impl-353 · 2026-10-13T21:39:14.736Z
+  - verified: rev-26 [reviewer] · run rev-20261013-353-final-1 · 2026-10-13T22:50:46.159Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
 - [x] C4. `cland task view` prints `(default)` or `(set)` after the rank.
   - done: impl-353 · 2026-10-13T21:42:03.149Z
   - verified: rev-26 [reviewer] · run rev-20261013-353-source-2 · 2026-10-13T21:43:00.528Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
+  - verified: rev-26 [reviewer] · run rev-20261013-353-final-1 · 2026-10-13T22:50:46.159Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
 - [x] C5. `hub/README.md` and `docs/agents/issue-tracker.md` with its template describe `rank_set`.
   - done: impl-353 · 2026-10-13T21:39:16.088Z
   - verified: rev-26 [reviewer] · run rev-20261013-353-source-2 · 2026-10-13T21:43:00.528Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
+  - verified: rev-26 [reviewer] · run rev-20261013-353-final-1 · 2026-10-13T22:50:46.159Z · commit 5a0851a70b26c82194d50c1d071673419aadae0b
 
 ## Comments
 
@@ -103,3 +109,20 @@ Criteria: C4 verified, C5 verified.
 ### impl-353 · 2026-10-13T21:43:31.208Z
 
 Source clear at 5a0851a70b26c82194d50c1d071673419aadae0b. Full verification ce4282aa-4e75-47e6-bff5-4432a3a06ed7 submitted through the hub queue (launch-notice clarification of empty-holder wording), addressed to rev-26 and impl-353 in topic-220. Tree clean and head unchanged. Awaiting execution evidence and final verdict.
+
+### rev-26 · 2026-10-13T22:50:46.159Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-353-final-1
+commit: 5a0851a70b26c82194d50c1d071673419aadae0b
+scope: evidence
+
+Final evidence clear: no high/medium finding remains. Accepted same-head ce4282aa/A-2109 completes typecheck and all phases, 1859/1859 (37 free, 1496 hub machine, 326 Neovim), zero fail/cancel/skip/todo, exit0. C1 default/explicit zero/default-valued list/view coverage, C2 written sibling/task events, C3 post-reindex removal, C4 CLI labels and fresh-file-before-index regression all explicitly pass. C5 docs/template checked at unchanged head in full source review A-2093. A-2110 records final evidence. Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-13T22:51:01.509Z
+
+Merged 02306ea1ef452a8a77059fba4bdb7c721d6c01a3 onto dev.

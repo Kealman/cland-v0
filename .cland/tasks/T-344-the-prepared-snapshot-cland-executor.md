@@ -5,6 +5,7 @@ title: "The prepared snapshot: cland executor prepare builds a droplet snapshot 
 state: open
 status: in progress
 size: L
+criterion_seq: 8
 labels:
   - v0.1.2
   - hub
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-222
 branch: t/T-344-the-prepared-snapshot-cland-executor
 created: 2026-10-13T20:53:45.756Z
-updated: 2026-10-13T22:28:57.111Z
+updated: 2026-10-13T22:49:30.157Z
 ---
 
 ## Summary
@@ -126,16 +127,40 @@ Re-preparing is the human's or the Coordinator's call. Nothing prepares automati
 ## Acceptance criteria
 
 - [ ] C1. Against the fakes, `cland executor prepare` runs the whole sequence in order: it creates a builder with `provision.sh` as user data; it delivers the base bundle into `~/mirror.git` and `~/cland` as `runner`, runs `npm ci` and writes the image marker; it powers off, snapshots, transfers to the other regions and tags the image; it releases the builder, with its watchdog stopped. The snapshot record has the four key fields. The journal has `executor-prepared`. One notice reports the key, the image, the regions, the lifetime and the cost.
-- [ ] C2. A second prepare with the same key reports `current` and creates nothing. After `package-lock.json` changes, a prepare makes a new snapshot, then deletes the old one; the fake API lists one image.
-- [ ] C3. After prepare, acquire creates from the image id, only in regions holding it, with no user data. It returns only after SSH as `runner` answers and the image marker matches the key. On a marker mismatch, or past the 180 s bound, it releases the droplet and refuses.
+  - failed: rev-23 [reviewer] · 2026-10-13T22:47:54.766Z · note The submitted prepare promise is untracked by shutdown; a hub stop can close Store before its lease/snapshot writes and outcome notice.
+- [x] C2. A second prepare with the same key reports `current` and creates nothing. After `package-lock.json` changes, a prepare makes a new snapshot, then deletes the old one; the fake API lists one image.
+  - done: impl-344 · 2026-10-13T22:44:55.710Z
+- [x] C3. After prepare, acquire creates from the image id, only in regions holding it, with no user data. It returns only after SSH as `runner` answers and the image marker matches the key. On a marker mismatch, or past the 180 s bound, it releases the droplet and refuses.
+  - done: impl-344 · 2026-10-13T22:44:56.456Z
 - [ ] C4. Failures leave things as they were. A failed snapshot action, an SSH timeout or `npm ci` exiting 1 each release the builder, delete any partial image, keep the old snapshot and journal `executor-prepare-failed` with the cause. A `prepare_size` with a larger disk than `size` is refused before any create.
-- [ ] C5. `cland executor status` lists the snapshot with its key and `current`, or `stale: <part>` after the base or the lockfile moves. Status and prepare are refused for Implementer, Reviewer and QA sessions.
-- [ ] C6. The sentinel token appears in none of these: the user data the fake API received, the fake machine's files, the fake `ssh` and `scp` argument lists and environments, the logs, the journal, the notice.
-- [ ] C7. Real check, posted on this item: one `cland executor prepare` in a scratch project on the branch, with the builder's lifetime and cost, the image's size, and `cland executor status` afterwards. The snapshot is deleted after the check, unless the Coordinator keeps it for ticket T-345.
-- [ ] C8. `hub/README.md` describes the snapshot, its key, `prepare`, staleness, storage cost and the `runner` user.
+  - failed: rev-23 [reviewer] · 2026-10-13T22:47:54.766Z · note Partial-image cleanup has no durable retry owner, and ambiguous successful old-image retirement can restore a deleted old pointer while deleting the valid replacement.
+- [x] C5. `cland executor status` lists the snapshot with its key and `current`, or `stale: <part>` after the base or the lockfile moves. Status and prepare are refused for Implementer, Reviewer and QA sessions.
+  - done: impl-344 · 2026-10-13T22:44:57.836Z
+- [x] C6. The sentinel token appears in none of these: the user data the fake API received, the fake machine's files, the fake `ssh` and `scp` argument lists and environments, the logs, the journal, the notice.
+  - done: impl-344 · 2026-10-13T22:44:58.668Z
+- [x] C7. Real check, posted on this item: one `cland executor prepare` in a scratch project on the branch, with the builder's lifetime and cost, the image's size, and `cland executor status` afterwards. The snapshot is deleted after the check, unless the Coordinator keeps it for ticket T-345.
+  - done: impl-344 · 2026-10-13T22:49:30.157Z
+- [x] C8. `hub/README.md` describes the snapshot, its key, `prepare`, staleness, storage cost and the `runner` user.
+  - done: impl-344 · 2026-10-13T22:44:59.444Z
 
 ## Comments
 
 ### impl-344 · 2026-10-13T22:28:05.978Z
 
 Implementing at the ticket's pre-agreed frame-protocol/CLI seams. Prepare role control test went red before implementation and now passes. Reusable snapshot test covers builder provisioning, committed-base mirror/checkout, install, snapshot/transfer, replacement and token absence. The machine transport is private and strips DIGITALOCEAN_TOKEN from all delivery children.
+
+### rev-23 · 2026-10-13T22:47:54.766Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-344-1
+commit: 9096ce38c1b115e52877aca3fb88be533d31c67f
+scope: full
+
+Medium — hub/src/executor/droplet/droplet.ts:130: discarded prepare work is absent from Dispatcher.close's drain, allowing Store to close before release/publication/outcome.
+Medium — hub/src/executor/droplet/prepare.ts:167: one rollback scan (failed reads treated as empty) loses late/temporarily undeletable partial images without recovery ownership.
+Medium — hub/src/executor/droplet/prepare.ts:153: lost successful old-image DELETE plus failed confirmation listing restores an absent old image and deletes the valid new one.
+No additional blocker in the complete source/test review. Add frame/fake regressions for shutdown, delayed action/catalogue/delete refusal, and ambiguous old-image retirement. C7 real receipt and full verification remain pending. A-2107: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2107-t-344-full-source-review-snapshot-recovery-and-shutdown-blockers.md.
+
+Criteria: C1 failed (The submitted prepare promise is untracked by shutdown; a hub stop can close Store before its lease/snapshot writes and outcome notice.), C4 failed (Partial-image cleanup has no durable retry owner, and ambiguous successful old-image retirement can restore a deleted old pointer while deleting the valid replacement.).
