@@ -1,5 +1,5 @@
 ---
-id: T-271
+id: E-271
 kind: epic
 title: Remote executors
 state: open
@@ -8,13 +8,13 @@ labels:
   - v0.1.2
   - ready-for-agent
 assignee: null
-parent: T-228
+parent: R-228
 blocked_by:
-  - T-270
+  - E-270
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.919Z
-updated: 2026-10-12T11:39:02.150Z
+updated: 2026-10-13T10:33:51.549Z
 ---
 
 ## Goal
@@ -84,6 +84,15 @@ When this epic closes, the Coordinator sets `executor = "droplet"` for the proje
 - Branches: `prototype/remote-executor` (`docs/research/remote-executor.md`: "What an executor interface needs"; `hub/prototype/remote-executor/`), `research/do-microvms` (`docs/research/do-microvms.md`, the experiment in section 7 and Appendix A).
 - ADRs: `docs/adr/0004-agents-work-on-a-local-git-territory.md`, `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - GLOSSARY: Territory.
+
+## D25: the droplet driver is the first backend (2026-10-13)
+
+Under the human's decision D25 (`docs/spec/v0.1.md` §4), Linux proof and diagnostic runs already use a c-8 DigitalOcean droplet through T-282's scratch driver. That driver is adapted from `prototype/remote-executor` and runs as an ordinary user with process accounting. It carries the `cland` tag, a watchdog and destroy on every exit path. It waits for the droplet to be active with a public IP under a bounded deadline, and it never prints the token.
+
+This epic builds on that driver as its first backend rather than starting from the prototype alone. The limits stay as D25 sets them: at most one cland droplet alive at a time, a lifetime of at most 30 minutes, $2 a day, and create, destroy and cost posted on the item. Lessons from the four T-282 runs on 2026-10-13 (A-1846, A-1874, A-1890) belong in this epic's design:
+- `doctl create --wait` returned before the droplet was active.
+- A typecheck failure reached a droplet because no local gate ran first.
+- The four creates cost about $0.17.
 
 ## Comments
 

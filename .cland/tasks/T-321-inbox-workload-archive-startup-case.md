@@ -3,7 +3,8 @@ id: T-321
 kind: task
 title: inbox-workload archive-startup case fails on a c-8 droplet but not locally or in the 4-CPU container
 state: open
-status: in progress
+status: review
+criterion_seq: 4
 labels:
   - v0.1.2
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-200
 branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
-updated: 2026-10-13T10:11:13.975Z
+updated: 2026-10-13T10:33:52.245Z
 ---
 
 ## Summary
@@ -36,12 +37,14 @@ T-268: Suite spend and Linux portability. T-282's acceptance run is blocked on t
 
 - Iterate in the local Ubuntu 24.04 container through Coordinator slots: unchanged Docker settings, `--init`, an ordinary user.
 - No further droplet run without a notice through the Coordinator and the human's stand-in.
-- Decision D24 (stand-in, 2026-10-13 ~10:08Z): if no local reproduction and fix lands within one Implementer cycle, about three hours from the item's launch, the stand-in records D25. D25 narrows T-282's criterion to green on c-8 except the named load-sensitive bounded-work cases listed in T-282. T-282 then closes on the fourth run's evidence, this item moves to Tech debt, and T-268 goes to its QA demo.
+- Decision D24 (stand-in, 2026-10-13 ~10:08Z): if no local reproduction and fix lands within one Implementer cycle, about three hours from the item's launch, the stand-in records D26. D26 narrows T-282's criterion to green on c-8 except the named load-sensitive bounded-work cases listed in T-282. T-282 then closes on the fourth run's evidence, this item moves to Tech debt, and T-268 goes to its QA demo.
 
 ## Acceptance criteria
 
-- [ ] C1. The cause of the droplet-only failure is named in the item, with evidence.
-- [ ] C2. A local reproduction exists, as a test or as a recorded container recipe, that fails before the fix.
+- [x] C1. The cause of the droplet-only failure is named in the item, with evidence.
+  - done: impl-321 · 2026-10-13T10:22:28.444Z
+- [x] C2. A local reproduction exists, as a test or as a recorded container recipe, that fails before the fix.
+  - done: impl-321 · 2026-10-13T10:22:29.203Z
 - [ ] C3. The fix is at the cause. The file passes ten times alone and once in a full run in the container, with every original bound unchanged.
 - [ ] C4. `cland verify` is green on macOS.
 
@@ -50,3 +53,7 @@ T-268: Suite spend and Linux portability. T-282's acceptance run is blocked on t
 ### impl-321 · 2026-10-13T10:09:05.279Z
 
 Started at 10:07Z with D24 cap about 13:07Z. Read item, T-282/T-268, topic-195 and A-1846/A-1867. Exact second-run symptom is 100 hold replies not seen within 15000ms; T-314's indexed subtree fix is already present, and runner concurrency is four on both machines. Requested fourth-run exact assertion and metadata from impl-282 in topic-200. Running unchanged archive-startup case locally before selecting deterministic probe; no droplet or container started.
+
+### impl-321 · 2026-10-13T10:22:25.473Z
+
+Cause and red/green evidence A-1897: fourth c-8 failure A-1890 is stop-6's OS probe, not the earlier hold bound. Eight real protocol stops with64unrelated retained items caused12,413tracker prepares; synchronous full tracker hydration in session membership/default subscription fan-out plus inbox/journal projection starves delivery of other completed ps probes. Controlled system-boundary ordering (first snapshot immediate; others real/bin/ps after200ms; one3500ms retained-item hydration delay) reproduces exact false stop error in4.114s before fix. Commit756f45a seeds/updates current item summaries before task publication and reads existing indexed session ownership; exact recipe green with288queries, plain320, original unchanged workload7/7green(archive11.588s vs55.996s baseline). Typecheck/default subscriptions13/13/plan approval2/2green. No OS probe bound, signal, lease, original fixture/deadline/sweep assertion or harness helper changed. Approved Linux slot pending current host queue drain; ten-file/container-full and macOS queued suite still required.

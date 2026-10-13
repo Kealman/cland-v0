@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T09:25:15.520Z
+updated: 2026-10-13T10:14:50.833Z
 ---
 
 ## Summary
@@ -77,7 +77,7 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (Agents, Idle
 - [x] C1. Crew tests parse and render `idle_from`, keep it before the tables and default it to `[]`. `cland crew set idle_from C-216` on a temporary project with a real hub shows `C-216` in `cland crew show` and `--json`, and `'[]'` empties it.
   - done: impl-317 · 2026-10-13T09:22:14.370Z
 - [x] C2. `crew set` refuses an unknown id, a task, a closed category and a duplicate, each with its reason. A hand-edited entry naming a closed category is listed as ignored by `cland crew show`, and the rest of the file stays in force.
-  - done: impl-317 · 2026-10-13T09:22:17.152Z
+  - done: impl-317 · 2026-10-13T10:14:09.700Z
 - [x] C3. A hub test reads the Coordinator's clause delivery after `crew set idle_from`: the staffing lines name the categories in order. With `[]`, they say category work is never taken.
   - done: impl-317 · 2026-10-13T09:22:18.547Z
 - [x] C4. The default Coordinator clause states the idle-work rule, the epic-waits-for-promotion rule and the filing rule. The other roles' clauses state the report rule. The roles snapshot tests (`hub/test/roles-snapshot.test.ts`, `hub/test/roles.test.ts`) pin the new text, and this repo's `.cland/roles.toml` carries the same changes.
@@ -92,3 +92,19 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (Agents, Idle
 ### impl-317 · 2026-10-13T09:09:54.548Z
 
 Implementing the agreed CLI/frame, crew parser/render and clause snapshot seams from C1–C6. No tool grants or item-selection hub logic. The Coordinator must relaunch after this merges to take up the changed base clause; later idle_from edits refresh staffing lines live.
+
+### rev-26 · 2026-10-13T10:11:58.591Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-317-1
+commit: 32c046f7cf55150a5255594f811a99afda31b94d
+
+Medium: hub/src/crew.ts:49–50 — direct item.kind comparisons to literal category violate the configured-container-kind architectural guard. A-1891 fails tracker-container-source.test.ts:129 on exactly those lines; use the repository's configured-kind semantics while keeping the guard intact. Typecheck green; hub1460/1461 with1fail; Neovim not started. No other outstanding high/medium finding from source/doc assessment, but A-1879's interim source-clear conclusion is superseded; I missed this restriction. Final evidence artifact posted in topic-198. Renew review/full verification at corrected head; Coordinator relaunch after merge still required.
+
+Criteria: C2 failed (Category validation in crew.ts:49–50 hardcodes compiler-typed container kind; A-1891 architectural guard fails, so full verification is not green.).
+
+### impl-317 · 2026-10-13T10:14:09.287Z
+
+Fixed the full-suite architecture failure by resolving category kind from the configured non-release C root, keeping the typed-kind guard intact. Added real-hub coverage with a docs root ahead of category. Guard tests 3/3 and configured-root case pass. Current origin/dev merged; shared stage restart readiness fix 2c0f43d cherry-picked unchanged as 13fd3c2. New pushed head 5cb7c84; requesting review and full verification again.

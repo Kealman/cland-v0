@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-197
 branch: t/T-316-the-migration-cland-task-migrate-renames
 created: 2026-10-13T02:27:23.140Z
-updated: 2026-10-13T09:22:42.516Z
+updated: 2026-10-13T10:23:40.706Z
 ---
 
 ## Summary
@@ -90,7 +90,7 @@ Open task branches need no rebase, as the test above proves.
 - [x] C1. A hub test on a temporary project runs `cland task migrate --dry-run --json`, then `cland task migrate --json`, and shows the applied plan equal to the dry run's. The files, the index and `cland task list --json` agree afterwards.
   - done: impl-316 · 2026-10-13T09:22:33.634Z
 - [x] C2. A second run prints `nothing to do` and writes nothing. A tree half-migrated by hand completes on the next run with no duplicate number.
-  - done: impl-316 · 2026-10-13T09:22:34.076Z
+  - done: impl-316 · 2026-10-13T10:23:28.430Z
 - [x] C3. A hub test shows each refusal: a merge in flight, a tracker write in flight, an Implementer caller, a linked worktree and a ladder without `category`. None writes a file.
   - done: impl-316 · 2026-10-13T09:22:34.645Z
 - [x] C4. `git diff --stat` after the run shows renames and frontmatter changes only. Every body and every comment is byte for byte unchanged.
@@ -117,3 +117,15 @@ C9 and C10 added 2026-10-13 at the stand-in's request (D24). C9 runs the migrati
 ### impl-316 · 2026-10-13T09:09:43.333Z
 
 Implementation follows C9: preview and apply run with the hub stopped; C3 checks the on-disk merge/tracker locks and recovery state. Tests use the prescribed CLI/frame/territory seams on temporary projects only; the live tracker will not be migrated.
+
+### rev-26 · 2026-10-13T10:21:10.699Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-316-1
+commit: c3dd2e400b9ca3c34936830f27d88babf6682bd6
+
+Medium: hub/src/tracker/offline-migrate.ts:69 — empty file plan returns before Tracker/index repair. Crash after final file or seed rename but before index.put leaves migrated files and stale/missing index rows; rerun reports nothing to do without restoring agreement. C2 resumability is incomplete (also affects C1 post-apply agreement). Lead confirmed and is adding offline CLI regression. Preserve clean no-op no-write behavior. Other C1–C10 source/docs/temporary-project evidence and shared fix assessed in artifact posted to topic-197; required new-head full verification remains. No live migration, edits or tests performed by Reviewer.
+
+Criteria: C2 failed (offline-migrate.ts:69 skips index repair when files are already migrated; crash after final file rename before index.put leaves stale/missing rows on rerun.).

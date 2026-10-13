@@ -3,7 +3,7 @@ id: T-282
 kind: task
 title: The acceptance run on a c-8 droplet as an ordinary user, and locally
 state: open
-status: review
+status: in progress
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T10:06:53.963Z
+updated: 2026-10-13T10:13:53.423Z
 ---
 
 ## Summary
@@ -56,18 +56,22 @@ Constraints:
 - [x] C1. The Coordinator was told in this item's topic before the droplet was created.
   - done: impl-282 · 2026-10-13T07:23:44.354Z
   - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:32.022Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
+  - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:23.947Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 - [ ] C2. The droplet run's log artifact shows `npm run typecheck && npm test` green on Ubuntu 24.04 with 8 vCPUs, as an ordinary user with a home under `/home`, with nothing added to the login environment, and the runner's list of platform skips by reason.
-  - failed: rev-26 [reviewer] · 2026-10-13T09:24:55.776Z · note A-1874 typecheck exits2 at inbox-workload.test.ts:73: unknown assertion message causes TS2345; npm test never ran.
+  - failed: rev-26 [reviewer] · 2026-10-13T10:13:53.423Z · note A-1890 plain c-8 full run fails stop-6 OS ps probe at inbox-workload.test.ts:145; Neovim not run.
 - [ ] C3. The droplet and the SSH key were destroyed; the tag listing afterwards is empty and is recorded in the item.
   - verified: rev-26 [reviewer] · run rev-20261013-282-1 · 2026-10-13T07:47:44.926Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
+  - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:25.239Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 - [ ] C4. The `acct` totals for `git`, `ps` and Node are compared with the census of slice 3, and the difference is explained.
-  - failed: rev-26 [reviewer] · 2026-10-13T07:49:49.251Z · note A-1846 Node acct count 1,843 is explicitly a lower bound; runtime command classification remains incomplete.
+  - failed: rev-26 [reviewer] · 2026-10-13T10:13:53.423Z · note A-1890 source-backed accounting comparison is partial because failed run omitted Neovim; final all-suite cross-check absent.
 - [ ] C5. No published log, comment or artifact contains the token.
   - verified: rev-26 [reviewer] · run rev-20261013-282-1 · 2026-10-13T07:47:45.265Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
+  - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:26.228Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 - [x] C6. The suite is green on macOS through `cland verify` at the same head, and no test is weakened, skipped or retried.
   - done: impl-282 · 2026-10-13T07:24:42.456Z
   - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:33.197Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
   - verified: rev-26 [reviewer] · run rev-20261013-282-local · 2026-10-13T09:44:49.335Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+  - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:26.905Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 
 ## Comments
 
@@ -137,3 +141,21 @@ Message correction committed/pushed5c0568a6bdaa5903216129bb8427b8a84a0ec0e7: Str
 ### impl-282 · 2026-10-13T09:45:01.317Z
 
 Corrected-head local full3440bca7 at5c0568a6bdaa5903216129bb8427b8a84a0ec0e7 green in hand, A-1886:1764tests/1764pass/0fail/cancel/skip/todo,882.03s; typecheck0. Literal-token scan clear. This satisfies Coordinator's fourth-notice precondition alongside committed-head standalone typecheckA-1877. Fresh provider preflight confirms emptyclandtag/c-8lon1/$0.25h. Fourth notice sent; waitexplicitgo. PerD24 next remote invocation plainacct-only/noaudit; preserve5c0568a to sharehead with green local. Shared2c0f43d queued-head rule permits current result; applies at nextheadchange.
+
+### impl-282 · 2026-10-13T10:12:03.037Z
+
+Fourth plainacct acceptance atsame5c0568a failed, A-1890: typecheck0, hub1455tests/1451pass/1fail/3existing skips, Neovim not reached. Case152294.888303ms fails laterline145 stop-6 OS process-table ps failed or timedout;100holds/sweep assertions passed, regression24queries passed. Actual machine4workers (fixedphase config),1035.51s, suite1037.23s/peak1m load13.00. No probe cause beyond genericerror is inferred. Owned608656382/key60059269 destroyed before diagnosis/tag[]/keyabsent/watchdogstopped;1160s/$0.0806, allfourroundedspend$0.1731.40bundlefilesliteral-token scan clear. Partialacct globalgit25316/ps16619, runnergit25316/ps16307, knownNode/npm9387, sharedlibuv216unallocated perD24/A-1851; no fullC4completion claimed. Same-head macfullA-1886 remains1764/1764green. Coordinator filedT-321 asblocker, launchedimpl-321, cap/no moredropletsD24. Evidence handedoff in topic-200; keepclaim andstayidle per8664d095, awaitingT-321/D25decision. Renewed reviewer request recordsfailedacceptance/cleanup/scan, notclear readiness.
+
+### rev-26 · 2026-10-13T10:13:53.423Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261013-282-3
+commit: 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+
+Medium: hub/test/inbox-workload.test.ts:145 — plain ordinary c-8 full run fails stop-6 OS ps inspection; C2 green remote all-phase absent. Holds/sweep and24-query regression pass; generic error does not identify exit failure versus expiry. Typecheck0; hub1455tests/1451pass/1fail/3existing skips; Neovim never runs.
+Medium: A-1890/index.md, Partial census cross-check — accounting omits Neovim and remains explicitly partial; C4 final all-suite cross-check absent. Raw arithmetic and source-backed shared-libuv uncertainty are accurate under D24.
+C1/C3/C5/C6 independently verified at this head: notice/go ordering, exact droplet608656382/key60059269 destroyed/tagempty, token scans40current/196retained files clear, ordinary queued macOS1764/1764/typecheck0. A-1893 records assessment. Coordinator blocked item onT-321 and prohibits more droplets; no clear-readiness claim or retry authorization.
+
+Criteria: C2 failed (A-1890 plain c-8 full run fails stop-6 OS ps probe at inbox-workload.test.ts:145; Neovim not run.), C4 failed (A-1890 source-backed accounting comparison is partial because failed run omitted Neovim; final all-suite cross-check absent.).
