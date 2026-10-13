@@ -8,7 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
+import { flushProjectLogs, assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
 type Status = { sessions: Presence[]; coordinator: string | null; harnesses: Array<{ name: string; harnessId: string | null; role: string | null; label?: string; model: string | null }> };
@@ -115,6 +115,7 @@ test('a session with no role is refused at hello; the role the human assigns del
   const me = (await spoke.call<{ sessions: Presence[] }>('who')).sessions.find((s) => s.name === 'rev-1');
   assert.deepEqual([me?.role, me?.label], ['reviewer', 'rev-1 [Reviewer]']);
   // the journal (the hub's log until #34) records the delivery, and the spoke's ack
+  await flushProjectLogs(t, root);
   const [delivered] = await logEvents(root, 'role-clause');
   assert.equal(delivered?.session, 'rev-1');
   assert.equal(delivered?.role, 'reviewer');
@@ -127,6 +128,7 @@ test('a session with no role is refused at hello; the role the human assigns del
   const again = spoke.events.filter(isClause)[1] as ChannelEvent;
   assert.notEqual(again.params.meta?.msg_id, clause.params.meta?.msg_id);
   assert.equal(again.params.content, clause.params.content);
+  await flushProjectLogs(t, root);
   const deliveries = await logEvents(root, 'role-clause');
   assert.deepEqual(
     deliveries.map((d) => [d.session, d.reason]),

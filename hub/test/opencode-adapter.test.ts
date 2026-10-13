@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
+import { assertFirstLaunchClause, sleep, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 
@@ -520,9 +520,12 @@ test('a killed OpenCode server: the state turns unknown and the hub logs it once
   assert.equal(gone.attach, null);
   const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'impl' && f.state === 'unknown');
   assert.equal(event.source, 'process');
-  const logged = (await hubLog(root, ui)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const exitLogLines = async () => (await hubLog(root, ui)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const logged = await exitLogLines();
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl"/);
+  await sleep(100);
+  assert.equal((await exitLogLines()).length, 1, 'still one log event after settling');
 
   // resume with relaunch: a new server on the same session, which the old messages reach
   const resumed = (await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000)).value as { found: boolean; process: Harness };

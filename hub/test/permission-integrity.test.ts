@@ -8,16 +8,18 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, waitForAbsence, type Session } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, waitForAbsence, type Session } from './harness.ts';
 
 type Result = { ok: boolean; error?: string; code?: string; permission?: string; reason?: string };
 type Audit = { session: string; sessionId: string | null; role: string | null; tool: string; outcome: string; client?: string };
 
-const audits = async (root: string): Promise<Audit[]> =>
-  (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'))
+const audits = async (t: TestContext, root: string): Promise<Audit[]> => {
+  await flushProjectLogs(t, root);
+  return (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'))
     .split('\n')
     .filter((l) => l.includes('"event":"audit"'))
     .map((l) => JSON.parse(l) as Audit);
+};
 
 const ok = (r: { code: number | null; stdout: string; stderr: string }) => {
   assert.equal(r.code, 0, `exit ${r.code}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
@@ -61,7 +63,7 @@ test('a launched session running `cland task` is checked against its role and au
   const closed = await clandWithEnv(root, env, 'task', 'close', 'T-1');
   assert.equal(closed.code, 1, closed.stdout);
   assert.match(closed.stderr, /forbidden: task\.close \(Implementer may not use task\.close\)/);
-  const record = (await audits(root)).filter((a) => a.tool === 'task.close').at(-1);
+  const record = (await audits(t, root)).filter((a) => a.tool === 'task.close').at(-1);
   assert.deepEqual([record?.session, record?.sessionId, record?.role, record?.outcome, record?.client], ['impl-1', 'sess-impl', 'implementer', 'forbidden', 'cli']);
   // --as a session's name is that session too, whatever role the frame claims
   const asName = await cland(root, 'task', 'close', 'T-1', '--as', 'impl-1', '--role', 'coordinator');
@@ -98,7 +100,7 @@ test('a launched session cannot borrow another identity with `--as`: neither the
     const out = await run(`task close T-1 --as ${as}`);
     assert.match(out, /: exit 1\n/, out);
     assert.match(out, /forbidden: task\.close \(Implementer may not use task\.close\)/, out);
-    const record = (await audits(root)).filter((a) => a.tool === 'task.close').at(-1);
+    const record = (await audits(t, root)).filter((a) => a.tool === 'task.close').at(-1);
     assert.deepEqual([record?.session, record?.sessionId, record?.role, record?.outcome, record?.client], ['impl-1', implId, 'implementer', 'forbidden', 'cli']);
   }
   // on the wire the session id decides, before any name: a frame naming the human with the session's id is the session

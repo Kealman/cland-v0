@@ -490,6 +490,17 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
   return ui;
 }
 
+/** Drain a live daemon's queued log and journal writes before a file assertion without a UI client. */
+export async function flushProjectLogs(t: TestContext, root: string): Promise<void> {
+  const ui = await connectUi(t, await readDiscovery(root));
+  try {
+    const result = await ui.request({ type: 'hub.status', flushLogs: true });
+    assert.equal(result.ok, true, result.error);
+  } finally {
+    ui.close();
+  }
+}
+
 /** A UI client on an in-process hub's WebSocket (a client hello works there too), welcomed. */
 export async function connectWsUi(t: TestContext, hub: { url: string }, client = 'ui'): Promise<FrameClient> {
   const ws = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });

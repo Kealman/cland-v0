@@ -103,11 +103,13 @@ test('a refused epic close does not accept or journal the proposed plan', async 
   const changed = structuredClone(plan);
   changed.stages[0]!.name = 'Unpublished stage';
   const changes = async () => (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(line => line.includes('"event":"task-plan-changed"'));
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const accepted = await changes();
   const refused = await ui.request({ type: 'task.edit', item: epic.id, state: 'closed', body: withPlan(current.item.body, changed) });
   assert.equal(refused.ok, false);
   assert.match(refused.error ?? '', /qa-missing/);
   assert.equal(await readFile(join(root, epic.path), 'utf8'), original);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.deepEqual(await changes(), accepted, 'a refused publication cannot record an accepted plan');
   const view = (await ui.request({ type: 'task.view', item: epic.id })).value as { item: ItemView };
   assert.deepEqual(view.item.plan, plan);

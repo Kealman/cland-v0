@@ -207,9 +207,12 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   assert.equal(gone.attach, null);
   const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'impl-1' && f.state === 'unknown');
   assert.equal(event.source, 'process');
-  const logged = (await hubLog(root, ui)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const exitLogLines = async () => (await hubLog(root, ui)).split('\n').filter((l) => l.includes('"harness-exited"'));
+  const logged = await exitLogLines();
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl-1"/);
+  await sleep(100);
+  assert.equal((await exitLogLines()).length, 1, 'still one log event after settling');
 
   // the same name again: its hooks and its mod, arriving before the launch returns, belong to the new process
   const again = await launch(ui, 'impl-1', { role: 'implementer' });

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude, sleep } from './harness.ts';
+import { flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude, sleep } from './harness.ts';
 
 import { serveProject } from '../src/hub/daemon.ts';
 import { projectSessions } from '../src/adapters/index.ts';
@@ -101,6 +101,7 @@ test('doctor names an exited session’s leftover app-server; hub start sweeps i
   assert.match(second.result.stdout, /orphan cleanup runs in the background/);
   const swept = await clandWithEnv(root, env, 'doctor', '--json');
   assert.match(swept.stdout, new RegExp(`ended pid ${pid}`));
+  await flushProjectLogs(t, root);
   assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"orphan-ended"/);
 });
 
@@ -149,6 +150,7 @@ for (const harness of ['codex', 'opencode', 'claude-code']) {
     assert.equal(stop.ok, true, stop.error);
     assert.equal(pidAlive(second.pid), false, 'stop awaits the replacement server');
     if (child !== null) assert.equal(pidAlive(child), false, 'stop also ends a descendant that ignores SIGTERM');
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; pid?: number; forced?: boolean });
     assert.ok(journal.some(entry => entry.event === 'harness-ended' && entry.pid === first.pid && entry.forced));
     assert.ok(journal.some(entry => entry.event === 'harness-ended' && entry.pid === second.pid && entry.forced));

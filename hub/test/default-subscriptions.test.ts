@@ -435,4 +435,8 @@ for (const restart of [false, true]) test(`the item lead runs not-clear, re-revi
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
   assert.equal(journal.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord')).length, 1);
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  assert.equal(settled.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord')).length, 1, 'still one ready delivery after settling');
 });

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 
 type Message = { id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; replyTo?: string; kind?: string; detail?: Record<string, unknown> };
 type Refusal = { code: string; rule: string; until?: string };
@@ -172,6 +172,9 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
     return grants.length ? grants : undefined;
   });
   assert.equal(launchGrants.length, 1);
+  await sleep(100);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
+  assert.equal((await journalLines(root)).filter(l => l.event === 'role-taken-at-launch' && l.session === 'coord-1').length, 1, 'still one launch grant after settling');
   assert.equal(launchGrants[0]?.agentsNotice, notices.find(m => m.kind === 'role-assign' && /^coord-1 took Coordinator at launch/.test(m.text))?.id);
 });
 
@@ -184,6 +187,7 @@ test('a looping pair trips the breaker at the configured threshold: both get the
   const alpha = await spoke(t, root, 'alpha', 'implementer');
   const beta = await spoke(t, root, 'beta', 'reviewer');
   await alpha.waitForPresence(['alpha', 'beta']);
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const firstLines = await journalLines(root);
   assert.equal(firstLines[0]?.event, 'hub-started');
 
@@ -239,6 +243,7 @@ test('a looping pair trips the breaker at the configured threshold: both get the
   assert.match(second.outcomes?.[0]?.reason ?? '', /more than 1 messages in 5 min/);
 
   // the journal: every line JSON, append-only across the restarts, every event of the run
+  await ok(ui, { type: 'hub.status', flushLogs: true });
   const lines = await journalLines(root);
   assert.ok(lines.length > firstLines.length);
   assert.deepEqual(lines.slice(0, firstLines.length), firstLines, 'the earlier lines survive as they were');
@@ -351,6 +356,7 @@ test('lifecycle notices retention removed are not brought back by the journal: n
   await sleep(300);
   const agents = await history(after, 'agents');
   assert.deepEqual(agents.filter((m) => m.kind === 'claim' || m.kind === 'role-assign'), [], JSON.stringify(agents));
+  await ok(after, { type: 'hub.status', flushLogs: true });
   assert.ok(!(await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).includes('"event":"agents-record-replayed"'));
 });
 
@@ -359,6 +365,7 @@ test('a journal whose last line was cut off mid-write gets a newline before the 
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'journal.jsonl'), '{"ts":"2026-10-01T00:00:00.000Z","event":"hub-started"}\n{"ts":"2026-10-01T00:00:01.000Z","event":"se');
   await startDaemon(t, root);
+  await flushProjectLogs(t, root);
   const text = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   const lines = text.split('\n').filter(Boolean);
   assert.equal(lines[1], '{"ts":"2026-10-01T00:00:01.000Z","event":"se', 'the cut line is left as it was, alone on its line');

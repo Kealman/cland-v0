@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DOCUMENTED_TOOLS, sleep, spawnSpoke, startDaemon, tempProject, waitForAbsence } from './harness.ts';
+import { eventually, flushProjectLogs, DOCUMENTED_TOOLS, sleep, spawnSpoke, startDaemon, tempProject, waitForAbsence } from './harness.ts';
 
 test('a nameless spoke discovering a project hub skips connecting and journals the reason once', async t => {
   const root = await tempProject(t);
@@ -20,11 +20,18 @@ test('a nameless spoke discovering a project hub skips connecting and journals t
   await sleep(200);
   assert.deepEqual(await spoke.call('who'), who);
   assert.equal(spoke.events.length, 0);
-  const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'))
+  const readRecords = async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'))
     .trim().split('\n').map(line => JSON.parse(line) as { event: string; reason?: string });
+  const records = await eventually('the spoke journals its skipped connection', async () => {
+    const records = await readRecords();
+    return records.some(record => record.event === 'spoke-connection-skipped') ? records : undefined;
+  });
   const skipped = records.filter(record => record.event === 'spoke-connection-skipped');
   assert.equal(skipped.length, 1);
   assert.match(skipped[0]?.reason ?? '', /no CLAND_SESSION_NAME/);
+  await sleep(100);
+  assert.equal((await readRecords()).filter(record => record.event === 'spoke-connection-skipped').length, 1, 'still one skipped connection after settling');
+  await flushProjectLogs(t, root);
   const hubLog = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
   assert.doesNotMatch(hubLog, /"event":"(?:hello|refused-role|replaced)"/);
 });
@@ -38,6 +45,7 @@ test('a blank session name and a role request do not bind a spoke to the discove
   assert.equal(who.ok, false);
   assert.match(who.error ?? '', /connection skipped: no CLAND_SESSION_NAME/);
   await sleep(200);
+  await flushProjectLogs(t, root);
   assert.doesNotMatch(await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'), /"event":"(?:hello|refused-role|replaced)"/);
 });
 
@@ -52,6 +60,7 @@ test('a named spoke with a human-assigned role connects without requesting a rol
   assert.equal(who.ok, true);
   assert.equal(who.me, 'mapped');
   assert.equal(who.sessions.find(session => session.name === 'mapped')?.role, 'implementer');
+  await flushProjectLogs(t, root);
   assert.doesNotMatch(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"spoke-connection-skipped"/);
 });
 
@@ -76,5 +85,6 @@ test('nameless spokes recover a mapped session id while live and after its last 
   const offline = await recovered.call<{ ok: boolean; me?: string; error?: string }>('who');
   assert.equal(offline.ok, true, offline.error);
   assert.equal(offline.me, 'mapped');
+  await flushProjectLogs(t, root);
   assert.doesNotMatch(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"spoke-connection-skipped"/);
 });

@@ -323,7 +323,7 @@ test('items honor hub layers in the board and explicit layer filters, including 
   s = await c.waitScreen(s => s.includes('Quiet active'), 'background unfolded');
   assert.ok(!s.includes('Archived done'), 'ordinary unfold excludes archive');
   await c.input('gn');
-  s = await c.waitScreen(s => s.includes('now ·') && s.includes('Raised backlog'), 'now filter');
+  s = await c.waitScreen(s => s.includes('now ·') && s.includes('Raised backlog') && !s.includes('Watch planned') && !s.includes('Quiet active'), 'now filter');
   assert.ok(!s.includes('Watch planned') && !s.includes('Quiet active'));
   await c.input('gw');
   s = await c.waitScreen(s => s.includes('watch ·') && s.includes('Watch planned'), 'watch filter');

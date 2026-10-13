@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev, type PushResult } from '../src/territory-push.ts';
 import { withTerritoryLockAsync } from '../src/territory.ts';
@@ -319,6 +319,7 @@ exec ${quote(realGit)} "$@"
   assert.match(result.stderr, /verify territory dev and retry cland push/);
   if (failCleanup) assert.match(result.stderr, /cleanup failed:.*EISDIR/);
   assert.equal(git(territory, 'rev-parse', 'dev'), dev);
+  await flushProjectLogs(t, root);
   const log = await fs.readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
   assert.match(log, /"event":"push-outcome-unknown"/);
   assert.doesNotMatch(log, /"event":"push-refused"/);

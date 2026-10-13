@@ -48,6 +48,7 @@ test('retained Reviewer pool reuses an idle member for review, caps busy and pen
   assert.equal(reused.process.item, secondItem);
   assert.equal((await fake.sessions()).length, 2);
   await eventually('review brief reaches retained harness', async () => (await fake.log(one.process.harnessId!)).includes(brief) ? true : undefined);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
   assert.match(journal, /"event":"session-reused"/);
   await eventually('retained reviewer finishes its review turn', async () => (await processes()).processes.find(p => p.name === 'rev-one')?.state === 'idle' ? true : undefined);

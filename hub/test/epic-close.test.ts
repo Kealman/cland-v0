@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, flushProjectLogs, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
@@ -129,6 +129,7 @@ test('only the human shell may override epic QA; the reason and unmet criteria a
   assert.match(empty.stderr, /reason/);
   const override = await cland(root, 'task', 'close', item.id, '--override', 'Approved demo exception');
   assert.equal(override.code, 0, override.stderr);
+  await flushProjectLogs(t, root);
   const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
   const entry = journal.split('\n').filter(Boolean).map(line => JSON.parse(line)).find(e => e.event === 'epic-close-overridden');
   assert.equal(entry.override, 'Approved demo exception');

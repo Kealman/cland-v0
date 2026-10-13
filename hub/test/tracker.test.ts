@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
-import { cland, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 type Summary = { id: string; title: string; state: string; status?: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
 type View = Summary & {
@@ -30,7 +30,10 @@ const json = async <T>(root: string, ...args: string[]): Promise<T> => JSON.pars
 const tasksDir = (root: string) => join(root, '.cland', 'tasks');
 const itemFiles = async (root: string) => (await readdir(tasksDir(root))).filter((n) => n.endsWith('.md')).sort();
 const frontmatter = (text: string): Record<string, unknown> => parseYaml(/^---\n([\s\S]*?)\n---\n/.exec(text)?.[1] ?? '') as Record<string, unknown>;
-const hubLog = async (root: string) => (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as Record<string, unknown>);
+const hubLog = async (t: TestContext, root: string) => {
+  await flushProjectLogs(t, root);
+  return (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as Record<string, unknown>);
+};
 
 async function project(t: TestContext): Promise<string> {
   const root = await tempProject(t);
@@ -126,7 +129,7 @@ test('a hand edit of an item file is re-indexed within a second', async (t) => {
     const items = (await json<{ items: Summary[] }>(root, 'list', '--state', 'closed', '--label', 'b')).items;
     assert.deepEqual(items.map((i) => [i.id, i.title]), [['T-1', 'Edited by hand']]);
   });
-  const reindexed = (await hubLog(root)).find((e) => e.event === 'task-reindexed' && e.id === 'T-1' && e.source === 'hand');
+  const reindexed = (await hubLog(t, root)).find((e) => e.event === 'task-reindexed' && e.id === 'T-1' && e.source === 'hand');
   assert.ok(reindexed, 'the re-index is logged');
   const latency = Date.parse(String(reindexed.ts)) - wrote;
   t.diagnostic(`re-indexed by the hub ${latency} ms after the write; seen through the CLI after ${seen} ms`);
@@ -152,7 +155,7 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
   await writeFile(file, handText);
   await eventually(1000, async () => assert.equal((await json<{ items: Summary[] }>(root, 'list')).items[0]?.title, 'Hand wins'));
   assert.equal(await readFile(file, 'utf8'), handText);
-  await eventually(1000, async () => assert.ok((await hubLog(root)).some((e) => e.event === 'task-conflict' && e.id === 'T-1' && e.winner === 'hand')));
+  await eventually(1000, async () => assert.ok((await hubLog(t, root)).some((e) => e.event === 'task-conflict' && e.id === 'T-1' && e.winner === 'hand')));
 
   // the hub's write lands right after a hand edit (before the watcher saw it): the hub's write is the
   // file, made on top of what the hand wrote, and the index agrees
@@ -173,7 +176,7 @@ test('a hub write and a hand edit at the same time: the last writer wins and the
   assert.deepEqual(view.item.labels, ['hub-was-last']);
   await sleep(300);
   assert.equal(await readFile(file, 'utf8'), final, 'nothing rewrote the file after the hub');
-  const conflicts = (await hubLog(root)).filter((e) => e.event === 'task-conflict' && e.id === 'T-1');
+  const conflicts = (await hubLog(t, root)).filter((e) => e.event === 'task-conflict' && e.id === 'T-1');
   assert.ok(conflicts.some((e) => e.winner === 'hub'), JSON.stringify(conflicts));
 });
 
@@ -195,7 +198,7 @@ test('a hand edit landing while the hub is writing the same item is overwritten,
   const final = await readFile(file, 'utf8');
   assert.match(final, /title: Overlapped/, 'the hub wrote last');
   assert.match(final, /from the hub/);
-  const conflicts = (await hubLog(root)).filter((e) => e.event === 'task-conflict' && e.id === 'T-1');
+  const conflicts = (await hubLog(t, root)).filter((e) => e.event === 'task-conflict' && e.id === 'T-1');
   assert.ok(
     conflicts.some((e) => e.winner === 'hub' && e.op === 'comment' && /overwr/.test(String(e.note))),
     JSON.stringify(conflicts),
@@ -471,7 +474,7 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
 test('where the folder cannot be watched the hub polls: a hand edit of an item and of roles.toml are still picked up', async (t) => {
   const root = await tempProject(t);
   await startDaemon(t, root, { CLAND_TEST_WATCH_REFUSED: '1' });
-  const fellBack = (await hubLog(root)).filter((e) => typeof e.polling === 'number').map((e) => e.event);
+  const fellBack = (await hubLog(t, root)).filter((e) => typeof e.polling === 'number').map((e) => e.event);
   assert.deepEqual(fellBack, ['task-watch-error'], 'only the tracker falls back: roles always use async polling');
 
   ok(await cland(root, 'task', 'create', 'Original title'));
@@ -485,7 +488,7 @@ test('where the folder cannot be watched the hub polls: a hand edit of an item a
 
   // roles.toml: re-read with no call asking for it
   const roles = join(root, '.cland', 'roles.toml');
-  const loaded = async () => (await hubLog(root)).filter((e) => e.event === 'roles-loaded').length;
+  const loaded = async () => (await hubLog(t, root)).filter((e) => e.event === 'roles-loaded').length;
   const before = await loaded();
   await writeFile(roles, (await readFile(roles, 'utf8')).replace('model = "gpt-6-astra"', 'model = "gpt-fake-edited"'));
   await eventually(10_000, async () => assert.equal(await loaded(), before + 1));

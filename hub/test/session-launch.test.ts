@@ -38,7 +38,8 @@ for (const preassigned of [false, true]) test(`a Coordinator launches an Impleme
   const journal = await eventually('brief journalled as a message', async () => {
     const lines = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean);
     const events = lines.map(line => JSON.parse(line) as { event: string; from?: string; to?: string[]; id?: string });
-    return events.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief')) ? events : undefined;
+    const sent = events.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief'));
+    return sent && events.some(event => event.event === 'acked' && event.id === sent.id) ? events : undefined;
   });
   const sent = journal.find(event => event.event === 'send' && event.from === 'hub' && event.to?.includes('impl-brief'))!;
   assert.ok(journal.some(event => event.event === 'acked' && event.id === sent.id));

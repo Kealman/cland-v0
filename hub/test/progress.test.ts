@@ -114,6 +114,7 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
       await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `pong: ${text}`, 15_000);
       await idle(ui);
     }
+    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const journal = await read(join(root, '.cland', 'journal.jsonl'));
     assert.match(journal, /"event":"send"[^\n]*"kind":"progress"/);
     assert.match(journal, /"event":"send"[^\n]*"kind":"report"/);

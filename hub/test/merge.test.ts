@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
 import { preparedProject, copyPreparedProject } from './prepared-project.ts';
 import { Store } from '../src/hub/store.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
@@ -81,6 +81,7 @@ test('a current hub review lands one squash commit in the root and territory, cl
   assert.equal((history.value as { topic: { status: string } }).topic.status, 'closed');
   const agents = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.ok((agents.value as { messages: Array<{ text: string }> }).messages.some((m) => m.text.includes(merged.commit)));
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"task-merged"/);
 });
 
@@ -411,6 +412,7 @@ test('the gate refuses in order: item/branch, missing or file-only review, wrong
   await review(rev, work.id, 'clear', 'rev-4');
   await requireQa(root, ui, work.id);
   await refused(ui, root, work.id, 'qa-missing');
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   for (const code of ['merge-branch', 'merge-item', 'review-missing', 'review-provenance', 'review-role', 'review-claimant', 'review-not-clear', 'review-stale', 'qa-missing']) assert.ok(journal.includes(`"code":"${code}"`), code);
   const agents = await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
@@ -539,6 +541,7 @@ test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI
   assert.equal(git(root, 'show', '-s', '--format=%B', overridden.commit), 'Ship the parser (T-1)\n\nItem: T-1');
   const agents = await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
   assert.equal((agents.value as { messages: Array<{ kind: string; text: string }> }).messages.filter((m) => m.kind === 'refusal' && /tried merge/.test(m.text)).length, 7);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.match(journal, /"override":"Human checked rescue output"/);
   const skipped = journal.split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; criteria?: string[]; override?: string }).filter(event => event.event === 'merge-criteria-overridden');
@@ -770,6 +773,7 @@ test('a blocked prelanding restore reports its durable recovery receipt and repa
   db.close();
   assert.equal(receipt?.commit_sha, failed.recovery?.commit);
   assert.ok(receipt?.checkout_recovery);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.match(journal, /"event":"merge-recovery-pending"/);
   assert.doesNotMatch(journal, /"event":"merge-refused"/);
@@ -903,6 +907,7 @@ test('a close write failure reports merged follow-up failure; retry closes and p
   assert.equal(again.commit, first.commit);
   assert.equal(again.cleanup, 'removed');
   assert.equal(again.followUp, undefined);
+  assert.equal((await retryUi.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.match(journal, /"event":"merge-follow-up-failed"/);
   assert.doesNotMatch(journal, /"event":"merge-refused"/);
@@ -1146,6 +1151,7 @@ test('a rejected push with failed rollback remains landed and retry restores the
   assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
   assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', `${before}^{tree}`));
   assert.equal(existsSync(join(root, 'parser.txt')), false);
+  await flushProjectLogs(t, root);
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   assert.doesNotMatch(journal, /"event":"merge-refused"/);
   await rm(hook);

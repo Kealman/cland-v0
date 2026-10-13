@@ -13,7 +13,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
-import { clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { clandWithEnv, sleep, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
 
@@ -233,6 +233,8 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   const clauses = (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter((l) => l.includes('"event":"role-clause"') && l.includes('"session":"coord"'));
   assert.equal(clauses.length, 1);
   assert.match(clauses[0] as string, /"reason":"assigned at launch \(first turn\)"/);
+  await sleep(100);
+  assert.equal((await hubLog(root, ui)).split('\n').filter(line => line.includes('"event":"role-clause"') && line.includes('"session":"coord"')).length, 1, 'still one clause after settling');
   assert.equal((firstLog.match(/you hold the role Coordinator/g) ?? []).length, 1, 'the clause was handed over once');
 
   // the human writes in General: injected as a hub_event tool output; the reply comes back
@@ -599,6 +601,8 @@ test('a second spoke of a live Codex session (another thread on its app-server) 
   // one session still, and nothing of a hello happened again: no clause is injected into its thread a second time
   assert.equal((await status(ui)).sessions.filter((s) => s.name === 'impl-1').length, 1);
   assert.equal(await clauses(), clausesBefore);
+  await sleep(100);
+  assert.equal(await clauses(), clausesBefore, 'still no second clause after settling');
 
   // the session's thread calls its tools through its first spoke, and they work: the pong is a `send`
   const id = await sendGeneral(ui, '@impl-1 still there?');
@@ -735,6 +739,11 @@ test('a steer the app-server accepted and the turn never took up is delivered ag
   const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; id?: string; session?: string });
   assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered').map((e) => [e.session, e.id]), [['impl-1', dropped]], 'only the dropped steer, once');
   assert.equal((await hubLog(root, ui)).split('\n').filter((line) => line.includes('"event":"harness-steered"') && line.includes(taken)).length, 1);
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
+  assert.deepEqual(settled.filter(e => e.event === 'harness-redelivered').map(e => [e.session, e.id]), [['impl-1', dropped]]);
+  assert.equal((await hubLog(root, ui)).split('\n').filter(line => line.includes('"event":"harness-steered"') && line.includes(taken)).length, 1);
   const pongs = ui.frames.filter((f) => f.type === 'message' && /^pong: /.test((f.message as { text: string }).text)).map((f) => (f.message as { text: string }).text);
   assert.deepEqual(pongs.sort(), ['pong: @impl-1 a steer the turn takes up', 'pong: @impl-1 drop this steer', 'pong: @impl-1 start a turn'], 'each answered once');
 
@@ -816,6 +825,10 @@ for (const [body, error] of [
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const events = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as { event: string; ids?: string[]; error?: string });
   assert.deepEqual(events.filter((e) => e.event === 'harness-turn-unread').map((e) => [e.ids, e.error]), [[[id], error]]);
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; ids?: string[]; error?: string });
+  assert.deepEqual(settled.filter(e => e.event === 'harness-turn-unread').map(e => [e.ids, e.error]), [[[id], error]], 'still one unread record after settling');
   assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
   assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 1, 'one turn');
 });
@@ -842,6 +855,10 @@ test('a turn whose input items the hub cannot classify is reported once as unrea
   const unread = events.filter((e) => e.event === 'harness-turn-unread');
   assert.equal(unread.length, 1, 'reported once');
   assert.deepEqual(unread[0]?.ids, [id]);
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
+  assert.equal(settled.filter(e => e.event === 'harness-turn-unread').length, 1, 'still reported once after settling');
   assert.equal(unread[0]?.error, "the turn's record shows no input item of the shape it was admitted in");
   assert.deepEqual(events.filter((e) => e.event === 'harness-redelivered' || e.event === 'harness-redelivery-failed'), []);
   assert.equal((await fake.log(launched.pid as number)).split('\n').filter((line) => line.includes('turn/start toolOutput hub_event')).length, 2, 'one turn per delivery');
@@ -895,6 +912,10 @@ test('a recovery accepted and dropped in a newer turn retains its obligation', a
   const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   const recoveries = journal.split('\n').filter((line) => line.includes('"event":"harness-redelivered"') && line.includes(id));
   assert.equal(recoveries.length, 2, 'the recovery in the newer turn is recovered again, then consumed');
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
+  assert.equal(settled.filter(e => e.event === 'harness-redelivered' && e.id === id).length, 2, 'still two recoveries after settling');
   const agents = (await ui.request({ type: 'topic.history', topic: 'agents', limit: 50 })).value as { messages: Array<{ kind?: string; text: string }> };
   assert.deepEqual(agents.messages.filter((m) => m.kind === 'redelivered').map((m) => m.text), [
     'impl [Implementer]: its turn ended without a message it had accepted; the message was delivered again into a running turn',
@@ -983,6 +1004,10 @@ for (const mode of ['reject', 'accept', 'accept dropped']) test(`a successful co
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string });
   assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, mode === 'accept dropped' ? 1 : 0);
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
+  assert.equal(settled.filter(e => e.event === 'harness-redelivered' && e.id === id).length, mode === 'accept dropped' ? 1 : 0);
   assert.equal(ui.frames.filter((f) => f.type === 'message' && (f.message as { text: string }).text === `pong: ${body}`).length, 1);
 });
 
@@ -1005,6 +1030,11 @@ test('repeated dropped recoveries stop with a visible failure after two attempts
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line) as { event: string; id?: string });
   assert.equal(journal.filter((e) => e.event === 'harness-redelivered' && e.id === id).length, 2);
   assert.equal(journal.filter((e) => e.event === 'harness-redelivery-failed' && e.id === id).length, 1);
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string; session?: string });
+  assert.equal(settled.filter(e => e.event === 'harness-redelivered' && e.id === id).length, 2);
+  assert.equal(settled.filter(e => e.event === 'harness-redelivery-failed' && e.id === id).length, 1);
 });
 
 

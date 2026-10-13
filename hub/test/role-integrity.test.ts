@@ -46,6 +46,7 @@ test('a Coordinator remembered past the queue TTL that reconnects after another 
   const status = (await ui.request({ type: 'hub.status' })).value as { coordinator: string | null; sessions: Array<{ name: string }> };
   assert.equal(status.coordinator, 'coord-b');
   assert.ok(!status.sessions.some((s) => s.name === 'coord-a'), 'the stale holder stays off the hub');
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"role-superseded","session":"coord-a"/);
 });
 
@@ -94,6 +95,7 @@ test('a launch that fails after its spoke connected gives the role back: no Coor
   assert.equal(failed.ok, false);
   assert.match(failed.error ?? '', /refused the first turn/);
   // the spoke had connected (an early hello) and taken the role; it is rolled back
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.ok((await hubLog(root)).includes('"event":"hello","name":"coord"'), 'the spoke said hello before the first turn failed');
   await eventually('no holder', async () => ((await holders(ui, 'coordinator')).length === 0 ? true : undefined));
   assert.equal(((await ui.request({ type: 'hub.status' })).value as { coordinator: string | null }).coordinator, null);
@@ -112,8 +114,12 @@ test('a launch for the role the name already holds carries the clause once: in t
   const pid = (launched.value as { process: Harness }).process.pid as number;
   await presentAs(ui, 'rev-1', 'idle');
   await sleep(1000);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const clauses = (await hubLog(root)).split('\n').filter((l) => l.includes('"event":"role-clause"') && l.includes('"session":"rev-1"'));
   assert.equal(clauses.length, 1, clauses.join('\n'));
+  await sleep(100);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await hubLog(root)).split('\n').filter(line => line.includes('"event":"role-clause"') && line.includes('"session":"rev-1"')).length, 1, 'still one clause after settling');
   assert.match(clauses[0] as string, /"reason":"assigned at launch \(first turn\)"/);
   assert.equal(((await fake.log(pid)).match(/you hold the role Reviewer/g) ?? []).length, 1, 'the clause was handed over once');
 });
