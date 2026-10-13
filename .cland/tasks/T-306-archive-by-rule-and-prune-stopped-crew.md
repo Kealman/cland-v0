@@ -4,6 +4,7 @@ kind: task
 title: 'Archive by rule and prune: stopped crew sessions archive themselves, the "more" fold shows the latest 20, and cland session prune --older-than'
 state: open
 status: review
+criterion_seq: 5
 labels:
   - v0.1.2
   - ready-for-agent
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-189
 branch: t/T-306-archive-by-rule-and-prune-stopped-crew
 created: 2026-10-12T21:34:31.521Z
-updated: 2026-10-13T02:31:06.589Z
+updated: 2026-10-13T02:45:29.510Z
 ---
 
 ## Summary
@@ -83,9 +84,11 @@ The archived count comes from ticket 03's `session.list` count and from the `ses
 
 - [ ] C1. With shortened windows, a stopped Implementer, and a stopped Reviewer by its latest held item, archive one window after the item merged or closed. A crew session without such an item archives after the stop window. A stopped Aide is never archived by rule. Hub tests on a real hub with fake sessions cover each case.
 - [ ] C2. A regression test bounds the work. On a store with hundreds of stopped rows and thousands of items and messages, hub start runs one batched sweep. A burst of item and stop events produces one sweep per tick, never one per event.
+  - failed: rev-23 [reviewer] · 2026-10-13T02:35:32.278Z · note Batch row notifications perform one full archived-count scan per changed row; carry a single batch count and bound count reads in the native regression.
 - [ ] C3. The background fold lists at most the latest 20 stopped sessions and shows the archived count in its header. A Neovim headless test on the stub hub covers it.
 - [ ] C4. `cland session prune --older-than <d>` deletes only archived records older than `<d>`, and `--dry-run` deletes nothing. After it, `cland hub journal` still lists the pruned sessions' launches. A hub test checks this after the `flushLogs` barrier.
 - [ ] C5. `hub/README.md` describes the rules, the `[sessions]` windows, the sweep and `session prune`. `nvim/README.md` describes the fold of 20 and the archived count. The Coordinator's default clause names `cland session prune`.
+  - failed: rev-23 [reviewer] · 2026-10-13T02:35:32.279Z · note New session.prune spoke tool is absent from DOCUMENTED_TOOLS; existing exact surface/count assertions will fail.
 
 ## Comments
 
@@ -96,3 +99,21 @@ Implementing archive rules and prune on T-305. Epic decisions applied: prune age
 ### impl-306 · 2026-10-13T02:30:27.069Z
 
 Implementation committed and pushed at 142f058b509f7738ee5bd97728eb23d3ed6e6ac3 (branch t/T-306-archive-by-rule-and-prune-stopped-crew), with origin/dev e2a80ba fetched and merged before final suite. C1-C5 covered by real-hub/CLI/spoke cleanup tests, bounded startup/event workload test, and headless Neovim fold/count test. Targeted suites and typecheck pass; requesting review then ordinary cland verify all. Coordinator tools/default clause now include session.prune / cland session prune: relaunch Coordinator after merge.
+
+### rev-23 · 2026-10-13T02:35:32.279Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-306-1
+commit: ae5b7de1bce95498e9cbcac51a1fbf7a6e0b3021
+
+Medium — hub/src/adapters/sessions.ts:313: every archiveBatch row notification runs archivedCount's full process-table scan, leaving quadratic publication work despite one write batch.
+Medium — hub/test/harness.ts:27: expected documented spoke inventory omits session.prune and breaks exact surface/count checks.
+Preserve one changed frame per row and exact surface assertions while fixing both. Full d72114e2 is pending. Evidence A-1750: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1750-t-306-review-repeated-archive-counts-and-missing-prune-surface-inventory.md.
+
+Criteria: C2 failed (Batch row notifications perform one full archived-count scan per changed row; carry a single batch count and bound count reads in the native regression.), C5 failed (New session.prune spoke tool is absent from DOCUMENTED_TOOLS; existing exact surface/count assertions will fail.).
+
+### impl-306 · 2026-10-13T02:45:19.788Z
+
+Fixed rev-2026-10-13-306-1 at 29a9cb4: one authoritative archive count is now shared by all batch row notifications; native tracer regression failed red with 256 count scans and passes with exactly one. Added session.prune to DOCUMENTED_TOOLS, leaving exact surface/count assertions unchanged. Inbox workload 5/5, surface 3/3, resilience 11/11, spoke identity 4/4 and typecheck pass. Prior full run had only the four inventory failures. Fresh full verification awaits T-312's protected Linux slot release.

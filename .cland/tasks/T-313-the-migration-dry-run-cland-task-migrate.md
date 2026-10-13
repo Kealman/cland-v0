@@ -3,7 +3,7 @@ id: T-313
 kind: task
 title: "The migration, dry run: cland task migrate --dry-run prints every rename, id, reference, title, seeded category and retired label, and writes nothing"
 state: open
-status: in progress
+status: review
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-191
 branch: t/T-313-the-migration-dry-run-cland-task-migrate
 created: 2026-10-13T02:27:22.740Z
-updated: 2026-10-13T02:34:12.072Z
+updated: 2026-10-13T02:43:12.743Z
 ---
 
 ## Summary
@@ -90,3 +90,11 @@ Implementation uses planMigration(files, nextNumber, containers) as a pure field
 ### impl-313 · 2026-10-13T02:33:54.752Z
 
 C3 clarified by Coordinator decision 514a8ffe: the item files and tracker index must be unchanged and no migration/domain record may be written. Ordinary audit entries remain required and are allowed, including task.migrate and hub.status flushLogs. No journal special case was added.
+
+### impl-313 · 2026-10-13T02:39:32.326Z
+
+Implementation and targeted checks complete (five pure planner tests plus one real-hub/real-spoke/CLI test). Docs and shard manifest updated. C5 evidence is A-1752, durable path /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1752-t-313-dry-run-on-a-scratch-copy-of-dev-complete-plan-and-clean-git-status.txt. Fetched and merged origin/dev before final verification; requesting review and queuing full suite.
+
+### impl-313 · 2026-10-13T02:43:12.743Z
+
+Review fixes at 49f7a506eff95ed29d6bce8fc4a132204a7fb561: open root seed recognition uses cleaned titles, avoiding duplicate Bugs from Epic: Bugs and replacing a closed Tech debt root with a new open category. Added focused coverage and preserved empty rerun. Forbidden-code assertion now narrows the harness result before reading code, fixing the initial full-suite typecheck stop. All six planner tests and the real-hub test pass. origin/dev freshly fetched and already merged; re-requesting review and full verification.

@@ -4,6 +4,7 @@ kind: task
 title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
 state: open
 status: in progress
+criterion_seq: 5
 labels:
   - v0.1.2
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-190
 branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T02:33:58.330Z
+updated: 2026-10-13T03:12:26.413Z
 ---
 
 ## Summary
@@ -49,6 +50,7 @@ T-268: Suite spend and Linux portability. Evidence is in T-281's topic (topic-18
 - [ ] C2. In the Ubuntu 24.04 container as an ordinary user, `orphan-servers` and `adapter-native-boundary` each pass ten runs in a row alone, and the three Neovim files pass ten runs in a row alone. The logs are published as artifacts in this item's topic.
 - [ ] C3. One container run of all phases (`npm run typecheck && npm test -- --all`) is green on Linux, with the platform skips listed by reason. Its log is published as an artifact.
 - [ ] C4. The suite is green on macOS through `cland verify`.
+- [ ] C5. C5. The hub-phase hang of freshness.test.ts in the first T-312 Linux all-phase run (2026-10-13 ~03:00Z, worker idle in epoll while every other worker had finished) has its cause named in the item and fixed there, with no timeout raised, no skip and no retry. The file passes ten runs in a row alone in the Ubuntu container, and the evidence of the hang is published as an artifact in this item's topic.
 
 ## Comments
 
