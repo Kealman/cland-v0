@@ -2,8 +2,8 @@
 id: T-357
 kind: task
 title: "Done distinct: done nodes and rows keep a readable title in the done colour with the green glyph in the graph, the items panel and the board, and container nodes in the graph carry done/total and the count in work"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-218
 branch: t/T-357-done-distinct-done-nodes-and-rows-keep-a
 created: 2026-10-13T20:53:52.151Z
-updated: 2026-10-13T21:04:55.670Z
+updated: 2026-10-13T21:21:04.930Z
+closed: 2026-10-13T21:21:04.930Z
 ---
 
 ## Summary
@@ -86,19 +87,26 @@ E-276: The explorer and the card, tracer bullet 6. Spec: `docs/spec/v0.1.2.md` �
 - [x] C1. `ClandDone` is `#98bfa2`, with Bar and Chip twins. No done title anywhere uses `ClandStrike`.
   - done: impl-357 · 2026-10-13T21:00:53.293Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-357-2 · 2026-10-13T21:04:55.670Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 - [x] C2. In the graph, a done task node's title cell is in `ClandDone` with ● green. A done node of the release graph keeps its full title.
   - done: impl-357 · 2026-10-13T21:00:53.627Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 - [x] C3. In the graph of a release, an epic node shows `done/total · N in work` from its tasks, and the release node in its parent's graph shows its epics' fraction.
   - done: impl-357 · 2026-10-13T21:04:05.739Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 - [x] C4. In the items panel, a done task's title in the `DONE` section and under the `done` filter is in `ClandDone`. A closed container's title in the `all` tree is too.
   - done: impl-357 · 2026-10-13T21:00:54.292Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 - [x] C5. On the board, a closed item's title is in `ClandDone`.
   - done: impl-357 · 2026-10-13T21:00:54.621Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 - [x] C6. The panel, the board and the graph draw verified/total and `stale` from the summary's `criteria`. No `task.view` reaches the stub hub while they draw.
   - done: impl-357 · 2026-10-13T21:00:54.933Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 - [x] C7. `nvim/README.md` describes the done colour and the container nodes' fraction.
   - done: impl-357 · 2026-10-13T21:00:55.243Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-357-2 · 2026-10-13T21:04:55.670Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-3 · 2026-10-13T21:20:48.338Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
 
 ## Comments
 
@@ -131,3 +139,24 @@ scope: full
 No remaining high or medium findings. C3 correction derives child kinds from the configured ladder, with task-only completion at the final level; A-2063 shows the mixed-child regression red then green and source guard 3/3. Full source review A-2060 otherwise remains applicable. C1/C7 verified by source; C2–C6 await exact-head Neovim verification. A-2064: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2064-t-357-corrected-full-source-review-at-ce98c28.md.
 
 Criteria: C1 verified, C7 verified.
+
+### impl-357 · 2026-10-13T21:20:25.033Z
+
+Exact-head verification 46e68726-0f63-41b2-995b-07c0dc7cc16b passed at ce98c28a81fd8cff2040199adbcd5d9b90e10ddc: effective full mode, 1851/1851 tests, no failures/cancellations/skips. Log A-2076 is /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2076-suite-46e68726-0f63-41b2-995b-07c0dc7cc16b-nvim-at-ce98c28.log. Reviewer received the same-head result directly; awaiting final C2–C6 verification. Tree remains clean and no tracker-only dev merge was made.
+
+### rev-23 · 2026-10-13T21:20:48.338Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-357-3
+commit: ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
+scope: evidence
+
+No high or medium findings remain. A-2076 exact-head verification 46e68726 widened to full and passed typecheck plus 1851/1851 tests (Neovim 326/326), with zero failures/skips/cancellations. Done styling, default/configured graph progress and summary-only fraction regressions pass. Same-head source review A-2064 remains applicable. All C1–C7 verified. A-2077: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2077-t-357-final-exact-head-suite-evidence.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T21:21:04.930Z
+
+Merged a0ee9575015fca74b3afa1ed2d35c083ee315c42 onto dev.

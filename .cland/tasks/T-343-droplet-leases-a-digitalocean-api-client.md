@@ -3,8 +3,9 @@ id: T-343
 kind: task
 title: "Droplet leases: a DigitalOcean API client that reads the token at use, a durable lease with its own SSH key and a detached watchdog per droplet, and cland executor status and reap"
 state: open
-status: in progress
+status: review
 size: L
+criterion_seq: 10
 labels:
   - v0.1.2
   - hub
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-216
 branch: t/T-343-droplet-leases-a-digitalocean-api-client
 created: 2026-10-13T20:53:45.647Z
-updated: 2026-10-13T21:15:11.917Z
+updated: 2026-10-13T21:18:32.033Z
 ---
 
 ## Summary
@@ -136,16 +137,26 @@ It also deletes keys named `cland-<project>-*` that have no live lease. It never
 
 ## Acceptance criteria
 
-- [ ] C1. Against the fake API, through the real hub, the fake sees `lease.json` with state `creating` and the armed watchdog's PID before it answers `POST /droplets`. Acquire then polls through a `new` answer with no IP, and returns only when the droplet is `active` with a public address. At the 300 s deadline (shortened by a `CLAND_TEST_*` override), acquire releases the droplet and refuses.
-- [ ] C2. Release deletes the droplet and the key, and confirms absence by listing, also when the fake keeps a deleted droplet listed for a few polls. It records the lifetime and the cost, with a 60 s minimum, at the size's price. An unconfirmed release stays `releasing` and is retried.
-- [ ] C3. With `lifetime = "3s"`, the hub is stopped right after an acquire. The watchdog deletes the droplet and the key while no hub runs. The next start journals `executor-watchdog-fired` and the lease `released`, and `cland executor status` lists no lease.
-- [ ] C4. Reap deletes a project-tagged droplet with no lease, and another project's `cland` droplet older than its lifetime plus 10 minutes. It leaves another project's younger droplet and an untagged droplet, and journals `executor-reaped`.
-- [ ] C5. At restart, a `creating` lease without a resource id finds its droplet by name and releases it. A live lease whose watchdog died gets a re-armed watchdog.
-- [ ] C6. The sentinel token appears nowhere: not in `hub.log`, the journal, the lease files, `watchdog.json`, the artifacts, the fake API's request bodies, or the `ps` command lines of the hub's children. Without a token, `reap` refuses and `status` shows `token: absent (DIGITALOCEAN_TOKEN)`.
-- [ ] C7. `cland executor status` and `reap` are refused for an Implementer, a Reviewer and a QA session, and allowed for the Coordinator and the human.
-- [ ] C8. Real check, posted on this item with create, destroy and cost: one stray droplet of the smallest size, made by hand with the `cland` and project tags, is deleted by `cland executor reap`. The tag listing is empty afterwards.
-- [ ] C9. On macOS the watchdog holds `caffeinate -i -w <its pid>` while its lease is live, so a sleeping hub host cannot strand a billing droplet. A test on macOS sees the `caffeinate` child for a live lease and none after release (Coordinator decision, approved by the stand-in under D24 on 2026-10-13).
-- [ ] C10. `hub/README.md` describes the token, the tags, the lease, the watchdog, reap, status and the config keys.
+- [x] C1. Against the fake API, through the real hub, the fake sees `lease.json` with state `creating` and the armed watchdog's PID before it answers `POST /droplets`. Acquire then polls through a `new` answer with no IP, and returns only when the droplet is `active` with a public address. At the 300 s deadline (shortened by a `CLAND_TEST_*` override), acquire releases the droplet and refuses.
+  - done: impl-343 · 2026-10-13T21:18:17.582Z
+- [x] C2. Release deletes the droplet and the key, and confirms absence by listing, also when the fake keeps a deleted droplet listed for a few polls. It records the lifetime and the cost, with a 60 s minimum, at the size's price. An unconfirmed release stays `releasing` and is retried.
+  - done: impl-343 · 2026-10-13T21:18:17.933Z
+- [x] C3. With `lifetime = "3s"`, the hub is stopped right after an acquire. The watchdog deletes the droplet and the key while no hub runs. The next start journals `executor-watchdog-fired` and the lease `released`, and `cland executor status` lists no lease.
+  - done: impl-343 · 2026-10-13T21:18:18.399Z
+- [x] C4. Reap deletes a project-tagged droplet with no lease, and another project's `cland` droplet older than its lifetime plus 10 minutes. It leaves another project's younger droplet and an untagged droplet, and journals `executor-reaped`.
+  - done: impl-343 · 2026-10-13T21:18:18.748Z
+- [x] C5. At restart, a `creating` lease without a resource id finds its droplet by name and releases it. A live lease whose watchdog died gets a re-armed watchdog.
+  - done: impl-343 · 2026-10-13T21:18:19.278Z
+- [x] C6. The sentinel token appears nowhere: not in `hub.log`, the journal, the lease files, `watchdog.json`, the artifacts, the fake API's request bodies, or the `ps` command lines of the hub's children. Without a token, `reap` refuses and `status` shows `token: absent (DIGITALOCEAN_TOKEN)`.
+  - done: impl-343 · 2026-10-13T21:18:19.644Z
+- [x] C7. `cland executor status` and `reap` are refused for an Implementer, a Reviewer and a QA session, and allowed for the Coordinator and the human.
+  - done: impl-343 · 2026-10-13T21:18:20.031Z
+- [x] C8. Real check, posted on this item with create, destroy and cost: one stray droplet of the smallest size, made by hand with the `cland` and project tags, is deleted by `cland executor reap`. The tag listing is empty afterwards.
+  - done: impl-343 · 2026-10-13T21:18:20.547Z
+- [x] C9. On macOS the watchdog holds `caffeinate -i -w <its pid>` while its lease is live, so a sleeping hub host cannot strand a billing droplet. A test on macOS sees the `caffeinate` child for a live lease and none after release (Coordinator decision, approved by the stand-in under D24 on 2026-10-13).
+  - done: impl-343 · 2026-10-13T21:18:20.911Z
+- [x] C10. `hub/README.md` describes the token, the tags, the lease, the watchdog, reap, status and the config keys.
+  - done: impl-343 · 2026-10-13T21:18:21.305Z
 
 ## Comments
 
