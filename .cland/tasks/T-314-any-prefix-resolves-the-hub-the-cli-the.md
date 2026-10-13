@@ -2,8 +2,8 @@
 id: T-314
 kind: task
 title: "Any prefix resolves: the hub, the CLI, the MCP task tools, the plan parser and gi take any kind prefix by its number, and every surface shows the kind's own"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 7
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-193
 branch: t/T-314-any-prefix-resolves-the-hub-the-cli-the
 created: 2026-10-13T02:27:22.874Z
-updated: 2026-10-13T07:06:05.385Z
+updated: 2026-10-13T07:29:16.625Z
 ---
 
 ## Summary
@@ -93,18 +93,27 @@ Tasks keep `T-`. Task branches `t/T-<n>-<slug>`, worktrees `.cland/worktrees/T-<
 
 ## Acceptance criteria
 
-- [ ] C1. A hub test on a temporary project with a real hub writes an epic file as `T-<n>` and views it as `E-<n>`, `R-<n>`, `T-<n>`, `e-<n>` and `<n>`. Each shows the same item headed `E-<n>`. `cland task list --json` shows every kind with its own prefix. An unknown number is refused, and `A-<n>` is refused as not an item id.
-  - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Per-event default-item scans break bounded lookup work; removal leaves canonical plan caches behind.
-- [ ] C2. `task.create` writes the kind's prefix in the id and the file name, and one counter serves every prefix: after a hand-written `E-500` file, the next item is 501. A kind edit keeps the number and renames the file to the new prefix.
-  - failed: rev-23 [reviewer] · 2026-10-13T05:49:01.396Z · note Configured container gate test requires an incidental child order changed by canonical file prefixes.
-- [ ] C3. A hub test writes a lead claim, a topic binding, a subscription and a plan against an epic as `T-<n>`, restarts the hub, and shows each still matching `E-<n>`. `send` to `lead E-<n>`, a `review request E-<n>` first line and `subscribe` on subtree `E-<n>` route as they did with `T-<n>`.
-  - failed: rev-23 [reviewer] · 2026-10-13T05:49:01.395Z · note Required legacy routing test reads a message field omitted by spoke send and fails before completing.
-- [ ] C4. Plan lanes accept any kind prefix, and an approved plan stays approved across the change.
-  - failed: rev-23 [reviewer] · 2026-10-13T04:48:12.564Z · note Mixed-spelling overrides can bypass stage QA, and canonical parents invalidate unchanged legacy stage hashes.
-- [ ] C5. Two files with one number index once, and `task-duplicate-number` is logged with both names. The test reads `hub.log` after the `flushLogs` barrier.
-- [ ] C6. A Neovim headless test on the stub hub puts the cursor on `T-<n>` in a thread and presses `gi`. The item view of `E-<n>` opens. `A-12` in a thread is not taken as an item, and every kind prefix is highlighted.
-  - failed: rev-23 [reviewer] · 2026-10-13T06:36:46.152Z · note Thread item highlighting calls state.item_number without importing cland.state, breaking rendering and gi coverage.
-- [ ] C7. `docs/agents/issue-tracker.md` (and its template `skills/templates/docs/agents/issue-tracker.md`), `hub/README.md`'s tracker section and `nvim/README.md`'s motions section describe the prefixes, resolution by number and the canonical id.
+- [x] C1. A hub test on a temporary project with a real hub writes an epic file as `T-<n>` and views it as `E-<n>`, `R-<n>`, `T-<n>`, `e-<n>` and `<n>`. Each shows the same item headed `E-<n>`. `cland task list --json` shows every kind with its own prefix. An unknown number is refused, and `A-<n>` is refused as not an item id.
+  - done: impl-314 · 2026-10-13T07:27:38.493Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
+- [x] C2. `task.create` writes the kind's prefix in the id and the file name, and one counter serves every prefix: after a hand-written `E-500` file, the next item is 501. A kind edit keeps the number and renames the file to the new prefix.
+  - done: impl-314 · 2026-10-13T07:27:39.013Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
+- [x] C3. A hub test writes a lead claim, a topic binding, a subscription and a plan against an epic as `T-<n>`, restarts the hub, and shows each still matching `E-<n>`. `send` to `lead E-<n>`, a `review request E-<n>` first line and `subscribe` on subtree `E-<n>` route as they did with `T-<n>`.
+  - done: impl-314 · 2026-10-13T07:27:39.336Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
+- [x] C4. Plan lanes accept any kind prefix, and an approved plan stays approved across the change.
+  - done: impl-314 · 2026-10-13T07:27:39.665Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
+- [x] C5. Two files with one number index once, and `task-duplicate-number` is logged with both names. The test reads `hub.log` after the `flushLogs` barrier.
+  - done: impl-314 · 2026-10-13T07:27:39.987Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
+- [x] C6. A Neovim headless test on the stub hub puts the cursor on `T-<n>` in a thread and presses `gi`. The item view of `E-<n>` opens. `A-12` in a thread is not taken as an item, and every kind prefix is highlighted.
+  - done: impl-314 · 2026-10-13T07:27:40.310Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
+- [x] C7. `docs/agents/issue-tracker.md` (and its template `skills/templates/docs/agents/issue-tracker.md`), `hub/README.md`'s tracker section and `nvim/README.md`'s motions section describe the prefixes, resolution by number and the canonical id.
+  - done: impl-314 · 2026-10-13T07:27:40.640Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-314-5 · 2026-10-13T07:29:08.359Z · commit b361200804ecac7150b9f6afec03bfd476e6d8ca
 
 ## Comments
 
@@ -178,3 +187,23 @@ Criteria: C6 failed (Thread item highlighting calls state.item_number without im
 ### impl-314 · 2026-10-13T07:06:05.385Z
 
 A-1834 completed both phases: all 1449 hub and 307/308 Neovim cases passed, including C6. The sole unchanged layer-filter test read an empty panel after a fixed 100 ms pause. Original dev and branch both pass that case alone. Coordinator authorized shared fix b361200: wait for loaded plan/items, requested filter and exact rendered inclusion/exclusion state; all assertions unchanged. Corrected layers.test.ts passes 14/14 (A-1835). Refreshed origin/dev is already integrated; full verification is resubmitted.
+
+### impl-314 · 2026-10-13T07:27:41.144Z
+
+Final full verification 15cd72c2 at b361200804ecac7150b9f6afec03bfd476e6d8ca is green: typecheck and 1757/1757 tests, zero fail/skip/cancel. Durable log A-1843. C1–C7 implementation marks are recorded; final reviewer verification is pending. Source and standalone shared panel wait are reviewed clear (A-1831/A-1836). Task branch is pushed and clean; claim retained for merge.
+
+### rev-23 · 2026-10-13T07:29:08.359Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-314-5
+commit: b361200804ecac7150b9f6afec03bfd476e6d8ca
+
+No high or medium findings remain. Standards and Spec clear; C1–C7 checked at b361200804ecac7150b9f6afec03bfd476e6d8ca. Full cland verify 15cd72c2 / A-1843 passes hub/Neovim typecheck and all three phases: 1757/1757, zero failures/cancellations/skips/todos. Numeric resolution, canonical creation/kind edits, legacy routing/state, mixed plans/stage hashes, duplicate warning, C6 navigation/highlights, required docs and retained regressions pass. Source/shared-fix evidence A-1831/A-1836; final criteria/evidence A-1844 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1844-t-314-final-review-clear-c1-c7-at-b361200.md). Earlier failed/cancelled evidence is superseded.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-13T07:29:16.625Z
+
+Merged deb88d3abf17498e82919075f2d081be08cb9327 onto dev.

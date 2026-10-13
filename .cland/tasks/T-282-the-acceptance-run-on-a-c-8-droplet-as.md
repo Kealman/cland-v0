@@ -3,7 +3,8 @@ id: T-282
 kind: task
 title: The acceptance run on a c-8 droplet as an ordinary user, and locally
 state: open
-status: backlog
+status: review
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -13,10 +14,10 @@ parent: T-268
 blocked_by:
   - T-281
   - T-312
-topic: null
-branch: null
+topic: topic-195
+branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T01:50:19.905Z
+updated: 2026-10-13T07:26:33.197Z
 ---
 
 ## Summary
@@ -51,9 +52,23 @@ Constraints:
 
 ## Acceptance criteria
 
-- [ ] The Coordinator was told in this item's topic before the droplet was created.
-- [ ] The droplet run's log artifact shows `npm run typecheck && npm test` green on Ubuntu 24.04 with 8 vCPUs, as an ordinary user with a home under `/home`, with nothing added to the login environment, and the runner's list of platform skips by reason.
-- [ ] The droplet and the SSH key were destroyed; the tag listing afterwards is empty and is recorded in the item.
-- [ ] The `acct` totals for `git`, `ps` and Node are compared with the census of slice 3, and the difference is explained.
-- [ ] No published log, comment or artifact contains the token.
-- [ ] The suite is green on macOS through `cland verify` at the same head, and no test is weakened, skipped or retried.
+- [x] C1. The Coordinator was told in this item's topic before the droplet was created.
+  - done: impl-282 · 2026-10-13T07:23:44.354Z
+  - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:32.022Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
+- [ ] C2. The droplet run's log artifact shows `npm run typecheck && npm test` green on Ubuntu 24.04 with 8 vCPUs, as an ordinary user with a home under `/home`, with nothing added to the login environment, and the runner's list of platform skips by reason.
+- [ ] C3. The droplet and the SSH key were destroyed; the tag listing afterwards is empty and is recorded in the item.
+- [ ] C4. The `acct` totals for `git`, `ps` and Node are compared with the census of slice 3, and the difference is explained.
+- [ ] C5. No published log, comment or artifact contains the token.
+- [x] C6. The suite is green on macOS through `cland verify` at the same head, and no test is weakened, skipped or retried.
+  - done: impl-282 · 2026-10-13T07:24:42.456Z
+  - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:33.197Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
+
+## Comments
+
+### impl-282 · 2026-10-13T07:21:29.905Z
+
+Acceptance setup complete at clean head 7eab38f67e1fd783148b30d175b37734f6410984 (T-312 a071775 included). Fresh origin/dev fetch/merge performed. Before create, Coordinator notified in topic-195 of c-8/lon1, 20–30 minute/$0.08–$0.13 plan; explicit go received at 07:20:20Z. Plan A-1839. One prototype-driven acceptance invocation launched with required cland tag, ordinary /home/runner login, acct, 4500s timeout/6600s watchdog and exit/signal destruction. Scripts stay outside repo. No candidate code changes.
+
+### impl-282 · 2026-10-13T07:22:48.017Z
+
+First attempt is a provisioning stop, not an acceptance run: doctl create --wait returned status new and an empty PublicIPv4, so no SSH/login/install/typecheck/test ran. Driver terminated before diagnosis; exit trap destroyed owned droplet 608626194 and imported key 60056355. Post-cleanup cland tag listing [] and imported-key listing []. Lifetime 42s; cost $0.0042 at $0.25/h (60s minimum). Host log scanned clear and published in topic-195. Scratch driver now polls its exact cland-tagged/name-matched droplet for both active and public IPv4, with a 300s deadline; deadline failure triggers destruction. Fresh second preflight confirms empty tag and same c-8/lon1 price. Awaiting new Coordinator go before any second create.
