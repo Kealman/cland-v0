@@ -28,22 +28,30 @@ async function status(ui: FrameClient): Promise<Status> {
 
 const isClause = (e: ChannelEvent) => e.params.meta?.kind === 'role';
 
-test('every crew role receives the Aide speaking-for-the-human instruction in its clause', async t => {
+test('crew clauses describe category filing and the Aide speaking for the human', async t => {
   const root = await tempProject(t);
   await startDaemon(t, root);
-  for (const role of ['coordinator', 'implementer', 'reviewer', 'qa']) {
+  for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
     const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'crew-' + role, sessionId: 'sess-' + role, role });
     t.after(() => spoke.close());
     const clause = await spoke.waitForEvent(isClause);
-    assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
+    if (role !== 'aide') assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
+    if (role === 'coordinator' || role === 'aide') {
+      assert.match(clause.params.content, /cland task list --kind category/);
+      assert.match(clause.params.content, /Bugs.*Tech debt.*Follow-ups.*Ideas.*--parent C-<n>/);
+    } else assert.match(clause.params.content, /Report a bug found aside, tech debt, a follow-up of merged work or an idea to.*lead.*category/);
     if (role === 'implementer') {
       assert.match(clause.params.content, /Request review yourself/);
       assert.match(clause.params.content, /On a not-clear verdict/);
       assert.match(clause.params.content, /report only if blocked/);
     } else if (role === 'coordinator') {
+      assert.match(clause.params.content, /first kind of the first level/);
+      assert.match(clause.params.content, /lowest-ranked open, unblocked task of the first category/);
+      assert.match(clause.params.content, /An epic in a category waits for promotion/);
+      assert.match(clause.params.content, /With an empty.*idle_from.*never take category work/);
       assert.match(clause.params.content, /Merge on the hub’s `ready` status event/);
       assert.match(clause.params.content, /routine `report` messages appear in Watch/);
-    } else {
+    } else if (role === 'qa' || role === 'reviewer') {
       assert.match(clause.params.content, /from the item’s lead .* or the Coordinator/);
     }
 

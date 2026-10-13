@@ -15,6 +15,23 @@ import { startDaemon, tempProject, type CliResult } from './harness.ts';
 const CLI_ENTRY = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
 
+test('tracker and vendored skills defer category filing to the Categories contract', async () => {
+  for (const file of [TEMPLATE, new URL('../../docs/agents/issue-tracker.md', import.meta.url)]) {
+    const text = await readFile(file, 'utf8');
+    assert.match(text, /## Categories/);
+    assert.match(text, /--parent C-<n>/);
+    assert.match(text, /Bugs.*bug found aside/);
+    assert.match(text, /Tech debt.*tech debt/);
+    assert.match(text, /Follow-ups.*merged work/);
+    assert.match(text, /Ideas.*idea/);
+    assert.match(text, /idle_from/);
+    assert.match(text, /Promotion is a message to the Coordinator/);
+  }
+  for (const skill of ['triage', 'to-tickets']) {
+    assert.match(await readFile(new URL(`../../.agents/skills/${skill}/SKILL.md`, import.meta.url), 'utf8'), /tracker doc's "Categories" section/);
+  }
+});
+
 const hasJq = spawnSync('jq', ['--version']).status === 0;
 
 /** `cland <args>` in `cwd` with `input` on stdin (for `--body-file -`), with no `CLAND_*` variable from the test's environment. */
@@ -106,7 +123,7 @@ test('every `cland task` command the template names parses and reaches its hub o
     // prose naming a subcommand (`cland task create`: …) is not a command line
     .filter((c) => c.split(/\s+/).length > 3)
     // placeholders become concrete values; `x` also names a file, for `--body-file <file>`
-    .map((c) => c.replace(/T-<[^>]+>/g, 'T-1').replace(/"[^"]*"/g, 'x').replace(/<[^>]+>/g, 'x'));
+    .map((c) => c.replace(/([RETQMSC])-<[^>]+>/g, '$1-1').replace(/"[^"]*"/g, 'x').replace(/<[^>]+>/g, 'x'));
   assert.ok(commands.length >= 15, `only ${commands.length} commands found in the template`);
   const subs = new Set(commands.map((c) => c.split(/\s+/)[2]));
   for (const sub of ['create', 'view', 'list', 'comment', 'edit', 'close', 'link', 'claim']) assert.ok(subs.has(sub), `the template never names \`cland task ${sub}\``);
@@ -124,19 +141,21 @@ test('every `cland task` command the template names parses and reaches its hub o
 
 // ------------------------------------------------------------------ /to-spec and /to-tickets
 
-for (const parentKind of ['epic', 'release', null]) {
-  test(`to-spec and to-tickets: source spec stays a leaf; tickets use ${parentKind ?? 'no parent'} and blocking edges`, async (t) => {
+for (const parentKind of ['epic', 'release', 'category', null]) {
+  test(`to-spec and to-tickets: source spec stays a leaf; tickets use ${parentKind ?? 'Ideas for an unscheduled source'} and blocking edges`, async (t) => {
     const root = await project(t);
     const parent = parentKind ? await create(root, ['Login delivery', '--kind', parentKind], '## Goal\n\nMagic links.\n') : null;
     const parentArgs = parent ? ['--parent', parent] : [];
+    const ticketParent = parent ?? await create(root, ['Ideas', '--kind', 'category']);
+    const ticketArgs = ['--parent', ticketParent];
     // to-spec: publish the spec under the planned container, or unscheduled.
     const spec = await create(root, ['Login with a magic link', '--kind', 'spec', ...parentArgs, '--label', 'ready-for-agent'], '## Problem Statement\n\nUsers forget passwords.\n');
     const specBefore = (await itemFile(root, spec)).text;
     const source = `## Parent\n\n${spec}: Login with a magic link\n\n`;
     // to-tickets: the source spec is context in the body. Native parent edges point to its container.
-    const schema = await create(root, ['Store one-time login tokens', '--kind', 'task', ...parentArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
-    const send = await create(root, ['Send the magic link by email', '--kind', 'task', ...parentArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
-    const land = await create(root, ['Log in from the link', '--kind', 'task', ...parentArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
+    const schema = await create(root, ['Store one-time login tokens', '--kind', 'task', ...ticketArgs, '--label', 'ready-for-agent'], source + '## What to build\n\nTokens.\n');
+    const send = await create(root, ['Send the magic link by email', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--label', 'ready-for-agent'], source + '## What to build\n\nThe email.\n');
+    const land = await create(root, ['Log in from the link', '--kind', 'task', ...ticketArgs, '--blocked-by', schema, '--blocked-by', send, '--label', 'ready-for-agent'], source + '## What to build\n\nThe landing.\n');
 
     const specFile = await itemFile(root, spec);
     assert.equal(specFile.fm.kind, 'spec');
@@ -144,7 +163,7 @@ for (const parentKind of ['epic', 'release', null]) {
     assert.equal(specFile.fm.parent, parent);
     assert.match(specFile.text, /## Problem Statement\n\nUsers forget passwords\./);
     const landFile = await itemFile(root, land);
-    assert.equal(landFile.fm.parent, parent);
+    assert.equal(landFile.fm.parent, ticketParent);
     assert.deepEqual(landFile.fm.blocked_by, [schema, send]);
     assert.deepEqual((await itemFile(root, send)).fm.blocked_by, [schema]);
     assert.deepEqual((await itemFile(root, schema)).fm.blocked_by, []);
@@ -154,7 +173,7 @@ for (const parentKind of ['epic', 'release', null]) {
     assert.deepEqual(listed.filter(i => i.parent === spec), [], 'a spec has no native children');
     assert.deepEqual(
       listed.filter(i => [schema, send, land].includes(i.id)).map(i => [i.parent, i.blocked_by]),
-      [[parent, []], [parent, [schema]], [parent, [schema, send]]],
+      [[ticketParent, []], [ticketParent, [schema]], [ticketParent, [schema, send]]],
     );
     assert.deepEqual((await list(root, '--state', 'open', '--label', 'ready-for-agent')).map(i => i.id), [spec, schema, send, land]);
     assert.equal((await view(root, spec)).state, 'open');

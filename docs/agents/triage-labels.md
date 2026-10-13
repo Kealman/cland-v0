@@ -15,3 +15,5 @@ When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the 
 Edit the "Label in our tracker" column to match whatever vocabulary you actually use.
 
 Order work with `cland task rank T-n --top`, `--before T-m` or `--after T-m`. Rank records an item's place among siblings; triage labels describe readiness.
+
+The category roles `bug` and `enhancement` stay labels. File `bug` work outside a release or epic into Bugs with `--parent C-<n>`; see the tracker doc's "Categories" section for finding its id and filing other work.

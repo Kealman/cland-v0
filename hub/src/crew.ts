@@ -2,14 +2,18 @@
 import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parse, stringify as serialize } from 'smol-toml';
-import { DEFAULT_LEVELS, ladderOf, type LadderInput } from './tracker/kinds.ts';
+import { DEFAULT_LEVELS, kindsFor, ladderOf, type LadderInput } from './tracker/kinds.ts';
+import { parseItemReference, prefixOf } from './tracker/prefixes.ts';
+import { idNumber } from './tracker/item.ts';
+import type { Tracker } from './tracker/tracker.ts';
 import type { LogFn } from './log.ts';
 import type { Resumed } from './hub/budget.ts';
 
 export const CREW_ROLES = ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide'] as const;
 export type CrewPolicy = 'per-item' | 'per-group' | 'pool' | 'singleton';
 export type CrewRole = { policy: CrewPolicy; size: number | null; keep_context: boolean; stop_after: 'merge' | 'never'; subagents: boolean };
-export type CrewConfig = { leads: string[]; crew: Record<string, CrewRole> };
+export type IdleCategory = { id: string; title: string };
+export type CrewConfig = { leads: string[]; idle_from: string[]; idle_categories: IdleCategory[]; idle_ignored: Array<{ id: string; reason: string }>; crew: Record<string, CrewRole> };
 export type CrewSource = { get(): CrewConfig; set(key: string, value: unknown, resumed: Resumed, authorize: () => void): Promise<CrewConfig> };
 
 export function defaultCrew(): CrewConfig {
@@ -19,7 +23,36 @@ export function defaultCrew(): CrewConfig {
   crew.implementer!.stop_after = 'merge';
   crew.reviewer = { policy: 'pool', size: 1, keep_context: true, stop_after: 'never', subagents: false };
   crew.qa!.policy = 'singleton'; crew.qa!.size = 1;
-  return { leads: [], crew };
+  return { leads: [], idle_from: [], idle_categories: [], idle_ignored: [], crew };
+}
+
+export function parseIdleFrom(value: unknown, levels: LadderInput = DEFAULT_LEVELS): string[] {
+  if (!Array.isArray(value)) throw new Error('idle_from must be a list of item ids');
+  const kinds = [...kindsFor(levels), 'category'];
+  const ids = value.map(raw => {
+    const ref = typeof raw === 'string' ? parseItemReference(raw, kinds) : null;
+    if (!ref) throw new Error(`idle_from: invalid item id ${String(raw)}`);
+    return `C-${ref.n}`;
+  });
+  if (new Set(ids).size !== ids.length) throw new Error('idle_from: duplicate item id');
+  return ids;
+}
+
+/** Resolve once per reload; ignored references remain in the source policy. */
+export function resolveCrewIdle(config: CrewConfig, tracker: Tracker): CrewConfig {
+  if (!config.idle_from.length) return { ...config, idle_categories: [], idle_ignored: [] };
+  const category = tracker.ladder.roots.find(kind => kind !== tracker.ladder.top && prefixOf(kind) === 'C');
+  const items = new Map(tracker.list().map(item => [idNumber(item.id), item]));
+  const idle_categories: IdleCategory[] = [];
+  const idle_ignored: CrewConfig['idle_ignored'] = [];
+  for (const id of config.idle_from) {
+    const item = items.get(idNumber(id));
+    if (!item || item.kind !== category || item.state !== 'open') {
+      const reason = !item ? 'no such item' : item.kind !== category ? `item is ${item.kind}, not a category` : 'category is closed';
+      idle_ignored.push({ id, reason });
+    } else idle_categories.push({ id: item.id, title: item.title });
+  }
+  return { ...config, idle_categories, idle_ignored };
 }
 // smol-toml uses null-prototype objects for ordinary TOML tables.
 function isPlainTable(v: unknown): v is Record<string, unknown> {
@@ -33,9 +66,10 @@ function keys(doc: Record<string, unknown>, allowed: readonly string[], where: s
 export function parseCrew(text: string, levels: LadderInput = DEFAULT_LEVELS): CrewConfig {
   const doc = parse(text);
   if (!isPlainTable(doc)) throw new Error('crew.toml must contain a table');
-  keys(doc, ['leads', 'crew'], 'crew.toml');
+  keys(doc, ['leads', 'idle_from', 'crew'], 'crew.toml');
   const out = defaultCrew();
   const ladder = ladderOf(levels);
+  if (doc.idle_from !== undefined) out.idle_from = parseIdleFrom(doc.idle_from, levels);
   if (doc.leads !== undefined) {
     if (!Array.isArray(doc.leads) || !doc.leads.every(v => typeof v === 'string' && ladder.canLead(v)) || new Set(doc.leads).size !== doc.leads.length) throw new Error(`leads must be a unique list of container levels (${ladder.containers.filter(kind => ladder.canLead(kind)).join(', ')})`);
     out.leads = doc.leads as string[];
@@ -72,7 +106,7 @@ export function parseCrew(text: string, levels: LadderInput = DEFAULT_LEVELS): C
   return out;
 }
 export function renderCrew(config: CrewConfig): string {
-  const lines = ['# Project staffing policy; role definitions and harness defaults live in roles.toml.', `leads = ${JSON.stringify(config.leads)}`];
+  const lines = ['# Project staffing policy; role definitions and harness defaults live in roles.toml.', `leads = ${JSON.stringify(config.leads)}`, `idle_from = ${JSON.stringify(config.idle_from)}`];
   for (const role of CREW_ROLES) {
     const rule = config.crew[role]!;
     lines.push('', `[crew.${role}]`, `policy = ${JSON.stringify(rule.policy)}`);
@@ -86,7 +120,7 @@ export function crewSummary(config: CrewConfig): string {
   return [['implementer', 'impl'], ['reviewer', 'rev'], ['qa', 'qa']].map(([role, label]) => {
     const rule = config.crew[role!]!;
     return `${label} ${rule.policy === 'singleton' ? '1' : rule.policy.replace('-', ' ') + (rule.size === null ? '' : ` ${rule.size}`)}`;
-  }).concat(`leads: ${config.leads.join(', ') || 'none'}`).join(' · ');
+  }).concat(`leads: ${config.leads.join(', ') || 'none'}`, `idle: ${config.idle_categories.map(item => `${item.id} ${item.title}`).join(', ') || 'never'}`, ...config.idle_ignored.map(item => `ignored ${item.id}: ${item.reason}`)).join(' · ');
 }
 
 /** Poll off the request path. Invalid/missing sources retain the last good snapshot and emit one notice. */
@@ -102,8 +136,10 @@ export class CrewFile implements CrewSource {
   readonly changed: (config: CrewConfig) => void;
   readonly levels: LadderInput;
   readonly resumed: Resumed;
-  constructor(path: string, log: LogFn, changed: (config: CrewConfig) => void, levels: LadderInput, resumed: Resumed = work => work()) {
-    this.path = path; this.log = log; this.changed = changed; this.levels = levels; this.resumed = resumed;
+  readonly tracker: Tracker;
+  constructor(path: string, log: LogFn, changed: (config: CrewConfig) => void, tracker: Tracker, resumed: Resumed = work => work()) {
+    this.path = path; this.log = log; this.changed = changed; this.levels = tracker.ladder; this.resumed = resumed;
+    this.tracker = tracker;
   }
   get(): CrewConfig { return this.#config; }
   async start(): Promise<void> {
@@ -120,6 +156,7 @@ export class CrewFile implements CrewSource {
     return next;
   }
   #publish(text: string, config: CrewConfig): void {
+    config = resolveCrewIdle(config, this.tracker);
     this.#text = text; this.#error = null;
     if (JSON.stringify(config) === JSON.stringify(this.#config)) return;
     this.#config = config;
@@ -131,8 +168,8 @@ export class CrewFile implements CrewSource {
     try {
       const text = await readFile(this.path, 'utf8');
       this.resumed(() => {
-        if (this.#stopped || text === this.#text) return;
-        const config = parseCrew(text, this.levels);
+        if (this.#stopped) return;
+        const config = text === this.#text ? this.#config : parseCrew(text, this.levels);
         this.#publish(text, config);
       });
     } catch (err) {
@@ -153,10 +190,10 @@ export class CrewFile implements CrewSource {
         authorize();
         const doc = parse(original) as Record<string, unknown>;
         parseCrew(original, this.levels); // Never overwrite a broken human edit using the cached snapshot.
-        if (key === 'leads') doc.leads = value;
+        if (key === 'leads' || key === 'idle_from') doc[key] = value;
         else {
           const [role, field, extra] = key.split('.');
-          if (!role || !CREW_ROLES.includes(role as typeof CREW_ROLES[number]) || !field || extra) throw new Error('crew key must be leads or <role>.<key>');
+          if (!role || !CREW_ROLES.includes(role as typeof CREW_ROLES[number]) || !field || extra) throw new Error('crew key must be leads, idle_from or <role>.<key>');
           const crew = (doc.crew ??= {}) as Record<string, unknown>;
           const table = (crew[role] ??= {}) as Record<string, unknown>;
           table[field] = value;

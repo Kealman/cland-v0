@@ -14,6 +14,9 @@ export function staffingClause(role: string, crew: CrewConfig): string {
   if (role === 'coordinator') lines.push(crew.leads.length
     ? `Launch Leads for these container levels: ${crew.leads.join(', ')}. Give each Lead its open container as item; it owns staffing below that node.`
     : 'The crew is flat (leads = []): lead the project from the root.');
+  if (role === 'coordinator') lines.push(crew.idle_categories.length
+    ? `idle_from categories, in order: ${crew.idle_categories.map(item => `${item.id} ${item.title}`).join(', ')}.`
+    : crew.idle_from.length ? 'idle_from has no open categories; category work is never taken.' : 'idle_from is empty; category work is never taken.');
   return lines.join('\n');
 }
 

@@ -2,13 +2,35 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts';
+import { parseRoles, RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { decide } from '../src/roles/permissions.ts';
 import { createHubBase } from '../src/hub/server.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { eventually, tempProject } from './harness.ts';
 
 const rolesText = (tools: string[]) => `[implementer.launch]\nharness = "codex"\n[implementer.permissions]\ntools = ${JSON.stringify(tools)}\n`;
+
+test('default and project clauses pin category filing and idle work without adding tool grants', async () => {
+  const defaults = parseRoles(DEFAULT_ROLES_TOML);
+  const project = parseRoles(await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
+  for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
+    const filing = defaults.get(role)!.clause.split('\n').find(line => line.startsWith('- File category work:') || line.startsWith('- Report a bug found aside'));
+    assert.ok(filing, role);
+    assert.ok(project.get(role)!.clause.split('\n').includes(filing), `${role}: project clause has the same filing rule`);
+    if (!['coordinator', 'aide'].includes(role)) {
+      for (const definitions of [defaults, project]) {
+        assert.ok(!definitions.get(role)!.permissions.tools.includes('task.create'));
+        assert.ok(!definitions.get(role)!.permissions.tools.includes('task.link'));
+      }
+    }
+  }
+  for (const definitions of [defaults, project]) {
+    assert.match(definitions.get('coordinator')!.clause, /first kind of the first level/);
+    assert.match(definitions.get('coordinator')!.clause, /An epic in a category waits for promotion/);
+    assert.match(definitions.get('lead')!.clause, /merges outside any Lead's subtree, including categories and unscheduled items/);
+  }
+});
 
 test('roles edits refresh within 500 ms plus async I/O, and malformed or missing edits retain the last good permissions', async t => {
   const root = await tempProject(t);

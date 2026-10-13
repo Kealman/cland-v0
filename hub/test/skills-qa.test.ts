@@ -24,6 +24,23 @@ const skipRun = 'skip' in nvim ? nvim.skip : !hasJq && 'needs jq';
 
 const HEADER_FIELDS = ['id', 'title', 'preconditions', 'expected', 'since', 'regression'];
 
+test('QA findings outside the tested item are filed into Bugs by the Coordinator', async t => {
+  const text = await readFile(join(SKILL, 'SKILL.md'), 'utf8');
+  assert.match(text, /outside the item under test.*bug found aside/);
+  assert.match(text, /--parent C-<n> --label qa-found --label needs-triage/);
+  assert.match(text, /category Bugs/);
+  const root = await tempProject(t);
+  await startDaemon(t, root);
+  const category = await cland(root, 'task', 'create', 'Bugs', '--kind', 'category', '--json');
+  assert.equal(category.code, 0, category.stderr);
+  const parent = (JSON.parse(category.stdout) as { item: { id: string } }).item.id;
+  const filed = await cland(root, 'task', 'create', 'Aside finding', '--parent', parent, '--label', 'qa-found', '--label', 'needs-triage', '--body', 'CASE-1 at abc123: cland crew show reported an error.', '--json');
+  assert.equal(filed.code, 0, filed.stderr);
+  const item = (JSON.parse(filed.stdout) as { item: { parent: string; labels: string[] } }).item;
+  assert.equal(item.parent, parent);
+  assert.deepEqual(item.labels, ['qa-found', 'needs-triage']);
+});
+
 type RunLine = { ts: string; item: string; run: string; case: string; build: string; surface: string; method: string; result: string; exit_code: number; evidence: string[]; session: string };
 
 /** `qa-record.sh <args>` from the repository root, as a QA session would run it from the item's worktree. */

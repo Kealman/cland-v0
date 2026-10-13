@@ -21,7 +21,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
-import { crewSummary } from '../crew.ts';
+import { crewSummary, parseIdleFrom, resolveCrewIdle } from '../crew.ts';
 import type { RolesConfig } from '../roles/config.ts';
 import { ROLE_NAMES, withRole } from '../names.ts';
 import {
@@ -1340,7 +1340,18 @@ export class Dispatcher {
           };
           if (caller && !['coordinator', 'lead', 'aide'].includes(caller.role ?? '')) return this.#refuse(caller, frame, peer, 'crew.set', 'crew editing belongs to the Coordinator, a Lead, an Aide or the human');
           const resumed = this.#guard.resumer(frame.type, client);
-          return later(frame.type, crew.set(frame.key, frame.value, resumed, authorize).then(
+          let input = frame.value;
+          if (frame.key === 'idle_from') {
+            try {
+              const tracker = this.#options.tracker;
+              if (!tracker) throw new Error('this hub has no tracker');
+              const ids = parseIdleFrom(input, tracker.ladder);
+              const resolved = resolveCrewIdle({ ...crew.get(), idle_from: ids }, tracker);
+              if (resolved.idle_ignored.length) throw new Error(resolved.idle_ignored.map(item => `idle_from ${item.id}: ${item.reason}`).join('; '));
+              input = ids;
+            } catch (err) { return peer.send(Dispatcher.#failure(frame.id, err)); }
+          }
+          return later(frame.type, crew.set(frame.key, input, resumed, authorize).then(
             () => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: value() })),
             err => resumed(() => Dispatcher.#failure(frame.id, err)),
           ));

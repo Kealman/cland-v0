@@ -95,13 +95,30 @@ Each successful criterion operation emits a subscribed `task` event with `criter
 
 Verdicts can include criteria in the same write: `cland task comment T-n "checked" --verdict review --result clear --run rev-1 --verified C1,C3` (or `--verified all`); a not-clear verdict takes repeatable `--failed "C2=reason"`. MCP `task.comment` takes `verified: "C1,C3" | "all"` or `failed: [{ criterion: "C2", note: "reason" }]`. Reviewer and QA only, with their criterion verify grant. Unknown ids refuse the verdict; its topic report lists the marks. See [review and QA](../review-and-qa.md#criteria-in-a-verdict).
 
+## Categories
+
+Categories gather work that belongs to no release or epic. List their ids with `cland task list --kind category --state open --json`; use the category's id as `--parent C-<n>` on `cland task create`, or file an existing item with `cland task link T-<n> --parent C-<n>`. Resolve ids from the list instead of hard-coding numbers.
+
+- **Bugs**: a bug found aside from the item being worked or tested. Keep `bug`, `qa-found` and triage labels when applicable.
+- **Tech debt**: tech debt found during work. File it under the category; the `tech-debt` label is retired.
+- **Follow-ups**: further work on merged work; name the merged item in the body.
+- **Ideas**: an idea or feature proposal outside the current release or epic.
+
+Only the Coordinator and an Aide create or link these items. Leads, Implementers, Reviewers and QA report a find to `lead T-<n>` in their item topic, naming its category and the evidence, so the Coordinator files it. A triaged item with no release or epic is categorised by its category container; `bug` and `enhancement` remain labels describing the request.
+
+Tickets from a source with no release or epic use its existing category, or the category above that fits the work. Keep a map's native child relationship for wayfinding. A source spec is a leaf: keep its reference on the ticket body's Parent line and use its container as the native parent.
+
+The top-level `idle_from` list in `.cland/crew.toml` names open categories in order, for example `idle_from = ["C-216"]`. The default `[]` means never take category work. Set it with `cland crew set idle_from C-<n>`, a TOML list for several, or `'[]'` to empty it. `cland crew show` lists active categories and ignored hand-edited entries with reasons. When the current release has no unblocked task, the Coordinator takes the lowest-ranked open, unblocked task of the first named category that has one. An epic in a category waits for promotion.
+
+Promotion is a message to the Coordinator: name the item and ask to move it into a release or epic, rank it to the top, or plan its work. An item in a category is not unscheduled; unscheduled means no parent at all.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** cland's tracker has no pull requests; `/triage` works on items only.
 
 ## When a skill says "publish to the issue tracker"
 
-Create an item with `cland task create`: kind `spec` for a spec, `task` for a ticket, `map` for a wayfinding map. For `/to-tickets` this is a real issue tracker with native blocking, not the local-files mode: publish the tickets in dependency order (blockers first), each with `--blocked-by` for its blockers. If the source item is a release, epic or map, use `--parent` for it. A spec is a leaf: parent its tickets under the spec's epic or release, or leave them unparented when the spec is unscheduled. The ticket body's `## Parent` line names the source spec (for example `T-<spec>: <title>`); that reference is context, not a parenting edge. Never use a spec or another leaf as a ticket's native parent. For another leaf source, use its allowed container or none and keep the source reference on the body's Parent line. Report each item as `T-<n>` with its title.
+Create an item with `cland task create`: kind `spec` for a spec, `task` for a ticket, `map` for a wayfinding map. For `/to-tickets` this is a real issue tracker with native blocking, not the local-files mode: publish the tickets in dependency order (blockers first), each with `--blocked-by` for its blockers. If the source item is a release, epic or map, use `--parent` for it. A spec is a leaf: parent its tickets under the spec's epic or release; when it has neither, use the category named by the Categories section. The ticket body's `## Parent` line names the source spec (for example `T-<spec>: <title>`); that reference is context, not a parenting edge. Never use a spec or another leaf as a ticket's native parent. For another leaf source, use its allowed container or the category named by the Categories section and keep the source reference on the body's Parent line. Report each item as `T-<n>` with its title.
 
 ## When a skill says "fetch the relevant ticket"
 

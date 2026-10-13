@@ -14,7 +14,7 @@ A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed 
 3. **Handle an unclaimed item or unavailable QA.**
    - *For an unclaimed item, through the hub (preferred).* `send` to the `qa` role (launch one with `session.launch` if none is live) with first line `qa request T-<n>` and the brief's path (the brief carries its own build rule: the branch tip when the run starts). The QA session runs the brief, records the runs and writes a QA verdict through the hub; the merge gate counts it (decision D5).
    - *Rescue (fallback, or a second opinion).* `/codex:rescue --background --fresh --model gpt-6-astra "Run the QA brief in qa/briefs/T-<n>.md exactly"`, then `/codex:status` and `/codex:result`. A rescue run reaches no hub socket: it returns the `runs.jsonl` lines and the verdict in its output. Recover the run's evidence and lines as "Recovering a rescue run" below says, and record the verdict with `task.comment` (`verdict` qa, `result`, `run` the rescue job id, `commit`), saying in the text that it came through `/codex:rescue`. That verdict shows as yours and **the merge gate does not count it** (decision D5): it informs, it does not clear.
-4. **Read findings escalated by the lead.** The verdict is `clear` only when every case in scope passed. File each finding as an item: `cland task create "<finding>" --label qa-found --label needs-triage --body-file -`, with the case id, the commit, the command and what it showed.
+4. **Read findings escalated by the lead.** The verdict is `clear` only when every case in scope passed. A finding outside the item under test is a bug found aside: the Coordinator files it into the category Bugs (find its id with `cland task list --kind category`): `cland task create "<finding>" --parent C-<n> --label qa-found --label needs-triage --body-file -`, with the case id, the commit, the command and what it showed. Findings in the tested scope stay in its review/QA loop.
 
 ## After-stage QA
 
@@ -70,7 +70,7 @@ For a full suite required by the brief, submit `cland verify all --report <reque
 
    not clear: ITEMS-001 FAILED (T-2 missing from the items panel).
    ```
-6. **Report** to the item lead with `send` kind `report` (`to: ["lead T-<n>"]`, in the request's topic): first line `qa clear T-<n>` or `qa not clear T-<n>`, then the failed cases.
+6. **Report** to the item lead with `send` kind `report` (`to: ["lead T-<n>"]`, in the request's topic): first line `qa clear T-<n>` or `qa not clear T-<n>`, then the failed cases. Report any find outside the item under test to that lead with its category (Bugs for a bug found aside) and evidence, so the Coordinator files it.
 
 ## If you are a rescue run
 

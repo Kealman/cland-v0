@@ -1,5 +1,6 @@
 # Project staffing policy; role definitions and harness defaults live in roles.toml.
 leads = []
+idle_from = []
 
 [crew.coordinator]
 policy = "singleton"

@@ -137,7 +137,7 @@ export async function serveProject(root: string, options: { log?: LogFn; listen?
   const roles = new RolesFile(l.roles, log, undefined, requestGuard.resumer('roles.refresh'));
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
   if (config) log({ event: 'config-loaded', path: l.config, hygiene: config.hygiene });
-  const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker.ladder, requestGuard.resumer('crew.refresh'));
+  const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'));
   let adapters: ProjectSessions | null = null;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;

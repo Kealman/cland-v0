@@ -58,6 +58,12 @@ async function waitFor(predicate: () => Promise<boolean>, what: string) {
   }
   assert.ok(ready, `${what} not ready within 5000 ms`);
 }
+async function openPlan(client: Client, id: string) {
+  // Connected precedes the task/ladder snapshots. An early command is refused,
+  // so waiting for plan text after issuing it cannot recover that navigation.
+  await waitFor(() => client.lua<boolean>("local id=...; return require('cland.plan').owner(id) == id", id), `epic ${id} from task and tracker snapshots`);
+  await client.input(`<Esc>:Cland view plan ${id}<CR>`);
+}
 async function waitPlan(client: Client, id: string, text: string) {
   await waitFor(() => client.lua<boolean>("local id,text=...; local view=require('cland.state').S.ui.view; local p=require('cland.plan'); local b,v=p.bufs[id],p.visits[id]; return view.kind == 'plan' and view.id == id and v ~= nil and not v.acknowledge and b ~= nil and vim.api.nvim_buf_is_valid(b) and table.concat(vim.api.nvim_buf_get_lines(b,0,-1,false),'\\n'):find(text,1,true) ~= nil", id, text), `plan showing ${text}`);
   assert.ok((await planText(client, id)).includes(text), text);
@@ -126,7 +132,7 @@ test('plan changes refresh both view and stage tags; d composes to the epic Lead
   assert.equal(history.ok, true);
   const messages = (history.value as { messages: { text: string }[] }).messages;
   assert.ok(messages.some(m => m.text === `@lead ${epic.id} Please explain the second stage.`));
-  await client.input(`<Esc>:Cland view plan ${epic.id}<CR>`);
+  await openPlan(client, epic.id);
   await client.waitScreen(s => s.includes('Plan of'), 'plan from command');
   await client.input('e');
   assert.equal(await client.lua('return vim.api.nvim_buf_get_name(0)'), join(root, epic.path));
@@ -170,7 +176,7 @@ test('the plan shows Lead metadata and lane claim/verdict marks, including role 
   };
   const client = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) });
   await client.waitScreen(s => s.includes('hub: connected'), 'connected');
-  await client.input('<Esc>:Cland view plan T-2<CR>');
+  await openPlan(client, 'T-2');
   await client.waitScreen(s => s.includes('Plan of'), 'plan');
   await client.lua("local l=require('cland.layout'); if require('cland.state').S.ui.right then l.right_panel(require('cland.state').S.ui.right) end; if require('cland.state').S.ui.left then l.toggle_left() end");
   await waitPlan(client, 'T-2', 'stages:');
@@ -180,6 +186,7 @@ test('the plan shows Lead metadata and lane claim/verdict marks, including role 
   await client.waitScreen(s=>s.includes('lead-2 [Lead]'), 'Lead role in panel');
   const panel = await client.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.panels').buf('items'),0,-1,false),'\\n')");
   assert.ok(panel.includes('lead-2 [Lead]'));
+  await waitFor(() => client.lua<boolean>("local d=require('cland.item_view').detail['T-2']; return d ~= nil and not d.failed and type(d.body) == 'string'"), 'epic source detail before changing its fence');
   // Both source delimiters are accepted by the hub; the view must not restrict the excerpt to three backticks.
   await client.lua("local d=require('cland.item_view').detail['T-2']; d.body=...; require('cland.state').changed()", `## Plan\n\n\`\`\`\`yaml\n${source}\`\`\`\``);
   await client.lua("require('cland.plan').render('T-2')");
@@ -214,7 +221,7 @@ test('mid-way plan preserves stage QA marks, outlines active lanes and dims plan
   const client = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) });
   await client.waitScreen(s => s.includes('hub: connected'), 'connected');
   await client.rpc.request('nvim_ui_try_resize', 200, 65);
-  await client.input('<Esc>:Cland view plan T-2<CR>');
+  await openPlan(client, 'T-2');
   await waitPlan(client, 'T-2', 'qa-schema-2');
   const text = await planText(client, 'T-2');
   for (const fact of ['S1 · landed schema · closed', 'S2 · panels in work · in work', 'S3 · future polish · planned', '1/1', 'qa-panels-1 · not clear', 'round 1', 'impl-4 [Implementer] · busy', 'stage 2 of 3', 'Cost so far: $1.25']) assert.ok(text.includes(fact), fact);
@@ -254,7 +261,7 @@ test('a moved item keeps watch marks and its reason until the next plan visit, w
   assert.ok(saved.plan_seen[`T-${epic.id.split('-')[1]}`]);
   const reconnected = await startClient(t, bin, root);
   await reconnected.waitScreen(s => s.includes('hub: connected') && s.includes('Panels'), 'second client has the epic before navigation');
-  await reconnected.input(`<Esc>:Cland view plan ${epic.id}<CR>`);
+  await openPlan(reconnected, epic.id);
   await waitPlan(reconnected, epic.id, 'Keep panel work together');
   assert.ok(!(await planText(reconnected, epic.id)).includes('△ changed'), 'saved receipt survives a new workbench');
   await client.input('<Esc>:Cland view board<CR>');
@@ -299,7 +306,7 @@ test('equal-time plan history keeps later moves after the saved receipt', { skip
   ] };
   const client = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) });
   await client.waitScreen(s => s.includes('hub: connected'), 'connected');
-  await client.input('<Esc>:Cland view plan T-2<CR>');
+  await openPlan(client, 'T-2');
   await waitPlan(client, 'T-2', 'T-3 moved from S1 to S2');
   assert.ok((await planText(client, 'T-2')).includes('Move for panel integration'));
 });
@@ -348,7 +355,7 @@ test('future per-item QA excludes only evidence accepted by the hub gate', { ski
   ] };
   const client = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) });
   await client.waitScreen(s => s.includes('hub: connected'), 'connected');
-  await client.input('<Esc>:Cland view plan T-2<CR>');
+  await openPlan(client, 'T-2');
   await waitPlan(client, 'T-2', 'QA runs: 6 to come');
   assert.ok((await planText(client, 'T-2')).includes('QA runs: 9 so far'));
   assert.ok((await planText(client, 'T-2')).includes('1/9 merged'));
