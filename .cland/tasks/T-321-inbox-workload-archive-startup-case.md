@@ -3,7 +3,7 @@ id: T-321
 kind: task
 title: inbox-workload archive-startup case fails on a c-8 droplet but not locally or in the 4-CPU container
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-268
 blocked_by: []
-topic: null
-branch: null
+topic: topic-200
+branch: t/T-321-inbox-workload-archive-startup-case
 created: 2026-10-13T10:06:48.166Z
-updated: 2026-10-13T10:06:48.166Z
+updated: 2026-10-13T10:11:13.975Z
 ---
 
 ## Summary
@@ -44,3 +44,9 @@ T-268: Suite spend and Linux portability. T-282's acceptance run is blocked on t
 - [ ] C2. A local reproduction exists, as a test or as a recorded container recipe, that fails before the fix.
 - [ ] C3. The fix is at the cause. The file passes ten times alone and once in a full run in the container, with every original bound unchanged.
 - [ ] C4. `cland verify` is green on macOS.
+
+## Comments
+
+### impl-321 · 2026-10-13T10:09:05.279Z
+
+Started at 10:07Z with D24 cap about 13:07Z. Read item, T-282/T-268, topic-195 and A-1846/A-1867. Exact second-run symptom is 100 hold replies not seen within 15000ms; T-314's indexed subtree fix is already present, and runner concurrency is four on both machines. Requested fourth-run exact assertion and metadata from impl-282 in topic-200. Running unchanged archive-startup case locally before selecting deterministic probe; no droplet or container started.
