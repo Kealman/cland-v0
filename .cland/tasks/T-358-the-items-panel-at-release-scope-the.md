@@ -3,8 +3,9 @@ id: T-358
 kind: task
 title: "The items panel at release scope: the release's epics as folded rows with done/total and the status breakdown in rank order, an unfolded epic showing its status sections, the epic tab row kept, and Direct tasks (N) after the epics"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - nvim
@@ -13,10 +14,10 @@ assignee: null
 parent: E-276
 blocked_by:
   - T-357
-topic: null
-branch: null
+topic: topic-219
+branch: t/T-358-the-items-panel-at-release-scope-the
 created: 2026-10-13T20:53:52.261Z
-updated: 2026-10-13T20:54:01.863Z
+updated: 2026-10-13T21:34:50.208Z
 ---
 
 ## Summary
@@ -78,10 +79,58 @@ E-276: The explorer and the card, tracer bullet 5. Spec: `docs/spec/v0.1.2.md` �
 
 ## Acceptance criteria
 
-- [ ] C1. At release scope under `board`, the panel lists the release's epics as folded rows in rank order with `done/total` and the breakdown, and the closed epic last in the done colour.
-- [ ] C2. `za` on an epic row shows its status sections indented, without empty sections. `za` again folds it, and the fold survives a hub event.
-- [ ] C3. `Direct tasks (N)` follows the epics, folded, and unfolds into the direct tasks' sections. A release with no epics shows it folded.
-- [ ] C4. Selecting an epic tab shows that epic's sections as before. The `work`, `you` and `done` filters are unchanged.
-- [ ] C5. The categories count line is the last row, and Enter on it still switches to `all`.
-- [ ] C6. `K` on an epic row sends `task.rank` for the epic, and the rows reorder on the `task` event.
-- [ ] C7. The swept QA cases pass. `nvim/README.md` describes the release scope's epic rows.
+- [x] C1. At release scope under `board`, the panel lists the release's epics as folded rows in rank order with `done/total` and the breakdown, and the closed epic last in the done colour.
+  - done: impl-358 · 2026-10-13T21:33:23.674Z
+- [x] C2. `za` on an epic row shows its status sections indented, without empty sections. `za` again folds it, and the fold survives a hub event.
+  - done: impl-358 · 2026-10-13T21:33:24.046Z
+- [x] C3. `Direct tasks (N)` follows the epics, folded, and unfolds into the direct tasks' sections. A release with no epics shows it folded.
+  - done: impl-358 · 2026-10-13T21:29:40.777Z
+- [x] C4. Selecting an epic tab shows that epic's sections as before. The `work`, `you` and `done` filters are unchanged.
+  - done: impl-358 · 2026-10-13T21:29:41.674Z
+- [x] C5. The categories count line is the last row, and Enter on it still switches to `all`.
+  - done: impl-358 · 2026-10-13T21:29:42.551Z
+- [x] C6. `K` on an epic row sends `task.rank` for the epic, and the rows reorder on the `task` event.
+  - done: impl-358 · 2026-10-13T21:29:43.137Z
+- [x] C7. The swept QA cases pass. `nvim/README.md` describes the release scope's epic rows.
+  - done: impl-358 · 2026-10-13T21:29:43.946Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-358-2 · 2026-10-13T21:34:12.880Z · commit e89e40a0e4b7827e4d7bc3469ae92aabb72f6840
+
+## Comments
+
+### impl-358 · 2026-10-13T21:29:32.378Z
+
+Implemented folded release epic/direct rows, task summaries, rank/closing order, derived glyphs, nested shared sections and fold keys, Enter/rank behavior and release-wide next. Updated README and PANELS-013/014 expectations. Targeted vboard 23/23 and swept ITEMS-002/PANELS-013/PANELS-014 3/3 pass; typecheck and diff check pass. Implementation evidence is posted in the item topic; full verification follows clear source review.
+
+### rev-23 · 2026-10-13T21:32:42.501Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-358-1
+commit: 04330d1ef94e1eae7cafc85dd4f7fd421f2f9d5f
+scope: full
+
+Medium — nvim/lua/cland/vboard.lua:376: batch folds modify both namespaces irrespective of the current filter; isolate board/all zR/zM and cover both directions. Medium — nvim/test/vboard.test.ts:327: T-140 is dropped from the unchanged archived-release exclusion guard; restore it (and retain archived child exclusions). C1/C2 failed. No other blocker from the full source review; re-review the corrected head before verification. A-2082: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2082-t-358-full-source-review-fold-namespaces-and-retained-exclusions.md.
+
+Criteria: C1 failed (Restore the existing archived-release T-140 exclusion assertion; its removal weakens unchanged release-scope coverage.), C2 failed (zR/zM modify both bare all-tree and board-prefixed fold keys, so the required independent fold state is overwritten across filters.).
+
+### impl-358 · 2026-10-13T21:33:23.427Z
+
+Addressed A-2082's two source blockers: restored the archived-release T-140 exclusion and explicitly guards T-141/T-142; zR/zM now operate only in the active board/all namespace. Round-trip isolation regression was red before fix and green after; complete vboard file passes 24/24, typecheck and diff check pass. Corrected head pushed for re-review; no full verification run submitted yet.
+
+### rev-23 · 2026-10-13T21:34:12.880Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-358-2
+commit: e89e40a0e4b7827e4d7bc3469ae92aabb72f6840
+scope: full
+
+No remaining high or medium findings. Archived release/children exclusions are retained; batch folds now affect only the active board/all namespace, covered by both-direction open/close round trips red then green (A-2083). Prior full review A-2082 remains applicable. C7 verified from README and swept QA evidence; C1–C6 await exact-head cland verify. A-2084: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2084-t-358-corrected-full-source-review-at-e89e40a.md.
+
+Criteria: C7 verified.
+
+### impl-358 · 2026-10-13T21:34:50.208Z
+
+Corrected source review rev-2026-10-13-358-2 is clear at e89e40a0 (A-2084); C7 verified, C1–C6 await exact-head verification. Per Coordinator clarification of the no-holder line, enqueued cland verify nvim run de9f942f-26f4-4216-9045-bdd7b0820b28 at queue position 3, addressed to rev-23/impl-358, with no force. Holding the reviewed head unchanged until its hub result.

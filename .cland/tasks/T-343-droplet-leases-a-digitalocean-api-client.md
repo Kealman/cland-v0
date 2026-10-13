@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-216
 branch: t/T-343-droplet-leases-a-digitalocean-api-client
 created: 2026-10-13T20:53:45.647Z
-updated: 2026-10-13T21:18:32.033Z
+updated: 2026-10-13T21:27:30.355Z
 ---
 
 ## Summary
@@ -140,7 +140,7 @@ It also deletes keys named `cland-<project>-*` that have no live lease. It never
 - [x] C1. Against the fake API, through the real hub, the fake sees `lease.json` with state `creating` and the armed watchdog's PID before it answers `POST /droplets`. Acquire then polls through a `new` answer with no IP, and returns only when the droplet is `active` with a public address. At the 300 s deadline (shortened by a `CLAND_TEST_*` override), acquire releases the droplet and refuses.
   - done: impl-343 · 2026-10-13T21:18:17.582Z
 - [x] C2. Release deletes the droplet and the key, and confirms absence by listing, also when the fake keeps a deleted droplet listed for a few polls. It records the lifetime and the cost, with a 60 s minimum, at the size's price. An unconfirmed release stays `releasing` and is retried.
-  - done: impl-343 · 2026-10-13T21:18:17.933Z
+  - done: impl-343 · 2026-10-13T21:25:49.733Z
 - [x] C3. With `lifetime = "3s"`, the hub is stopped right after an acquire. The watchdog deletes the droplet and the key while no hub runs. The next start journals `executor-watchdog-fired` and the lease `released`, and `cland executor status` lists no lease.
   - done: impl-343 · 2026-10-13T21:18:18.399Z
 - [x] C4. Reap deletes a project-tagged droplet with no lease, and another project's `cland` droplet older than its lifetime plus 10 minutes. It leaves another project's younger droplet and an untagged droplet, and journals `executor-reaped`.
@@ -153,10 +153,12 @@ It also deletes keys named `cland-<project>-*` that have no live lease. It never
   - done: impl-343 · 2026-10-13T21:18:20.031Z
 - [x] C8. Real check, posted on this item with create, destroy and cost: one stray droplet of the smallest size, made by hand with the `cland` and project tags, is deleted by `cland executor reap`. The tag listing is empty afterwards.
   - done: impl-343 · 2026-10-13T21:18:20.547Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-2 · 2026-10-13T21:27:05.013Z · commit 7dbec3140c4a272e640871d0e53dba506e7c0e42
 - [x] C9. On macOS the watchdog holds `caffeinate -i -w <its pid>` while its lease is live, so a sleeping hub host cannot strand a billing droplet. A test on macOS sees the `caffeinate` child for a live lease and none after release (Coordinator decision, approved by the stand-in under D24 on 2026-10-13).
   - done: impl-343 · 2026-10-13T21:18:20.911Z
 - [x] C10. `hub/README.md` describes the token, the tags, the lease, the watchdog, reap, status and the config keys.
   - done: impl-343 · 2026-10-13T21:18:21.305Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-343-2 · 2026-10-13T21:27:05.013Z · commit 7dbec3140c4a272e640871d0e53dba506e7c0e42
 
 ## Comments
 
@@ -180,3 +182,37 @@ Real lifecycle attempt 1 (A-2068): created droplet 608821301, cland-t343-8fff8eb
 ### impl-343 · 2026-10-13T21:15:11.917Z
 
 Real check passed on attempt 2: created droplet 608821765, cland-t343-f1c71d7c-f1c71d7c, smallest size s-1vcpu-512mb-10gb in lon1 at 2026-10-13T21:14:05.361Z. cland executor reap deleted it at 21:14:30.281Z; provider tag count 0, key absent, executor status leases empty and taggedDroplets 0. Lifetime 24.920 s; estimate $0.00009917 at $0.00595/hour with the 60-second minimum. Token scan clear after flushLogs; scratch hub stopped. Two attempts total $0.00019833; never more than one cland droplet alive. The first-attempt artifact is A-2070 (correcting the prior comment's A-2068 reference); the corrected script is A-2071.
+
+### rev-23 · 2026-10-13T21:22:31.059Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-343-1
+commit: bb6b6f695d7b7d9b3310e85bb72b63ab40f8cb87
+scope: full
+
+Medium — hub/src/executor/droplet/droplet.ts:61: ambiguous key import is not persisted/guarded by cleanup.ts:25; an empty listing can mark released and stop the watchdog before delayed POST /account/keys creates its key. Add the key analogue of the lost-create regression and retain durable recovery until deletion is confirmed. C2 failed; no other blocker found in the complete source review. A-2072 real reap evidence remains applicable, but full suite is pending a corrected reviewed head. A-2078: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2078-t-343-full-source-review-ambiguous-key-import-cleanup.md.
+
+Criteria: C2 failed (A timed-out key import can appear after empty listings mark the lease released; uncertainty tracks only droplet creation, so the late provider key loses recovery.).
+
+### impl-343 · 2026-10-13T21:26:00.794Z
+
+Corrected source head 7dbec3140c4a272e640871d0e53dba506e7c0e42 pushed and re-review requested. C2 fix (7f8c831c) records key-import uncertainty durably, preserves recovery ownership through a late key POST, and confirms deletion before release. The new fake-boundary regression failed before the fix and now passes; all 12 targeted tests, combined typecheck and shard lint pass. A-2079 records the fix and evidence. Also merged origin/dev 5b73fe7d because T-357 source had landed. Full verification remains unstarted until a clear same-head source verdict.
+
+### rev-23 · 2026-10-13T21:27:05.013Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-343-2
+commit: 7dbec3140c4a272e640871d0e53dba506e7c0e42
+scope: full
+
+No remaining high or medium findings. Durable key-import uncertainty and retained cleanup identities resolve C2; A-2079 proves the late-import regression red then green with hub/CLI recovery. Prior complete review A-2078 remains applicable; incoming T-357 source matches reviewed ce98c28/A-2077. C8 verified from unchanged A-2072 real reap evidence, C10 from docs. C1–C7/C9 await exact-head full verification. A-2080: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2080-t-343-corrected-full-source-review-at-7dbec31.md.
+
+Criteria: C8 verified, C10 verified.
+
+### impl-343 · 2026-10-13T21:27:30.355Z
+
+Full source review clear at 7dbec314 (rev-2026-10-13-343-2, A-2080); C8/C10 verified. Queued cland verify all at exact head 7dbec3140c4a272e640871d0e53dba506e7c0e42, run 289bf011-2281-4f21-a3ef-5ffa28633f69, position 1, reporting to rev-23 and impl-343 in topic-216. Working tree clean. Awaiting the hub result and Reviewer’s final evidence verdict.
