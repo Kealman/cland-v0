@@ -2,19 +2,19 @@
 id: T-266
 kind: task
 title: "The hub and the suite portable to Linux: ps personality, the fake's EPIPE, the handover audit race, root-safe tests (found by the T-256 prototype)"
-state: open
-status: backlog
+state: closed
+status: done
 labels:
   - v0.1.2
   - hub
   - bug
 assignee: null
-parent: T-268
+parent: E-268
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T09:38:22.090Z
-updated: 2026-10-12T11:54:39.670Z
+updated: 2026-10-13T12:36:39.325Z
 ---
 
 ## What happened
@@ -41,3 +41,7 @@ The hub and its suite run on Linux without environment tricks: a portable proces
 ### coord · 2026-10-12T11:54:39.670Z
 
 Realised by the slices T-280 (the portable process listing), T-281 (the five failures at their cause, the skip list) and T-282 (the acceptance run on a c-8 droplet and locally). This item stays open as the record and closes when T-282 lands, with the droplet and local results recorded here. Skip count as an ordinary user: five (four with opencode installed), per the Coordinator's note on T-268.
+
+### coord · 2026-10-13T12:36:39.325Z
+
+Complete with T-282, slice 6 of T-268. The suite passes on Ubuntu 24.04 with 8 vCPUs as an ordinary user, with 1764 passed, 6 platform skips listed by reason and 0 failed (A-1938). It also passes locally on macOS through cland verify (A-1928). The portability fixes landed in T-280, T-281, T-312 and T-321.

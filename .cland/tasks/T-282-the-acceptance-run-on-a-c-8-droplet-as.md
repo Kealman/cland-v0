@@ -2,8 +2,8 @@
 id: T-282
 kind: task
 title: The acceptance run on a c-8 droplet as an ordinary user, and locally
-state: open
-status: in progress
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-195
 branch: t/T-282-the-acceptance-run-on-a-c-8-droplet-as
 created: 2026-10-12T11:54:20.829Z
-updated: 2026-10-13T12:00:08.434Z
+updated: 2026-10-13T12:36:32.328Z
 ---
 
 ## Summary
@@ -57,21 +57,29 @@ Constraints:
   - done: impl-282 · 2026-10-13T07:23:44.354Z
   - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:32.022Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
   - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:23.947Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
-- [ ] C2. The droplet run's log artifact shows `npm run typecheck && npm test` green on Ubuntu 24.04 with 8 vCPUs, as an ordinary user with a home under `/home`, with nothing added to the login environment, and the runner's list of platform skips by reason.
-  - failed: rev-26 [reviewer] · 2026-10-13T10:13:53.423Z · note A-1890 plain c-8 full run fails stop-6 OS ps probe at inbox-workload.test.ts:145; Neovim not run.
-- [ ] C3. The droplet and the SSH key were destroyed; the tag listing afterwards is empty and is recorded in the item.
+  - verified: rev-26 [reviewer] · run rev-20261013-282-final · 2026-10-13T12:36:25.592Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+- [x] C2. The droplet run's log artifact shows `npm run typecheck && npm test` green on Ubuntu 24.04 with 8 vCPUs, as an ordinary user with a home under `/home`, with nothing added to the login environment, and the runner's list of platform skips by reason.
+  - done: impl-282 · 2026-10-13T12:32:26.051Z
+  - verified: rev-26 [reviewer] · run rev-20261013-282-final · 2026-10-13T12:36:25.592Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+- [x] C3. The droplet and the SSH key were destroyed; the tag listing afterwards is empty and is recorded in the item.
   - verified: rev-26 [reviewer] · run rev-20261013-282-1 · 2026-10-13T07:47:44.926Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
   - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:25.239Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
-- [ ] C4. The `acct` totals for `git`, `ps` and Node are compared with the census of slice 3, and the difference is explained.
-  - failed: rev-26 [reviewer] · 2026-10-13T10:13:53.423Z · note A-1890 source-backed accounting comparison is partial because failed run omitted Neovim; final all-suite cross-check absent.
-- [ ] C5. No published log, comment or artifact contains the token.
+  - done: impl-282 · 2026-10-13T12:32:26.980Z
+  - verified: rev-26 [reviewer] · run rev-20261013-282-final · 2026-10-13T12:36:25.592Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+- [x] C4. The `acct` totals for `git`, `ps` and Node are compared with the census of slice 3, and the difference is explained.
+  - done: impl-282 · 2026-10-13T12:32:28.213Z
+  - verified: rev-26 [reviewer] · run rev-20261013-282-final · 2026-10-13T12:36:25.592Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+- [x] C5. No published log, comment or artifact contains the token.
   - verified: rev-26 [reviewer] · run rev-20261013-282-1 · 2026-10-13T07:47:45.265Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
   - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:26.228Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+  - done: impl-282 · 2026-10-13T12:32:29.450Z
+  - verified: rev-26 [reviewer] · run rev-20261013-282-final · 2026-10-13T12:36:25.592Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 - [x] C6. The suite is green on macOS through `cland verify` at the same head, and no test is weakened, skipped or retried.
   - done: impl-282 · 2026-10-13T07:24:42.456Z
   - verified: rev-26 [reviewer] · run rev-20261013-282-initial · 2026-10-13T07:26:33.197Z · commit 7eab38f67e1fd783148b30d175b37734f6410984
   - verified: rev-26 [reviewer] · run rev-20261013-282-local · 2026-10-13T09:44:49.335Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
   - verified: rev-26 [reviewer] · run rev-20261013-282-3 · 2026-10-13T10:13:26.905Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+  - verified: rev-26 [reviewer] · run rev-20261013-282-final · 2026-10-13T12:36:25.593Z · commit 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
 
 ## Comments
 
@@ -167,3 +175,23 @@ D25 part2 supersedes no-further-droplet/percreate-go policy: impl-321's gated c8
 ### impl-282 · 2026-10-13T12:00:08.434Z
 
 D25 shared acceptance create counterpart fromimpl-321: provider608685978/namecland-proto-20261013-115815/tagcland/lon1c8Ubuntu24.04, creation11:58:18Z. Frozenhead91badd26d298be4b30d3433f09e471d343548468; exactheadsourceclearA-1918/containerA-1919+C3reviewA-1921/standalonetypecheck0/fullmacA-1928 1770pass0fail0skip gatesinhand. SoleactiveA-1906ledgerownerimpl-321/reserve$0.1250 at$0.25h; priorconfirmedspend$0.1731. D25 driverA-1917/watchdog1650/max1800lifecycle/cleanupmargin,ordinaryrunner/plainacct,nochangedassertions. ThisrunservesbothT-321/T-282 perCoordinator203baef1. Noresultyet; actualrun-stamps/fullphasecounts andtag/keyabsence requiredbeforegreenacceptanceclaim. T-282branch5c0568a unchanged/claimretained; no competingcreate.
+
+### impl-282 · 2026-10-13T12:34:13.289Z
+
+Final counterpart A-1943 published from immutableA-1938 plus fullC4/sourceproof;44files literal-token scan clear, A-1928 independentlyscanned. D25-authorized exact91badd2 c8/mac: c8actualtypecheck0/suite0,1770tests1764pass0fail6existingskips(5sandbox-exec/1OpenCode),0cancel/todo,allhub/Neovimphases,1384.35s/peak14.41; sameheadmac1770/1770greenA-1928. Source5c0568a/oldlocalA-1886 stands perCoordinator3fe19ce2. Owned608685978/importedkeydestroyed/tag[]/watchdogstopped,1535s/$0.1066, sharedtotal$0.2797/noactive. FullC4 baseline21111git/15290ps/5928Node vsrunner26078git/20454ps/10103knownNode/npm; sharedlibuv231unallocated, inclusive10334notexclusiveNode;coverage/platform/head/exit-vs-spawn differences/source model explained. C2/C3/C4/C5 reported done andstatusreview, finalreviewrequestsentallC1–C6. Code contribution exists butNOunique codetomerge: exact32-line regression+String(message) alreadyondev throughT-321f1e9f53, bytehash676a96e... atdev10061d8. Taskbranchunchanged5c0568a; claimretainedpendingfinalverdict/Coordinatorclosure, no further run/resource.
+
+### rev-26 · 2026-10-13T12:36:25.593Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-282-final
+commit: 5c0568a6bdaa5903216129bb8427b8a84a0ec0e7
+
+Final review clear: no high/medium finding. C1–C6 checked under Coordinator4dd9984e D25 shared-run interpretation. Source provenance unchanged5c0568a with own accepted A-1886 full1764/1764; regression bytes already landed throughT-321/f1e9f53, no unique code to merge. Shared c-8 A-1938/identical topic counterpartA-1943 at91badd2 has actual typecheck/suite0, ordinary Ubuntu24.04.5/8CPU/uid1000/home/runner/login, all phases1770tests1764pass6existing reasoned skips and zero fail/cancel/todo. Paired same-head macOSA-1928 full1770/1770 establishes C6. Notice/owned cleanup/tag/key/watchdog/ledger read;1535s/$0.1066 estimate. C4 full rawacct/baseline arithmetic checked: git26078 vs21111, runnerps20454 vs15290, knownNode/npm10103 vs5928; sharedlibuv231 unallocated, globalps414root extra, boundary/head/platform/unit/coverage differences explained without exact per-executable or overall-speedup claim. C5 silent literal-token scans283retained/current files clear; privatekeys excluded. Earlier failed attempts/invalid continuation preserved, not green evidence. Artifact records both review axes and every criterion. Close on evidence under Coordinator decision; no further merge/run required.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-13T12:36:32.328Z
+
+Closed on evidence, not a merge, per the Coordinator's decision (2026-10-13). rev-26's review is clear (A-1949). The c-8 acceptance is green at the shared head 91badd2 (A-1938, A-1943), paired with a green macOS run at that head (A-1928). The regression, with provenance 5c0568a and A-1886, is byte-identical on dev through T-321's f1e9f53. Four earlier droplet attempts are kept as evidence (A-1846, A-1874, A-1890). Droplet spend for the day is $0.28.

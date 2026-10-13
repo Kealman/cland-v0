@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T12:27:37.371Z
+updated: 2026-10-13T12:29:21.704Z
 ---
 
 ## Summary
@@ -44,11 +44,13 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-2 · 2026-10-13T11:46:41.900Z · commit c4ad029914dbf1dacb98f56e4e74133e66921386
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-3 · 2026-10-13T12:25:30.883Z · commit 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-4 · 2026-10-13T12:29:21.704Z · commit b38d37d25ce5942eab8c86e740ed9af61c6326c3
 - [x] C2. The Reviewer clause and the merge, qa and code-review skills agree with the order, with vendored patches recorded.
   - done: impl-322 · 2026-10-13T10:39:50.842Z
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-1 · 2026-10-13T10:50:33.052Z · commit e54bba10d40d0115225b62a98377a411b8e271b7
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-2 · 2026-10-13T11:46:41.900Z · commit c4ad029914dbf1dacb98f56e4e74133e66921386
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-3 · 2026-10-13T12:25:30.883Z · commit 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
+  - verified: rev-26 [reviewer] · run rev-20261013-322-source-4 · 2026-10-13T12:29:21.704Z · commit b38d37d25ce5942eab8c86e740ed9af61c6326c3
 - [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
   - failed: rev-26 [reviewer] · 2026-10-13T12:12:25.053Z · note Accepted full A-1931 exits1: 29 hub failures, including roles.test.ts:263 clause-first-turn timeout and inbox-workload.test.ts:113 stop-7 OS probe refusal; Neovim not reached.
 
@@ -115,5 +117,17 @@ run: rev-20261013-322-source-3
 commit: 6acf2f3749ca1c8dd2fe85fd48805e28cfbebc9e
 
 Source review: no high/medium finding in byte correction. C1/C2 renewed. Default/project Coordinator shortening preserves decision/ask routing, epic/staffing order, item QA/lead duties, rescue evidence, merge/override rules, subscriptions/resume and unchanged D25/T-317 clauses. roles.test.ts:76 measures every default/project delivered role clause pong reply as UTF-8 against unchanged8192 cap with512headroom; existing assertions retained. A-1937 isolated baseline/red/fixed logs establish clause-byte failure and corrected Claude6/6, OpenCode19/19, roles8/8; delivered byte guard red8233/8277 and final reported7628/7672. No production/grant/cache/gate/cap change; git diff --check clean. C3 remains failed/pending full; A-1931 preserved. Coordinator requires T-321 integration before next full, renewed exact-head source review after merge. Artifact records evidence; Coordinator relaunch after eventual merge required.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-13T12:29:21.704Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-322-source-4
+commit: b38d37d25ce5942eab8c86e740ed9af61c6326c3
+
+Source integration review: no high/medium finding. C1/C2 renewed at b38d37d. T-322 added/removed lines versus current dev identical to prior reviewed byte/D25 delta; no lost clause meanings/headroom guard/docs/skills. T-321 f1e9f53 snapshots/indexed ownership/plan freshness/calibration reviewed with accepted macOS A-1928 and c-8 A-1938 (checked A-1941). Integrated Core retains already reviewed T-316 event canonicalization alongside the correction; workload/plan/calibration test bytes unchanged. git diff --check clean. C3 remains pending accepted same-head full; failed A-1931 retained. Follow Coordinator migration/slot schedule before submission; renewed source review if head changes. Artifact records both axes. Coordinator relaunch after eventual merge required.
 
 Criteria: C1 verified, C2 verified.
