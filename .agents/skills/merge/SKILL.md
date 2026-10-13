@@ -11,7 +11,7 @@ On the hub’s `ready` status event, read the item with `task.view` and call the
 
 Default subscriptions give each Lead its subtree outside descendant leads and the Coordinator the remainder, plus the immediate `ready` exception. Other events are digested at the next turn; use `subscribe` for additional subjects and `subscriptions` to inspect them instead of polling. Send routine status updates as kind `progress`; blockers and actionable refusals use `question` or `report`.
 
-Verification uses `cland verify` (the transition alias is `cland suite`). Require its result at the exact reviewed head; queueing alone is not a pass. The gate still relies on current hub-written review/QA verdicts. See `docs/agents/tests.md`.
+Request source review first. Only after a clear source verdict does the Implementer run `cland verify` (the transition alias is `cland suite`) at the exact reviewed head. A fix or merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. Require the same-head successful result and the Reviewer’s final verdict before merging; queueing or a source verdict alone is not a pass. The gate still relies on current hub-written review/QA verdicts. See `docs/agents/tests.md`.
 
 Call `merge` when that evidence is present. No check command runs in the gate; review and QA supply the evidence. The hub merges the tree without rewriting the task branch, lands one squash commit, closes the item and its topic, releases the claim and removes its worktree and branch. Removal waits while a session stands inside; stop finished sessions so cleanup can complete.
 
@@ -22,7 +22,7 @@ On refusal:
 - Missing, invalid, not-clear or stale verdict: send the refusal to `lead T-<n>` with kind `report`; the lead requests the new verdict from the role named by the refusal. For an unclaimed item, request it yourself.
 - `verdict-missing`: preserve the durable record and restore its missing or altered comment; an older clear cannot replace it.
 - Freshness pending: let the async cache settle, then retry once; if still pending, report the refusal.
-- Conflict: send the named files to the Implementer to rebase in its worktree. After the rebase, let the gate check whether the reviewed patch is preserved.
+- Conflict: send the named files to the Implementer to rebase in its worktree. A changed head needs source review before another verification run; the gate still checks whether the reviewed patch is preserved.
 - `merge-unpublished`: the root’s `dev` has commits absent from the territory; a Lead reports it to `lead T-<n>` for its own node. The Coordinator commits remaining tracker work, runs `cland push` from its own shell, then retries merge. A refused merge leaves refs and checkout unchanged and names those unpublished commits.
 - Touched root edits or wrong checkout: preserve the root's work and restore the task-base checkout before retrying.
 - `merge-recovery`: neither integration ref landed the prepared commit, but checkout restoration is pending. Preserve the durable receipt, remove the named obstruction, and retry the same item; it restores the checkout before rechecking the gate.

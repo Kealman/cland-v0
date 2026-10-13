@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { MAX_TEXT_BYTES } from '../src/hub/hygiene.ts';
 import { flushProjectLogs, assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
@@ -27,6 +28,7 @@ async function status(ui: FrameClient): Promise<Status> {
 }
 
 const isClause = (e: ChannelEvent) => e.params.meta?.kind === 'role';
+const CLAUSE_REPLY_HEADROOM_BYTES = 512;
 
 test('crew clauses describe category filing and the Aide speaking for the human', async t => {
   const root = await tempProject(t);
@@ -58,21 +60,44 @@ test('crew clauses describe category filing and the Aide speaking for the human'
   }
 });
 
-for (const source of ['defaults', 'project'] as const) test(`${source} clause snapshots describe the human queue and stopped-session lifecycle`, async t => {
+for (const source of ['defaults', 'project'] as const) test(`${source} clause snapshots describe review before verification, the human queue and stopped-session lifecycle`, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
   if (source === 'project') await writeFile(join(root, '.cland', 'roles.toml'), await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
-  for (const role of ['coordinator', 'implementer', 'reviewer', 'qa', 'aide']) {
+  for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
     const name = 'queue-' + role;
     assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: 'queue-' + role, role });
     t.after(() => spoke.close());
     const clause = (await spoke.waitForEvent(isClause)).params.content;
+    const replyBytes = Buffer.byteLength(`pong: ${clause}`, 'utf8');
+    assert.ok(replyBytes <= MAX_TEXT_BYTES - CLAUSE_REPLY_HEADROOM_BYTES,
+      `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);
     assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
     assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
+    if (role === 'coordinator' || role === 'lead' || role === 'implementer') {
+      assert.match(clause, /Request review first[.;] (?:after a clear source verdict, the Implementer runs|When the verdict on your source is clear, run) `cland verify` at the exact reviewed head/);
+      assert.match(clause, /needs a new review before a new run/);
+      assert.match(clause, /tree-hash cache still lets an unchanged head reuse an earlier green run/);
+      if (role === 'implementer') {
+        assert.match(clause, /Before requesting review, fetch and merge origin\/dev/);
+        assert.match(clause, /If a later merge changes that head, request a new review before verification/);
+        assert.doesNotMatch(clause, /Send your review request before launching the suite|fix the findings, verify and push/);
+      } else {
+        assert.match(clause, /Wait for the same-head result and the Reviewer’s final verdict before merging/);
+      }
+    } else if (role === 'reviewer') {
+      assert.match(clause, /Review source first, before the full verification run/);
+      assert.match(clause, /source verdict at the exact reviewed `commit`/);
+      assert.match(clause, /leaving run-dependent criteria unverified/);
+      assert.match(clause, /check the same head and record the final verdict/);
+      assert.match(clause, /a failed run is not clear/);
+      assert.match(clause, /changed head needs a new source review before another run/);
+      assert.match(clause, /tree-hash cache hit for an unchanged head is valid run evidence/);
+    }
     if (role === 'coordinator') {
       assert.match(clause, /cland session resume <name> --relaunch/);
       assert.match(clause, /cland session resume <name> --fresh/);

@@ -101,8 +101,8 @@ test('the Reviewer and QA clauses in the roles.toml defaults say how a request a
   const implementer = roles.get('implementer')?.clause ?? '';
   assert.match(implementer, /review request T-/, 'the Implementer sends its own conventional review request');
   assert.match(implementer, /qa request T-/, 'the Implementer sends its own conventional QA request');
-  assert.match(coordinator, /The item’s lead requests its own review and QA/, 'the Coordinator gives the loop to the item lead');
-  assert.match(coordinator, /For an unclaimed item outside a claimed Lead subtree, act as its lead yourself/, 'the Coordinator is the fallback for unclaimed work outside container Leads');
+  assert.match(coordinator, /The item’s lead requests review and QA and handles not-clear verdicts and retries/, 'the Coordinator gives the loop to the item lead');
+  assert.match(coordinator, /Lead an unclaimed item outside a claimed Lead subtree yourself/, 'the Coordinator is the fallback for unclaimed work outside container Leads');
   assert.match(coordinator, /\/codex:rescue --wait --fresh --model gpt-6\.1-sol/, 'the Coordinator fallback for review');
   assert.match(coordinator, /gpt-6-astra/, 'the Coordinator fallback for QA');
 });

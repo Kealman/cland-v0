@@ -72,7 +72,7 @@ test('role clauses keep decision questions with the Coordinator and allow explic
       assert.match(clause, /For a closed or unknown item, address `coordinator` instead/, role);
     }
   }
-  assert.match(roles.get('coordinator')?.clause ?? '', /You are the only role that puts decision questions to the human/);
+  assert.match(roles.get('coordinator')?.clause ?? '', /You alone put decision questions to the human/);
   // Init preserves project clauses, so both shipped sources must describe the request exception.
   const project = parseRoles(readFileSync(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
   for (const [source, definitions] of [['defaults', roles], ['project', project]] as const) {

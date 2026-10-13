@@ -72,6 +72,10 @@ Posting in a merged task's topic may reopen the discussion; it leaves the task a
 
 Re-run `cland merge T-<n>` to clean a stale worktree of a closed, landed task. It removes the original merged branch or a recreated branch whose tip is fully contained in the recorded integration base (`dev`). It keeps worktrees with uncommitted changes, unmerged commits, an unrelated branch, or a session inside. Cleanup never lands another squash or deletes another worktree. Move any unmerged work into a follow-up task before retrying cleanup.
 
+## Review before verification
+
+Before requesting review, the Implementer fetches and merges `origin/dev`, commits and pushes its head, sets the claimed item to `review`, and sends `review request T-<n>` to `reviewer` in its topic. After a clear source verdict it runs `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer leaves run-dependent criteria unverified until that same-head result arrives, then records the final verdict. The merge gate and verdict rules are unchanged; see [test guidance](tests.md) and [review and QA](../review-and-qa.md).
+
 ## Acceptance criteria
 
 Criteria live under `## Acceptance criteria` in a task or configured container body. Containers also recognize checkboxes under `## Definition of done`; both sections share stable ids. `task view --json` returns `item.criteria` with each criterion's stable id, text, checkbox and marks. Old checkboxes have no ids until the first criterion operation assigns them in list order. `criterion_seq` in frontmatter retains the highest allocated number, including removed criteria; keep it when editing by hand. Ids are never reused.

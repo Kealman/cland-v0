@@ -25,10 +25,23 @@ Every patch is listed here. `skills-lock.json` keeps the upstream hash, so a re-
 - **File**: `.agents/skills/code-review/SKILL.md`, "Hub review requests" and steps 1–2.
 - **Change**: accept requests from the item lead or Coordinator; return hub verdicts to `lead T-<n>` with intentional send kinds; describe default subscriptions and the ready handover. Resolve the spec from the request’s tracker item and ask its sender for missing inputs.
 - **Why**: the claimant runs its review loop without a Coordinator relay (T-143).
+- **D25 (T-322)**: review source before full verification, record a clear source verdict at the exact reviewed head with only source-established criteria verified, then settle the final verdict when the same-head post-verdict result arrives. Fixes require new source review before another run; an unchanged head may use the tree-hash cache.
+
+## implement
+
+- **File**: `.agents/skills/implement/SKILL.md`, implementation checks and the hub handover.
+- **Change**: retain targeted checks during implementation; in hub sessions, merge dev before requesting the external Reviewer, then run `cland verify` only after a clear source verdict at the exact reviewed head. Fixes and later merges need a new source review before another run; unchanged heads retain cache reuse.
+- **Why**: D25 (T-322) avoids full runs on source that review will change and follows the hub's Reviewer workflow instead of a local self-review.
+
+## merge and qa
+
+- **Files**: `.agents/skills/merge/SKILL.md` and `.agents/skills/qa/SKILL.md` (project skills).
+- **Change**: align the item lead's verification loop with D25; require source review before a new run after a fix or changed head, preserve tree-hash cache reuse, and require the same-head successful result and final Reviewer verdict for merge. QA case execution still follows its brief.
+- **Why**: T-322 keeps merge and QA guidance consistent with the clauses without changing the gate.
 
 ## Checked and left unpatched
 
-- `to-spec`, `implement`: they only "publish to the issue tracker" and "fetch the ticket", which the tracker doc defines.
+- `to-spec`: it only says "publish to the issue tracker", which the tracker doc defines.
 - `wayfinder`: it defers every map, child, blocking, frontier and claim operation to the tracker doc's "Wayfinding operations". Its `#<n>` warning holds for any tracker; the template says items are `T-<n>`. "Push the branch but open no PR" is about git, not the tracker.
 - `triage/SKILL.md` PR handling (apart from the category patch above): it depends on the tracker doc's "PRs as a request surface" flag, which the cland template sets to `no`.
 - `triage/AGENT-BRIEF.md`: the example criterion "Running `gh issue list --label needs-triage` …" describes the CLI that the example brief is about. It is an illustration and is never run.
