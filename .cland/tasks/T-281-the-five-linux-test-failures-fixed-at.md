@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-13T00:10:54.242Z
+updated: 2026-10-13T00:39:05.426Z
 ---
 
 ## Summary
@@ -130,3 +130,7 @@ Container full phase at 6255631 finished with one failure outside the five origi
 ### impl-281 · 2026-10-13T00:10:54.242Z
 
 Coordinator decision: A-1698's single failure is the T-291 audit-log barrier class, fixed in its b0fc308 cli-identity helper. Wait for T-291 to merge into dev; then merge origin/dev without copying its hunk, take one protected all-phase container run, and follow with ordinary macOS cland verify all for refreshed C6. Do not repeat C3's 50 solo runs. The first full fixture lacked the documented jq prerequisite (12 of 15 existing skips); install jq in the private fixture before the corrected all-phase run. Docker remains quit while waiting.
+
+### impl-281 · 2026-10-13T00:39:05.426Z
+
+Coordinator-directed shared dev fix e215e534 was cherry-picked unchanged after fetching origin and pushed as 270bdd8. It changes only layers.test.ts's gn wait to include the existing exclusion before screen capture; assertions remain unchanged. No test/suite launched. Awaiting T-291 dev merge before the protected container all-phase run and refreshed ordinary macOS C6.

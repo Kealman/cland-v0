@@ -3,7 +3,7 @@ id: T-307
 kind: task
 title: "The verify line: a one-line summary of the suite queue in the sessions panel header, opening the queue view"
 state: open
-status: backlog
+status: review
 labels:
   - v0.1.2
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: T-275
 blocked_by: []
-topic: null
-branch: null
+topic: topic-188
+branch: t/T-307-the-verify-line-a-one-line-summary-of
 created: 2026-10-12T21:34:31.743Z
-updated: 2026-10-12T21:35:03.438Z
+updated: 2026-10-13T00:39:17.511Z
 ---
 
 ## Summary
@@ -84,3 +84,17 @@ The run time and the waits advance without a hub frame. The clock is local, refr
 - [ ] C2. Enter on the summary line and the palette action "Open verification queue" open the queue view in the centre. It shows the holder, the waiters in order with their waits and admission ETAs, and the metrics line, and `q` closes it.
 - [ ] C3. A Neovim headless test on the stub hub runs the demo: one running and two waiting give the header's holder, run time and `2 waiting`, and Enter gives the order and ETAs. The existing race test between snapshot and event still passes.
 - [ ] C4. `nvim/README.md` describes the summary line, its states and the queue view with its keys. The `cland verify queue` paragraph of `hub/README.md` names the panel's summary line and view as its human-facing form.
+
+## Comments
+
+### impl-307 · 2026-10-13T00:24:53.725Z
+
+Implementing header summary and verification centre view from existing snapshot/events only. Headless stub-hub screen tests cover the demo; Coordinator authorized presentation-only updates to the existing race test, retaining its exact protocol sequence and moving detail assertions into the queue view.
+
+### impl-307 · 2026-10-13T00:30:50.206Z
+
+Pushed head 98f754647ba00819c21cbd4df761281b5bce93da. Targeted verification-view and verification-queue tests, Neovim TypeScript check and diff check pass. Fetched/merged origin/dev at 5b4797b before final evidence. Review request queued by hub. Ordinary cland verify nvim submitted as f327cdf4-5492-4cdd-b328-c6ee1b658f42, behind T-291, following Coordinator's correction permitting queued submissions.
+
+### impl-307 · 2026-10-13T00:39:17.511Z
+
+Per Coordinator's shared-fix instruction: cancelled queued f327cdf4 before execution, cherry-picked e215e534 unchanged as fd230d3b046c96293f53c8b583e1f65d4a75628f, fetched/merged origin/dev (already up to date), pushed, updated review request and resubmitted cland verify nvim. Automatic diff selection widens to full because the required hub/README.md change is outside nvim.

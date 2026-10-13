@@ -2,8 +2,8 @@
 id: T-291
 kind: task
 title: "Tests that read hub.log or journal.jsonl right after an event race the hub's asynchronous writes: audit them and wait on the flushLogs barrier"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - hub
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-177
 branch: t/T-291-tests-that-read-hub-log-or-journal-jsonl
 created: 2026-10-12T13:45:45.431Z
-updated: 2026-10-13T00:11:49.297Z
+updated: 2026-10-13T00:59:02.779Z
 ---
 
 ## Summary
@@ -38,11 +38,15 @@ Out of scope: the three cases already fixed (7cb55c6, aed0622, T-281's handover 
   - done: impl-291 · 2026-10-12T17:32:06.553Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-291-1 · 2026-10-12T21:57:27.834Z · commit 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
   - verified: rev-23 [reviewer] · run rev-2026-10-13-291-2 · 2026-10-12T23:22:11.867Z · commit 83e48a4eb0b16875d36957595bd996433fd68275
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-291-4 · 2026-10-13T00:58:09.968Z · commit e215e5342594627acce9ae74f845a9c082a4f8fb
 - [x] C2. Each fixed test waits on the flushLogs barrier or an `eventually` on the expected record, with its assertions unchanged in strength.
   - done: impl-291 · 2026-10-12T17:32:08.380Z
   - verified: rev-23 [reviewer] · run rev-2026-10-12-291-1 · 2026-10-12T21:57:27.834Z · commit 43b9f191f1adb6cf049825f46a31b2ec8ef55d51
   - verified: rev-23 [reviewer] · run rev-2026-10-13-291-2 · 2026-10-12T23:22:11.867Z · commit 83e48a4eb0b16875d36957595bd996433fd68275
-- [ ] C3. Each fixed file passes 20 runs under four concurrent workers; `npm run typecheck` passes and `cland verify` is green.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-291-4 · 2026-10-13T00:58:09.968Z · commit e215e5342594627acce9ae74f845a9c082a4f8fb
+- [x] C3. Each fixed file passes 20 runs under four concurrent workers; `npm run typecheck` passes and `cland verify` is green.
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-291-4 · 2026-10-13T00:58:09.968Z · commit e215e5342594627acce9ae74f845a9c082a4f8fb
+  - done: impl-291 · 2026-10-13T00:58:43.051Z
 
 ## Comments
 
@@ -166,3 +170,44 @@ Criteria: C1 verified, C2 verified.
 ### impl-291 · 2026-10-13T00:11:49.297Z
 
 Final full verify25623acb-a3f1-401e-b6fc-98d196054a69 queued atpushede836e3a1ba173f16790cfca571f620261427cb62 immediately behindT-304's admittedd5977459, following Coordinatorc1043ca6. Fetched/merged currentdev first; review request delivered torev-23 before queue admission. Audit inventory still44 files; relevant merge/fixture/runner blobs match fresh20/20 buildbebb72f. All420 stress invocations complete; C3 awaits the exact-head integrated result. No additional hand-run testing.
+
+### rev-23 · 2026-10-13T00:35:08.034Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-291-3
+commit: e836e3a1ba173f16790cfca571f620261427cb62
+
+Medium — nvim/test/layers.test.ts:327: the Now-filter screen retains an excluded Watch/background item, failing the full suite required by C3. The test and UI are unchanged by this branch; cause remains unproven.
+C1/C2 source review and all 420 stress proof logs remain applicable. Exact-head full 25623acb: 1697/1698 pass, one failure, no skips/cancellations. Evidence A-1707: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1707-t-291-c3-blocked-by-layer-filter-full-suite-failure.md; full log A-1706.
+
+Criteria: C3 failed (Exact-head full 25623acb exited 1: layers.test.ts:327 Now-filter exclusion fails; resolve the failure and obtain green integrated verification.).
+
+### impl-291 · 2026-10-13T00:38:54.170Z
+
+Coordinator-authorized shared fixe215e5342594627acce9ae74f845a9c082a4f8fb is pushed as a separate one-file commit, subject 'shared fix: layers.test.ts gn wait (T-291)'. The gn wait includes both exclusions; all original assertions remain. Exactdev5b4797b baseline passed5 sequential standalone file invocations,14/14 each; modified file passed14/14 once (A-1709). No multiworker proof or failure retry. Currentdev fetched/merged before candidate; temporary detached baseline worktree removed after evidence copied. Fresh review request delivered torev-23 before full verifydbd3c941-1913-4633-be3c-5e57cc1fd5a4, queued at exactheade215e53. C1/C2 and original420 stress proofs stand; C3 awaits the new integrated result.
+
+### impl-291 · 2026-10-13T00:40:23.314Z
+
+Audit addendum after T-304 merge at e215e53: current reader inventory is45 files, adding hub/test/session-resume.test.ts. Classification: synchronized. Its resumed-Claude role-clause hub.log read is inside an eventually callback after successful hub.status flushLogs (line37); its lost-work session-resumed journal read follows successful flushLogs (line132). No source change needed. The prior44 classifications remain, including the updated events.test.ts synchronized verdict read. Totals:21 fixed,23 synchronized,1 out-of-scope handover owned byT-281. The separate shared layers wait fix reads neither hub.log nor journal.jsonl. A fresh complete45-file audit artifact is posted alongside the retained420-run proof bundle.
+
+### rev-23 · 2026-10-13T00:58:09.968Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-291-4
+commit: e215e5342594627acce9ae74f845a9c082a4f8fb
+
+No high or medium findings remain. C1–C3 verified: 45-file audit complete, synchronization assertions preserved, 420 selected stress invocations pass, and exact-head full dbd3c941 passes typecheck and 1712/1712 tests with zero failures/cancellations/skips. The shared layer wait preserves exclusions and now passes the full suite. Evidence A-1718: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1718-t-291-final-review-at-e215e53.md; audit A-1712, proof A-1678 and full log A-1717. C3's Implementer done mark was still pending at the pre-verdict read.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-291 · 2026-10-13T00:58:42.763Z
+
+Final exact-head full verifydbd3c941 completed exit0 ate215e5342594627acce9ae74f845a9c082a4f8fb: npm run typecheck passed for hub andNeovim; all1712 tests passed, no failures/cancellations/skips (A-1717). Reviewer rev-23 verifiedC1–C3 and posted clearrev-2026-10-13-291-4 (A-1718). Updated45-file auditA-1712 and420-invocation proof bundleA-1678 are complete. Renewing C3 done after the priorfailed suite; claim retained until merge.
+
+### coord · 2026-10-13T00:59:02.779Z
+
+Merged 37234f43200646cb13bc07bc41e81ed23251a6a4 onto dev.
