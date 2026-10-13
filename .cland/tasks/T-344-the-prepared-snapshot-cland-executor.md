@@ -2,8 +2,8 @@
 id: T-344
 kind: task
 title: "The prepared snapshot: cland executor prepare builds a droplet snapshot keyed by Node, the Neovim pin, the lockfile and the base commit, and acquire creates from it and waits until the machine takes commands"
-state: open
-status: review
+state: closed
+status: done
 size: L
 criterion_seq: 8
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-222
 branch: t/T-344-the-prepared-snapshot-cland-executor
 created: 2026-10-13T20:53:45.756Z
-updated: 2026-10-13T23:04:45.324Z
+updated: 2026-10-13T23:34:53.320Z
+closed: 2026-10-13T23:34:53.320Z
 ---
 
 ## Summary
@@ -128,22 +129,30 @@ Re-preparing is the human's or the Coordinator's call. Nothing prepares automati
 
 - [x] C1. Against the fakes, `cland executor prepare` runs the whole sequence in order: it creates a builder with `provision.sh` as user data; it delivers the base bundle into `~/mirror.git` and `~/cland` as `runner`, runs `npm ci` and writes the image marker; it powers off, snapshots, transfers to the other regions and tags the image; it releases the builder, with its watchdog stopped. The snapshot record has the four key fields. The journal has `executor-prepared`. One notice reports the key, the image, the regions, the lifetime and the cost.
   - done: impl-344 · 2026-10-13T22:56:53.008Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.441Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C2. A second prepare with the same key reports `current` and creates nothing. After `package-lock.json` changes, a prepare makes a new snapshot, then deletes the old one; the fake API lists one image.
   - done: impl-344 · 2026-10-13T22:44:55.710Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.441Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C3. After prepare, acquire creates from the image id, only in regions holding it, with no user data. It returns only after SSH as `runner` answers and the image marker matches the key. On a marker mismatch, or past the 180 s bound, it releases the droplet and refuses.
   - done: impl-344 · 2026-10-13T22:44:56.456Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.441Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C4. Failures leave things as they were. A failed snapshot action, an SSH timeout or `npm ci` exiting 1 each release the builder, delete any partial image, keep the old snapshot and journal `executor-prepare-failed` with the cause. A `prepare_size` with a larger disk than `size` is refused before any create.
   - done: impl-344 · 2026-10-13T23:03:35.023Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.441Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C5. `cland executor status` lists the snapshot with its key and `current`, or `stale: <part>` after the base or the lockfile moves. Status and prepare are refused for Implementer, Reviewer and QA sessions.
   - done: impl-344 · 2026-10-13T22:44:57.836Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.442Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C6. The sentinel token appears in none of these: the user data the fake API received, the fake machine's files, the fake `ssh` and `scp` argument lists and environments, the logs, the journal, the notice.
   - done: impl-344 · 2026-10-13T22:44:58.668Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.442Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C7. Real check, posted on this item: one `cland executor prepare` in a scratch project on the branch, with the builder's lifetime and cost, the image's size, and `cland executor status` afterwards. The snapshot is deleted after the check, unless the Coordinator keeps it for ticket T-345.
   - done: impl-344 · 2026-10-13T22:49:30.157Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-344-3 · 2026-10-13T23:04:45.323Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.442Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 - [x] C8. `hub/README.md` describes the snapshot, its key, `prepare`, staleness, storage cost and the `runner` user.
   - done: impl-344 · 2026-10-13T22:44:59.444Z
   - verified: rev-23 [reviewer] · run rev-2026-10-13-344-3 · 2026-10-13T23:04:45.324Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-344-4 · 2026-10-13T23:34:29.442Z · commit 2017957ecc67ecfef14bc14d96283df2979fc232
 
 ## Comments
 
@@ -192,3 +201,20 @@ scope: full
 No high or medium findings remain. Durable retirement certainty now preserves the replacement during submitted/accepted DELETE uncertainty; A-2113's held-delete regression is red before and green after, with no replacement deletion. Tracked shutdown and durable partial-image recovery remain clear; complete source checklist carried forward from A-2107/A-2112. C7 verified from unchanged successful preparation evidence A-2108 (released builder/image, token scan clear); C8 from docs. C1–C6 await same-head full cland verify. A-2114: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2114-t-344-corrected-full-source-clear-at-2017957e.md.
 
 Criteria: C7 verified, C8 verified.
+
+### rev-23 · 2026-10-13T23:34:29.442Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-344-4
+commit: 2017957ecc67ecfef14bc14d96283df2979fc232
+scope: evidence
+
+No high or medium findings. Exact-head full cland verify 9634385f / A-2120 passed both typechecks and 1883/1883 tests, zero failures/cancellations/skips/todo. All ten preparation cases pass, including durable late-image recovery, shutdown drain and both ambiguous-retirement regressions. Source review A-2114 remains current; C7 retained real evidence A-2108 and C8 docs apply. C1–C8 verified. A-2121: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2121-t-344-final-exact-head-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-13T23:34:53.320Z
+
+Merged b7c30332a0e39c4d11514784bf7951cb91280965 onto dev.

@@ -3,7 +3,7 @@ id: T-345
 kind: task
 title: "A remote run: with executor = droplet or --executor droplet, cland verify delivers a bundle and the hub's suite selection to a droplet, runs detached as an ordinary user, polls status and log by offset, and posts the result with the droplet, its lifetime and its cost"
 state: open
-status: backlog
+status: planned
 size: L
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-13T20:53:45.864Z
-updated: 2026-10-13T22:28:57.777Z
+updated: 2026-10-13T23:34:55.267Z
 ---
 
 ## Summary
