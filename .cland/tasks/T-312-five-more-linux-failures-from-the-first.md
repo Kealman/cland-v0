@@ -3,7 +3,7 @@ id: T-312
 kind: task
 title: "Five more Linux failures from the first all-phase container run: Codex relaunch PID, OpenCode no-url rollback, three Neovim cases"
 state: open
-status: backlog
+status: in progress
 labels:
   - v0.1.2
   - hub
@@ -13,10 +13,10 @@ assignee: null
 parent: T-268
 blocked_by:
   - T-281
-topic: null
-branch: null
+topic: topic-190
+branch: t/T-312-five-more-linux-failures-from-the-first
 created: 2026-10-13T01:50:19.683Z
-updated: 2026-10-13T01:50:19.683Z
+updated: 2026-10-13T02:15:28.459Z
 ---
 
 ## Summary

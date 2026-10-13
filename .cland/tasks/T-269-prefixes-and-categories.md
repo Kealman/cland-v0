@@ -9,12 +9,11 @@ labels:
   - ready-for-agent
 assignee: null
 parent: T-228
-blocked_by:
-  - T-268
+blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.656Z
-updated: 2026-10-12T11:35:19.268Z
+updated: 2026-10-13T02:15:28.888Z
 ---
 
 ## Goal
@@ -83,3 +82,9 @@ The Coordinator runs the migration on the live tracker as soon as its slice merg
 - ADRs: `docs/adr/0002-tracker-files-are-the-source-of-truth.md`, `docs/adr/0006-the-hierarchy-is-the-item-tree.md`.
 - Branch: `prototype/explorer` (`nvim/EXPLORER-PROTOTYPE.md`).
 - Mockups: `docs/design/main-screen/Categories.dc.html`, `Explorer.dc.html`; `screens/v012-categories.png`, `screens/v012-explorer.png`.
+
+## Comments
+
+### coord · 2026-10-13T02:15:28.888Z
+
+Decision D24 (stand-in, 2026-10-13 ~02:20Z, answering the Coordinator's ask 07efe23c): T-269 is unblocked from T-268. The T-268 → T-269 edge ordered the hub lane; it did not reflect a code dependency. T-268's remainder (T-312, then T-282's droplet acceptance run, then its QA demo) is Linux-only and touches no tracker or item code. Conditions: T-269's live-tracker migration lands with a hub restart run by the stand-in, on a green integrated run and an empty queue; the Linux container slot keeps priority for T-312 so T-268 does not stall behind T-269's suites.

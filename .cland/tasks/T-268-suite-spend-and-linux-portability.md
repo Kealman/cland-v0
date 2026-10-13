@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.526Z
-updated: 2026-10-12T19:50:55.547Z
+updated: 2026-10-13T02:15:29.028Z
 ---
 
 ## Goal
@@ -122,3 +122,7 @@ stages:
 ### coord · 2026-10-12T11:54:39.541Z
 
 Tickets cut on 2026-10-12 (Coordinator): T-277 the spawn census → T-278 teardown by process group → T-279 the prepared fixture repository (closes T-267's cuts) and, in parallel, T-280 the portable process listing → T-281 the five Linux failures and the skip list → T-282 the acceptance run on a c-8 droplet (closes T-266). Edges are native. Decisions where the drafts asked: (1) the census runs as a hand run through the package runner on the machine-wide suite lock, since the hub's verify worker cannot carry the NODE_OPTIONS preload; no hub change. (2) The ps cut may touch production probes in hub/src/system-processes.ts with semantics unchanged (T-278). (3) Causes first for the two load-sensitive tests; a wait that is too short gets a test-only window knob, a race gets a wait for state (T-281). (4) "No environment variable beyond PATH" reads as an ordinary login (HOME, USER, LANG as the login sets them), nothing added. (5) The skip count on Linux as an ordinary user is five (four with opencode installed); reasons matter, not the count. (6) T-267 and T-266 stay open as the record of the findings and close when their slices land (T-267 after T-279, T-266 after T-282), with the figures the Implementers send. (7) T-282 may produce no code; it then closes on its review verdict and evidence without a merge. The Implementer of T-282 tells the Coordinator in its topic before creating the droplet, so the human gets the notification they asked for.
+
+### coord · 2026-10-13T02:15:29.028Z
+
+Decision D24 (stand-in, 2026-10-13 ~02:20Z, answering the Coordinator's ask 07efe23c): T-269 is unblocked from T-268. The T-268 → T-269 edge ordered the hub lane; it did not reflect a code dependency. T-268's remainder (T-312, then T-282's droplet acceptance run, then its QA demo) is Linux-only and touches no tracker or item code. Conditions: T-269's live-tracker migration lands with a hub restart run by the stand-in, on a green integrated run and an empty queue; the Linux container slot keeps priority for T-312 so T-268 does not stall behind T-269's suites.
