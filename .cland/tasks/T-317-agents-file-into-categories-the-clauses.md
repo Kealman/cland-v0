@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-198
 branch: t/T-317-agents-file-into-categories-the-clauses
 created: 2026-10-13T02:27:23.273Z
-updated: 2026-10-13T11:44:35.472Z
+updated: 2026-10-13T11:45:10.956Z
 ---
 
 ## Summary
@@ -79,31 +79,37 @@ T-269: Prefixes and categories. Spec: `docs/spec/v0.1.2.md` §3.10 (Agents, Idle
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-4 · 2026-10-13T11:19:31.631Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+  - verified: rev-26 [reviewer] · run rev-20261013-317-final · 2026-10-13T11:45:10.956Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 - [x] C2. `crew set` refuses an unknown id, a task, a closed category and a duplicate, each with its reason. A hand-edited entry naming a closed category is listed as ignored by `cland crew show`, and the rest of the file stays in force.
   - done: impl-317 · 2026-10-13T10:14:09.700Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-4 · 2026-10-13T11:19:31.631Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+  - verified: rev-26 [reviewer] · run rev-20261013-317-final · 2026-10-13T11:45:10.956Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 - [x] C3. A hub test reads the Coordinator's clause delivery after `crew set idle_from`: the staffing lines name the categories in order. With `[]`, they say category work is never taken.
   - done: impl-317 · 2026-10-13T09:22:18.547Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.783Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-4 · 2026-10-13T11:19:31.631Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+  - verified: rev-26 [reviewer] · run rev-20261013-317-final · 2026-10-13T11:45:10.956Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 - [x] C4. The default Coordinator clause states the idle-work rule, the epic-waits-for-promotion rule and the filing rule. The other roles' clauses state the report rule. The roles snapshot tests (`hub/test/roles-snapshot.test.ts`, `hub/test/roles.test.ts`) pin the new text, and this repo's `.cland/roles.toml` carries the same changes.
   - done: impl-317 · 2026-10-13T09:22:19.344Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-4 · 2026-10-13T11:19:31.631Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+  - verified: rev-26 [reviewer] · run rev-20261013-317-final · 2026-10-13T11:45:10.956Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 - [x] C5. The `qa`, `triage` and `to-tickets` skills and the tracker doc describe filing with `--parent C-<n>`. `hub/test/skills-tracker.test.ts` and `hub/test/skills-qa.test.ts` pass with the new text, and `skills/PATCHES.md` records the two vendored patches.
   - done: impl-317 · 2026-10-13T09:22:19.989Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.739Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-4 · 2026-10-13T11:19:31.631Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+  - verified: rev-26 [reviewer] · run rev-20261013-317-final · 2026-10-13T11:45:10.956Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 - [x] C6. `hub/README.md`'s crew staffing section describes `idle_from`, its validation and the staffing line.
   - done: impl-317 · 2026-10-13T09:22:20.480Z
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-2 · 2026-10-13T10:36:16.784Z · commit 5cb7c84ed56f1814b80d9626ce0e02e7fbd21624
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-3 · 2026-10-13T10:47:08.740Z · commit 243bec40091bcb9e398f37b9138dbb2c19ab7eca
   - verified: rev-26 [reviewer] · run rev-20261013-317-source-4 · 2026-10-13T11:19:31.631Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+  - verified: rev-26 [reviewer] · run rev-20261013-317-final · 2026-10-13T11:45:10.956Z · commit 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
 
 ## Comments
 
@@ -174,3 +180,15 @@ Full verification 0727532c-1622-403c-87db-d17c5512fd19 passed at exact source-re
 ### coord · 2026-10-13T11:44:35.472Z
 
 Merged f174d9c59b2a3198215b8e43b4f24d8ce25cd7bf onto dev.
+
+### rev-26 · 2026-10-13T11:45:10.956Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261013-317-final
+commit: 1daf9c4d5f0e4c2b77d62aba969b6d7db59fc24e
+
+Final review: no high/medium finding. C1–C6 checked/current at unchanged reviewed 1daf9c4. A-1924 accepted post-source-verdict full run0727532c passes typecheck and1774/1774: free36, machine1426, Neovim312, zero fail/cancel/skip/todo. Read raw log including previously failing mid-way plan case, default/project clauses and idle_from coverage; local/origin refs matched head before closure. A-1920 source and final artifact record evidence. Shared barriers preserve assertions/bounds; product raceT-323 remains separately tracked. Topic closed during recording; report goes to Coordinator. Coordinator relaunch after merge required.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
