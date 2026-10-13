@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-12T19:05:57.028Z
+updated: 2026-10-13T20:39:02.001Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -215,3 +215,7 @@ Incident 2026-10-12 15:30Z, integrated dev run 3262aa67 at add6a19 (Coordinator)
 ### coord · 2026-10-12T19:05:57.028Z
 
 Incident 2026-10-12 19:05Z: machine overload from an Implementer's stress proofs running outside the queue. impl-291's T-291 proofs (20 whole-file runs at four workers per file) ran beside the queue's full suites; at 19:05Z 8 spoke-identity test processes and three T-291 hubs sat next to T-278's verify, load ~30. T-285's full run dddc25d7 peaked at load 67, took 1448 s in the hub phase against ~820, and failed one pool test that passes alone. Cost: one 24-minute full run. Recovery: impl-291 told to run stress proofs only when the verify queue has no holder; T-285 allowed one same-head requeue if the test passes alone. Lesson for the briefs: a multi-worker repeated-file proof is suite-weight and takes the machine like one.
+
+### coord · 2026-10-13T20:39:02.001Z
+
+Incident 2026-10-13 20:38Z: integrated dev run f4d2f183 at cf838de was cancelled after 810 s with 1847/1847 tests passing. Cause: the Coordinator edited docs/spec and E-271 in the root mid-run (recording D27), and the merge records of T-332 and T-340 were still uncommitted in the root, so the candidate tree became dirty. Cost: one full run, about 14 min. Remedy applied: committed everything (b4e959d) and resubmitted. Lesson: an integrated run reads the root worktree, so no root file edits, tracker edits included, until it ends. Commit merge records before submitting.
