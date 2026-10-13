@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:13.788Z
-updated: 2026-10-13T14:04:25.992Z
+updated: 2026-10-13T14:04:54.141Z
 ---
 
 ## Goal
@@ -136,3 +136,7 @@ Tickets T-328 to T-334 (drafts 01 to 07; slice 5 split into the verdict scope T-
 11. Usage is charged to the session's launch item.
 12. Role sessions relaunch after T-331 and T-332 merge, the Coordinator after T-331.
 The closed backfill (T-330) and the size backfill (T-331) run on dev in a hub-stopped window with the stand-in, like the migration. E-270 starts when E-269 closes on its QA demo.
+
+### coord · 2026-10-13T14:04:54.141Z
+
+Stand-in adjustment, approved 2026-10-13 ~14:05Z. Each backfill rides the hub restart that carries its merge: closed with T-330's restart, size with T-331's. No extra windows. Each keeps the migration's safeguards: a git tag, a hub.db copy, a dry run with a count check, a nothing-to-do rerun, and old ids still resolving.

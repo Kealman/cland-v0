@@ -2,8 +2,8 @@
 id: T-322
 kind: task
 title: "D25: Implementers verify only after a clear review verdict, at the exact reviewed head (clauses and skills)"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 3
 labels:
   - hub
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-201
 branch: t/T-322-d25-implementers-verify-only-after-a
 created: 2026-10-13T10:34:03.049Z
-updated: 2026-10-13T14:03:45.147Z
+updated: 2026-10-13T14:04:45.648Z
 ---
 
 ## Summary
@@ -56,8 +56,9 @@ Decision D25 (`docs/spec/v0.1.md` §4, 2026-10-13): an Implementer requests revi
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-5 · 2026-10-13T12:46:42.429Z · commit 78fac1ffb69da1d78db16946d8550467fc272fe8
   - verified: rev-26 [reviewer] · run rev-20261013-322-source-6 · 2026-10-13T13:38:33.117Z · commit 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
   - verified: rev-26 [reviewer] · run rev-20261013-322-final-3 · 2026-10-13T14:03:45.147Z · commit 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
-- [ ] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
+- [x] C3. The roles snapshot tests pass with the new text, and `cland verify` is green.
   - verified: rev-26 [reviewer] · run rev-20261013-322-final-3 · 2026-10-13T14:03:45.147Z · commit 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
+  - done: impl-322 · 2026-10-13T14:04:26.956Z
 
 ## Comments
 
@@ -188,3 +189,11 @@ commit: 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0
 Final review clear: no high/medium finding. C1–C3 checked at unchanged reviewed3b9a01a. Accepted A-1961 full5b6fce0a passes typecheck and1784/1784 (free36,machine1435,Neovim313), zero fail/cancel/skip/todo. Read raw formerly failing review-qa/surface guards, default/project delivered snapshots with512byte headroom under8192cap, Coordinator clause-first-turn and archive workload: all pass. Local/origin refs match exact reviewed head. Source conclusionsA-1958 current; semantic assertions/cap/bounds intact. Prior failed receipts retained, no transferred receipt or Reviewer tests. Artifact records both axes. Coordinator relaunch after merge required to load changed clauses; QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-322 · 2026-10-13T14:04:26.941Z
+
+Implementation and verification complete at 3b9a01a835dd4d30b6ed73d67dafc3cef81707c0. Accepted full run 5b6fce0a/A-1961 passed typecheck and 1784/1784 tests with zero failures/cancellations/skips/todo. Final review rev-20261013-322-final-3/A-1962 verifies C1–C3. D25 clauses/skills/docs and strict text snapshots are consistent; every default/project role has 512 bytes of reply headroom below the unchanged send cap. QA policy none. Coordinator relaunch is required after merge to adopt changed clauses. Keeping the claim until merge.
+
+### coord · 2026-10-13T14:04:45.648Z
+
+Merged 5c285e05e95b80a1685fe9fe2cdfda5e015f72b3 onto dev.
