@@ -2,8 +2,8 @@
 id: T-305
 kind: task
 title: "Archive by hand: d archives a session row, A shows the archive, and archived sessions leave the groups and the default session.list"
-state: open
-status: review
+state: closed
+status: done
 criterion_seq: 6
 labels:
   - v0.1.2
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-187
 branch: t/T-305-archive-by-hand-d-archives-a-session-row
 created: 2026-10-12T21:34:31.202Z
-updated: 2026-10-13T00:48:08.639Z
+updated: 2026-10-13T01:22:47.491Z
 ---
 
 ## Summary
@@ -76,16 +76,22 @@ The table is keyed by name. A new launch under an archived name replaces the row
 
 - [x] C1. `d` on a stopped session archives it. The row leaves every group and the panel's counts, and `A` shows it in the archive section. A live row is refused with its reason.
   - done: impl-305 · 2026-10-13T00:47:55.205Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-305-2 · 2026-10-13T01:10:22.852Z · commit 1d086073fb15247e7909350421c64cef27a56f85
 - [x] C2. The default `session.list` and `cland session list --json` leave out archived rows and return the archived count. `--archived` (`archived: true`) returns exactly the archived rows.
   - done: impl-305 · 2026-10-13T00:47:56.441Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-305-2 · 2026-10-13T01:10:22.853Z · commit 1d086073fb15247e7909350421c64cef27a56f85
 - [x] C3. The journal keeps the session's launch and stop records and adds `session-archived`. A hub test on a real hub checks it after the `flushLogs` barrier.
   - done: impl-305 · 2026-10-13T00:47:57.420Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-305-2 · 2026-10-13T01:10:22.853Z · commit 1d086073fb15247e7909350421c64cef27a56f85
 - [x] C4. Resuming an archived session clears its archived mark, and the row returns to its group. A hub test covers it.
   - done: impl-305 · 2026-10-13T00:47:58.217Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-305-2 · 2026-10-13T01:10:22.853Z · commit 1d086073fb15247e7909350421c64cef27a56f85
 - [x] C5. A Neovim headless test on the stub hub runs `d` on a stopped Aide, checks the archive section after `A`, and checks that the row is absent from the groups.
   - done: impl-305 · 2026-10-13T00:47:59.230Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-305-2 · 2026-10-13T01:10:22.853Z · commit 1d086073fb15247e7909350421c64cef27a56f85
 - [x] C6. `hub/README.md` describes `session.archive`, `session.list`'s `archived` request and count, and the CLI. `nvim/README.md`'s session layers section describes `d` and `A`. The Coordinator's default clause names archiving.
   - done: impl-305 · 2026-10-13T00:48:00.139Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-305-2 · 2026-10-13T01:10:22.853Z · commit 1d086073fb15247e7909350421c64cef27a56f85
 
 ## Comments
 
@@ -105,3 +111,23 @@ Medium — hub/test/harness.ts: DOCUMENTED_TOOLS omits session.archive, failing 
 Full 162e717a: 1408/1412 pass, four failures; Neovim not reached. Archive hub cases pass. Evidence A-1714: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1714-t-305-missing-documented-tool-inventory-in-full-verification.md; full log A-1713.
 
 Criteria: C6 failed (DOCUMENTED_TOOLS omits the intended session.archive tool; four exact spoke-surface checks fail, so full verification is not green.).
+
+### impl-305 · 2026-10-13T01:10:06.556Z
+
+Final all-phase verification passed at 1d086073fb15247e7909350421c64cef27a56f85: run 2431c370-7b4b-4898-aa02-cb355052f379, 1717/1717 tests, no failures/skips, including typecheck, hub and Neovim phases. Durable log A-1720: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1720-suite-2431c370-7b4b-4898-aa02-cb355052f379-all-at-1d08607.log. Source and final test delta reviewed in A-1708/A-1716; final reviewer criterion verdict pending.
+
+### rev-23 · 2026-10-13T01:10:22.853Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-305-2
+commit: 1d086073fb15247e7909350421c64cef27a56f85
+
+No high or medium findings remain. C1–C6 verified; expected spoke surface corrected without weakening assertions. Exact-head full 2431c370 passed typecheck and 1717/1717 tests, zero failures/cancellations/skips. All archive cases and existing T-284 C7/T-303 C4 workload guards pass. Evidence A-1721: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-1721-t-305-final-review-at-1d08607.md; full log A-1720.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-13T01:22:47.491Z
+
+Merged 693d171f39e060ee2068c13fc582c3473396da75 onto dev.

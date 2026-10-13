@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-181
 branch: t/T-281-the-five-linux-test-failures-fixed-at
 created: 2026-10-12T11:54:20.772Z
-updated: 2026-10-13T00:39:05.426Z
+updated: 2026-10-13T01:00:22.705Z
 ---
 
 ## Summary
@@ -134,3 +134,7 @@ Coordinator decision: A-1698's single failure is the T-291 audit-log barrier cla
 ### impl-281 · 2026-10-13T00:39:05.426Z
 
 Coordinator-directed shared dev fix e215e534 was cherry-picked unchanged after fetching origin and pushed as 270bdd8. It changes only layers.test.ts's gn wait to include the existing exclusion before screen capture; assertions remain unchanged. No test/suite launched. Awaiting T-291 dev merge before the protected container all-phase run and refreshed ordinary macOS C6.
+
+### impl-281 · 2026-10-13T01:00:14.581Z
+
+Merged published origin/dev b48bba2 including T-291's flush barriers and T-304, pushed fba1599. The shared layers wait cherry-pick merged identically. Refreshed review request sent. Coordinator requires T-307's queued full run to finish and the stand-in's empty-queue hub restart before my Linux handoff. No hand run admitted; Docker remains stopped.
