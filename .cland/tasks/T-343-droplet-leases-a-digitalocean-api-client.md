@@ -3,7 +3,7 @@ id: T-343
 kind: task
 title: "Droplet leases: a DigitalOcean API client that reads the token at use, a durable lease with its own SSH key and a detached watchdog per droplet, and cland executor status and reap"
 state: open
-status: planned
+status: in progress
 size: L
 labels:
   - v0.1.2
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-271
 blocked_by: []
-topic: null
-branch: null
+topic: topic-216
+branch: t/T-343-droplet-leases-a-digitalocean-api-client
 created: 2026-10-13T20:53:45.647Z
-updated: 2026-10-13T20:54:00.496Z
+updated: 2026-10-13T21:15:11.917Z
 ---
 
 ## Summary
@@ -146,3 +146,26 @@ It also deletes keys named `cland-<project>-*` that have no live lease. It never
 - [ ] C8. Real check, posted on this item with create, destroy and cost: one stray droplet of the smallest size, made by hand with the `cland` and project tags, is deleted by `cland executor reap`. The tag listing is empty afterwards.
 - [ ] C9. On macOS the watchdog holds `caffeinate -i -w <its pid>` while its lease is live, so a sleeping hub host cannot strand a billing droplet. A test on macOS sees the `caffeinate` child for a live lease and none after release (Coordinator decision, approved by the stand-in under D24 on 2026-10-13).
 - [ ] C10. `hub/README.md` describes the token, the tags, the lease, the watchdog, reap, status and the config keys.
+
+## Comments
+
+### coord · 2026-10-13T20:55:58.417Z
+
+Coordinator decision (2026-10-13 20:56Z) on C1 and C3, which name acquire through the real hub:
+- No acquire command or frame. Acquisition reaches the hub through runs in T-345.
+- C1: acquire and release are tested through the public DropletExecutor against the fake API, using the hub's lease directory. The fake checks lease.json (creating) and the armed watchdog PID before answering POST /droplets.
+- C3: acquire through DropletExecutor into a temporary project's executor state, then start the real hub on that project. Read the watchdog, its receipt, executor-watchdog-fired and cland executor status through the hub and the CLI.
+- Status, reap, restart reconciliation and the watchdog receipts go through frames and the CLI.
+- No test-only exports or hooks in the hub beyond the CLAND_TEST_* deadline override.
+
+### impl-343 · 2026-10-13T21:01:17.945Z
+
+Implemented the first CLI/frame slice (missing token and role controls), fake DigitalOcean boundary, project/age-based reap, config lifetime/droplet settings, and public acquire/release with a durable lease before create. Targeted frame tests pass; lifecycle test covers key/lease modes, watchdog armed before POST, delayed public IP, delayed deletion and minimum billing. Next: detached watchdog receipts, restart reconciliation and failure paths. C1/C3 use the Coordinator-approved seam reading.
+
+### impl-343 · 2026-10-13T21:14:02.026Z
+
+Real lifecycle attempt 1 (A-2068): created droplet 608821301, cland-t343-8fff8ebb-8fff8ebb, s-1vcpu-512mb-10gb in lon1 at 2026-10-13T21:11:21.280Z. Reap did not match the hand-check's noncanonical macOS temp path tag; fallback deleted this droplet and key. Provider listings confirm zero cland droplets and the key absent. Cost estimate $0.00009917 (60 s minimum at $0.00595/hour); token scan clear. Fixed canonical project-root hashing and added alias coverage. The bounded check will be repeated; no other resource touched.
+
+### impl-343 · 2026-10-13T21:15:11.917Z
+
+Real check passed on attempt 2: created droplet 608821765, cland-t343-f1c71d7c-f1c71d7c, smallest size s-1vcpu-512mb-10gb in lon1 at 2026-10-13T21:14:05.361Z. cland executor reap deleted it at 21:14:30.281Z; provider tag count 0, key absent, executor status leases empty and taggedDroplets 0. Lifetime 24.920 s; estimate $0.00009917 at $0.00595/hour with the 60-second minimum. Token scan clear after flushLogs; scratch hub stopped. Two attempts total $0.00019833; never more than one cland droplet alive. The first-attempt artifact is A-2070 (correcting the prior comment's A-2068 reference); the corrected script is A-2071.

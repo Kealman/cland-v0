@@ -3,8 +3,9 @@ id: T-357
 kind: task
 title: "Done distinct: done nodes and rows keep a readable title in the done colour with the green glyph in the graph, the items panel and the board, and container nodes in the graph carry done/total and the count in work"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 7
 labels:
   - v0.1.2
   - nvim
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-276
 blocked_by: []
-topic: null
-branch: null
+topic: topic-218
+branch: t/T-357-done-distinct-done-nodes-and-rows-keep-a
 created: 2026-10-13T20:53:52.151Z
-updated: 2026-10-13T20:54:01.601Z
+updated: 2026-10-13T21:04:55.670Z
 ---
 
 ## Summary
@@ -82,10 +83,51 @@ E-276: The explorer and the card, tracer bullet 6. Spec: `docs/spec/v0.1.2.md` �
 
 ## Acceptance criteria
 
-- [ ] C1. `ClandDone` is `#98bfa2`, with Bar and Chip twins. No done title anywhere uses `ClandStrike`.
-- [ ] C2. In the graph, a done task node's title cell is in `ClandDone` with ● green. A done node of the release graph keeps its full title.
-- [ ] C3. In the graph of a release, an epic node shows `done/total · N in work` from its tasks, and the release node in its parent's graph shows its epics' fraction.
-- [ ] C4. In the items panel, a done task's title in the `DONE` section and under the `done` filter is in `ClandDone`. A closed container's title in the `all` tree is too.
-- [ ] C5. On the board, a closed item's title is in `ClandDone`.
-- [ ] C6. The panel, the board and the graph draw verified/total and `stale` from the summary's `criteria`. No `task.view` reaches the stub hub while they draw.
-- [ ] C7. `nvim/README.md` describes the done colour and the container nodes' fraction.
+- [x] C1. `ClandDone` is `#98bfa2`, with Bar and Chip twins. No done title anywhere uses `ClandStrike`.
+  - done: impl-357 · 2026-10-13T21:00:53.293Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-2 · 2026-10-13T21:04:55.670Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
+- [x] C2. In the graph, a done task node's title cell is in `ClandDone` with ● green. A done node of the release graph keeps its full title.
+  - done: impl-357 · 2026-10-13T21:00:53.627Z
+- [x] C3. In the graph of a release, an epic node shows `done/total · N in work` from its tasks, and the release node in its parent's graph shows its epics' fraction.
+  - done: impl-357 · 2026-10-13T21:04:05.739Z
+- [x] C4. In the items panel, a done task's title in the `DONE` section and under the `done` filter is in `ClandDone`. A closed container's title in the `all` tree is too.
+  - done: impl-357 · 2026-10-13T21:00:54.292Z
+- [x] C5. On the board, a closed item's title is in `ClandDone`.
+  - done: impl-357 · 2026-10-13T21:00:54.621Z
+- [x] C6. The panel, the board and the graph draw verified/total and `stale` from the summary's `criteria`. No `task.view` reaches the stub hub while they draw.
+  - done: impl-357 · 2026-10-13T21:00:54.933Z
+- [x] C7. `nvim/README.md` describes the done colour and the container nodes' fraction.
+  - done: impl-357 · 2026-10-13T21:00:55.243Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-357-2 · 2026-10-13T21:04:55.670Z · commit ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
+
+## Comments
+
+### impl-357 · 2026-10-13T21:00:12.816Z
+
+Implemented the done palette/twins, graph node styling and container done/total plus active task counts, closed panel/card titles, and summary-based criteria fractions. Added protocol-boundary headless assertions for highlights and zero row task.view calls; updated stub summaries to native counts while preserving full task.view criteria. Focused graph (16) and vboard (21) tests pass. Running the real-hub items checks next; source review precedes cland verify nvim.
+
+### rev-23 · 2026-10-13T21:03:23.437Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-357-1
+commit: a088ecedf6d0fa0c9bf8c92b393df2bbc116257e
+scope: full
+
+Medium — nvim/lua/cland/graph.lua:81: hard-coded release/epic child selection violates the configured ladder rule and fails tracker-container-source's Lua guard; renamed kinds fall back to counting all children, including questions/direct tasks. Derive child selection from hub ladder and add a configured-level progress regression. C3 failed. No other source blocker; full verification remains pending a corrected reviewed head. A-2060: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2060-t-357-full-source-review-configured-container-progress.md.
+
+Criteria: C3 failed (Container progress hard-codes release/epic instead of configured ladder kinds; renamed containers count mixed children incorrectly and the source guard rejects it.).
+
+### rev-23 · 2026-10-13T21:04:55.670Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-357-2
+commit: ce98c28a81fd8cff2040199adbcd5d9b90e10ddc
+scope: full
+
+No remaining high or medium findings. C3 correction derives child kinds from the configured ladder, with task-only completion at the final level; A-2063 shows the mixed-child regression red then green and source guard 3/3. Full source review A-2060 otherwise remains applicable. C1/C7 verified by source; C2–C6 await exact-head Neovim verification. A-2064: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2064-t-357-corrected-full-source-review-at-ce98c28.md.
+
+Criteria: C1 verified, C7 verified.

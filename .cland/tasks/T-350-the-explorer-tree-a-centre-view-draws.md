@@ -3,8 +3,9 @@ id: T-350
 kind: task
 title: "The explorer tree: a centre view draws the current release as an outline of its epics and tasks, with the rows per level, live items by rank and done items in closing order, and the folded roots"
 state: open
-status: planned
+status: review
 size: L
+criterion_seq: 8
 labels:
   - v0.1.2
   - nvim
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-276
 blocked_by: []
-topic: null
-branch: null
+topic: topic-217
+branch: t/T-350-the-explorer-tree-a-centre-view-draws
 created: 2026-10-13T20:53:51.399Z
-updated: 2026-10-13T20:54:01.057Z
+updated: 2026-10-13T21:12:26.130Z
 ---
 
 ## Summary
@@ -118,11 +119,56 @@ An epic derives from its tasks. A release derives from its epics, or from its di
 
 ## Acceptance criteria
 
-- [ ] C1. `␣e` and `:Cland explorer` open the explorer in the centre. `:Cland explorer E-2` (any prefix) opens it scoped to that item. The top bar, the context line and `␣?` name it.
-- [ ] C2. On a stub fixture with a release, three epics (one closed), tasks in every status, a category and an unscheduled item, the screen shows the release row with epics done/total and its two label rows, the epics in rank order with the closed one last in the done colour, each epic's bar, counts, stage and lead, `Direct tasks (N)` folded, and `Categories`, `Unscheduled` and `Other releases` folded.
-- [ ] C3. A task row shows its claim, the reviewer's hold while in review, `merged <when>` from `closed` when done, the latest verdict with its round, and verified/total from the summary's `criteria`. The test checks that no `task.view` frame reached the stub hub while the tree was drawn.
-- [ ] C4. An epic with a plan groups its live tasks under one label per stage with the stage's state and merged count, and its done tasks under one `done` label in the order of their `closed` times.
-- [ ] C5. A container's glyph derives from its children: ◐ with a task in review, ○ in the text colour with only planned tasks, ● green when closed. A release with no epic derives from its direct tasks.
-- [ ] C6. A second render with no visible change does not rewrite the buffer. The test counts buffer writes through `nvim_buf_attach` `on_lines` or a render counter. `za` on an epic unfolds it with the cursor kept on the epic.
-- [ ] C7. At 120 and 80 columns the right columns drop right to left and no row wraps.
-- [ ] C8. `nvim/README.md` (Explorer section and Modules), the help line and `qa/cases/EXPLORER-001.lua` describe and exercise the view.
+- [x] C1. `␣e` and `:Cland explorer` open the explorer in the centre. `:Cland explorer E-2` (any prefix) opens it scoped to that item. The top bar, the context line and `␣?` name it.
+  - done: impl-350 · 2026-10-13T21:10:22.076Z
+- [x] C2. On a stub fixture with a release, three epics (one closed), tasks in every status, a category and an unscheduled item, the screen shows the release row with epics done/total and its two label rows, the epics in rank order with the closed one last in the done colour, each epic's bar, counts, stage and lead, `Direct tasks (N)` folded, and `Categories`, `Unscheduled` and `Other releases` folded.
+  - done: impl-350 · 2026-10-13T21:04:56.923Z
+- [x] C3. A task row shows its claim, the reviewer's hold while in review, `merged <when>` from `closed` when done, the latest verdict with its round, and verified/total from the summary's `criteria`. The test checks that no `task.view` frame reached the stub hub while the tree was drawn.
+  - done: impl-350 · 2026-10-13T21:04:57.314Z
+- [x] C4. An epic with a plan groups its live tasks under one label per stage with the stage's state and merged count, and its done tasks under one `done` label in the order of their `closed` times.
+  - done: impl-350 · 2026-10-13T21:04:57.847Z
+- [x] C5. A container's glyph derives from its children: ◐ with a task in review, ○ in the text colour with only planned tasks, ● green when closed. A release with no epic derives from its direct tasks.
+  - done: impl-350 · 2026-10-13T21:10:23.668Z
+- [x] C6. A second render with no visible change does not rewrite the buffer. The test counts buffer writes through `nvim_buf_attach` `on_lines` or a render counter. `za` on an epic unfolds it with the cursor kept on the epic.
+  - done: impl-350 · 2026-10-13T21:04:58.715Z
+- [x] C7. At 120 and 80 columns the right columns drop right to left and no row wraps.
+  - done: impl-350 · 2026-10-13T21:04:59.344Z
+- [x] C8. `nvim/README.md` (Explorer section and Modules), the help line and `qa/cases/EXPLORER-001.lua` describe and exercise the view.
+  - done: impl-350 · 2026-10-13T21:05:00.094Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-350-2 · 2026-10-13T21:12:26.130Z · commit 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
+
+## Comments
+
+### impl-350 · 2026-10-13T21:02:39.738Z
+
+Implementation notes: the explorer uses summary criteria/closed fields and cached task.plan show, never task.view per row. Legacy closed items without closed sort before resolved closing times using updated, with rank as a stable tie-breaker. Added the headless frame/screen tests, README Explorer section and EXPLORER-001 catalogue case; targeted explorer tests are green. Full verification follows source review.
+
+### coord · 2026-10-13T21:07:24.427Z
+
+Coordinator decision (2026-10-13 21:07Z, asked by rev-23): the header's done count covers the current scope only (§3.8). At scope nil that is the release named in the winbar, counting its descendants. Categories, Unscheduled and Other releases are separate roots with their own counts (T-356), and after s the count follows the scope node. The prototype's whole-outline count diverged from the spec. A test asserts that a done item in a category leaves the header count at release scope unchanged.
+
+### rev-23 · 2026-10-13T21:08:38.928Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-350-1
+commit: eb734e6706ca8b9edf116f0632149cbe56dd895a
+scope: full
+
+Medium — nvim/lua/cland/explorer.lua:130: literal release checks break configured root selection/derived status and fail the existing container-source guard; centralize hub-ladder root selection and add coverage. Medium — nvim/lua/cland/explorer.lua:683: nil-scope done count includes categories/unscheduled/other releases; Coordinator e438215c requires only the named release subtree, with an unrelated done-item regression. C1/C5 failed. Remaining full source checks found no other blocker; corrected head requires review before suite. A-2065: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2065-t-350-full-source-review-configured-roots-and-scoped-done-count.md.
+
+Criteria: C1 failed (Literal release checks miss configured roots, and nil-scope header counts unrelated roots instead of the named release subtree (Coordinator e438215c).), C5 failed (Derived release handling uses a literal kind, so configured roots derive from the wrong child set when direct tasks coexist with containers.).
+
+### rev-23 · 2026-10-13T21:12:26.130Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-350-2
+commit: 45e032e8fdc4ae9c2e29892dbb431a9e3571c764
+scope: full
+
+No remaining high or medium findings. Configured root handling is centralized in a hub-ladder predicate; nil-scope done count is restricted to the release subtree per Coordinator e438215c. Dedicated configured/direct-task and unrelated-done-item regressions cover the fixes. Full preceding review A-2065 remains applicable. C8 verified; C1–C7 await exact-head complete Neovim verification. A-2069: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2069-t-350-corrected-full-source-review-at-45e032e.md.
+
+Criteria: C8 verified.

@@ -3,6 +3,10 @@ id: E-276
 kind: epic
 title: The explorer and the card
 state: open
+plan_approval:
+  hash: 7d9178add3203769d0cd6ca9bc615859816dc47c7f1ca41d6ea7c4e7d2711567
+  by: human
+  at: 2026-10-13T20:55:30.341Z
 labels:
   - epic
   - v0.1.2
@@ -15,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-12T11:35:14.567Z
-updated: 2026-10-13T20:54:29.660Z
+updated: 2026-10-13T20:55:30.859Z
 ---
 
 ## Goal
@@ -131,3 +135,7 @@ Decision (stand-in, D24, 2026-10-13 ~20:33Z, lane flow): unlinked from E-270. Al
 ### coord · 2026-10-13T20:54:29.660Z
 
 Stand-in approval under D24 (2026-10-13 ~20:55Z): the ten tickets T-350 to T-359, the three-stage plan and the Coordinator's recommendations Q1–Q13 (drafts' NOTES) are approved as written. Q1: the startup view lands last, in T-359. Q2: only gi routes to the explorer. Q3: T-353, the hand-rank flag. Q4: a loose suite bench plus the 15 ms check on the dev machine. Q5: M on a closed item without a topic points to m. Q6: topic title '<id> <title>'. Q7: epic rows only under board. Q8: stage via cached plan.get. Q9: trim the V selection to 8192 bytes. Q10: card over the right panel below 80 columns. Q11: unresolved-closed items sort first among done by updated. Q12: 'no open release'. Q13: commit counts are out of scope. Added at approval: the card shows the human's picture first and folds the agents' text (§3.9, T-244); see T-352 C9 and T-354 C11. The plan file reads approval not required, so the stand-in records the human approval with task plan approve.
+
+### human · 2026-10-13T20:55:30.859Z
+
+Plan approved by the human's stand-in under D24 (2026-10-13 ~21:15Z): the ten tickets, three stages and Q1-Q13 match the accepted explorer prototype and spec 3.8-3.9; human-picture-first is T-352 C9 and T-354 C11.

@@ -3,8 +3,9 @@ id: T-342
 kind: task
 title: "The executor interface: cland verify runs through an executor with today's suite worker behind it as the local executor, and every result names its executor and platform"
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 6
 labels:
   - v0.1.2
   - hub
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-271
 blocked_by: []
-topic: null
-branch: null
+topic: topic-215
+branch: t/T-342-the-executor-interface-cland-verify-runs
 created: 2026-10-13T20:53:45.416Z
-updated: 2026-10-13T20:54:00.219Z
+updated: 2026-10-13T21:12:10.921Z
 ---
 
 ## Summary
@@ -93,9 +94,44 @@ Nothing in the module names SSH, a host, an address or a key. A backend keeps th
 
 ## Acceptance criteria
 
-- [ ] C1. `hub/src/executor/executor.ts` declares the nine operations, the `paused` state and the types above. A test reads the module's source and finds none of `ssh`, `scp`, `host`, `address` or `key` among its identifiers.
-- [ ] C2. Every existing case in `hub/test/suite.test.ts`, `suite-runner.test.ts` and `verifier-routing.test.ts` passes. No assertion, deadline or fixture is changed; the diff in those files only adds assertions.
-- [ ] C3. A real-hub test runs `cland verify` on a fixture project. The posted result has the line `Executor local · <os> <arch> · Node <v> · Neovim none`. `cland task view --json` shows `verify.executor` as `local`. After the `flushLogs` barrier, the journal's `suite-result` and `verification-timing` records carry `executor` and `platform`.
-- [ ] C4. A cache hit names the original run's executor and platform. A job record without `executor`, restored from `hub.db`, reads as `local` and reports as before.
-- [ ] C5. A run admitted before `cland hub stop` finishes and is reported exactly once after the next start, through the local executor's `status`. Its record carries `executor` and `platform`.
-- [ ] C6. `hub/README.md`, `docs/agents/tests.md` and the GLOSSARY's Executor entry describe the interface and the result line.
+- [x] C1. `hub/src/executor/executor.ts` declares the nine operations, the `paused` state and the types above. A test reads the module's source and finds none of `ssh`, `scp`, `host`, `address` or `key` among its identifiers.
+  - done: impl-342 · 2026-10-13T21:09:13.967Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-342-1 · 2026-10-13T21:11:48.251Z · commit e7021cabb5c4a910ce04db3607e48ea3c35c8046
+- [x] C2. Every existing case in `hub/test/suite.test.ts`, `suite-runner.test.ts` and `verifier-routing.test.ts` passes. No assertion, deadline or fixture is changed; the diff in those files only adds assertions.
+  - done: impl-342 · 2026-10-13T21:09:14.656Z
+- [x] C3. A real-hub test runs `cland verify` on a fixture project. The posted result has the line `Executor local · <os> <arch> · Node <v> · Neovim none`. `cland task view --json` shows `verify.executor` as `local`. After the `flushLogs` barrier, the journal's `suite-result` and `verification-timing` records carry `executor` and `platform`.
+  - done: impl-342 · 2026-10-13T21:09:15.623Z
+- [x] C4. A cache hit names the original run's executor and platform. A job record without `executor`, restored from `hub.db`, reads as `local` and reports as before.
+  - done: impl-342 · 2026-10-13T21:09:16.897Z
+- [x] C5. A run admitted before `cland hub stop` finishes and is reported exactly once after the next start, through the local executor's `status`. Its record carries `executor` and `platform`.
+  - done: impl-342 · 2026-10-13T21:09:19.099Z
+- [x] C6. `hub/README.md`, `docs/agents/tests.md` and the GLOSSARY's Executor entry describe the interface and the result line.
+  - done: impl-342 · 2026-10-13T21:09:20.030Z
+  - verified: rev-23 [reviewer] · run rev-2026-10-13-342-1 · 2026-10-13T21:11:48.251Z · commit e7021cabb5c4a910ce04db3607e48ea3c35c8046
+
+## Comments
+
+### impl-342 · 2026-10-13T20:55:27.889Z
+
+Implementation started: preserve local worker, gate, compatibility locks and restart behavior behind the nine-operation executor contract; add executor/platform to persisted results, reports, cards and journals. Read E-271 and D24/D27.
+
+### impl-342 · 2026-10-13T21:09:36.574Z
+
+Source ready at e7021cabb5c4a910ce04db3607e48ea3c35c8046 on t/T-342-the-executor-interface-cland-verify-runs, pushed to origin; origin/dev fetched/merged and already current. Typecheck and targeted tests pass: suite 61, runner 50, routing 7, executor 3. Final bounded/crash cases pass after final changes. Source review requested and assigned to rev-23. Evidence A-2066; only non-additive old-test edit is Coordinator-approved executor: 'local' in the VerifyResult expected literal. Full suite follows clear source review at this exact head.
+
+### rev-23 · 2026-10-13T21:11:48.251Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-2026-10-13-342-1
+commit: e7021cabb5c4a910ce04db3607e48ea3c35c8046
+scope: full
+
+No high or medium findings. Full source review covers the executor boundary, local admission/identity/cleanup/recovery, worker commands/platform, cache provenance, reports/cards/journals and docs. The sole existing expected-shape extension is authorized by Coordinator 548bf3cb; all remaining assertions/fixtures/deadlines stay intact. C1/C6 verified; C2–C5 await full exact-head cland verify. Targeted evidence A-2066 and contract A-2058. A-2068: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-2068-t-342-full-source-review-at-e7021ca.md.
+
+Criteria: C1 verified, C6 verified.
+
+### impl-342 · 2026-10-13T21:12:10.921Z
+
+Full source review clear at e7021cab (rev-2026-10-13-342-1, artifact A-2068). Submitted cland verify all at the exact reviewed clean head: aafe3ade-97ab-478f-8615-40b94a50df07, queued position 1 behind T-357, reporting to rev-23 and impl-342 in topic-215. Idle until the hub result.
